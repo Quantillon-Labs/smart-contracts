@@ -14,4 +14,4 @@ docs/
 .env
 out/
 cache/
-lib/
+#lib/

@@ -37,7 +37,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  *      - Decimal precision handling for external price feeds
  * 
  * @author Quantillon Labs
- * @custom:security-contact security@quantillon.fi
+ * @custom:security-contact team@quantillon.money
  */
 contract QEUROToken is 
     Initializable,           // Base for initialization instead of constructor

@@ -7,14 +7,15 @@ pragma solidity 0.8.24;
 
 // ERC20 upgradeable with all standard functionality
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+// Replace missing upgradeable IERC20/SafeERC20 with non-upgradeable interface and library
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Role system to control who can do what
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 // Emergency pause mechanism
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 // Base for upgradeable contracts
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -46,7 +47,7 @@ contract QEUROToken is
     PausableUpgradeable,     // Emergency pause
     UUPSUpgradeable          // Upgrade pattern
 {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     // =============================================================================
     // CONSTANTS - Protocol roles and limits
@@ -390,9 +391,6 @@ contract QEUROToken is
         require(newMintLimit <= MAX_RATE_LIMIT, "QEURO: Mint limit too high");
         require(newBurnLimit <= MAX_RATE_LIMIT, "QEURO: Burn limit too high");
 
-        uint256 oldMintLimit = mintRateLimit;
-        uint256 oldBurnLimit = burnRateLimit;
-
         mintRateLimit = newMintLimit;
         burnRateLimit = newBurnLimit;
 
@@ -504,27 +502,27 @@ contract QEUROToken is
     /**
      * @notice Normalizes a price value to 18 decimals
      * @param price Price value from external feed
-     * @param decimals Number of decimals in the price feed
+     * @param feedDecimals Number of decimals in the price feed
      * @return Normalized price with 18 decimals
      * @dev Helper function for external integrations
      */
-    function normalizePrice(uint256 price, uint8 decimals) 
+    function normalizePrice(uint256 price, uint8 feedDecimals) 
         external 
-        view 
+        pure 
         returns (uint256) 
     {
-        require(decimals <= 18, "QEURO: Too many decimals");
+        require(feedDecimals <= 18, "QEURO: Too many decimals");
         require(price > 0, "QEURO: Price must be positive");
 
-        if (decimals == 18) {
+        if (feedDecimals == 18) {
             return price;
-        } else if (decimals < 18) {
+        } else if (feedDecimals < 18) {
             unchecked {
-                return price * (10 ** (18 - decimals));
+                return price * (10 ** (18 - feedDecimals));
             }
         } else {
             unchecked {
-                return price / (10 ** (decimals - 18));
+                return price / (10 ** (feedDecimals - 18));
             }
         }
     }
@@ -532,18 +530,18 @@ contract QEUROToken is
     /**
      * @notice Validates price precision from external feed
      * @param price Price value from external feed
-     * @param decimals Number of decimals in the price feed
+     * @param feedDecimals Number of decimals in the price feed
      * @return Whether the price meets minimum precision requirements
      * @dev Helper function for external integrations
      */
-    function validatePricePrecision(uint256 price, uint8 decimals) 
+    function validatePricePrecision(uint256 price, uint8 feedDecimals) 
         external 
         view 
         returns (bool) 
     {
-        if (decimals == 0) return price >= minPricePrecision;
+        if (feedDecimals == 0) return price >= minPricePrecision;
         
-        uint256 normalizedPrice = this.normalizePrice(price, decimals);
+        uint256 normalizedPrice = this.normalizePrice(price, feedDecimals);
         return normalizedPrice >= minPricePrecision;
     }
 
@@ -684,14 +682,11 @@ contract QEUROToken is
      * @param to Destination address (address(0) for burn)  
      * @param amount Amount transferred
      */
-    function _beforeTokenTransfer(
+    function _update(
         address from,
         address to,
         uint256 amount
     ) internal override whenNotPaused {
-        // Call to parent OpenZeppelin function
-        super._beforeTokenTransfer(from, to, amount);
-        
         // Blacklist checks (skip for mint operations)
         if (from != address(0)) {
             require(!isBlacklisted[from], "QEURO: Sender is blacklisted");
@@ -704,6 +699,8 @@ contract QEUROToken is
         if (whitelistEnabled && to != address(0)) {
             require(isWhitelisted[to], "QEURO: Recipient not whitelisted");
         }
+
+        super._update(from, to, amount);
     }
 
     // =============================================================================
@@ -764,7 +761,7 @@ contract QEUROToken is
         require(to != address(0), "QEURO: Cannot send to zero address");
         
         // Transfer of external token using SafeERC20
-        IERC20Upgradeable(token).safeTransfer(to, amount);
+        IERC20(token).safeTransfer(to, amount);
     }
 
     /**

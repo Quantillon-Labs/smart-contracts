@@ -543,6 +543,16 @@ contract ChainlinkOracle is
 
         // Circuit breaker bounds check
         isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
+
+        // Deviation check against last valid price (reject sudden jumps > MAX_PRICE_DEVIATION)
+        if (isValid && lastValidEurUsdPrice > 0) {
+            uint256 base = lastValidEurUsdPrice;
+            uint256 diff = price > base ? price - base : base - price;
+            uint256 deviationBps = (diff * BASIS_POINTS) / base;
+            if (deviationBps > MAX_PRICE_DEVIATION) {
+                isValid = false;
+            }
+        }
         
         // If price invalid, return the last valid price
         if (!isValid) {

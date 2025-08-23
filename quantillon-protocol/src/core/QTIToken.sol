@@ -44,8 +44,8 @@ contract QTIToken is
     // STATE VARIABLES
     // =============================================================================
     
-    /// @notice Total supply cap (1 billion QTI)
-    uint256 public constant TOTAL_SUPPLY_CAP = 1_000_000_000 * 1e18;
+    /// @notice Total supply cap (100 million QTI)
+    uint256 public constant TOTAL_SUPPLY_CAP = 100_000_000 * 1e18;
     
     /// @notice Vote-escrow lock info
     struct LockInfo {

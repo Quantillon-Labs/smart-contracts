@@ -314,6 +314,7 @@ contract QuantillonVault is
         // Fetch EUR/USD price from oracle
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
+        _updatePriceTimestamp(isValid);
 
         // Calculate mint fee
         uint256 fee = usdcAmount.mulDiv(mintFee, 1e18);
@@ -379,6 +380,7 @@ contract QuantillonVault is
         // Fetch EUR/USD price
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
+        _updatePriceTimestamp(isValid);
 
         // Calculate USDC to return
         // Formula: QEURO * (EUR/USD) = USDC
@@ -429,10 +431,20 @@ contract QuantillonVault is
      *      - Improving the collateralization ratio
      *      - Avoiding liquidation
      *      - Preparing for a new mint
+     * 
+     * @dev Front-running protection:
+     *      - Cannot add collateral during liquidation cooldown period
+     *      - Prevents users from front-running liquidation attempts
      */
     function addCollateral(uint256 amount) external nonReentrant whenNotPaused {
         require(amount > 0, "Vault: Amount must be positive");
         require(!isLiquidated[msg.sender], "Vault: User is liquidated");
+        
+        // Prevent front-running liquidation attempts
+        require(
+            block.timestamp >= lastLiquidationAttempt[msg.sender] + LIQUIDATION_COOLDOWN,
+            "Vault: Cannot add collateral during liquidation cooldown"
+        );
 
         // Transfer USDC from user
         usdc.safeTransferFrom(msg.sender, address(this), amount);
@@ -482,30 +494,83 @@ contract QuantillonVault is
     // LIQUIDATION SYSTEM - Liquidation system
     // =============================================================================
 
+    // Liquidation delay to prevent front-running (24 hours)
+    uint256 public constant LIQUIDATION_DELAY = 24 hours;
+    
+    // Cooldown period after liquidation attempts (1 hour)
+    uint256 public constant LIQUIDATION_COOLDOWN = 1 hours;
+    
+    // Liquidation commitments to prevent front-running
+    mapping(bytes32 => bool) public liquidationCommitments;
+    mapping(bytes32 => uint256) public liquidationCommitmentTimes;
+    
+    // Track liquidation attempts to prevent front-running
+    mapping(address => uint256) public lastLiquidationAttempt;
+
     /**
-     * @notice Liquidates an undercollateralized position
+     * @notice Commit to a liquidation to prevent front-running
+     * @param user Address of the user to liquidate
+     * @param debtToCover Amount of debt to cover
+     * @param salt Random salt for commitment
+     */
+    function commitLiquidation(
+        address user,
+        uint256 debtToCover,
+        bytes32 salt
+    ) external onlyRole(LIQUIDATOR_ROLE) {
+        require(user != address(0), "Vault: Invalid user address");
+        require(debtToCover > 0, "Vault: Debt amount must be positive");
+        
+        bytes32 commitment = keccak256(abi.encodePacked(user, debtToCover, salt, msg.sender));
+        require(!liquidationCommitments[commitment], "Vault: Commitment already exists");
+        
+        liquidationCommitments[commitment] = true;
+        liquidationCommitmentTimes[commitment] = block.timestamp;
+        
+        // Track liquidation attempt for cooldown
+        lastLiquidationAttempt[user] = block.timestamp;
+    }
+
+    /**
+     * @notice Liquidates an undercollateralized position with front-running protection
      * 
      * @param user Address of the user to liquidate
      * @param debtToCover Amount of debt to cover
+     * @param salt Salt used in the commitment
      * 
      * @dev Liquidation process:
-     *      1. Verify that the position is liquidatable
-     *      2. Calculate collateral to seize (with bonus)
-     *      3. Burn QEURO from liquidator
-     *      4. Transfer collateral to liquidator
-     *      5. Update balances
+     *      1. Verify commitment exists and delay has passed
+     *      2. Verify that the position is liquidatable
+     *      3. Calculate collateral to seize (with bonus)
+     *      4. Burn QEURO from liquidator
+     *      5. Transfer collateral to liquidator
+     *      6. Update balances
      * 
      * @dev Liquidator incentives:
      *      - 5% bonus on seized collateral
      *      - Protects the protocol against risky positions
+     *      - Front-running protection via commitment delay
      */
     function liquidate(
         address user,
-        uint256 debtToCover
+        uint256 debtToCover,
+        bytes32 salt
     ) external onlyRole(LIQUIDATOR_ROLE) nonReentrant whenNotPaused {
         require(user != address(0), "Vault: Invalid user address");
         require(debtToCover > 0, "Vault: Debt amount must be positive");
         require(userDebt[user] >= debtToCover, "Vault: Debt amount too high");
+
+        // Verify commitment and delay
+        bytes32 commitment = keccak256(abi.encodePacked(user, debtToCover, salt, msg.sender));
+        require(liquidationCommitments[commitment], "Vault: No valid commitment");
+        require(
+            block.timestamp >= liquidationCommitmentTimes[commitment] + LIQUIDATION_DELAY,
+            "Vault: Liquidation delay not met"
+        );
+        
+        // Clear the commitment to prevent replay
+        delete liquidationCommitments[commitment];
+        delete liquidationCommitmentTimes[commitment];
 
         // Verify that the user is indeed liquidatable
         require(_isLiquidatable(user), "Vault: User not liquidatable");
@@ -513,6 +578,7 @@ contract QuantillonVault is
         // Fetch current EUR/USD price
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
+        _updatePriceTimestamp(isValid);
 
         // Calculate collateral to seize
         // 1. USD value of the covered debt
@@ -578,6 +644,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return 0;
+        _updatePriceTimestamp(isValid);
 
         uint256 debtValue = userDebt[user].mulDiv(eurUsdPrice, 1e18);
         return userCollateral[user].mulDiv(1e18, debtValue);
@@ -603,6 +670,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (isValid && totalMinted > 0) {
+            _updatePriceTimestamp(isValid);
             totalDebtValue = totalMinted.mulDiv(eurUsdPrice, 1e18);
             globalCollateralRatio = totalCollateralValue.mulDiv(1e18, totalDebtValue);
         } else {
@@ -653,6 +721,7 @@ contract QuantillonVault is
     {
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return (0, 0);
+        _updatePriceTimestamp(isValid);
 
         qeuroAmount = usdcAmount.mulDiv(1e18, eurUsdPrice);
         
@@ -676,6 +745,7 @@ contract QuantillonVault is
     {
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return (0, 0);
+        _updatePriceTimestamp(isValid);
 
         uint256 grossUsdcAmount = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
         fee = grossUsdcAmount.mulDiv(protocolFee, 1e18);
@@ -757,6 +827,16 @@ contract QuantillonVault is
     // =============================================================================
 
     /**
+     * @notice Updates the last valid price timestamp when a valid price is fetched
+     * @param isValid Whether the current price fetch was valid
+     */
+    function _updatePriceTimestamp(bool isValid) internal {
+        if (isValid) {
+            lastPriceUpdateTime = block.timestamp;
+        }
+    }
+
+    /**
      * @notice Checks if a user can be liquidated
      * 
      * @param user User address
@@ -772,6 +852,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return false;
+        _updatePriceTimestamp(isValid);
 
         uint256 debtValue = userDebt[user].mulDiv(eurUsdPrice, 1e18);
         uint256 collateralRatio = userCollateral[user].mulDiv(1e18, debtValue);
@@ -797,6 +878,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return false;
+        _updatePriceTimestamp(isValid);
 
         uint256 debtValue = debtAmount.mulDiv(eurUsdPrice, 1e18);
         uint256 collateralRatio = collateralAmount.mulDiv(1e18, debtValue);
@@ -836,6 +918,7 @@ contract QuantillonVault is
      * 
      * @dev Only used in major crises
      *      Allows liquidation even if the oracle is down
+     *      Includes safety checks for stale prices
      */
     function emergencyLiquidate(
         address user,
@@ -843,9 +926,22 @@ contract QuantillonVault is
     ) external onlyRole(EMERGENCY_ROLE) {
         require(userDebt[user] >= debtToCover, "Vault: Insufficient debt");
         
-        // Liquidation with last known price
+        // Safety check: ensure we have a recent valid price
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(!isValid || currentPrice > 0, "Vault: No valid price available for emergency liquidation");
+        _updatePriceTimestamp(isValid);
+        
+        // Use current price if valid, otherwise use last valid price with staleness check
+        uint256 priceToUse = isValid ? currentPrice : lastValidEurUsdPrice;
+        
+        // Additional safety: check if last valid price is not too old (24 hours)
+        if (!isValid && block.timestamp > lastPriceUpdateTime + 24 hours) {
+            revert("Vault: Last valid price too old for emergency liquidation");
+        }
+        
+        // Liquidation with validated price
         uint256 collateralToSeize = debtToCover.mulDiv(
-            lastValidEurUsdPrice,
+            priceToUse,
             1e18
         );
         
@@ -973,6 +1069,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return (0, 0, false);
+        _updatePriceTimestamp(isValid);
 
         // Calculations
         uint256 collateralValue = debtToCover.mulDiv(eurUsdPrice, 1e18);
@@ -1021,6 +1118,8 @@ contract QuantillonVault is
 
     /// @notice Variable to store the last valid EUR/USD price (emergency state)
     uint256 private lastValidEurUsdPrice;
+    /// @notice Variable to store the timestamp of the last valid price update
+    uint256 private lastPriceUpdateTime;
 }
 
 // =============================================================================

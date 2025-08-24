@@ -321,8 +321,8 @@ contract stQEUROToken is
         // Update totals
         totalUnderlying -= qeuroAmount;
 
-        // Transfer QEURO to user
-        qeuro.transfer(msg.sender, qeuroAmount);
+        // Transfer QEURO to user using safeTransfer for proper error handling
+        qeuro.safeTransfer(msg.sender, qeuroAmount);
 
         emit QEUROUnstaked(msg.sender, stQEUROAmount, qeuroAmount);
     }
@@ -541,7 +541,7 @@ contract stQEUROToken is
             _burn(user, stQEUROBalance);
             totalUnderlying -= qeuroAmount;
             
-            qeuro.transfer(user, qeuroAmount);
+            qeuro.safeTransfer(user, qeuroAmount);
         }
     }
 

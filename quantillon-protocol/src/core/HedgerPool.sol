@@ -556,6 +556,9 @@ contract HedgerPool is
     /**
      * @notice Add margin to an existing position
      * 
+     * @param positionId Position ID to add margin to
+     * @param amount Amount of USDC to add as margin
+     * 
      * @dev This function allows hedgers to add margin to an existing EUR/USD hedging position.
      *      - The hedger must be the owner of the position.
      *      - The position must be active.
@@ -566,6 +569,10 @@ contract HedgerPool is
      *      - Hedger and pool totals are updated.
      *      - A new margin ratio is calculated.
      *      - An event is emitted.
+     * 
+     * @dev Front-running protection:
+     *      - Cannot add margin during liquidation cooldown period
+     *      - Prevents hedgers from front-running liquidation attempts
      */
     function addMargin(uint256 positionId, uint256 amount) 
         external 
@@ -576,6 +583,12 @@ contract HedgerPool is
         require(position.hedger == msg.sender, "HedgerPool: Not position owner");
         require(position.isActive, "HedgerPool: Position not active");
         require(amount > 0, "HedgerPool: Amount must be positive");
+        
+        // Prevent front-running liquidation attempts
+        require(
+            block.timestamp >= lastLiquidationAttempt[msg.sender] + LIQUIDATION_COOLDOWN,
+            "HedgerPool: Cannot add margin during liquidation cooldown"
+        );
 
         // Calculate margin fee
         uint256 fee = amount.percentageOf(marginFee);
@@ -644,8 +657,50 @@ contract HedgerPool is
     // LIQUIDATION SYSTEM
     // =============================================================================
 
+    // Liquidation delay to prevent front-running (24 hours)
+    uint256 public constant LIQUIDATION_DELAY = 24 hours;
+    
+    // Cooldown period after liquidation attempts (1 hour)
+    uint256 public constant LIQUIDATION_COOLDOWN = 1 hours;
+    
+    // Liquidation commitments to prevent front-running
+    mapping(bytes32 => bool) public liquidationCommitments;
+    mapping(bytes32 => uint256) public liquidationCommitmentTimes;
+    
+    // Track liquidation attempts to prevent front-running
+    mapping(address => uint256) public lastLiquidationAttempt;
+
     /**
-     * @notice Liquidate an undercollateralized hedger position
+     * @notice Commit to a liquidation to prevent front-running
+     * @param hedger Address of the hedger to liquidate
+     * @param positionId Position ID to liquidate
+     * @param salt Random salt for commitment
+     */
+    function commitLiquidation(
+        address hedger,
+        uint256 positionId,
+        bytes32 salt
+    ) external onlyRole(LIQUIDATOR_ROLE) {
+        require(hedger != address(0), "HedgerPool: Invalid hedger address");
+        require(positionId > 0, "HedgerPool: Invalid position ID");
+        
+        bytes32 commitment = keccak256(abi.encodePacked(hedger, positionId, salt, msg.sender));
+        require(!liquidationCommitments[commitment], "HedgerPool: Commitment already exists");
+        
+        liquidationCommitments[commitment] = true;
+        liquidationCommitmentTimes[commitment] = block.timestamp;
+        
+        // Track liquidation attempt for cooldown
+        lastLiquidationAttempt[hedger] = block.timestamp;
+    }
+
+    /**
+     * @notice Liquidate an undercollateralized hedger position with front-running protection
+     * 
+     * @param hedger Address of the hedger to liquidate
+     * @param positionId Position ID to liquidate
+     * @param salt Salt used in the commitment
+     * @return liquidationReward Amount of liquidation reward
      * 
      * @dev This function allows liquidators to liquidate an undercollateralized hedger position.
      *      - The liquidator must have the LIQUIDATOR_ROLE.
@@ -660,16 +715,29 @@ contract HedgerPool is
      *      - The liquidation reward is transferred to the liquidator.
      *      - The remaining margin is transferred back to the hedger if any.
      *      - An event is emitted.
+     *      - Front-running protection via commitment delay.
      */
-    function liquidateHedger(address hedger, uint256 positionId) 
-        external 
-        onlyRole(LIQUIDATOR_ROLE) 
-        nonReentrant 
-        returns (uint256 liquidationReward) 
-    {
+    function liquidateHedger(
+        address hedger, 
+        uint256 positionId,
+        bytes32 salt
+    ) external onlyRole(LIQUIDATOR_ROLE) nonReentrant returns (uint256 liquidationReward) {
         HedgePosition storage position = positions[positionId];
         require(position.hedger == hedger, "HedgerPool: Invalid hedger");
         require(position.isActive, "HedgerPool: Position not active");
+
+        // Verify commitment and delay
+        bytes32 commitment = keccak256(abi.encodePacked(hedger, positionId, salt, msg.sender));
+        require(liquidationCommitments[commitment], "HedgerPool: No valid commitment");
+        require(
+            block.timestamp >= liquidationCommitmentTimes[commitment] + LIQUIDATION_DELAY,
+            "HedgerPool: Liquidation delay not met"
+        );
+        
+        // Clear the commitment to prevent replay
+        delete liquidationCommitments[commitment];
+        delete liquidationCommitmentTimes[commitment];
+
         require(_isPositionLiquidatable(positionId), "HedgerPool: Position not liquidatable");
 
         // Get current EUR/USD price
@@ -711,7 +779,7 @@ contract HedgerPool is
      * @notice Claim hedging rewards (interest differential + yield shift)
      * 
      * @dev This function allows hedgers to claim their accumulated hedging rewards.
-     *      - Only the hedger themselves or a governance role can call this.
+     *      - Only the hedger themselves can call this function.
      *      - The pending rewards are updated.
      *      - The interest differential reward is calculated.
      *      - The yield shift rewards are fetched from the yield shift mechanism.
@@ -726,7 +794,7 @@ contract HedgerPool is
         nonReentrant 
         returns (uint256 totalRewards) 
     {
-        require(msg.sender == hedger || hasRole(GOVERNANCE_ROLE, msg.sender), "HedgerPool: Unauthorized");
+        require(msg.sender == hedger, "HedgerPool: Only hedger can claim their own rewards");
         
         HedgerInfo storage hedgerInfo = hedgers[hedger];
         
@@ -762,7 +830,7 @@ contract HedgerPool is
      *      - It calculates the interest differential reward.
      *      - It calculates the reward amount based on the hedger's total exposure,
      *        the interest differential, and the time elapsed since the last claim.
-     *      - The pending rewards are incremented.
+     *      - The pending rewards are incremented with overflow protection.
      */
     function _updateHedgerRewards(address hedger) internal {
         HedgerInfo storage hedgerInfo = hedgers[hedger];
@@ -779,7 +847,10 @@ contract HedgerPool is
                 .mulDiv(interestDifferential, 10000)
                 .mulDiv(timeElapsed, 365 days);
             
-            hedgerInfo.pendingRewards += reward;
+            // Add overflow protection for pending rewards
+            uint256 newPendingRewards = hedgerInfo.pendingRewards + reward;
+            require(newPendingRewards >= hedgerInfo.pendingRewards, "HedgerPool: Reward overflow");
+            hedgerInfo.pendingRewards = newPendingRewards;
         }
     }
 
@@ -904,6 +975,7 @@ contract HedgerPool is
      *      - For a short EUR/USD position, profit is made when EUR/USD falls.
      *      - The P&L is calculated as the difference between the current price and entry price,
      *        multiplied by the position size and divided by the entry price.
+     *      - Uses safe arithmetic operations to prevent overflow.
      */
     function _calculatePnL(HedgePosition storage position, uint256 currentPrice) 
         internal 
@@ -912,7 +984,23 @@ contract HedgerPool is
     {
         // For short EUR/USD position: profit when EUR/USD falls
         int256 priceChange = int256(position.entryPrice) - int256(currentPrice);
-        return priceChange * int256(position.positionSize) / int256(position.entryPrice);
+        
+        // Use safe arithmetic to prevent overflow
+        // First multiply position size by price change, then divide by entry price
+        // This prevents overflow by doing the division first when possible
+        
+        if (priceChange >= 0) {
+            // Positive price change (profit for short position)
+            // Use uint256 for intermediate calculations to avoid overflow
+            uint256 absPriceChange = uint256(priceChange);
+            uint256 intermediate = position.positionSize.mulDiv(absPriceChange, position.entryPrice);
+            return int256(intermediate);
+        } else {
+            // Negative price change (loss for short position)
+            uint256 absPriceChange = uint256(-priceChange);
+            uint256 intermediate = position.positionSize.mulDiv(absPriceChange, position.entryPrice);
+            return -int256(intermediate);
+        }
     }
 
     /**

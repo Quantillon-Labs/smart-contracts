@@ -1,0 +1,1015 @@
+# UserPool
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/UserPool.sol)
+
+**Inherits:**
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+
+**Author:**
+Quantillon Labs
+
+Manages QEURO user deposits, staking, and yield distribution
+
+*Main characteristics:
+- User deposit and withdrawal management
+- QEURO staking mechanism with rewards
+- Yield distribution system
+- Fee structure for protocol sustainability
+- Emergency pause mechanism for crisis situations
+- Upgradeable via UUPS pattern*
+
+*Deposit mechanics:
+- Users deposit USDC to receive QEURO
+- QEURO is minted based on current EUR/USD exchange rate
+- Deposit fees charged for protocol revenue
+- Deposits are tracked per user for analytics*
+
+*Staking mechanics:
+- Users can stake their QEURO for additional rewards
+- Staking APY provides yield on staked QEURO
+- Unstaking has a cooldown period to prevent abuse
+- Rewards are distributed based on staking duration and amount*
+
+*Withdrawal mechanics:
+- Users can withdraw their QEURO back to USDC
+- Withdrawal fees charged for protocol revenue
+- Withdrawals are processed based on current EUR/USD rate
+- Staked QEURO must be unstaked before withdrawal*
+
+*Yield distribution:
+- Yield is distributed to stakers based on their stake amount
+- Performance fees charged on yield distributions
+- Yield sources include protocol fees and yield shift mechanisms
+- Real-time yield tracking and distribution*
+
+*Fee structure:
+- Deposit fees for creating QEURO from USDC
+- Withdrawal fees for converting QEURO back to USDC
+- Performance fees on yield distributions
+- Dynamic fee adjustment based on market conditions*
+
+*Security features:
+- Role-based access control for all critical operations
+- Reentrancy protection for all external calls
+- Emergency pause mechanism for crisis situations
+- Upgradeable architecture for future improvements
+- Secure deposit and withdrawal management
+- Staking cooldown mechanisms*
+
+*Integration points:
+- QEURO token for minting and burning
+- USDC for deposits and withdrawals
+- QuantillonVault for QEURO minting/burning
+- Yield shift mechanism for yield management
+- Vault math library for calculations*
+
+**Note:**
+team@quantillon.money
+
+
+## State Variables
+### GOVERNANCE_ROLE
+Role for governance operations (parameter updates, emergency actions)
+
+*keccak256 hash avoids role collisions with other contracts*
+
+*Should be assigned to governance multisig or DAO*
+
+
+```solidity
+bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+```
+
+
+### EMERGENCY_ROLE
+Role for emergency operations (pause, emergency withdrawals)
+
+*keccak256 hash avoids role collisions with other contracts*
+
+*Should be assigned to emergency multisig*
+
+
+```solidity
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+```
+
+
+### UPGRADER_ROLE
+Role for performing contract upgrades via UUPS pattern
+
+*keccak256 hash avoids role collisions with other contracts*
+
+*Should be assigned to governance or upgrade multisig*
+
+
+```solidity
+bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+```
+
+
+### qeuro
+QEURO token contract for minting and burning
+
+*Used for all QEURO minting and burning operations*
+
+*Should be the official QEURO token contract*
+
+
+```solidity
+IQEURO public qeuro;
+```
+
+
+### usdc
+USDC token contract for deposits and withdrawals
+
+*Used for all USDC deposits and withdrawals*
+
+*Should be the official USDC contract on the target network*
+
+
+```solidity
+IERC20 public usdc;
+```
+
+
+### vault
+Main Quantillon vault for QEURO operations
+
+*Used for QEURO minting and burning operations*
+
+*Should be the official QuantillonVault contract*
+
+
+```solidity
+IQuantillonVault public vault;
+```
+
+
+### yieldShift
+Yield shift mechanism for yield management
+
+*Handles yield distribution and management*
+
+*Used for yield calculations and distributions*
+
+
+```solidity
+IYieldShift public yieldShift;
+```
+
+
+### stakingAPY
+Staking APY in basis points
+
+*Example: 500 = 5% staking APY*
+
+*Used for calculating staking rewards*
+
+
+```solidity
+uint256 public stakingAPY;
+```
+
+
+### depositAPY
+Base deposit APY in basis points
+
+*Example: 200 = 2% base deposit APY*
+
+*Used for calculating deposit rewards*
+
+
+```solidity
+uint256 public depositAPY;
+```
+
+
+### minStakeAmount
+Minimum amount required for staking (in QEURO)
+
+*Example: 100 * 1e18 = 100 QEURO minimum stake*
+
+*Prevents dust staking and reduces gas costs*
+
+
+```solidity
+uint256 public minStakeAmount;
+```
+
+
+### unstakingCooldown
+Cooldown period for unstaking (in seconds)
+
+*Example: 7 days = 604,800 seconds*
+
+*Prevents rapid staking/unstaking cycles*
+
+
+```solidity
+uint256 public unstakingCooldown;
+```
+
+
+### depositFee
+Fee charged on deposits (in basis points)
+
+*Example: 10 = 0.1% deposit fee*
+
+*Revenue source for the protocol*
+
+
+```solidity
+uint256 public depositFee;
+```
+
+
+### withdrawalFee
+Fee charged on withdrawals (in basis points)
+
+*Example: 10 = 0.1% withdrawal fee*
+
+*Revenue source for the protocol*
+
+
+```solidity
+uint256 public withdrawalFee;
+```
+
+
+### performanceFee
+Fee charged on yield distributions (in basis points)
+
+*Example: 200 = 2% performance fee*
+
+*Revenue source for the protocol*
+
+
+```solidity
+uint256 public performanceFee;
+```
+
+
+### totalDeposits
+Total USDC equivalent deposits across all users
+
+*Sum of all user deposits converted to USDC equivalent*
+
+*Used for pool analytics and risk management*
+
+
+```solidity
+uint256 public totalDeposits;
+```
+
+
+### totalStakes
+Total QEURO staked across all users
+
+*Sum of all staked QEURO amounts*
+
+*Used for yield distribution calculations*
+
+
+```solidity
+uint256 public totalStakes;
+```
+
+
+### totalUsers
+Number of unique users who have deposited
+
+*Count of unique addresses that have made deposits*
+
+*Used for protocol analytics and governance*
+
+
+```solidity
+uint256 public totalUsers;
+```
+
+
+### userInfo
+User information by address
+
+*Maps user addresses to their detailed information*
+
+*Used to track user deposits, stakes, and rewards*
+
+
+```solidity
+mapping(address => UserInfo) public userInfo;
+```
+
+
+### hasDeposited
+Whether a user has ever deposited
+
+*Maps user addresses to their deposit status*
+
+*Used to track unique users and prevent double counting*
+
+
+```solidity
+mapping(address => bool) public hasDeposited;
+```
+
+
+### accumulatedYieldPerShare
+Accumulated yield per staked QEURO share
+
+*Used for calculating user rewards based on their stake amount*
+
+*Increases over time as yield is distributed*
+
+
+```solidity
+uint256 public accumulatedYieldPerShare;
+```
+
+
+### lastYieldDistribution
+Timestamp of last yield distribution
+
+*Used to track when yield was last distributed*
+
+*Used for yield calculation intervals*
+
+
+```solidity
+uint256 public lastYieldDistribution;
+```
+
+
+### totalYieldDistributed
+Total yield distributed to users
+
+*Sum of all yield distributed to users*
+
+*Used for protocol analytics and governance*
+
+
+```solidity
+uint256 public totalYieldDistributed;
+```
+
+
+## Functions
+### constructor
+
+
+```solidity
+constructor();
+```
+
+### initialize
+
+
+```solidity
+function initialize(address admin, address _qeuro, address _usdc, address _vault, address _yieldShift)
+    public
+    initializer;
+```
+
+### deposit
+
+Deposit USDC to mint QEURO and join user pool
+
+*This function allows users to deposit USDC and receive QEURO.
+It includes a deposit fee and handles the minting process.*
+
+
+```solidity
+function deposit(uint256 usdcAmount, uint256 minQeuroOut)
+    external
+    nonReentrant
+    whenNotPaused
+    returns (uint256 qeuroMinted);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to deposit (6 decimals)|
+|`minQeuroOut`|`uint256`|Minimum amount of QEURO to receive (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroMinted`|`uint256`|Amount of QEURO minted (18 decimals)|
+
+
+### withdraw
+
+Withdraw USDC by burning QEURO
+
+*This function allows users to withdraw their QEURO and receive USDC.
+It includes a withdrawal fee and handles the redemption process.*
+
+
+```solidity
+function withdraw(uint256 qeuroAmount, uint256 minUsdcOut)
+    external
+    nonReentrant
+    whenNotPaused
+    returns (uint256 usdcReceived);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to burn (18 decimals)|
+|`minUsdcOut`|`uint256`|Minimum amount of USDC to receive (6 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcReceived`|`uint256`|Amount of USDC received (6 decimals)|
+
+
+### stake
+
+Stake QEURO tokens to earn enhanced yield
+
+*This function allows users to stake their QEURO tokens.
+It updates their pending rewards and adds to their staked amount.*
+
+
+```solidity
+function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to stake (18 decimals)|
+
+
+### requestUnstake
+
+Request to unstake QEURO tokens (starts cooldown)
+
+*This function allows users to request to unstake their QEURO.
+It sets a cooldown period before they can complete the unstaking.*
+
+
+```solidity
+function requestUnstake(uint256 qeuroAmount) external nonReentrant;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to unstake (18 decimals)|
+
+
+### unstake
+
+Complete unstaking after cooldown period
+
+*This function allows users to complete their unstaking request
+after the cooldown period has passed.*
+
+
+```solidity
+function unstake() external nonReentrant whenNotPaused;
+```
+
+### claimStakingRewards
+
+Claim staking rewards
+
+*This function allows users to claim their pending staking rewards.
+It calculates and transfers the rewards based on their staked amount.*
+
+
+```solidity
+function claimStakingRewards() external nonReentrant returns (uint256 rewardAmount);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`rewardAmount`|`uint256`|Amount of QEURO rewards claimed (18 decimals)|
+
+
+### distributeYield
+
+Distribute yield to stakers (called by YieldShift contract)
+
+*This function is deprecated - yield now goes to stQEURO*
+
+
+```solidity
+function distributeYield(uint256 yieldAmount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`yieldAmount`|`uint256`|Amount of yield to distribute (18 decimals)|
+
+
+### _updatePendingRewards
+
+Update pending rewards for a user
+
+*This internal function calculates and updates the pending rewards
+for a given user based on their staked amount and the current APY.*
+
+
+```solidity
+function _updatePendingRewards(address user) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user to update|
+
+
+### getUserDeposits
+
+Get the total deposits of a specific user
+
+
+```solidity
+function getUserDeposits(address user) external view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user to query|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Total deposits of the user in USDC equivalent (6 decimals)|
+
+
+### getUserStakes
+
+Get the current staked amount of a specific user
+
+
+```solidity
+function getUserStakes(address user) external view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user to query|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Current staked amount of the user in QEURO (18 decimals)|
+
+
+### getUserPendingRewards
+
+Get the total pending rewards for a specific user
+
+
+```solidity
+function getUserPendingRewards(address user) external view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user to query|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Total pending rewards of the user in QEURO (18 decimals)|
+
+
+### getUserInfo
+
+Get detailed information about a user's pool status
+
+
+```solidity
+function getUserInfo(address user)
+    external
+    view
+    returns (
+        uint256 qeuroBalance,
+        uint256 stakedAmount,
+        uint256 pendingRewards,
+        uint256 depositHistory,
+        uint256 lastStakeTime
+    );
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user to query|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroBalance`|`uint256`|QEURO balance of the user (18 decimals)|
+|`stakedAmount`|`uint256`|Current staked amount of the user (18 decimals)|
+|`pendingRewards`|`uint256`|Total pending rewards of the user (18 decimals)|
+|`depositHistory`|`uint256`|Total historical deposits of the user (6 decimals)|
+|`lastStakeTime`|`uint256`|Timestamp of the user's last staking action|
+
+
+### getTotalDeposits
+
+Get the total deposits across all users in the pool
+
+
+```solidity
+function getTotalDeposits() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Total USDC equivalent deposits (6 decimals)|
+
+
+### getTotalStakes
+
+Get the total QEURO staked across all users
+
+
+```solidity
+function getTotalStakes() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Total QEURO staked (18 decimals)|
+
+
+### getPoolMetrics
+
+Get various metrics about the user pool
+
+
+```solidity
+function getPoolMetrics()
+    external
+    view
+    returns (uint256 totalUsers_, uint256 averageDeposit, uint256 stakingRatio, uint256 poolTVL);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalUsers_`|`uint256`|Number of unique users|
+|`averageDeposit`|`uint256`|Average deposit amount per user (6 decimals)|
+|`stakingRatio`|`uint256`|Ratio of total staked QEURO to total deposits (basis points)|
+|`poolTVL`|`uint256`|Total value locked in the pool (6 decimals)|
+
+
+### getStakingAPY
+
+Get the current Staking APY
+
+
+```solidity
+function getStakingAPY() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Staking APY in basis points|
+
+
+### getDepositAPY
+
+Get the current Deposit APY
+
+
+```solidity
+function getDepositAPY() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Deposit APY in basis points|
+
+
+### calculateProjectedRewards
+
+Calculate projected rewards for a given QEURO amount and duration
+
+
+```solidity
+function calculateProjectedRewards(uint256 qeuroAmount, uint256 duration) external view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to calculate rewards for (18 decimals)|
+|`duration`|`uint256`|Duration in seconds|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Calculated rewards (18 decimals)|
+
+
+### updateStakingParameters
+
+Update the parameters for staking (APY, min stake, cooldown)
+
+*This function is restricted to governance roles.*
+
+
+```solidity
+function updateStakingParameters(uint256 newStakingAPY, uint256 newMinStakeAmount, uint256 newUnstakingCooldown)
+    external
+    onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newStakingAPY`|`uint256`|New Staking APY in basis points|
+|`newMinStakeAmount`|`uint256`|New Minimum stake amount (18 decimals)|
+|`newUnstakingCooldown`|`uint256`|New unstaking cooldown period (seconds)|
+
+
+### setPoolFees
+
+Set the fees for deposits, withdrawals, and performance
+
+*This function is restricted to governance roles.*
+
+
+```solidity
+function setPoolFees(uint256 _depositFee, uint256 _withdrawalFee, uint256 _performanceFee)
+    external
+    onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_depositFee`|`uint256`|New deposit fee in basis points|
+|`_withdrawalFee`|`uint256`|New withdrawal fee in basis points|
+|`_performanceFee`|`uint256`|New performance fee in basis points|
+
+
+### emergencyUnstake
+
+Emergency unstake for a specific user (restricted to emergency roles)
+
+*This function is intended for emergency situations where a user's
+staked QEURO needs to be forcibly unstaked.*
+
+
+```solidity
+function emergencyUnstake(address user) external onlyRole(EMERGENCY_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user to unstake|
+
+
+### pause
+
+Pause the user pool (restricted to emergency roles)
+
+*This function is used to pause critical operations in case of
+a protocol-wide emergency or vulnerability.*
+
+
+```solidity
+function pause() external onlyRole(EMERGENCY_ROLE);
+```
+
+### unpause
+
+Unpause the user pool (restricted to emergency roles)
+
+*This function is used to re-enable critical operations after
+an emergency pause.*
+
+
+```solidity
+function unpause() external onlyRole(EMERGENCY_ROLE);
+```
+
+### getPoolConfig
+
+Get the current configuration parameters of the user pool
+
+
+```solidity
+function getPoolConfig()
+    external
+    view
+    returns (
+        uint256 minStakeAmount_,
+        uint256 unstakingCooldown_,
+        uint256 depositFee_,
+        uint256 withdrawalFee_,
+        uint256 performanceFee_
+    );
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`minStakeAmount_`|`uint256`|Current minimum stake amount (18 decimals)|
+|`unstakingCooldown_`|`uint256`|Current unstaking cooldown period (seconds)|
+|`depositFee_`|`uint256`|Current deposit fee (basis points)|
+|`withdrawalFee_`|`uint256`|Current withdrawal fee (basis points)|
+|`performanceFee_`|`uint256`|Current performance fee (basis points)|
+
+
+### isPoolActive
+
+Check if the user pool is currently active (not paused)
+
+
+```solidity
+function isPoolActive() external view returns (bool);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if the pool is active, false otherwise|
+
+
+### _authorizeUpgrade
+
+
+```solidity
+function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
+```
+
+## Events
+### UserDeposit
+Emitted when a user deposits USDC and receives QEURO
+
+*Indexed parameters allow efficient filtering of events*
+
+
+```solidity
+event UserDeposit(address indexed user, uint256 usdcAmount, uint256 qeuroMinted, uint256 timestamp);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user who deposited|
+|`usdcAmount`|`uint256`|Amount of USDC deposited (6 decimals)|
+|`qeuroMinted`|`uint256`|Amount of QEURO minted (18 decimals)|
+|`timestamp`|`uint256`|Timestamp of the deposit|
+
+### UserWithdrawal
+Emitted when a user withdraws QEURO and receives USDC
+
+*Indexed parameters allow efficient filtering of events*
+
+
+```solidity
+event UserWithdrawal(address indexed user, uint256 qeuroBurned, uint256 usdcReceived, uint256 timestamp);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user who withdrew|
+|`qeuroBurned`|`uint256`|Amount of QEURO burned (18 decimals)|
+|`usdcReceived`|`uint256`|Amount of USDC received (6 decimals)|
+|`timestamp`|`uint256`|Timestamp of the withdrawal|
+
+### QEUROStaked
+Emitted when a user stakes QEURO
+
+*Indexed parameters allow efficient filtering of events*
+
+
+```solidity
+event QEUROStaked(address indexed user, uint256 qeuroAmount, uint256 timestamp);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user who staked|
+|`qeuroAmount`|`uint256`|Amount of QEURO staked (18 decimals)|
+|`timestamp`|`uint256`|Timestamp of the staking action|
+
+### QEUROUnstaked
+Emitted when a user unstakes QEURO
+
+*Indexed parameters allow efficient filtering of events*
+
+
+```solidity
+event QEUROUnstaked(address indexed user, uint256 qeuroAmount, uint256 timestamp);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user who unstaked|
+|`qeuroAmount`|`uint256`|Amount of QEURO unstaked (18 decimals)|
+|`timestamp`|`uint256`|Timestamp of the unstaking action|
+
+### StakingRewardsClaimed
+Emitted when staking rewards are claimed by a user
+
+*Indexed parameters allow efficient filtering of events*
+
+
+```solidity
+event StakingRewardsClaimed(address indexed user, uint256 rewardAmount, uint256 timestamp);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user who claimed rewards|
+|`rewardAmount`|`uint256`|Amount of QEURO rewards claimed (18 decimals)|
+|`timestamp`|`uint256`|Timestamp of the reward claim|
+
+### YieldDistributed
+Emitted when yield is distributed to stakers
+
+*Indexed parameters allow efficient filtering of events*
+
+
+```solidity
+event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 timestamp);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalYield`|`uint256`|Total amount of yield distributed (18 decimals)|
+|`yieldPerShare`|`uint256`|Amount of yield per staked QEURO share (18 decimals)|
+|`timestamp`|`uint256`|Timestamp of the yield distribution|
+
+### PoolParameterUpdated
+Emitted when pool parameters are updated
+
+*Indexed parameters allow efficient filtering of events*
+
+
+```solidity
+event PoolParameterUpdated(string parameter, uint256 oldValue, uint256 newValue);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`parameter`|`string`|Name of the parameter updated|
+|`oldValue`|`uint256`|Original value of the parameter|
+|`newValue`|`uint256`|New value of the parameter|
+
+## Structs
+### UserInfo
+User information data structure
+
+*Stores all information about a user's deposits, stakes, and rewards*
+
+*Used for user management and reward calculations*
+
+
+```solidity
+struct UserInfo {
+    uint256 qeuroBalance;
+    uint256 stakedAmount;
+    uint256 pendingRewards;
+    uint256 depositHistory;
+    uint256 lastStakeTime;
+    uint256 unstakeRequestTime;
+    uint256 unstakeAmount;
+}
+```
+

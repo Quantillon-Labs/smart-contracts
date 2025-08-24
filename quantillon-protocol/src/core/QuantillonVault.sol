@@ -22,19 +22,54 @@ import "../libraries/VaultMath.sol";
  * @title QuantillonVault
  * @notice Main vault managing QEURO minting against USDC collateral
  * 
- * @dev Main features:
- *      - Mint QEURO against USDC (minimum ratio 101%)
- *      - Redeem QEURO back to USDC
- *      - Per-user collateral management
- *      - Automatic liquidations if undercollateralized
- *      - EUR/USD oracle integration for price calculations
- *      - Security mechanisms and emergency pause
+ * @dev Main characteristics:
+ *      - Overcollateralized stablecoin minting mechanism
+ *      - USDC as primary collateral for QEURO minting
+ *      - Real-time EUR/USD price oracle integration
+ *      - Automatic liquidation system for risk management
+ *      - Dynamic fee structure for protocol sustainability
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable via UUPS pattern
  * 
- * @dev Security architecture:
- *      - ReentrancyGuard: Protection against reentrancy attacks
- *      - AccessControl: Role management (admin, liquidator, etc.)
- *      - Pausable: Emergency stop of operations
- *      - Upgradeable: Protocol evolution through governance
+ * @dev Minting mechanics:
+ *      - Users deposit USDC as collateral
+ *      - QEURO is minted based on EUR/USD exchange rate
+ *      - Minimum collateralization ratio enforced (e.g., 101%)
+ *      - Minting fees charged for protocol revenue
+ *      - Collateral ratio monitored continuously
+ * 
+ * @dev Redemption mechanics:
+ *      - Users can redeem QEURO back to USDC
+ *      - Redemption based on current EUR/USD exchange rate
+ *      - Protocol fees charged on redemptions
+ *      - Collateral returned to user after fee deduction
+ * 
+ * @dev Risk management:
+ *      - Minimum collateralization ratio requirements
+ *      - Liquidation thresholds and penalties
+ *      - Real-time collateral ratio monitoring
+ *      - Automatic liquidation of undercollateralized positions
+ *      - Emergency pause capabilities
+ * 
+ * @dev Fee structure:
+ *      - Minting fees for creating QEURO
+ *      - Redemption fees for converting QEURO back to USDC
+ *      - Liquidation penalties for risk management
+ *      - Dynamic fee adjustment based on market conditions
+ * 
+ * @dev Security features:
+ *      - Role-based access control for all critical operations
+ *      - Reentrancy protection for all external calls
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable architecture for future improvements
+ *      - Secure collateral management
+ *      - Oracle price validation
+ * 
+ * @dev Integration points:
+ *      - QEURO token for minting and burning
+ *      - USDC for collateral deposits and withdrawals
+ *      - Chainlink oracle for EUR/USD price feeds
+ *      - Vault math library for precise calculations
  * 
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
@@ -53,51 +88,77 @@ contract QuantillonVault is
     // CONSTANTS - Roles and identifiers
     // =============================================================================
     
-    /// @notice Role for governance actions
+    /// @notice Role for governance operations (parameter updates, emergency actions)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance multisig or DAO
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     
-    /// @notice Role to perform liquidations
+    /// @notice Role for liquidating undercollateralized positions
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to trusted liquidators or automated systems
     bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
     
-    /// @notice Role for emergency actions
+    /// @notice Role for emergency operations (pause, emergency liquidations)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     
-    /// @notice Role for contract upgrades
+    /// @notice Role for performing contract upgrades via UUPS pattern
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance or upgrade multisig
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // =============================================================================
-    // STATE VARIABLES - Contract state variables
+    // STATE VARIABLES - External contracts and configuration
     // =============================================================================
     
-    /// @notice QEURO token contract
+    /// @notice QEURO token contract for minting and burning
+    /// @dev Used for all QEURO minting and burning operations
+    /// @dev Should be the official QEURO token contract
     IQEURO public qeuro;
     
     /// @notice USDC token used as collateral
+    /// @dev Used for all collateral deposits, withdrawals, and fee payments
+    /// @dev Should be the official USDC contract on the target network
     IERC20 public usdc;
     
-    /// @notice Oracle for EUR/USD prices
+    /// @notice Chainlink oracle contract for EUR/USD price feeds
+    /// @dev Provides real-time EUR/USD exchange rates for minting and redemption
+    /// @dev Used for collateral ratio calculations and liquidation checks
     IChainlinkOracle public oracle;
 
     // Protocol parameters (configurable by governance)
     
-    /// @notice Minimum collateralization ratio (e.g., 101% = 101e16)
+    /// @notice Minimum collateralization ratio required (in basis points)
+    /// @dev Example: 10100 = 101% minimum collateralization
+    /// @dev Used to prevent excessive leverage and manage risk
     uint256 public minCollateralRatio;
     
-    /// @notice Liquidation threshold (e.g., 100% = 100e16)
+    /// @notice Liquidation threshold below which positions can be liquidated (in basis points)
+    /// @dev Example: 10000 = 100% liquidation threshold
+    /// @dev Must be lower than minCollateralRatio to provide buffer
     uint256 public liquidationThreshold;
     
-    /// @notice Liquidation penalty paid to the liquidator (e.g., 5% = 5e16)
+    /// @notice Penalty charged during liquidations (in basis points)
+    /// @dev Example: 500 = 5% liquidation penalty
+    /// @dev Incentivizes users to maintain adequate collateralization
     uint256 public liquidationPenalty;
     
-    /// @notice Protocol fee on redemptions (e.g., 0.1% = 1e15)
+    /// @notice Protocol fee charged on redemptions (in basis points)
+    /// @dev Example: 10 = 0.1% redemption fee
+    /// @dev Revenue source for the protocol
     uint256 public protocolFee;
     
-    /// @notice Mint fee (e.g., 0.1% = 1e15)
+    /// @notice Fee charged when minting QEURO (in basis points)
+    /// @dev Example: 10 = 0.1% minting fee
+    /// @dev Revenue source for the protocol
     uint256 public mintFee;
 
     // Global vault state
     
-    /// @notice Total USDC held as collateral
+    /// @notice Total USDC held as collateral across all users
+    /// @dev Sum of all collateral deposits across all users
+    /// @dev Used for vault analytics and risk management
     uint256 public totalCollateral;
     
     /// @notice Total QEURO in circulation (minted by this vault)

@@ -37,6 +37,19 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
  *      - Rate limiting for mint/burn operations
  *      - Decimal precision handling for external price feeds
  * 
+ * @dev Security features:
+ *      - Role-based access control for all critical operations
+ *      - Emergency pause mechanism for crisis situations
+ *      - Rate limiting to prevent abuse
+ *      - Blacklist/whitelist for regulatory compliance
+ *      - Upgradeable architecture for future improvements
+ * 
+ * @dev Tokenomics:
+ *      - Initial supply: 0 (all tokens minted through vault operations)
+ *      - Maximum supply: Configurable by governance (default 100M QEURO)
+ *      - Decimals: 18 (standard for ERC20 tokens)
+ *      - Peg: 1:1 with Euro (managed by vault operations)
+ * 
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
@@ -54,29 +67,43 @@ contract QEUROToken is
     // =============================================================================
     
     /// @notice Role for minting tokens (assigned to QuantillonVault only)
-    /// @dev keccak256 hash avoids role collisions
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Only the vault should have this role to maintain tokenomics
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     
     /// @notice Role for burning tokens (assigned to QuantillonVault only)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Only the vault should have this role to maintain tokenomics
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
     
-    /// @notice Role for pausing the contract in emergency
+    /// @notice Role for pausing the contract in emergency situations
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance or emergency multisig
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     
-    /// @notice Role for performing contract upgrades
+    /// @notice Role for performing contract upgrades via UUPS pattern
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance or upgrade multisig
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
-    /// @notice Role for managing blacklist/whitelist
+    /// @notice Role for managing blacklist/whitelist for compliance
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to compliance team or governance
     bytes32 public constant COMPLIANCE_ROLE = keccak256("COMPLIANCE_ROLE");
 
     /// @notice Default maximum supply limit (100 million QEURO)
-    /// @dev Can be updated by governance
+    /// @dev Can be updated by governance through updateMaxSupply()
+    /// @dev Value: 100,000,000 * 10^18 = 100,000,000 QEURO
     uint256 public constant DEFAULT_MAX_SUPPLY = 100_000_000 * 1e18;
 
     /// @notice Maximum rate limit for mint/burn operations (per hour)
+    /// @dev Prevents abuse and provides time for emergency response
+    /// @dev Value: 10,000,000 * 10^18 = 10,000,000 QEURO per hour
     uint256 public constant MAX_RATE_LIMIT = 10_000_000 * 1e18; // 10M QEURO per hour
 
     /// @notice Precision for decimal calculations (18 decimals)
+    /// @dev Standard precision used throughout the protocol
+    /// @dev Value: 10^18
     uint256 public constant PRECISION = 1e18;
 
     // =============================================================================
@@ -84,33 +111,53 @@ contract QEUROToken is
     // =============================================================================
 
     /// @notice Current maximum supply limit (updatable by governance)
+    /// @dev Initialized to DEFAULT_MAX_SUPPLY, can be changed by governance
+    /// @dev Prevents infinite minting and maintains tokenomics
     uint256 public maxSupply;
 
     /// @notice Rate limit for mint operations (per hour)
+    /// @dev Prevents rapid minting that could destabilize the protocol
+    /// @dev Can be updated by governance through updateRateLimits()
     uint256 public mintRateLimit;
 
     /// @notice Rate limit for burn operations (per hour)
+    /// @dev Prevents rapid burning that could destabilize the protocol
+    /// @dev Can be updated by governance through updateRateLimits()
     uint256 public burnRateLimit;
 
     /// @notice Current minted amount in the current hour
+    /// @dev Resets every hour or when rate limits are updated
+    /// @dev Used to enforce mintRateLimit
     uint256 public currentHourMinted;
 
     /// @notice Current burned amount in the current hour
+    /// @dev Resets every hour or when rate limits are updated
+    /// @dev Used to enforce burnRateLimit
     uint256 public currentHourBurned;
 
     /// @notice Timestamp of the last rate limit reset
+    /// @dev Used to determine when to reset currentHourMinted and currentHourBurned
+    /// @dev Updated when rate limits are reset or modified
     uint256 public lastRateLimitReset;
 
-    /// @notice Blacklist mapping for compliance
+    /// @notice Blacklist mapping for compliance and security
+    /// @dev Blacklisted addresses cannot transfer or receive tokens
+    /// @dev Can be managed by addresses with COMPLIANCE_ROLE
     mapping(address => bool) public isBlacklisted;
 
     /// @notice Whitelist mapping for compliance (if enabled)
+    /// @dev When whitelistEnabled is true, only whitelisted addresses can transfer
+    /// @dev Can be managed by addresses with COMPLIANCE_ROLE
     mapping(address => bool) public isWhitelisted;
 
     /// @notice Whether whitelist mode is enabled
+    /// @dev When true, only whitelisted addresses can transfer tokens
+    /// @dev Can be toggled by addresses with COMPLIANCE_ROLE
     bool public whitelistEnabled;
 
     /// @notice Minimum precision for external price feeds
+    /// @dev Used to validate price feed precision for accurate calculations
+    /// @dev Can be updated by governance through updateMinPricePrecision()
     uint256 public minPricePrecision;
 
     // =============================================================================
@@ -119,54 +166,65 @@ contract QEUROToken is
     
     /// @notice Emitted when tokens are minted
     /// @param to Recipient of the tokens
-    /// @param amount Amount minted
+    /// @param amount Amount minted in wei (18 decimals)
     /// @param minter Address that performed the mint (vault)
+    /// @dev Indexed parameters allow efficient filtering of events
     event TokensMinted(address indexed to, uint256 amount, address indexed minter);
     
     /// @notice Emitted when tokens are burned
     /// @param from Address from which tokens are burned
-    /// @param amount Amount burned
+    /// @param amount Amount burned in wei (18 decimals)
     /// @param burner Address that performed the burn (vault)
+    /// @dev Indexed parameters allow efficient filtering of events
     event TokensBurned(address indexed from, uint256 amount, address indexed burner);
     
     /// @notice Emitted when the supply limit is modified
-    /// @param oldCap Old limit
-    /// @param newCap New limit
+    /// @param oldCap Old supply limit in wei (18 decimals)
+    /// @param newCap New supply limit in wei (18 decimals)
+    /// @dev Emitted when governance updates the maximum supply
     event SupplyCapUpdated(uint256 oldCap, uint256 newCap);
 
     /// @notice Emitted when rate limits are updated
-    /// @param mintLimit New mint rate limit
-    /// @param burnLimit New burn rate limit
+    /// @param mintLimit New mint rate limit in wei per hour (18 decimals)
+    /// @param burnLimit New burn rate limit in wei per hour (18 decimals)
+    /// @dev Emitted when governance updates rate limits
     event RateLimitsUpdated(uint256 mintLimit, uint256 burnLimit);
 
     /// @notice Emitted when an address is blacklisted
     /// @param account Address that was blacklisted
-    /// @param reason Reason for blacklisting
+    /// @param reason Reason for blacklisting (for compliance records)
+    /// @dev Emitted when COMPLIANCE_ROLE blacklists an address
     event AddressBlacklisted(address indexed account, string reason);
 
     /// @notice Emitted when an address is removed from blacklist
     /// @param account Address that was removed from blacklist
+    /// @dev Emitted when COMPLIANCE_ROLE removes an address from blacklist
     event AddressUnblacklisted(address indexed account);
 
     /// @notice Emitted when an address is whitelisted
     /// @param account Address that was whitelisted
+    /// @dev Emitted when COMPLIANCE_ROLE whitelists an address
     event AddressWhitelisted(address indexed account);
 
     /// @notice Emitted when an address is removed from whitelist
     /// @param account Address that was removed from whitelist
+    /// @dev Emitted when COMPLIANCE_ROLE removes an address from whitelist
     event AddressUnwhitelisted(address indexed account);
 
     /// @notice Emitted when whitelist mode is toggled
     /// @param enabled Whether whitelist mode is enabled
+    /// @dev Emitted when COMPLIANCE_ROLE toggles whitelist mode
     event WhitelistModeToggled(bool enabled);
 
     /// @notice Emitted when minimum price precision is updated
-    /// @param oldPrecision Old minimum precision
-    /// @param newPrecision New minimum precision
+    /// @param oldPrecision Old minimum precision value
+    /// @param newPrecision New minimum precision value
+    /// @dev Emitted when governance updates minimum price precision
     event MinPricePrecisionUpdated(uint256 oldPrecision, uint256 newPrecision);
 
     /// @notice Emitted when rate limit is reset
     /// @param timestamp Timestamp of reset
+    /// @dev Emitted when rate limits are reset (hourly or manual)
     event RateLimitReset(uint256 timestamp);
 
     // =============================================================================
@@ -191,6 +249,12 @@ contract QEUROToken is
      *      3. Assigns appropriate roles
      *      4. Configures pause and upgrade system
      *      5. Sets initial rate limits and precision settings
+     * 
+     * @dev Security considerations:
+     *      - Only callable once (initializer modifier)
+     *      - Validates input parameters
+     *      - Sets up proper role hierarchy
+     *      - Initializes all state variables
      */
     function initialize(
         address admin,
@@ -199,12 +263,20 @@ contract QEUROToken is
         // Input parameter validation
         require(admin != address(0), "QEURO: Admin cannot be zero address");
         require(vault != address(0), "QEURO: Vault cannot be zero address");
-        
-        // OpenZeppelin module initialization
-        __ERC20_init("Quantillon Euro", "QEURO");  // Token name and symbol
-        __AccessControl_init();                     // Role system
-        __Pausable_init();                         // Pause mechanism
-        __UUPSUpgradeable_init();                  // Upgrade system
+
+        // Initialize parent contracts
+        __ERC20_init("Quantillon Euro", "QEURO");
+        __AccessControl_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+
+        // Set up roles and permissions
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(MINTER_ROLE, vault);
+        _grantRole(BURNER_ROLE, vault);
+        _grantRole(PAUSER_ROLE, admin);
+        _grantRole(UPGRADER_ROLE, admin);
+        _grantRole(COMPLIANCE_ROLE, admin);
 
         // Initialize state variables
         maxSupply = DEFAULT_MAX_SUPPLY;
@@ -212,24 +284,7 @@ contract QEUROToken is
         burnRateLimit = MAX_RATE_LIMIT;
         lastRateLimitReset = block.timestamp;
         whitelistEnabled = false;
-        minPricePrecision = 1e6; // 6 decimal precision minimum
-
-        // Role configuration
-        // DEFAULT_ADMIN_ROLE can manage all other roles
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        
-        // The vault can mint and burn tokens
-        _grantRole(MINTER_ROLE, vault);
-        _grantRole(BURNER_ROLE, vault);
-        
-        // The admin can pause in emergency
-        _grantRole(PAUSER_ROLE, admin);
-        
-        // The admin can perform upgrades
-        _grantRole(UPGRADER_ROLE, admin);
-
-        // The admin can manage compliance
-        _grantRole(COMPLIANCE_ROLE, admin);
+        minPricePrecision = 1e8; // 8 decimals minimum for price feeds
     }
 
     // =============================================================================
@@ -251,6 +306,14 @@ contract QEUROToken is
      *      - Blacklist/whitelist checks
      * 
      * Usage example: vault.mint(user, 1000 * 1e18) for 1000 QEURO
+     * 
+     * @dev Security considerations:
+     *      - Only MINTER_ROLE can mint
+     *      - Pause check
+     *      - Rate limiting
+     *      - Blacklist/whitelist checks
+     *      - Supply cap verification
+     *      - Secure minting using OpenZeppelin
      */
     function mint(address to, uint256 amount) 
         external 
@@ -299,6 +362,12 @@ contract QEUROToken is
      *      - Rate limiting
      * 
      * Note: The vault must have an allowance or be authorized otherwise
+     * 
+     * @dev Security considerations:
+     *      - Only BURNER_ROLE can burn
+     *      - Pause check
+     *      - Rate limiting
+     *      - Secure burning using OpenZeppelin
      */
     function burn(address from, uint256 amount) 
         external 
@@ -328,6 +397,12 @@ contract QEUROToken is
      * @notice Checks and updates mint rate limit
      * @param amount Amount being minted
      * @dev Internal function to enforce rate limiting
+     * 
+     * @dev Security considerations:
+     *      - Resets rate limit if an hour has passed
+     *      - Checks if the new amount would exceed the rate limit
+     *      - Updates the current hour minted amount
+     *      - Throws an error if rate limit is exceeded
      */
     function _checkAndUpdateMintRateLimit(uint256 amount) internal {
         // Reset rate limit if an hour has passed
@@ -354,6 +429,12 @@ contract QEUROToken is
      * @notice Checks and updates burn rate limit
      * @param amount Amount being burned
      * @dev Internal function to enforce rate limiting
+     * 
+     * @dev Security considerations:
+     *      - Resets rate limit if an hour has passed
+     *      - Checks if the new amount would exceed the rate limit
+     *      - Updates the current hour burned amount
+     *      - Throws an error if rate limit is exceeded
      */
     function _checkAndUpdateBurnRateLimit(uint256 amount) internal {
         // Reset rate limit if an hour has passed
@@ -381,6 +462,13 @@ contract QEUROToken is
      * @param newMintLimit New mint rate limit per hour
      * @param newBurnLimit New burn rate limit per hour
      * @dev Only callable by admin
+     * 
+     * @dev Security considerations:
+     *      - Validates new limits
+     *      - Ensures new limits are not zero
+     *      - Ensures new limits are not too high
+     *      - Updates mintRateLimit and burnRateLimit
+     *      - Emits RateLimitsUpdated event
      */
     function updateRateLimits(uint256 newMintLimit, uint256 newBurnLimit) 
         external 
@@ -406,6 +494,13 @@ contract QEUROToken is
      * @param account Address to blacklist
      * @param reason Reason for blacklisting
      * @dev Only callable by compliance role
+     * 
+     * @dev Security considerations:
+     *      - Validates input parameters
+     *      - Prevents blacklisting of zero address
+     *      - Prevents blacklisting of already blacklisted addresses
+     *      - Updates isBlacklisted mapping
+     *      - Emits AddressBlacklisted event
      */
     function blacklistAddress(address account, string memory reason) 
         external 
@@ -422,6 +517,12 @@ contract QEUROToken is
      * @notice Removes an address from blacklist
      * @param account Address to remove from blacklist
      * @dev Only callable by compliance role
+     * 
+     * @dev Security considerations:
+     *      - Validates input parameter
+     *      - Prevents unblacklisting of non-blacklisted addresses
+     *      - Updates isBlacklisted mapping
+     *      - Emits AddressUnblacklisted event
      */
     function unblacklistAddress(address account) 
         external 
@@ -437,6 +538,13 @@ contract QEUROToken is
      * @notice Whitelists an address
      * @param account Address to whitelist
      * @dev Only callable by compliance role
+     * 
+     * @dev Security considerations:
+     *      - Validates input parameters
+     *      - Prevents whitelisting of zero address
+     *      - Prevents whitelisting of already whitelisted addresses
+     *      - Updates isWhitelisted mapping
+     *      - Emits AddressWhitelisted event
      */
     function whitelistAddress(address account) 
         external 
@@ -453,6 +561,12 @@ contract QEUROToken is
      * @notice Removes an address from whitelist
      * @param account Address to remove from whitelist
      * @dev Only callable by compliance role
+     * 
+     * @dev Security considerations:
+     *      - Validates input parameter
+     *      - Prevents unwhitelisting of non-whitelisted addresses
+     *      - Updates isWhitelisted mapping
+     *      - Emits AddressUnwhitelisted event
      */
     function unwhitelistAddress(address account) 
         external 
@@ -468,6 +582,11 @@ contract QEUROToken is
      * @notice Toggles whitelist mode
      * @param enabled Whether to enable whitelist mode
      * @dev Only callable by compliance role
+     * 
+     * @dev Security considerations:
+     *      - Validates input parameter
+     *      - Updates whitelistEnabled state
+     *      - Emits WhitelistModeToggled event
      */
     function toggleWhitelistMode(bool enabled) 
         external 
@@ -485,6 +604,13 @@ contract QEUROToken is
      * @notice Updates minimum price precision for external feeds
      * @param newPrecision New minimum precision (e.g., 1e6 for 6 decimals)
      * @dev Only callable by admin
+     * 
+     * @dev Security considerations:
+     *      - Validates input parameter
+     *      - Prevents setting precision to zero
+     *      - Prevents setting precision higher than PRECISION
+     *      - Updates minPricePrecision
+     *      - Emits MinPricePrecisionUpdated event
      */
     function updateMinPricePrecision(uint256 newPrecision) 
         external 
@@ -505,6 +631,12 @@ contract QEUROToken is
      * @param feedDecimals Number of decimals in the price feed
      * @return Normalized price with 18 decimals
      * @dev Helper function for external integrations
+     * 
+     * @dev Security considerations:
+     *      - Validates input parameters
+     *      - Prevents too many decimals
+     *      - Prevents zero price
+     *      - Handles normalization correctly
      */
     function normalizePrice(uint256 price, uint8 feedDecimals) 
         external 
@@ -533,6 +665,11 @@ contract QEUROToken is
      * @param feedDecimals Number of decimals in the price feed
      * @return Whether the price meets minimum precision requirements
      * @dev Helper function for external integrations
+     * 
+     * @dev Security considerations:
+     *      - Validates input parameters
+     *      - Handles normalization if feedDecimals is not 18
+     *      - Returns true if price is above or equal to minPricePrecision
      */
     function validatePricePrecision(uint256 price, uint8 feedDecimals) 
         external 
@@ -561,6 +698,11 @@ contract QEUROToken is
      *      - Critical bug discovered
      *      - Ongoing attack
      *      - Emergency protocol maintenance
+     * 
+     * @dev Security considerations:
+     *      - Only PAUSER_ROLE can pause
+     *      - Pauses all token operations
+     *      - Prevents any state changes
      */
     function pause() external onlyRole(PAUSER_ROLE) {
         _pause();
@@ -571,6 +713,11 @@ contract QEUROToken is
      * 
      * @dev Can only be called by a PAUSER_ROLE
      *      Used after resolving the issue that caused the pause
+     * 
+     * @dev Security considerations:
+     *      - Only PAUSER_ROLE can unpause
+     *      - Unpauses all token operations
+     *      - Allows normal state changes
      */
     function unpause() external onlyRole(PAUSER_ROLE) {
         _unpause();
@@ -583,6 +730,11 @@ contract QEUROToken is
     /**
      * @notice Returns the number of decimals for the token (always 18)
      * @return Number of decimals (18 for DeFi compatibility)
+     * 
+     * @dev Security considerations:
+     *      - Always returns 18
+     *      - No input validation
+     *      - No state changes
      */
     function decimals() public pure override returns (uint8) {
         return 18;
@@ -592,6 +744,11 @@ contract QEUROToken is
      * @notice Checks if an address has the minter role
      * @param account Address to check
      * @return true if the address can mint
+     * 
+     * @dev Security considerations:
+     *      - Checks if account has MINTER_ROLE
+     *      - No input validation
+     *      - No state changes
      */
     function isMinter(address account) external view returns (bool) {
         return hasRole(MINTER_ROLE, account);
@@ -601,6 +758,11 @@ contract QEUROToken is
      * @notice Checks if an address has the burner role
      * @param account Address to check  
      * @return true if the address can burn
+     * 
+     * @dev Security considerations:
+     *      - Checks if account has BURNER_ROLE
+     *      - No input validation
+     *      - No state changes
      */
     function isBurner(address account) external view returns (bool) {
         return hasRole(BURNER_ROLE, account);
@@ -614,6 +776,11 @@ contract QEUROToken is
      *      - 0 = 0% used
      *      - 5000 = 50% used  
      *      - 10000 = 100% used (maximum supply reached)
+     * 
+     * @dev Security considerations:
+     *      - Calculates percentage based on totalSupply and maxSupply
+     *      - Handles division by zero
+     *      - Returns 0 if totalSupply is 0
      */
     function getSupplyUtilization() external view returns (uint256) {
         uint256 supply = totalSupply();
@@ -627,6 +794,11 @@ contract QEUROToken is
     /**
      * @notice Calculates remaining space for minting new tokens
      * @return Number of tokens that can still be minted
+     * 
+     * @dev Security considerations:
+     *      - Calculates remaining capacity by subtracting currentSupply from maxSupply
+     *      - Handles case where currentSupply >= maxSupply
+     *      - Returns 0 if no more minting is possible
      */
     function getRemainingMintCapacity() external view returns (uint256) {
         uint256 currentSupply = totalSupply();
@@ -644,6 +816,11 @@ contract QEUROToken is
      * @return mintLimit Current mint rate limit
      * @return burnLimit Current burn rate limit
      * @return nextResetTime Timestamp when rate limits reset
+     * 
+     * @dev Security considerations:
+     *      - Returns current hour amounts if within the hour
+     *      - Returns zeros if an hour has passed
+     *      - Returns current limits and next reset time
      */
     function getRateLimitStatus() 
         external 
@@ -681,6 +858,13 @@ contract QEUROToken is
      * @param from Source address (address(0) for mint)
      * @param to Destination address (address(0) for burn)  
      * @param amount Amount transferred
+     * 
+     * @dev Security considerations:
+     *      - Checks if transfer is from a blacklisted address
+     *      - Checks if transfer is to a blacklisted address
+     *      - If whitelist is enabled, checks if recipient is whitelisted
+     *      - Prevents transfers if any checks fail
+     *      - Calls super._update for standard ERC20 logic
      */
     function _update(
         address from,
@@ -715,6 +899,11 @@ contract QEUROToken is
      *      - Only UPGRADER_ROLE can upgrade
      *      - Additional validation possible here
      *      - Upgrades can be time-locked by governance
+     * 
+     * @dev Security considerations:
+     *      - Only UPGRADER_ROLE can authorize upgrades
+     *      - Prevents unauthorized upgrades
+     *      - Can be extended with more complex upgrade logic
      */
     function _authorizeUpgrade(address newImplementation) 
         internal 
@@ -750,6 +939,12 @@ contract QEUROToken is
      * Use cases: 
      *      - A user accidentally sends USDC to the QEURO contract
      *      - Admin can recover them and return them
+     * 
+     * @dev Security considerations:
+     *      - Only DEFAULT_ADMIN_ROLE can recover
+     *      - Prevents recovery of own QEURO tokens
+     *      - Validates input parameters
+     *      - Uses SafeERC20 for secure transfers
      */
     function recoverToken(
         address token,
@@ -770,6 +965,12 @@ contract QEUROToken is
      * 
      * @dev Although token contracts normally don't receive ETH,
      *      this function allows recovery in case of accidental sending
+     * 
+     * @dev Security considerations:
+     *      - Only DEFAULT_ADMIN_ROLE can recover
+     *      - Prevents sending to zero address
+     *      - Validates balance
+     *      - Uses transfer() for direct ETH transfer
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(to != address(0), "QEURO: Cannot send to zero address");
@@ -790,6 +991,13 @@ contract QEUROToken is
      *      Requires governance and must be used with caution
      * 
      * @dev IMPROVEMENT: Now functional with dynamic supply cap
+     * 
+     * @dev Security considerations:
+     *      - Only DEFAULT_ADMIN_ROLE can update
+     *      - Validates newMaxSupply
+     *      - Prevents setting cap below current supply
+     *      - Prevents setting cap to zero
+     *      - Emits SupplyCapUpdated event
      */
     function updateMaxSupply(uint256 newMaxSupply) 
         external 
@@ -815,6 +1023,11 @@ contract QEUROToken is
      * @return whitelistEnabled_ Whether whitelist mode is enabled
      * @return mintRateLimit_ Current mint rate limit
      * @return burnRateLimit_ Current burn rate limit
+     * 
+     * @dev Security considerations:
+     *      - Returns current state of the token
+     *      - No input validation
+     *      - No state changes
      */
     function getTokenInfo() 
         external 

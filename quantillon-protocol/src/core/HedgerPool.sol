@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+// =============================================================================
+// IMPORTS - OpenZeppelin libraries and protocol interfaces
+// =============================================================================
+
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
@@ -16,7 +20,53 @@ import "../libraries/VaultMath.sol";
 /**
  * @title HedgerPool
  * @notice Manages EUR/USD hedging positions, margin, and hedger rewards
- * @dev Handles the hedger side of the dual-pool mechanism
+ * 
+ * @dev Main characteristics:
+ *      - Dual-pool mechanism for EUR/USD hedging
+ *      - Margin-based position management
+ *      - Liquidation mechanisms for risk management
+ *      - Dynamic fee structure for protocol sustainability
+ *      - Interest rate differential handling
+ *      - Hedger reward distribution system
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable via UUPS pattern
+ * 
+ * @dev Hedging mechanics:
+ *      - Hedgers provide USDC margin to open EUR/USD positions
+ *      - Positions are leveraged based on margin and market conditions
+ *      - P&L is calculated based on EUR/USD price movements
+ *      - Liquidation occurs when margin ratio falls below threshold
+ *      - Hedgers earn rewards for providing liquidity and taking risk
+ * 
+ * @dev Risk management:
+ *      - Minimum margin ratio requirements
+ *      - Liquidation thresholds and penalties
+ *      - Maximum leverage limits
+ *      - Position size limits
+ *      - Real-time P&L tracking
+ *      - Emergency pause capabilities
+ * 
+ * @dev Fee structure:
+ *      - Entry fees for opening positions
+ *      - Exit fees for closing positions
+ *      - Margin fees for margin operations
+ *      - Liquidation penalties for risk management
+ *      - Dynamic fee adjustment based on market conditions
+ * 
+ * @dev Security features:
+ *      - Role-based access control for all critical operations
+ *      - Reentrancy protection for all external calls
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable architecture for future improvements
+ *      - Secure margin and position management
+ *      - Oracle price validation
+ * 
+ * @dev Integration points:
+ *      - Chainlink oracle for EUR/USD price feeds
+ *      - Yield shift mechanism for interest rate management
+ *      - Vault math library for calculations
+ *      - USDC for margin and settlement
+ * 
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
@@ -31,77 +81,166 @@ contract HedgerPool is
     using VaultMath for uint256;
 
     // =============================================================================
-    // CONSTANTS AND ROLES
+    // CONSTANTS AND ROLES - Protocol roles and limits
     // =============================================================================
     
+    /// @notice Role for governance operations (parameter updates, emergency actions)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance multisig or DAO
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    
+    /// @notice Role for liquidating undercollateralized positions
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to trusted liquidators or automated systems
     bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
+    
+    /// @notice Role for emergency operations (pause, emergency liquidations)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+    
+    /// @notice Role for performing contract upgrades via UUPS pattern
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance or upgrade multisig
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // =============================================================================
-    // STATE VARIABLES
+    // STATE VARIABLES - External contracts and configuration
     // =============================================================================
     
-    /// @notice USDC token contract
+    /// @notice USDC token contract for margin and settlement
+    /// @dev Used for all margin deposits, withdrawals, and fee payments
+    /// @dev Should be the official USDC contract on the target network
     IERC20 public usdc;
     
-    /// @notice Price oracle contract
+    /// @notice Chainlink oracle contract for EUR/USD price feeds
+    /// @dev Provides real-time EUR/USD exchange rates for position calculations
+    /// @dev Used for P&L calculations and liquidation checks
     IChainlinkOracle public oracle;
     
-    /// @notice Yield shift mechanism
+    /// @notice Yield shift mechanism for interest rate management
+    /// @dev Handles interest rate differentials between EUR and USD
+    /// @dev Used for funding rate calculations and yield distribution
     IYieldShift public yieldShift;
 
-    // Pool configuration
+    // Pool configuration parameters
+    /// @notice Minimum margin ratio required for positions (in basis points)
+    /// @dev Example: 1000 = 10% minimum margin ratio
+    /// @dev Used to prevent excessive leverage and manage risk
     uint256 public minMarginRatio;          // Minimum margin ratio (e.g., 10% = 1000 bps)
+    
+    /// @notice Liquidation threshold below which positions can be liquidated (in basis points)
+    /// @dev Example: 500 = 5% liquidation threshold
+    /// @dev Must be lower than minMarginRatio to provide buffer
     uint256 public liquidationThreshold;    // Liquidation threshold (e.g., 5% = 500 bps)
+    
+    /// @notice Maximum allowed leverage for positions
+    /// @dev Example: 10 = 10x maximum leverage
+    /// @dev Used to limit risk exposure and prevent excessive speculation
     uint256 public maxLeverage;             // Maximum allowed leverage (e.g., 10x)
+    
+    /// @notice Penalty charged during liquidations (in basis points)
+    /// @dev Example: 200 = 2% liquidation penalty
+    /// @dev Incentivizes hedgers to maintain adequate margin
     uint256 public liquidationPenalty;      // Liquidation penalty (e.g., 2% = 200 bps)
     
-    // Fee configuration
+    // Fee configuration parameters
+    /// @notice Fee charged when opening positions (in basis points)
+    /// @dev Example: 50 = 0.5% entry fee
+    /// @dev Revenue source for the protocol
     uint256 public entryFee;                // Fee for entering positions (bps)
+    
+    /// @notice Fee charged when closing positions (in basis points)
+    /// @dev Example: 30 = 0.3% exit fee
+    /// @dev Revenue source for the protocol
     uint256 public exitFee;                 // Fee for exiting positions (bps)
+    
+    /// @notice Fee charged for margin operations (in basis points)
+    /// @dev Example: 10 = 0.1% margin fee
+    /// @dev Revenue source for the protocol
     uint256 public marginFee;               // Fee for margin operations (bps)
 
-    // Pool state
+    // Pool state variables
+    /// @notice Total margin deposited across all active positions
+    /// @dev Sum of all margin amounts across all hedgers
+    /// @dev Used for pool analytics and risk management
     uint256 public totalMargin;             // Total margin across all positions
+    
+    /// @notice Total EUR/USD exposure across all positions
+    /// @dev Net exposure of the pool to EUR/USD price movements
+    /// @dev Used for risk management and hedging calculations
     uint256 public totalExposure;           // Total EUR/USD exposure
+    
+    /// @notice Number of active hedgers with open positions
+    /// @dev Count of unique addresses with active positions
+    /// @dev Used for protocol analytics and governance
     uint256 public activeHedgers;           // Number of active hedgers
+    
+    /// @notice Next position ID to be assigned
+    /// @dev Auto-incremented for each new position
+    /// @dev Used to generate unique position identifiers
     uint256 public nextPositionId;          // Next position ID counter
 
-    // Interest rate differential (EUR/USD)
+    // Interest rate configuration
+    /// @notice EUR interest rate (in basis points)
+    /// @dev Example: 400 = 4% EUR interest rate
+    /// @dev Used for funding rate calculations
     uint256 public eurInterestRate;         // EUR interest rate (bps)
+    
+    /// @notice USD interest rate (in basis points)
+    /// @dev Example: 500 = 5% USD interest rate
+    /// @dev Used for funding rate calculations
     uint256 public usdInterestRate;         // USD interest rate (bps)
 
-    // Position data structure
+    // =============================================================================
+    // DATA STRUCTURES - Position and hedger information
+    // =============================================================================
+    
+    /// @notice Hedge position data structure
+    /// @dev Stores all information about a single hedging position
+    /// @dev Used for position management and P&L calculations
     struct HedgePosition {
-        address hedger;                     // Hedger address
-        uint256 positionSize;               // Position size in QEURO equivalent
-        uint256 margin;                     // Current margin in USDC
-        uint256 entryPrice;                 // EUR/USD price when opened
-        uint256 leverage;                   // Position leverage
-        uint256 entryTime;                  // Position creation timestamp
-        uint256 lastUpdateTime;             // Last update timestamp
-        int256 unrealizedPnL;               // Current unrealized P&L
-        bool isActive;                      // Position status
+        address hedger;                     // Address of the hedger who owns the position
+        uint256 positionSize;               // Position size in QEURO equivalent (18 decimals)
+        uint256 margin;                     // Current margin in USDC (6 decimals)
+        uint256 entryPrice;                 // EUR/USD price when position was opened (8 decimals)
+        uint256 leverage;                   // Position leverage (e.g., 5 = 5x leverage)
+        uint256 entryTime;                  // Timestamp when position was created
+        uint256 lastUpdateTime;             // Timestamp of last position update
+        int256 unrealizedPnL;               // Current unrealized profit/loss in USDC
+        bool isActive;                      // Whether the position is currently active
     }
 
-    // Hedger data structure
+    /// @notice Hedger information data structure
+    /// @dev Stores aggregated information about a hedger's activity
+    /// @dev Used for reward calculations and risk management
     struct HedgerInfo {
-        uint256[] positionIds;              // Array of position IDs
-        uint256 totalMargin;                // Total margin across positions
+        uint256[] positionIds;              // Array of position IDs owned by the hedger
+        uint256 totalMargin;                // Total margin across all positions in USDC
         uint256 totalExposure;              // Total exposure across positions
         uint256 pendingRewards;             // Pending hedging rewards
         uint256 lastRewardClaim;            // Last reward claim timestamp
         bool isActive;                      // Hedger status
     }
 
+    // Storage mappings
+    /// @notice Positions by position ID
+    /// @dev Maps position IDs to position data
+    /// @dev Used to store and retrieve position information
     mapping(uint256 => HedgePosition) public positions;
+    
+    /// @notice Hedger information by address
+    /// @dev Maps hedger addresses to their aggregated information
+    /// @dev Used to track hedger activity and rewards
     mapping(address => HedgerInfo) public hedgers;
     mapping(address => uint256[]) public hedgerPositions;
 
     // Yield tracking
+    /// @notice Total yield earned by hedgers in QTI tokens
+    /// @dev Sum of interest differential rewards and yield shift rewards
     uint256 public totalYieldEarned;        // Total yield earned by hedgers
+    /// @notice Pool of interest differential rewards
+    /// @dev Rewards distributed to hedgers based on their exposure to interest rate differentials
     uint256 public interestDifferentialPool; // Pool of interest differential rewards
 
     // =============================================================================
@@ -210,6 +349,16 @@ contract HedgerPool is
 
     /**
      * @notice Enter a new EUR/USD hedging position (short EUR/USD)
+     * 
+     * @dev This function allows hedgers to open a new EUR/USD hedging position.
+     *      - Hedgers provide USDC margin.
+     *      - A fee is charged based on the entry fee percentage.
+     *      - The position size is calculated based on the net margin and leverage.
+     *      - The margin ratio is checked against the minimum required.
+     *      - The USDC margin is transferred from the hedger to the contract.
+     *      - A new position is created and stored.
+     *      - Hedger info and pool totals are updated.
+     *      - An event is emitted.
      */
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) 
         external 
@@ -281,6 +430,17 @@ contract HedgerPool is
 
     /**
      * @notice Exit an existing hedging position
+     * 
+     * @dev This function allows hedgers to close an existing EUR/USD hedging position.
+     *      - The hedger must be the owner of the position.
+     *      - The position must be active.
+     *      - The current EUR/USD price is fetched.
+     *      - The P&L is calculated based on the current price.
+     *      - An exit fee is charged.
+     *      - Hedger info and pool totals are updated.
+     *      - The position is deactivated.
+     *      - The payout is transferred to the hedger.
+     *      - An event is emitted.
      */
     function exitHedgePosition(uint256 positionId) 
         external 
@@ -326,6 +486,18 @@ contract HedgerPool is
 
     /**
      * @notice Partially close a hedging position
+     * 
+     * @dev This function allows hedgers to partially close an existing EUR/USD hedging position.
+     *      - The hedger must be the owner of the position.
+     *      - The position must be active.
+     *      - The current EUR/USD price is fetched.
+     *      - Partial amounts are calculated based on the percentage.
+     *      - The P&L for the partial position is calculated.
+     *      - The payout is calculated.
+     *      - The position is updated.
+     *      - Hedger info and pool totals are updated.
+     *      - The payout is transferred to the hedger.
+     *      - The partial P&L is returned.
      */
     function partialClosePosition(uint256 positionId, uint256 percentage) 
         external 
@@ -383,6 +555,17 @@ contract HedgerPool is
 
     /**
      * @notice Add margin to an existing position
+     * 
+     * @dev This function allows hedgers to add margin to an existing EUR/USD hedging position.
+     *      - The hedger must be the owner of the position.
+     *      - The position must be active.
+     *      - The amount of margin to add must be positive.
+     *      - A margin fee is charged.
+     *      - The USDC margin is transferred from the hedger to the contract.
+     *      - The position margin is updated.
+     *      - Hedger and pool totals are updated.
+     *      - A new margin ratio is calculated.
+     *      - An event is emitted.
      */
     function addMargin(uint256 positionId, uint256 amount) 
         external 
@@ -416,6 +599,17 @@ contract HedgerPool is
 
     /**
      * @notice Remove excess margin from a position
+     * 
+     * @dev This function allows hedgers to remove margin from an existing EUR/USD hedging position.
+     *      - The hedger must be the owner of the position.
+     *      - The position must be active.
+     *      - The amount of margin to remove must be positive.
+     *      - The position must have sufficient margin.
+     *      - The new margin ratio is checked against the minimum required.
+     *      - The position margin is updated.
+     *      - Hedger and pool totals are updated.
+     *      - The USDC margin is transferred back to the hedger.
+     *      - An event is emitted.
      */
     function removeMargin(uint256 positionId, uint256 amount) 
         external 
@@ -452,6 +646,20 @@ contract HedgerPool is
 
     /**
      * @notice Liquidate an undercollateralized hedger position
+     * 
+     * @dev This function allows liquidators to liquidate an undercollateralized hedger position.
+     *      - The liquidator must have the LIQUIDATOR_ROLE.
+     *      - The hedger must be the owner of the position.
+     *      - The position must be active.
+     *      - The position must be liquidatable.
+     *      - The current EUR/USD price is fetched.
+     *      - The liquidation reward is calculated.
+     *      - The remaining margin is calculated.
+     *      - Hedger info and pool totals are updated.
+     *      - The position is deactivated.
+     *      - The liquidation reward is transferred to the liquidator.
+     *      - The remaining margin is transferred back to the hedger if any.
+     *      - An event is emitted.
      */
     function liquidateHedger(address hedger, uint256 positionId) 
         external 
@@ -501,6 +709,17 @@ contract HedgerPool is
 
     /**
      * @notice Claim hedging rewards (interest differential + yield shift)
+     * 
+     * @dev This function allows hedgers to claim their accumulated hedging rewards.
+     *      - Only the hedger themselves or a governance role can call this.
+     *      - The pending rewards are updated.
+     *      - The interest differential reward is calculated.
+     *      - The yield shift rewards are fetched from the yield shift mechanism.
+     *      - The total rewards are summed.
+     *      - If total rewards are greater than zero, they are transferred to the hedger.
+     *      - The last reward claim timestamp is updated.
+     *      - The yield shift rewards are claimed if applicable.
+     *      - An event is emitted.
      */
     function claimHedgingRewards(address hedger) 
         external 
@@ -537,6 +756,13 @@ contract HedgerPool is
 
     /**
      * @notice Update hedger rewards based on interest rate differential
+     * 
+     * @dev This internal function calculates and updates the pending hedging rewards
+     *      for a given hedger based on their total exposure and the interest rate differential.
+     *      - It calculates the interest differential reward.
+     *      - It calculates the reward amount based on the hedger's total exposure,
+     *        the interest differential, and the time elapsed since the last claim.
+     *      - The pending rewards are incremented.
      */
     function _updateHedgerRewards(address hedger) internal {
         HedgerInfo storage hedgerInfo = hedgers[hedger];
@@ -561,6 +787,16 @@ contract HedgerPool is
     // VIEW FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Get detailed information about a specific hedger's position
+     * 
+     * @dev This function allows external contracts to query a hedger's position by ID.
+     *      - It fetches the position data from storage.
+     *      - It validates that the hedger is the owner of the position.
+     *      - It fetches the current EUR/USD price from the oracle.
+     *      - It returns the position size, margin, entry price, current price, leverage,
+     *        and last update time.
+     */
     function getHedgerPosition(address hedger, uint256 positionId) 
         external 
         view 
@@ -588,6 +824,14 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Get the margin ratio of a specific hedger's position
+     * 
+     * @dev This function allows external contracts to query the margin ratio of a hedger's position.
+     *      - It fetches the position data from storage.
+     *      - It validates that the hedger is the owner of the position.
+     *      - It returns the margin ratio in basis points.
+     */
     function getHedgerMarginRatio(address hedger, uint256 positionId) 
         external 
         view 
@@ -600,6 +844,18 @@ contract HedgerPool is
         return position.margin.mulDiv(10000, position.positionSize);
     }
 
+    /**
+     * @notice Check if a hedger's position is liquidatable
+     * 
+     * @dev This function allows external contracts to query if a hedger's position is at risk of liquidation.
+     *      - It fetches the position data from storage.
+     *      - It validates that the hedger is the owner of the position.
+     *      - It checks if the position is active.
+     *      - It fetches the current EUR/USD price from the oracle.
+     *      - It calculates the effective margin including unrealized P&L.
+     *      - It checks if the effective margin is less than or equal to zero.
+     *      - It returns true if liquidatable, false otherwise.
+     */
     function isHedgerLiquidatable(address hedger, uint256 positionId) 
         external 
         view 
@@ -611,6 +867,18 @@ contract HedgerPool is
         return _isPositionLiquidatable(positionId);
     }
 
+    /**
+     * @notice Internal function to check if a position is liquidatable
+     * 
+     * @dev This function is used by the liquidation system to determine if a position
+     *      is at risk of liquidation.
+     *      - It fetches the position data from storage.
+     *      - It checks if the position is active.
+     *      - It fetches the current EUR/USD price from the oracle.
+     *      - It calculates the effective margin including unrealized P&L.
+     *      - It checks if the effective margin is less than or equal to zero.
+     *      - It returns true if liquidatable, false otherwise.
+     */
     function _isPositionLiquidatable(uint256 positionId) internal view returns (bool) {
         HedgePosition storage position = positions[positionId];
         if (!position.isActive) return false;
@@ -628,6 +896,15 @@ contract HedgerPool is
         return marginRatio < liquidationThreshold;
     }
 
+    /**
+     * @notice Internal function to calculate P&L for a hedging position
+     * 
+     * @dev This function calculates the profit or loss of a hedging position based on
+     *      the current EUR/USD price and the position's entry price.
+     *      - For a short EUR/USD position, profit is made when EUR/USD falls.
+     *      - The P&L is calculated as the difference between the current price and entry price,
+     *        multiplied by the position size and divided by the entry price.
+     */
     function _calculatePnL(HedgePosition storage position, uint256 currentPrice) 
         internal 
         view 
@@ -638,10 +915,24 @@ contract HedgerPool is
         return priceChange * int256(position.positionSize) / int256(position.entryPrice);
     }
 
+    /**
+     * @notice Get the total EUR/USD exposure of the hedger pool
+     * 
+     * @dev This function allows external contracts to query the total EUR/USD exposure
+     *      of the hedger pool.
+     *      - It returns the totalExposure variable.
+     */
     function getTotalHedgeExposure() external view returns (uint256) {
         return totalExposure;
     }
 
+    /**
+     * @notice Get statistics about the hedger pool
+     * 
+     * @dev This function allows external contracts to query various statistics
+     *      about the hedger pool, such as the number of active hedgers, total positions,
+     *      average position size, total margin, and pool utilization.
+     */
     function getPoolStatistics() external view returns (
         uint256 activeHedgers_,
         uint256 totalPositions,
@@ -656,6 +947,15 @@ contract HedgerPool is
         poolUtilization = totalMargin > 0 ? (totalExposure * 10000) / totalMargin : 0;
     }
 
+    /**
+     * @notice Get pending hedging rewards for a specific hedger
+     * 
+     * @dev This function allows external contracts to query the pending hedging rewards
+     *      for a specific hedger, including interest differential and yield shift rewards.
+     *      - It calculates the pending interest differential.
+     *      - It fetches the pending yield shift rewards from the yield shift mechanism.
+     *      - It sums up the total pending rewards.
+     */
     function getPendingHedgingRewards(address hedger) external view returns (
         uint256 interestDifferential,
         uint256 yieldShiftRewards,
@@ -681,6 +981,13 @@ contract HedgerPool is
     // GOVERNANCE FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Update hedging parameters (margin ratio, liquidation, leverage, fees)
+     * 
+     * @dev This function allows governance to update critical parameters of the hedging mechanism.
+     *      - It requires new values to be within reasonable bounds.
+     *      - It updates the minMarginRatio, liquidationThreshold, maxLeverage, and liquidationPenalty.
+     */
     function updateHedgingParameters(
         uint256 newMinMarginRatio,
         uint256 newLiquidationThreshold,
@@ -698,6 +1005,13 @@ contract HedgerPool is
         liquidationPenalty = newLiquidationPenalty;
     }
 
+    /**
+     * @notice Update interest rates for EUR and USD
+     * 
+     * @dev This function allows governance to update the interest rates for EUR and USD.
+     *      - It requires new rates to be within reasonable bounds.
+     *      - It updates the eurInterestRate and usdInterestRate.
+     */
     function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) 
         external 
         onlyRole(GOVERNANCE_ROLE) 
@@ -708,6 +1022,13 @@ contract HedgerPool is
         usdInterestRate = newUsdRate;
     }
 
+    /**
+     * @notice Set hedging fees (entry, exit, margin)
+     * 
+     * @dev This function allows governance to set the fees for entering, exiting, and margin operations.
+     *      - It requires new fees to be within reasonable bounds.
+     *      - It updates the entryFee, exitFee, and marginFee.
+     */
     function setHedgingFees(
         uint256 _entryFee,
         uint256 _exitFee,
@@ -726,6 +1047,17 @@ contract HedgerPool is
     // EMERGENCY FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Emergency close a hedger's position
+     * 
+     * @dev This function allows emergency roles to forcibly close a hedger's position
+     *      in case of emergency.
+     *      - The hedger must be the owner of the position.
+     *      - The position must be active.
+     *      - Hedger info and pool totals are updated.
+     *      - The margin is returned to the hedger.
+     *      - The position is deactivated.
+     */
     function emergencyClosePosition(address hedger, uint256 positionId) 
         external 
         onlyRole(EMERGENCY_ROLE) 
@@ -750,14 +1082,31 @@ contract HedgerPool is
         position.isActive = false;
     }
 
+    /**
+     * @notice Pause the hedger pool
+     * 
+     * @dev This function allows emergency roles to pause the hedger pool in case of crisis.
+     */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
     }
 
+    /**
+     * @notice Unpause the hedger pool
+     * 
+     * @dev This function allows emergency roles to unpause the hedger pool after a crisis.
+     */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
     }
 
+    /**
+     * @notice Get current hedging configuration parameters
+     * 
+     * @dev This function allows external contracts to query the current hedging configuration
+     *      parameters, such as minimum margin ratio, liquidation threshold, max leverage,
+     *      liquidation penalty, entry fee, and exit fee.
+     */
     function getHedgingConfig() external view returns (
         uint256 minMarginRatio_,
         uint256 liquidationThreshold_,
@@ -776,10 +1125,23 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Check if hedging is currently active
+     * 
+     * @dev This function allows external contracts to query if the hedger pool is
+     *      currently active (not paused).
+     */
     function isHedgingActive() external view returns (bool) {
         return !paused();
     }
 
+    /**
+     * @notice Internal function for UUPS upgrade authorization
+     * 
+     * @dev This function is called by the UUPS upgrade mechanism to authorize
+     *      the upgrade to a new implementation.
+     *      - It requires the caller to have the UPGRADER_ROLE.
+     */
     function _authorizeUpgrade(address newImplementation) 
         internal 
         override 

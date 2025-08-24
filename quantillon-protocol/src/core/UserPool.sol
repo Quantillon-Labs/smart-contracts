@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+// =============================================================================
+// IMPORTS - OpenZeppelin libraries and protocol interfaces
+// =============================================================================
+
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
@@ -17,7 +21,60 @@ import "../libraries/VaultMath.sol";
 /**
  * @title UserPool
  * @notice Manages QEURO user deposits, staking, and yield distribution
- * @dev Handles the user side of the dual-pool mechanism
+ * 
+ * @dev Main characteristics:
+ *      - User deposit and withdrawal management
+ *      - QEURO staking mechanism with rewards
+ *      - Yield distribution system
+ *      - Fee structure for protocol sustainability
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable via UUPS pattern
+ * 
+ * @dev Deposit mechanics:
+ *      - Users deposit USDC to receive QEURO
+ *      - QEURO is minted based on current EUR/USD exchange rate
+ *      - Deposit fees charged for protocol revenue
+ *      - Deposits are tracked per user for analytics
+ * 
+ * @dev Staking mechanics:
+ *      - Users can stake their QEURO for additional rewards
+ *      - Staking APY provides yield on staked QEURO
+ *      - Unstaking has a cooldown period to prevent abuse
+ *      - Rewards are distributed based on staking duration and amount
+ * 
+ * @dev Withdrawal mechanics:
+ *      - Users can withdraw their QEURO back to USDC
+ *      - Withdrawal fees charged for protocol revenue
+ *      - Withdrawals are processed based on current EUR/USD rate
+ *      - Staked QEURO must be unstaked before withdrawal
+ * 
+ * @dev Yield distribution:
+ *      - Yield is distributed to stakers based on their stake amount
+ *      - Performance fees charged on yield distributions
+ *      - Yield sources include protocol fees and yield shift mechanisms
+ *      - Real-time yield tracking and distribution
+ * 
+ * @dev Fee structure:
+ *      - Deposit fees for creating QEURO from USDC
+ *      - Withdrawal fees for converting QEURO back to USDC
+ *      - Performance fees on yield distributions
+ *      - Dynamic fee adjustment based on market conditions
+ * 
+ * @dev Security features:
+ *      - Role-based access control for all critical operations
+ *      - Reentrancy protection for all external calls
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable architecture for future improvements
+ *      - Secure deposit and withdrawal management
+ *      - Staking cooldown mechanisms
+ * 
+ * @dev Integration points:
+ *      - QEURO token for minting and burning
+ *      - USDC for deposits and withdrawals
+ *      - QuantillonVault for QEURO minting/burning
+ *      - Yield shift mechanism for yield management
+ *      - Vault math library for calculations
+ * 
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
@@ -32,74 +89,198 @@ contract UserPool is
     using VaultMath for uint256;
 
     // =============================================================================
-    // CONSTANTS AND ROLES
+    // CONSTANTS AND ROLES - Protocol roles and limits
     // =============================================================================
     
+    /// @notice Role for governance operations (parameter updates, emergency actions)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance multisig or DAO
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    
+    /// @notice Role for emergency operations (pause, emergency withdrawals)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+    
+    /// @notice Role for performing contract upgrades via UUPS pattern
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance or upgrade multisig
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // =============================================================================
-    // STATE VARIABLES
+    // STATE VARIABLES - External contracts and configuration
     // =============================================================================
     
-    /// @notice QEURO token contract
+    /// @notice QEURO token contract for minting and burning
+    /// @dev Used for all QEURO minting and burning operations
+    /// @dev Should be the official QEURO token contract
     IQEURO public qeuro;
     
-    /// @notice USDC token contract
+    /// @notice USDC token contract for deposits and withdrawals
+    /// @dev Used for all USDC deposits and withdrawals
+    /// @dev Should be the official USDC contract on the target network
     IERC20 public usdc;
     
-    /// @notice Main Quantillon vault
+    /// @notice Main Quantillon vault for QEURO operations
+    /// @dev Used for QEURO minting and burning operations
+    /// @dev Should be the official QuantillonVault contract
     IQuantillonVault public vault;
     
-    /// @notice Yield shift mechanism
+    /// @notice Yield shift mechanism for yield management
+    /// @dev Handles yield distribution and management
+    /// @dev Used for yield calculations and distributions
     IYieldShift public yieldShift;
 
-    // Pool configuration
+    // Pool configuration parameters
+    /// @notice Staking APY in basis points
+    /// @dev Example: 500 = 5% staking APY
+    /// @dev Used for calculating staking rewards
     uint256 public stakingAPY;              // Staking APY in basis points
+    
+    /// @notice Base deposit APY in basis points
+    /// @dev Example: 200 = 2% base deposit APY
+    /// @dev Used for calculating deposit rewards
     uint256 public depositAPY;              // Base deposit APY in basis points
+    
+    /// @notice Minimum amount required for staking (in QEURO)
+    /// @dev Example: 100 * 1e18 = 100 QEURO minimum stake
+    /// @dev Prevents dust staking and reduces gas costs
     uint256 public minStakeAmount;          // Minimum amount for staking
+    
+    /// @notice Cooldown period for unstaking (in seconds)
+    /// @dev Example: 7 days = 604,800 seconds
+    /// @dev Prevents rapid staking/unstaking cycles
     uint256 public unstakingCooldown;       // Cooldown period for unstaking
     
-    // Fee configuration
+    // Fee configuration parameters
+    /// @notice Fee charged on deposits (in basis points)
+    /// @dev Example: 10 = 0.1% deposit fee
+    /// @dev Revenue source for the protocol
     uint256 public depositFee;              // Deposit fee in basis points
+    
+    /// @notice Fee charged on withdrawals (in basis points)
+    /// @dev Example: 10 = 0.1% withdrawal fee
+    /// @dev Revenue source for the protocol
     uint256 public withdrawalFee;           // Withdrawal fee in basis points
+    
+    /// @notice Fee charged on yield distributions (in basis points)
+    /// @dev Example: 200 = 2% performance fee
+    /// @dev Revenue source for the protocol
     uint256 public performanceFee;          // Performance fee in basis points
 
-    // Pool state
+    // Pool state variables
+    /// @notice Total USDC equivalent deposits across all users
+    /// @dev Sum of all user deposits converted to USDC equivalent
+    /// @dev Used for pool analytics and risk management
     uint256 public totalDeposits;           // Total USDC equivalent deposits
+    
+    /// @notice Total QEURO staked across all users
+    /// @dev Sum of all staked QEURO amounts
+    /// @dev Used for yield distribution calculations
     uint256 public totalStakes;             // Total QEURO staked
+    
+    /// @notice Number of unique users who have deposited
+    /// @dev Count of unique addresses that have made deposits
+    /// @dev Used for protocol analytics and governance
     uint256 public totalUsers;              // Number of unique users
     
-    // User data structures
+    // =============================================================================
+    // DATA STRUCTURES - User information and tracking
+    // =============================================================================
+    
+    /// @notice User information data structure
+    /// @dev Stores all information about a user's deposits, stakes, and rewards
+    /// @dev Used for user management and reward calculations
     struct UserInfo {
-        uint256 qeuroBalance;               // QEURO balance (from deposits)
-        uint256 stakedAmount;               // QEURO staked amount
-        uint256 pendingRewards;             // Pending staking rewards
-        uint256 depositHistory;             // Total historical deposits
-        uint256 lastStakeTime;              // Last staking timestamp
-        uint256 unstakeRequestTime;         // Unstaking request timestamp
-        uint256 unstakeAmount;              // Amount being unstaked
+        uint256 qeuroBalance;               // QEURO balance from deposits (18 decimals)
+        uint256 stakedAmount;               // QEURO amount currently staked (18 decimals)
+        uint256 pendingRewards;             // Pending staking rewards in QEURO (18 decimals)
+        uint256 depositHistory;             // Total historical deposits in USDC (6 decimals)
+        uint256 lastStakeTime;              // Timestamp of last staking action
+        uint256 unstakeRequestTime;         // Timestamp when unstaking was requested
+        uint256 unstakeAmount;              // Amount being unstaked (18 decimals)
     }
     
+    // Storage mappings
+    /// @notice User information by address
+    /// @dev Maps user addresses to their detailed information
+    /// @dev Used to track user deposits, stakes, and rewards
     mapping(address => UserInfo) public userInfo;
+    
+    /// @notice Whether a user has ever deposited
+    /// @dev Maps user addresses to their deposit status
+    /// @dev Used to track unique users and prevent double counting
     mapping(address => bool) public hasDeposited;
 
-    // Yield tracking
+    // Yield tracking variables
+    /// @notice Accumulated yield per staked QEURO share
+    /// @dev Used for calculating user rewards based on their stake amount
+    /// @dev Increases over time as yield is distributed
     uint256 public accumulatedYieldPerShare;    // Accumulated yield per staked QEURO
+    
+    /// @notice Timestamp of last yield distribution
+    /// @dev Used to track when yield was last distributed
+    /// @dev Used for yield calculation intervals
     uint256 public lastYieldDistribution;       // Last yield distribution timestamp
+    
+    /// @notice Total yield distributed to users
+    /// @dev Sum of all yield distributed to users
+    /// @dev Used for protocol analytics and governance
     uint256 public totalYieldDistributed;       // Total yield distributed to users
 
     // =============================================================================
-    // EVENTS
+    // EVENTS - Events for tracking and monitoring
     // =============================================================================
     
+    /// @notice Emitted when a user deposits USDC and receives QEURO
+    /// @param user Address of the user who deposited
+    /// @param usdcAmount Amount of USDC deposited (6 decimals)
+    /// @param qeuroMinted Amount of QEURO minted (18 decimals)
+    /// @param timestamp Timestamp of the deposit
+    /// @dev Indexed parameters allow efficient filtering of events
     event UserDeposit(address indexed user, uint256 usdcAmount, uint256 qeuroMinted, uint256 timestamp);
+    
+    /// @notice Emitted when a user withdraws QEURO and receives USDC
+    /// @param user Address of the user who withdrew
+    /// @param qeuroBurned Amount of QEURO burned (18 decimals)
+    /// @param usdcReceived Amount of USDC received (6 decimals)
+    /// @param timestamp Timestamp of the withdrawal
+    /// @dev Indexed parameters allow efficient filtering of events
     event UserWithdrawal(address indexed user, uint256 qeuroBurned, uint256 usdcReceived, uint256 timestamp);
+    
+    /// @notice Emitted when a user stakes QEURO
+    /// @param user Address of the user who staked
+    /// @param qeuroAmount Amount of QEURO staked (18 decimals)
+    /// @param timestamp Timestamp of the staking action
+    /// @dev Indexed parameters allow efficient filtering of events
     event QEUROStaked(address indexed user, uint256 qeuroAmount, uint256 timestamp);
+    
+    /// @notice Emitted when a user unstakes QEURO
+    /// @param user Address of the user who unstaked
+    /// @param qeuroAmount Amount of QEURO unstaked (18 decimals)
+    /// @param timestamp Timestamp of the unstaking action
+    /// @dev Indexed parameters allow efficient filtering of events
     event QEUROUnstaked(address indexed user, uint256 qeuroAmount, uint256 timestamp);
+    
+    /// @notice Emitted when staking rewards are claimed by a user
+    /// @param user Address of the user who claimed rewards
+    /// @param rewardAmount Amount of QEURO rewards claimed (18 decimals)
+    /// @param timestamp Timestamp of the reward claim
+    /// @dev Indexed parameters allow efficient filtering of events
     event StakingRewardsClaimed(address indexed user, uint256 rewardAmount, uint256 timestamp);
+
+    /// @notice Emitted when yield is distributed to stakers
+    /// @param totalYield Total amount of yield distributed (18 decimals)
+    /// @param yieldPerShare Amount of yield per staked QEURO share (18 decimals)
+    /// @param timestamp Timestamp of the yield distribution
+    /// @dev Indexed parameters allow efficient filtering of events
     event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 timestamp);
+
+    /// @notice Emitted when pool parameters are updated
+    /// @param parameter Name of the parameter updated
+    /// @param oldValue Original value of the parameter
+    /// @param newValue New value of the parameter
+    /// @dev Indexed parameters allow efficient filtering of events
     event PoolParameterUpdated(string parameter, uint256 oldValue, uint256 newValue);
 
     // =============================================================================
@@ -155,6 +336,11 @@ contract UserPool is
 
     /**
      * @notice Deposit USDC to mint QEURO and join user pool
+     * @dev This function allows users to deposit USDC and receive QEURO.
+     *      It includes a deposit fee and handles the minting process.
+     * @param usdcAmount Amount of USDC to deposit (6 decimals)
+     * @param minQeuroOut Minimum amount of QEURO to receive (18 decimals)
+     * @return qeuroMinted Amount of QEURO minted (18 decimals)
      */
     function deposit(uint256 usdcAmount, uint256 minQeuroOut) 
         external 
@@ -199,6 +385,11 @@ contract UserPool is
 
     /**
      * @notice Withdraw USDC by burning QEURO
+     * @dev This function allows users to withdraw their QEURO and receive USDC.
+     *      It includes a withdrawal fee and handles the redemption process.
+     * @param qeuroAmount Amount of QEURO to burn (18 decimals)
+     * @param minUsdcOut Minimum amount of USDC to receive (6 decimals)
+     * @return usdcReceived Amount of USDC received (6 decimals)
      */
     function withdraw(uint256 qeuroAmount, uint256 minUsdcOut) 
         external 
@@ -240,6 +431,9 @@ contract UserPool is
 
     /**
      * @notice Stake QEURO tokens to earn enhanced yield
+     * @dev This function allows users to stake their QEURO tokens.
+     *      It updates their pending rewards and adds to their staked amount.
+     * @param qeuroAmount Amount of QEURO to stake (18 decimals)
      */
     function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused {
         require(qeuroAmount >= minStakeAmount, "UserPool: Amount below minimum");
@@ -264,6 +458,9 @@ contract UserPool is
 
     /**
      * @notice Request to unstake QEURO tokens (starts cooldown)
+     * @dev This function allows users to request to unstake their QEURO.
+     *      It sets a cooldown period before they can complete the unstaking.
+     * @param qeuroAmount Amount of QEURO to unstake (18 decimals)
      */
     function requestUnstake(uint256 qeuroAmount) external nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
@@ -279,6 +476,8 @@ contract UserPool is
 
     /**
      * @notice Complete unstaking after cooldown period
+     * @dev This function allows users to complete their unstaking request
+     *      after the cooldown period has passed.
      */
     function unstake() external nonReentrant whenNotPaused {
         UserInfo storage user = userInfo[msg.sender];
@@ -306,6 +505,9 @@ contract UserPool is
 
     /**
      * @notice Claim staking rewards
+     * @dev This function allows users to claim their pending staking rewards.
+     *      It calculates and transfers the rewards based on their staked amount.
+     * @return rewardAmount Amount of QEURO rewards claimed (18 decimals)
      */
     function claimStakingRewards() external nonReentrant returns (uint256 rewardAmount) {
         _updatePendingRewards(msg.sender);
@@ -330,6 +532,7 @@ contract UserPool is
     /**
      * @notice Distribute yield to stakers (called by YieldShift contract)
      * @dev This function is deprecated - yield now goes to stQEURO
+     * @param yieldAmount Amount of yield to distribute (18 decimals)
      */
     function distributeYield(uint256 yieldAmount) external {
         require(msg.sender == address(yieldShift), "UserPool: Only YieldShift can call");
@@ -341,6 +544,9 @@ contract UserPool is
 
     /**
      * @notice Update pending rewards for a user
+     * @dev This internal function calculates and updates the pending rewards
+     *      for a given user based on their staked amount and the current APY.
+     * @param user Address of the user to update
      */
     function _updatePendingRewards(address user) internal {
         UserInfo storage userdata = userInfo[user];
@@ -365,14 +571,29 @@ contract UserPool is
     // VIEW FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Get the total deposits of a specific user
+     * @param user Address of the user to query
+     * @return uint256 Total deposits of the user in USDC equivalent (6 decimals)
+     */
     function getUserDeposits(address user) external view returns (uint256) {
         return userInfo[user].depositHistory;
     }
 
+    /**
+     * @notice Get the current staked amount of a specific user
+     * @param user Address of the user to query
+     * @return uint256 Current staked amount of the user in QEURO (18 decimals)
+     */
     function getUserStakes(address user) external view returns (uint256) {
         return userInfo[user].stakedAmount;
     }
 
+    /**
+     * @notice Get the total pending rewards for a specific user
+     * @param user Address of the user to query
+     * @return uint256 Total pending rewards of the user in QEURO (18 decimals)
+     */
     function getUserPendingRewards(address user) external view returns (uint256) {
         UserInfo storage userdata = userInfo[user];
         
@@ -390,6 +611,15 @@ contract UserPool is
         return userdata.pendingRewards + stakingReward + yieldReward;
     }
 
+    /**
+     * @notice Get detailed information about a user's pool status
+     * @param user Address of the user to query
+     * @return qeuroBalance QEURO balance of the user (18 decimals)
+     * @return stakedAmount Current staked amount of the user (18 decimals)
+     * @return pendingRewards Total pending rewards of the user (18 decimals)
+     * @return depositHistory Total historical deposits of the user (6 decimals)
+     * @return lastStakeTime Timestamp of the user's last staking action
+     */
     function getUserInfo(address user) external view returns (
         uint256 qeuroBalance,
         uint256 stakedAmount,
@@ -407,14 +637,29 @@ contract UserPool is
         );
     }
 
+    /**
+     * @notice Get the total deposits across all users in the pool
+     * @return uint256 Total USDC equivalent deposits (6 decimals)
+     */
     function getTotalDeposits() external view returns (uint256) {
         return totalDeposits;
     }
 
+    /**
+     * @notice Get the total QEURO staked across all users
+     * @return uint256 Total QEURO staked (18 decimals)
+     */
     function getTotalStakes() external view returns (uint256) {
         return totalStakes;
     }
 
+    /**
+     * @notice Get various metrics about the user pool
+     * @return totalUsers_ Number of unique users
+     * @return averageDeposit Average deposit amount per user (6 decimals)
+     * @return stakingRatio Ratio of total staked QEURO to total deposits (basis points)
+     * @return poolTVL Total value locked in the pool (6 decimals)
+     */
     function getPoolMetrics() external view returns (
         uint256 totalUsers_,
         uint256 averageDeposit,
@@ -427,14 +672,28 @@ contract UserPool is
         poolTVL = totalDeposits;
     }
 
+    /**
+     * @notice Get the current Staking APY
+     * @return uint256 Staking APY in basis points
+     */
     function getStakingAPY() external view returns (uint256) {
         return stakingAPY;
     }
 
+    /**
+     * @notice Get the current Deposit APY
+     * @return uint256 Deposit APY in basis points
+     */
     function getDepositAPY() external view returns (uint256) {
         return depositAPY;
     }
 
+    /**
+     * @notice Calculate projected rewards for a given QEURO amount and duration
+     * @param qeuroAmount Amount of QEURO to calculate rewards for (18 decimals)
+     * @param duration Duration in seconds
+     * @return uint256 Calculated rewards (18 decimals)
+     */
     function calculateProjectedRewards(uint256 qeuroAmount, uint256 duration) 
         external 
         view 
@@ -447,6 +706,13 @@ contract UserPool is
     // GOVERNANCE FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Update the parameters for staking (APY, min stake, cooldown)
+     * @dev This function is restricted to governance roles.
+     * @param newStakingAPY New Staking APY in basis points
+     * @param newMinStakeAmount New Minimum stake amount (18 decimals)
+     * @param newUnstakingCooldown New unstaking cooldown period (seconds)
+     */
     function updateStakingParameters(
         uint256 newStakingAPY,
         uint256 newMinStakeAmount,
@@ -465,6 +731,13 @@ contract UserPool is
         unstakingCooldown = newUnstakingCooldown;
     }
 
+    /**
+     * @notice Set the fees for deposits, withdrawals, and performance
+     * @dev This function is restricted to governance roles.
+     * @param _depositFee New deposit fee in basis points
+     * @param _withdrawalFee New withdrawal fee in basis points
+     * @param _performanceFee New performance fee in basis points
+     */
     function setPoolFees(
         uint256 _depositFee,
         uint256 _withdrawalFee,
@@ -483,6 +756,12 @@ contract UserPool is
     // EMERGENCY FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Emergency unstake for a specific user (restricted to emergency roles)
+     * @dev This function is intended for emergency situations where a user's
+     *      staked QEURO needs to be forcibly unstaked.
+     * @param user Address of the user to unstake
+     */
     function emergencyUnstake(address user) external onlyRole(EMERGENCY_ROLE) {
         UserInfo storage userdata = userInfo[user];
         uint256 amount = userdata.stakedAmount;
@@ -494,14 +773,32 @@ contract UserPool is
         }
     }
 
+    /**
+     * @notice Pause the user pool (restricted to emergency roles)
+     * @dev This function is used to pause critical operations in case of
+     *      a protocol-wide emergency or vulnerability.
+     */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
     }
 
+    /**
+     * @notice Unpause the user pool (restricted to emergency roles)
+     * @dev This function is used to re-enable critical operations after
+     *      an emergency pause.
+     */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
     }
 
+    /**
+     * @notice Get the current configuration parameters of the user pool
+     * @return minStakeAmount_ Current minimum stake amount (18 decimals)
+     * @return unstakingCooldown_ Current unstaking cooldown period (seconds)
+     * @return depositFee_ Current deposit fee (basis points)
+     * @return withdrawalFee_ Current withdrawal fee (basis points)
+     * @return performanceFee_ Current performance fee (basis points)
+     */
     function getPoolConfig() external view returns (
         uint256 minStakeAmount_,
         uint256 unstakingCooldown_,
@@ -512,6 +809,10 @@ contract UserPool is
         return (minStakeAmount, unstakingCooldown, depositFee, withdrawalFee, performanceFee);
     }
 
+    /**
+     * @notice Check if the user pool is currently active (not paused)
+     * @return bool True if the pool is active, false otherwise
+     */
     function isPoolActive() external view returns (bool) {
         return !paused();
     }

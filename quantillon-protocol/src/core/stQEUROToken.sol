@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+// =============================================================================
+// IMPORTS - OpenZeppelin libraries and protocol interfaces
+// =============================================================================
+
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
@@ -17,7 +21,58 @@ import "../libraries/VaultMath.sol";
 /**
  * @title stQEUROToken
  * @notice Yield-bearing wrapper for QEURO tokens (yield accrual mechanism)
- * @dev Implements yield accrual like stETH - exchange rate increases over time
+ * 
+ * @dev Main characteristics:
+ *      - Yield-bearing wrapper token for QEURO
+ *      - Exchange rate increases over time as yield accrues
+ *      - Similar to stETH (Lido's staked ETH token)
+ *      - Automatic yield distribution to all stQEURO holders
+ *      - Fee structure for protocol sustainability
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable via UUPS pattern
+ * 
+ * @dev Staking mechanics:
+ *      - Users stake QEURO to receive stQEURO
+ *      - Exchange rate starts at 1:1 and increases over time
+ *      - Yield is distributed proportionally to all stQEURO holders
+ *      - Users can unstake at any time to receive QEURO + accrued yield
+ *      - No lock-up period or cooldown requirements
+ * 
+ * @dev Yield distribution:
+ *      - Yield is distributed from protocol fees and yield shift mechanisms
+ *      - Exchange rate increases as yield accrues
+ *      - All stQEURO holders benefit from yield automatically
+ *      - Yield fees charged for protocol sustainability
+ *      - Real-time yield tracking and distribution
+ * 
+ * @dev Exchange rate mechanism:
+ *      - Exchange rate = (totalUnderlying + totalYieldEarned) / totalSupply
+ *      - Increases over time as yield is earned
+ *      - Updated periodically or when yield is distributed
+ *      - Minimum yield threshold prevents frequent updates
+ *      - Maximum update frequency prevents excessive gas costs
+ * 
+ * @dev Fee structure:
+ *      - Yield fees on distributed yield
+ *      - Treasury receives fees for protocol sustainability
+ *      - Dynamic fee adjustment based on market conditions
+ *      - Transparent fee structure for users
+ * 
+ * @dev Security features:
+ *      - Role-based access control for all critical operations
+ *      - Reentrancy protection for all external calls
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable architecture for future improvements
+ *      - Secure yield distribution mechanisms
+ *      - Exchange rate validation
+ * 
+ * @dev Integration points:
+ *      - QEURO token for staking and unstaking
+ *      - USDC for yield payments
+ *      - Yield shift mechanism for yield management
+ *      - Treasury for fee collection
+ *      - Vault math library for calculations
+ * 
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
@@ -33,68 +88,141 @@ contract stQEUROToken is
     using VaultMath for uint256;
 
     // =============================================================================
-    // CONSTANTS AND ROLES
+    // CONSTANTS AND ROLES - Protocol roles and limits
     // =============================================================================
     
+    /// @notice Role for governance operations (parameter updates, emergency actions)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance multisig or DAO
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    
+    /// @notice Role for yield management operations (distribution, updates)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to yield management system or governance
     bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
+    
+    /// @notice Role for emergency operations (pause, emergency actions)
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+    
+    /// @notice Role for performing contract upgrades via UUPS pattern
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to governance or upgrade multisig
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // =============================================================================
-    // STATE VARIABLES
+    // STATE VARIABLES - External contracts and configuration
     // =============================================================================
     
-    /// @notice QEURO token contract
+    /// @notice QEURO token contract for staking and unstaking
+    /// @dev Used for all QEURO staking and unstaking operations
+    /// @dev Should be the official QEURO token contract
     IQEURO public qeuro;
     
     /// @notice YieldShift contract for yield distribution
+    /// @dev Handles yield distribution and management
+    /// @dev Used for yield calculations and distributions
     IYieldShift public yieldShift;
     
     /// @notice USDC token for yield payments
+    /// @dev Used for yield distributions to stQEURO holders
+    /// @dev Should be the official USDC contract on the target network
     IERC20 public usdc;
     
-    /// @notice Treasury address for fees
+    /// @notice Treasury address for fee collection
+    /// @dev Receives yield fees for protocol sustainability
+    /// @dev Should be a secure multisig or DAO treasury
     address public treasury;
     
+    // Yield and exchange rate variables
     /// @notice Exchange rate between QEURO and stQEURO (18 decimals)
     /// @dev Increases over time as yield accrues (like stETH)
+    /// @dev Formula: (totalUnderlying + totalYieldEarned) / totalSupply
     uint256 public exchangeRate;
     
-    /// @notice Last time exchange rate was updated
+    /// @notice Timestamp of last exchange rate update
+    /// @dev Used to track when exchange rate was last updated
+    /// @dev Used for yield calculation intervals
     uint256 public lastUpdateTime;
     
     /// @notice Total QEURO underlying the stQEURO supply
+    /// @dev Sum of all QEURO staked by users
+    /// @dev Used for exchange rate calculations
     uint256 public totalUnderlying;
     
     /// @notice Total yield earned by stQEURO holders
+    /// @dev Sum of all yield distributed to stQEURO holders
+    /// @dev Used for exchange rate calculations and analytics
     uint256 public totalYieldEarned;
     
-    /// @notice Fee on yield (basis points)
+    // Fee and threshold configuration
+    /// @notice Fee charged on yield distributions (in basis points)
+    /// @dev Example: 200 = 2% yield fee
+    /// @dev Revenue source for the protocol
     uint256 public yieldFee;
     
-    /// @notice Minimum yield to trigger exchange rate update
+    /// @notice Minimum yield amount to trigger exchange rate update
+    /// @dev Prevents frequent updates for small yield amounts
+    /// @dev Reduces gas costs and improves efficiency
     uint256 public minYieldThreshold;
     
-    /// @notice Maximum time between exchange rate updates
+    /// @notice Maximum time between exchange rate updates (in seconds)
+    /// @dev Ensures regular updates even with low yield
+    /// @dev Example: 1 day = 86400 seconds
     uint256 public maxUpdateFrequency;
 
     // =============================================================================
-    // EVENTS
+    // EVENTS - Events for tracking and monitoring
     // =============================================================================
     
+    /// @notice Emitted when QEURO is staked to receive stQEURO
+    /// @param user Address of the user who staked
+    /// @param qeuroAmount Amount of QEURO staked (18 decimals)
+    /// @param stQEUROAmount Amount of stQEURO received (18 decimals)
+    /// @dev Indexed parameters allow efficient filtering of events
     event QEUROStaked(address indexed user, uint256 qeuroAmount, uint256 stQEUROAmount);
+    
+    /// @notice Emitted when stQEURO is unstaked to receive QEURO
+    /// @param user Address of the user who unstaked
+    /// @param stQEUROAmount Amount of stQEURO burned (18 decimals)
+    /// @param qeuroAmount Amount of QEURO received (18 decimals)
+    /// @dev Indexed parameters allow efficient filtering of events
     event QEUROUnstaked(address indexed user, uint256 stQEUROAmount, uint256 qeuroAmount);
+    
+    /// @notice Emitted when exchange rate is updated
+    /// @param oldRate Previous exchange rate (18 decimals)
+    /// @param newRate New exchange rate (18 decimals)
+    /// @param timestamp Timestamp of the update
+    /// @dev Used to track exchange rate changes over time
     event ExchangeRateUpdated(uint256 oldRate, uint256 newRate, uint256 timestamp);
+    
+    /// @notice Emitted when yield is distributed to stQEURO holders
+    /// @param yieldAmount Amount of yield distributed (18 decimals)
+    /// @param newExchangeRate New exchange rate after distribution (18 decimals)
+    /// @dev Used to track yield distributions and their impact
     event YieldDistributed(uint256 yieldAmount, uint256 newExchangeRate);
+    
+    /// @notice Emitted when a user claims yield
+    /// @param user Address of the user who claimed yield
+    /// @param yieldAmount Amount of yield claimed (18 decimals)
+    /// @dev Indexed parameters allow efficient filtering of events
     event YieldClaimed(address indexed user, uint256 yieldAmount);
+    
+    /// @notice Emitted when yield parameters are updated
+    /// @param yieldFee New yield fee in basis points
+    /// @param minYieldThreshold New minimum yield threshold
+    /// @param maxUpdateFrequency New maximum update frequency
+    /// @dev Used to track parameter changes by governance
     event YieldParametersUpdated(uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency);
 
     // =============================================================================
-    // INITIALIZER
+    // INITIALIZER - Contract initialization
     // =============================================================================
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
+        // Disables initialization on the implementation for security
         _disableInitializers();
     }
 

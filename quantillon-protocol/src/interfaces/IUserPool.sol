@@ -114,14 +114,16 @@ interface IUserPool {
 
     /**
      * @notice Summary pool metrics
-     * @return totalDeposits Total deposits
-     * @return totalStakes Total stakes
-     * @return totalUsers Number of users
+     * @return totalUsers_ Number of users
+     * @return averageDeposit Average deposit per user
+     * @return stakingRatio Staking ratio (bps)
+     * @return poolTVL Total value locked
      */
     function getPoolMetrics() external view returns (
-        uint256 totalDeposits,
-        uint256 totalStakes,
-        uint256 totalUsers
+        uint256 totalUsers_,
+        uint256 averageDeposit,
+        uint256 stakingRatio,
+        uint256 poolTVL
     );
 
     /**

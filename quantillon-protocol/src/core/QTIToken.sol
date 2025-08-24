@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -32,7 +32,6 @@ contract QTIToken is
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
-    bytes32 public constant REWARD_DISTRIBUTOR_ROLE = keccak256("REWARD_DISTRIBUTOR_ROLE");
 
     // Vote-escrow constants
     uint256 public constant MAX_LOCK_TIME = 4 * 365 days; // 4 years max lock
@@ -152,7 +151,6 @@ contract QTIToken is
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
         _grantRole(UPGRADER_ROLE, admin);
-        _grantRole(REWARD_DISTRIBUTOR_ROLE, admin);
 
         treasury = _treasury;
         
@@ -288,7 +286,7 @@ contract QTIToken is
         uint256 votingPeriod,
         bytes calldata data
     ) external returns (uint256 proposalId) {
-        require(getVotingPower(msg.sender) >= proposalThreshold, "QTI: Insufficient voting power");
+        require(this.getVotingPower(msg.sender) >= proposalThreshold, "QTI: Insufficient voting power");
         require(votingPeriod >= minVotingPeriod, "QTI: Voting period too short");
         require(votingPeriod <= maxVotingPeriod, "QTI: Voting period too long");
 
@@ -315,7 +313,7 @@ contract QTIToken is
         require(block.timestamp < proposal.endTime, "QTI: Voting ended");
         require(!proposal.receipts[msg.sender].hasVoted, "QTI: Already voted");
 
-        uint256 votingPower = getVotingPower(msg.sender);
+        uint256 votingPower = this.getVotingPower(msg.sender);
         require(votingPower > 0, "QTI: No voting power");
 
         proposal.receipts[msg.sender] = Receipt({

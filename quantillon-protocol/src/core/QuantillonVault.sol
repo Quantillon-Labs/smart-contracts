@@ -5,9 +5,9 @@ pragma solidity 0.8.24;
 // IMPORTS - OpenZeppelin security and features
 // =============================================================================
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -91,6 +91,9 @@ contract QuantillonVault is
     
     /// @notice Protocol fee on redemptions (e.g., 0.1% = 1e15)
     uint256 public protocolFee;
+    
+    /// @notice Mint fee (e.g., 0.1% = 1e15)
+    uint256 public mintFee;
 
     // Global vault state
     
@@ -213,7 +216,8 @@ contract QuantillonVault is
         minCollateralRatio = 101e16;    // 101% minimum
         liquidationThreshold = 100e16;   // 100% liquidation threshold
         liquidationPenalty = 5e16;      // 5% liquidator bonus
-        protocolFee = 1e15;             // 0.1% protocol fee
+        protocolFee = 1e15;             // 0.1% protocol fee on redemptions
+        mintFee = 1e15;                 // 0.1% mint fee
     }
 
 
@@ -250,16 +254,20 @@ contract QuantillonVault is
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
 
+        // Calculate mint fee
+        uint256 fee = usdcAmount.mulDiv(mintFee, 1e18);
+        uint256 netAmount = usdcAmount - fee;
+        
         // Calculate amount of QEURO to mint
         // Formula: USDC / (EUR/USD) = QEURO
         // Ex: 1100 USDC / 1.10 = 1000 QEURO
-        uint256 qeuroToMint = usdcAmount.mulDiv(1e18, eurUsdPrice);
+        uint256 qeuroToMint = netAmount.mulDiv(1e18, eurUsdPrice);
         
         // Slippage protection
         require(qeuroToMint >= minQeuroOut, "Vault: Insufficient output amount");
 
         // Verify minimum collateralization ratio
-        uint256 newTotalCollateral = userCollateral[msg.sender] + usdcAmount;
+        uint256 newTotalCollateral = userCollateral[msg.sender] + netAmount;
         uint256 newTotalDebt = userDebt[msg.sender] + qeuroToMint;
         
         require(
@@ -275,7 +283,7 @@ contract QuantillonVault is
         userDebt[msg.sender] = newTotalDebt;
 
         // Update global balances
-        totalCollateral += usdcAmount;
+        totalCollateral += netAmount;
         totalMinted += qeuroToMint;
 
         // Mint QEURO tokens to the user
@@ -918,7 +926,13 @@ contract QuantillonVault is
     /**
      * @notice Retrieves current vault parameters
      * 
-     * @return All configuration parameters
+     * @return minCollateralRatio_ Minimum collateral ratio
+     * @return liquidationThreshold_ Liquidation threshold
+     * @return liquidationPenalty_ Liquidation penalty
+     * @return protocolFee_ Protocol fee
+     * @return qeuroAddress QEURO token address
+     * @return usdcAddress USDC token address
+     * @return oracleAddress Oracle address
      */
     function getVaultParameters() 
         external 

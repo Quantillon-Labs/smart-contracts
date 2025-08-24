@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/IUserPool.sol";
-import "../interfaces/IHedgerPool.sol";
-import "../interfaces/IAaveVault.sol";
-import "../libraries/VaultMath.sol";
+import "../../interfaces/IUserPool.sol";
+import "../../interfaces/IHedgerPool.sol";
+import "../../interfaces/IAaveVault.sol";
+import "../../interfaces/IstQEURO.sol";
+import "../../libraries/VaultMath.sol";
 
 /**
  * @title YieldShift
@@ -55,6 +56,9 @@ contract YieldShift is
     
     /// @notice Aave vault contract
     IAaveVault public aaveVault;
+    
+    /// @notice stQEURO token contract (primary yield-bearing token)
+    IstQEURO public stQEURO;
 
     // Yield Shift Configuration
     uint256 public baseYieldShift;          // Base yield shift percentage (bps)
@@ -128,13 +132,15 @@ contract YieldShift is
         address _usdc,
         address _userPool,
         address _hedgerPool,
-        address _aaveVault
+        address _aaveVault,
+        address _stQEURO
     ) public initializer {
         require(admin != address(0), "YieldShift: Admin cannot be zero");
         require(_usdc != address(0), "YieldShift: USDC cannot be zero");
         require(_userPool != address(0), "YieldShift: UserPool cannot be zero");
         require(_hedgerPool != address(0), "YieldShift: HedgerPool cannot be zero");
         require(_aaveVault != address(0), "YieldShift: AaveVault cannot be zero");
+        require(_stQEURO != address(0), "YieldShift: stQEURO cannot be zero");
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -151,6 +157,7 @@ contract YieldShift is
         userPool = IUserPool(_userPool);
         hedgerPool = IHedgerPool(_hedgerPool);
         aaveVault = IAaveVault(_aaveVault);
+        stQEURO = IstQEURO(_stQEURO);
 
         // Default configuration
         baseYieldShift = 5000;          // 50% base allocation to each pool
@@ -219,9 +226,12 @@ contract YieldShift is
         userYieldPool += userAllocation;
         hedgerYieldPool += hedgerAllocation;
         
-        // Notify pools about new yield
+        // Send yield to stQEURO contract (primary yield-bearing token)
         if (userAllocation > 0) {
-            userPool.distributeYield(userAllocation);
+            // Transfer USDC to stQEURO for yield distribution
+            usdc.safeTransfer(address(stQEURO), userAllocation);
+            // Notify stQEURO to distribute yield
+            stQEURO.distributeYield(userAllocation);
         }
         
         emit YieldAdded(yieldAmount, source, block.timestamp);

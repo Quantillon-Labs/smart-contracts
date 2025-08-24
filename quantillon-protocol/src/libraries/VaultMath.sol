@@ -262,7 +262,7 @@ library VaultMath {
         uint256 value1,
         uint256 value2,
         uint256 toleranceBps
-    ) internal pure returns (bool isWithinTolerance) {
+    ) internal pure returns (bool) {
         if (value1 == value2) return true;
         
         uint256 larger = max(value1, value2);
@@ -270,6 +270,6 @@ library VaultMath {
         uint256 difference = larger - smaller;
         uint256 toleranceAmount = percentageOf(larger, toleranceBps);
         
-        isWithinTolerance = difference <= toleranceAmount;
+        return difference <= toleranceAmount;
     }
 }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -172,7 +172,7 @@ contract UserPool is
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
         
         // Approve vault to spend USDC
-        usdc.safeApprove(address(vault), netAmount);
+        usdc.safeIncreaseAllowance(address(vault), netAmount);
         
         // Mint QEURO through vault
         vault.mintQEURO(netAmount, minQeuroOut);
@@ -329,18 +329,14 @@ contract UserPool is
 
     /**
      * @notice Distribute yield to stakers (called by YieldShift contract)
+     * @dev This function is deprecated - yield now goes to stQEURO
      */
     function distributeYield(uint256 yieldAmount) external {
         require(msg.sender == address(yieldShift), "UserPool: Only YieldShift can call");
         
-        if (totalStakes > 0 && yieldAmount > 0) {
-            uint256 yieldPerShare = yieldAmount.mulDiv(1e18, totalStakes);
-            accumulatedYieldPerShare += yieldPerShare;
-            totalYieldDistributed += yieldAmount;
-            lastYieldDistribution = block.timestamp;
-            
-            emit YieldDistributed(yieldAmount, yieldPerShare, block.timestamp);
-        }
+        // Yield distribution moved to stQEURO contract
+        // This function kept for backward compatibility but does nothing
+        emit YieldDistributed(yieldAmount, 0, block.timestamp);
     }
 
     /**

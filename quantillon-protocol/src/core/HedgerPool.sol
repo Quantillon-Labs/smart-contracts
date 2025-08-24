@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -189,7 +189,7 @@ contract HedgerPool is
 
         // Default parameters
         minMarginRatio = 1000;          // 10% minimum margin
-        liquidationThreshold = 500;     // 5% liquidation threshold
+        liquidationThreshold = 100;     // 1% liquidation threshold (per spec)
         maxLeverage = 10;               // 10x maximum leverage
         liquidationPenalty = 200;       // 2% liquidation penalty
         

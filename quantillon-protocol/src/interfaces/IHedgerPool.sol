@@ -119,16 +119,18 @@ interface IHedgerPool {
 
     /**
      * @notice Pool statistics snapshot
-     * @return totalMargin Total margin
-     * @return totalExposure Total exposure
-     * @return activeHedgers Number of active hedgers
-     * @return nextPositionId Next position ID
+     * @return activeHedgers_ Number of active hedgers
+     * @return totalPositions Total number of positions
+     * @return averagePosition Average position size
+     * @return totalMargin_ Total margin
+     * @return poolUtilization Pool utilization ratio (bps)
      */
     function getPoolStatistics() external view returns (
-        uint256 totalMargin,
-        uint256 totalExposure,
-        uint256 activeHedgers,
-        uint256 nextPositionId
+        uint256 activeHedgers_,
+        uint256 totalPositions,
+        uint256 averagePosition,
+        uint256 totalMargin_,
+        uint256 poolUtilization
     );
 
     /**

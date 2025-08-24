@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/IYieldShift.sol";
-import "../libraries/VaultMath.sol";
+import "../../interfaces/IYieldShift.sol";
+import "../../libraries/VaultMath.sol";
 
 /**
  * @title AaveVault
@@ -236,7 +236,7 @@ contract AaveVault is
         usdc.safeTransferFrom(msg.sender, address(this), amount);
         
         // Approve Aave pool to spend USDC
-        usdc.safeApprove(address(aavePool), amount);
+        usdc.safeIncreaseAllowance(address(aavePool), amount);
         
         // Supply USDC to Aave pool
         aavePool.supply(address(usdc), amount, address(this), 0);
@@ -353,7 +353,7 @@ contract AaveVault is
         
         // Distribute yield via YieldShift
         if (netYield > 0) {
-            usdc.safeApprove(address(yieldShift), netYield);
+            usdc.safeIncreaseAllowance(address(yieldShift), netYield);
             yieldShift.addYield(netYield, "aave");
         }
         
@@ -482,7 +482,7 @@ contract AaveVault is
         onlyRole(VAULT_MANAGER_ROLE) 
         returns (bool rebalanced, uint256 newAllocation) 
     {
-        (uint256 optimalAllocation, ) = calculateOptimalAllocation();
+        (uint256 optimalAllocation, ) = this.calculateOptimalAllocation();
         uint256 currentBalance = aUSDC.balanceOf(address(this));
         uint256 totalAssets = currentBalance + usdc.balanceOf(address(this));
         

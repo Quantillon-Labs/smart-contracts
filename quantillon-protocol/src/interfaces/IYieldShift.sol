@@ -15,8 +15,9 @@ interface IYieldShift {
      * @param _userPool UserPool address
      * @param _hedgerPool HedgerPool address
      * @param _aaveVault Aave vault address
+     * @param _stQEURO stQEURO token address
      */
-    function initialize(address admin, address _usdc, address _userPool, address _hedgerPool, address _aaveVault) external;
+    function initialize(address admin, address _usdc, address _userPool, address _hedgerPool, address _aaveVault, address _stQEURO) external;
 
     /**
      * @notice Update yield distribution according to pool balances
@@ -91,52 +92,54 @@ interface IYieldShift {
     /**
      * @notice Calculate optimal yield shift based on current metrics
      * @return optimalShift Optimal shift (bps)
-     * @return userAllocation Current computed user allocation
-     * @return hedgerAllocation Current computed hedger allocation
+     * @return currentDeviation Current deviation from optimal
      */
     function calculateOptimalYieldShift() external view returns (
         uint256 optimalShift,
-        uint256 userAllocation,
-        uint256 hedgerAllocation
+        uint256 currentDeviation
     );
 
     /**
-     * @notice Yield source names and amounts
-     * @return names Array of source names
-     * @return amounts Array of amounts per source
+     * @notice Yield source amounts
+     * @return aaveYield Aave yield amount
+     * @return protocolFees Protocol fees amount
+     * @return interestDifferential Interest differential amount
+     * @return otherSources Other sources amount
      */
     function getYieldSources() external view returns (
-        string[] memory names,
-        uint256[] memory amounts
+        uint256 aaveYield,
+        uint256 protocolFees,
+        uint256 interestDifferential,
+        uint256 otherSources
     );
 
     /**
-     * @notice Historical yield shift data for a period
-     * @param period Index from the end (0 = latest)
-     * @return timestamp Snapshot timestamp
-     * @return yieldShift Yield shift value at snapshot
-     * @return userPoolSize User pool size at snapshot
-     * @return hedgerPoolSize Hedger pool size at snapshot
-     * @return poolRatio Pool ratio at snapshot
+     * @notice Historical yield shift statistics for a period
+     * @param period Time period in seconds
+     * @return averageShift Average shift over period
+     * @return maxShift Maximum shift over period
+     * @return minShift Minimum shift over period
+     * @return volatility Volatility measure
      */
     function getHistoricalYieldShift(uint256 period) external view returns (
-        uint256 timestamp,
-        uint256 yieldShift,
-        uint256 userPoolSize,
-        uint256 hedgerPoolSize,
-        uint256 poolRatio
+        uint256 averageShift,
+        uint256 maxShift,
+        uint256 minShift,
+        uint256 volatility
     );
 
     /**
      * @notice Yield performance metrics
-     * @return totalYieldDistributed Total distributed
-     * @return userYieldPool Current user yield pool
-     * @return hedgerYieldPool Current hedger yield pool
+     * @return totalYieldDistributed_ Total distributed
+     * @return averageUserYield Average user yield
+     * @return averageHedgerYield Average hedger yield
+     * @return yieldEfficiency Yield efficiency percentage
      */
     function getYieldPerformanceMetrics() external view returns (
-        uint256 totalYieldDistributed,
-        uint256 userYieldPool,
-        uint256 hedgerYieldPool
+        uint256 totalYieldDistributed_,
+        uint256 averageUserYield,
+        uint256 averageHedgerYield,
+        uint256 yieldEfficiency
     );
 
     /**
@@ -180,16 +183,16 @@ interface IYieldShift {
 
     /**
      * @notice YieldShift configuration snapshot
-     * @return baseYieldShift Base shift (bps)
-     * @return maxYieldShift Max shift (bps)
-     * @return adjustmentSpeed Adjustment speed (bps)
-     * @return targetPoolRatio Target ratio (bps)
+     * @return baseShift Base shift (bps)
+     * @return maxShift Max shift (bps)
+     * @return adjustmentSpeed_ Adjustment speed (bps)
+     * @return lastUpdate Last update timestamp
      */
     function getYieldShiftConfig() external view returns (
-        uint256 baseYieldShift,
-        uint256 maxYieldShift,
-        uint256 adjustmentSpeed,
-        uint256 targetPoolRatio
+        uint256 baseShift,
+        uint256 maxShift,
+        uint256 adjustmentSpeed_,
+        uint256 lastUpdate
     );
 
     /**

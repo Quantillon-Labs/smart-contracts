@@ -66,6 +66,10 @@ contract YieldShift is
     uint256 public adjustmentSpeed;         // Speed of yield shift adjustments
     uint256 public targetPoolRatio;        // Target user/hedger pool ratio
     
+    // Time-weighted average protection
+    uint256 public constant MIN_HOLDING_PERIOD = 7 days;
+    uint256 public constant TWAP_PERIOD = 24 hours;
+    
     // Current State
     uint256 public currentYieldShift;       // Current yield shift percentage
     uint256 public lastUpdateTime;          // Last yield shift update time
@@ -86,16 +90,18 @@ contract YieldShift is
     mapping(address => uint256) public userLastClaim;
     mapping(address => uint256) public hedgerLastClaim;
     
-    // Historical data for analytics
-    struct YieldShiftSnapshot {
+    // Time-weighted average tracking
+    mapping(address => uint256) public lastDepositTime;
+    
+    // Pool history for TWAP calculations
+    struct PoolSnapshot {
         uint256 timestamp;
-        uint256 yieldShift;
         uint256 userPoolSize;
         uint256 hedgerPoolSize;
-        uint256 poolRatio;
     }
     
-    YieldShiftSnapshot[] public yieldShiftHistory;
+    PoolSnapshot[] public userPoolHistory;
+    PoolSnapshot[] public hedgerPoolHistory;
     uint256 public constant MAX_HISTORY_LENGTH = 1000;
 
     // =============================================================================
@@ -167,6 +173,9 @@ contract YieldShift is
         currentYieldShift = baseYieldShift;
         lastUpdateTime = block.timestamp;
 
+        // Initialize pool history for TWAP calculations
+        _recordPoolSnapshot();
+
         // Initialize yield source tracking
         yieldSourceNames.push("aave");
         yieldSourceNames.push("fees");
@@ -178,11 +187,16 @@ contract YieldShift is
     // =============================================================================
 
     /**
-     * @notice Update yield distribution based on current pool balance
+     * @notice Update yield distribution based on time-weighted average pool balances
+     * @dev Uses TWAP to prevent gaming by large actors
      */
     function updateYieldDistribution() external nonReentrant whenNotPaused {
-        // Get current pool sizes
-        (uint256 userPoolSize, uint256 hedgerPoolSize, uint256 poolRatio) = _getCurrentPoolMetrics();
+        // Use time-weighted average instead of spot values
+        uint256 avgUserPoolSize = getTimeWeightedAverage(userPoolHistory, TWAP_PERIOD, true);
+        uint256 avgHedgerPoolSize = getTimeWeightedAverage(hedgerPoolHistory, TWAP_PERIOD, false);
+        
+        uint256 poolRatio = avgHedgerPoolSize == 0 ? type(uint256).max : 
+                           avgUserPoolSize.mulDiv(10000, avgHedgerPoolSize);
         
         // Calculate optimal yield shift
         uint256 optimalShift = _calculateOptimalYieldShift(poolRatio);
@@ -194,8 +208,8 @@ contract YieldShift is
         currentYieldShift = newYieldShift;
         lastUpdateTime = block.timestamp;
         
-        // Record historical snapshot
-        _recordYieldShiftSnapshot(userPoolSize, hedgerPoolSize, poolRatio);
+        // Record current pool sizes in history
+        _recordPoolSnapshot();
         
         emit YieldDistributionUpdated(
             newYieldShift,
@@ -243,6 +257,7 @@ contract YieldShift is
     function claimUserYield(address user) 
         external 
         nonReentrant 
+        checkHoldingPeriod
         returns (uint256 yieldAmount) 
     {
         require(msg.sender == user || msg.sender == address(userPool), "YieldShift: Unauthorized");
@@ -270,6 +285,7 @@ contract YieldShift is
     function claimHedgerYield(address hedger) 
         external 
         nonReentrant 
+        checkHoldingPeriod
         returns (uint256 yieldAmount) 
     {
         require(msg.sender == hedger || msg.sender == address(hedgerPool), "YieldShift: Unauthorized");
@@ -371,29 +387,15 @@ contract YieldShift is
     }
 
     /**
-     * @notice Record yield shift snapshot for historical analysis
+     * @notice Update last deposit time for a user
+     * @param user User address
      */
-    function _recordYieldShiftSnapshot(
-        uint256 userPoolSize,
-        uint256 hedgerPoolSize,
-        uint256 poolRatio
-    ) internal {
-        // Remove oldest snapshot if at capacity
-        if (yieldShiftHistory.length >= MAX_HISTORY_LENGTH) {
-            // Shift array left to remove first element
-            for (uint256 i = 0; i < yieldShiftHistory.length - 1; i++) {
-                yieldShiftHistory[i] = yieldShiftHistory[i + 1];
-            }
-            yieldShiftHistory.pop();
-        }
-        
-        yieldShiftHistory.push(YieldShiftSnapshot({
-            timestamp: block.timestamp,
-            yieldShift: currentYieldShift,
-            userPoolSize: userPoolSize,
-            hedgerPoolSize: hedgerPoolSize,
-            poolRatio: poolRatio
-        }));
+    function updateLastDepositTime(address user) external {
+        require(
+            msg.sender == address(userPool) || msg.sender == address(hedgerPool),
+            "YieldShift: Unauthorized"
+        );
+        lastDepositTime[user] = block.timestamp;
     }
 
     // =============================================================================
@@ -659,12 +661,18 @@ contract YieldShift is
 
     /**
      * @notice Update yield distribution if conditions are met
+     * @dev Uses TWAP and includes holding period checks
      */
     function checkAndUpdateYieldDistribution() external {
         // Only update if significant time has passed or pool imbalance is high
-        bool timeCondition = block.timestamp >= lastUpdateTime + 1 hours;
+        bool timeCondition = block.timestamp >= lastUpdateTime + TWAP_PERIOD;
         
-        (, , uint256 poolRatio) = _getCurrentPoolMetrics();
+        // Use TWAP for pool ratio calculation
+        uint256 avgUserPoolSize = getTimeWeightedAverage(userPoolHistory, TWAP_PERIOD, true);
+        uint256 avgHedgerPoolSize = getTimeWeightedAverage(hedgerPoolHistory, TWAP_PERIOD, false);
+        uint256 poolRatio = avgHedgerPoolSize == 0 ? type(uint256).max : 
+                           avgUserPoolSize.mulDiv(10000, avgHedgerPoolSize);
+        
         bool imbalanceCondition = !_isWithinTolerance(poolRatio, targetPoolRatio, 2000); // 20% tolerance
         
         if (timeCondition || imbalanceCondition) {
@@ -672,9 +680,105 @@ contract YieldShift is
         }
     }
 
+    /**
+     * @notice Force update yield distribution (governance only)
+     * @dev Emergency function to update yield distribution when normal conditions aren't met
+     */
+    function forceUpdateYieldDistribution() external onlyRole(GOVERNANCE_ROLE) {
+        this.updateYieldDistribution();
+    }
+
     function _authorizeUpgrade(address newImplementation) 
         internal 
         override 
         onlyRole(UPGRADER_ROLE) 
     {}
+
+    /**
+     * @notice Modifier to check minimum holding period
+     */
+    modifier checkHoldingPeriod() {
+        require(
+            block.timestamp >= lastDepositTime[msg.sender] + MIN_HOLDING_PERIOD,
+            "YieldShift: Holding period not met"
+        );
+        _;
+    }
+
+    /**
+     * @notice Calculate time-weighted average pool size over a specified period
+     * @param poolHistory Array of pool snapshots
+     * @param period Time period to calculate average over
+     * @param isUserPool Whether this is for user pool (true) or hedger pool (false)
+     * @return Time-weighted average pool size
+     */
+    function getTimeWeightedAverage(PoolSnapshot[] storage poolHistory, uint256 period, bool isUserPool) 
+        internal 
+        view 
+        returns (uint256) 
+    {
+        if (poolHistory.length == 0) {
+            return 0;
+        }
+        
+        uint256 cutoffTime = block.timestamp - period;
+        uint256 totalWeightedValue = 0;
+        uint256 totalWeight = 0;
+        
+        for (uint256 i = 0; i < poolHistory.length; i++) {
+            PoolSnapshot memory snapshot = poolHistory[i];
+            
+            if (snapshot.timestamp >= cutoffTime) {
+                uint256 weight = snapshot.timestamp - cutoffTime;
+                uint256 poolSize = isUserPool ? snapshot.userPoolSize : snapshot.hedgerPoolSize;
+                totalWeightedValue += poolSize * weight;
+                totalWeight += weight;
+            }
+        }
+        
+        if (totalWeight == 0) {
+            uint256 lastPoolSize = isUserPool ? 
+                poolHistory[poolHistory.length - 1].userPoolSize : 
+                poolHistory[poolHistory.length - 1].hedgerPoolSize;
+            return lastPoolSize;
+        }
+        
+        return totalWeightedValue / totalWeight;
+    }
+
+    /**
+     * @notice Record current pool sizes in history for TWAP calculations
+     */
+    function _recordPoolSnapshot() internal {
+        (uint256 userPoolSize, uint256 hedgerPoolSize,) = _getCurrentPoolMetrics();
+        
+        // Add to user pool history
+        _addToPoolHistory(userPoolHistory, userPoolSize, true);
+        
+        // Add to hedger pool history
+        _addToPoolHistory(hedgerPoolHistory, hedgerPoolSize, false);
+    }
+
+    /**
+     * @notice Add snapshot to pool history array
+     * @param poolHistory Array to add snapshot to
+     * @param poolSize Current pool size
+     * @param isUserPool Whether this is for user pool (true) or hedger pool (false)
+     */
+    function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool) internal {
+        // Remove oldest snapshot if at capacity
+        if (poolHistory.length >= MAX_HISTORY_LENGTH) {
+            // Shift array left to remove first element
+            for (uint256 i = 0; i < poolHistory.length - 1; i++) {
+                poolHistory[i] = poolHistory[i + 1];
+            }
+            poolHistory.pop();
+        }
+        
+        poolHistory.push(PoolSnapshot({
+            timestamp: block.timestamp,
+            userPoolSize: isUserPool ? poolSize : 0,
+            hedgerPoolSize: isUserPool ? 0 : poolSize
+        }));
+    }
 }

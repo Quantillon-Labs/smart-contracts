@@ -228,12 +228,12 @@ contract ChainlinkOracle is
     }
 
     /**
-     * @notice Converts a price from one decimal precision to another
+     * @notice Converts a price from one decimal precision to another with proper rounding
      * 
      * @param price Original price
      * @param fromDecimals Original decimal count (e.g., 8 for Chainlink)
      * @param toDecimals Target decimal count (e.g., 18 for our contracts)
-     * @return Price converted to the new precision
+     * @return Price converted to the new precision with proper rounding
      * 
      * @dev Example: 110000000 (8 decimals) → 1100000000000000000 (18 decimals)
      */
@@ -248,8 +248,17 @@ contract ChainlinkOracle is
             // Increase precision: multiply
             return price * (10 ** (toDecimals - fromDecimals));
         } else {
-            // Decrease precision: divide
-            return price / (10 ** (fromDecimals - toDecimals));
+            // Decrease precision: divide with proper rounding
+            uint256 divisor = 10 ** (fromDecimals - toDecimals);
+            uint256 remainder = price % divisor;
+            uint256 result = price / divisor;
+            
+            // Round up if remainder is >= divisor/2
+            if (remainder >= divisor / 2) {
+                result += 1;
+            }
+            
+            return result;
         }
     }
 

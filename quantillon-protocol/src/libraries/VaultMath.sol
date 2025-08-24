@@ -108,38 +108,75 @@ library VaultMath {
     }
 
     /**
-     * @notice Calculate required collateral for given debt amount
-     * @param debtAmount Debt amount in QEURO
-     * @param eurUsdRate EUR/USD exchange rate
-     * @param collateralRatio Required collateral ratio (e.g., 1.01e18 for 101%)
-     * @return requiredCollateral Required USDC collateral amount
+     * @notice Convert USD amount to EUR using exchange rate with USDC precision handling
+     * @param usdAmount Amount in USD (6 decimals for USDC)
+     * @param eurUsdRate EUR/USD exchange rate (18 decimals)
+     * @return eurAmount Amount in EUR (18 decimals)
      */
-    function calculateRequiredCollateral(
+    function usdToEurWithUsdcPrecision(
+        uint256 usdAmount,
+        uint256 eurUsdRate
+    ) internal pure returns (uint256 eurAmount) {
+        // Convert USDC (6 decimals) to 18 decimals for calculation
+        uint256 usdAmount18 = scaleDecimals(usdAmount, 6, 18);
+        eurAmount = mulDiv(usdAmount18, PRECISION, eurUsdRate);
+    }
+
+    /**
+     * @notice Convert EUR amount to USD using exchange rate with USDC precision handling
+     * @param eurAmount Amount in EUR (18 decimals)
+     * @param eurUsdRate EUR/USD exchange rate (18 decimals)
+     * @return usdAmount Amount in USD (6 decimals for USDC)
+     */
+    function eurToUsdWithUsdcPrecision(
+        uint256 eurAmount,
+        uint256 eurUsdRate
+    ) internal pure returns (uint256 usdAmount) {
+        // Calculate in 18 decimals
+        uint256 usdAmount18 = mulDiv(eurAmount, eurUsdRate, PRECISION);
+        // Convert to USDC precision (6 decimals) with proper rounding
+        usdAmount = scaleDecimals(usdAmount18, 18, 6);
+    }
+
+    /**
+     * @notice Calculate required USDC collateral for given QEURO debt amount
+     * @param debtAmount Debt amount in QEURO (18 decimals)
+     * @param eurUsdRate EUR/USD exchange rate (18 decimals)
+     * @param collateralRatio Required collateral ratio (e.g., 1.01e18 for 101%)
+     * @return requiredCollateral Required USDC collateral amount (6 decimals)
+     */
+    function calculateRequiredUsdcCollateral(
         uint256 debtAmount,
         uint256 eurUsdRate,
         uint256 collateralRatio
     ) internal pure returns (uint256 requiredCollateral) {
-        // Convert QEURO debt to USD value
-        uint256 debtValueUsd = eurToUsd(debtAmount, eurUsdRate);
+        // Convert QEURO debt to USD value in 18 decimals
+        uint256 debtValueUsd18 = eurToUsd(debtAmount, eurUsdRate);
         
-        // Apply collateral ratio
-        requiredCollateral = mulDiv(debtValueUsd, collateralRatio, PRECISION);
+        // Apply collateral ratio in 18 decimals
+        uint256 requiredCollateral18 = mulDiv(debtValueUsd18, collateralRatio, PRECISION);
+        
+        // Convert to USDC precision (6 decimals) with proper rounding
+        requiredCollateral = scaleDecimals(requiredCollateral18, 18, 6);
     }
 
     /**
-     * @notice Calculate maximum debt for given collateral
-     * @param collateralAmount USDC collateral amount
-     * @param eurUsdRate EUR/USD exchange rate
+     * @notice Calculate maximum QEURO debt for given USDC collateral
+     * @param collateralAmount USDC collateral amount (6 decimals)
+     * @param eurUsdRate EUR/USD exchange rate (18 decimals)
      * @param collateralRatio Required collateral ratio
-     * @return maxDebt Maximum QEURO that can be minted
+     * @return maxDebt Maximum QEURO that can be minted (18 decimals)
      */
-    function calculateMaxDebt(
+    function calculateMaxQeuroDebt(
         uint256 collateralAmount,
         uint256 eurUsdRate,
         uint256 collateralRatio
     ) internal pure returns (uint256 maxDebt) {
+        // Convert USDC to 18 decimals for calculation
+        uint256 collateralAmount18 = scaleDecimals(collateralAmount, 6, 18);
+        
         // Calculate max USD debt value based on collateral
-        uint256 maxDebtValueUsd = mulDiv(collateralAmount, PRECISION, collateralRatio);
+        uint256 maxDebtValueUsd = mulDiv(collateralAmount18, PRECISION, collateralRatio);
         
         // Convert to QEURO amount
         maxDebt = usdToEur(maxDebtValueUsd, eurUsdRate);
@@ -211,11 +248,11 @@ library VaultMath {
     }
 
     /**
-     * @notice Scale a value between different decimal precisions
+     * @notice Scale a value between different decimal precisions with proper rounding
      * @param value Original value
      * @param fromDecimals Original decimal places
      * @param toDecimals Target decimal places
-     * @return scaledValue Scaled value
+     * @return scaledValue Scaled value with proper rounding
      */
     function scaleDecimals(
         uint256 value,
@@ -225,9 +262,18 @@ library VaultMath {
         if (fromDecimals == toDecimals) {
             return value;
         } else if (fromDecimals < toDecimals) {
+            // Increase precision: multiply
             scaledValue = value * (10 ** (toDecimals - fromDecimals));
         } else {
-            scaledValue = value / (10 ** (fromDecimals - toDecimals));
+            // Decrease precision: divide with proper rounding
+            uint256 divisor = 10 ** (fromDecimals - toDecimals);
+            uint256 remainder = value % divisor;
+            scaledValue = value / divisor;
+            
+            // Round up if remainder is >= divisor/2
+            if (remainder >= divisor / 2) {
+                scaledValue += 1;
+            }
         }
     }
 

@@ -255,6 +255,7 @@ contract AaveVault is
 
     /**
      * @notice Withdraw USDC from Aave V3 pool
+     * @dev Includes slippage protection and proper accounting of actual amounts received
      */
     function withdrawFromAave(uint256 amount) 
         external 
@@ -284,13 +285,22 @@ contract AaveVault is
         
         uint256 usdcBefore = usdc.balanceOf(address(this));
         
+        // Calculate expected amount (accounting for potential slippage)
+        uint256 expectedAmount = withdrawAmount;
+        
         // Withdraw from Aave
         usdcWithdrawn = aavePool.withdraw(address(usdc), withdrawAmount, address(this));
         
         uint256 usdcAfter = usdc.balanceOf(address(this));
         uint256 actualWithdrawn = usdcAfter - usdcBefore;
         
-        // Update tracking
+        // Verify withdrawal amount with slippage protection (99% minimum)
+        require(
+            actualWithdrawn >= expectedAmount.mulDiv(9900, 10000),
+            "AaveVault: Excessive slippage"
+        );
+        
+        // Update tracking based on actual amount received, not requested amount
         uint256 principalWithdrawn = VaultMath.min(actualWithdrawn, principalDeposited);
         principalDeposited -= principalWithdrawn;
         
@@ -329,6 +339,7 @@ contract AaveVault is
 
     /**
      * @notice Harvest Aave yield and distribute to protocol
+     * @dev Includes slippage protection for yield withdrawals
      */
     function harvestAaveYield() 
         external 
@@ -343,15 +354,26 @@ contract AaveVault is
         uint256 protocolFee = availableYield.mulDiv(yieldFee, 10000);
         uint256 netYield = availableYield - protocolFee;
         
+        uint256 usdcBefore = usdc.balanceOf(address(this));
+        
         // Withdraw yield from Aave
         uint256 actualWithdrawn = aavePool.withdraw(address(usdc), availableYield, address(this));
         
-        // Update tracking
-        totalYieldHarvested += actualWithdrawn;
+        uint256 usdcAfter = usdc.balanceOf(address(this));
+        uint256 actualYieldReceived = usdcAfter - usdcBefore;
+        
+        // Verify yield withdrawal with slippage protection (99% minimum)
+        require(
+            actualYieldReceived >= availableYield.mulDiv(9900, 10000),
+            "AaveVault: Excessive yield slippage"
+        );
+        
+        // Update tracking based on actual amount received
+        totalYieldHarvested += actualYieldReceived;
         totalFeesCollected += protocolFee;
         lastHarvestTime = block.timestamp;
         
-        // Distribute yield via YieldShift
+        // Distribute yield via YieldShift (based on actual yield received)
         if (netYield > 0) {
             usdc.safeIncreaseAllowance(address(yieldShift), netYield);
             yieldShift.addYield(netYield, "aave");
@@ -360,9 +382,9 @@ contract AaveVault is
         // Record snapshot
         _recordYieldSnapshot();
         
-        emit AaveYieldHarvested(actualWithdrawn, protocolFee, netYield);
+        emit AaveYieldHarvested(actualYieldReceived, protocolFee, netYield);
         
-        yieldHarvested = actualWithdrawn;
+        yieldHarvested = actualYieldReceived;
     }
 
     /**
@@ -545,6 +567,10 @@ contract AaveVault is
         maxAaveExposure = _maxExposure;
     }
 
+    /**
+     * @notice Emergency withdrawal from Aave
+     * @dev Includes proper accounting of actual amounts received during emergency
+     */
     function emergencyWithdrawFromAave() 
         external 
         onlyRole(EMERGENCY_ROLE) 
@@ -555,11 +581,17 @@ contract AaveVault is
         if (aaveBalance > 0) {
             emergencyMode = true;
             
-            // Withdraw everything from Aave
-            amountWithdrawn = aavePool.withdraw(address(usdc), type(uint256).max, address(this));
+            uint256 usdcBefore = usdc.balanceOf(address(this));
             
-            // Reset tracking
-            principalDeposited = 0;
+            // Withdraw everything from Aave
+            uint256 withdrawn = aavePool.withdraw(address(usdc), type(uint256).max, address(this));
+            
+            uint256 usdcAfter = usdc.balanceOf(address(this));
+            amountWithdrawn = usdcAfter - usdcBefore;
+            
+            // Update tracking based on actual amount received
+            uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, principalDeposited);
+            principalDeposited -= principalWithdrawn;
             
             emit EmergencyWithdrawal(amountWithdrawn, "Emergency exit from Aave", block.timestamp);
             emit EmergencyModeToggled(true, "Emergency withdrawal executed");

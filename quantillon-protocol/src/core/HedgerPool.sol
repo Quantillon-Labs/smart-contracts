@@ -144,6 +144,10 @@ contract HedgerPool is
     /// @dev Incentivizes hedgers to maintain adequate margin
     uint256 public liquidationPenalty;      // Liquidation penalty (e.g., 2% = 200 bps)
     
+    // Position limits to prevent DoS
+    uint256 public constant MAX_POSITIONS_PER_HEDGER = 50;
+    mapping(address => uint256) public activePositionCount;
+
     // Fee configuration parameters
     /// @notice Fee charged when opening positions (in basis points)
     /// @dev Example: 50 = 0.5% entry fee
@@ -370,6 +374,12 @@ contract HedgerPool is
         require(leverage <= maxLeverage, "HedgerPool: Leverage too high");
         require(leverage > 0, "HedgerPool: Leverage must be positive");
 
+        // Check position limits to prevent DoS
+        require(
+            activePositionCount[msg.sender] < MAX_POSITIONS_PER_HEDGER,
+            "HedgerPool: Too many active positions"
+        );
+
         // Get current EUR/USD price
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "HedgerPool: Invalid EUR/USD price");
@@ -414,6 +424,9 @@ contract HedgerPool is
         hedger.totalExposure += positionSize;
         hedgerPositions[msg.sender].push(positionId);
 
+        // Update active position count
+        activePositionCount[msg.sender]++;
+
         // Update pool totals
         totalMargin += netMargin;
         totalExposure += positionSize;
@@ -438,7 +451,7 @@ contract HedgerPool is
      *      - The P&L is calculated based on the current price.
      *      - An exit fee is charged.
      *      - Hedger info and pool totals are updated.
-     *      - The position is deactivated.
+     *      - The position is deactivated and removed from arrays.
      *      - The payout is transferred to the hedger.
      *      - An event is emitted.
      */
@@ -473,8 +486,12 @@ contract HedgerPool is
         totalMargin -= position.margin;
         totalExposure -= position.positionSize;
 
-        // Deactivate position
+        // Deactivate position and remove from arrays
         position.isActive = false;
+        _removePositionFromArrays(msg.sender, positionId);
+        
+        // Update active position count
+        activePositionCount[msg.sender]--;
 
         // Transfer payout to hedger
         if (netPayout > 0) {
@@ -482,6 +499,35 @@ contract HedgerPool is
         }
 
         emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, block.timestamp);
+    }
+
+    /**
+     * @notice Remove position from hedger arrays to prevent DoS
+     * @param hedger Address of the hedger
+     * @param positionId Position ID to remove
+     */
+    function _removePositionFromArrays(address hedger, uint256 positionId) internal {
+        // Remove from hedger.positionIds array
+        uint256[] storage positionIds = hedgers[hedger].positionIds;
+        for (uint256 i = 0; i < positionIds.length; i++) {
+            if (positionIds[i] == positionId) {
+                // Replace with last element and pop
+                positionIds[i] = positionIds[positionIds.length - 1];
+                positionIds.pop();
+                break;
+            }
+        }
+        
+        // Remove from hedgerPositions array
+        uint256[] storage hedgerPos = hedgerPositions[hedger];
+        for (uint256 i = 0; i < hedgerPos.length; i++) {
+            if (hedgerPos[i] == positionId) {
+                // Replace with last element and pop
+                hedgerPos[i] = hedgerPos[hedgerPos.length - 1];
+                hedgerPos.pop();
+                break;
+            }
+        }
     }
 
     /**
@@ -711,7 +757,7 @@ contract HedgerPool is
      *      - The liquidation reward is calculated.
      *      - The remaining margin is calculated.
      *      - Hedger info and pool totals are updated.
-     *      - The position is deactivated.
+     *      - The position is deactivated and removed from arrays.
      *      - The liquidation reward is transferred to the liquidator.
      *      - The remaining margin is transferred back to the hedger if any.
      *      - An event is emitted.
@@ -757,8 +803,12 @@ contract HedgerPool is
         totalMargin -= position.margin;
         totalExposure -= position.positionSize;
 
-        // Deactivate position
+        // Deactivate position and remove from arrays
         position.isActive = false;
+        _removePositionFromArrays(hedger, positionId);
+        
+        // Update active position count
+        activePositionCount[hedger]--;
 
         // Transfer liquidation reward to liquidator
         usdc.safeTransfer(msg.sender, liquidationReward);
@@ -1131,6 +1181,27 @@ contract HedgerPool is
         marginFee = _marginFee;
     }
 
+    /**
+     * @notice Get position statistics for a hedger
+     * @param hedger Address of the hedger
+     * @return totalPositions Total number of positions (active + inactive)
+     * @return activePositions Number of active positions
+     * @return totalMargin Total margin across all positions
+     * @return totalExposure Total exposure across all positions
+     */
+    function getHedgerPositionStats(address hedger) external view returns (
+        uint256 totalPositions,
+        uint256 activePositions,
+        uint256 totalMargin,
+        uint256 totalExposure
+    ) {
+        HedgerInfo storage hedgerInfo = hedgers[hedger];
+        totalPositions = hedgerInfo.positionIds.length;
+        activePositions = activePositionCount[hedger];
+        totalMargin = hedgerInfo.totalMargin;
+        totalExposure = hedgerInfo.totalExposure;
+    }
+
     // =============================================================================
     // EMERGENCY FUNCTIONS
     // =============================================================================
@@ -1144,7 +1215,7 @@ contract HedgerPool is
      *      - The position must be active.
      *      - Hedger info and pool totals are updated.
      *      - The margin is returned to the hedger.
-     *      - The position is deactivated.
+     *      - The position is deactivated and removed from arrays.
      */
     function emergencyClosePosition(address hedger, uint256 positionId) 
         external 
@@ -1166,8 +1237,12 @@ contract HedgerPool is
         // Return margin to hedger
         usdc.safeTransfer(hedger, position.margin);
 
-        // Deactivate position
+        // Deactivate position and remove from arrays
         position.isActive = false;
+        _removePositionFromArrays(hedger, positionId);
+        
+        // Update active position count
+        activePositionCount[hedger]--;
     }
 
     /**

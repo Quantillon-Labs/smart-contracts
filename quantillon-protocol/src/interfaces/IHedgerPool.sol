@@ -53,11 +53,21 @@ interface IHedgerPool {
     function removeMargin(uint256 positionId, uint256 amount) external;
 
     /**
-     * @notice Liquidate an unsafe position
+     * @notice Commit to a liquidation to prevent front-running
+     * @param hedger Address of the hedger to liquidate
+     * @param positionId Position ID to liquidate
+     * @param salt Random salt for commitment
+     */
+    function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
+
+    /**
+     * @notice Liquidate an unsafe position with front-running protection
      * @param hedger Owner of the position
      * @param positionId Position identifier
+     * @param salt Salt used in the commitment
+     * @return liquidationReward Amount of liquidation reward
      */
-    function liquidateHedger(address hedger, uint256 positionId) external;
+    function liquidateHedger(address hedger, uint256 positionId, bytes32 salt) external returns (uint256 liquidationReward);
 
     /**
      * @notice Claim accumulated hedging rewards
@@ -100,17 +110,32 @@ interface IHedgerPool {
      * @notice Get current margin ratio for a position
      * @param hedger Hedger address
      * @param positionId Position identifier
-     * @return marginRatio Margin ratio in bps
+     * @return Margin ratio in basis points
      */
-    function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256 marginRatio);
+    function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256);
 
     /**
-     * @notice Check if a hedger position is liquidatable
+     * @notice Check if a position is liquidatable
      * @param hedger Hedger address
      * @param positionId Position identifier
      * @return True if liquidatable
      */
     function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool);
+
+    /**
+     * @notice Get position statistics for a hedger
+     * @param hedger Address of the hedger
+     * @return totalPositions Total number of positions (active + inactive)
+     * @return activePositions Number of active positions
+     * @return totalMargin_ Total margin across all positions
+     * @return totalExposure_ Total exposure across all positions
+     */
+    function getHedgerPositionStats(address hedger) external view returns (
+        uint256 totalPositions,
+        uint256 activePositions,
+        uint256 totalMargin_,
+        uint256 totalExposure_
+    );
 
     /**
      * @notice Total hedge exposure in the pool

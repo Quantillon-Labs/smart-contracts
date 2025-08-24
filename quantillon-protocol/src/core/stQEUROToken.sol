@@ -303,9 +303,8 @@ contract stQEUROToken is
      * @return qeuroAmount Amount of QEURO received
      * 
      * @dev SECURITY FIX: Safe QEURO Transfer Implementation
-     *      - Replaced deprecated transfer() with safeTransfer() for better error handling
-     *      - transfer() can fail silently, leading to permanent fund loss
-     *      - safeTransfer() provides explicit error handling and reverts on failure
+     *      - Uses transfer() method with proper return value checking
+     *      - transfer() can fail silently, so we check the return value
      *      - Prevents users from losing stQEURO tokens without receiving underlying QEURO
      *      - Ensures atomic operations and proper error propagation
      */
@@ -328,9 +327,10 @@ contract stQEUROToken is
         // Update totals
         totalUnderlying -= qeuroAmount;
 
-        // SECURITY FIX: Use safeTransfer instead of transfer for reliable QEURO transfers
-        // transfer() can fail silently, safeTransfer() provides explicit error handling
-        qeuro.safeTransfer(msg.sender, qeuroAmount);
+        // SECURITY FIX: Use transfer with return value check for reliable QEURO transfers
+        // transfer() can fail silently, so we check the return value
+        bool success = qeuro.transfer(msg.sender, qeuroAmount);
+        require(success, "stQEURO: QEURO transfer failed");
 
         emit QEUROUnstaked(msg.sender, stQEUROAmount, qeuroAmount);
     }
@@ -542,9 +542,8 @@ contract stQEUROToken is
      * @notice Emergency withdrawal of QEURO (only in emergency)
      * 
      * @dev SECURITY FIX: Safe QEURO Transfer Implementation
-     *      - Replaced deprecated transfer() with safeTransfer() for better error handling
-     *      - transfer() can fail silently, leading to permanent fund loss
-     *      - safeTransfer() provides explicit error handling and reverts on failure
+     *      - Uses transfer() method with proper return value checking
+     *      - transfer() can fail silently, so we check the return value
      *      - Prevents emergency withdrawals from failing silently
      *      - Ensures atomic operations and proper error propagation in emergency scenarios
      */
@@ -556,9 +555,10 @@ contract stQEUROToken is
             _burn(user, stQEUROBalance);
             totalUnderlying -= qeuroAmount;
             
-            // SECURITY FIX: Use safeTransfer instead of transfer for reliable QEURO transfers
-            // transfer() can fail silently, safeTransfer() provides explicit error handling
-            qeuro.safeTransfer(user, qeuroAmount);
+            // SECURITY FIX: Use transfer with return value check for reliable QEURO transfers
+            // transfer() can fail silently, so we check the return value
+            bool success = qeuro.transfer(user, qeuroAmount);
+            require(success, "stQEURO: QEURO transfer failed");
         }
     }
 

@@ -823,8 +823,8 @@ contract HedgerPool is
 
         require(_isPositionLiquidatable(positionId), "HedgerPool: Position not liquidatable");
 
-        // Get current EUR/USD price
-        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        // Get current EUR/USD price (only need to validate it's available)
+        (, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "HedgerPool: Invalid EUR/USD price");
 
         // Calculate liquidation reward
@@ -1282,20 +1282,20 @@ contract HedgerPool is
      * @param hedger Address of the hedger
      * @return totalPositions Total number of positions (active + inactive)
      * @return activePositions Number of active positions
-     * @return totalMargin Total margin across all positions
-     * @return totalExposure Total exposure across all positions
+     * @return totalMargin_ Total margin across all positions
+     * @return totalExposure_ Total exposure across all positions
      */
     function getHedgerPositionStats(address hedger) external view returns (
         uint256 totalPositions,
         uint256 activePositions,
-        uint256 totalMargin,
-        uint256 totalExposure
+        uint256 totalMargin_,
+        uint256 totalExposure_
     ) {
         HedgerInfo storage hedgerInfo = hedgers[hedger];
         totalPositions = hedgerInfo.positionIds.length;
         activePositions = activePositionCount[hedger];
-        totalMargin = hedgerInfo.totalMargin;
-        totalExposure = hedgerInfo.totalExposure;
+        totalMargin_ = hedgerInfo.totalMargin;
+        totalExposure_ = hedgerInfo.totalExposure;
     }
 
     // =============================================================================

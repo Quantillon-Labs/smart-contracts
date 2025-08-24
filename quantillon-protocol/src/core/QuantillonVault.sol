@@ -644,7 +644,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return 0;
-        _updatePriceTimestamp(isValid);
+        // Note: Cannot update timestamp in view function
 
         uint256 debtValue = userDebt[user].mulDiv(eurUsdPrice, 1e18);
         return userCollateral[user].mulDiv(1e18, debtValue);
@@ -670,7 +670,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (isValid && totalMinted > 0) {
-            _updatePriceTimestamp(isValid);
+            // Note: Cannot update timestamp in view function
             totalDebtValue = totalMinted.mulDiv(eurUsdPrice, 1e18);
             globalCollateralRatio = totalCollateralValue.mulDiv(1e18, totalDebtValue);
         } else {
@@ -721,7 +721,7 @@ contract QuantillonVault is
     {
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return (0, 0);
-        _updatePriceTimestamp(isValid);
+        // Note: Cannot update timestamp in view function
 
         qeuroAmount = usdcAmount.mulDiv(1e18, eurUsdPrice);
         
@@ -745,7 +745,7 @@ contract QuantillonVault is
     {
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return (0, 0);
-        _updatePriceTimestamp(isValid);
+        // Note: Cannot update timestamp in view function
 
         uint256 grossUsdcAmount = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
         fee = grossUsdcAmount.mulDiv(protocolFee, 1e18);
@@ -852,7 +852,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return false;
-        _updatePriceTimestamp(isValid);
+        // Note: Cannot update timestamp in view function
 
         uint256 debtValue = userDebt[user].mulDiv(eurUsdPrice, 1e18);
         uint256 collateralRatio = userCollateral[user].mulDiv(1e18, debtValue);
@@ -863,13 +863,12 @@ contract QuantillonVault is
     /**
      * @notice Validates that a collateralization ratio is sufficient
      * 
-     * @param user User address (for future logs)
      * @param collateralAmount USDC collateral amount
      * @param debtAmount QEURO debt amount
      * @return true if the ratio >= required minimum
      */
     function _isValidCollateralRatio(
-        address user,
+        address /* user */,
         uint256 collateralAmount,
         uint256 debtAmount
     ) internal view returns (bool) {
@@ -878,7 +877,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return false;
-        _updatePriceTimestamp(isValid);
+        // Note: Cannot update timestamp in view function
 
         uint256 debtValue = debtAmount.mulDiv(eurUsdPrice, 1e18);
         uint256 collateralRatio = collateralAmount.mulDiv(1e18, debtValue);
@@ -1051,13 +1050,12 @@ contract QuantillonVault is
     /**
      * @notice Retrieves the list of liquidatable users
      * 
-     * @param maxUsers Maximum number of users to return
      * @return liquidatableUsers Addresses of liquidatable users
      * @return debtAmounts Corresponding debts
      * 
      * @dev Gas-expensive function, use off-chain only
      */
-    function getLiquidatableUsers(uint256 maxUsers) 
+    function getLiquidatableUsers(uint256 /* maxUsers */) 
         external 
         view 
         returns (address[] memory liquidatableUsers, uint256[] memory debtAmounts) 
@@ -1094,7 +1092,7 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return (0, 0, false);
-        _updatePriceTimestamp(isValid);
+        // Note: Cannot update timestamp in view function
 
         // Calculations
         uint256 collateralValue = debtToCover.mulDiv(eurUsdPrice, 1e18);

@@ -80,6 +80,21 @@ interface IAaveVault {
     function getAccruedInterest() external view returns (uint256);
 
     /**
+     * @notice Historical yield data for a given period
+     * @param period Time period in seconds
+     * @return totalYield Total yield generated over period
+     * @return averageAPY Average APY over period
+     * @return maxAPY Maximum APY over period
+     * @return minAPY Minimum APY over period
+     */
+    function getHistoricalYield(uint256 period) external view returns (
+        uint256 totalYield,
+        uint256 averageAPY,
+        uint256 maxAPY,
+        uint256 minAPY
+    );
+
+    /**
      * @notice Current Aave APY in basis points
      */
     function getAaveAPY() external view returns (uint256);

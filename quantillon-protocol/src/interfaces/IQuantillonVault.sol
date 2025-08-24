@@ -45,11 +45,20 @@ interface IQuantillonVault {
     function removeCollateral(uint256 amount) external;
 
     /**
-     * @notice Liquidates an undercollateralized user
+     * @notice Commit to a liquidation to prevent front-running
+     * @param user Address of the user to liquidate
+     * @param debtToCover Amount of debt to cover
+     * @param salt Random salt for commitment
+     */
+    function commitLiquidation(address user, uint256 debtToCover, bytes32 salt) external;
+
+    /**
+     * @notice Liquidates an undercollateralized user with front-running protection
      * @param user User to liquidate
      * @param debtToCover Amount of debt to cover
+     * @param salt Salt used in the commitment
      */
-    function liquidate(address user, uint256 debtToCover) external;
+    function liquidate(address user, uint256 debtToCover, bytes32 salt) external;
 
     /**
      * @notice Returns whether a user can be liquidated

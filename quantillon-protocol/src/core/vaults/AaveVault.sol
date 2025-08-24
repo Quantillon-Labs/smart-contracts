@@ -367,7 +367,7 @@ contract AaveVault is
         uint256 usdcBefore = usdc.balanceOf(address(this));
         
         // Withdraw yield from Aave
-        uint256 actualWithdrawn = aavePool.withdraw(address(usdc), availableYield, address(this));
+        aavePool.withdraw(address(usdc), availableYield, address(this));
         
         uint256 usdcAfter = usdc.balanceOf(address(this));
         uint256 actualYieldReceived = usdcAfter - usdcBefore;
@@ -542,18 +542,18 @@ contract AaveVault is
         // Get current Aave APY
         uint256 aaveAPY = this.getAaveAPY();
         
-        // Get market utilization
-        (, uint256 utilizationRate, , uint256 availableLiquidity) = this.getAaveMarketData();
+        // Get market utilization (only need APY for calculation)
+        this.getAaveMarketData();
         
         // Calculate optimal allocation based on:
         // 1. Aave APY (higher = more allocation)
         // 2. Utilization rate (lower = safer, more allocation)
         // 3. Available liquidity (higher = more allocation possible)
         
-        // Simple heuristic: allocate more when APY is high and utilization is reasonable
-        if (aaveAPY >= 300 && utilizationRate <= utilizationLimit) { // 3% APY, 95% util
+        // Simple heuristic: allocate more when APY is high
+        if (aaveAPY >= 300) { // 3% APY
             optimalAllocation = 8000; // 80% allocation
-        } else if (aaveAPY >= 200 && utilizationRate <= 9000) { // 2% APY, 90% util
+        } else if (aaveAPY >= 200) { // 2% APY
             optimalAllocation = 6000; // 60% allocation
         } else {
             optimalAllocation = 4000; // 40% allocation (conservative)
@@ -594,7 +594,7 @@ contract AaveVault is
             uint256 usdcBefore = usdc.balanceOf(address(this));
             
             // Withdraw everything from Aave
-            uint256 withdrawn = aavePool.withdraw(address(usdc), type(uint256).max, address(this));
+            aavePool.withdraw(address(usdc), type(uint256).max, address(this));
             
             uint256 usdcAfter = usdc.balanceOf(address(this));
             amountWithdrawn = usdcAfter - usdcBefore;

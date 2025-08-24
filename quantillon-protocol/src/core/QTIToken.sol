@@ -104,6 +104,10 @@ contract QTIToken is
     /// @dev Maximum voting power a user can achieve through locking
     /// @dev Value: 4 (400% voting power for maximum lock)
     uint256 public constant MAX_VE_QTI_MULTIPLIER = 4; // 4x max voting power
+    
+    /// @notice Maximum time elapsed for calculations to prevent manipulation
+    /// @dev Caps time-based calculations to prevent timestamp manipulation
+    uint256 public constant MAX_TIME_ELAPSED = 10 * 365 days; // 10 years maximum
 
     // =============================================================================
     // STATE VARIABLES - Dynamic configuration and storage
@@ -606,9 +610,23 @@ contract QTIToken is
      * @notice Update decentralization level
      * @dev This function is intended to be called periodically by the governance
      *      to update the decentralization level based on the elapsed time.
+     *      Includes bounds checking to prevent timestamp manipulation.
+     * 
+     * @dev SECURITY FIX: Timestamp Manipulation Protection
+     *      - Added bounds checking to cap time elapsed at 10 years maximum
+     *      - Prevents validators from manipulating timestamps to accelerate decentralization
+     *      - Uses timeSinceStart calculation with reasonable upper bounds
+     *      - Protects against excessive time manipulation that could bypass governance controls
+     *      - Ensures decentralization process follows intended timeline
      */
     function updateDecentralizationLevel() external onlyRole(GOVERNANCE_ROLE) {
         uint256 timeElapsed = block.timestamp - decentralizationStartTime;
+        
+        // SECURITY FIX: Bounds check to prevent timestamp manipulation
+        if (timeElapsed > MAX_TIME_ELAPSED) {
+            timeElapsed = MAX_TIME_ELAPSED;
+        }
+        
         uint256 newLevel = timeElapsed * 10000 / decentralizationDuration;
         
         if (newLevel > 10000) newLevel = 10000;

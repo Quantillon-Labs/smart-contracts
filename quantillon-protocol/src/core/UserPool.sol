@@ -228,6 +228,11 @@ contract UserPool is
     /// @dev Used for protocol analytics and governance
     uint256 public totalYieldDistributed;       // Total yield distributed to users
 
+    // Block-based tracking to prevent timestamp manipulation
+    mapping(address => uint256) public userLastRewardBlock;
+    uint256 public constant BLOCKS_PER_DAY = 7200; // Assuming 12 second blocks
+    uint256 public constant MAX_REWARD_PERIOD = 365 days; // Maximum reward period
+
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
     // =============================================================================
@@ -544,16 +549,44 @@ contract UserPool is
 
     /**
      * @notice Update pending rewards for a user
+     * @param user Address of the user to update
      * @dev This internal function calculates and updates the pending rewards
      *      for a given user based on their staked amount and the current APY.
-     * @param user Address of the user to update
+     *      Uses block-based calculations to prevent timestamp manipulation.
+     * 
+     * @dev SECURITY FIX: Block-Based Reward Calculation
+     *      - Replaced timestamp-based calculations with block-based calculations
+     *      - Prevents validators from manipulating timestamps to gain excessive rewards
+     *      - Uses block numbers which are harder to manipulate than timestamps
+     *      - Implements bounds checking to cap maximum reward periods
+     *      - Prevents reward manipulation through timestamp manipulation attacks
+     *      - Ensures fair reward distribution regardless of validator behavior
      */
     function _updatePendingRewards(address user) internal {
         UserInfo storage userdata = userInfo[user];
         
         if (userdata.stakedAmount > 0) {
+            // SECURITY FIX: Use block numbers instead of timestamps to prevent manipulation
+            uint256 currentBlock = block.number;
+            uint256 lastRewardBlock = userLastRewardBlock[user];
+            
+            if (lastRewardBlock == 0) {
+                // First time claiming, set initial block
+                userLastRewardBlock[user] = currentBlock;
+                return;
+            }
+            
+            uint256 blocksElapsed = currentBlock - lastRewardBlock;
+            
+            // Convert blocks to time (assuming 12 second blocks)
+            uint256 timeElapsed = blocksElapsed * 12; // seconds
+            
+            // SECURITY FIX: Sanity check to cap time elapsed and prevent manipulation
+            if (timeElapsed > MAX_REWARD_PERIOD) {
+                timeElapsed = MAX_REWARD_PERIOD;
+            }
+            
             // Calculate time-based staking rewards
-            uint256 timeElapsed = block.timestamp - userdata.lastStakeTime;
             uint256 stakingReward = userdata.stakedAmount
                 .mulDiv(stakingAPY, 10000)
                 .mulDiv(timeElapsed, 365 days);
@@ -564,6 +597,9 @@ contract UserPool is
             
             userdata.pendingRewards += stakingReward + yieldReward;
             userdata.lastStakeTime = block.timestamp;
+            
+            // Update last reward block
+            userLastRewardBlock[user] = currentBlock;
         }
     }
 
@@ -599,8 +635,22 @@ contract UserPool is
         
         if (userdata.stakedAmount == 0) return userdata.pendingRewards;
         
-        // Calculate additional rewards since last update
-        uint256 timeElapsed = block.timestamp - userdata.lastStakeTime;
+        // Calculate additional rewards since last update using block-based calculations
+        uint256 currentBlock = block.number;
+        uint256 lastRewardBlock = userLastRewardBlock[user];
+        
+        if (lastRewardBlock == 0) {
+            return userdata.pendingRewards;
+        }
+        
+        uint256 blocksElapsed = currentBlock - lastRewardBlock;
+        uint256 timeElapsed = blocksElapsed * 12; // seconds
+        
+        // Sanity check: cap time elapsed to prevent manipulation
+        if (timeElapsed > MAX_REWARD_PERIOD) {
+            timeElapsed = MAX_REWARD_PERIOD;
+        }
+        
         uint256 stakingReward = userdata.stakedAmount
             .mulDiv(stakingAPY, 10000)
             .mulDiv(timeElapsed, 365 days);

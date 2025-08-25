@@ -1,5 +1,5 @@
 # IQuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/4d3170885df83eecbf67e05b6ea483fa86f0b926/src/interfaces/IQuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/a0c4605b79826572de49aa1618715c7e4813adad/src/interfaces/IQuantillonVault.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Interface for the Quantillon vault managing QEURO mint/redeem against USDC
 *Exposes core swap functions, views, governance, emergency, and recovery*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions

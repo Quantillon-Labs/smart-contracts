@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/4d3170885df83eecbf67e05b6ea483fa86f0b926/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/a0c4605b79826572de49aa1618715c7e4813adad/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -59,7 +59,7 @@ Main vault managing QEURO minting against USDC collateral
 - Vault math library for precise calculations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -222,7 +222,7 @@ uint256 private lastPriceUpdateTime;
 ### constructor
 
 **Note:**
-oz-upgrades-unsafe-allow: constructor
+constructor
 
 
 ```solidity

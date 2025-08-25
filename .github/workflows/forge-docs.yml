@@ -38,6 +38,10 @@ jobs:
           cd quantillon-protocol
           rm -rf docs
           forge doc --out docs
+          echo "== top of docs =="
+          ls -la docs
+          echo "== site root (docs/book) =="
+          ls -la docs/book          
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -47,7 +51,7 @@ jobs:
       - name: Post-process HTML
         run: |
           cd quantillon-protocol
-          node tools/doc-postprocess.mjs ./docs
+          node tools/doc-postprocess.mjs ./docs/book
 
       # REQUIRED by GitHub Pages before uploading the artifact
       - name: Configure Pages

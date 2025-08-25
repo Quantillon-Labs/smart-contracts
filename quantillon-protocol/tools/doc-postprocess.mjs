@@ -86,6 +86,14 @@ function patchHtml(file) {
     );
   }
 
+  // inject analytics script
+  if (!html.includes("stats.quantillon.money") && html.includes("</head>")) {
+    html = html.replace(
+      "</head>",
+      `  <script defer src="https://stats.quantillon.money/script.js" data-website-id="4ac570c4-7635-41b2-a470-91fe45020b5a"></script>\n</head>`
+    );
+  }
+
   // inject header (after <body>)
   if (!html.includes('class="site" style="padding:14px') && html.includes("<body")) {
     html = html.replace(/<body[^>]*>/, (match) => `${match}\n${HEADER_HTML}`);

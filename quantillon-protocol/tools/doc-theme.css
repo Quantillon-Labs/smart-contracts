@@ -89,6 +89,51 @@
     z-index: 1001 !important;
   }
   
+  /* Fix unreadable text colors */
+  .hljs,
+  :not(pre):not(a) > .hljs {
+    color: #d6deeb !important;
+    background: #0e1117 !important;
+  }
+  
+  /* Fix inline code readability */
+  code:not(pre code) {
+    color: #d6deeb !important;
+    background: #0e1117 !important;
+    border: 1px solid var(--border) !important;
+    padding: 0.1em 0.3em !important;
+    border-radius: 3px !important;
+  }
+  
+  /* Fix any other potentially unreadable text */
+  .hljs-keyword,
+  .hljs-string,
+  .hljs-comment,
+  .hljs-function,
+  .hljs-variable,
+  .hljs-number,
+  .hljs-type,
+  .hljs-operator,
+  .hljs-punctuation {
+    color: #d6deeb !important;
+  }
+  
+  /* Ensure all text elements are readable */
+  p, div, span, li, td, th {
+    color: var(--fg) !important;
+  }
+  
+  /* Fix any dark text on dark background */
+  * {
+    color: inherit;
+  }
+  
+  /* Override any problematic color inheritances */
+  body * {
+    color: var(--fg) !important;
+  }
+  
+  /* Specific overrides for code elements */
   code, pre {
     background: #0e1117 !important;
     color: #d6deeb !important;
@@ -103,6 +148,7 @@
   th, td {
     border: 1px solid var(--border);
     padding: 8px 10px;
+    color: var(--fg) !important;
   }
   
   header.site, .navbar, .sidebar, .footer, .toc, .menu {

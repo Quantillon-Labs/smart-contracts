@@ -36,6 +36,7 @@ jobs:
       - name: Generate docs
         run: |
           cd quantillon-protocol
+          rm -rf docs
           forge doc --out docs
 
       - name: Setup Node

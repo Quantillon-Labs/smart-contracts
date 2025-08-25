@@ -15,7 +15,7 @@ const FAVICON_PNG = "favicon.png"; // our PNG favicon
 // simple header/footer html (edit to match Quantillon)
 const HEADER_HTML = `
 <header class="site" style="padding:14px 18px;border-bottom:1px solid #232834;display:flex;gap:14px;align-items:center;">
-  <a href="/" style="font-weight:700;color:#e7b563;">Quantillon Docs</a>
+  <a href="./" style="font-weight:700;color:#e7b563;">Quantillon Protocol's smart-contracts docs</a>
   <nav style="margin-left:auto;display:flex;gap:16px;">
     <a href="https://quantillon.money" target="_blank" rel="noreferrer">Website</a>
     <a href="https://app.quantillon.money" target="_blank" rel="noreferrer">App</a>
@@ -74,7 +74,7 @@ function patchHtml(file) {
   if (!html.includes(THEME_REL)) {
     html = html.replace(
       "</head>",
-      `  <link rel="stylesheet" href="/${THEME_REL}">\n</head>`
+      `  <link rel="stylesheet" href="${THEME_REL}">\n</head>`
     );
   }
 

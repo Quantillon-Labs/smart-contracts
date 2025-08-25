@@ -1,0 +1,46 @@
+:root {
+    --bg: #0b0d10;
+    --bg-soft: #111418;
+    --fg: #e6e6e6;
+    --muted: #a7b0bf;
+    --brand: #e7b563; /* Quantillon gold-ish */
+    --link: #e7b563;
+    --border: #232834;
+    --card: #0f1216;
+  }
+  
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.6;
+  }
+  
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  
+  code, pre {
+    background: #0e1117 !important;
+    color: #d6deeb !important;
+    border: 1px solid var(--border) !important;
+  }
+  
+  table {
+    border-collapse: collapse;
+    background: var(--card);
+    border: 1px solid var(--border);
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+  }
+  
+  header.site, .navbar, .sidebar, .footer, .toc, .menu {
+    background: var(--bg-soft) !important;
+    border-color: var(--border) !important;
+    color: var(--fg) !important;
+  }
+  
+  /* Optional: highlight contract titles */
+  h1, h2, h3 { color: var(--fg); }
+  h1 { border-bottom: 1px solid var(--border); padding-bottom: .4rem; }
+  

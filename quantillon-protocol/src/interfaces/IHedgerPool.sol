@@ -70,13 +70,13 @@ interface IHedgerPool {
     function liquidateHedger(address hedger, uint256 positionId, bytes32 salt) external returns (uint256 liquidationReward);
 
     /**
-     * @notice Claim accumulated hedging rewards
-     * @param hedger Hedger address
+     * @notice Claim accumulated hedging rewards (only own rewards)
      * @return interestDifferential Interest differential amount
      * @return yieldShiftRewards Rewards from YieldShift
      * @return totalRewards Total rewards claimed
+     * @dev SECURITY: Only hedgers can claim their own rewards (msg.sender == hedger)
      */
-    function claimHedgingRewards(address hedger) external returns (
+    function claimHedgingRewards() external returns (
         uint256 interestDifferential,
         uint256 yieldShiftRewards,
         uint256 totalRewards
@@ -241,4 +241,37 @@ interface IHedgerPool {
      * @notice Whether hedging operations are active (not paused)
      */
     function isHedgingActive() external view returns (bool);
+
+    /**
+     * @notice Check if a hedger has pending liquidation commitments
+     * @param hedger Address of the hedger
+     * @param positionId Position ID to check
+     * @return bool True if there are pending liquidation commitments
+     * 
+     * @dev SECURITY FIX: Enhanced Front-Running Protection
+     *      - Allows external checking of pending liquidation commitments
+     *      - Useful for frontend applications and monitoring systems
+     *      - Helps users understand when they cannot add margin
+     */
+    function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
+
+    /**
+     * @notice Clear expired liquidation commitments for a hedger/position
+     * @param hedger Address of the hedger
+     * @param positionId Position ID
+     * @dev This function allows clearing of expired commitments that were never executed
+     * @dev Only callable by liquidators or governance
+     * @dev Note: With immediate execution, this is mainly for cleanup of stale commitments
+     */
+    function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
+
+    /**
+     * @notice Cancel a liquidation commitment (only by the liquidator who created it)
+     * @param hedger Address of the hedger
+     * @param positionId Position ID
+     * @param salt Salt used in the original commitment
+     * @dev This function allows liquidators to cancel their own commitments
+     * @dev Only callable by the liquidator who created the commitment
+     */
+    function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;
 } 

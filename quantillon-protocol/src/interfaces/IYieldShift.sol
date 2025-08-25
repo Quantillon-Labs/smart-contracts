@@ -209,4 +209,19 @@ interface IYieldShift {
      * @notice Check if an update to yield distribution is needed and apply if so
      */
     function checkAndUpdateYieldDistribution() external;
+
+    /**
+     * @notice Update the last deposit time for a user (for TWAP calculations)
+     * @param user Address of the user
+     * @dev This function is called by the user pool when users deposit
+     * @dev Used for time-weighted average calculations
+     */
+    function updateLastDepositTime(address user) external;
+
+    /**
+     * @notice Force update yield distribution (governance only)
+     * @dev This function allows governance to force an update to yield distribution
+     * @dev Only callable by governance role
+     */
+    function forceUpdateYieldDistribution() external;
 } 

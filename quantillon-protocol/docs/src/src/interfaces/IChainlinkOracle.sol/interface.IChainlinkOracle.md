@@ -1,5 +1,5 @@
 # IChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/interfaces/IChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/interfaces/IChainlinkOracle.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Interface for the Quantillon Chainlink-based oracle
 *Exposes read methods for prices and health, plus admin/emergency controls*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions

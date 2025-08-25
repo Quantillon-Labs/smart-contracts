@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -63,7 +63,7 @@ Manages QEURO user deposits, staking, and yield distribution
 - Vault math library for calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -353,6 +353,27 @@ uint256 public totalYieldDistributed;
 ```
 
 
+### userLastRewardBlock
+
+```solidity
+mapping(address => uint256) public userLastRewardBlock;
+```
+
+
+### BLOCKS_PER_DAY
+
+```solidity
+uint256 public constant BLOCKS_PER_DAY = 7200;
+```
+
+
+### MAX_REWARD_PERIOD
+
+```solidity
+uint256 public constant MAX_REWARD_PERIOD = 365 days;
+```
+
+
 ## Functions
 ### constructor
 
@@ -516,7 +537,8 @@ function distributeYield(uint256 yieldAmount) external;
 Update pending rewards for a user
 
 *This internal function calculates and updates the pending rewards
-for a given user based on their staked amount and the current APY.*
+for a given user based on their staked amount and the current APY.
+Uses block-based calculations to prevent timestamp manipulation.*
 
 
 ```solidity

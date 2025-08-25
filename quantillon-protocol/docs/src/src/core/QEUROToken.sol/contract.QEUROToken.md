@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -33,7 +33,7 @@ Euro-pegged stablecoin token for the Quantillon protocol
 - Peg: 1:1 with Euro (managed by vault operations)*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -275,7 +275,7 @@ uint256 public minPricePrecision;
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -384,7 +384,8 @@ Checks and updates mint rate limit
 - Resets rate limit if an hour has passed
 - Checks if the new amount would exceed the rate limit
 - Updates the current hour minted amount
-- Throws an error if rate limit is exceeded*
+- Throws an error if rate limit is exceeded
+- Includes bounds checking to prevent timestamp manipulation*
 
 
 ```solidity
@@ -407,7 +408,8 @@ Checks and updates burn rate limit
 - Resets rate limit if an hour has passed
 - Checks if the new amount would exceed the rate limit
 - Updates the current hour burned amount
-- Throws an error if rate limit is exceeded*
+- Throws an error if rate limit is exceeded
+- Includes bounds checking to prevent timestamp manipulation*
 
 
 ```solidity
@@ -809,7 +811,8 @@ Gets current rate limit status
 *Security considerations:
 - Returns current hour amounts if within the hour
 - Returns zeros if an hour has passed
-- Returns current limits and next reset time*
+- Returns current limits and next reset time
+- Includes bounds checking to prevent timestamp manipulation*
 
 
 ```solidity
@@ -920,16 +923,13 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recovers ETH accidentally sent to the contract
-
-*Although token contracts normally don't receive ETH,
-this function allows recovery in case of accidental sending*
+Recovers ETH accidentally sent
 
 *Security considerations:
 - Only DEFAULT_ADMIN_ROLE can recover
 - Prevents sending to zero address
-- Validates balance
-- Uses transfer() for direct ETH transfer*
+- Validates balance before attempting transfer
+- Uses call() for reliable ETH transfers to any contract*
 
 
 ```solidity
@@ -939,7 +939,7 @@ function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`to`|`address payable`|Address to send ETH to|
+|`to`|`address payable`|ETH recipient|
 
 
 ### updateMaxSupply

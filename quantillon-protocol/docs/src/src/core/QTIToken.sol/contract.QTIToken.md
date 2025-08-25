@@ -1,5 +1,5 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -46,7 +46,7 @@ Governance token for Quantillon Protocol with vote-escrow mechanics
 - Governance power: Based on locked amount and duration*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -138,6 +138,17 @@ Maximum voting power multiplier (4x)
 
 ```solidity
 uint256 public constant MAX_VE_QTI_MULTIPLIER = 4;
+```
+
+
+### MAX_TIME_ELAPSED
+Maximum time elapsed for calculations to prevent manipulation
+
+*Caps time-based calculations to prevent timestamp manipulation*
+
+
+```solidity
+uint256 public constant MAX_TIME_ELAPSED = 10 * 365 days;
 ```
 
 
@@ -367,7 +378,7 @@ function unlock() external returns (uint256 amount);
 
 ### getVotingPower
 
-Get voting power for an address
+Get voting power for an address with linear decay
 
 
 ```solidity
@@ -383,7 +394,22 @@ function getVotingPower(address user) external view returns (uint256 votingPower
 
 |Name|Type|Description|
 |----|----|-----------|
-|`votingPower`|`uint256`|Current voting power of the user|
+|`votingPower`|`uint256`|Current voting power of the user (decays linearly over time)|
+
+
+### updateVotingPower
+
+Update voting power for the caller based on current time
+
+
+```solidity
+function updateVotingPower() external returns (uint256 newVotingPower);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newVotingPower`|`uint256`|Updated voting power|
 
 
 ### getLockInfo
@@ -395,7 +421,14 @@ Get lock info for an address
 function getLockInfo(address user)
     external
     view
-    returns (uint256 amount, uint256 unlockTime, uint256 votingPower, uint256 lastClaimTime);
+    returns (
+        uint256 amount,
+        uint256 unlockTime,
+        uint256 votingPower,
+        uint256 lastClaimTime,
+        uint256 initialVotingPower,
+        uint256 lockTime
+    );
 ```
 **Parameters**
 
@@ -411,6 +444,8 @@ function getLockInfo(address user)
 |`unlockTime`|`uint256`|Timestamp when lock expires|
 |`votingPower`|`uint256`|Current voting power|
 |`lastClaimTime`|`uint256`|Last claim time (for future use)|
+|`initialVotingPower`|`uint256`|Initial voting power when locked|
+|`lockTime`|`uint256`|Original lock duration|
 
 
 ### createProposal
@@ -590,7 +625,8 @@ function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE);
 Update decentralization level
 
 *This function is intended to be called periodically by the governance
-to update the decentralization level based on the elapsed time.*
+to update the decentralization level based on the elapsed time.
+Includes bounds checking to prevent timestamp manipulation.*
 
 
 ```solidity
@@ -616,6 +652,27 @@ function _calculateVotingPowerMultiplier(uint256 lockTime) internal pure returns
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|multiplier Voting power multiplier|
+
+
+### _updateVotingPower
+
+Update voting power for a user based on current time
+
+
+```solidity
+function _updateVotingPower(address user) internal returns (uint256 newVotingPower);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user to update|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newVotingPower`|`uint256`|Updated voting power|
 
 
 ### decimals
@@ -830,6 +887,8 @@ struct LockInfo {
     uint256 unlockTime;
     uint256 votingPower;
     uint256 lastClaimTime;
+    uint256 initialVotingPower;
+    uint256 lockTime;
 }
 ```
 

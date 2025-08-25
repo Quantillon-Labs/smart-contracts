@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -17,7 +17,7 @@ EUR/USD and USDC/USD price manager for Quantillon Protocol
 - Data freshness checks*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -163,7 +163,7 @@ uint256 public usdcToleranceBps;
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -202,6 +202,28 @@ Removes pause and resumes oracle operations
 function unpause() external onlyRole(EMERGENCY_ROLE);
 ```
 
+### _divRound
+
+Performs division with proper rounding to nearest integer
+
+
+```solidity
+function _divRound(uint256 a, uint256 b) internal pure returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`a`|`uint256`|Numerator|
+|`b`|`uint256`|Denominator|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Result of division with rounding to nearest|
+
+
 ### _updatePrices
 
 Updates and validates internal prices
@@ -215,27 +237,24 @@ function _updatePrices() internal;
 
 ### _scalePrice
 
-Converts a price from one decimal precision to another
-
-*Example: 110000000 (8 decimals) → 1100000000000000000 (18 decimals)*
+Scale price to 8 decimals for consistency
 
 
 ```solidity
-function _scalePrice(uint256 price, uint8 fromDecimals, uint8 toDecimals) internal pure returns (uint256);
+function _scalePrice(int256 rawPrice, uint8 decimals) internal pure returns (uint256);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`price`|`uint256`|Original price|
-|`fromDecimals`|`uint8`|Original decimal count (e.g., 8 for Chainlink)|
-|`toDecimals`|`uint8`|Target decimal count (e.g., 18 for our contracts)|
+|`rawPrice`|`int256`|Raw price from Chainlink|
+|`decimals`|`uint8`|Number of decimals in raw price|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|Price converted to the new precision|
+|`<none>`|`uint256`|Scaled price with 8 decimals|
 
 
 ### getOracleHealth
@@ -377,7 +396,13 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recovers ETH accidentally sent to the contract
+Recovers ETH accidentally sent to the oracle contract
+
+*Security considerations:
+- Only DEFAULT_ADMIN_ROLE can recover
+- Prevents sending to zero address
+- Validates balance before attempting transfer
+- Uses call() for reliable ETH transfers to any contract*
 
 
 ```solidity
@@ -387,7 +412,7 @@ function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`to`|`address payable`|Recipient of the ETH|
+|`to`|`address payable`|Recipient address|
 
 
 ### resetCircuitBreaker

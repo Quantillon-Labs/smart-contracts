@@ -206,11 +206,7 @@ contract ChainlinkOracle is
      * @param b Denominator
      * @return Result of division with rounding to nearest
      * 
-     * @dev SECURITY FIX: Proper Rounding Implementation
-     *      - Prevents systematic bias in favor of the protocol
-     *      - Ensures fair price calculations for users
-     *      - Uses (a + b/2) / b formula for proper rounding
-     *      - Eliminates truncation bias that could extract value from users
+
      */
     function _divRound(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b > 0, "Oracle: Division by zero");
@@ -251,12 +247,7 @@ contract ChainlinkOracle is
      * @param decimals Number of decimals in raw price
      * @return Scaled price with 8 decimals
      * 
-     * @dev SECURITY FIX: Proper Price Rounding Implementation
-     *      - Replaced integer division (truncation) with proper rounding
-     *      - Integer division causes systematic rounding errors that favor one party over another
-     *      - Proper rounding ensures fair price representation for all users
-     *      - Prevents cumulative precision loss in repeated operations
-     *      - Ensures price accuracy for critical financial calculations
+
      */
     function _scalePrice(int256 rawPrice, uint8 decimals) internal pure returns (uint256) {
         if (rawPrice <= 0) return 0;
@@ -490,12 +481,7 @@ contract ChainlinkOracle is
      * @notice Recovers ETH accidentally sent to the oracle contract
      * @param to Recipient address
      * 
-     * @dev SECURITY FIX: Safe ETH Transfer Implementation
-     *      - Replaced deprecated transfer() with call() pattern for better gas handling
-     *      - transfer() has 2300 gas stipend limitation that can cause failures with complex contracts
-     *      - call() provides flexible gas provision and better error handling
-     *      - Prevents ETH from being permanently locked in contract due to gas limitations
-     *      - Includes explicit success check to ensure transfer completion
+
      * 
      * @dev Security considerations:
      *      - Only DEFAULT_ADMIN_ROLE can recover

@@ -1,5 +1,5 @@
 # IQEURO
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/interfaces/IQEURO.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/interfaces/IQEURO.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Minimal interface for the QEURO token used by the vault
 *Exposes only the functions the vault needs (mint/burn) and basic views*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions

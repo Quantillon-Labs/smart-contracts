@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -179,6 +179,13 @@ uint256 public constant MAX_YIELD_HISTORY = 365;
 ```
 
 
+### MAX_TIME_ELAPSED
+
+```solidity
+uint256 public constant MAX_TIME_ELAPSED = 365 days;
+```
+
+
 ## Functions
 ### constructor
 
@@ -218,6 +225,8 @@ function deployToAave(uint256 amount)
 
 Withdraw USDC from Aave V3 pool
 
+*Includes comprehensive validation and proper accounting of actual amounts received*
+
 
 ```solidity
 function withdrawFromAave(uint256 amount)
@@ -239,6 +248,8 @@ function claimAaveRewards() external onlyRole(VAULT_MANAGER_ROLE) nonReentrant r
 ### harvestAaveYield
 
 Harvest Aave yield and distribute to protocol
+
+*Includes slippage protection for yield withdrawals*
 
 
 ```solidity
@@ -340,6 +351,10 @@ function setMaxAaveExposure(uint256 _maxExposure) external onlyRole(GOVERNANCE_R
 ```
 
 ### emergencyWithdrawFromAave
+
+Emergency withdrawal from Aave
+
+*Includes proper accounting of actual amounts received during emergency*
 
 
 ```solidity

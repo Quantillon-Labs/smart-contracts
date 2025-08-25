@@ -1,15 +1,15 @@
 # IQuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/interfaces/IQuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/interfaces/IQuantillonVault.sol)
 
 **Author:**
 Quantillon Labs
 
 Interface for the Quantillon vault managing QEURO mint/redeem against USDC
 
-*Exposes core actions, liquidation, views, governance, emergency, and recovery*
+*Exposes core swap functions, views, governance, emergency, and recovery*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -33,7 +33,7 @@ function initialize(address admin, address _qeuro, address _usdc, address _oracl
 
 ### mintQEURO
 
-Mints QEURO by depositing USDC
+Mints QEURO by swapping USDC
 
 
 ```solidity
@@ -43,7 +43,7 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC to deposit|
+|`usdcAmount`|`uint256`|Amount of USDC to swap|
 |`minQeuroOut`|`uint256`|Minimum QEURO expected (slippage protection)|
 
 
@@ -59,171 +59,55 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to burn|
+|`qeuroAmount`|`uint256`|Amount of QEURO to swap|
 |`minUsdcOut`|`uint256`|Minimum USDC expected|
 
 
-### addCollateral
+### getVaultMetrics
 
-Adds USDC collateral
-
-
-```solidity
-function addCollateral(uint256 amount) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|Amount of USDC to add|
-
-
-### removeCollateral
-
-Removes USDC collateral if safe
+Retrieves the vault's global metrics
 
 
 ```solidity
-function removeCollateral(uint256 amount) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|Amount of USDC to remove|
-
-
-### liquidate
-
-Liquidates an undercollateralized user
-
-
-```solidity
-function liquidate(address user, uint256 debtToCover) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|User to liquidate|
-|`debtToCover`|`uint256`|Amount of debt to cover|
-
-
-### isUserLiquidatable
-
-Returns whether a user can be liquidated
-
-
-```solidity
-function isUserLiquidatable(address user) external view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|True if liquidatable|
-
-
-### getUserCollateralRatio
-
-User collateralization ratio
-
-
-```solidity
-function getUserCollateralRatio(address user) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Ratio with 18 decimals|
-
-
-### getVaultHealth
-
-Global vault health metrics
-
-
-```solidity
-function getVaultHealth()
+function getVaultMetrics()
     external
     view
-    returns (uint256 totalCollateralValue, uint256 totalDebtValue, uint256 globalCollateralRatio);
+    returns (uint256 totalUsdcHeld_, uint256 totalMinted_, uint256 totalDebtValue);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`totalCollateralValue`|`uint256`|Total USDC collateral|
-|`totalDebtValue`|`uint256`|Total QEURO debt valued in USDC|
-|`globalCollateralRatio`|`uint256`|Global ratio with 18 decimals|
-
-
-### getUserInfo
-
-Detailed user info
-
-
-```solidity
-function getUserInfo(address user)
-    external
-    view
-    returns (uint256 collateral, uint256 debt, uint256 collateralRatio, bool isLiquidatable, bool liquidated);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`collateral`|`uint256`|User USDC collateral|
-|`debt`|`uint256`|User QEURO debt|
-|`collateralRatio`|`uint256`|Current ratio with 18 decimals|
-|`isLiquidatable`|`bool`|Whether the user can be liquidated|
-|`liquidated`|`bool`|Liquidation status flag|
+|`totalUsdcHeld_`|`uint256`|Total USDC held in the vault|
+|`totalMinted_`|`uint256`|Total QEURO minted|
+|`totalDebtValue`|`uint256`|Total debt value in USD|
 
 
 ### calculateMintAmount
 
-Computes QEURO mint amount for a USDC deposit
+Computes QEURO mint amount for a USDC swap
 
 
 ```solidity
-function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 collateralRatio);
+function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcAmount`|`uint256`|USDC to deposit|
+|`usdcAmount`|`uint256`|USDC to swap|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroAmount`|`uint256`|Expected QEURO to mint|
-|`collateralRatio`|`uint256`|Resulting ratio|
+|`qeuroAmount`|`uint256`|Expected QEURO to mint (after fees)|
+|`fee`|`uint256`|Protocol fee|
 
 
 ### calculateRedeemAmount
 
-Computes USDC redemption amount for a QEURO burn
+Computes USDC redemption amount for a QEURO swap
 
 
 ```solidity
@@ -233,7 +117,7 @@ function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint2
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroAmount`|`uint256`|QEURO to redeem|
+|`qeuroAmount`|`uint256`|QEURO to swap|
 
 **Returns**
 
@@ -249,31 +133,14 @@ Updates vault parameters
 
 
 ```solidity
-function updateParameters(uint256 _minCollateralRatio, uint256 _liquidationThreshold, uint256 _liquidationPenalty)
-    external;
+function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_minCollateralRatio`|`uint256`|New minimum ratio (>= 100%)|
-|`_liquidationThreshold`|`uint256`|New liquidation threshold (<= min)|
-|`_liquidationPenalty`|`uint256`|New liquidation penalty (<= 20%)|
-
-
-### updateProtocolFee
-
-Updates the protocol fee
-
-
-```solidity
-function updateProtocolFee(uint256 _protocolFee) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_protocolFee`|`uint256`|New fee (e.g., 1e15 = 0.1%)|
+|`_mintFee`|`uint256`|New minting fee|
+|`_redemptionFee`|`uint256`|New redemption fee|
 
 
 ### updateOracle
@@ -323,22 +190,6 @@ Unpauses the vault
 ```solidity
 function unpause() external;
 ```
-
-### emergencyLiquidate
-
-Emergency liquidation bypassing normal checks
-
-
-```solidity
-function emergencyLiquidate(address user, uint256 debtToCover) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|User to liquidate|
-|`debtToCover`|`uint256`|Debt to cover|
-
 
 ### recoverToken
 

@@ -1,5 +1,5 @@
 # IQTI
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/interfaces/IQTI.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/interfaces/IQTI.sol)
 
 **Author:**
 Quantillon Labs
@@ -7,7 +7,7 @@ Quantillon Labs
 Interface for the QTI governance token with vote-escrow mechanics
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -85,6 +85,21 @@ function getVotingPower(address user) external view returns (uint256 votingPower
 |`votingPower`|`uint256`|Current voting power|
 
 
+### updateVotingPower
+
+Update voting power for the caller based on current time
+
+
+```solidity
+function updateVotingPower() external returns (uint256 newVotingPower);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newVotingPower`|`uint256`|Updated voting power|
+
+
 ### getLockInfo
 
 Get lock info for an address
@@ -94,7 +109,14 @@ Get lock info for an address
 function getLockInfo(address user)
     external
     view
-    returns (uint256 amount, uint256 unlockTime, uint256 votingPower, uint256 lastClaimTime);
+    returns (
+        uint256 amount,
+        uint256 unlockTime,
+        uint256 votingPower,
+        uint256 lastClaimTime,
+        uint256 initialVotingPower,
+        uint256 lockTime
+    );
 ```
 **Parameters**
 
@@ -110,6 +132,8 @@ function getLockInfo(address user)
 |`unlockTime`|`uint256`|Unlock timestamp|
 |`votingPower`|`uint256`|Current voting power|
 |`lastClaimTime`|`uint256`|Last claim time|
+|`initialVotingPower`|`uint256`|Initial voting power when locked|
+|`lockTime`|`uint256`|Original lock duration|
 
 
 ### createProposal

@@ -405,11 +405,7 @@ contract QEUROToken is
      *      - Throws an error if rate limit is exceeded
      *      - Includes bounds checking to prevent timestamp manipulation
      * 
-     * @dev SECURITY FIX: Timestamp Manipulation Protection
-     *      - Added bounds checking to cap time elapsed at 24 hours maximum
-     *      - Prevents validators from manipulating timestamps to bypass rate limits
-     *      - Uses timeSinceReset calculation instead of direct timestamp comparison
-     *      - Protects against excessive time manipulation that could allow unlimited minting
+
      */
     function _checkAndUpdateMintRateLimit(uint256 amount) internal {
         // Reset rate limit if an hour has passed
@@ -452,11 +448,7 @@ contract QEUROToken is
      *      - Throws an error if rate limit is exceeded
      *      - Includes bounds checking to prevent timestamp manipulation
      * 
-     * @dev SECURITY FIX: Timestamp Manipulation Protection
-     *      - Added bounds checking to cap time elapsed at 24 hours maximum
-     *      - Prevents validators from manipulating timestamps to bypass rate limits
-     *      - Uses timeSinceReset calculation instead of direct timestamp comparison
-     *      - Protects against excessive time manipulation that could allow unlimited burning
+
      */
     function _checkAndUpdateBurnRateLimit(uint256 amount) internal {
         // Reset rate limit if an hour has passed
@@ -847,11 +839,7 @@ contract QEUROToken is
      * @return burnLimit Current burn rate limit
      * @return nextResetTime Timestamp when rate limits reset
      * 
-     * @dev SECURITY FIX: Timestamp Manipulation Protection
-     *      - Added bounds checking to cap time elapsed at 24 hours maximum
-     *      - Prevents validators from manipulating timestamps to bypass rate limits
-     *      - Uses timeSinceReset calculation instead of direct timestamp comparison
-     *      - Protects against excessive time manipulation in rate limit status queries
+
      * 
      * @dev Security considerations:
      *      - Returns current hour amounts if within the hour
@@ -1008,12 +996,7 @@ contract QEUROToken is
      * @notice Recovers ETH accidentally sent
      * @param to ETH recipient
      * 
-     * @dev SECURITY FIX: Safe ETH Transfer Implementation
-     *      - Replaced deprecated transfer() with call() pattern for better gas handling
-     *      - transfer() has 2300 gas stipend limitation that can cause failures with complex contracts
-     *      - call() provides flexible gas provision and better error handling
-     *      - Prevents ETH from being permanently locked in contract due to gas limitations
-     *      - Includes explicit success check to ensure transfer completion
+
      * 
      * @dev Security considerations:
      *      - Only DEFAULT_ADMIN_ROLE can recover

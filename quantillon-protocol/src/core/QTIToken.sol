@@ -126,6 +126,8 @@ contract QTIToken is
         uint256 unlockTime;       // Timestamp when lock expires
         uint256 votingPower;      // Current voting power (calculated)
         uint256 lastClaimTime;    // Last claim time (for future use)
+        uint256 initialVotingPower; // Initial voting power when locked
+        uint256 lockTime;         // Original lock duration
     }
     
     /// @notice Governance proposal structure
@@ -341,6 +343,8 @@ contract QTIToken is
         // Update lock info
         lockInfo.amount += amount;
         lockInfo.unlockTime = newUnlockTime;
+        lockInfo.initialVotingPower = newVotingPower;
+        lockInfo.lockTime = lockTime;
         lockInfo.votingPower = newVotingPower;
         
         // Update global totals
@@ -387,12 +391,42 @@ contract QTIToken is
     }
 
     /**
-     * @notice Get voting power for an address
+     * @notice Get voting power for an address with linear decay
      * @param user Address to get voting power for
-     * @return votingPower Current voting power of the user
+     * @return votingPower Current voting power of the user (decays linearly over time)
      */
     function getVotingPower(address user) external view returns (uint256 votingPower) {
-        return locks[user].votingPower;
+        LockInfo storage lockInfo = locks[user];
+        
+        // If no lock or lock has expired, return 0
+        if (lockInfo.unlockTime <= block.timestamp || lockInfo.amount == 0) {
+            return 0;
+        }
+        
+        // If lock hasn't started yet, return initial voting power
+        if (lockInfo.unlockTime <= lockInfo.lockTime) {
+            return lockInfo.initialVotingPower;
+        }
+        
+        // Calculate remaining time
+        uint256 remainingTime = lockInfo.unlockTime - block.timestamp;
+        uint256 originalLockTime = lockInfo.lockTime;
+        
+        // Voting power decreases linearly to zero
+        // Use the smaller of remaining time or original lock time to prevent overflow
+        if (remainingTime >= originalLockTime) {
+            return lockInfo.initialVotingPower;
+        }
+        
+        return lockInfo.initialVotingPower * remainingTime / originalLockTime;
+    }
+
+    /**
+     * @notice Update voting power for the caller based on current time
+     * @return newVotingPower Updated voting power
+     */
+    function updateVotingPower() external returns (uint256 newVotingPower) {
+        return _updateVotingPower(msg.sender);
     }
 
     /**
@@ -402,19 +436,25 @@ contract QTIToken is
      * @return unlockTime Timestamp when lock expires
      * @return votingPower Current voting power
      * @return lastClaimTime Last claim time (for future use)
+     * @return initialVotingPower Initial voting power when locked
+     * @return lockTime Original lock duration
      */
     function getLockInfo(address user) external view returns (
         uint256 amount,
         uint256 unlockTime,
         uint256 votingPower,
-        uint256 lastClaimTime
+        uint256 lastClaimTime,
+        uint256 initialVotingPower,
+        uint256 lockTime
     ) {
         LockInfo storage lockInfo = locks[user];
         return (
             lockInfo.amount,
             lockInfo.unlockTime,
             lockInfo.votingPower,
-            lockInfo.lastClaimTime
+            lockInfo.lastClaimTime,
+            lockInfo.initialVotingPower,
+            lockInfo.lockTime
         );
     }
 
@@ -434,7 +474,9 @@ contract QTIToken is
         uint256 votingPeriod,
         bytes calldata data
     ) external returns (uint256 proposalId) {
-        require(this.getVotingPower(msg.sender) >= proposalThreshold, "QTI: Insufficient voting power");
+        // Update voting power to current time before checking threshold
+        uint256 currentVotingPower = _updateVotingPower(msg.sender);
+        require(currentVotingPower >= proposalThreshold, "QTI: Insufficient voting power");
         require(votingPeriod >= minVotingPeriod, "QTI: Voting period too short");
         require(votingPeriod <= maxVotingPeriod, "QTI: Voting period too long");
 
@@ -461,7 +503,8 @@ contract QTIToken is
         require(block.timestamp < proposal.endTime, "QTI: Voting ended");
         require(!proposal.receipts[msg.sender].hasVoted, "QTI: Already voted");
 
-        uint256 votingPower = this.getVotingPower(msg.sender);
+        // Update voting power to current time before voting
+        uint256 votingPower = _updateVotingPower(msg.sender);
         require(votingPower > 0, "QTI: No voting power");
 
         proposal.receipts[msg.sender] = Receipt({
@@ -612,12 +655,7 @@ contract QTIToken is
      *      to update the decentralization level based on the elapsed time.
      *      Includes bounds checking to prevent timestamp manipulation.
      * 
-     * @dev SECURITY FIX: Timestamp Manipulation Protection
-     *      - Added bounds checking to cap time elapsed at 10 years maximum
-     *      - Prevents validators from manipulating timestamps to accelerate decentralization
-     *      - Uses timeSinceStart calculation with reasonable upper bounds
-     *      - Protects against excessive time manipulation that could bypass governance controls
-     *      - Ensures decentralization process follows intended timeline
+
      */
     function updateDecentralizationLevel() external onlyRole(GOVERNANCE_ROLE) {
         uint256 timeElapsed = block.timestamp - decentralizationStartTime;
@@ -649,6 +687,39 @@ contract QTIToken is
         // 1x for MIN_LOCK_TIME, 4x for MAX_LOCK_TIME
         uint256 multiplier = 1e18 + (lockTime - MIN_LOCK_TIME) * 3e18 / (MAX_LOCK_TIME - MIN_LOCK_TIME);
         return multiplier > MAX_VE_QTI_MULTIPLIER * 1e18 ? MAX_VE_QTI_MULTIPLIER * 1e18 : multiplier;
+    }
+
+    /**
+     * @notice Update voting power for a user based on current time
+     * @param user Address of the user to update
+     * @return newVotingPower Updated voting power
+     */
+    function _updateVotingPower(address user) internal returns (uint256 newVotingPower) {
+        LockInfo storage lockInfo = locks[user];
+        
+        // If no lock or lock has expired, voting power is 0
+        if (lockInfo.unlockTime <= block.timestamp || lockInfo.amount == 0) {
+            newVotingPower = 0;
+        } else {
+            // Calculate current voting power with linear decay
+            uint256 remainingTime = lockInfo.unlockTime - block.timestamp;
+            uint256 originalLockTime = lockInfo.lockTime;
+            
+            if (remainingTime >= originalLockTime) {
+                newVotingPower = lockInfo.initialVotingPower;
+            } else {
+                newVotingPower = lockInfo.initialVotingPower * remainingTime / originalLockTime;
+            }
+        }
+        
+        // Update stored voting power
+        uint256 oldVotingPower = lockInfo.votingPower;
+        lockInfo.votingPower = newVotingPower;
+        
+        // Update total voting power
+        totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
+        
+        return newVotingPower;
     }
 
 

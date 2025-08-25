@@ -375,13 +375,7 @@ contract HedgerPool is
      *      - Hedger info and pool totals are updated.
      *      - An event is emitted.
      * 
-     * @dev SECURITY FIX: DoS Protection Implementation
-     *      - Added MAX_POSITIONS_PER_HEDGER limit (50 positions per hedger)
-     *      - Prevents unlimited growth of position arrays that could cause gas exhaustion
-     *      - Implements activePositionCount tracking for efficient position management
-     *      - Prevents DoS attacks through array growth manipulation
-     *      - Ensures gas costs remain reasonable for array operations
-     *      - Protects against malicious actors creating excessive positions
+
      */
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) 
         external 
@@ -525,13 +519,7 @@ contract HedgerPool is
      * @param hedger Address of the hedger
      * @param positionId Position ID to remove
      * 
-     * @dev SECURITY FIX: Array Cleanup Implementation
-     *      - Implements efficient array cleanup using "replace with last element and pop" method
-     *      - Prevents DoS through unlimited array growth
-     *      - Caches array lengths to reduce storage reads and gas consumption
-     *      - Ensures arrays are properly maintained when positions are closed
-     *      - Prevents gas exhaustion from growing arrays
-     *      - Maintains array integrity and prevents orphaned references
+
      */
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {
         // Remove from hedger.positionIds array
@@ -650,11 +638,7 @@ contract HedgerPool is
      *      - Cannot add margin if there are pending liquidation commitments
      *      - Prevents hedgers from front-running liquidation attempts
      * 
-     * @dev SECURITY FIX: Enhanced Front-Running Protection
-     *      - Added check for pending liquidation commitments
-     *      - Prevents hedgers from adding margin during 24-hour liquidation delay
-     *      - Ensures liquidation commitments cannot be front-run by margin additions
-     *      - Protects against manipulation of liquidation system
+
      */
     function addMargin(uint256 positionId, uint256 amount) 
         external 
@@ -810,14 +794,7 @@ contract HedgerPool is
      *      - An event is emitted.
      *      - Front-running protection via immediate execution after commitment.
      * 
-     * @dev SECURITY FIX: Enhanced Front-Running Protection Implementation
-     *      - Implements commit-reveal pattern with immediate execution
-     *      - Prevents liquidators from front-running each other to steal bonuses
-     *      - Prevents hedgers from front-running liquidation attempts by adding margin
-     *      - Includes 1-hour cooldown period after liquidation attempts
-     *      - Ensures fair liquidation process and prevents MEV extraction
-     *      - Protects against sandwich attacks and front-running manipulation
-     *      - Provides faster risk resolution and better capital efficiency
+
      */
     function liquidateHedger(
         address hedger, 
@@ -892,14 +869,7 @@ contract HedgerPool is
      *      - If total rewards are greater than zero, they are transferred to the hedger.
      *      - The last reward claim timestamp is updated.
      *      - The yield shift rewards are claimed if applicable.
-     *      - An event is emitted.
-     * 
-     * @dev SECURITY FIX: User Sovereignty Protection
-     *      - Removed GOVERNANCE_ROLE ability to claim rewards on behalf of any hedger
-     *      - Only hedgers can claim their own rewards (msg.sender == hedger)
-     *      - Prevents governance from redirecting user rewards without consent
-     *      - Ensures user sovereignty over their own funds
-     *      - Protects against compromised or malicious governance accounts
+     *      - An event is emitted.    
      */
     function claimHedgingRewards() 
         external 
@@ -949,13 +919,7 @@ contract HedgerPool is
      *      - The pending rewards are incremented with overflow protection.
      *      - Uses block-based calculations to prevent timestamp manipulation.
      * 
-     * @dev SECURITY FIX: Block-Based Reward Calculation
-     *      - Replaced timestamp-based calculations with block-based calculations
-     *      - Prevents validators from manipulating timestamps to gain excessive rewards
-     *      - Uses block numbers which are harder to manipulate than timestamps
-     *      - Implements bounds checking to cap maximum reward periods
-     *      - Prevents reward manipulation through timestamp manipulation attacks
-     *      - Ensures fair reward distribution regardless of validator behavior
+
      */
     function _updateHedgerRewards(address hedger) internal {
         HedgerInfo storage hedgerInfo = hedgers[hedger];
@@ -1123,12 +1087,7 @@ contract HedgerPool is
      *        multiplied by the position size and divided by the entry price.
      *      - Uses safe arithmetic operations to prevent overflow.
      * 
-     * @dev SECURITY FIX: Safe Arithmetic Implementation
-     *      - Replaced unchecked arithmetic with safe multiplication and division
-     *      - Uses VaultMath.mulDiv() for safe arithmetic operations
-     *      - Prevents integer overflow in P&L calculations for large positions
-     *      - Ensures accurate P&L calculations regardless of position size
-     *      - Protects against arithmetic overflow attacks
+
      */
     function _calculatePnL(HedgePosition storage position, uint256 currentPrice) 
         internal 
@@ -1386,10 +1345,7 @@ contract HedgerPool is
      * @param positionId Position ID to check
      * @return bool True if there are pending liquidation commitments
      * 
-     * @dev SECURITY FIX: Enhanced Front-Running Protection
-     *      - Allows external checking of pending liquidation commitments
-     *      - Useful for frontend applications and monitoring systems
-     *      - Helps users understand when they cannot add margin
+
      */
     function hasPendingLiquidationCommitment(address hedger, uint256 positionId) 
         external 
@@ -1492,11 +1448,7 @@ contract HedgerPool is
      * @param positionId Position ID to check
      * @return bool True if any commitment exists for this hedger/position, false otherwise
      * 
-     * @dev SECURITY FIX: Enhanced Front-Running Protection
-     *      - Checks for any pending liquidation commitments targeting this hedger/position
-     *      - Prevents hedgers from adding margin during liquidation delay periods
-     *      - Uses direct mapping lookup for efficient and accurate checking
-     *      - Ensures liquidation system integrity
+
      */
     function _hasPendingLiquidationCommitment(address hedger, uint256 positionId) internal view returns (bool) {
         // SECURITY FIX: Direct check using the pending liquidation mapping

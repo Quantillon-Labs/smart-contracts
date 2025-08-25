@@ -575,12 +575,7 @@ contract QuantillonVault is
      * @notice Recovers ETH accidentally sent
      * @param to ETH recipient
      * 
-     * @dev SECURITY FIX: Safe ETH Transfer Implementation
-     *      - Replaced deprecated transfer() with call() pattern for better gas handling
-     *      - transfer() has 2300 gas stipend limitation that can cause failures with complex contracts
-     *      - call() provides flexible gas provision and better error handling
-     *      - Prevents ETH from being permanently locked in contract due to gas limitations
-     *      - Includes explicit success check to ensure transfer completion
+
      * 
      * @dev Security considerations:
      *      - Only DEFAULT_ADMIN_ROLE can recover

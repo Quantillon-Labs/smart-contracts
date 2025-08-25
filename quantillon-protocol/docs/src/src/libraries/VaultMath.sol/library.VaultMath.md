@@ -1,5 +1,5 @@
 # VaultMath
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/libraries/VaultMath.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/libraries/VaultMath.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Mathematical operations library for Quantillon Protocol
 *Provides safe math operations with high precision for financial calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -177,13 +177,57 @@ function usdToEur(uint256 usdAmount, uint256 eurUsdRate) internal pure returns (
 |`eurAmount`|`uint256`|Amount in EUR (18 decimals)|
 
 
-### calculateRequiredCollateral
+### usdToEurWithUsdcPrecision
 
-Calculate required collateral for given debt amount
+Convert USD amount to EUR using exchange rate with USDC precision handling
 
 
 ```solidity
-function calculateRequiredCollateral(uint256 debtAmount, uint256 eurUsdRate, uint256 collateralRatio)
+function usdToEurWithUsdcPrecision(uint256 usdAmount, uint256 eurUsdRate) internal pure returns (uint256 eurAmount);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdAmount`|`uint256`|Amount in USD (6 decimals for USDC)|
+|`eurUsdRate`|`uint256`|EUR/USD exchange rate (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurAmount`|`uint256`|Amount in EUR (18 decimals)|
+
+
+### eurToUsdWithUsdcPrecision
+
+Convert EUR amount to USD using exchange rate with USDC precision handling
+
+
+```solidity
+function eurToUsdWithUsdcPrecision(uint256 eurAmount, uint256 eurUsdRate) internal pure returns (uint256 usdAmount);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurAmount`|`uint256`|Amount in EUR (18 decimals)|
+|`eurUsdRate`|`uint256`|EUR/USD exchange rate (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdAmount`|`uint256`|Amount in USD (6 decimals for USDC)|
+
+
+### calculateRequiredUsdcCollateral
+
+Calculate required USDC collateral for given QEURO debt amount
+
+
+```solidity
+function calculateRequiredUsdcCollateral(uint256 debtAmount, uint256 eurUsdRate, uint256 collateralRatio)
     internal
     pure
     returns (uint256 requiredCollateral);
@@ -192,24 +236,24 @@ function calculateRequiredCollateral(uint256 debtAmount, uint256 eurUsdRate, uin
 
 |Name|Type|Description|
 |----|----|-----------|
-|`debtAmount`|`uint256`|Debt amount in QEURO|
-|`eurUsdRate`|`uint256`|EUR/USD exchange rate|
+|`debtAmount`|`uint256`|Debt amount in QEURO (18 decimals)|
+|`eurUsdRate`|`uint256`|EUR/USD exchange rate (18 decimals)|
 |`collateralRatio`|`uint256`|Required collateral ratio (e.g., 1.01e18 for 101%)|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`requiredCollateral`|`uint256`|Required USDC collateral amount|
+|`requiredCollateral`|`uint256`|Required USDC collateral amount (6 decimals)|
 
 
-### calculateMaxDebt
+### calculateMaxQeuroDebt
 
-Calculate maximum debt for given collateral
+Calculate maximum QEURO debt for given USDC collateral
 
 
 ```solidity
-function calculateMaxDebt(uint256 collateralAmount, uint256 eurUsdRate, uint256 collateralRatio)
+function calculateMaxQeuroDebt(uint256 collateralAmount, uint256 eurUsdRate, uint256 collateralRatio)
     internal
     pure
     returns (uint256 maxDebt);
@@ -218,15 +262,15 @@ function calculateMaxDebt(uint256 collateralAmount, uint256 eurUsdRate, uint256 
 
 |Name|Type|Description|
 |----|----|-----------|
-|`collateralAmount`|`uint256`|USDC collateral amount|
-|`eurUsdRate`|`uint256`|EUR/USD exchange rate|
+|`collateralAmount`|`uint256`|USDC collateral amount (6 decimals)|
+|`eurUsdRate`|`uint256`|EUR/USD exchange rate (18 decimals)|
 |`collateralRatio`|`uint256`|Required collateral ratio|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`maxDebt`|`uint256`|Maximum QEURO that can be minted|
+|`maxDebt`|`uint256`|Maximum QEURO that can be minted (18 decimals)|
 
 
 ### isCollateralSufficient
@@ -310,7 +354,7 @@ function calculateCompoundInterest(uint256 principal, uint256 rate, uint256 time
 
 ### scaleDecimals
 
-Scale a value between different decimal precisions
+Scale a value between different decimal precisions with proper rounding
 
 
 ```solidity
@@ -331,7 +375,7 @@ function scaleDecimals(uint256 value, uint8 fromDecimals, uint8 toDecimals)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`scaledValue`|`uint256`|Scaled value|
+|`scaledValue`|`uint256`|Scaled value with proper rounding|
 
 
 ### min

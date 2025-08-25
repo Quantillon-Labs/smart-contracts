@@ -1,5 +1,5 @@
 # IAaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/interfaces/IAaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/interfaces/IAaveVault.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Interface for the AaveVault (Aave V3 USDC yield vault)
 *Mirrors the external/public API of `src/core/vaults/AaveVault.sol`*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -159,6 +159,33 @@ Accrued interest (same as available yield)
 ```solidity
 function getAccruedInterest() external view returns (uint256);
 ```
+
+### getHistoricalYield
+
+Historical yield data for a given period
+
+
+```solidity
+function getHistoricalYield(uint256 period)
+    external
+    view
+    returns (uint256 totalYield, uint256 averageAPY, uint256 maxAPY, uint256 minAPY);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`period`|`uint256`|Time period in seconds|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalYield`|`uint256`|Total yield generated over period|
+|`averageAPY`|`uint256`|Average APY over period|
+|`maxAPY`|`uint256`|Maximum APY over period|
+|`minAPY`|`uint256`|Minimum APY over period|
+
 
 ### getAaveAPY
 

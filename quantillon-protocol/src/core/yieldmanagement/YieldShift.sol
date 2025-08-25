@@ -683,13 +683,7 @@ contract YieldShift is
      * @notice Update yield distribution if conditions are met
      * @dev Uses TWAP and includes holding period checks with bounds checking
      * 
-     * @dev SECURITY FIX: Yield Gaming Protection Implementation
-     *      - Implements time-weighted average balances (TWAP) over 24-hour periods
-     *      - Adds minimum holding period (7 days) to prevent rapid deposit/withdrawal cycles
-     *      - Uses bounds checking to prevent timestamp manipulation
-     *      - Prevents large actors from manipulating pool imbalances for favorable yield distribution
-     *      - Makes yield gaming economically unfeasible through time-based restrictions
-     *      - Ensures fair yield distribution regardless of user behavior patterns
+
      */
     function checkAndUpdateYieldDistribution() external {
         // Only update if significant time has passed or pool imbalance is high
@@ -732,13 +726,7 @@ contract YieldShift is
     /**
      * @notice Modifier to check minimum holding period with bounds checking
      * 
-     * @dev SECURITY FIX: Minimum Holding Period Implementation
-     *      - Implements 7-day minimum holding period to prevent yield gaming
-     *      - Uses bounds checking to prevent timestamp manipulation
-     *      - Prevents rapid deposit/withdrawal cycles that could manipulate yield distribution
-     *      - Makes yield gaming economically unfeasible through time-based restrictions
-     *      - Ensures users have genuine long-term commitment before claiming yield
-     *      - Protects against short-term manipulation of yield distribution mechanisms
+
      */
     modifier checkHoldingPeriod() {
         uint256 timeSinceDeposit = block.timestamp - lastDepositTime[msg.sender];

@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -12,7 +12,7 @@ Dynamic yield redistribution mechanism between Users and Hedgers
 *Core innovation of Quantillon Protocol - balances pools via yield incentives*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -117,6 +117,27 @@ uint256 public targetPoolRatio;
 ```
 
 
+### MIN_HOLDING_PERIOD
+
+```solidity
+uint256 public constant MIN_HOLDING_PERIOD = 7 days;
+```
+
+
+### TWAP_PERIOD
+
+```solidity
+uint256 public constant TWAP_PERIOD = 24 hours;
+```
+
+
+### MAX_TIME_ELAPSED
+
+```solidity
+uint256 public constant MAX_TIME_ELAPSED = 365 days;
+```
+
+
 ### currentYieldShift
 
 ```solidity
@@ -201,10 +222,24 @@ mapping(address => uint256) public hedgerLastClaim;
 ```
 
 
-### yieldShiftHistory
+### lastDepositTime
 
 ```solidity
-YieldShiftSnapshot[] public yieldShiftHistory;
+mapping(address => uint256) public lastDepositTime;
+```
+
+
+### userPoolHistory
+
+```solidity
+PoolSnapshot[] public userPoolHistory;
+```
+
+
+### hedgerPoolHistory
+
+```solidity
+PoolSnapshot[] public hedgerPoolHistory;
 ```
 
 
@@ -212,6 +247,13 @@ YieldShiftSnapshot[] public yieldShiftHistory;
 
 ```solidity
 uint256 public constant MAX_HISTORY_LENGTH = 1000;
+```
+
+
+### yieldShiftHistory
+
+```solidity
+YieldShiftSnapshot[] public yieldShiftHistory;
 ```
 
 
@@ -239,7 +281,9 @@ function initialize(
 
 ### updateYieldDistribution
 
-Update yield distribution based on current pool balance
+Update yield distribution based on time-weighted average pool balances
+
+*Uses TWAP to prevent gaming by large actors*
 
 
 ```solidity
@@ -261,7 +305,7 @@ Claim pending yield for a user
 
 
 ```solidity
-function claimUserYield(address user) external nonReentrant returns (uint256 yieldAmount);
+function claimUserYield(address user) external nonReentrant checkHoldingPeriod returns (uint256 yieldAmount);
 ```
 
 ### claimHedgerYield
@@ -270,7 +314,7 @@ Claim pending yield for a hedger
 
 
 ```solidity
-function claimHedgerYield(address hedger) external nonReentrant returns (uint256 yieldAmount);
+function claimHedgerYield(address hedger) external nonReentrant checkHoldingPeriod returns (uint256 yieldAmount);
 ```
 
 ### _calculateOptimalYieldShift
@@ -312,14 +356,20 @@ Check if value is within tolerance of target
 function _isWithinTolerance(uint256 value, uint256 target, uint256 toleranceBps) internal pure returns (bool);
 ```
 
-### _recordYieldShiftSnapshot
+### updateLastDepositTime
 
-Record yield shift snapshot for historical analysis
+Update last deposit time for a user
 
 
 ```solidity
-function _recordYieldShiftSnapshot(uint256 userPoolSize, uint256 hedgerPoolSize, uint256 poolRatio) internal;
+function updateLastDepositTime(address user) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|User address|
+
 
 ### getCurrentYieldShift
 
@@ -499,9 +549,22 @@ function harvestAndDistributeAaveYield() external nonReentrant;
 
 Update yield distribution if conditions are met
 
+*Uses TWAP and includes holding period checks with bounds checking*
+
 
 ```solidity
 function checkAndUpdateYieldDistribution() external;
+```
+
+### forceUpdateYieldDistribution
+
+Force update yield distribution (governance only)
+
+*Emergency function to update yield distribution when normal conditions aren't met*
+
+
+```solidity
+function forceUpdateYieldDistribution() external onlyRole(GOVERNANCE_ROLE);
 ```
 
 ### _authorizeUpgrade
@@ -510,6 +573,67 @@ function checkAndUpdateYieldDistribution() external;
 ```solidity
 function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
 ```
+
+### checkHoldingPeriod
+
+Modifier to check minimum holding period with bounds checking
+
+
+```solidity
+modifier checkHoldingPeriod();
+```
+
+### getTimeWeightedAverage
+
+Calculate time-weighted average pool size over a specified period
+
+
+```solidity
+function getTimeWeightedAverage(PoolSnapshot[] storage poolHistory, uint256 period, bool isUserPool)
+    internal
+    view
+    returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`poolHistory`|`PoolSnapshot[]`|Array of pool snapshots|
+|`period`|`uint256`|Time period to calculate average over|
+|`isUserPool`|`bool`|Whether this is for user pool (true) or hedger pool (false)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Time-weighted average pool size|
+
+
+### _recordPoolSnapshot
+
+Record current pool sizes in history for TWAP calculations
+
+
+```solidity
+function _recordPoolSnapshot() internal;
+```
+
+### _addToPoolHistory
+
+Add snapshot to pool history array
+
+
+```solidity
+function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`poolHistory`|`PoolSnapshot[]`|Array to add snapshot to|
+|`poolSize`|`uint256`|Current pool size|
+|`isUserPool`|`bool`|Whether this is for user pool (true) or hedger pool (false)|
+
 
 ## Events
 ### YieldDistributionUpdated
@@ -545,15 +669,22 @@ event YieldShiftParametersUpdated(uint256 baseYieldShift, uint256 maxYieldShift,
 ```
 
 ## Structs
+### PoolSnapshot
+
+```solidity
+struct PoolSnapshot {
+    uint256 timestamp;
+    uint256 userPoolSize;
+    uint256 hedgerPoolSize;
+}
+```
+
 ### YieldShiftSnapshot
 
 ```solidity
 struct YieldShiftSnapshot {
     uint256 timestamp;
     uint256 yieldShift;
-    uint256 userPoolSize;
-    uint256 hedgerPoolSize;
-    uint256 poolRatio;
 }
 ```
 

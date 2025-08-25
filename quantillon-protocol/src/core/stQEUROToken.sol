@@ -303,11 +303,7 @@ contract stQEUROToken is
      * @param stQEUROAmount Amount of stQEURO to burn
      * @return qeuroAmount Amount of QEURO received
      * 
-     * @dev SECURITY FIX: Safe QEURO Transfer Implementation
-     *      - Uses transfer() method with proper return value checking
-     *      - transfer() can fail silently, so we check the return value
-     *      - Prevents users from losing stQEURO tokens without receiving underlying QEURO
-     *      - Ensures atomic operations and proper error propagation
+
      */
     function unstake(uint256 stQEUROAmount) external nonReentrant whenNotPaused returns (uint256 qeuroAmount) {
         require(stQEUROAmount > 0, "stQEURO: Amount must be positive");
@@ -541,11 +537,7 @@ contract stQEUROToken is
     /**
      * @notice Emergency withdrawal of QEURO (only in emergency)
      * 
-     * @dev SECURITY FIX: Safe QEURO Transfer Implementation
-     *      - Uses transfer() method with proper return value checking
-     *      - transfer() can fail silently, so we check the return value
-     *      - Prevents emergency withdrawals from failing silently
-     *      - Ensures atomic operations and proper error propagation in emergency scenarios
+
      */
     function emergencyWithdraw(address user) external onlyRole(EMERGENCY_ROLE) {
         uint256 stQEUROBalance = balanceOf(user);
@@ -579,18 +571,7 @@ contract stQEUROToken is
     /**
      * @notice Recover accidentally sent ETH
      * 
-     * @dev SECURITY FIX: Safe ETH Transfer Implementation
-     *      - Replaced deprecated transfer() with call() pattern for better gas handling
-     *      - transfer() has 2300 gas stipend limitation that can cause failures with complex contracts
-     *      - call() provides flexible gas provision and better error handling
-     *      - Prevents ETH from being permanently locked in contract due to gas limitations
-     *      - Includes explicit success check to ensure transfer completion
-     * 
-     * @dev Security considerations:
-     *      - Only DEFAULT_ADMIN_ROLE can recover
-     *      - Prevents sending to zero address
-     *      - Validates balance before attempting transfer
-     *      - Uses call() for reliable ETH transfers to any contract
+
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(to != address(0), "stQEURO: Cannot send to zero address");

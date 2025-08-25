@@ -1,5 +1,5 @@
 # IYieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/interfaces/IYieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/interfaces/IYieldShift.sol)
 
 **Author:**
 Quantillon Labs
@@ -7,7 +7,7 @@ Quantillon Labs
 Interface for YieldShift dynamic yield redistribution
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -405,5 +405,37 @@ Check if an update to yield distribution is needed and apply if so
 
 ```solidity
 function checkAndUpdateYieldDistribution() external;
+```
+
+### updateLastDepositTime
+
+Update the last deposit time for a user (for TWAP calculations)
+
+*This function is called by the user pool when users deposit*
+
+*Used for time-weighted average calculations*
+
+
+```solidity
+function updateLastDepositTime(address user) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user|
+
+
+### forceUpdateYieldDistribution
+
+Force update yield distribution (governance only)
+
+*This function allows governance to force an update to yield distribution*
+
+*Only callable by governance role*
+
+
+```solidity
+function forceUpdateYieldDistribution() external;
 ```
 

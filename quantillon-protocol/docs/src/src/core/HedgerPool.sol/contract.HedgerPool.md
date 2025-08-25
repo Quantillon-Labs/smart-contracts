@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -56,7 +56,7 @@ Manages EUR/USD hedging positions, margin, and hedger rewards
 - USDC for margin and settlement*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -200,6 +200,20 @@ Penalty charged during liquidations (in basis points)
 
 ```solidity
 uint256 public liquidationPenalty;
+```
+
+
+### MAX_POSITIONS_PER_HEDGER
+
+```solidity
+uint256 public constant MAX_POSITIONS_PER_HEDGER = 50;
+```
+
+
+### activePositionCount
+
+```solidity
+mapping(address => uint256) public activePositionCount;
 ```
 
 
@@ -375,6 +389,90 @@ uint256 public interestDifferentialPool;
 ```
 
 
+### userPendingYield
+
+```solidity
+mapping(address => uint256) public userPendingYield;
+```
+
+
+### hedgerPendingYield
+
+```solidity
+mapping(address => uint256) public hedgerPendingYield;
+```
+
+
+### userLastClaim
+
+```solidity
+mapping(address => uint256) public userLastClaim;
+```
+
+
+### hedgerLastClaim
+
+```solidity
+mapping(address => uint256) public hedgerLastClaim;
+```
+
+
+### hedgerLastRewardBlock
+
+```solidity
+mapping(address => uint256) public hedgerLastRewardBlock;
+```
+
+
+### BLOCKS_PER_DAY
+
+```solidity
+uint256 public constant BLOCKS_PER_DAY = 7200;
+```
+
+
+### MAX_REWARD_PERIOD
+
+```solidity
+uint256 public constant MAX_REWARD_PERIOD = 365 days;
+```
+
+
+### LIQUIDATION_COOLDOWN
+
+```solidity
+uint256 public constant LIQUIDATION_COOLDOWN = 1 hours;
+```
+
+
+### liquidationCommitments
+
+```solidity
+mapping(bytes32 => bool) public liquidationCommitments;
+```
+
+
+### liquidationCommitmentTimes
+
+```solidity
+mapping(bytes32 => uint256) public liquidationCommitmentTimes;
+```
+
+
+### lastLiquidationAttempt
+
+```solidity
+mapping(address => uint256) public lastLiquidationAttempt;
+```
+
+
+### hasPendingLiquidation
+
+```solidity
+mapping(address => mapping(uint256 => bool)) public hasPendingLiquidation;
+```
+
+
 ## Functions
 ### constructor
 
@@ -424,7 +522,7 @@ Exit an existing hedging position
 - The P&L is calculated based on the current price.
 - An exit fee is charged.
 - Hedger info and pool totals are updated.
-- The position is deactivated.
+- The position is deactivated and removed from arrays.
 - The payout is transferred to the hedger.
 - An event is emitted.*
 
@@ -432,6 +530,22 @@ Exit an existing hedging position
 ```solidity
 function exitHedgePosition(uint256 positionId) external nonReentrant whenNotPaused returns (int256 pnl);
 ```
+
+### _removePositionFromArrays
+
+Remove position from hedger arrays to prevent DoS
+
+
+```solidity
+function _removePositionFromArrays(address hedger, uint256 positionId) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger|
+|`positionId`|`uint256`|Position ID to remove|
+
 
 ### partialClosePosition
 
@@ -473,10 +587,22 @@ Add margin to an existing position
 - A new margin ratio is calculated.
 - An event is emitted.*
 
+*Front-running protection:
+- Cannot add margin during liquidation cooldown period
+- Cannot add margin if there are pending liquidation commitments
+- Prevents hedgers from front-running liquidation attempts*
+
 
 ```solidity
 function addMargin(uint256 positionId, uint256 amount) external nonReentrant whenNotPaused;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Position ID to add margin to|
+|`amount`|`uint256`|Amount of USDC to add as margin|
+
 
 ### removeMargin
 
@@ -498,9 +624,26 @@ Remove excess margin from a position
 function removeMargin(uint256 positionId, uint256 amount) external nonReentrant whenNotPaused;
 ```
 
+### commitLiquidation
+
+Commit to a liquidation to prevent front-running
+
+
+```solidity
+function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external onlyRole(LIQUIDATOR_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger to liquidate|
+|`positionId`|`uint256`|Position ID to liquidate|
+|`salt`|`bytes32`|Random salt for commitment|
+
+
 ### liquidateHedger
 
-Liquidate an undercollateralized hedger position
+Liquidate an undercollateralized hedger position with immediate execution
 
 *This function allows liquidators to liquidate an undercollateralized hedger position.
 - The liquidator must have the LIQUIDATOR_ROLE.
@@ -511,27 +654,42 @@ Liquidate an undercollateralized hedger position
 - The liquidation reward is calculated.
 - The remaining margin is calculated.
 - Hedger info and pool totals are updated.
-- The position is deactivated.
+- The position is deactivated and removed from arrays.
 - The liquidation reward is transferred to the liquidator.
 - The remaining margin is transferred back to the hedger if any.
-- An event is emitted.*
+- An event is emitted.
+- Front-running protection via immediate execution after commitment.*
 
 
 ```solidity
-function liquidateHedger(address hedger, uint256 positionId)
+function liquidateHedger(address hedger, uint256 positionId, bytes32 salt)
     external
     onlyRole(LIQUIDATOR_ROLE)
     nonReentrant
     returns (uint256 liquidationReward);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger to liquidate|
+|`positionId`|`uint256`|Position ID to liquidate|
+|`salt`|`bytes32`|Salt used in the commitment|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`liquidationReward`|`uint256`|Amount of liquidation reward|
+
 
 ### claimHedgingRewards
 
 Claim hedging rewards (interest differential + yield shift)
 
 *This function allows hedgers to claim their accumulated hedging rewards.
-- Only the hedger themselves or a governance role can call this.
-- The pending rewards are updated.
+- Only the hedger themselves can call this function.
+- The pending rewards are updated using block-based calculations.
 - The interest differential reward is calculated.
 - The yield shift rewards are fetched from the yield shift mechanism.
 - The total rewards are summed.
@@ -542,7 +700,10 @@ Claim hedging rewards (interest differential + yield shift)
 
 
 ```solidity
-function claimHedgingRewards(address hedger) external nonReentrant returns (uint256 totalRewards);
+function claimHedgingRewards()
+    external
+    nonReentrant
+    returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
 ```
 
 ### _updateHedgerRewards
@@ -554,7 +715,8 @@ for a given hedger based on their total exposure and the interest rate different
 - It calculates the interest differential reward.
 - It calculates the reward amount based on the hedger's total exposure,
 the interest differential, and the time elapsed since the last claim.
-- The pending rewards are incremented.*
+- The pending rewards are incremented with overflow protection.
+- Uses block-based calculations to prevent timestamp manipulation.*
 
 
 ```solidity
@@ -645,7 +807,8 @@ Internal function to calculate P&L for a hedging position
 the current EUR/USD price and the position's entry price.
 - For a short EUR/USD position, profit is made when EUR/USD falls.
 - The P&L is calculated as the difference between the current price and entry price,
-multiplied by the position size and divided by the entry price.*
+multiplied by the position size and divided by the entry price.
+- Uses safe arithmetic operations to prevent overflow.*
 
 
 ```solidity
@@ -693,7 +856,7 @@ Get pending hedging rewards for a specific hedger
 
 *This function allows external contracts to query the pending hedging rewards
 for a specific hedger, including interest differential and yield shift rewards.
-- It calculates the pending interest differential.
+- It calculates the pending interest differential using block-based calculations.
 - It fetches the pending yield shift rewards from the yield shift mechanism.
 - It sums up the total pending rewards.*
 
@@ -749,6 +912,33 @@ Set hedging fees (entry, exit, margin)
 function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external onlyRole(GOVERNANCE_ROLE);
 ```
 
+### getHedgerPositionStats
+
+Get position statistics for a hedger
+
+
+```solidity
+function getHedgerPositionStats(address hedger)
+    external
+    view
+    returns (uint256 totalPositions, uint256 activePositions, uint256 totalMargin_, uint256 totalExposure_);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalPositions`|`uint256`|Total number of positions (active + inactive)|
+|`activePositions`|`uint256`|Number of active positions|
+|`totalMargin_`|`uint256`|Total margin across all positions|
+|`totalExposure_`|`uint256`|Total exposure across all positions|
+
+
 ### emergencyClosePosition
 
 Emergency close a hedger's position
@@ -759,7 +949,7 @@ in case of emergency.
 - The position must be active.
 - Hedger info and pool totals are updated.
 - The margin is returned to the hedger.
-- The position is deactivated.*
+- The position is deactivated and removed from arrays.*
 
 
 ```solidity
@@ -787,6 +977,28 @@ Unpause the hedger pool
 ```solidity
 function unpause() external onlyRole(EMERGENCY_ROLE);
 ```
+
+### hasPendingLiquidationCommitment
+
+Check if a hedger has pending liquidation commitments
+
+
+```solidity
+function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger|
+|`positionId`|`uint256`|Position ID to check|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if there are pending liquidation commitments|
+
 
 ### getHedgingConfig
 
@@ -823,18 +1035,85 @@ currently active (not paused).*
 function isHedgingActive() external view returns (bool);
 ```
 
-### _authorizeUpgrade
+### clearExpiredLiquidationCommitment
 
 Internal function for UUPS upgrade authorization
+
+Clear expired liquidation commitments for a hedger/position
 
 *This function is called by the UUPS upgrade mechanism to authorize
 the upgrade to a new implementation.
 - It requires the caller to have the UPGRADER_ROLE.*
 
+*This function allows clearing of expired commitments that were never executed*
+
+*Only callable by liquidators or governance*
+
+*Note: With immediate execution, this is mainly for cleanup of stale commitments*
+
+
+```solidity
+function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external onlyRole(LIQUIDATOR_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger|
+|`positionId`|`uint256`|Position ID|
+
+
+### cancelLiquidationCommitment
+
+Cancel a liquidation commitment (only by the liquidator who created it)
+
+*This function allows liquidators to cancel their own commitments*
+
+*Only callable by the liquidator who created the commitment*
+
+
+```solidity
+function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt)
+    external
+    onlyRole(LIQUIDATOR_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger|
+|`positionId`|`uint256`|Position ID|
+|`salt`|`bytes32`|Salt used in the original commitment|
+
+
+### _authorizeUpgrade
+
 
 ```solidity
 function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
 ```
+
+### _hasPendingLiquidationCommitment
+
+Check if a hedger has any pending liquidation commitments
+
+
+```solidity
+function _hasPendingLiquidationCommitment(address hedger, uint256 positionId) internal view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger|
+|`positionId`|`uint256`|Position ID to check|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if any commitment exists for this hedger/position, false otherwise|
+
 
 ## Events
 ### HedgePositionOpened

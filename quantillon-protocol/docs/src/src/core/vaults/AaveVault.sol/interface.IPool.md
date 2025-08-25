@@ -1,5 +1,5 @@
 # IPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/core/vaults/AaveVault.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Manages Aave V3 integration for yield-bearing USDC deposits
 *Implements the aQEURO variant - QEURO backed by yield-bearing Aave deposits*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions

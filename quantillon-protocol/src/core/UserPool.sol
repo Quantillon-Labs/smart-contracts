@@ -554,13 +554,7 @@ contract UserPool is
      *      for a given user based on their staked amount and the current APY.
      *      Uses block-based calculations to prevent timestamp manipulation.
      * 
-     * @dev SECURITY FIX: Block-Based Reward Calculation
-     *      - Replaced timestamp-based calculations with block-based calculations
-     *      - Prevents validators from manipulating timestamps to gain excessive rewards
-     *      - Uses block numbers which are harder to manipulate than timestamps
-     *      - Implements bounds checking to cap maximum reward periods
-     *      - Prevents reward manipulation through timestamp manipulation attacks
-     *      - Ensures fair reward distribution regardless of validator behavior
+
      */
     function _updatePendingRewards(address user) internal {
         UserInfo storage userdata = userInfo[user];

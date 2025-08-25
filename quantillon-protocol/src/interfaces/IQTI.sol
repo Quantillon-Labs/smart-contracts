@@ -37,18 +37,28 @@ interface IQTI {
     function getVotingPower(address user) external view returns (uint256 votingPower);
 
     /**
+     * @notice Update voting power for the caller based on current time
+     * @return newVotingPower Updated voting power
+     */
+    function updateVotingPower() external returns (uint256 newVotingPower);
+
+    /**
      * @notice Get lock info for an address
      * @param user User address
      * @return amount Locked amount
      * @return unlockTime Unlock timestamp
      * @return votingPower Current voting power
      * @return lastClaimTime Last claim time
+     * @return initialVotingPower Initial voting power when locked
+     * @return lockTime Original lock duration
      */
     function getLockInfo(address user) external view returns (
         uint256 amount,
         uint256 unlockTime,
         uint256 votingPower,
-        uint256 lastClaimTime
+        uint256 lastClaimTime,
+        uint256 initialVotingPower,
+        uint256 lockTime
     );
 
     /**

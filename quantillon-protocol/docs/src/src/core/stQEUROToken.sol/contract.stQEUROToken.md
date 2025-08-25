@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/fe414bc17d9f44041055fc158bb99f01c5c5476e/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/43ac0bece4bbd2df8011613aafa1156984ab00f8/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable
@@ -61,7 +61,7 @@ Yield-bearing wrapper for QEURO tokens (yield accrual mechanism)
 - Vault math library for calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -264,7 +264,7 @@ uint256 public maxUpdateFrequency;
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity

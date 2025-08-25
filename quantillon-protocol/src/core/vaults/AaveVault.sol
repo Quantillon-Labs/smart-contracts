@@ -256,7 +256,9 @@ contract AaveVault is
 
     /**
      * @notice Withdraw USDC from Aave V3 pool
-     * @dev Includes slippage protection and proper accounting of actual amounts received
+     * @dev Includes comprehensive validation and proper accounting of actual amounts received
+     * 
+
      */
     function withdrawFromAave(uint256 amount) 
         external 
@@ -295,11 +297,20 @@ contract AaveVault is
         uint256 usdcAfter = usdc.balanceOf(address(this));
         uint256 actualWithdrawn = usdcAfter - usdcBefore;
         
-        // Verify withdrawal amount with slippage protection (99% minimum)
-        require(
-            actualWithdrawn >= expectedAmount.mulDiv(9900, 10000),
-            "AaveVault: Excessive slippage"
-        );
+        // SECURITY FIX: Validate withdrawal amount based on request type
+        if (amount != type(uint256).max) {
+            // For specific amounts, ensure we got what we asked for (99% minimum)
+            require(
+                actualWithdrawn >= withdrawAmount.mulDiv(9900, 10000),
+                "AaveVault: Insufficient withdrawal - received less than requested"
+            );
+        } else {
+            // For max withdrawals, only check for reasonable slippage (95% minimum)
+            require(
+                actualWithdrawn >= expectedAmount.mulDiv(9500, 10000),
+                "AaveVault: Excessive slippage on max withdrawal"
+            );
+        }
         
         // Update tracking based on actual amount received, not requested amount
         uint256 principalWithdrawn = VaultMath.min(actualWithdrawn, principalDeposited);
@@ -342,13 +353,7 @@ contract AaveVault is
      * @notice Harvest Aave yield and distribute to protocol
      * @dev Includes slippage protection for yield withdrawals
      * 
-     * @dev SECURITY FIX: Slippage Protection Implementation
-     *      - Added 99% minimum slippage protection for yield withdrawals
-     *      - Tracks actual withdrawn amounts vs expected amounts
-     *      - Updates principalDeposited based on actual amounts received
-     *      - Prevents accounting errors from slippage in external protocols
-     *      - Ensures accurate yield tracking and distribution
-     *      - Protects against external protocol slippage affecting internal accounting
+
      */
     function harvestAaveYield() 
         external 

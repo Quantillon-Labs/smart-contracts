@@ -248,10 +248,7 @@ interface IHedgerPool {
      * @param positionId Position ID to check
      * @return bool True if there are pending liquidation commitments
      * 
-     * @dev SECURITY FIX: Enhanced Front-Running Protection
-     *      - Allows external checking of pending liquidation commitments
-     *      - Useful for frontend applications and monitoring systems
-     *      - Helps users understand when they cannot add margin
+
      */
     function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
 

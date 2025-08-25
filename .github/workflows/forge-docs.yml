@@ -37,7 +37,7 @@ jobs:
         run: |
           cd quantillon-protocol
           rm -rf docs
-          forge doc --out docs
+          forge doc --out docs --build
           echo "== top of docs =="
           ls -la docs
           echo "== site root (docs/book) =="
@@ -60,7 +60,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: quantillon-protocol/docs
+          path: quantillon-protocol/docs/book
 
   deploy:
     runs-on: ubuntu-latest

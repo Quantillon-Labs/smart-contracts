@@ -241,11 +241,15 @@
   }
   
   tr:nth-child(even) {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.02) !important;
+  }
+  
+  tr:nth-child(odd) {
+    background: var(--bg-card) !important;
   }
   
   tr:hover {
-    background: rgba(79, 70, 229, 0.05);
+    background: rgba(79, 70, 229, 0.1) !important;
   }
   
   /* Lists */

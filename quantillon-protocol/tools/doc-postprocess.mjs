@@ -8,14 +8,14 @@ const __dirname = path.dirname(__filename);
 // where forge outputs; keep in sync with workflow's --out
 const DOCS_DIR = path.resolve(process.argv[2] || "./docs");
 
-const THEME_REL = "doc-theme.css"; // we'll copy it next to each index.html root
+const THEME_REL = "/doc-theme.css"; // absolute path from root
 const CUSTOM_JS = "custom.js"; // our custom JavaScript file
 const FAVICON_PNG = "favicon.png"; // our PNG favicon
 
 // simple header/footer html (edit to match Quantillon)
 const HEADER_HTML = `
 <header class="site" style="padding:14px 18px;border-bottom:1px solid #232834;display:flex;gap:14px;align-items:center;">
-  <a href="./" style="font-weight:700;color:#e7b563;">Quantillon Protocol's smart-contracts docs</a>
+  <a href="/" style="font-weight:700;color:#e7b563;">Quantillon Protocol's smart-contracts docs</a>
   <nav style="margin-left:auto;display:flex;gap:16px;">
     <a href="https://quantillon.money" target="_blank" rel="noreferrer">Website</a>
     <a href="https://app.quantillon.money" target="_blank" rel="noreferrer">App</a>
@@ -40,7 +40,7 @@ function walk(dir, fn) {
 
 function ensureThemeAtRoot() {
   const themeSrc = path.join(__dirname, "doc-theme.css");
-  const themeDst = path.join(DOCS_DIR, THEME_REL);
+  const themeDst = path.join(DOCS_DIR, "doc-theme.css");
   fs.copyFileSync(themeSrc, themeDst);
 }
 
@@ -70,8 +70,8 @@ function patchHtml(file) {
   let html = fs.readFileSync(file, "utf8");
   if (!html.includes("</head>") || !html.includes("<body")) return;
 
-  // inject CSS
-  if (!html.includes(THEME_REL)) {
+  // inject CSS with absolute path
+  if (!html.includes("doc-theme.css")) {
     html = html.replace(
       "</head>",
       `  <link rel="stylesheet" href="${THEME_REL}">\n</head>`
@@ -87,8 +87,8 @@ function patchHtml(file) {
   }
 
   // inject header (after <body>)
-  if (!html.includes("Quantillon Docs") && html.includes("<body")) {
-    html = html.replace("<body>", `<body>\n${HEADER_HTML}`);
+  if (!html.includes('class="site" style="padding:14px') && html.includes("<body")) {
+    html = html.replace(/<body[^>]*>/, (match) => `${match}\n${HEADER_HTML}`);
   }
 
   // inject footer (before </body>)

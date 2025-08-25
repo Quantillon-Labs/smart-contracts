@@ -18,6 +18,34 @@
   a { color: var(--link); text-decoration: none; }
   a:hover { text-decoration: underline; }
   
+  /* Fix sidebar navigation links */
+  .sidebar a, 
+  .sidebar .chapter-item a,
+  .sidebar .chapter-item a:visited,
+  .sidebar .chapter-item a:hover,
+  .sidebar .chapter-item a:active {
+    color: var(--link) !important;
+    text-decoration: none !important;
+  }
+  
+  .sidebar .chapter-item a:hover {
+    text-decoration: underline !important;
+  }
+  
+  /* Fix sidebar text colors */
+  .sidebar,
+  .sidebar .chapter-item,
+  .sidebar .part-title {
+    color: var(--fg) !important;
+  }
+  
+  /* Remove the ":ts docs" artifact from the top bar */
+  .menu-title,
+  .menu-title:before,
+  .menu-title:after {
+    display: none !important;
+  }
+  
   code, pre {
     background: #0e1117 !important;
     color: #d6deeb !important;

@@ -39,11 +39,54 @@
     color: var(--fg) !important;
   }
   
-  /* Remove the ":ts docs" artifact from the top bar */
-  .menu-title,
-  .menu-title:before,
-  .menu-title:after {
-    display: none !important;
+  /* Replace ":ts docs" with custom title */
+  .menu-title {
+    display: block !important;
+    color: var(--fg) !important;
+    font-size: 1.2em !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .menu-title:before {
+    content: "Quantillon Protocol's smart contract documentation" !important;
+  }
+  
+  /* Ensure header links are clickable */
+  header.site {
+    position: relative !important;
+    z-index: 1001 !important;
+  }
+  
+  header.site a {
+    color: var(--link) !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 1002 !important;
+  }
+  
+  header.site a:hover {
+    text-decoration: underline !important;
+  }
+  
+  /* Ensure no overlapping elements block the header */
+  .menu-bar {
+    z-index: 1000 !important;
+  }
+  
+  /* Override any potential pointer-events: none */
+  header.site * {
+    pointer-events: auto !important;
+  }
+  
+  /* Ensure the header is above all other elements */
+  header.site,
+  header.site * {
+    position: relative !important;
+    z-index: 1001 !important;
   }
   
   code, pre {

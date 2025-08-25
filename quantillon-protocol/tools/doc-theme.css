@@ -1,163 +1,354 @@
 :root {
-    --bg: #0b0d10;
-    --bg-soft: #111418;
-    --fg: #e6e6e6;
-    --muted: #a7b0bf;
-    --brand: #e7b563; /* Quantillon gold-ish */
-    --link: #e7b563;
-    --border: #232834;
-    --card: #0f1216;
+    /* Professional Quantillon color palette */
+    --bg: #121212;
+    --bg-soft: #18181b;
+    --bg-card: #1e1e1e;
+    --fg: #ffffff;
+    --fg-muted: #f3f4f6;
+    --fg-secondary: #a1a1aa;
+    --fg-tertiary: #71717a;
+    --brand: #4f46e5;
+    --brand-hover: #6366f1;
+    --link: #4f46e5;
+    --link-hover: #6366f1;
+    --border: #232329;
+    --border-light: rgba(255, 255, 255, 0.1);
+    --accent: #e5e5e5;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    
+    /* Typography */
+    --font-family: 'Manrope', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    
+    /* Spacing and shadows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.32);
+    --shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.4);
+    --border-radius: 8px;
+    --border-radius-sm: 4px;
   }
   
+  /* Base styles */
   html, body {
     background: var(--bg);
     color: var(--fg);
     line-height: 1.6;
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
   }
   
-  a { color: var(--link); text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-semibold);
+    color: var(--fg);
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
   
-  /* Fix sidebar navigation links */
-  .sidebar a, 
+  h1 {
+    font-size: 2.5rem;
+    font-weight: var(--font-weight-bold);
+    border-bottom: 2px solid var(--border-light);
+    padding-bottom: 0.5rem;
+  }
+  
+  h2 {
+    font-size: 2rem;
+    margin-top: 2rem;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  
+  /* Links */
+  a {
+    color: var(--link);
+    text-decoration: none;
+    font-weight: var(--font-weight-medium);
+    transition: all 0.2s ease;
+  }
+  
+  a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+  }
+  
+  /* Sidebar styling */
+  .sidebar {
+    background: var(--bg-soft) !important;
+    border-right: 1px solid var(--border-light) !important;
+    color: var(--fg) !important;
+    font-family: var(--font-family) !important;
+  }
+  
+  .sidebar a,
   .sidebar .chapter-item a,
   .sidebar .chapter-item a:visited,
   .sidebar .chapter-item a:hover,
   .sidebar .chapter-item a:active {
     color: var(--link) !important;
     text-decoration: none !important;
+    font-weight: var(--font-weight-medium) !important;
+    transition: all 0.2s ease !important;
+    border-radius: var(--border-radius-sm) !important;
+    padding: 0.5rem 0.75rem !important;
+    margin: 0.125rem 0 !important;
+    display: block !important;
   }
   
   .sidebar .chapter-item a:hover {
-    text-decoration: underline !important;
+    background: rgba(79, 70, 229, 0.1) !important;
+    color: var(--link-hover) !important;
+    text-decoration: none !important;
   }
   
-  /* Fix sidebar text colors */
-  .sidebar,
-  .sidebar .chapter-item,
   .sidebar .part-title {
-    color: var(--fg) !important;
+    color: var(--fg-secondary) !important;
+    font-weight: var(--font-weight-semibold) !important;
+    font-size: 0.875rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin: 1.5rem 0 0.5rem 0 !important;
+    padding: 0 0.75rem !important;
   }
   
-  /* Replace ":ts docs" with custom title */
-  .menu-title {
-    display: block !important;
-    color: var(--fg) !important;
-    font-size: 1.2em !important;
-    font-weight: 600 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  
-  .menu-title:before {
-    content: "Quantillon Protocol's smart contract documentation" !important;
-  }
-  
-  /* Ensure header links are clickable */
+  /* Header styling */
   header.site {
+    background: var(--bg-soft) !important;
+    border-bottom: 1px solid var(--border-light) !important;
+    padding: 1rem 1.5rem !important;
     position: relative !important;
     z-index: 1001 !important;
+    box-shadow: var(--shadow-sm) !important;
   }
   
   header.site a {
     color: var(--link) !important;
     text-decoration: none !important;
+    font-weight: var(--font-weight-medium) !important;
+    transition: all 0.2s ease !important;
     cursor: pointer !important;
     pointer-events: auto !important;
-    position: relative !important;
-    z-index: 1002 !important;
   }
   
   header.site a:hover {
+    color: var(--link-hover) !important;
     text-decoration: underline !important;
   }
   
-  /* Ensure no overlapping elements block the header */
+  /* Menu title */
+  .menu-title {
+    display: block !important;
+    color: var(--fg) !important;
+    font-size: 1.25rem !important;
+    font-weight: var(--font-weight-semibold) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .menu-title:before {
+    content: "Quantillon Protocol Documentation" !important;
+  }
+  
+  /* Navigation bar */
   .menu-bar {
+    background: var(--bg-soft) !important;
+    border-bottom: 1px solid var(--border-light) !important;
     z-index: 1000 !important;
+    box-shadow: var(--shadow-sm) !important;
   }
   
-  /* Override any potential pointer-events: none */
-  header.site * {
-    pointer-events: auto !important;
+  /* Content area */
+  .content {
+    background: var(--bg) !important;
+    color: var(--fg) !important;
+    font-family: var(--font-family) !important;
   }
   
-  /* Ensure the header is above all other elements */
-  header.site,
-  header.site * {
-    position: relative !important;
-    z-index: 1001 !important;
+  /* Code blocks */
+  code, pre {
+    background: var(--bg-card) !important;
+    color: var(--fg-muted) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--border-radius-sm) !important;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
   }
   
-  /* Fix unreadable text colors */
+  pre {
+    padding: 1.5rem !important;
+    overflow-x: auto !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+  
+  code:not(pre code) {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.875rem !important;
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+  }
+  
+  /* Syntax highlighting */
   .hljs,
   :not(pre):not(a) > .hljs {
-    color: #d6deeb !important;
-    background: #0e1117 !important;
+    color: var(--fg-muted) !important;
+    background: var(--bg-card) !important;
   }
   
-  /* Fix inline code readability */
-  code:not(pre code) {
-    color: #d6deeb !important;
-    background: #0e1117 !important;
-    border: 1px solid var(--border) !important;
-    padding: 0.1em 0.3em !important;
-    border-radius: 3px !important;
+  .hljs-keyword { color: #ff79c6 !important; }
+  .hljs-string { color: #f1fa8c !important; }
+  .hljs-comment { color: var(--fg-tertiary) !important; font-style: italic !important; }
+  .hljs-function { color: #50fa7b !important; }
+  .hljs-variable { color: #f8f8f2 !important; }
+  .hljs-number { color: #bd93f9 !important; }
+  .hljs-type { color: #8be9fd !important; }
+  .hljs-operator { color: #ff79c6 !important; }
+  .hljs-punctuation { color: var(--fg-muted) !important; }
+  
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    margin: 1.5rem 0;
   }
   
-  /* Fix any other potentially unreadable text */
-  .hljs-keyword,
-  .hljs-string,
-  .hljs-comment,
-  .hljs-function,
-  .hljs-variable,
-  .hljs-number,
-  .hljs-type,
-  .hljs-operator,
-  .hljs-punctuation {
-    color: #d6deeb !important;
+  th, td {
+    border: 1px solid var(--border);
+    padding: 1rem;
+    color: var(--fg) !important;
+    text-align: left;
   }
   
-  /* Ensure all text elements are readable */
-  p, div, span, li, td, th {
+  th {
+    background: var(--bg-soft) !important;
+    font-weight: var(--font-weight-semibold) !important;
     color: var(--fg) !important;
   }
   
-  /* Fix any dark text on dark background */
+  tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  
+  tr:hover {
+    background: rgba(79, 70, 229, 0.05);
+  }
+  
+  /* Lists */
+  ul, ol {
+    color: var(--fg-muted);
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+  }
+  
+  li {
+    margin: 0.5rem 0;
+    color: var(--fg-muted);
+  }
+  
+  /* Paragraphs */
+  p {
+    color: var(--fg-muted);
+    margin: 1rem 0;
+    line-height: 1.7;
+  }
+  
+  /* Blockquotes */
+  blockquote {
+    border-left: 4px solid var(--brand);
+    background: rgba(79, 70, 229, 0.05);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    color: var(--fg-secondary);
+  }
+  
+  /* Buttons and interactive elements */
+  button, .button {
+    background: var(--bg-soft);
+    color: var(--fg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--border-radius);
+    padding: 0.5rem 1rem;
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  button:hover, .button:hover {
+    background: var(--border);
+    border-color: var(--brand);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--bg-soft);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--fg-tertiary);
+  }
+  
+  /* Ensure all text is readable */
   * {
     color: inherit;
   }
   
-  /* Override any problematic color inheritances */
   body * {
     color: var(--fg) !important;
   }
   
-  /* Specific overrides for code elements */
-  code, pre {
-    background: #0e1117 !important;
-    color: #d6deeb !important;
-    border: 1px solid var(--border) !important;
-  }
-  
-  table {
-    border-collapse: collapse;
-    background: var(--card);
-    border: 1px solid var(--border);
-  }
-  th, td {
-    border: 1px solid var(--border);
-    padding: 8px 10px;
-    color: var(--fg) !important;
-  }
-  
-  header.site, .navbar, .sidebar, .footer, .toc, .menu {
+  /* Override any problematic color inheritances */
+  .sidebar,
+  .sidebar .chapter-item,
+  .navbar,
+  .footer,
+  .toc,
+  .menu {
     background: var(--bg-soft) !important;
-    border-color: var(--border) !important;
+    border-color: var(--border-light) !important;
     color: var(--fg) !important;
   }
   
-  /* Optional: highlight contract titles */
-  h1, h2, h3 { color: var(--fg); }
-  h1 { border-bottom: 1px solid var(--border); padding-bottom: .4rem; }
+  /* Responsive design */
+  @media (max-width: 768px) {
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.25rem; }
+    
+    .sidebar a {
+      padding: 0.75rem !important;
+    }
+    
+    header.site {
+      padding: 0.75rem 1rem !important;
+    }
+  }
   

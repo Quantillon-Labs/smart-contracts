@@ -286,7 +286,8 @@ contract stQEUROToken is
         stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate);
 
         // Transfer QEURO from user
-        qeuro.transferFrom(msg.sender, address(this), qeuroAmount);
+        // SECURITY FIX: Use safeTransferFrom for reliable QEURO transfers
+        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
 
         // Update totals
         totalUnderlying += qeuroAmount;
@@ -327,10 +328,9 @@ contract stQEUROToken is
         // Update totals
         totalUnderlying -= qeuroAmount;
 
-        // SECURITY FIX: Use transfer with return value check for reliable QEURO transfers
-        // transfer() can fail silently, so we check the return value
-        bool success = qeuro.transfer(msg.sender, qeuroAmount);
-        require(success, "stQEURO: QEURO transfer failed");
+        // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
+        // safeTransfer() will revert on failure, preventing silent failures
+        IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroAmount);
 
         emit QEUROUnstaked(msg.sender, stQEUROAmount, qeuroAmount);
     }
@@ -555,10 +555,9 @@ contract stQEUROToken is
             _burn(user, stQEUROBalance);
             totalUnderlying -= qeuroAmount;
             
-            // SECURITY FIX: Use transfer with return value check for reliable QEURO transfers
-            // transfer() can fail silently, so we check the return value
-            bool success = qeuro.transfer(user, qeuroAmount);
-            require(success, "stQEURO: QEURO transfer failed");
+            // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
+            // safeTransfer() will revert on failure, preventing silent failures
+            IERC20(address(qeuro)).safeTransfer(user, qeuroAmount);
         }
     }
 

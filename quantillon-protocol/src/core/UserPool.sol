@@ -382,8 +382,8 @@ contract UserPool is
         // Update pool totals
         totalDeposits += netAmount;
 
-        // Transfer QEURO to user
-        qeuro.transfer(msg.sender, qeuroMinted);
+        // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
+        IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
         emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
     }
@@ -407,8 +407,8 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         require(user.qeuroBalance >= qeuroAmount, "UserPool: Insufficient balance");
 
-        // Transfer QEURO from user to redeem
-        qeuro.transferFrom(msg.sender, address(this), qeuroAmount);
+        // SECURITY FIX: Use safeTransferFrom for reliable QEURO transfers
+        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
         
         // Redeem USDC through vault
         vault.redeemQEURO(qeuroAmount, minUsdcOut);
@@ -448,8 +448,8 @@ contract UserPool is
         // Update pending rewards before staking
         _updatePendingRewards(msg.sender);
         
-        // Transfer QEURO from user
-        qeuro.transferFrom(msg.sender, address(this), qeuroAmount);
+        // SECURITY FIX: Use safeTransferFrom for reliable QEURO transfers
+        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
         
         // Update user staking info
         user.stakedAmount += qeuroAmount;
@@ -502,8 +502,8 @@ contract UserPool is
         // Update pool totals
         totalStakes -= amount;
         
-        // Transfer QEURO back to user
-        qeuro.transfer(msg.sender, amount);
+        // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
+        IERC20(address(qeuro)).safeTransfer(msg.sender, amount);
 
         emit QEUROUnstaked(msg.sender, amount, block.timestamp);
     }
@@ -819,7 +819,8 @@ contract UserPool is
         if (amount > 0) {
             userdata.stakedAmount = 0;
             totalStakes -= amount;
-            qeuro.transfer(user, amount);
+            // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
+            IERC20(address(qeuro)).safeTransfer(user, amount);
         }
     }
 

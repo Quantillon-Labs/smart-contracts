@@ -200,6 +200,24 @@ contract ChainlinkOracle is
     // =============================================================================
 
     /**
+     * @notice Performs division with proper rounding to nearest integer
+     * 
+     * @param a Numerator
+     * @param b Denominator
+     * @return Result of division with rounding to nearest
+     * 
+     * @dev SECURITY FIX: Proper Rounding Implementation
+     *      - Prevents systematic bias in favor of the protocol
+     *      - Ensures fair price calculations for users
+     *      - Uses (a + b/2) / b formula for proper rounding
+     *      - Eliminates truncation bias that could extract value from users
+     */
+    function _divRound(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b > 0, "Oracle: Division by zero");
+        return (a + b / 2) / b;
+    }
+
+    /**
      * @notice Updates and validates internal prices
      * @dev Internal function called during initialization and resets
      */
@@ -573,7 +591,8 @@ contract ChainlinkOracle is
         if (isValid && lastValidEurUsdPrice > 0) {
             uint256 base = lastValidEurUsdPrice;
             uint256 diff = price > base ? price - base : base - price;
-            uint256 deviationBps = (diff * BASIS_POINTS) / base;
+            // SECURITY FIX: Use proper rounding for deviation calculation
+            uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
             if (deviationBps > MAX_PRICE_DEVIATION) {
                 isValid = false;
             }
@@ -608,7 +627,8 @@ contract ChainlinkOracle is
         price = _scalePrice(rawPrice, feedDecimals);
 
         // USDC must stay within tolerance around $1.00
-        uint256 tolerance = (1e18 * usdcToleranceBps) / BASIS_POINTS;
+        // SECURITY FIX: Use proper rounding for tolerance calculation
+        uint256 tolerance = _divRound(1e18 * usdcToleranceBps, BASIS_POINTS);
         uint256 minPrice = 1e18 - tolerance;  // e.g., 0.98e18
         uint256 maxPrice = 1e18 + tolerance;  // e.g., 1.02e18
         

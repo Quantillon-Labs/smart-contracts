@@ -92,7 +92,7 @@ interface IChainlinkOracle {
      * @return eurUsdLatestRound Latest round ID for EUR/USD
      * @return usdcUsdLatestRound Latest round ID for USDC/USD
      */
-    function testPriceFeedConnectivity() external view returns (
+    function checkPriceFeedConnectivity() external view returns (
         bool eurUsdConnected,
         bool usdcUsdConnected,
         uint80 eurUsdLatestRound,

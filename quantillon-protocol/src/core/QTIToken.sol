@@ -307,6 +307,8 @@ contract QTIToken is
         currentDecentralizationLevel = 0; // Start with 0% decentralization
     }
 
+
+
     // =============================================================================
     // VOTE-ESCROW FUNCTIONS
     // =============================================================================
@@ -317,7 +319,7 @@ contract QTIToken is
      * @param lockTime Duration to lock (must be >= MIN_LOCK_TIME)
      * @return veQTI Voting power calculated for the locked amount
      */
-    function lock(uint256 amount, uint256 lockTime) external returns (uint256 veQTI) {
+    function lock(uint256 amount, uint256 lockTime) external whenNotPaused returns (uint256 veQTI) {
         require(amount > 0, "QTI: Amount must be positive");
         require(lockTime >= MIN_LOCK_TIME, "QTI: Lock time too short");
         require(lockTime <= MAX_LOCK_TIME, "QTI: Lock time too long");
@@ -364,7 +366,7 @@ contract QTIToken is
      * @notice Unlock QTI tokens after lock period expires
      * @return amount Amount of QTI unlocked
      */
-    function unlock() external returns (uint256 amount) {
+    function unlock() external whenNotPaused returns (uint256 amount) {
         LockInfo storage lockInfo = locks[msg.sender];
         require(lockInfo.unlockTime <= block.timestamp, "QTI: Lock not expired");
         require(lockInfo.amount > 0, "QTI: Nothing to unlock");
@@ -473,7 +475,7 @@ contract QTIToken is
         string calldata description,
         uint256 votingPeriod,
         bytes calldata data
-    ) external returns (uint256 proposalId) {
+    ) external whenNotPaused returns (uint256 proposalId) {
         // Update voting power to current time before checking threshold
         uint256 currentVotingPower = _updateVotingPower(msg.sender);
         require(currentVotingPower >= proposalThreshold, "QTI: Insufficient voting power");
@@ -497,7 +499,7 @@ contract QTIToken is
      * @param proposalId Proposal ID
      * @param support True for yes, false for no
      */
-    function vote(uint256 proposalId, bool support) external {
+    function vote(uint256 proposalId, bool support) external whenNotPaused {
         Proposal storage proposal = proposals[proposalId];
         require(block.timestamp >= proposal.startTime, "QTI: Voting not started");
         require(block.timestamp < proposal.endTime, "QTI: Voting ended");

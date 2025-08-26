@@ -400,7 +400,7 @@ contract ChainlinkOracle is
      * @return eurUsdLatestRound Latest round ID for EUR/USD
      * @return usdcUsdLatestRound Latest round ID for USDC/USD
      */
-    function testPriceFeedConnectivity() 
+    function checkPriceFeedConnectivity() 
         external 
         view 
         returns (

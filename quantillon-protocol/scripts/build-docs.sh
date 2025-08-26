@@ -29,13 +29,6 @@ else
     echo "Warning: favicon.png not found in docs directory"
 fi
 
-if [ -f "docs/favicon.svg" ]; then
-    cp docs/favicon.svg docs/book/favicon.svg
-    echo "Custom favicon.svg copied successfully"
-else
-    echo "Warning: favicon.svg not found in docs directory"
-fi
-
 if [ -f "docs/favicon.ico" ]; then
     cp docs/favicon.ico docs/book/favicon.ico
     echo "Custom favicon.ico copied successfully"

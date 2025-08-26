@@ -13,6 +13,44 @@ const CUSTOM_JS = "custom.js"; // our custom JavaScript file
 const FAVICON_PNG = "favicon.png"; // our PNG favicon
 const BANNER_PNG = "banner.png"; // our banner image
 
+// Comprehensive meta tags for SEO and social sharing
+const META_TAGS = `
+    <!-- Primary Meta Tags -->
+    <title>Quantillon Protocol's smart contracts documentation</title>
+    <meta name="title" content="Quantillon Protocol's smart contracts documentation">
+    <meta name="description" content="Technical documentation of Quantillon Protocol — a euro stablecoin (QEURO) governed by DAO through $QTI, featuring smart contracts for minting, staking, hedging, and yield generation." />
+    <meta name="keywords" content="Quantillon Protocol, Smart Contracts, Solidity, DeFi, QEURO, stQEURO, QTI, DAO Governance, Overcollateralization, Yield Shift, Hedging, Euro Stablecoin, Blockchain, On-chain Documentation, Aave Integration, Oracle, DeFi Infrastructure" />
+    
+    <!-- Open Graph / Facebook / Discord / LinkedIn / Telegram -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://smartcontracts.quantillon.money/" />
+    <meta property="og:title" content="Quantillon Protocol's smart contracts documentation" />
+    <meta property="og:description" content="Technical documentation of Quantillon Protocol — a euro stablecoin (QEURO) governed by DAO through $QTI, featuring smart contracts for minting, staking, hedging, and yield generation." />
+    <meta property="og:image" content="https://quantillon.money/card.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://smartcontracts.quantillon.money/" />
+    <meta name="twitter:title" content="Quantillon Protocol's smart contracts documentation" />
+    <meta name="twitter:description" content="Technical documentation of Quantillon Protocol — a euro stablecoin (QEURO) governed by DAO through $QTI, featuring smart contracts for minting, staking, hedging, and yield generation." />
+    <meta name="twitter:image" content="https://quantillon.money/card.png" />
+
+    <!-- Additional SEO Meta Tags -->
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="language" content="English" />
+    <meta name="author" content="Quantillon Labs" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="theme-color" content="#0f0f23" />
+    <meta name="application-name" content="Quantillon Protocol's smart contracts documentation" />
+    <meta name="apple-mobile-web-app-title" content="Quantillon Doc" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://smartcontracts.quantillon.money/" />
+`;
+
 // simple header/footer html (edit to match Quantillon)
 const HEADER_HTML = `
 <header class="site" style="padding:14px 18px;border-bottom:1px solid #232834;display:flex;gap:14px;align-items:center;">
@@ -82,6 +120,19 @@ function copyCustomFiles() {
 function patchHtml(file) {
   let html = fs.readFileSync(file, "utf8");
   if (!html.includes("</head>") || !html.includes("<body")) return;
+
+  // Remove SVG favicon references
+  html = html.replace(/<link[^>]*rel="icon"[^>]*\.svg[^>]*>/gi, '');
+  html = html.replace(/<link[^>]*rel="shortcut icon"[^>]*\.svg[^>]*>/gi, '');
+
+  // Replace existing title and inject comprehensive meta tags
+  if (!html.includes('Quantillon Protocol\'s smart contracts documentation')) {
+    // Remove existing title tag
+    html = html.replace(/<title[^>]*>.*?<\/title>/gi, '');
+    
+    // Inject meta tags at the beginning of head section
+    html = html.replace(/<head[^>]*>/, (match) => `${match}\n${META_TAGS}`);
+  }
 
   // inject CSS with absolute path for layout fixes only
   if (!html.includes("doc-theme.css")) {

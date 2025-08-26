@@ -26,7 +26,7 @@ header.site > div:first-child {
 }
 
 header.site img {
-  height: 180px !important;
+  height: 140px !important;
   width: auto !important;
   flex-shrink: 0 !important;
 }
@@ -62,8 +62,14 @@ header.site nav a:hover {
 
 /* Ensure proper spacing for the main content area */
 .content {
-  margin-top: 208px !important;
+  margin-top: 168px !important;
   padding-top: 0 !important;
+}
+
+/* Fix sidebar to account for fixed header */
+.sidebar {
+  z-index: 1000 !important;
+  margin-top: 168px !important;
 }
 
 /* Fix sidebar overlap issues */

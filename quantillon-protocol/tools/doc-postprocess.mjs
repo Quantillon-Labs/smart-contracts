@@ -17,7 +17,7 @@ const BANNER_PNG = "banner.png"; // our banner image
 const HEADER_HTML = `
 <header class="site" style="padding:14px 18px;border-bottom:1px solid #232834;display:flex;gap:14px;align-items:center;">
   <div style="display:flex;align-items:center;gap:12px;">
-    <img src="/${BANNER_PNG}" alt="Quantillon Protocol" style="height:180px;width:auto;">
+    <img src="/${BANNER_PNG}" alt="Quantillon Protocol" style="height:140px;width:auto;">
   </div>
   <nav style="margin-left:auto;display:flex;gap:16px;">
     <a href="https://quantillon.money" target="_blank" rel="noreferrer">Website</a>

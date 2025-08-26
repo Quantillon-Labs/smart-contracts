@@ -20,6 +20,29 @@ git remote set-url origin "https://github.com/Quantillon-Labs/smart-contracts/qu
 echo "Generating documentation..."
 forge doc --build
 
+# Copy our custom favicon files to override the default forge icons
+echo "Copying custom favicon files..."
+if [ -f "docs/favicon.png" ]; then
+    cp docs/favicon.png docs/book/favicon.png
+    echo "Custom favicon.png copied successfully"
+else
+    echo "Warning: favicon.png not found in docs directory"
+fi
+
+if [ -f "docs/favicon.svg" ]; then
+    cp docs/favicon.svg docs/book/favicon.svg
+    echo "Custom favicon.svg copied successfully"
+else
+    echo "Warning: favicon.svg not found in docs directory"
+fi
+
+if [ -f "docs/favicon.ico" ]; then
+    cp docs/favicon.ico docs/book/favicon.ico
+    echo "Custom favicon.ico copied successfully"
+else
+    echo "Warning: favicon.ico not found in docs directory"
+fi
+
 # Restore the original remote URL
 echo "Restoring original remote URL..."
 git remote set-url origin "$ORIGINAL_REMOTE"

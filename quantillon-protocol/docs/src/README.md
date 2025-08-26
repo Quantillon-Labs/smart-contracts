@@ -232,10 +232,6 @@ For security issues, please contact: `team@quantillon.money` (as documented in a
 
 *Note: Audit status information is not documented in the contracts and should be verified through official channels*
 
-## 🤝 Contributing
-
-We welcome contributions from the community! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for details.
-
 ### Development Workflow
 
 1. Fork the repository
@@ -251,9 +247,6 @@ We welcome contributions from the community! Please see our [Contributing Guidel
 - Update documentation for any changes
 - Ensure all tests pass before submitting PR
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
 ## 🌐 Links
 

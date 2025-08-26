@@ -1,5 +1,5 @@
 # IAaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/a0c4605b79826572de49aa1618715c7e4813adad/src/interfaces/IAaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/2ed390346abaeb7aea3465c14f74d96e70dc2cba/src/interfaces/IAaveVault.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Interface for the AaveVault (Aave V3 USDC yield vault)
 *Mirrors the external/public API of `src/core/vaults/AaveVault.sol`*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions

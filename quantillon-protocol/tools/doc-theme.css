@@ -1,358 +1,104 @@
-:root {
-    /* Professional Quantillon color palette */
-    --bg: #121212;
-    --bg-soft: #18181b;
-    --bg-card: #1e1e1e;
-    --fg: #ffffff;
-    --fg-muted: #f3f4f6;
-    --fg-secondary: #a1a1aa;
-    --fg-tertiary: #71717a;
-    --brand: #4f46e5;
-    --brand-hover: #6366f1;
-    --link: #4f46e5;
-    --link-hover: #6366f1;
-    --border: #232329;
-    --border-light: rgba(255, 255, 255, 0.1);
-    --accent: #e5e5e5;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --error: #ef4444;
-    
-    /* Typography */
-    --font-family: 'Manrope', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-weight-light: 300;
-    --font-weight-normal: 400;
-    --font-weight-medium: 500;
-    --font-weight-semibold: 600;
-    --font-weight-bold: 700;
-    
-    /* Spacing and shadows */
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
-    --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.32);
-    --shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.4);
-    --border-radius: 8px;
-    --border-radius-sm: 4px;
-  }
-  
-  /* Base styles */
-  html, body {
-    background: var(--bg);
-    color: var(--fg);
-    line-height: 1.6;
-    font-family: var(--font-family);
-    font-weight: var(--font-weight-normal);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    scroll-behavior: smooth;
-  }
-  
-  /* Typography */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-family);
-    font-weight: var(--font-weight-semibold);
-    color: var(--fg);
-    line-height: 1.2;
-    margin-bottom: 1rem;
-  }
-  
-  h1 {
-    font-size: 2.5rem;
-    font-weight: var(--font-weight-bold);
-    border-bottom: 2px solid var(--border-light);
-    padding-bottom: 0.5rem;
-  }
-  
-  h2 {
-    font-size: 2rem;
-    margin-top: 2rem;
-  }
-  
-  h3 {
-    font-size: 1.5rem;
-    margin-top: 1.5rem;
-  }
-  
-  /* Links */
-  a {
-    color: var(--link);
-    text-decoration: none;
-    font-weight: var(--font-weight-medium);
-    transition: all 0.2s ease;
-  }
-  
-  a:hover {
-    color: var(--link-hover);
-    text-decoration: underline;
-  }
-  
-  /* Sidebar styling */
-  .sidebar {
-    background: var(--bg-soft) !important;
-    border-right: 1px solid var(--border-light) !important;
-    color: var(--fg) !important;
-    font-family: var(--font-family) !important;
-  }
-  
-  .sidebar a,
-  .sidebar .chapter-item a,
-  .sidebar .chapter-item a:visited,
-  .sidebar .chapter-item a:hover,
-  .sidebar .chapter-item a:active {
-    color: var(--link) !important;
-    text-decoration: none !important;
-    font-weight: var(--font-weight-medium) !important;
-    transition: all 0.2s ease !important;
-    border-radius: var(--border-radius-sm) !important;
-    padding: 0.5rem 0.75rem !important;
-    margin: 0.125rem 0 !important;
-    display: block !important;
-  }
-  
-  .sidebar .chapter-item a:hover {
-    background: rgba(79, 70, 229, 0.1) !important;
-    color: var(--link-hover) !important;
-    text-decoration: none !important;
-  }
-  
-  .sidebar .part-title {
-    color: var(--fg-secondary) !important;
-    font-weight: var(--font-weight-semibold) !important;
-    font-size: 0.875rem !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
-    margin: 1.5rem 0 0.5rem 0 !important;
-    padding: 0 0.75rem !important;
-  }
-  
-  /* Header styling */
+/* Minimal layout fixes for Quantillon Protocol documentation */
+/* This CSS only fixes layout issues without changing the default mdBook color theme */
+
+/* Fix header title cropping by ensuring proper spacing */
+header.site {
+  position: relative !important;
+  z-index: 1001 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  background: #ffffff !important;
+}
+
+/* Ensure the title and banner don't get cropped by the sidebar */
+header.site > div:first-child {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  max-width: 70% !important;
+  overflow: hidden !important;
+}
+
+header.site img {
+  height: 48px !important;
+  width: auto !important;
+  flex-shrink: 0 !important;
+}
+
+header.site a:first-child {
+  font-weight: 700 !important;
+  color: #e7b563 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex-shrink: 1 !important;
+}
+
+/* Fix navigation links to be clickable */
+header.site nav {
+  margin-left: auto !important;
+  display: flex !important;
+  gap: 16px !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+
+header.site nav a {
+  color: #3b82f6 !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  z-index: 1002 !important;
+  position: relative !important;
+}
+
+header.site nav a:hover {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+}
+
+/* Ensure proper spacing for the main content area */
+.content {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Fix sidebar overlap issues */
+.sidebar {
+  z-index: 1000 !important;
+}
+
+/* Ensure the menu bar doesn't interfere with header */
+.menu-bar {
+  z-index: 999 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
   header.site {
-    background: var(--bg-soft) !important;
-    border-bottom: 1px solid var(--border-light) !important;
-    padding: 1rem 1.5rem !important;
-    position: relative !important;
-    z-index: 1001 !important;
-    box-shadow: var(--shadow-sm) !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 10px 15px !important;
   }
   
-  header.site a {
-    color: var(--link) !important;
-    text-decoration: none !important;
-    font-weight: var(--font-weight-medium) !important;
-    transition: all 0.2s ease !important;
-    cursor: pointer !important;
-    pointer-events: auto !important;
+  header.site > div:first-child {
+    max-width: 100% !important;
+    justify-content: center !important;
   }
   
-  header.site a:hover {
-    color: var(--link-hover) !important;
-    text-decoration: underline !important;
+  header.site a:first-child {
+    max-width: 100% !important;
+    text-align: center !important;
   }
   
-  /* Menu title */
-  .menu-title {
-    display: block !important;
-    color: var(--fg) !important;
-    font-size: 1.25rem !important;
-    font-weight: var(--font-weight-semibold) !important;
-    margin: 0 !important;
-    padding: 0 !important;
+  header.site nav {
+    margin-left: 0 !important;
+    justify-content: center !important;
   }
-  
-  .menu-title:before {
-    content: "Quantillon Protocol Documentation" !important;
-  }
-  
-  /* Navigation bar */
-  .menu-bar {
-    background: var(--bg-soft) !important;
-    border-bottom: 1px solid var(--border-light) !important;
-    z-index: 1000 !important;
-    box-shadow: var(--shadow-sm) !important;
-  }
-  
-  /* Content area */
-  .content {
-    background: var(--bg) !important;
-    color: var(--fg) !important;
-    font-family: var(--font-family) !important;
-  }
-  
-  /* Code blocks */
-  code, pre {
-    background: var(--bg-card) !important;
-    color: var(--fg-muted) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--border-radius-sm) !important;
-    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
-  }
-  
-  pre {
-    padding: 1.5rem !important;
-    overflow-x: auto !important;
-    box-shadow: var(--shadow-sm) !important;
-  }
-  
-  code:not(pre code) {
-    padding: 0.25rem 0.5rem !important;
-    font-size: 0.875rem !important;
-    background: var(--bg-card) !important;
-    border: 1px solid var(--border) !important;
-  }
-  
-  /* Syntax highlighting */
-  .hljs,
-  :not(pre):not(a) > .hljs {
-    color: var(--fg-muted) !important;
-    background: var(--bg-card) !important;
-  }
-  
-  .hljs-keyword { color: #ff79c6 !important; }
-  .hljs-string { color: #f1fa8c !important; }
-  .hljs-comment { color: var(--fg-tertiary) !important; font-style: italic !important; }
-  .hljs-function { color: #50fa7b !important; }
-  .hljs-variable { color: #f8f8f2 !important; }
-  .hljs-number { color: #bd93f9 !important; }
-  .hljs-type { color: #8be9fd !important; }
-  .hljs-operator { color: #ff79c6 !important; }
-  .hljs-punctuation { color: var(--fg-muted) !important; }
-  
-  /* Tables */
-  table {
-    border-collapse: collapse;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    margin: 1.5rem 0;
-  }
-  
-  th, td {
-    border: 1px solid var(--border);
-    padding: 1rem;
-    color: var(--fg) !important;
-    text-align: left;
-  }
-  
-  th {
-    background: var(--bg-soft) !important;
-    font-weight: var(--font-weight-semibold) !important;
-    color: var(--fg) !important;
-  }
-  
-  tr:nth-child(even) {
-    background: rgba(255, 255, 255, 0.02) !important;
-  }
-  
-  tr:nth-child(odd) {
-    background: var(--bg-card) !important;
-  }
-  
-  tr:hover {
-    background: rgba(79, 70, 229, 0.1) !important;
-  }
-  
-  /* Lists */
-  ul, ol {
-    color: var(--fg-muted);
-    margin: 1rem 0;
-    padding-left: 1.5rem;
-  }
-  
-  li {
-    margin: 0.5rem 0;
-    color: var(--fg-muted);
-  }
-  
-  /* Paragraphs */
-  p {
-    color: var(--fg-muted);
-    margin: 1rem 0;
-    line-height: 1.7;
-  }
-  
-  /* Blockquotes */
-  blockquote {
-    border-left: 4px solid var(--brand);
-    background: rgba(79, 70, 229, 0.05);
-    padding: 1rem 1.5rem;
-    margin: 1.5rem 0;
-    border-radius: 0 var(--border-radius) var(--border-radius) 0;
-    color: var(--fg-secondary);
-  }
-  
-  /* Buttons and interactive elements */
-  button, .button {
-    background: var(--bg-soft);
-    color: var(--fg);
-    border: 1.5px solid var(--border);
-    border-radius: var(--border-radius);
-    padding: 0.5rem 1rem;
-    font-weight: var(--font-weight-medium);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: var(--shadow-sm);
-  }
-  
-  button:hover, .button:hover {
-    background: var(--border);
-    border-color: var(--brand);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-  }
-  
-  /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: var(--bg-soft);
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 4px;
-  }
-  
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--fg-tertiary);
-  }
-  
-  /* Ensure all text is readable */
-  * {
-    color: inherit;
-  }
-  
-  body * {
-    color: var(--fg) !important;
-  }
-  
-  /* Override any problematic color inheritances */
-  .sidebar,
-  .sidebar .chapter-item,
-  .navbar,
-  .footer,
-  .toc,
-  .menu {
-    background: var(--bg-soft) !important;
-    border-color: var(--border-light) !important;
-    color: var(--fg) !important;
-  }
-  
-  /* Responsive design */
-  @media (max-width: 768px) {
-    h1 { font-size: 2rem; }
-    h2 { font-size: 1.75rem; }
-    h3 { font-size: 1.25rem; }
-    
-    .sidebar a {
-      padding: 0.75rem !important;
-    }
-    
-    header.site {
-      padding: 0.75rem 1rem !important;
-    }
-  }
+}
   

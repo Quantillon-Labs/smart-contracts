@@ -8,13 +8,18 @@ const __dirname = path.dirname(__filename);
 // where forge outputs; keep in sync with workflow's --out
 const DOCS_DIR = path.resolve(process.argv[2] || "./docs");
 
+const THEME_REL = "/doc-theme.css"; // absolute path from root
 const CUSTOM_JS = "custom.js"; // our custom JavaScript file
 const FAVICON_PNG = "favicon.png"; // our PNG favicon
+const BANNER_PNG = "banner.png"; // our banner image
 
 // simple header/footer html (edit to match Quantillon)
 const HEADER_HTML = `
 <header class="site" style="padding:14px 18px;border-bottom:1px solid #232834;display:flex;gap:14px;align-items:center;">
-  <a href="/" style="font-weight:700;color:#e7b563;">Quantillon Protocol's smart-contracts docs</a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <img src="/${BANNER_PNG}" alt="Quantillon Protocol" style="height:48px;width:auto;">
+    <a href="/" style="font-weight:700;color:#e7b563;">Quantillon Protocol's smart-contracts docs</a>
+  </div>
   <nav style="margin-left:auto;display:flex;gap:16px;">
     <a href="https://quantillon.money" target="_blank" rel="noreferrer">Website</a>
     <a href="https://app.quantillon.money" target="_blank" rel="noreferrer">App</a>
@@ -37,6 +42,12 @@ function walk(dir, fn) {
   }
 }
 
+function ensureThemeAtRoot() {
+  const themeSrc = path.join(__dirname, "doc-theme.css");
+  const themeDst = path.join(DOCS_DIR, "doc-theme.css");
+  fs.copyFileSync(themeSrc, themeDst);
+}
+
 function copyCustomFiles() {
   // Copy custom JavaScript file
   const customJsSrc = path.join(__dirname, "..", "docs", CUSTOM_JS);
@@ -57,11 +68,29 @@ function copyCustomFiles() {
   } else {
     console.warn("favicon.png not found, skipping...");
   }
+
+  // Copy banner.png
+  const bannerSrc = path.join(__dirname, BANNER_PNG);
+  const bannerDst = path.join(DOCS_DIR, BANNER_PNG);
+  if (fs.existsSync(bannerSrc)) {
+    fs.copyFileSync(bannerSrc, bannerDst);
+    console.log("Copied banner.png to docs directory");
+  } else {
+    console.warn("banner.png not found, skipping...");
+  }
 }
 
 function patchHtml(file) {
   let html = fs.readFileSync(file, "utf8");
   if (!html.includes("</head>") || !html.includes("<body")) return;
+
+  // inject CSS with absolute path for layout fixes only
+  if (!html.includes("doc-theme.css")) {
+    html = html.replace(
+      "</head>",
+      `  <link rel="stylesheet" href="${THEME_REL}">\n</head>`
+    );
+  }
 
   // inject custom JavaScript
   if (!html.includes(CUSTOM_JS) && html.includes("</head>")) {
@@ -97,6 +126,7 @@ function main() {
     console.error("Docs dir not found:", DOCS_DIR);
     process.exit(1);
   }
+  ensureThemeAtRoot();
   copyCustomFiles();
 
   walk(DOCS_DIR, (f) => {

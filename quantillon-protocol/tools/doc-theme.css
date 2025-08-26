@@ -31,7 +31,8 @@ header.site img {
   flex-shrink: 0 !important;
 }
 
-header.site a:first-child {
+/* Hide only the title link, not navigation links */
+header.site > div:first-child > a:first-child {
   display: none !important;
 }
 
@@ -80,6 +81,7 @@ header.site nav a:hover {
 /* Ensure the menu bar doesn't interfere with header */
 .menu-bar {
   z-index: 999 !important;
+  margin-top: 168px !important;
 }
 
 /* Responsive adjustments */
@@ -95,7 +97,7 @@ header.site nav a:hover {
     justify-content: center !important;
   }
   
-  header.site a:first-child {
+  header.site > div:first-child > a:first-child {
     max-width: 100% !important;
     text-align: center !important;
   }

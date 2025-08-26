@@ -216,12 +216,41 @@ contract ChainlinkOracle is
     /**
      * @notice Updates and validates internal prices
      * @dev Internal function called during initialization and resets
+     * @dev FIXED: No longer calls external functions on itself during initialization
      */
     function _updatePrices() internal {
-        // Attempt to fetch current prices
-        (uint256 eurUsdPrice, bool eurUsdValid) = this.getEurUsdPrice();
-        (uint256 usdcUsdPrice, ) = this.getUsdcUsdPrice();
-
+        // Fetch EUR/USD price data directly from Chainlink
+        (, int256 eurUsdRawPrice, , uint256 eurUsdUpdatedAt, ) = eurUsdPriceFeed.latestRoundData();
+        
+        // Fetch USDC/USD price data directly from Chainlink
+        (, int256 usdcUsdRawPrice, , uint256 usdcUsdUpdatedAt, ) = usdcUsdPriceFeed.latestRoundData();
+        
+        // Validate EUR/USD price
+        bool eurUsdValid = true;
+        uint256 eurUsdPrice = 0;
+        
+        // Check if EUR/USD price is fresh and positive
+        if (block.timestamp - eurUsdUpdatedAt > MAX_PRICE_STALENESS || eurUsdRawPrice <= 0) {
+            eurUsdValid = false;
+        } else {
+            // Convert Chainlink decimals to 18 decimals
+            uint8 eurUsdFeedDecimals = eurUsdPriceFeed.decimals();
+            eurUsdPrice = _scalePrice(eurUsdRawPrice, eurUsdFeedDecimals);
+            
+            // Circuit breaker bounds check
+            eurUsdValid = eurUsdPrice >= minEurUsdPrice && eurUsdPrice <= maxEurUsdPrice;
+            
+            // Deviation check against last valid price (reject sudden jumps > MAX_PRICE_DEVIATION)
+            if (eurUsdValid && lastValidEurUsdPrice > 0) {
+                uint256 base = lastValidEurUsdPrice;
+                uint256 diff = eurUsdPrice > base ? eurUsdPrice - base : base - eurUsdPrice;
+                uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
+                if (deviationBps > MAX_PRICE_DEVIATION) {
+                    eurUsdValid = false;
+                }
+            }
+        }
+        
         // If EUR/USD invalid, trigger the circuit breaker
         if (!eurUsdValid) {
             circuitBreakerTriggered = true;
@@ -231,6 +260,22 @@ contract ChainlinkOracle is
                 "Price validation failed during update"
             );
             return;
+        }
+        
+        // Calculate USDC/USD price for event emission
+        uint256 usdcUsdPrice = 1e18; // Default fallback
+        if (block.timestamp - usdcUsdUpdatedAt <= MAX_PRICE_STALENESS && usdcUsdRawPrice > 0) {
+            uint8 usdcUsdFeedDecimals = usdcUsdPriceFeed.decimals();
+            usdcUsdPrice = _scalePrice(usdcUsdRawPrice, usdcUsdFeedDecimals);
+            
+            // Check USDC tolerance
+            uint256 tolerance = _divRound(1e18 * usdcToleranceBps, BASIS_POINTS);
+            uint256 minPrice = 1e18 - tolerance;
+            uint256 maxPrice = 1e18 + tolerance;
+            
+            if (usdcUsdPrice < minPrice || usdcUsdPrice > maxPrice) {
+                usdcUsdPrice = 1e18; // Use fallback if outside tolerance
+            }
         }
 
         // Update internal values
@@ -242,28 +287,27 @@ contract ChainlinkOracle is
     }
 
     /**
-     * @notice Scale price to 8 decimals for consistency
+     * @notice Scale price to 18 decimals for consistency
      * @param rawPrice Raw price from Chainlink
      * @param decimals Number of decimals in raw price
-     * @return Scaled price with 8 decimals
-     * 
-
+     * @return Scaled price with 18 decimals
+     * @dev FIXED: Now scales to 18 decimals instead of 8 to match contract expectations
      */
     function _scalePrice(int256 rawPrice, uint8 decimals) internal pure returns (uint256) {
         if (rawPrice <= 0) return 0;
         
         uint256 price = uint256(rawPrice);
         
-        if (decimals == 8) {
+        if (decimals == 18) {
             return price;
-        } else if (decimals < 8) {
+        } else if (decimals < 18) {
             // SECURITY FIX: Use proper rounding instead of truncation
-            // Multiply by 10^(8-decimals) to scale up
-            return price * (10 ** (8 - decimals));
+            // Multiply by 10^(18-decimals) to scale up
+            return price * (10 ** (18 - decimals));
         } else {
             // SECURITY FIX: Use proper rounding instead of truncation
-            // Divide by 10^(decimals-8) to scale down with rounding
-            uint256 divisor = 10 ** (decimals - 8);
+            // Divide by 10^(decimals-18) to scale down with rounding
+            uint256 divisor = 10 ** (decimals - 18);
             uint256 halfDivisor = divisor / 2;
             return (price + halfDivisor) / divisor; // Round to nearest
         }
@@ -281,6 +325,7 @@ contract ChainlinkOracle is
      * @return usdcUsdFresh true if USDC/USD price is fresh
      * 
      * @dev Used by UI and monitoring systems to display real-time status
+     * @dev FIXED: No longer calls external functions on itself
      */
     function getOracleHealth() 
         external 
@@ -291,9 +336,31 @@ contract ChainlinkOracle is
             bool usdcUsdFresh
         ) 
     {
-        // Check price freshness
-        (, eurUsdFresh) = this.getEurUsdPrice();
-        (, usdcUsdFresh) = this.getUsdcUsdPrice();
+        // Check EUR/USD price freshness directly
+        try eurUsdPriceFeed.latestRoundData() returns (
+            uint80,
+            int256,
+            uint256,
+            uint256 updatedAt,
+            uint80
+        ) {
+            eurUsdFresh = (block.timestamp - updatedAt) <= MAX_PRICE_STALENESS;
+        } catch {
+            eurUsdFresh = false;
+        }
+        
+        // Check USDC/USD price freshness directly
+        try usdcUsdPriceFeed.latestRoundData() returns (
+            uint80,
+            int256,
+            uint256,
+            uint256 updatedAt,
+            uint80
+        ) {
+            usdcUsdFresh = (block.timestamp - updatedAt) <= MAX_PRICE_STALENESS;
+        } catch {
+            usdcUsdFresh = false;
+        }
         
         // Oracle is healthy if:
         // - Both prices are fresh
@@ -325,13 +392,59 @@ contract ChainlinkOracle is
             bool withinBounds
         ) 
     {
-        (currentPrice, ) = this.getEurUsdPrice();
+        // Get current price directly without calling external function on self
+        if (circuitBreakerTriggered || paused()) {
+            currentPrice = lastValidEurUsdPrice;
+        } else {
+            try eurUsdPriceFeed.latestRoundData() returns (
+                uint80,
+                int256 rawPrice,
+                uint256,
+                uint256 updatedAt,
+                uint80
+            ) {
+                if (block.timestamp - updatedAt <= MAX_PRICE_STALENESS && rawPrice > 0) {
+                    uint8 feedDecimals = eurUsdPriceFeed.decimals();
+                    currentPrice = _scalePrice(rawPrice, feedDecimals);
+                    
+                    // Check bounds and deviation
+                    bool isValid = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
+                    
+                    if (isValid && lastValidEurUsdPrice > 0) {
+                        uint256 base = lastValidEurUsdPrice;
+                        uint256 diff = currentPrice > base ? currentPrice - base : base - currentPrice;
+                        uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
+                        if (deviationBps > MAX_PRICE_DEVIATION) {
+                            isValid = false;
+                        }
+                    }
+                    
+                    if (!isValid) {
+                        currentPrice = lastValidEurUsdPrice;
+                    }
+                } else {
+                    currentPrice = lastValidEurUsdPrice;
+                }
+            } catch {
+                currentPrice = lastValidEurUsdPrice;
+            }
+        }
+        
         lastValidPrice = lastValidEurUsdPrice;
         lastUpdate = lastPriceUpdateTime;
         
         // Staleness check
-        (, , , uint256 updatedAt, ) = eurUsdPriceFeed.latestRoundData();
-        isStale = (block.timestamp - updatedAt) > MAX_PRICE_STALENESS;
+        try eurUsdPriceFeed.latestRoundData() returns (
+            uint80,
+            int256,
+            uint256,
+            uint256 updatedAt,
+            uint80
+        ) {
+            isStale = (block.timestamp - updatedAt) > MAX_PRICE_STALENESS;
+        } catch {
+            isStale = true;
+        }
         
         // Bounds check
         withinBounds = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;

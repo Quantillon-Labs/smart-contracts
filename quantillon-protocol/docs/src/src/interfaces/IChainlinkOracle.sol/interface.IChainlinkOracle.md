@@ -1,5 +1,5 @@
 # IChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/2c8dfc96fee94b0bbd0e4d44c6caa70cba7e0d51/src/interfaces/IChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/interfaces/IChainlinkOracle.sol)
 
 **Author:**
 Quantillon Labs
@@ -144,13 +144,13 @@ function getPriceFeedAddresses()
 |`usdcUsdDecimals`|`uint8`|USDC/USD feed decimals|
 
 
-### testPriceFeedConnectivity
+### checkPriceFeedConnectivity
 
 Connectivity check for both feeds
 
 
 ```solidity
-function testPriceFeedConnectivity()
+function checkPriceFeedConnectivity()
     external
     view
     returns (bool eurUsdConnected, bool usdcUsdConnected, uint80 eurUsdLatestRound, uint80 usdcUsdLatestRound);

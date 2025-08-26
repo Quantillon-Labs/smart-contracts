@@ -1,5 +1,5 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/2c8dfc96fee94b0bbd0e4d44c6caa70cba7e0d51/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -345,7 +345,7 @@ Lock QTI tokens for voting power
 
 
 ```solidity
-function lock(uint256 amount, uint256 lockTime) external returns (uint256 veQTI);
+function lock(uint256 amount, uint256 lockTime) external whenNotPaused returns (uint256 veQTI);
 ```
 **Parameters**
 
@@ -367,7 +367,7 @@ Unlock QTI tokens after lock period expires
 
 
 ```solidity
-function unlock() external returns (uint256 amount);
+function unlock() external whenNotPaused returns (uint256 amount);
 ```
 **Returns**
 
@@ -456,6 +456,7 @@ Create a new governance proposal
 ```solidity
 function createProposal(string calldata description, uint256 votingPeriod, bytes calldata data)
     external
+    whenNotPaused
     returns (uint256 proposalId);
 ```
 **Parameters**
@@ -479,7 +480,7 @@ Vote on a proposal
 
 
 ```solidity
-function vote(uint256 proposalId, bool support) external;
+function vote(uint256 proposalId, bool support) external whenNotPaused;
 ```
 **Parameters**
 

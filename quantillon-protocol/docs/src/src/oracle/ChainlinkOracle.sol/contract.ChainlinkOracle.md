@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/2c8dfc96fee94b0bbd0e4d44c6caa70cba7e0d51/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -230,6 +230,8 @@ Updates and validates internal prices
 
 *Internal function called during initialization and resets*
 
+*FIXED: No longer calls external functions on itself during initialization*
+
 
 ```solidity
 function _updatePrices() internal;
@@ -237,7 +239,9 @@ function _updatePrices() internal;
 
 ### _scalePrice
 
-Scale price to 8 decimals for consistency
+Scale price to 18 decimals for consistency
+
+*FIXED: Now scales to 18 decimals instead of 8 to match contract expectations*
 
 
 ```solidity
@@ -254,7 +258,7 @@ function _scalePrice(int256 rawPrice, uint8 decimals) internal pure returns (uin
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|Scaled price with 8 decimals|
+|`<none>`|`uint256`|Scaled price with 18 decimals|
 
 
 ### getOracleHealth
@@ -262,6 +266,8 @@ function _scalePrice(int256 rawPrice, uint8 decimals) internal pure returns (uin
 Retrieves the oracle global health status
 
 *Used by UI and monitoring systems to display real-time status*
+
+*FIXED: No longer calls external functions on itself*
 
 
 ```solidity
@@ -341,13 +347,13 @@ function getPriceFeedAddresses()
 |`usdcUsdDecimals`|`uint8`|Number of decimals for the USDC/USD feed|
 
 
-### testPriceFeedConnectivity
+### checkPriceFeedConnectivity
 
 Tests connectivity to the Chainlink price feeds
 
 
 ```solidity
-function testPriceFeedConnectivity()
+function checkPriceFeedConnectivity()
     external
     view
     returns (bool eurUsdConnected, bool usdcUsdConnected, uint80 eurUsdLatestRound, uint80 usdcUsdLatestRound);

@@ -63,7 +63,7 @@ header.site nav a:hover {
 
 /* Ensure proper spacing for the main content area */
 .content {
-  margin-top: 168px !important;
+  margin-top: 0 !important;
   padding-top: 0 !important;
 }
 
@@ -103,9 +103,7 @@ header.site nav a:hover {
   }
   
   header.site nav {
-    position: static !important;
-    margin-left: 0 !important;
-    justify-content: center !important;
+    display: none !important;
   }
 }
   

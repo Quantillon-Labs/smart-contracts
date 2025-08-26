@@ -7,19 +7,19 @@ header.site {
   z-index: 1001 !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
+  justify-content: center !important;
   padding: 14px 18px !important;
   border-bottom: 1px solid #e5e7eb !important;
-  background: #ffffff !important;
+  background: #000000 !important;
 }
 
-/* Ensure the title and banner don't get cropped by the sidebar */
+/* Center the banner and title container */
 header.site > div:first-child {
   display: flex !important;
   align-items: center !important;
   gap: 12px !important;
-  max-width: 70% !important;
-  overflow: hidden !important;
+  justify-content: center !important;
+  flex: 1 !important;
 }
 
 header.site img {
@@ -40,7 +40,8 @@ header.site a:first-child {
 
 /* Fix navigation links to be clickable */
 header.site nav {
-  margin-left: auto !important;
+  position: absolute !important;
+  right: 18px !important;
   display: flex !important;
   gap: 16px !important;
   align-items: center !important;
@@ -48,7 +49,7 @@ header.site nav {
 }
 
 header.site nav a {
-  color: #3b82f6 !important;
+  color: #e7b563 !important;
   text-decoration: none !important;
   font-weight: 500 !important;
   cursor: pointer !important;
@@ -58,7 +59,7 @@ header.site nav a {
 }
 
 header.site nav a:hover {
-  color: #2563eb !important;
+  color: #ffffff !important;
   text-decoration: underline !important;
 }
 
@@ -97,6 +98,7 @@ header.site nav a:hover {
   }
   
   header.site nav {
+    position: static !important;
     margin-left: 0 !important;
     justify-content: center !important;
   }

@@ -5,20 +5,20 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../interfaces/IChainlinkOracle.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
+import "./SecureUpgradeable.sol";
 
 contract HedgerPool is 
     Initializable,
     ReentrancyGuardUpgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
-    UUPSUpgradeable
+    SecureUpgradeable
 {
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -26,7 +26,6 @@ contract HedgerPool is
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     IERC20 public usdc;
     IChainlinkOracle public oracle;
@@ -148,7 +147,8 @@ contract HedgerPool is
         address admin,
         address _usdc,
         address _oracle,
-        address _yieldShift
+        address _yieldShift,
+        address timelock
     ) public initializer {
         require(admin != address(0), "HedgerPool: Admin cannot be zero");
         require(_usdc != address(0), "HedgerPool: USDC cannot be zero");
@@ -158,12 +158,11 @@ contract HedgerPool is
         __ReentrancyGuard_init();
         __AccessControl_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
+        __SecureUpgradeable_init(timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
-        _grantRole(UPGRADER_ROLE, admin);
 
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
@@ -589,52 +588,9 @@ contract HedgerPool is
         return totalExposure;
     }
 
-    function getPoolStatistics() external view returns (
-        uint256 activeHedgers_,
-        uint256 totalPositions,
-        uint256 averagePosition,
-        uint256 totalMargin_,
-        uint256 poolUtilization
-    ) {
-        activeHedgers_ = activeHedgers;
-        totalPositions = nextPositionId - 1;
-        averagePosition = totalPositions > 0 ? totalExposure / totalPositions : 0;
-        totalMargin_ = totalMargin;
-        poolUtilization = totalMargin > 0 ? (totalExposure * 10000) / totalMargin : 0;
-    }
 
-    function getPendingHedgingRewards(address hedger) external view returns (
-        uint256 interestDifferential,
-        uint256 yieldShiftRewards,
-        uint256 totalPending
-    ) {
-        HedgerInfo storage hedgerInfo = hedgers[hedger];
-        
-        if (hedgerInfo.totalExposure > 0) {
-            uint256 currentBlock = block.number;
-            uint256 lastRewardBlock = hedgerLastRewardBlock[hedger];
-            
-            if (lastRewardBlock > 0) {
-                uint256 blocksElapsed = currentBlock - lastRewardBlock;
-                uint256 timeElapsed = blocksElapsed * 12;
-                
-                if (timeElapsed > MAX_REWARD_PERIOD) {
-                    timeElapsed = MAX_REWARD_PERIOD;
-                }
-                
-                uint256 rateDiff = usdInterestRate > eurInterestRate ? 
-                    usdInterestRate - eurInterestRate : 0;
-                
-                interestDifferential = hedgerInfo.pendingRewards + 
-                    hedgerInfo.totalExposure.mulDiv(rateDiff, 10000).mulDiv(timeElapsed, 365 days);
-            } else {
-                interestDifferential = hedgerInfo.pendingRewards;
-            }
-        }
-        
-        yieldShiftRewards = yieldShift.getHedgerPendingYield(hedger);
-        totalPending = interestDifferential + yieldShiftRewards;
-    }
+
+
 
     function updateHedgingParameters(
         uint256 newMinMarginRatio,
@@ -759,11 +715,7 @@ contract HedgerPool is
         hasPendingLiquidation[hedger][positionId] = false;
     }
 
-    function _authorizeUpgrade(address newImplementation) 
-        internal 
-        override 
-        onlyRole(UPGRADER_ROLE) 
-    {}
+
 
     function _hasPendingLiquidationCommitment(address hedger, uint256 positionId) internal view returns (bool) {
         return hasPendingLiquidation[hedger][positionId];

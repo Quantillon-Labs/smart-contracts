@@ -178,7 +178,7 @@ contract ChainlinkOracleTestSuite is Test {
         assertTrue(oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(oracle.hasRole(oracle.ORACLE_MANAGER_ROLE(), admin));
         assertTrue(oracle.hasRole(oracle.EMERGENCY_ROLE(), admin));
-        assertTrue(oracle.hasRole(oracle.UPGRADER_ROLE(), admin));
+
         
         // Check price feeds
         (address eurUsdFeed, address usdcUsdFeed, , ) = oracle.getPriceFeedAddresses();

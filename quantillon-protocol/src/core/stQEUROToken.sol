@@ -10,13 +10,13 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
+import "./SecureUpgradeable.sol";
 
 /**
  * @title stQEUROToken
@@ -82,7 +82,7 @@ contract stQEUROToken is
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
-    UUPSUpgradeable
+    SecureUpgradeable
 {
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -107,9 +107,7 @@ contract stQEUROToken is
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     
     /// @notice Role for performing contract upgrades via UUPS pattern
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to governance or upgrade multisig
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
 
     // =============================================================================
     // STATE VARIABLES - External contracts and configuration
@@ -231,7 +229,8 @@ contract stQEUROToken is
         address _qeuro,
         address _yieldShift,
         address _usdc,
-        address _treasury
+        address _treasury,
+        address timelock
     ) public initializer {
         require(admin != address(0), "stQEURO: Admin cannot be zero");
         require(_qeuro != address(0), "stQEURO: QEURO cannot be zero");
@@ -243,13 +242,12 @@ contract stQEUROToken is
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-        __UUPSUpgradeable_init();
+        __SecureUpgradeable_init(timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(YIELD_MANAGER_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
-        _grantRole(UPGRADER_ROLE, admin);
 
         qeuro = IQEUROToken(_qeuro);
         yieldShift = IYieldShift(_yieldShift);
@@ -526,7 +524,7 @@ contract stQEUROToken is
         return 18;
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
+
 
     // =============================================================================
     // EMERGENCY FUNCTIONS

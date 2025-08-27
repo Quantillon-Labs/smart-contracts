@@ -818,14 +818,7 @@ contract QEUROToken is
      *      - Handles case where currentSupply >= maxSupply
      *      - Returns 0 if no more minting is possible
      */
-    function getRemainingMintCapacity() external view returns (uint256) {
-        uint256 currentSupply = totalSupply();
-        if (currentSupply >= maxSupply) return 0;
-        
-        unchecked {
-            return maxSupply - currentSupply;
-        }
-    }
+
 
     /**
      * @notice Gets current rate limit status
@@ -843,38 +836,7 @@ contract QEUROToken is
      *      - Returns current limits and next reset time
      *      - Includes bounds checking to prevent timestamp manipulation
      */
-    function getRateLimitStatus() 
-        external 
-        view 
-        returns (
-            uint256 mintedThisHour,
-            uint256 burnedThisHour,
-            uint256 mintLimit,
-            uint256 burnLimit,
-            uint256 nextResetTime
-        ) 
-    {
-        // If an hour has passed, return zeros for current hour amounts
-        uint256 timeSinceReset = block.timestamp - rateLimitInfo.lastRateLimitReset;
-        
-        // SECURITY FIX: Bounds check to prevent timestamp manipulation
-        // Caps time elapsed at 24 hours maximum to prevent excessive manipulation
-        if (timeSinceReset > 24 hours) {
-            timeSinceReset = 24 hours; // Cap at 24 hours maximum
-        }
-        
-        if (timeSinceReset >= 1 hours) {
-            return (0, 0, mintRateLimit, burnRateLimit, rateLimitInfo.lastRateLimitReset + 1 hours);
-        }
-        
-        return (
-            rateLimitInfo.currentHourMinted,
-            rateLimitInfo.currentHourBurned,
-            mintRateLimit,
-            burnRateLimit,
-            rateLimitInfo.lastRateLimitReset + 1 hours
-        );
-    }
+
 
     // =============================================================================
     // INTERNAL OVERRIDES - OpenZeppelin behavior modifications

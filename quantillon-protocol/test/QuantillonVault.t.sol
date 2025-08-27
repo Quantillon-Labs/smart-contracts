@@ -182,7 +182,6 @@ contract QuantillonVaultTestSuite is Test {
         assertTrue(vault.hasRole(0x00, admin)); // DEFAULT_ADMIN_ROLE is 0x00
         assertTrue(vault.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
         assertTrue(vault.hasRole(keccak256("EMERGENCY_ROLE"), admin));
-        assertTrue(vault.hasRole(keccak256("UPGRADER_ROLE"), admin));
         
         // Check external contracts
         assertEq(address(vault.qeuro()), address(qeuroToken));
@@ -905,14 +904,5 @@ contract QuantillonVaultTestSuite is Test {
     // UPGRADE TESTS
     // =============================================================================
     
-    /**
-     * @notice Test upgrade authorization
-     * @dev Verifies that only UPGRADER_ROLE can authorize upgrades
-     */
-    function test_Upgrade_Authorization() public {
-        // This test verifies that the _authorizeUpgrade function is properly protected
-        // The actual upgrade would require a new implementation contract
-        // For now, we just verify the role is properly set
-        assertTrue(vault.hasRole(keccak256("UPGRADER_ROLE"), admin));
-    }
+
 }

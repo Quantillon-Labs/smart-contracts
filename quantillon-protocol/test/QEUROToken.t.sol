@@ -124,7 +124,7 @@ contract QEUROTokenTestSuite is Test {
         assertTrue(qeuroToken.hasRole(keccak256("MINTER_ROLE"), vault));
         assertTrue(qeuroToken.hasRole(keccak256("BURNER_ROLE"), vault));
         assertTrue(qeuroToken.hasRole(keccak256("PAUSER_ROLE"), admin));
-        assertTrue(qeuroToken.hasRole(keccak256("UPGRADER_ROLE"), admin));
+
         assertTrue(qeuroToken.hasRole(keccak256("COMPLIANCE_ROLE"), admin));
         
         // Check initial state variables
@@ -967,53 +967,9 @@ contract QEUROTokenTestSuite is Test {
         assertEq(qeuroToken.getSupplyUtilization(), expectedUtilization);
     }
     
-    /**
-     * @notice Test remaining mint capacity calculation
-     * @dev Verifies that remaining mint capacity is calculated correctly
-     */
-    function test_Utility_GetRemainingMintCapacity() public {
-        uint256 maxSupply = qeuroToken.maxSupply();
-        
-        // Initially full capacity
-        assertEq(qeuroToken.getRemainingMintCapacity(), maxSupply);
-        
-        // Mint some tokens
-        vm.prank(vault);
-        qeuroToken.mint(user1, INITIAL_MINT_AMOUNT);
-        
-        assertEq(qeuroToken.getRemainingMintCapacity(), maxSupply - INITIAL_MINT_AMOUNT);
-        
-        // Test with a smaller amount to avoid rate limiting issues
-        // This test focuses on the calculation logic, not the full supply scenario
-    }
+
     
-    /**
-     * @notice Test rate limit status
-     * @dev Verifies that rate limit status returns correct information
-     */
-    function test_Utility_GetRateLimitStatus() public {
-        (
-            uint256 mintedThisHour,
-            uint256 burnedThisHour,
-            uint256 mintLimit,
-            uint256 burnLimit,
-            uint256 nextResetTime
-        ) = qeuroToken.getRateLimitStatus();
-        
-        assertEq(mintedThisHour, 0);
-        assertEq(burnedThisHour, 0);
-        assertEq(mintLimit, qeuroToken.mintRateLimit());
-        assertEq(burnLimit, qeuroToken.burnRateLimit());
-        (,, uint64 lastReset) = qeuroToken.rateLimitInfo();
-        assertEq(nextResetTime, lastReset + 1 hours);
-        
-        // Mint some tokens and check again
-        vm.prank(vault);
-        qeuroToken.mint(user1, SMALL_AMOUNT);
-        
-        (mintedThisHour, , , , ) = qeuroToken.getRateLimitStatus();
-        assertEq(mintedThisHour, SMALL_AMOUNT);
-    }
+
     
     /**
      * @notice Test token info retrieval

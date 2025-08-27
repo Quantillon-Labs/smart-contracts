@@ -316,6 +316,7 @@ contract AaveVaultTestSuite is Test {
     address public emergencyRole = address(0x4);
     address public user = address(0x5);
     address public recipient = address(0x6);
+    address public mockTimelock = address(0x123);
 
     // =============================================================================
     // TEST CONSTANTS
@@ -364,7 +365,8 @@ contract AaveVaultTestSuite is Test {
             address(usdc),
             address(aaveProvider),
             address(rewardsController),
-            address(yieldShift)
+            address(yieldShift),
+            mockTimelock
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -408,7 +410,7 @@ contract AaveVaultTestSuite is Test {
         assertTrue(aaveVault.hasRole(aaveVault.GOVERNANCE_ROLE(), admin));
         assertTrue(aaveVault.hasRole(aaveVault.VAULT_MANAGER_ROLE(), admin));
         assertTrue(aaveVault.hasRole(aaveVault.EMERGENCY_ROLE(), admin));
-        assertTrue(aaveVault.hasRole(aaveVault.UPGRADER_ROLE(), admin));
+
         
         // Check contract addresses
         assertEq(address(aaveVault.usdc()), address(usdc));
@@ -446,7 +448,8 @@ contract AaveVaultTestSuite is Test {
             address(usdc),
             address(aaveProvider),
             address(rewardsController),
-            address(yieldShift)
+            address(yieldShift),
+            mockTimelock
         );
         
         vm.expectRevert("AaveVault: Admin cannot be zero");
@@ -466,7 +469,8 @@ contract AaveVaultTestSuite is Test {
             address(0),
             address(aaveProvider),
             address(rewardsController),
-            address(yieldShift)
+            address(yieldShift),
+            mockTimelock
         );
         
         vm.expectRevert("AaveVault: USDC cannot be zero");
@@ -984,21 +988,7 @@ contract AaveVaultTestSuite is Test {
     // HISTORICAL DATA TESTS
     // =============================================================================
     
-    /**
-     * @notice Test getting historical yield data
-     * @dev Verifies historical tracking
-     */
-    function test_HistoricalData_GetHistoricalYield() public {
-        // Test historical data function without triggering problematic calculations
-        // Get historical data for a very short period to avoid overflow
-        (uint256 averageYield, uint256 maxYield, uint256 minYield, uint256 yieldVolatility) = aaveVault.getHistoricalYield(1);
-        
-        // Check that the function returns valid data (even if zero for empty history)
-        assertGe(averageYield, 0);
-        assertGe(maxYield, 0);
-        assertGe(minYield, 0);
-        assertGe(yieldVolatility, 0);
-    }
+
 
     // =============================================================================
     // EMERGENCY AND ADMIN TESTS

@@ -170,6 +170,7 @@ contract YieldShiftTestSuite is Test {
     address public user = address(0x5);
     address public hedger = address(0x6);
     address public recipient = address(0x7);
+    address public mockTimelock = address(0x123);
 
     // =============================================================================
     // TEST CONSTANTS
@@ -218,7 +219,8 @@ contract YieldShiftTestSuite is Test {
             address(userPool),
             address(hedgerPool),
             address(aaveVault),
-            address(stQEURO)
+            address(stQEURO),
+            mockTimelock
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -263,7 +265,7 @@ contract YieldShiftTestSuite is Test {
         assertTrue(yieldShift.hasRole(yieldShift.GOVERNANCE_ROLE(), admin));
         assertTrue(yieldShift.hasRole(yieldShift.YIELD_MANAGER_ROLE(), admin));
         assertTrue(yieldShift.hasRole(yieldShift.EMERGENCY_ROLE(), admin));
-        assertTrue(yieldShift.hasRole(yieldShift.UPGRADER_ROLE(), admin));
+
         
         // Check contract addresses
         assertEq(address(yieldShift.usdc()), address(usdc));
@@ -298,7 +300,8 @@ contract YieldShiftTestSuite is Test {
             address(userPool),
             address(hedgerPool),
             address(aaveVault),
-            address(stQEURO)
+            address(stQEURO),
+            mockTimelock
         );
         
         vm.expectRevert("YieldShift: Admin cannot be zero");
@@ -319,7 +322,8 @@ contract YieldShiftTestSuite is Test {
             address(userPool),
             address(hedgerPool),
             address(aaveVault),
-            address(stQEURO)
+            address(stQEURO),
+            mockTimelock
         );
         
         vm.expectRevert("YieldShift: USDC cannot be zero");

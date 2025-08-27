@@ -79,20 +79,7 @@ interface IAaveVault {
      */
     function getAccruedInterest() external view returns (uint256);
 
-    /**
-     * @notice Historical yield data for a given period
-     * @param period Time period in seconds
-     * @return totalYield Total yield generated over period
-     * @return averageAPY Average APY over period
-     * @return maxAPY Maximum APY over period
-     * @return minAPY Minimum APY over period
-     */
-    function getHistoricalYield(uint256 period) external view returns (
-        uint256 totalYield,
-        uint256 averageAPY,
-        uint256 maxAPY,
-        uint256 minAPY
-    );
+
 
     /**
      * @notice Current Aave APY in basis points
@@ -247,8 +234,7 @@ interface IAaveVault {
     function VAULT_MANAGER_ROLE() external view returns (bytes32);
     function EMERGENCY_ROLE() external view returns (bytes32);
     function UPGRADER_ROLE() external view returns (bytes32);
-    function MAX_YIELD_HISTORY() external view returns (uint256);
-    function MAX_TIME_ELAPSED() external view returns (uint256);
+
 
     // State variables
     function usdc() external view returns (address);
@@ -268,10 +254,5 @@ interface IAaveVault {
     function utilizationLimit() external view returns (uint256);
     function emergencyExitThreshold() external view returns (uint256);
     function emergencyMode() external view returns (bool);
-    function yieldHistory(uint256) external view returns (
-        uint256 timestamp,
-        uint256 aaveBalance,
-        uint256 yieldEarned,
-        uint256 aaveAPY
-    );
+
 }

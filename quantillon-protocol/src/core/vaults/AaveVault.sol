@@ -5,12 +5,12 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/IYieldShift.sol";
 import "../../libraries/VaultMath.sol";
+import "../SecureUpgradeable.sol";
 
 interface IPool {
     function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
@@ -50,7 +50,7 @@ contract AaveVault is
     ReentrancyGuardUpgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
-    UUPSUpgradeable
+    SecureUpgradeable
 {
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -58,7 +58,7 @@ contract AaveVault is
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant VAULT_MANAGER_ROLE = keccak256("VAULT_MANAGER_ROLE");
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
 
     IERC20 public usdc;
     IERC20 public aUSDC;
@@ -79,16 +79,7 @@ contract AaveVault is
     uint256 public emergencyExitThreshold;
     bool public emergencyMode;
 
-    struct YieldSnapshot {
-        uint256 timestamp;
-        uint256 aaveBalance;
-        uint256 yieldEarned;
-        uint256 aaveAPY;
-    }
-    
-    YieldSnapshot[] public yieldHistory;
-    uint256 public constant MAX_YIELD_HISTORY = 365;
-    uint256 public constant MAX_TIME_ELAPSED = 365 days;
+
 
     event DeployedToAave(uint256 amount, uint256 aTokensReceived, uint256 newBalance);
     event WithdrawnFromAave(uint256 amountRequested, uint256 amountWithdrawn, uint256 newBalance);
@@ -108,7 +99,8 @@ contract AaveVault is
         address _usdc,
         address _aaveProvider,
         address _rewardsController,
-        address _yieldShift
+        address _yieldShift,
+        address timelock
     ) public initializer {
         require(admin != address(0), "AaveVault: Admin cannot be zero");
         require(_usdc != address(0), "AaveVault: USDC cannot be zero");
@@ -118,13 +110,12 @@ contract AaveVault is
         __ReentrancyGuard_init();
         __AccessControl_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
+        __SecureUpgradeable_init(timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(VAULT_MANAGER_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
-        _grantRole(UPGRADER_ROLE, admin);
 
         usdc = IERC20(_usdc);
         aaveProvider = IPoolAddressesProvider(_aaveProvider);
@@ -169,7 +160,6 @@ contract AaveVault is
         aTokensReceived = balanceAfter - balanceBefore;
         
         principalDeposited += amount;
-        _recordYieldSnapshot();
         
         emit DeployedToAave(amount, aTokensReceived, balanceAfter);
     }
@@ -221,8 +211,6 @@ contract AaveVault is
         uint256 principalWithdrawn = VaultMath.min(actualWithdrawn, principalDeposited);
         principalDeposited -= principalWithdrawn;
         
-        _recordYieldSnapshot();
-        
         emit WithdrawnFromAave(amount, actualWithdrawn, aUSDC.balanceOf(address(this)));
     }
 
@@ -273,8 +261,6 @@ contract AaveVault is
             usdc.safeIncreaseAllowance(address(yieldShift), netYield);
             yieldShift.addYield(netYield, "aave");
         }
-        
-        _recordYieldSnapshot();
         
         emit AaveYieldHarvested(actualYieldReceived, protocolFee, netYield);
         
@@ -337,12 +323,9 @@ contract AaveVault is
         uint256 availableLiquidity
     ) {
         ReserveData memory reserveData = aavePool.getReserveData(address(usdc));
-        
         supplyRate = uint256(reserveData.currentLiquidityRate) / 1e23;
-        
         totalSupply = usdc.totalSupply();
         availableLiquidity = usdc.balanceOf(address(aavePool));
-        
         if (totalSupply > 0) {
             uint256 totalBorrowed = totalSupply - availableLiquidity;
             utilizationRate = totalBorrowed.mulDiv(10000, totalSupply);
@@ -449,10 +432,8 @@ contract AaveVault is
     ) {
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
         uint256 totalAssets = aaveBalance + usdc.balanceOf(address(this));
-        
         exposureRatio = totalAssets > 0 ? aaveBalance.mulDiv(10000, totalAssets) : 0;
         concentrationRisk = exposureRatio > 8000 ? 3 : exposureRatio > 6000 ? 2 : 1;
-        
         (, uint256 utilizationRate, , ) = this.getAaveMarketData();
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
     }
@@ -494,88 +475,9 @@ contract AaveVault is
         emit EmergencyModeToggled(enabled, reason);
     }
 
-    function _recordYieldSnapshot() internal {
-        uint256 aaveBalance = aUSDC.balanceOf(address(this));
-        uint256 yieldEarned = getAvailableYield();
-        uint256 currentAPY = this.getAaveAPY();
-        
-        uint256 length = yieldHistory.length;
-        
-        if (length >= MAX_YIELD_HISTORY) {
-            for (uint256 i = 0; i < length - 1; i++) {
-                yieldHistory[i] = yieldHistory[i + 1];
-            }
-            yieldHistory.pop();
-        }
-        
-        yieldHistory.push(YieldSnapshot({
-            timestamp: block.timestamp,
-            aaveBalance: aaveBalance,
-            yieldEarned: yieldEarned,
-            aaveAPY: currentAPY
-        }));
-    }
 
-    function getHistoricalYield(uint256 period) external view returns (
-        uint256 averageYield,
-        uint256 maxYield,
-        uint256 minYield,
-        uint256 yieldVolatility
-    ) {
-        uint256 length = yieldHistory.length;
-        if (length == 0) {
-            return (0, 0, 0, 0);
-        }
-        
-        uint256 cutoffTime = block.timestamp - period;
-        
-        if (cutoffTime > block.timestamp) {
-            cutoffTime = 0;
-        }
-        
-        if (period > MAX_TIME_ELAPSED) {
-            cutoffTime = block.timestamp - MAX_TIME_ELAPSED;
-        }
-        
-        uint256[] memory validYields = new uint256[](length);
-        uint256 validCount = 0;
-        
-        for (uint256 i = 0; i < length; i++) {
-            YieldSnapshot memory snapshot = yieldHistory[i];
-            if (snapshot.timestamp >= cutoffTime) {
-                validYields[validCount] = snapshot.aaveAPY;
-                validCount++;
-            }
-        }
-        
-        if (validCount == 0) {
-            return (0, 0, 0, 0);
-        }
-        
-        uint256 sumYield = 0;
-        maxYield = 0;
-        minYield = type(uint256).max;
-        
-        for (uint256 i = 0; i < validCount; i++) {
-            uint256 yield = validYields[i];
-            sumYield += yield;
-            if (yield > maxYield) maxYield = yield;
-            if (yield < minYield) minYield = yield;
-        }
-        
-        averageYield = sumYield / validCount;
-        
-        uint256 sumSquaredDeviations = 0;
-        for (uint256 i = 0; i < validCount; i++) {
-            uint256 yield = validYields[i];
-            uint256 deviation = yield > averageYield ? 
-                yield - averageYield : averageYield - yield;
-            sumSquaredDeviations += deviation * deviation;
-        }
-        
-        yieldVolatility = validCount > 1 ? 
-            sumSquaredDeviations / (validCount - 1) : 0;
-    }
+
+
 
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
@@ -585,11 +487,7 @@ contract AaveVault is
         _unpause();
     }
 
-    function _authorizeUpgrade(address newImplementation) 
-        internal 
-        override 
-        onlyRole(UPGRADER_ROLE) 
-    {}
+
 
     function recoverToken(address token, address to, uint256 amount) 
         external 

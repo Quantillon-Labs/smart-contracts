@@ -38,6 +38,7 @@ contract UserPoolTestSuite is Test {
     address public mockUSDC = address(0x2);
     address public mockVault = address(0x3);
     address public mockYieldShift = address(0x4);
+    address public mockTimelock = address(0x123);
     
     // Test addresses
     address public admin = address(0x5);
@@ -84,7 +85,8 @@ contract UserPoolTestSuite is Test {
             mockQEURO,
             mockUSDC,
             mockVault,
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -226,7 +228,7 @@ contract UserPoolTestSuite is Test {
         assertTrue(userPool.hasRole(0x00, admin)); // DEFAULT_ADMIN_ROLE is 0x00
         assertTrue(userPool.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
         assertTrue(userPool.hasRole(keccak256("EMERGENCY_ROLE"), admin));
-        assertTrue(userPool.hasRole(keccak256("UPGRADER_ROLE"), admin));
+
         
         // Check external contracts
         assertEq(address(userPool.qeuro()), mockQEURO);
@@ -263,7 +265,8 @@ contract UserPoolTestSuite is Test {
             mockQEURO,
             mockUSDC,
             mockVault,
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         vm.expectRevert("UserPool: Admin cannot be zero");
@@ -277,7 +280,8 @@ contract UserPoolTestSuite is Test {
             address(0),
             mockUSDC,
             mockVault,
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         vm.expectRevert("UserPool: QEURO cannot be zero");
@@ -291,7 +295,8 @@ contract UserPoolTestSuite is Test {
             mockQEURO,
             address(0),
             mockVault,
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         vm.expectRevert("UserPool: USDC cannot be zero");
@@ -305,7 +310,8 @@ contract UserPoolTestSuite is Test {
             mockQEURO,
             mockUSDC,
             address(0),
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         vm.expectRevert("UserPool: Vault cannot be zero");
@@ -319,7 +325,8 @@ contract UserPoolTestSuite is Test {
             mockQEURO,
             mockUSDC,
             mockVault,
-            address(0)
+            address(0),
+            mockTimelock
         );
         
         vm.expectRevert("UserPool: YieldShift cannot be zero");
@@ -333,7 +340,7 @@ contract UserPoolTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        userPool.initialize(admin, mockQEURO, mockUSDC, mockVault, mockYieldShift);
+        userPool.initialize(admin, mockQEURO, mockUSDC, mockVault, mockYieldShift, mockTimelock);
     }
 
     // =============================================================================

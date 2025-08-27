@@ -35,18 +35,7 @@ interface IHedgerPool {
     function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256);
     function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool);
     function getTotalHedgeExposure() external view returns (uint256);
-    function getPoolStatistics() external view returns (
-        uint256 activeHedgers,
-        uint256 totalPositions,
-        uint256 averagePosition,
-        uint256 totalMargin,
-        uint256 poolUtilization
-    );
-    function getPendingHedgingRewards(address hedger) external view returns (
-        uint256 interestDifferential,
-        uint256 yieldShiftRewards,
-        uint256 totalPending
-    );
+
     
     // Governance functions
     function updateHedgingParameters(

@@ -52,26 +52,7 @@ interface IQEUROToken {
      */
     function getSupplyUtilization() external view returns (uint256);
 
-    /**
-     * @notice Remaining mint capacity before reaching max supply
-     */
-    function getRemainingMintCapacity() external view returns (uint256);
 
-    /**
-     * @notice Current rate limit status
-     * @return mintedThisHour Amount minted in the current hour
-     * @return burnedThisHour Amount burned in the current hour
-     * @return mintLimit Mint rate limit per hour
-     * @return burnLimit Burn rate limit per hour
-     * @return nextResetTime Timestamp when limits reset
-     */
-    function getRateLimitStatus() external view returns (
-        uint256 mintedThisHour,
-        uint256 burnedThisHour,
-        uint256 mintLimit,
-        uint256 burnLimit,
-        uint256 nextResetTime
-    );
 
     /**
      * @notice Aggregated token information snapshot

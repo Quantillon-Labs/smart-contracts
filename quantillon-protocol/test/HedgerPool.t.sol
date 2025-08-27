@@ -38,6 +38,7 @@ contract HedgerPoolTestSuite is Test {
     address public mockUSDC = address(0x1);
     address public mockOracle = address(0x2);
     address public mockYieldShift = address(0x3);
+    address public mockTimelock = address(0x123);
     
     // Test addresses
     address public admin = address(0x4);
@@ -116,7 +117,8 @@ contract HedgerPoolTestSuite is Test {
             admin,
             mockUSDC,
             mockOracle,
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -214,7 +216,7 @@ contract HedgerPoolTestSuite is Test {
         assertTrue(hedgerPool.hasRole(0x00, admin)); // DEFAULT_ADMIN_ROLE is 0x00
         assertTrue(hedgerPool.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
         assertTrue(hedgerPool.hasRole(keccak256("EMERGENCY_ROLE"), admin));
-        assertTrue(hedgerPool.hasRole(keccak256("UPGRADER_ROLE"), admin));
+
         // Note: LIQUIDATOR_ROLE is not automatically granted to admin
         
         // Check external contracts
@@ -253,7 +255,8 @@ contract HedgerPoolTestSuite is Test {
             address(0),
             mockUSDC,
             mockOracle,
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         vm.expectRevert("HedgerPool: Admin cannot be zero");
@@ -266,7 +269,8 @@ contract HedgerPoolTestSuite is Test {
             admin,
             address(0),
             mockOracle,
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         vm.expectRevert("HedgerPool: USDC cannot be zero");
@@ -279,7 +283,8 @@ contract HedgerPoolTestSuite is Test {
             admin,
             mockUSDC,
             address(0),
-            mockYieldShift
+            mockYieldShift,
+            mockTimelock
         );
         
         vm.expectRevert("HedgerPool: Oracle cannot be zero");
@@ -292,7 +297,8 @@ contract HedgerPoolTestSuite is Test {
             admin,
             mockUSDC,
             mockOracle,
-            address(0)
+            address(0),
+            mockTimelock
         );
         
         vm.expectRevert("HedgerPool: YieldShift cannot be zero");
@@ -306,7 +312,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        hedgerPool.initialize(admin, mockUSDC, mockOracle, mockYieldShift);
+        hedgerPool.initialize(admin, mockUSDC, mockOracle, mockYieldShift, mockTimelock);
     }
 
     // =============================================================================
@@ -715,23 +721,7 @@ contract HedgerPoolTestSuite is Test {
         console2.log("Active hedgers:", hedgerPool.activeHedgers());
     }
     
-    /**
-     * @notice Test getting pool metrics
-     * @dev Verifies that pool metrics are calculated correctly
-     */
-    function test_View_GetPoolStatistics() public {
-        // First open a position
-        vm.prank(hedger1);
-        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Get pool statistics
-        (uint256 activeHedgers_, uint256 totalPositions, uint256 averagePosition, uint256 totalMargin_, uint256 poolUtilization) = hedgerPool.getPoolStatistics();
-        
-        uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
-        assertEq(totalMargin_, netMargin);
-        assertEq(activeHedgers_, 1);
-        assertEq(totalPositions, 1);
-    }
+
 
     // =============================================================================
     // GOVERNANCE TESTS
@@ -919,20 +909,18 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId2 = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 3);
         
         // Check pool metrics
-        (uint256 activeHedgers_, uint256 totalPositions, uint256 averagePosition, uint256 totalMargin_, uint256 poolUtilization) = hedgerPool.getPoolStatistics();
         uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
-        assertEq(totalMargin_, 2 * netMargin);
-        assertEq(activeHedgers_, 2);
+        assertEq(hedgerPool.totalMargin(), 2 * netMargin);
+        assertEq(hedgerPool.activeHedgers(), 2);
         
         // Hedger1 closes position
         vm.prank(hedger1);
         hedgerPool.exitHedgePosition(positionId1);
         
         // Check updated metrics
-        (activeHedgers_, totalPositions, averagePosition, totalMargin_, poolUtilization) = hedgerPool.getPoolStatistics();
-        assertEq(totalMargin_, netMargin);
+        assertEq(hedgerPool.totalMargin(), netMargin);
         // Note: activeHedgers is not decremented when positions are closed (contract bug)
-        assertEq(activeHedgers_, 2);
+        assertEq(hedgerPool.activeHedgers(), 2);
     }
 
     /**

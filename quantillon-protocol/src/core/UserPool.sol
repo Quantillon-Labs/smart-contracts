@@ -9,7 +9,6 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -17,6 +16,7 @@ import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IQuantillonVault.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
+import "./SecureUpgradeable.sol";
 
 /**
  * @title UserPool
@@ -83,7 +83,7 @@ contract UserPool is
     ReentrancyGuardUpgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
-    UUPSUpgradeable
+    SecureUpgradeable
 {
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -102,10 +102,7 @@ contract UserPool is
     /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     
-    /// @notice Role for performing contract upgrades via UUPS pattern
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to governance or upgrade multisig
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
 
     // =============================================================================
     // STATE VARIABLES - External contracts and configuration
@@ -301,7 +298,8 @@ contract UserPool is
         address _qeuro,
         address _usdc,
         address _vault,
-        address _yieldShift
+        address _yieldShift,
+        address timelock
     ) public initializer {
         require(admin != address(0), "UserPool: Admin cannot be zero");
         require(_qeuro != address(0), "UserPool: QEURO cannot be zero");
@@ -312,12 +310,11 @@ contract UserPool is
         __ReentrancyGuard_init();
         __AccessControl_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
+        __SecureUpgradeable_init(timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
-        _grantRole(UPGRADER_ROLE, admin);
 
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
@@ -862,11 +859,7 @@ contract UserPool is
         return !paused();
     }
 
-    function _authorizeUpgrade(address newImplementation) 
-        internal 
-        override 
-        onlyRole(UPGRADER_ROLE) 
-    {}
+
 
     // =============================================================================
     // RECOVERY FUNCTIONS

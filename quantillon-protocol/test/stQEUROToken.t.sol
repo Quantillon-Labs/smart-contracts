@@ -49,6 +49,7 @@ contract stQEUROTokenTestSuite is Test {
     address public mockQEURO = address(0x1);
     address public mockYieldShift = address(0x2);
     address public mockUSDC = address(0x3);
+    address public mockTimelock = address(0x123);
     
     // Test addresses
     address public admin = address(0x4);
@@ -95,7 +96,8 @@ contract stQEUROTokenTestSuite is Test {
             mockQEURO,
             mockYieldShift,
             mockUSDC,
-            treasury
+            treasury,
+            mockTimelock
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -205,7 +207,7 @@ contract stQEUROTokenTestSuite is Test {
         assertTrue(stQEURO.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
         assertTrue(stQEURO.hasRole(keccak256("YIELD_MANAGER_ROLE"), admin));
         assertTrue(stQEURO.hasRole(keccak256("EMERGENCY_ROLE"), admin));
-        assertTrue(stQEURO.hasRole(keccak256("UPGRADER_ROLE"), admin));
+
         
         // Check external contracts
         assertEq(address(stQEURO.qeuro()), mockQEURO);
@@ -236,7 +238,8 @@ contract stQEUROTokenTestSuite is Test {
             mockQEURO,
             mockYieldShift,
             mockUSDC,
-            treasury
+            treasury,
+            mockTimelock
         );
         
         vm.expectRevert("stQEURO: Admin cannot be zero");
@@ -250,7 +253,8 @@ contract stQEUROTokenTestSuite is Test {
             address(0),
             mockYieldShift,
             mockUSDC,
-            treasury
+            treasury,
+            mockTimelock
         );
         
         vm.expectRevert("stQEURO: QEURO cannot be zero");
@@ -264,7 +268,8 @@ contract stQEUROTokenTestSuite is Test {
             mockQEURO,
             address(0),
             mockUSDC,
-            treasury
+            treasury,
+            mockTimelock
         );
         
         vm.expectRevert("stQEURO: YieldShift cannot be zero");
@@ -278,7 +283,8 @@ contract stQEUROTokenTestSuite is Test {
             mockQEURO,
             mockYieldShift,
             address(0),
-            treasury
+            treasury,
+            mockTimelock
         );
         
         vm.expectRevert("stQEURO: USDC cannot be zero");
@@ -292,7 +298,8 @@ contract stQEUROTokenTestSuite is Test {
             mockQEURO,
             mockYieldShift,
             mockUSDC,
-            address(0)
+            address(0),
+            mockTimelock
         );
         
         vm.expectRevert("stQEURO: Treasury cannot be zero");
@@ -306,7 +313,7 @@ contract stQEUROTokenTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        stQEURO.initialize(admin, mockQEURO, mockYieldShift, mockUSDC, treasury);
+        stQEURO.initialize(admin, mockQEURO, mockYieldShift, mockUSDC, treasury, mockTimelock);
     }
 
     // =============================================================================

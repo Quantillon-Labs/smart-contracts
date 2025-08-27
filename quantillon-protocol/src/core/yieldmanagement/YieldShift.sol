@@ -5,7 +5,6 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -14,6 +13,7 @@ import "../../interfaces/IHedgerPool.sol";
 import "../../interfaces/IAaveVault.sol";
 import "../../interfaces/IstQEURO.sol";
 import "../../libraries/VaultMath.sol";
+import "../SecureUpgradeable.sol";
 
 /**
  * @title YieldShift
@@ -27,7 +27,7 @@ contract YieldShift is
     ReentrancyGuardUpgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
-    UUPSUpgradeable
+    SecureUpgradeable
 {
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
@@ -39,7 +39,7 @@ contract YieldShift is
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
 
     // =============================================================================
     // STATE VARIABLES
@@ -147,7 +147,8 @@ contract YieldShift is
         address _userPool,
         address _hedgerPool,
         address _aaveVault,
-        address _stQEURO
+        address _stQEURO,
+        address timelock
     ) public initializer {
         require(admin != address(0), "YieldShift: Admin cannot be zero");
         require(_usdc != address(0), "YieldShift: USDC cannot be zero");
@@ -159,13 +160,12 @@ contract YieldShift is
         __ReentrancyGuard_init();
         __AccessControl_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
+        __SecureUpgradeable_init(timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(YIELD_MANAGER_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
-        _grantRole(UPGRADER_ROLE, admin);
 
         usdc = IERC20(_usdc);
         userPool = IUserPool(_userPool);
@@ -549,7 +549,7 @@ contract YieldShift is
         
         // Get pool statistics for averages
         (uint256 totalUsers, , , ) = userPool.getPoolMetrics();
-        (uint256 activeHedgers, , , , ) = hedgerPool.getPoolStatistics();
+        uint256 activeHedgers = hedgerPool.activeHedgers();
         
         averageUserYield = totalUsers > 0 ? 
             userYieldPool / totalUsers : 0;
@@ -716,11 +716,7 @@ contract YieldShift is
         this.updateYieldDistribution();
     }
 
-    function _authorizeUpgrade(address newImplementation) 
-        internal 
-        override 
-        onlyRole(UPGRADER_ROLE) 
-    {}
+
 
     /**
      * @notice Modifier to check minimum holding period with bounds checking

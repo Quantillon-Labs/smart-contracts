@@ -1,8 +1,8 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/UserPool.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
 Quantillon Labs
@@ -90,19 +90,6 @@ Role for emergency operations (pause, emergency withdrawals)
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-```
-
-
-### UPGRADER_ROLE
-Role for performing contract upgrades via UUPS pattern
-
-*keccak256 hash avoids role collisions with other contracts*
-
-*Should be assigned to governance or upgrade multisig*
-
-
-```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 ```
 
 
@@ -386,7 +373,7 @@ constructor();
 
 
 ```solidity
-function initialize(address admin, address _qeuro, address _usdc, address _vault, address _yieldShift)
+function initialize(address admin, address _qeuro, address _usdc, address _vault, address _yieldShift, address timelock)
     public
     initializer;
 ```
@@ -877,13 +864,6 @@ function isPoolActive() external view returns (bool);
 |----|----|-----------|
 |`<none>`|`bool`|bool True if the pool is active, false otherwise|
 
-
-### _authorizeUpgrade
-
-
-```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
-```
 
 ### recoverToken
 

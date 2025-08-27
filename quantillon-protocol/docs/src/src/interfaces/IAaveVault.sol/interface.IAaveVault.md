@@ -1,5 +1,5 @@
 # IAaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/interfaces/IAaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/interfaces/IAaveVault.sol)
 
 **Author:**
 Quantillon Labs
@@ -159,33 +159,6 @@ Accrued interest (same as available yield)
 ```solidity
 function getAccruedInterest() external view returns (uint256);
 ```
-
-### getHistoricalYield
-
-Historical yield data for a given period
-
-
-```solidity
-function getHistoricalYield(uint256 period)
-    external
-    view
-    returns (uint256 totalYield, uint256 averageAPY, uint256 maxAPY, uint256 minAPY);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`period`|`uint256`|Time period in seconds|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalYield`|`uint256`|Total yield generated over period|
-|`averageAPY`|`uint256`|Average APY over period|
-|`maxAPY`|`uint256`|Maximum APY over period|
-|`minAPY`|`uint256`|Minimum APY over period|
-
 
 ### getAaveAPY
 
@@ -527,20 +500,6 @@ function EMERGENCY_ROLE() external view returns (bytes32);
 function UPGRADER_ROLE() external view returns (bytes32);
 ```
 
-### MAX_YIELD_HISTORY
-
-
-```solidity
-function MAX_YIELD_HISTORY() external view returns (uint256);
-```
-
-### MAX_TIME_ELAPSED
-
-
-```solidity
-function MAX_TIME_ELAPSED() external view returns (uint256);
-```
-
 ### usdc
 
 
@@ -658,15 +617,5 @@ function emergencyExitThreshold() external view returns (uint256);
 
 ```solidity
 function emergencyMode() external view returns (bool);
-```
-
-### yieldHistory
-
-
-```solidity
-function yieldHistory(uint256)
-    external
-    view
-    returns (uint256 timestamp, uint256 aaveBalance, uint256 yieldEarned, uint256 aaveAPY);
 ```
 

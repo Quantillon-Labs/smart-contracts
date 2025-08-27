@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -740,63 +740,24 @@ function getSupplyUtilization() external view returns (uint256);
 |`<none>`|`uint256`|Percentage in basis points (0-10000, where 10000 = 100%)|
 
 
-### getRemainingMintCapacity
+### _update
 
 Calculates remaining space for minting new tokens
+
+Gets current rate limit status
+
+Hook called before each token transfer
 
 *Security considerations:
 - Calculates remaining capacity by subtracting currentSupply from maxSupply
 - Handles case where currentSupply >= maxSupply
 - Returns 0 if no more minting is possible*
 
-
-```solidity
-function getRemainingMintCapacity() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Number of tokens that can still be minted|
-
-
-### getRateLimitStatus
-
-Gets current rate limit status
-
 *Security considerations:
 - Returns current hour amounts if within the hour
 - Returns zeros if an hour has passed
 - Returns current limits and next reset time
 - Includes bounds checking to prevent timestamp manipulation*
-
-
-```solidity
-function getRateLimitStatus()
-    external
-    view
-    returns (
-        uint256 mintedThisHour,
-        uint256 burnedThisHour,
-        uint256 mintLimit,
-        uint256 burnLimit,
-        uint256 nextResetTime
-    );
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`mintedThisHour`|`uint256`|Amount minted in current hour|
-|`burnedThisHour`|`uint256`|Amount burned in current hour|
-|`mintLimit`|`uint256`|Current mint rate limit|
-|`burnLimit`|`uint256`|Current burn rate limit|
-|`nextResetTime`|`uint256`|Timestamp when rate limits reset|
-
-
-### _update
-
-Hook called before each token transfer
 
 *Adds pause verification and blacklist checks to standard OpenZeppelin transfers*
 

@@ -1,8 +1,8 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 
 ## State Variables
@@ -24,13 +24,6 @@ bytes32 public constant VAULT_MANAGER_ROLE = keccak256("VAULT_MANAGER_ROLE");
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-```
-
-
-### UPGRADER_ROLE
-
-```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 ```
 
 
@@ -153,27 +146,6 @@ bool public emergencyMode;
 ```
 
 
-### yieldHistory
-
-```solidity
-YieldSnapshot[] public yieldHistory;
-```
-
-
-### MAX_YIELD_HISTORY
-
-```solidity
-uint256 public constant MAX_YIELD_HISTORY = 365;
-```
-
-
-### MAX_TIME_ELAPSED
-
-```solidity
-uint256 public constant MAX_TIME_ELAPSED = 365 days;
-```
-
-
 ## Functions
 ### constructor
 
@@ -191,7 +163,8 @@ function initialize(
     address _usdc,
     address _aaveProvider,
     address _rewardsController,
-    address _yieldShift
+    address _yieldShift,
+    address timelock
 ) public initializer;
 ```
 
@@ -365,23 +338,6 @@ function getAaveConfig()
 function toggleEmergencyMode(bool enabled, string calldata reason) external onlyRole(EMERGENCY_ROLE);
 ```
 
-### _recordYieldSnapshot
-
-
-```solidity
-function _recordYieldSnapshot() internal;
-```
-
-### getHistoricalYield
-
-
-```solidity
-function getHistoricalYield(uint256 period)
-    external
-    view
-    returns (uint256 averageYield, uint256 maxYield, uint256 minYield, uint256 yieldVolatility);
-```
-
 ### pause
 
 
@@ -394,13 +350,6 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 
 ```solidity
 function unpause() external onlyRole(EMERGENCY_ROLE);
-```
-
-### _authorizeUpgrade
-
-
-```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
 ```
 
 ### recoverToken
@@ -464,17 +413,5 @@ event EmergencyWithdrawal(uint256 amountWithdrawn, string reason, uint256 timest
 
 ```solidity
 event EmergencyModeToggled(bool enabled, string reason);
-```
-
-## Structs
-### YieldSnapshot
-
-```solidity
-struct YieldSnapshot {
-    uint256 timestamp;
-    uint256 aaveBalance;
-    uint256 yieldEarned;
-    uint256 aaveAPY;
-}
 ```
 

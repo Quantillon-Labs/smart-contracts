@@ -1,5 +1,5 @@
 # IQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/interfaces/IQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/interfaces/IQEUROToken.sol)
 
 **Author:**
 Quantillon Labs
@@ -102,43 +102,6 @@ Percentage of max supply utilized (basis points)
 ```solidity
 function getSupplyUtilization() external view returns (uint256);
 ```
-
-### getRemainingMintCapacity
-
-Remaining mint capacity before reaching max supply
-
-
-```solidity
-function getRemainingMintCapacity() external view returns (uint256);
-```
-
-### getRateLimitStatus
-
-Current rate limit status
-
-
-```solidity
-function getRateLimitStatus()
-    external
-    view
-    returns (
-        uint256 mintedThisHour,
-        uint256 burnedThisHour,
-        uint256 mintLimit,
-        uint256 burnLimit,
-        uint256 nextResetTime
-    );
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`mintedThisHour`|`uint256`|Amount minted in the current hour|
-|`burnedThisHour`|`uint256`|Amount burned in the current hour|
-|`mintLimit`|`uint256`|Mint rate limit per hour|
-|`burnLimit`|`uint256`|Burn rate limit per hour|
-|`nextResetTime`|`uint256`|Timestamp when limits reset|
-
 
 ### getTokenInfo
 

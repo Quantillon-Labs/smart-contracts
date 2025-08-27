@@ -1,8 +1,8 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/HedgerPool.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 
 ## State Variables
@@ -24,13 +24,6 @@ bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-```
-
-
-### UPGRADER_ROLE
-
-```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 ```
 
 
@@ -291,7 +284,9 @@ constructor();
 
 
 ```solidity
-function initialize(address admin, address _usdc, address _oracle, address _yieldShift) public initializer;
+function initialize(address admin, address _usdc, address _oracle, address _yieldShift, address timelock)
+    public
+    initializer;
 ```
 
 ### enterHedgePosition
@@ -420,32 +415,6 @@ function _calculatePnL(HedgePosition storage position, uint256 currentPrice) int
 function getTotalHedgeExposure() external view returns (uint256);
 ```
 
-### getPoolStatistics
-
-
-```solidity
-function getPoolStatistics()
-    external
-    view
-    returns (
-        uint256 activeHedgers_,
-        uint256 totalPositions,
-        uint256 averagePosition,
-        uint256 totalMargin_,
-        uint256 poolUtilization
-    );
-```
-
-### getPendingHedgingRewards
-
-
-```solidity
-function getPendingHedgingRewards(address hedger)
-    external
-    view
-    returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalPending);
-```
-
 ### updateHedgingParameters
 
 
@@ -538,13 +507,6 @@ function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) e
 function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt)
     external
     onlyRole(LIQUIDATOR_ROLE);
-```
-
-### _authorizeUpgrade
-
-
-```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
 ```
 
 ### _hasPendingLiquidationCommitment

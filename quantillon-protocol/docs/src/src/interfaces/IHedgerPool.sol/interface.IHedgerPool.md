@@ -1,5 +1,5 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/interfaces/IHedgerPool.sol)
 
 
 ## Functions
@@ -113,32 +113,6 @@ function isHedgerLiquidatable(address hedger, uint256 positionId) external view 
 
 ```solidity
 function getTotalHedgeExposure() external view returns (uint256);
-```
-
-### getPoolStatistics
-
-
-```solidity
-function getPoolStatistics()
-    external
-    view
-    returns (
-        uint256 activeHedgers,
-        uint256 totalPositions,
-        uint256 averagePosition,
-        uint256 totalMargin,
-        uint256 poolUtilization
-    );
-```
-
-### getPendingHedgingRewards
-
-
-```solidity
-function getPendingHedgingRewards(address hedger)
-    external
-    view
-    returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalPending);
 ```
 
 ### updateHedgingParameters

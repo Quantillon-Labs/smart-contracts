@@ -1,8 +1,8 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
 Quantillon Labs
@@ -34,13 +34,6 @@ bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-```
-
-
-### UPGRADER_ROLE
-
-```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 ```
 
 
@@ -275,7 +268,8 @@ function initialize(
     address _userPool,
     address _hedgerPool,
     address _aaveVault,
-    address _stQEURO
+    address _stQEURO,
+    address timelock
 ) public initializer;
 ```
 
@@ -565,13 +559,6 @@ Force update yield distribution (governance only)
 
 ```solidity
 function forceUpdateYieldDistribution() external onlyRole(GOVERNANCE_ROLE);
-```
-
-### _authorizeUpgrade
-
-
-```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
 ```
 
 ### checkHoldingPeriod

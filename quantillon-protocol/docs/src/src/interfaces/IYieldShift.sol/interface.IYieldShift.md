@@ -1,5 +1,5 @@
 # IYieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/interfaces/IYieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/interfaces/IYieldShift.sol)
 
 **Author:**
 Quantillon Labs
@@ -437,5 +437,75 @@ Force update yield distribution (governance only)
 
 ```solidity
 function forceUpdateYieldDistribution() external;
+```
+
+### hasRole
+
+
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool);
+```
+
+### getRoleAdmin
+
+
+```solidity
+function getRoleAdmin(bytes32 role) external view returns (bytes32);
+```
+
+### grantRole
+
+
+```solidity
+function grantRole(bytes32 role, address account) external;
+```
+
+### revokeRole
+
+
+```solidity
+function revokeRole(bytes32 role, address account) external;
+```
+
+### renounceRole
+
+
+```solidity
+function renounceRole(bytes32 role, address callerConfirmation) external;
+```
+
+### paused
+
+
+```solidity
+function paused() external view returns (bool);
+```
+
+### upgradeTo
+
+
+```solidity
+function upgradeTo(address newImplementation) external;
+```
+
+### upgradeToAndCall
+
+
+```solidity
+function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+```
+
+### recoverToken
+
+
+```solidity
+function recoverToken(address token, address to, uint256 amount) external;
+```
+
+### recoverETH
+
+
+```solidity
+function recoverETH(address payable to) external;
 ```
 

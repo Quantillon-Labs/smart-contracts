@@ -1,5 +1,5 @@
 # IstQEURO
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/interfaces/IstQEURO.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/interfaces/IstQEURO.sol)
 
 **Author:**
 Quantillon Labs
@@ -276,5 +276,194 @@ function totalSupply() external view returns (uint256);
 
 ```solidity
 function balanceOf(address account) external view returns (uint256);
+```
+
+### transfer
+
+
+```solidity
+function transfer(address to, uint256 amount) external returns (bool);
+```
+
+### allowance
+
+
+```solidity
+function allowance(address owner, address spender) external view returns (uint256);
+```
+
+### approve
+
+
+```solidity
+function approve(address spender, uint256 amount) external returns (bool);
+```
+
+### transferFrom
+
+
+```solidity
+function transferFrom(address from, address to, uint256 amount) external returns (bool);
+```
+
+### hasRole
+
+
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool);
+```
+
+### getRoleAdmin
+
+
+```solidity
+function getRoleAdmin(bytes32 role) external view returns (bytes32);
+```
+
+### grantRole
+
+
+```solidity
+function grantRole(bytes32 role, address account) external;
+```
+
+### revokeRole
+
+
+```solidity
+function revokeRole(bytes32 role, address account) external;
+```
+
+### renounceRole
+
+
+```solidity
+function renounceRole(bytes32 role, address callerConfirmation) external;
+```
+
+### paused
+
+
+```solidity
+function paused() external view returns (bool);
+```
+
+### upgradeTo
+
+
+```solidity
+function upgradeTo(address newImplementation) external;
+```
+
+### upgradeToAndCall
+
+
+```solidity
+function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+```
+
+### GOVERNANCE_ROLE
+
+
+```solidity
+function GOVERNANCE_ROLE() external view returns (bytes32);
+```
+
+### YIELD_MANAGER_ROLE
+
+
+```solidity
+function YIELD_MANAGER_ROLE() external view returns (bytes32);
+```
+
+### EMERGENCY_ROLE
+
+
+```solidity
+function EMERGENCY_ROLE() external view returns (bytes32);
+```
+
+### UPGRADER_ROLE
+
+
+```solidity
+function UPGRADER_ROLE() external view returns (bytes32);
+```
+
+### qeuro
+
+
+```solidity
+function qeuro() external view returns (address);
+```
+
+### yieldShift
+
+
+```solidity
+function yieldShift() external view returns (address);
+```
+
+### usdc
+
+
+```solidity
+function usdc() external view returns (address);
+```
+
+### treasury
+
+
+```solidity
+function treasury() external view returns (address);
+```
+
+### exchangeRate
+
+
+```solidity
+function exchangeRate() external view returns (uint256);
+```
+
+### lastUpdateTime
+
+
+```solidity
+function lastUpdateTime() external view returns (uint256);
+```
+
+### totalUnderlying
+
+
+```solidity
+function totalUnderlying() external view returns (uint256);
+```
+
+### totalYieldEarned
+
+
+```solidity
+function totalYieldEarned() external view returns (uint256);
+```
+
+### yieldFee
+
+
+```solidity
+function yieldFee() external view returns (uint256);
+```
+
+### minYieldThreshold
+
+
+```solidity
+function minYieldThreshold() external view returns (uint256);
+```
+
+### maxUpdateFrequency
+
+
+```solidity
+function maxUpdateFrequency() external view returns (uint256);
 ```
 

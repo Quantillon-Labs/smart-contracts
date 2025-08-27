@@ -1,5 +1,5 @@
 # IAaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/interfaces/IAaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/interfaces/IAaveVault.sol)
 
 **Author:**
 Quantillon Labs
@@ -427,4 +427,246 @@ function recoverToken(address token, address to, uint256 amount) external;
 |`to`|`address`|Recipient|
 |`amount`|`uint256`|Amount to transfer|
 
+
+### recoverETH
+
+Recover ETH sent by mistake
+
+
+```solidity
+function recoverETH(address payable to) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address payable`|Recipient|
+
+
+### hasRole
+
+
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool);
+```
+
+### getRoleAdmin
+
+
+```solidity
+function getRoleAdmin(bytes32 role) external view returns (bytes32);
+```
+
+### grantRole
+
+
+```solidity
+function grantRole(bytes32 role, address account) external;
+```
+
+### revokeRole
+
+
+```solidity
+function revokeRole(bytes32 role, address account) external;
+```
+
+### renounceRole
+
+
+```solidity
+function renounceRole(bytes32 role, address callerConfirmation) external;
+```
+
+### paused
+
+
+```solidity
+function paused() external view returns (bool);
+```
+
+### upgradeTo
+
+
+```solidity
+function upgradeTo(address newImplementation) external;
+```
+
+### upgradeToAndCall
+
+
+```solidity
+function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+```
+
+### GOVERNANCE_ROLE
+
+
+```solidity
+function GOVERNANCE_ROLE() external view returns (bytes32);
+```
+
+### VAULT_MANAGER_ROLE
+
+
+```solidity
+function VAULT_MANAGER_ROLE() external view returns (bytes32);
+```
+
+### EMERGENCY_ROLE
+
+
+```solidity
+function EMERGENCY_ROLE() external view returns (bytes32);
+```
+
+### UPGRADER_ROLE
+
+
+```solidity
+function UPGRADER_ROLE() external view returns (bytes32);
+```
+
+### MAX_YIELD_HISTORY
+
+
+```solidity
+function MAX_YIELD_HISTORY() external view returns (uint256);
+```
+
+### MAX_TIME_ELAPSED
+
+
+```solidity
+function MAX_TIME_ELAPSED() external view returns (uint256);
+```
+
+### usdc
+
+
+```solidity
+function usdc() external view returns (address);
+```
+
+### aUSDC
+
+
+```solidity
+function aUSDC() external view returns (address);
+```
+
+### aavePool
+
+
+```solidity
+function aavePool() external view returns (address);
+```
+
+### aaveProvider
+
+
+```solidity
+function aaveProvider() external view returns (address);
+```
+
+### rewardsController
+
+
+```solidity
+function rewardsController() external view returns (address);
+```
+
+### yieldShift
+
+
+```solidity
+function yieldShift() external view returns (address);
+```
+
+### maxAaveExposure
+
+
+```solidity
+function maxAaveExposure() external view returns (uint256);
+```
+
+### harvestThreshold
+
+
+```solidity
+function harvestThreshold() external view returns (uint256);
+```
+
+### yieldFee
+
+
+```solidity
+function yieldFee() external view returns (uint256);
+```
+
+### rebalanceThreshold
+
+
+```solidity
+function rebalanceThreshold() external view returns (uint256);
+```
+
+### principalDeposited
+
+
+```solidity
+function principalDeposited() external view returns (uint256);
+```
+
+### lastHarvestTime
+
+
+```solidity
+function lastHarvestTime() external view returns (uint256);
+```
+
+### totalYieldHarvested
+
+
+```solidity
+function totalYieldHarvested() external view returns (uint256);
+```
+
+### totalFeesCollected
+
+
+```solidity
+function totalFeesCollected() external view returns (uint256);
+```
+
+### utilizationLimit
+
+
+```solidity
+function utilizationLimit() external view returns (uint256);
+```
+
+### emergencyExitThreshold
+
+
+```solidity
+function emergencyExitThreshold() external view returns (uint256);
+```
+
+### emergencyMode
+
+
+```solidity
+function emergencyMode() external view returns (bool);
+```
+
+### yieldHistory
+
+
+```solidity
+function yieldHistory(uint256)
+    external
+    view
+    returns (uint256 timestamp, uint256 aaveBalance, uint256 yieldEarned, uint256 aaveAPY);
+```
 

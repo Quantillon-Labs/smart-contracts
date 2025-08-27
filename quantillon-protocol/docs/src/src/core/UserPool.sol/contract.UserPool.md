@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -115,7 +115,7 @@ QEURO token contract for minting and burning
 
 
 ```solidity
-IQEURO public qeuro;
+IQEUROToken public qeuro;
 ```
 
 
@@ -884,6 +884,38 @@ function isPoolActive() external view returns (bool);
 ```solidity
 function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
 ```
+
+### recoverToken
+
+Recover accidentally sent tokens
+
+
+```solidity
+function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`token`|`address`|Token address to recover|
+|`to`|`address`|Recipient address|
+|`amount`|`uint256`|Amount to recover|
+
+
+### recoverETH
+
+Recover accidentally sent ETH
+
+
+```solidity
+function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address payable`|Recipient address|
+
 
 ## Events
 ### UserDeposit

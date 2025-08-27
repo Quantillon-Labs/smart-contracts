@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -633,6 +633,38 @@ function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize,
 |`poolHistory`|`PoolSnapshot[]`|Array to add snapshot to|
 |`poolSize`|`uint256`|Current pool size|
 |`isUserPool`|`bool`|Whether this is for user pool (true) or hedger pool (false)|
+
+
+### recoverToken
+
+Recover accidentally sent tokens
+
+
+```solidity
+function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`token`|`address`|Token address to recover|
+|`to`|`address`|Recipient address|
+|`amount`|`uint256`|Amount to recover|
+
+
+### recoverETH
+
+Recover accidentally sent ETH
+
+
+```solidity
+function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address payable`|Recipient address|
 
 
 ## Events

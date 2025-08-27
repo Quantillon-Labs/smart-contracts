@@ -1,5 +1,5 @@
 # IUserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/interfaces/IUserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/interfaces/IUserPool.sol)
 
 **Author:**
 Quantillon Labs
@@ -420,5 +420,261 @@ Whether the pool operations are active (not paused)
 
 ```solidity
 function isPoolActive() external view returns (bool);
+```
+
+### hasRole
+
+
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool);
+```
+
+### getRoleAdmin
+
+
+```solidity
+function getRoleAdmin(bytes32 role) external view returns (bytes32);
+```
+
+### grantRole
+
+
+```solidity
+function grantRole(bytes32 role, address account) external;
+```
+
+### revokeRole
+
+
+```solidity
+function revokeRole(bytes32 role, address account) external;
+```
+
+### renounceRole
+
+
+```solidity
+function renounceRole(bytes32 role, address callerConfirmation) external;
+```
+
+### paused
+
+
+```solidity
+function paused() external view returns (bool);
+```
+
+### upgradeTo
+
+
+```solidity
+function upgradeTo(address newImplementation) external;
+```
+
+### upgradeToAndCall
+
+
+```solidity
+function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+```
+
+### GOVERNANCE_ROLE
+
+
+```solidity
+function GOVERNANCE_ROLE() external view returns (bytes32);
+```
+
+### EMERGENCY_ROLE
+
+
+```solidity
+function EMERGENCY_ROLE() external view returns (bytes32);
+```
+
+### UPGRADER_ROLE
+
+
+```solidity
+function UPGRADER_ROLE() external view returns (bytes32);
+```
+
+### BLOCKS_PER_DAY
+
+
+```solidity
+function BLOCKS_PER_DAY() external view returns (uint256);
+```
+
+### MAX_REWARD_PERIOD
+
+
+```solidity
+function MAX_REWARD_PERIOD() external view returns (uint256);
+```
+
+### qeuro
+
+
+```solidity
+function qeuro() external view returns (address);
+```
+
+### usdc
+
+
+```solidity
+function usdc() external view returns (address);
+```
+
+### vault
+
+
+```solidity
+function vault() external view returns (address);
+```
+
+### yieldShift
+
+
+```solidity
+function yieldShift() external view returns (address);
+```
+
+### stakingAPY
+
+
+```solidity
+function stakingAPY() external view returns (uint256);
+```
+
+### depositAPY
+
+
+```solidity
+function depositAPY() external view returns (uint256);
+```
+
+### minStakeAmount
+
+
+```solidity
+function minStakeAmount() external view returns (uint256);
+```
+
+### unstakingCooldown
+
+
+```solidity
+function unstakingCooldown() external view returns (uint256);
+```
+
+### depositFee
+
+
+```solidity
+function depositFee() external view returns (uint256);
+```
+
+### withdrawalFee
+
+
+```solidity
+function withdrawalFee() external view returns (uint256);
+```
+
+### performanceFee
+
+
+```solidity
+function performanceFee() external view returns (uint256);
+```
+
+### totalDeposits
+
+
+```solidity
+function totalDeposits() external view returns (uint256);
+```
+
+### totalStakes
+
+
+```solidity
+function totalStakes() external view returns (uint256);
+```
+
+### totalUsers
+
+
+```solidity
+function totalUsers() external view returns (uint256);
+```
+
+### accumulatedYieldPerShare
+
+
+```solidity
+function accumulatedYieldPerShare() external view returns (uint256);
+```
+
+### lastYieldDistribution
+
+
+```solidity
+function lastYieldDistribution() external view returns (uint256);
+```
+
+### totalYieldDistributed
+
+
+```solidity
+function totalYieldDistributed() external view returns (uint256);
+```
+
+### userLastRewardBlock
+
+
+```solidity
+function userLastRewardBlock(address) external view returns (uint256);
+```
+
+### hasDeposited
+
+
+```solidity
+function hasDeposited(address) external view returns (bool);
+```
+
+### userInfo
+
+
+```solidity
+function userInfo(address)
+    external
+    view
+    returns (
+        uint256 qeuroBalance,
+        uint256 stakedAmount,
+        uint256 pendingRewards,
+        uint256 depositHistory,
+        uint256 lastStakeTime,
+        uint256 unstakeRequestTime,
+        uint256 unstakeAmount
+    );
+```
+
+### recoverToken
+
+
+```solidity
+function recoverToken(address token, address to, uint256 amount) external;
+```
+
+### recoverETH
+
+
+```solidity
+function recoverETH(address payable to) external;
 ```
 

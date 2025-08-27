@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -180,42 +180,10 @@ uint256 public burnRateLimit;
 ```
 
 
-### currentHourMinted
-Current minted amount in the current hour
-
-*Resets every hour or when rate limits are updated*
-
-*Used to enforce mintRateLimit*
-
+### rateLimitInfo
 
 ```solidity
-uint256 public currentHourMinted;
-```
-
-
-### currentHourBurned
-Current burned amount in the current hour
-
-*Resets every hour or when rate limits are updated*
-
-*Used to enforce burnRateLimit*
-
-
-```solidity
-uint256 public currentHourBurned;
-```
-
-
-### lastRateLimitReset
-Timestamp of the last rate limit reset
-
-*Used to determine when to reset currentHourMinted and currentHourBurned*
-
-*Updated when rate limits are reset or modified*
-
-
-```solidity
-uint256 public lastRateLimitReset;
+RateLimitInfo public rateLimitInfo;
 ```
 
 
@@ -1194,4 +1162,21 @@ event RateLimitReset(uint256 timestamp);
 |Name|Type|Description|
 |----|----|-----------|
 |`timestamp`|`uint256`|Timestamp of reset|
+
+## Structs
+### RateLimitInfo
+Rate limiting information - OPTIMIZED: Packed for storage efficiency
+
+*Resets every hour or when rate limits are updated*
+
+*Used to enforce mintRateLimit and burnRateLimit*
+
+
+```solidity
+struct RateLimitInfo {
+    uint96 currentHourMinted;
+    uint96 currentHourBurned;
+    uint64 lastRateLimitReset;
+}
+```
 

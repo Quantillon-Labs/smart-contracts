@@ -1,5 +1,5 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/interfaces/IHedgerPool.sol)
 
 **Author:**
 Quantillon Labs
@@ -547,4 +547,370 @@ function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32
 |`positionId`|`uint256`|Position ID|
 |`salt`|`bytes32`|Salt used in the original commitment|
 
+
+### hasRole
+
+
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool);
+```
+
+### getRoleAdmin
+
+
+```solidity
+function getRoleAdmin(bytes32 role) external view returns (bytes32);
+```
+
+### grantRole
+
+
+```solidity
+function grantRole(bytes32 role, address account) external;
+```
+
+### revokeRole
+
+
+```solidity
+function revokeRole(bytes32 role, address account) external;
+```
+
+### renounceRole
+
+
+```solidity
+function renounceRole(bytes32 role, address callerConfirmation) external;
+```
+
+### paused
+
+
+```solidity
+function paused() external view returns (bool);
+```
+
+### upgradeTo
+
+
+```solidity
+function upgradeTo(address newImplementation) external;
+```
+
+### upgradeToAndCall
+
+
+```solidity
+function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+```
+
+### GOVERNANCE_ROLE
+
+
+```solidity
+function GOVERNANCE_ROLE() external view returns (bytes32);
+```
+
+### LIQUIDATOR_ROLE
+
+
+```solidity
+function LIQUIDATOR_ROLE() external view returns (bytes32);
+```
+
+### EMERGENCY_ROLE
+
+
+```solidity
+function EMERGENCY_ROLE() external view returns (bytes32);
+```
+
+### UPGRADER_ROLE
+
+
+```solidity
+function UPGRADER_ROLE() external view returns (bytes32);
+```
+
+### MAX_POSITIONS_PER_HEDGER
+
+
+```solidity
+function MAX_POSITIONS_PER_HEDGER() external view returns (uint256);
+```
+
+### LIQUIDATION_COOLDOWN
+
+
+```solidity
+function LIQUIDATION_COOLDOWN() external view returns (uint256);
+```
+
+### BLOCKS_PER_DAY
+
+
+```solidity
+function BLOCKS_PER_DAY() external view returns (uint256);
+```
+
+### MAX_REWARD_PERIOD
+
+
+```solidity
+function MAX_REWARD_PERIOD() external view returns (uint256);
+```
+
+### usdc
+
+
+```solidity
+function usdc() external view returns (address);
+```
+
+### oracle
+
+
+```solidity
+function oracle() external view returns (address);
+```
+
+### yieldShift
+
+
+```solidity
+function yieldShift() external view returns (address);
+```
+
+### minMarginRatio
+
+
+```solidity
+function minMarginRatio() external view returns (uint256);
+```
+
+### liquidationThreshold
+
+
+```solidity
+function liquidationThreshold() external view returns (uint256);
+```
+
+### maxLeverage
+
+
+```solidity
+function maxLeverage() external view returns (uint256);
+```
+
+### liquidationPenalty
+
+
+```solidity
+function liquidationPenalty() external view returns (uint256);
+```
+
+### entryFee
+
+
+```solidity
+function entryFee() external view returns (uint256);
+```
+
+### exitFee
+
+
+```solidity
+function exitFee() external view returns (uint256);
+```
+
+### marginFee
+
+
+```solidity
+function marginFee() external view returns (uint256);
+```
+
+### totalMargin
+
+
+```solidity
+function totalMargin() external view returns (uint256);
+```
+
+### totalExposure
+
+
+```solidity
+function totalExposure() external view returns (uint256);
+```
+
+### activeHedgers
+
+
+```solidity
+function activeHedgers() external view returns (uint256);
+```
+
+### nextPositionId
+
+
+```solidity
+function nextPositionId() external view returns (uint256);
+```
+
+### eurInterestRate
+
+
+```solidity
+function eurInterestRate() external view returns (uint256);
+```
+
+### usdInterestRate
+
+
+```solidity
+function usdInterestRate() external view returns (uint256);
+```
+
+### totalYieldEarned
+
+
+```solidity
+function totalYieldEarned() external view returns (uint256);
+```
+
+### interestDifferentialPool
+
+
+```solidity
+function interestDifferentialPool() external view returns (uint256);
+```
+
+### userPendingYield
+
+
+```solidity
+function userPendingYield(address) external view returns (uint256);
+```
+
+### hedgerPendingYield
+
+
+```solidity
+function hedgerPendingYield(address) external view returns (uint256);
+```
+
+### userLastClaim
+
+
+```solidity
+function userLastClaim(address) external view returns (uint256);
+```
+
+### hedgerLastClaim
+
+
+```solidity
+function hedgerLastClaim(address) external view returns (uint256);
+```
+
+### hedgerLastRewardBlock
+
+
+```solidity
+function hedgerLastRewardBlock(address) external view returns (uint256);
+```
+
+### activePositionCount
+
+
+```solidity
+function activePositionCount(address) external view returns (uint256);
+```
+
+### liquidationCommitments
+
+
+```solidity
+function liquidationCommitments(bytes32) external view returns (bool);
+```
+
+### liquidationCommitmentTimes
+
+
+```solidity
+function liquidationCommitmentTimes(bytes32) external view returns (uint256);
+```
+
+### lastLiquidationAttempt
+
+
+```solidity
+function lastLiquidationAttempt(address) external view returns (uint256);
+```
+
+### hasPendingLiquidation
+
+
+```solidity
+function hasPendingLiquidation(address, uint256) external view returns (bool);
+```
+
+### positions
+
+
+```solidity
+function positions(uint256)
+    external
+    view
+    returns (
+        address hedger,
+        uint256 positionSize,
+        uint256 margin,
+        uint256 entryPrice,
+        uint256 leverage,
+        uint256 entryTime,
+        uint256 lastUpdateTime,
+        int256 unrealizedPnL,
+        bool isActive
+    );
+```
+
+### hedgers
+
+
+```solidity
+function hedgers(address)
+    external
+    view
+    returns (
+        uint256[] memory positionIds,
+        uint256 totalMargin,
+        uint256 totalExposure,
+        uint256 pendingRewards,
+        uint256 lastRewardClaim,
+        bool isActive
+    );
+```
+
+### hedgerPositions
+
+
+```solidity
+function hedgerPositions(address) external view returns (uint256[] memory);
+```
+
+### recoverToken
+
+
+```solidity
+function recoverToken(address token, address to, uint256 amount) external;
+```
+
+### recoverETH
+
+
+```solidity
+function recoverETH(address payable to) external;
+```
 

@@ -1,5 +1,5 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -704,6 +704,38 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 function unpause() external onlyRole(EMERGENCY_ROLE);
 ```
 
+### recoverToken
+
+Recover accidentally sent tokens
+
+
+```solidity
+function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`token`|`address`|Token address to recover|
+|`to`|`address`|Recipient address|
+|`amount`|`uint256`|Amount to recover|
+
+
+### recoverETH
+
+Recover accidentally sent ETH
+
+
+```solidity
+function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address payable`|Recipient address|
+
+
 ### getGovernanceInfo
 
 Get current governance information
@@ -881,15 +913,17 @@ Vote-escrow lock information for each user
 
 *Used to calculate governance power and manage locks*
 
+*OPTIMIZED: Fields ordered for optimal storage packing*
+
 
 ```solidity
 struct LockInfo {
-    uint256 amount;
-    uint256 unlockTime;
-    uint256 votingPower;
-    uint256 lastClaimTime;
-    uint256 initialVotingPower;
-    uint256 lockTime;
+    uint96 amount;
+    uint96 votingPower;
+    uint96 initialVotingPower;
+    uint32 unlockTime;
+    uint32 lastClaimTime;
+    uint32 lockTime;
 }
 ```
 

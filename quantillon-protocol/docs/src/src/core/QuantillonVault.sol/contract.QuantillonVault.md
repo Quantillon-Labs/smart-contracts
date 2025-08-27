@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0f0dbb121f43b13af9ae20daf5712ecd7ace5cc7/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -10,38 +10,33 @@ Quantillon Labs
 Main vault managing QEURO minting against USDC collateral
 
 *Main characteristics:
-- Overcollateralized stablecoin minting mechanism
-- USDC as primary collateral for QEURO minting
+- Simple USDC to QEURO swap mechanism
+- USDC as input for QEURO minting
 - Real-time EUR/USD price oracle integration
-- Automatic liquidation system for risk management
 - Dynamic fee structure for protocol sustainability
 - Emergency pause mechanism for crisis situations
 - Upgradeable via UUPS pattern*
 
 *Minting mechanics:
-- Users deposit USDC as collateral
+- Users swap USDC for QEURO
 - QEURO is minted based on EUR/USD exchange rate
-- Minimum collateralization ratio enforced (e.g., 101%)
 - Minting fees charged for protocol revenue
-- Collateral ratio monitored continuously*
+- Simple 1:1 exchange with price conversion*
 
 *Redemption mechanics:
 - Users can redeem QEURO back to USDC
 - Redemption based on current EUR/USD exchange rate
 - Protocol fees charged on redemptions
-- Collateral returned to user after fee deduction*
+- USDC returned to user after fee deduction*
 
 *Risk management:
-- Minimum collateralization ratio requirements
-- Liquidation thresholds and penalties
-- Real-time collateral ratio monitoring
-- Automatic liquidation of undercollateralized positions
-- Emergency pause capabilities*
+- Real-time price monitoring
+- Emergency pause capabilities
+- Slippage protection on swaps*
 
 *Fee structure:
 - Minting fees for creating QEURO
 - Redemption fees for converting QEURO back to USDC
-- Liquidation penalties for risk management
 - Dynamic fee adjustment based on market conditions*
 
 *Security features:
@@ -76,21 +71,8 @@ bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 ```
 
 
-### LIQUIDATOR_ROLE
-Role for liquidating undercollateralized positions
-
-*keccak256 hash avoids role collisions with other contracts*
-
-*Should be assigned to trusted liquidators or automated systems*
-
-
-```solidity
-bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
-```
-
-
 ### EMERGENCY_ROLE
-Role for emergency operations (pause, emergency liquidations)
+Role for emergency operations (pause)
 
 *keccak256 hash avoids role collisions with other contracts*
 
@@ -124,7 +106,7 @@ QEURO token contract for minting and burning
 
 
 ```solidity
-IQEURO public qeuro;
+IQEUROToken public qeuro;
 ```
 
 
@@ -146,7 +128,7 @@ Chainlink oracle contract for EUR/USD price feeds
 
 *Provides real-time EUR/USD exchange rates for minting and redemption*
 
-*Used for collateral ratio calculations and liquidation checks*
+*Used for price calculations in swap operations*
 
 
 ```solidity
@@ -438,8 +420,6 @@ Pauses all vault operations
 
 *When paused:
 - No mint/redeem possible
-- No add/remove collateral
-- Liquidations suspended
 - Read functions still active*
 
 
@@ -512,27 +492,6 @@ function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 |Name|Type|Description|
 |----|----|-----------|
 |`to`|`address payable`|ETH recipient|
-
-
-### getLiquidatableUsers
-
-Retrieves the list of liquidatable users
-
-*Gas-expensive function, use off-chain only*
-
-
-```solidity
-function getLiquidatableUsers(uint256)
-    external
-    view
-    returns (address[] memory liquidatableUsers, uint256[] memory debtAmounts);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`liquidatableUsers`|`address[]`|Addresses of liquidatable users|
-|`debtAmounts`|`uint256[]`|Corresponding debts|
 
 
 ## Events

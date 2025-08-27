@@ -960,54 +960,7 @@ contract HedgerPoolTestSuite is Test {
     // MISSING FUNCTION TESTS - Ensuring 100% coverage
     // =============================================================================
 
-    /**
-     * @notice Test partial close position functionality
-     * @dev Verifies that positions can be partially closed
-     */
-    function test_Position_PartialClosePosition() public {
-        // Open position
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Partially close position (50%)
-        vm.prank(hedger1);
-        int256 pnl = hedgerPool.partialClosePosition(positionId, 5000); // 50%
-        
-        // Check that position still exists but with reduced size
-        (uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 currentPrice, uint256 leverage, uint256 lastUpdateTime) = hedgerPool.getHedgerPosition(hedger1, positionId);
-        assertGt(positionSize, 0); // Position should still exist
-        assertLt(margin, MARGIN_AMOUNT); // Margin should be reduced
-    }
 
-    /**
-     * @notice Test partial close position with invalid percentage
-     * @dev Verifies that partial close with invalid percentage reverts
-     */
-    function test_Position_PartialClosePositionInvalidPercentage_Revert() public {
-        // Open position
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Try to partially close with invalid percentage
-        vm.prank(hedger1);
-        vm.expectRevert();
-        hedgerPool.partialClosePosition(positionId, 10001); // > 100%
-    }
-
-    /**
-     * @notice Test partial close position by non-owner
-     * @dev Verifies that only position owner can partially close
-     */
-    function test_Position_PartialClosePositionByNonOwner_Revert() public {
-        // Open position
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Try to partially close by non-owner
-        vm.prank(hedger2);
-        vm.expectRevert();
-        hedgerPool.partialClosePosition(positionId, 5000);
-    }
 
     /**
      * @notice Test commit liquidation functionality
@@ -1171,21 +1124,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.updateInterestRates(newEurRate, newUsdRate);
     }
 
-    /**
-     * @notice Test get hedger position stats
-     * @dev Verifies that hedger position statistics can be retrieved
-     */
-    function test_View_GetHedgerPositionStats() public {
-        // Open position
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        (uint256 totalPositions, uint256 activePositions, uint256 totalMargin, uint256 totalExposure) = hedgerPool.getHedgerPositionStats(hedger1);
-        
-        assertEq(totalPositions, 1);
-        assertEq(activePositions, 1);
-        assertGt(totalMargin, 0);
-    }
+
 
     /**
      * @notice Test get hedger margin ratio

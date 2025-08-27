@@ -7,6 +7,7 @@
 - [IQEUROToken](IQEUROToken.sol/interface.IQEUROToken.md)
 - [IQTIToken](IQTIToken.sol/interface.IQTIToken.md)
 - [IQuantillonVault](IQuantillonVault.sol/interface.IQuantillonVault.md)
+- [ITimelockUpgradeable](ITimelockUpgradeable.sol/interface.ITimelockUpgradeable.md)
 - [IUserPool](IUserPool.sol/interface.IUserPool.md)
 - [IYieldShift](IYieldShift.sol/interface.IYieldShift.md)
 - [IstQEURO](IstQEURO.sol/interface.IstQEURO.md)

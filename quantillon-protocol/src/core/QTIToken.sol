@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "./SecureUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -61,7 +61,7 @@ contract QTIToken is
     ERC20Upgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
-    UUPSUpgradeable
+    SecureUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -79,10 +79,7 @@ contract QTIToken is
     /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     
-    /// @notice Role for performing contract upgrades via UUPS pattern
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to governance or upgrade multisig
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
 
     // Vote-escrow constants
     /// @notice Maximum lock time for vote-escrow (4 years)
@@ -279,20 +276,21 @@ contract QTIToken is
 
     function initialize(
         address admin,
-        address _treasury
+        address _treasury,
+        address timelock
     ) public initializer {
         require(admin != address(0), "QTI: Admin cannot be zero");
         require(_treasury != address(0), "QTI: Treasury cannot be zero");
+        require(timelock != address(0), "QTI: Timelock cannot be zero");
 
         __ERC20_init("Quantillon Token", "QTI");
         __AccessControl_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
+        __SecureUpgradeable_init(timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
-        _grantRole(UPGRADER_ROLE, admin);
 
         treasury = _treasury;
         
@@ -746,7 +744,7 @@ contract QTIToken is
         return 18;
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {}
+
 
     // =============================================================================
     // EMERGENCY FUNCTIONS

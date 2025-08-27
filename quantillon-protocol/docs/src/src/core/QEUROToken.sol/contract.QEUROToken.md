@@ -1,8 +1,8 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/QEUROToken.sol)
 
 **Inherits:**
-Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
 Quantillon Labs
@@ -73,19 +73,6 @@ Role for pausing the contract in emergency situations
 
 ```solidity
 bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-```
-
-
-### UPGRADER_ROLE
-Role for performing contract upgrades via UUPS pattern
-
-*keccak256 hash avoids role collisions with other contracts*
-
-*Should be assigned to governance or upgrade multisig*
-
-
-```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 ```
 
 
@@ -269,7 +256,7 @@ Initializes the QEURO token (called only once at deployment)
 
 
 ```solidity
-function initialize(address admin, address vault) public initializer;
+function initialize(address admin, address vault, address timelock) public initializer;
 ```
 **Parameters**
 
@@ -277,6 +264,7 @@ function initialize(address admin, address vault) public initializer;
 |----|----|-----------|
 |`admin`|`address`|Address that will have the DEFAULT_ADMIN_ROLE|
 |`vault`|`address`|Address of the QuantillonVault (will get MINTER_ROLE and BURNER_ROLE)|
+|`timelock`|`address`||
 
 
 ### mint
@@ -830,31 +818,6 @@ function _update(address from, address to, uint256 amount) internal override whe
 |`from`|`address`|Source address (address(0) for mint)|
 |`to`|`address`|Destination address (address(0) for burn)|
 |`amount`|`uint256`|Amount transferred|
-
-
-### _authorizeUpgrade
-
-Authorizes contract upgrades
-
-*Securities:
-- Only UPGRADER_ROLE can upgrade
-- Additional validation possible here
-- Upgrades can be time-locked by governance*
-
-*Security considerations:
-- Only UPGRADER_ROLE can authorize upgrades
-- Prevents unauthorized upgrades
-- Can be extended with more complex upgrade logic*
-
-
-```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newImplementation`|`address`|Address of the new implementation|
 
 
 ### recoverToken

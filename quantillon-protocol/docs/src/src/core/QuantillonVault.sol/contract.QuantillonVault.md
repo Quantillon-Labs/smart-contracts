@@ -1,8 +1,8 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/QuantillonVault.sol)
 
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
 Quantillon Labs
@@ -81,19 +81,6 @@ Role for emergency operations (pause)
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-```
-
-
-### UPGRADER_ROLE
-Role for performing contract upgrades via UUPS pattern
-
-*keccak256 hash avoids role collisions with other contracts*
-
-*Should be assigned to governance or upgrade multisig*
-
-
-```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 ```
 
 
@@ -223,7 +210,9 @@ Initializes the vault with contracts and parameters
 
 
 ```solidity
-function initialize(address admin, address _qeuro, address _usdc, address _oracle) public initializer;
+function initialize(address admin, address _qeuro, address _usdc, address _oracle, address timelock)
+    public
+    initializer;
 ```
 **Parameters**
 
@@ -233,6 +222,7 @@ function initialize(address admin, address _qeuro, address _usdc, address _oracl
 |`_qeuro`|`address`|Address of the QEURO token contract|
 |`_usdc`|`address`|Address of the USDC token contract|
 |`_oracle`|`address`|Address of the Oracle contract|
+|`timelock`|`address`||
 
 
 ### mintQEURO
@@ -435,21 +425,6 @@ Unpauses and resumes operations
 ```solidity
 function unpause() external onlyRole(EMERGENCY_ROLE);
 ```
-
-### _authorizeUpgrade
-
-Authorizes vault contract upgrades
-
-
-```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newImplementation`|`address`|Address of the new implementation|
-
 
 ### recoverToken
 

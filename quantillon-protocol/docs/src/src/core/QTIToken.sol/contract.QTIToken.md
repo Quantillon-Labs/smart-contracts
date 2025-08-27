@@ -1,8 +1,8 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/QTIToken.sol)
 
 **Inherits:**
-Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
+Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
 Quantillon Labs
@@ -73,19 +73,6 @@ Role for emergency operations (pause, emergency proposals)
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-```
-
-
-### UPGRADER_ROLE
-Role for performing contract upgrades via UUPS pattern
-
-*keccak256 hash avoids role collisions with other contracts*
-
-*Should be assigned to governance or upgrade multisig*
-
-
-```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 ```
 
 
@@ -336,7 +323,7 @@ constructor();
 
 
 ```solidity
-function initialize(address admin, address _treasury) public initializer;
+function initialize(address admin, address _treasury, address timelock) public initializer;
 ```
 
 ### lock
@@ -681,13 +668,6 @@ function _updateVotingPower(address user) internal returns (uint256 newVotingPow
 
 ```solidity
 function decimals() public pure override returns (uint8);
-```
-
-### _authorizeUpgrade
-
-
-```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
 ```
 
 ### pause

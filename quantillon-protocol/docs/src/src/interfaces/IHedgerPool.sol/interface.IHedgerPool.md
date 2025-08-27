@@ -1,139 +1,44 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/interfaces/IHedgerPool.sol)
-
-**Author:**
-Quantillon Labs
-
-Interface for the HedgerPool managing hedging positions and rewards
-
-**Note:**
-security-contact: team@quantillon.money
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/interfaces/IHedgerPool.sol)
 
 
 ## Functions
-### initialize
-
-Initializes the hedger pool
-
-
-```solidity
-function initialize(address admin, address _usdc, address _oracle, address _yieldShift) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`admin`|`address`|Admin address|
-|`_usdc`|`address`|USDC token address|
-|`_oracle`|`address`|Oracle contract address|
-|`_yieldShift`|`address`|YieldShift contract address|
-
-
 ### enterHedgePosition
-
-Enter a new hedging position
 
 
 ```solidity
 function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external returns (uint256 positionId);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|Margin amount in USDC|
-|`leverage`|`uint256`|Desired leverage (<= max)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|New position ID|
-
 
 ### exitHedgePosition
 
-Exit an existing hedging position fully
-
 
 ```solidity
-function exitHedgePosition(uint256 positionId) external;
+function exitHedgePosition(uint256 positionId) external returns (int256 pnl);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|Position identifier|
-
-
-### partialClosePosition
-
-Close part of a hedging position
-
-
-```solidity
-function partialClosePosition(uint256 positionId, uint256 percentage) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|Position identifier|
-|`percentage`|`uint256`|Percentage (bps) to close|
-
 
 ### addMargin
-
-Add margin to a position
 
 
 ```solidity
 function addMargin(uint256 positionId, uint256 amount) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|Position identifier|
-|`amount`|`uint256`|Amount of USDC to add|
-
 
 ### removeMargin
-
-Remove margin from a position if safe
 
 
 ```solidity
 function removeMargin(uint256 positionId, uint256 amount) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|Position identifier|
-|`amount`|`uint256`|Amount of USDC to remove|
-
 
 ### commitLiquidation
-
-Commit to a liquidation to prevent front-running
 
 
 ```solidity
 function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger to liquidate|
-|`positionId`|`uint256`|Position ID to liquidate|
-|`salt`|`bytes32`|Random salt for commitment|
-
 
 ### liquidateHedger
-
-Liquidate an unsafe position with front-running protection
 
 
 ```solidity
@@ -141,26 +46,29 @@ function liquidateHedger(address hedger, uint256 positionId, bytes32 salt)
     external
     returns (uint256 liquidationReward);
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Owner of the position|
-|`positionId`|`uint256`|Position identifier|
-|`salt`|`bytes32`|Salt used in the commitment|
+### hasPendingLiquidationCommitment
 
-**Returns**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`liquidationReward`|`uint256`|Amount of liquidation reward|
+```solidity
+function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
+```
 
+### clearExpiredLiquidationCommitment
+
+
+```solidity
+function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
+```
+
+### cancelLiquidationCommitment
+
+
+```solidity
+function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;
+```
 
 ### claimHedgingRewards
-
-Claim accumulated hedging rewards (only own rewards)
-
-*SECURITY: Only hedgers can claim their own rewards (msg.sender == hedger)*
 
 
 ```solidity
@@ -168,18 +76,8 @@ function claimHedgingRewards()
     external
     returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
 ```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`interestDifferential`|`uint256`|Interest differential amount|
-|`yieldShiftRewards`|`uint256`|Rewards from YieldShift|
-|`totalRewards`|`uint256`|Total rewards claimed|
-
 
 ### getHedgerPosition
-
-Get a hedger position details
 
 
 ```solidity
@@ -190,108 +88,27 @@ function getHedgerPosition(address hedger, uint256 positionId)
         uint256 positionSize,
         uint256 margin,
         uint256 entryPrice,
+        uint256 currentPrice,
         uint256 leverage,
-        uint256 entryTime,
-        uint256 lastUpdateTime,
-        int256 unrealizedPnL,
-        bool isActive
+        uint256 lastUpdateTime
     );
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger address|
-|`positionId`|`uint256`|Position identifier|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionSize`|`uint256`|Current position size|
-|`margin`|`uint256`|Current margin|
-|`entryPrice`|`uint256`|Entry price|
-|`leverage`|`uint256`|Leverage|
-|`entryTime`|`uint256`|Entry timestamp|
-|`lastUpdateTime`|`uint256`|Last update timestamp|
-|`unrealizedPnL`|`int256`|Current unrealized PnL|
-|`isActive`|`bool`|Active flag|
-
 
 ### getHedgerMarginRatio
-
-Get current margin ratio for a position
 
 
 ```solidity
 function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger address|
-|`positionId`|`uint256`|Position identifier|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Margin ratio in basis points|
-
 
 ### isHedgerLiquidatable
-
-Check if a position is liquidatable
 
 
 ```solidity
 function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger address|
-|`positionId`|`uint256`|Position identifier|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|True if liquidatable|
-
-
-### getHedgerPositionStats
-
-Get position statistics for a hedger
-
-
-```solidity
-function getHedgerPositionStats(address hedger)
-    external
-    view
-    returns (uint256 totalPositions, uint256 activePositions, uint256 totalMargin_, uint256 totalExposure_);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalPositions`|`uint256`|Total number of positions (active + inactive)|
-|`activePositions`|`uint256`|Number of active positions|
-|`totalMargin_`|`uint256`|Total margin across all positions|
-|`totalExposure_`|`uint256`|Total exposure across all positions|
-
 
 ### getTotalHedgeExposure
-
-Total hedge exposure in the pool
 
 
 ```solidity
@@ -300,151 +117,57 @@ function getTotalHedgeExposure() external view returns (uint256);
 
 ### getPoolStatistics
 
-Pool statistics snapshot
-
 
 ```solidity
 function getPoolStatistics()
     external
     view
     returns (
-        uint256 activeHedgers_,
+        uint256 activeHedgers,
         uint256 totalPositions,
         uint256 averagePosition,
-        uint256 totalMargin_,
+        uint256 totalMargin,
         uint256 poolUtilization
     );
 ```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`activeHedgers_`|`uint256`|Number of active hedgers|
-|`totalPositions`|`uint256`|Total number of positions|
-|`averagePosition`|`uint256`|Average position size|
-|`totalMargin_`|`uint256`|Total margin|
-|`poolUtilization`|`uint256`|Pool utilization ratio (bps)|
-
 
 ### getPendingHedgingRewards
-
-Pending hedging rewards for a hedger
 
 
 ```solidity
 function getPendingHedgingRewards(address hedger)
     external
     view
-    returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
+    returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalPending);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger address|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`interestDifferential`|`uint256`|Pending interest differential|
-|`yieldShiftRewards`|`uint256`|Pending YieldShift rewards|
-|`totalRewards`|`uint256`|Total pending rewards|
-
 
 ### updateHedgingParameters
-
-Update hedging parameters
 
 
 ```solidity
 function updateHedgingParameters(
-    uint256 _minMarginRatio,
-    uint256 _liquidationThreshold,
-    uint256 _maxLeverage,
-    uint256 _liquidationPenalty
+    uint256 newMinMarginRatio,
+    uint256 newLiquidationThreshold,
+    uint256 newMaxLeverage,
+    uint256 newLiquidationPenalty
 ) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_minMarginRatio`|`uint256`|Minimum margin ratio (bps)|
-|`_liquidationThreshold`|`uint256`|Liquidation threshold (bps)|
-|`_maxLeverage`|`uint256`|Maximum leverage|
-|`_liquidationPenalty`|`uint256`|Liquidation penalty (bps)|
-
 
 ### updateInterestRates
-
-Update interest rates
 
 
 ```solidity
 function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newEurRate`|`uint256`|EUR rate (bps)|
-|`newUsdRate`|`uint256`|USD rate (bps)|
-
 
 ### setHedgingFees
-
-Set hedging fees
 
 
 ```solidity
 function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_entryFee`|`uint256`|Entry fee (bps)|
-|`_exitFee`|`uint256`|Exit fee (bps)|
-|`_marginFee`|`uint256`|Margin fee (bps)|
-
-
-### emergencyClosePosition
-
-Emergency close a position by admin
-
-
-```solidity
-function emergencyClosePosition(address hedger, uint256 positionId) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger address|
-|`positionId`|`uint256`|Position identifier|
-
-
-### pause
-
-Pause hedger pool operations
-
-
-```solidity
-function pause() external;
-```
-
-### unpause
-
-Unpause hedger pool operations
-
-
-```solidity
-function unpause() external;
-```
 
 ### getHedgingConfig
-
-Hedging configuration snapshot
 
 
 ```solidity
@@ -457,214 +180,57 @@ function getHedgingConfig()
         uint256 maxLeverage,
         uint256 liquidationPenalty,
         uint256 entryFee,
-        uint256 exitFee,
-        uint256 marginFee
+        uint256 exitFee
     );
 ```
-**Returns**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`minMarginRatio`|`uint256`|Minimum margin ratio (bps)|
-|`liquidationThreshold`|`uint256`|Liquidation threshold (bps)|
-|`maxLeverage`|`uint256`|Maximum leverage|
-|`liquidationPenalty`|`uint256`|Liquidation penalty (bps)|
-|`entryFee`|`uint256`|Entry fee (bps)|
-|`exitFee`|`uint256`|Exit fee (bps)|
-|`marginFee`|`uint256`|Margin fee (bps)|
+### emergencyClosePosition
 
+
+```solidity
+function emergencyClosePosition(address hedger, uint256 positionId) external;
+```
+
+### pause
+
+
+```solidity
+function pause() external;
+```
+
+### unpause
+
+
+```solidity
+function unpause() external;
+```
 
 ### isHedgingActive
-
-Whether hedging operations are active (not paused)
 
 
 ```solidity
 function isHedgingActive() external view returns (bool);
 ```
 
-### hasPendingLiquidationCommitment
-
-Check if a hedger has pending liquidation commitments
+### recoverToken
 
 
 ```solidity
-function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger|
-|`positionId`|`uint256`|Position ID to check|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|bool True if there are pending liquidation commitments|
-
-
-### clearExpiredLiquidationCommitment
-
-Clear expired liquidation commitments for a hedger/position
-
-*This function allows clearing of expired commitments that were never executed*
-
-*Only callable by liquidators or governance*
-
-*Note: With immediate execution, this is mainly for cleanup of stale commitments*
-
-
-```solidity
-function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger|
-|`positionId`|`uint256`|Position ID|
-
-
-### cancelLiquidationCommitment
-
-Cancel a liquidation commitment (only by the liquidator who created it)
-
-*This function allows liquidators to cancel their own commitments*
-
-*Only callable by the liquidator who created the commitment*
-
-
-```solidity
-function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger|
-|`positionId`|`uint256`|Position ID|
-|`salt`|`bytes32`|Salt used in the original commitment|
-
-
-### hasRole
-
-
-```solidity
-function hasRole(bytes32 role, address account) external view returns (bool);
+function recoverToken(address token, address to, uint256 amount) external;
 ```
 
-### getRoleAdmin
+### recoverETH
 
 
 ```solidity
-function getRoleAdmin(bytes32 role) external view returns (bytes32);
-```
-
-### grantRole
-
-
-```solidity
-function grantRole(bytes32 role, address account) external;
-```
-
-### revokeRole
-
-
-```solidity
-function revokeRole(bytes32 role, address account) external;
-```
-
-### renounceRole
-
-
-```solidity
-function renounceRole(bytes32 role, address callerConfirmation) external;
-```
-
-### paused
-
-
-```solidity
-function paused() external view returns (bool);
-```
-
-### upgradeTo
-
-
-```solidity
-function upgradeTo(address newImplementation) external;
-```
-
-### upgradeToAndCall
-
-
-```solidity
-function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
-```
-
-### GOVERNANCE_ROLE
-
-
-```solidity
-function GOVERNANCE_ROLE() external view returns (bytes32);
-```
-
-### LIQUIDATOR_ROLE
-
-
-```solidity
-function LIQUIDATOR_ROLE() external view returns (bytes32);
-```
-
-### EMERGENCY_ROLE
-
-
-```solidity
-function EMERGENCY_ROLE() external view returns (bytes32);
-```
-
-### UPGRADER_ROLE
-
-
-```solidity
-function UPGRADER_ROLE() external view returns (bytes32);
-```
-
-### MAX_POSITIONS_PER_HEDGER
-
-
-```solidity
-function MAX_POSITIONS_PER_HEDGER() external view returns (uint256);
-```
-
-### LIQUIDATION_COOLDOWN
-
-
-```solidity
-function LIQUIDATION_COOLDOWN() external view returns (uint256);
-```
-
-### BLOCKS_PER_DAY
-
-
-```solidity
-function BLOCKS_PER_DAY() external view returns (uint256);
-```
-
-### MAX_REWARD_PERIOD
-
-
-```solidity
-function MAX_REWARD_PERIOD() external view returns (uint256);
+function recoverETH(address payable to) external;
 ```
 
 ### usdc
 
 
 ```solidity
-function usdc() external view returns (address);
+function usdc() external view returns (IERC20);
 ```
 
 ### oracle
@@ -786,74 +352,11 @@ function totalYieldEarned() external view returns (uint256);
 function interestDifferentialPool() external view returns (uint256);
 ```
 
-### userPendingYield
-
-
-```solidity
-function userPendingYield(address) external view returns (uint256);
-```
-
-### hedgerPendingYield
-
-
-```solidity
-function hedgerPendingYield(address) external view returns (uint256);
-```
-
-### userLastClaim
-
-
-```solidity
-function userLastClaim(address) external view returns (uint256);
-```
-
-### hedgerLastClaim
-
-
-```solidity
-function hedgerLastClaim(address) external view returns (uint256);
-```
-
-### hedgerLastRewardBlock
-
-
-```solidity
-function hedgerLastRewardBlock(address) external view returns (uint256);
-```
-
 ### activePositionCount
 
 
 ```solidity
 function activePositionCount(address) external view returns (uint256);
-```
-
-### liquidationCommitments
-
-
-```solidity
-function liquidationCommitments(bytes32) external view returns (bool);
-```
-
-### liquidationCommitmentTimes
-
-
-```solidity
-function liquidationCommitmentTimes(bytes32) external view returns (uint256);
-```
-
-### lastLiquidationAttempt
-
-
-```solidity
-function lastLiquidationAttempt(address) external view returns (uint256);
-```
-
-### hasPendingLiquidation
-
-
-```solidity
-function hasPendingLiquidation(address, uint256) external view returns (bool);
 ```
 
 ### positions
@@ -900,17 +403,148 @@ function hedgers(address)
 function hedgerPositions(address) external view returns (uint256[] memory);
 ```
 
-### recoverToken
+### userPendingYield
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function userPendingYield(address) external view returns (uint256);
 ```
 
-### recoverETH
+### hedgerPendingYield
 
 
 ```solidity
-function recoverETH(address payable to) external;
+function hedgerPendingYield(address) external view returns (uint256);
+```
+
+### userLastClaim
+
+
+```solidity
+function userLastClaim(address) external view returns (uint256);
+```
+
+### hedgerLastClaim
+
+
+```solidity
+function hedgerLastClaim(address) external view returns (uint256);
+```
+
+### hedgerLastRewardBlock
+
+
+```solidity
+function hedgerLastRewardBlock(address) external view returns (uint256);
+```
+
+### liquidationCommitments
+
+
+```solidity
+function liquidationCommitments(bytes32) external view returns (bool);
+```
+
+### liquidationCommitmentTimes
+
+
+```solidity
+function liquidationCommitmentTimes(bytes32) external view returns (uint256);
+```
+
+### lastLiquidationAttempt
+
+
+```solidity
+function lastLiquidationAttempt(address) external view returns (uint256);
+```
+
+### hasPendingLiquidation
+
+
+```solidity
+function hasPendingLiquidation(address, uint256) external view returns (bool);
+```
+
+### MAX_POSITIONS_PER_HEDGER
+
+
+```solidity
+function MAX_POSITIONS_PER_HEDGER() external view returns (uint256);
+```
+
+### BLOCKS_PER_DAY
+
+
+```solidity
+function BLOCKS_PER_DAY() external view returns (uint256);
+```
+
+### MAX_REWARD_PERIOD
+
+
+```solidity
+function MAX_REWARD_PERIOD() external view returns (uint256);
+```
+
+### LIQUIDATION_COOLDOWN
+
+
+```solidity
+function LIQUIDATION_COOLDOWN() external view returns (uint256);
+```
+
+## Events
+### HedgePositionOpened
+
+```solidity
+event HedgePositionOpened(
+    address indexed hedger,
+    uint256 indexed positionId,
+    uint256 positionSize,
+    uint256 margin,
+    uint256 leverage,
+    uint256 entryPrice
+);
+```
+
+### HedgePositionClosed
+
+```solidity
+event HedgePositionClosed(
+    address indexed hedger, uint256 indexed positionId, uint256 exitPrice, int256 pnl, uint256 timestamp
+);
+```
+
+### MarginAdded
+
+```solidity
+event MarginAdded(address indexed hedger, uint256 indexed positionId, uint256 marginAdded, uint256 newMarginRatio);
+```
+
+### MarginRemoved
+
+```solidity
+event MarginRemoved(address indexed hedger, uint256 indexed positionId, uint256 marginRemoved, uint256 newMarginRatio);
+```
+
+### HedgerLiquidated
+
+```solidity
+event HedgerLiquidated(
+    address indexed hedger,
+    uint256 indexed positionId,
+    address indexed liquidator,
+    uint256 liquidationReward,
+    uint256 remainingMargin
+);
+```
+
+### HedgingRewardsClaimed
+
+```solidity
+event HedgingRewardsClaimed(
+    address indexed hedger, uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards
+);
 ```
 

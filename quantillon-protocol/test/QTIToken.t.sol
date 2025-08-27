@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 /**
  * @title QTITokenTestHelper
@@ -124,11 +124,15 @@ contract QTITokenTestSuite is Test {
         // Deploy implementation
         implementation = new QTITokenTestHelper();
         
+        // Create mock timelock address
+        address mockTimelock = address(0x123);
+        
         // Deploy proxy with initialization
         bytes memory initData = abi.encodeWithSelector(
             QTIToken.initialize.selector,
             admin,
-            treasury
+            treasury,
+            mockTimelock
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -171,7 +175,7 @@ contract QTITokenTestSuite is Test {
         assertTrue(qtiToken.hasRole(0x00, admin)); // DEFAULT_ADMIN_ROLE is 0x00
         assertTrue(qtiToken.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
         assertTrue(qtiToken.hasRole(keccak256("EMERGENCY_ROLE"), admin));
-        assertTrue(qtiToken.hasRole(keccak256("UPGRADER_ROLE"), admin));
+
         
         // Check initial state variables
         assertEq(qtiToken.treasury(), treasury);
@@ -195,7 +199,8 @@ contract QTITokenTestSuite is Test {
         bytes memory initData1 = abi.encodeWithSelector(
             QTIToken.initialize.selector,
             address(0),
-            treasury
+            treasury,
+            address(0x123)
         );
         
         vm.expectRevert("QTI: Admin cannot be zero");
@@ -206,7 +211,8 @@ contract QTITokenTestSuite is Test {
         bytes memory initData2 = abi.encodeWithSelector(
             QTIToken.initialize.selector,
             admin,
-            address(0)
+            address(0),
+            address(0x123)
         );
         
         vm.expectRevert("QTI: Treasury cannot be zero");
@@ -220,7 +226,7 @@ contract QTITokenTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        qtiToken.initialize(admin, treasury);
+        qtiToken.initialize(admin, treasury, address(0x123));
     }
 
     // =============================================================================

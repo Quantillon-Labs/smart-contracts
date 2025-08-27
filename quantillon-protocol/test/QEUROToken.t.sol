@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 /**
  * @title QEUROTokenTest
@@ -81,11 +81,15 @@ contract QEUROTokenTestSuite is Test {
         // Deploy implementation
         implementation = new QEUROToken();
         
+        // Create mock timelock address
+        address mockTimelock = address(0x123);
+        
         // Deploy proxy with initialization
         bytes memory initData = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             admin,
-            vault
+            vault,
+            mockTimelock
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -142,7 +146,8 @@ contract QEUROTokenTestSuite is Test {
         bytes memory initData1 = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             address(0),
-            vault
+            vault,
+            address(0x123)
         );
         
         vm.expectRevert("QEURO: Admin cannot be zero address");
@@ -153,7 +158,8 @@ contract QEUROTokenTestSuite is Test {
         bytes memory initData2 = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             admin,
-            address(0)
+            address(0),
+            address(0x123)
         );
         
         vm.expectRevert("QEURO: Vault cannot be zero address");
@@ -167,7 +173,7 @@ contract QEUROTokenTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        qeuroToken.initialize(admin, vault);
+        qeuroToken.initialize(admin, vault, address(0x123));
     }
 
     // =============================================================================

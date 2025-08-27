@@ -21,7 +21,7 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // UUPS: Universal Upgradeable Proxy Standard (more gas-efficient than Transparent)
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "./SecureUpgradeable.sol";
 
 /**
  * @title QEUROToken
@@ -58,7 +58,7 @@ contract QEUROToken is
     ERC20Upgradeable,        // Standard ERC20 token
     AccessControlUpgradeable, // Role management
     PausableUpgradeable,     // Emergency pause
-    UUPSUpgradeable          // Upgrade pattern
+    SecureUpgradeable        // Secure upgrade pattern
 {
     using SafeERC20 for IERC20;
 
@@ -81,10 +81,7 @@ contract QEUROToken is
     /// @dev Should be assigned to governance or emergency multisig
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     
-    /// @notice Role for performing contract upgrades via UUPS pattern
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to governance or upgrade multisig
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
 
     /// @notice Role for managing blacklist/whitelist for compliance
     /// @dev keccak256 hash avoids role collisions with other contracts
@@ -255,17 +252,19 @@ contract QEUROToken is
      */
     function initialize(
         address admin,
-        address vault
+        address vault,
+        address timelock
     ) public initializer {
         // Input parameter validation
         require(admin != address(0), "QEURO: Admin cannot be zero address");
         require(vault != address(0), "QEURO: Vault cannot be zero address");
+        require(timelock != address(0), "QEURO: Timelock cannot be zero address");
 
         // Initialize parent contracts
         __ERC20_init("Quantillon Euro", "QEURO");
         __AccessControl_init();
         __Pausable_init();
-        __UUPSUpgradeable_init();
+        __SecureUpgradeable_init(timelock);
 
         // Set up roles and permissions
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -921,33 +920,7 @@ contract QEUROToken is
     // UPGRADE FUNCTIONS - Contract update management
     // =============================================================================
 
-    /**
-     * @notice Authorizes contract upgrades
-     * @param newImplementation Address of the new implementation
-     * 
-     * @dev Securities:
-     *      - Only UPGRADER_ROLE can upgrade
-     *      - Additional validation possible here
-     *      - Upgrades can be time-locked by governance
-     * 
-     * @dev Security considerations:
-     *      - Only UPGRADER_ROLE can authorize upgrades
-     *      - Prevents unauthorized upgrades
-     *      - Can be extended with more complex upgrade logic
-     */
-    function _authorizeUpgrade(address newImplementation) 
-        internal 
-        override 
-        onlyRole(UPGRADER_ROLE) 
-    {
-        // Additional upgrade validations can be added here
-        // For example:
-        // - Verify that newImplementation is a valid contract
-        // - Verify a community signature
-        // - Apply a time lock
-        
-        // For now, only role verification is required
-    }
+
 
     // =============================================================================
     // RECOVERY FUNCTIONS - Emergency recovery functions

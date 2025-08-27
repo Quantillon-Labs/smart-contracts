@@ -92,13 +92,8 @@ contract QuantillonVaultTestSuite is Test {
         bytes memory initData = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             admin,
-            "Quantillon Euro",
-            "QEURO",
-            18,
-            1000000 * 1e18, // 1M max supply
-            1000 * 1e18, // 1k rate limit
-            1000 * 1e18, // 1k rate limit
-            1e16 // 1% min price precision
+            address(0x123), // mock vault address
+            address(0x456)  // mock timelock address
         );
         qeuroToken = QEUROToken(address(new ERC1967Proxy(address(implementation), initData)));
         
@@ -109,7 +104,8 @@ contract QuantillonVaultTestSuite is Test {
             admin,
             address(qeuroToken),
             mockUSDC,
-            mockOracle
+            mockOracle,
+            address(0x789) // mock timelock address
         );
         vault = QuantillonVault(address(new ERC1967Proxy(address(vaultImplementation), vaultInitData)));
         
@@ -215,7 +211,8 @@ contract QuantillonVaultTestSuite is Test {
             address(0),
             address(qeuroToken),
             mockUSDC,
-            mockOracle
+            mockOracle,
+            address(0x789)
         );
         
         vm.expectRevert("Vault: Admin cannot be zero");
@@ -228,7 +225,8 @@ contract QuantillonVaultTestSuite is Test {
             admin,
             address(0),
             mockUSDC,
-            mockOracle
+            mockOracle,
+            address(0x789)
         );
         
         vm.expectRevert("Vault: QEURO cannot be zero");
@@ -241,7 +239,8 @@ contract QuantillonVaultTestSuite is Test {
             admin,
             address(qeuroToken),
             address(0),
-            mockOracle
+            mockOracle,
+            address(0x789)
         );
         
         vm.expectRevert("Vault: USDC cannot be zero");
@@ -254,7 +253,8 @@ contract QuantillonVaultTestSuite is Test {
             admin,
             address(qeuroToken),
             mockUSDC,
-            address(0)
+            address(0),
+            address(0x789)
         );
         
         vm.expectRevert("Vault: Oracle cannot be zero");
@@ -268,7 +268,7 @@ contract QuantillonVaultTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        vault.initialize(admin, address(qeuroToken), mockUSDC, mockOracle);
+        vault.initialize(admin, address(qeuroToken), mockUSDC, mockOracle, address(0x789));
     }
     
     // =============================================================================

@@ -1,5 +1,5 @@
 # VaultMath
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/libraries/VaultMath.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/libraries/VaultMath.sol)
 
 **Author:**
 Quantillon Labs

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -21,11 +21,15 @@ contract QEUROTokenBasicTest is Test {
         // Deploy implementation
         implementation = new QEUROToken();
         
+        // Create mock timelock address
+        address mockTimelock = address(0x123);
+        
         // Deploy proxy
         bytes memory initData = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             admin,
-            vault
+            vault,
+            mockTimelock
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(

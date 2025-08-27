@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 import {Test, console2} from "forge-std/Test.sol";
 import {AaveVault} from "../src/core/vaults/AaveVault.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 
 /**
  * @title MockUSDC

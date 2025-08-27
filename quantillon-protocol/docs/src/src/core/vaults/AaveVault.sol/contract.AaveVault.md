@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/574b19e5addba94ee730fbe322067d32433171d4/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/14b540a5cb762ce47f29a6390bf8e3153b372aff/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -35,8 +35,6 @@ bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
 
 ### usdc
-USDC token contract
-
 
 ```solidity
 IERC20 public usdc;
@@ -44,8 +42,6 @@ IERC20 public usdc;
 
 
 ### aUSDC
-aUSDC token contract (Aave interest-bearing USDC)
-
 
 ```solidity
 IERC20 public aUSDC;
@@ -53,8 +49,6 @@ IERC20 public aUSDC;
 
 
 ### aavePool
-Aave V3 Pool contract
-
 
 ```solidity
 IPool public aavePool;
@@ -62,8 +56,6 @@ IPool public aavePool;
 
 
 ### aaveProvider
-Aave V3 Pool Addresses Provider
-
 
 ```solidity
 IPoolAddressesProvider public aaveProvider;
@@ -71,8 +63,6 @@ IPoolAddressesProvider public aaveProvider;
 
 
 ### rewardsController
-Aave Rewards Controller
-
 
 ```solidity
 IRewardsController public rewardsController;
@@ -80,8 +70,6 @@ IRewardsController public rewardsController;
 
 
 ### yieldShift
-Yield Shift mechanism
-
 
 ```solidity
 IYieldShift public yieldShift;
@@ -209,8 +197,6 @@ function initialize(
 
 ### deployToAave
 
-Deploy USDC to Aave V3 pool to earn yield
-
 
 ```solidity
 function deployToAave(uint256 amount)
@@ -223,10 +209,6 @@ function deployToAave(uint256 amount)
 
 ### withdrawFromAave
 
-Withdraw USDC from Aave V3 pool
-
-*Includes comprehensive validation and proper accounting of actual amounts received*
-
 
 ```solidity
 function withdrawFromAave(uint256 amount)
@@ -238,18 +220,12 @@ function withdrawFromAave(uint256 amount)
 
 ### claimAaveRewards
 
-Claim Aave rewards (if any)
-
 
 ```solidity
 function claimAaveRewards() external onlyRole(VAULT_MANAGER_ROLE) nonReentrant returns (uint256 rewardsClaimed);
 ```
 
 ### harvestAaveYield
-
-Harvest Aave yield and distribute to protocol
-
-*Includes slippage protection for yield withdrawals*
 
 
 ```solidity
@@ -258,16 +234,12 @@ function harvestAaveYield() external onlyRole(VAULT_MANAGER_ROLE) nonReentrant r
 
 ### getAvailableYield
 
-Calculate available yield for harvest
-
 
 ```solidity
 function getAvailableYield() public view returns (uint256);
 ```
 
 ### getYieldDistribution
-
-Get yield distribution breakdown
 
 
 ```solidity
@@ -352,10 +324,6 @@ function setMaxAaveExposure(uint256 _maxExposure) external onlyRole(GOVERNANCE_R
 
 ### emergencyWithdrawFromAave
 
-Emergency withdrawal from Aave
-
-*Includes proper accounting of actual amounts received during emergency*
-
 
 ```solidity
 function emergencyWithdrawFromAave() external onlyRole(EMERGENCY_ROLE) returns (uint256 amountWithdrawn);
@@ -437,8 +405,6 @@ function _authorizeUpgrade(address newImplementation) internal override onlyRole
 
 ### recoverToken
 
-Recover accidentally sent tokens
-
 
 ```solidity
 function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -446,18 +412,10 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recover accidentally sent ETH
-
 
 ```solidity
 function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`to`|`address payable`|Recipient address|
-
 
 ## Events
 ### DeployedToAave

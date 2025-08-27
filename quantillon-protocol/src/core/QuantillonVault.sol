@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "./SecureUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -74,7 +74,7 @@ contract QuantillonVault is
     ReentrancyGuardUpgradeable,    // Reentrancy protection
     AccessControlUpgradeable,      // Role management
     PausableUpgradeable,          // Emergency pause
-    UUPSUpgradeable               // Upgrade pattern
+    SecureUpgradeable             // Secure upgrade pattern
 {
     using SafeERC20 for IERC20;   // Safe transfers
     using VaultMath for uint256;   // Precise math operations
@@ -95,10 +95,7 @@ contract QuantillonVault is
     /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     
-    /// @notice Role for performing contract upgrades via UUPS pattern
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to governance or upgrade multisig
-    bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+
 
     // =============================================================================
     // CONSTANTS - Emergency and security parameters
@@ -197,25 +194,26 @@ contract QuantillonVault is
         address admin,
         address _qeuro,
         address _usdc,
-        address _oracle
+        address _oracle,
+        address timelock
     ) public initializer {
         // Validation of critical parameters
         require(admin != address(0), "Vault: Admin cannot be zero");
         require(_qeuro != address(0), "Vault: QEURO cannot be zero");
         require(_usdc != address(0), "Vault: USDC cannot be zero");
         require(_oracle != address(0), "Vault: Oracle cannot be zero");
+        require(timelock != address(0), "Vault: Timelock cannot be zero");
 
         // Initialization of security modules
         __ReentrancyGuard_init();     // Reentrancy protection
         __AccessControl_init();        // Role system
         __Pausable_init();            // Pause mechanism
-        __UUPSUpgradeable_init();     // Controlled upgrades
+        __SecureUpgradeable_init(timelock); // Secure upgrades
 
         // Configuration of access roles
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
-        _grantRole(UPGRADER_ROLE, admin);
 
         // Connections to external contracts
         qeuro = IQEUROToken(_qeuro);
@@ -525,20 +523,7 @@ contract QuantillonVault is
     // UPGRADE AND RECOVERY - Upgrades and recovery
     // =============================================================================
 
-    /**
-     * @notice Authorizes vault contract upgrades
-     * @param newImplementation Address of the new implementation
-     */
 
-
-    function _authorizeUpgrade(address newImplementation) 
-        internal 
-        override 
-        onlyRole(UPGRADER_ROLE) 
-    {
-        // Additional upgrade validations can be added here
-        // For example: compatibility checks, automatic tests, etc.
-    }
 
     /**
      * @notice Recovers tokens accidentally sent to the vault

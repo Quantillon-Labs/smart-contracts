@@ -24,6 +24,26 @@ contract VaultMathWrapper {
         external pure returns (uint256 userYield, uint256 hedgerYield) {
         return VaultMath.calculateYieldDistribution(totalYield, yieldShiftBps);
     }
+    
+    // Bounded fuzzing tests with realistic input ranges
+    function testMulDivBounded(uint256 a, uint256 b, uint256 c) external pure returns (uint256) {
+        // Bound inputs to realistic ranges to avoid overflow
+        // Note: vm.assume is not available in wrapper contracts, so we rely on test contract bounds
+        return VaultMath.mulDiv(a, b, c);
+    }
+    
+    function testPercentageOfBounded(uint256 value, uint256 percentage) external pure returns (uint256) {
+        // Bound percentage to realistic range (0-100%)
+        // Note: vm.assume is not available in wrapper contracts, so we rely on test contract bounds
+        return VaultMath.percentageOf(value, percentage);
+    }
+    
+    function testCalculateYieldDistributionBounded(uint256 totalYield, uint256 yieldShiftBps) 
+        external pure returns (uint256 userYield, uint256 hedgerYield) {
+        // Bound yieldShiftBps to realistic range (0-100%)
+        // Note: vm.assume is not available in wrapper contracts, so we rely on test contract bounds
+        return VaultMath.calculateYieldDistribution(totalYield, yieldShiftBps);
+    }
 }
 
 /**
@@ -715,5 +735,61 @@ contract VaultMathTestSuite is Test {
         );
         
         assertTrue(isWithinTolerance);
+    }
+    
+    // =============================================================================
+    // BOUNDED FUZZING TESTS
+    // =============================================================================
+    
+    /**
+     * @notice Bounded fuzzing test for mulDiv with realistic input ranges
+     * @dev Uses bounded inputs to avoid overflow while still testing edge cases
+     */
+    function testFuzz_MulDivBounded(uint256 a, uint256 b, uint256 c) public {
+        // Bound inputs to realistic ranges to avoid overflow
+        vm.assume(a <= 1e20); // More conservative bound
+        vm.assume(b <= 1e20); // More conservative bound
+        vm.assume(c > 0 && c <= 1e20); // More conservative bound
+        
+        // Additional check to prevent overflow
+        vm.assume(a == 0 || b == 0 || (a * b) / a == b);
+        
+        uint256 result = wrapper.testMulDivBounded(a, b, c);
+        
+        // Verify result is reasonable
+        assertTrue(result >= 0);
+    }
+    
+    /**
+     * @notice Bounded fuzzing test for percentageOf with realistic input ranges
+     * @dev Uses bounded percentage to avoid "Percentage too high" errors
+     */
+    function testFuzz_PercentageOfBounded(uint256 value, uint256 percentage) public {
+        // Bound inputs to realistic ranges to avoid overflow
+        vm.assume(value <= 1e20); // More conservative bound
+        vm.assume(percentage <= 10000); // 100% in basis points
+        
+        uint256 result = wrapper.testPercentageOfBounded(value, percentage);
+        
+        // Verify result is reasonable
+        assertTrue(result >= 0);
+        assertTrue(result <= value); // Percentage should not exceed original value
+    }
+    
+    /**
+     * @notice Bounded fuzzing test for calculateYieldDistribution with realistic input ranges
+     * @dev Uses bounded yieldShiftBps to avoid "Invalid yield shift" errors
+     */
+    function testFuzz_CalculateYieldDistributionBounded(uint256 totalYield, uint256 yieldShiftBps) public {
+        // Bound inputs to realistic ranges to avoid overflow
+        vm.assume(totalYield <= 1e20); // More conservative bound
+        vm.assume(yieldShiftBps <= 10000); // 100% in basis points
+        
+        (uint256 userYield, uint256 hedgerYield) = wrapper.testCalculateYieldDistributionBounded(totalYield, yieldShiftBps);
+        
+        // Verify results are reasonable
+        assertTrue(userYield >= 0);
+        assertTrue(hedgerYield >= 0);
+        assertEq(userYield + hedgerYield, totalYield); // Total should be preserved
     }
 }

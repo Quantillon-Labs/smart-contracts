@@ -96,4 +96,79 @@ interface IQEUROToken {
         uint256 mintRateLimit_,
         uint256 burnRateLimit_
     );
+
+    // Initialization
+    function initialize(address admin, address vault) external;
+
+    // Core functions
+    function mint(address to, uint256 amount) external;
+    function burn(address from, uint256 amount) external;
+
+    // Rate limiting
+    function updateRateLimits(uint256 newMintLimit, uint256 newBurnLimit) external;
+
+    // Compliance functions
+    function blacklistAddress(address account, string memory reason) external;
+    function unblacklistAddress(address account) external;
+    function whitelistAddress(address account) external;
+    function unwhitelistAddress(address account) external;
+    function toggleWhitelistMode(bool enabled) external;
+
+    // Decimal precision functions
+    function updateMinPricePrecision(uint256 newPrecision) external;
+    function normalizePrice(uint256 price, uint8 feedDecimals) external pure returns (uint256);
+    function validatePricePrecision(uint256 price, uint8 feedDecimals) external view returns (bool);
+
+    // Emergency functions
+    function pause() external;
+    function unpause() external;
+
+    // Recovery functions
+    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverETH(address payable to) external;
+
+    // Administrative functions
+    function updateMaxSupply(uint256 newMaxSupply) external;
+
+    // ERC20 functions
+    function transfer(address to, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+
+    // AccessControl functions
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    function grantRole(bytes32 role, address account) external;
+    function revokeRole(bytes32 role, address account) external;
+    function renounceRole(bytes32 role, address callerConfirmation) external;
+
+    // Pausable functions
+    function paused() external view returns (bool);
+
+    // UUPS functions
+    function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+
+    // Constants
+    function MINTER_ROLE() external view returns (bytes32);
+    function BURNER_ROLE() external view returns (bytes32);
+    function PAUSER_ROLE() external view returns (bytes32);
+    function UPGRADER_ROLE() external view returns (bytes32);
+    function COMPLIANCE_ROLE() external view returns (bytes32);
+    function DEFAULT_MAX_SUPPLY() external view returns (uint256);
+    function MAX_RATE_LIMIT() external view returns (uint256);
+    function PRECISION() external view returns (uint256);
+
+    // State variables
+    function maxSupply() external view returns (uint256);
+    function mintRateLimit() external view returns (uint256);
+    function burnRateLimit() external view returns (uint256);
+    function currentHourMinted() external view returns (uint256);
+    function currentHourBurned() external view returns (uint256);
+    function lastRateLimitReset() external view returns (uint256);
+    function isBlacklisted(address) external view returns (bool);
+    function isWhitelisted(address) external view returns (bool);
+    function whitelistEnabled() external view returns (bool);
+    function minPricePrecision() external view returns (uint256);
 } 

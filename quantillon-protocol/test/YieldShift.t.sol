@@ -1078,4 +1078,275 @@ contract YieldShiftTestSuite is Test {
         assertEq(targetRatio, TARGET_POOL_RATIO);
         assertGt(poolRatio, 0);
     }
+
+    // =============================================================================
+    // MISSING FUNCTION TESTS - Ensuring 100% coverage
+    // =============================================================================
+
+    /**
+     * @notice Test update last deposit time
+     * @dev Verifies that last deposit time can be updated by authorized pools
+     */
+    function test_User_UpdateLastDepositTime() public {
+        // Update last deposit time by user pool (authorized)
+        vm.prank(address(userPool));
+        yieldShift.updateLastDepositTime(user);
+        
+        // Test passes if no revert
+        // Note: We can't directly check the internal state, but the function should not revert
+    }
+
+    /**
+     * @notice Test update last deposit time by unauthorized caller
+     * @dev Verifies that unauthorized callers cannot update deposit time
+     */
+    function test_User_UpdateLastDepositTimeUnauthorized_Revert() public {
+        // Try to update last deposit time by unauthorized caller
+        vm.prank(user);
+        vm.expectRevert("YieldShift: Unauthorized");
+        yieldShift.updateLastDepositTime(user);
+    }
+
+    /**
+     * @notice Test update yield allocation
+     * @dev Verifies that yield allocation can be updated by yield manager
+     */
+    function test_YieldManagement_UpdateYieldAllocation() public {
+        uint256 allocationAmount = 1000 * 1e6;
+        
+        // Update user yield allocation
+        vm.prank(yieldManager);
+        yieldShift.updateYieldAllocation(user, allocationAmount, true);
+        
+        // Update hedger yield allocation
+        vm.prank(yieldManager);
+        yieldShift.updateYieldAllocation(hedger, allocationAmount, false);
+        
+        // Check that allocations were updated
+        uint256 userPendingYield = yieldShift.getUserPendingYield(user);
+        uint256 hedgerPendingYield = yieldShift.getHedgerPendingYield(hedger);
+        
+        assertEq(userPendingYield, allocationAmount);
+        assertEq(hedgerPendingYield, allocationAmount);
+    }
+
+    /**
+     * @notice Test update yield allocation by non-yield manager
+     * @dev Verifies that only yield manager can update allocations
+     */
+    function test_YieldManagement_UpdateYieldAllocationUnauthorized_Revert() public {
+        uint256 allocationAmount = 1000 * 1e6;
+        
+        vm.prank(user);
+        vm.expectRevert();
+        yieldShift.updateYieldAllocation(user, allocationAmount, true);
+    }
+
+    /**
+     * @notice Test get yield shift configuration
+     * @dev Verifies that yield shift configuration can be retrieved
+     */
+    function test_View_GetYieldShiftConfig() public {
+        (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed_, uint256 lastUpdate) = yieldShift.getYieldShiftConfig();
+        
+        assertGt(baseShift, 0);
+        assertGt(maxShift, 0);
+        assertGt(adjustmentSpeed_, 0);
+        assertGt(lastUpdate, 0);
+    }
+
+    /**
+     * @notice Test is yield distribution active
+     * @dev Verifies that yield distribution activity status can be checked
+     */
+    function test_View_IsYieldDistributionActive() public {
+        bool isActive = yieldShift.isYieldDistributionActive();
+        assertTrue(isActive); // Should be active by default
+        
+        // Pause yield distribution
+        vm.prank(emergencyRole);
+        yieldShift.pauseYieldDistribution();
+        
+        // Check that yield distribution is not active when paused
+        isActive = yieldShift.isYieldDistributionActive();
+        assertFalse(isActive);
+        
+        // Resume yield distribution
+        vm.prank(emergencyRole);
+        yieldShift.resumeYieldDistribution();
+        
+        // Check that yield distribution is active again
+        isActive = yieldShift.isYieldDistributionActive();
+        assertTrue(isActive);
+    }
+
+    // =============================================================================
+    // RECOVERY FUNCTION TESTS
+    // =============================================================================
+
+    /**
+     * @notice Test recovering ERC20 tokens
+     * @dev Verifies that admin can recover accidentally sent tokens
+     */
+    function test_Recovery_RecoverToken() public {
+        // Deploy a mock ERC20 token
+        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+        uint256 recoveryAmount = 1000e18;
+        
+        // Mint tokens to the yield shift contract
+        mockToken.mint(address(yieldShift), recoveryAmount);
+        
+        uint256 initialBalance = mockToken.balanceOf(admin);
+        
+        // Admin recovers tokens
+        vm.prank(admin);
+        yieldShift.recoverToken(address(mockToken), admin, recoveryAmount);
+        
+        uint256 finalBalance = mockToken.balanceOf(admin);
+        assertEq(finalBalance, initialBalance + recoveryAmount);
+    }
+
+    /**
+     * @notice Test recovering ERC20 tokens by non-admin (should revert)
+     * @dev Verifies that only admin can recover tokens
+     */
+    function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
+        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+        
+        vm.prank(user);
+        vm.expectRevert();
+        yieldShift.recoverToken(address(mockToken), user, 1000e18);
+    }
+
+    /**
+     * @notice Test recovering USDC tokens (should revert)
+     * @dev Verifies that USDC tokens cannot be recovered
+     */
+    function test_Recovery_RecoverUSDCToken_Revert() public {
+        vm.prank(admin);
+        vm.expectRevert("YieldShift: Cannot recover USDC");
+        yieldShift.recoverToken(address(usdc), admin, 1000e18);
+    }
+
+    /**
+     * @notice Test recovering tokens to zero address (should revert)
+     * @dev Verifies that tokens cannot be recovered to zero address
+     */
+    function test_Recovery_RecoverTokenToZeroAddress_Revert() public {
+        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+        
+        vm.prank(admin);
+        vm.expectRevert("YieldShift: Cannot send to zero address");
+        yieldShift.recoverToken(address(mockToken), address(0), 1000e18);
+    }
+
+    /**
+     * @notice Test recovering ETH
+     * @dev Verifies that admin can recover accidentally sent ETH
+     */
+    function test_Recovery_RecoverETH() public {
+        uint256 recoveryAmount = 1 ether;
+        uint256 initialBalance = admin.balance;
+        
+        // Send ETH to the contract
+        vm.deal(address(yieldShift), recoveryAmount);
+        
+        // Admin recovers ETH
+        vm.prank(admin);
+        yieldShift.recoverETH(payable(admin));
+        
+        uint256 finalBalance = admin.balance;
+        assertEq(finalBalance, initialBalance + recoveryAmount);
+    }
+
+    /**
+     * @notice Test recovering ETH by non-admin (should revert)
+     * @dev Verifies that only admin can recover ETH
+     */
+    function test_Recovery_RecoverETHByNonAdmin_Revert() public {
+        vm.deal(address(yieldShift), 1 ether);
+        
+        vm.prank(user);
+        vm.expectRevert();
+        yieldShift.recoverETH(payable(user));
+    }
+
+    /**
+     * @notice Test recovering ETH to zero address (should revert)
+     * @dev Verifies that ETH cannot be recovered to zero address
+     */
+    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+        vm.deal(address(yieldShift), 1 ether);
+        
+        vm.prank(admin);
+        vm.expectRevert("YieldShift: Cannot send to zero address");
+        yieldShift.recoverETH(payable(address(0)));
+    }
+
+    /**
+     * @notice Test recovering ETH when contract has no ETH (should revert)
+     * @dev Verifies that recovery fails when there's no ETH to recover
+     */
+    function test_Recovery_RecoverETHNoBalance_Revert() public {
+        vm.prank(admin);
+        vm.expectRevert("YieldShift: No ETH to recover");
+        yieldShift.recoverETH(payable(admin));
+    }
+}
+
+// =============================================================================
+// MOCK CONTRACTS FOR TESTING
+// =============================================================================
+
+/**
+ * @title MockERC20
+ * @notice Mock ERC20 token for testing recovery functions
+ * @dev Simple ERC20 implementation for testing purposes
+ */
+contract MockERC20 {
+    string public name;
+    string public symbol;
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    
+    constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
+    }
+    
+    function mint(address to, uint256 amount) public {
+        balanceOf[to] += amount;
+        totalSupply += amount;
+        emit Transfer(address(0), to, amount);
+    }
+    
+    function transfer(address to, uint256 amount) public returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+    
+    function approve(address spender, uint256 amount) public returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+    
+    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
+        require(balanceOf[from] >= amount, "Insufficient balance");
+        require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        allowance[from][msg.sender] -= amount;
+        emit Transfer(from, to, amount);
+        return true;
+    }
 }

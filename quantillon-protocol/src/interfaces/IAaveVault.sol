@@ -221,4 +221,57 @@ interface IAaveVault {
      * @param amount Amount to transfer
      */
     function recoverToken(address token, address to, uint256 amount) external;
+
+    /**
+     * @notice Recover ETH sent by mistake
+     * @param to Recipient
+     */
+    function recoverETH(address payable to) external;
+
+    // AccessControl functions
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    function grantRole(bytes32 role, address account) external;
+    function revokeRole(bytes32 role, address account) external;
+    function renounceRole(bytes32 role, address callerConfirmation) external;
+
+    // Pausable functions
+    function paused() external view returns (bool);
+
+    // UUPS functions
+    function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+
+    // Constants
+    function GOVERNANCE_ROLE() external view returns (bytes32);
+    function VAULT_MANAGER_ROLE() external view returns (bytes32);
+    function EMERGENCY_ROLE() external view returns (bytes32);
+    function UPGRADER_ROLE() external view returns (bytes32);
+    function MAX_YIELD_HISTORY() external view returns (uint256);
+    function MAX_TIME_ELAPSED() external view returns (uint256);
+
+    // State variables
+    function usdc() external view returns (address);
+    function aUSDC() external view returns (address);
+    function aavePool() external view returns (address);
+    function aaveProvider() external view returns (address);
+    function rewardsController() external view returns (address);
+    function yieldShift() external view returns (address);
+    function maxAaveExposure() external view returns (uint256);
+    function harvestThreshold() external view returns (uint256);
+    function yieldFee() external view returns (uint256);
+    function rebalanceThreshold() external view returns (uint256);
+    function principalDeposited() external view returns (uint256);
+    function lastHarvestTime() external view returns (uint256);
+    function totalYieldHarvested() external view returns (uint256);
+    function totalFeesCollected() external view returns (uint256);
+    function utilizationLimit() external view returns (uint256);
+    function emergencyExitThreshold() external view returns (uint256);
+    function emergencyMode() external view returns (bool);
+    function yieldHistory(uint256) external view returns (
+        uint256 timestamp,
+        uint256 aaveBalance,
+        uint256 yieldEarned,
+        uint256 aaveAPY
+    );
 }

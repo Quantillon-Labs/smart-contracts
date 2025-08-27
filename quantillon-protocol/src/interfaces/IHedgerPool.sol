@@ -271,4 +271,82 @@ interface IHedgerPool {
      * @dev Only callable by the liquidator who created the commitment
      */
     function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;
+
+    // AccessControl functions
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    function grantRole(bytes32 role, address account) external;
+    function revokeRole(bytes32 role, address account) external;
+    function renounceRole(bytes32 role, address callerConfirmation) external;
+
+    // Pausable functions
+    function paused() external view returns (bool);
+
+    // UUPS functions
+    function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+
+    // Constants
+    function GOVERNANCE_ROLE() external view returns (bytes32);
+    function LIQUIDATOR_ROLE() external view returns (bytes32);
+    function EMERGENCY_ROLE() external view returns (bytes32);
+    function UPGRADER_ROLE() external view returns (bytes32);
+    function MAX_POSITIONS_PER_HEDGER() external view returns (uint256);
+    function LIQUIDATION_COOLDOWN() external view returns (uint256);
+    function BLOCKS_PER_DAY() external view returns (uint256);
+    function MAX_REWARD_PERIOD() external view returns (uint256);
+
+    // State variables
+    function usdc() external view returns (address);
+    function oracle() external view returns (address);
+    function yieldShift() external view returns (address);
+    function minMarginRatio() external view returns (uint256);
+    function liquidationThreshold() external view returns (uint256);
+    function maxLeverage() external view returns (uint256);
+    function liquidationPenalty() external view returns (uint256);
+    function entryFee() external view returns (uint256);
+    function exitFee() external view returns (uint256);
+    function marginFee() external view returns (uint256);
+    function totalMargin() external view returns (uint256);
+    function totalExposure() external view returns (uint256);
+    function activeHedgers() external view returns (uint256);
+    function nextPositionId() external view returns (uint256);
+    function eurInterestRate() external view returns (uint256);
+    function usdInterestRate() external view returns (uint256);
+    function totalYieldEarned() external view returns (uint256);
+    function interestDifferentialPool() external view returns (uint256);
+    function userPendingYield(address) external view returns (uint256);
+    function hedgerPendingYield(address) external view returns (uint256);
+    function userLastClaim(address) external view returns (uint256);
+    function hedgerLastClaim(address) external view returns (uint256);
+    function hedgerLastRewardBlock(address) external view returns (uint256);
+    function activePositionCount(address) external view returns (uint256);
+    function liquidationCommitments(bytes32) external view returns (bool);
+    function liquidationCommitmentTimes(bytes32) external view returns (uint256);
+    function lastLiquidationAttempt(address) external view returns (uint256);
+    function hasPendingLiquidation(address, uint256) external view returns (bool);
+    function positions(uint256) external view returns (
+        address hedger,
+        uint256 positionSize,
+        uint256 margin,
+        uint256 entryPrice,
+        uint256 leverage,
+        uint256 entryTime,
+        uint256 lastUpdateTime,
+        int256 unrealizedPnL,
+        bool isActive
+    );
+    function hedgers(address) external view returns (
+        uint256[] memory positionIds,
+        uint256 totalMargin,
+        uint256 totalExposure,
+        uint256 pendingRewards,
+        uint256 lastRewardClaim,
+        bool isActive
+    );
+    function hedgerPositions(address) external view returns (uint256[] memory);
+
+    // Recovery functions
+    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverETH(address payable to) external;
 } 

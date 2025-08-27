@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/IQEURO.sol";
+import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
 
@@ -118,7 +118,7 @@ contract stQEUROToken is
     /// @notice QEURO token contract for staking and unstaking
     /// @dev Used for all QEURO staking and unstaking operations
     /// @dev Should be the official QEURO token contract
-    IQEURO public qeuro;
+    IQEUROToken public qeuro;
     
     /// @notice YieldShift contract for yield distribution
     /// @dev Handles yield distribution and management
@@ -251,7 +251,7 @@ contract stQEUROToken is
         _grantRole(EMERGENCY_ROLE, admin);
         _grantRole(UPGRADER_ROLE, admin);
 
-        qeuro = IQEURO(_qeuro);
+        qeuro = IQEUROToken(_qeuro);
         yieldShift = IYieldShift(_yieldShift);
         usdc = IERC20(_usdc);
         treasury = _treasury;
@@ -289,8 +289,10 @@ contract stQEUROToken is
         // SECURITY FIX: Use safeTransferFrom for reliable QEURO transfers
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
 
-        // Update totals
-        totalUnderlying += qeuroAmount;
+        // Update totals - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            totalUnderlying += qeuroAmount;
+        }
 
         // Mint stQEURO to user
         _mint(msg.sender, stQEUROAmount);
@@ -321,8 +323,10 @@ contract stQEUROToken is
         // Burn stQEURO from user
         _burn(msg.sender, stQEUROAmount);
 
-        // Update totals
-        totalUnderlying -= qeuroAmount;
+        // Update totals - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            totalUnderlying -= qeuroAmount;
+        }
 
         // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
         // safeTransfer() will revert on failure, preventing silent failures
@@ -360,8 +364,10 @@ contract stQEUROToken is
         exchangeRate = exchangeRate + (netYield.mulDiv(1e18, totalSupply()));
         lastUpdateTime = block.timestamp;
 
-        // Update totals
-        totalYieldEarned += netYield;
+        // Update totals - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            totalYieldEarned += netYield;
+        }
 
         emit ExchangeRateUpdated(oldRate, exchangeRate, block.timestamp);
         emit YieldDistributed(netYield, exchangeRate);

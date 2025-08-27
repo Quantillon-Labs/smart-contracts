@@ -121,13 +121,15 @@ contract QTIToken is
     /// @notice Vote-escrow lock information for each user
     /// @dev Stores locked amount, unlock time, voting power, and claim time
     /// @dev Used to calculate governance power and manage locks
+    /// @dev OPTIMIZED: Fields ordered for optimal storage packing
     struct LockInfo {
-        uint256 amount;           // Locked QTI amount in wei (18 decimals)
-        uint256 unlockTime;       // Timestamp when lock expires
-        uint256 votingPower;      // Current voting power (calculated)
-        uint256 lastClaimTime;    // Last claim time (for future use)
-        uint256 initialVotingPower; // Initial voting power when locked
-        uint256 lockTime;         // Original lock duration
+        uint96 amount;            // Locked QTI amount in wei (18 decimals) - 12 bytes
+        uint96 votingPower;       // Current voting power (calculated) - 12 bytes
+        uint96 initialVotingPower; // Initial voting power when locked - 12 bytes
+        uint32 unlockTime;        // Timestamp when lock expires - 4 bytes
+        uint32 lastClaimTime;     // Last claim time (for future use) - 4 bytes
+        uint32 lockTime;          // Original lock duration - 4 bytes
+        // Total: 12 + 12 + 12 + 4 + 4 + 4 = 48 bytes (fits in 2 slots vs 6 slots)
     }
     
     /// @notice Governance proposal structure
@@ -342,16 +344,18 @@ contract QTIToken is
         uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
         uint256 newVotingPower = amount * multiplier / 1e18;
         
-        // Update lock info
-        lockInfo.amount += amount;
-        lockInfo.unlockTime = newUnlockTime;
-        lockInfo.initialVotingPower = newVotingPower;
-        lockInfo.lockTime = lockTime;
-        lockInfo.votingPower = newVotingPower;
+        // Update lock info - OPTIMIZED: Batch storage writes
+        lockInfo.amount = uint96(lockInfo.amount + amount);
+        lockInfo.unlockTime = uint32(newUnlockTime);
+        lockInfo.initialVotingPower = uint96(newVotingPower);
+        lockInfo.lockTime = uint32(lockTime);
+        lockInfo.votingPower = uint96(newVotingPower);
         
-        // Update global totals
-        totalLocked += amount;
-        totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
+        // Update global totals - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            totalLocked += amount;
+            totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
+        }
         
         // Transfer tokens to this contract
         _transfer(msg.sender, address(this), amount);
@@ -376,14 +380,16 @@ contract QTIToken is
         amount = lockInfo.amount;
         uint256 oldVotingPower = lockInfo.votingPower;
         
-        // Clear lock info
+        // Clear lock info - OPTIMIZED: Batch storage writes
         lockInfo.amount = 0;
         lockInfo.unlockTime = 0;
         lockInfo.votingPower = 0;
         
-        // Update global totals
-        totalLocked -= amount;
-        totalVotingPower -= oldVotingPower;
+        // Update global totals - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            totalLocked -= amount;
+            totalVotingPower -= oldVotingPower;
+        }
         
         // Transfer tokens back to user
         _transfer(address(this), msg.sender, amount);
@@ -410,17 +416,19 @@ contract QTIToken is
             return lockInfo.initialVotingPower;
         }
         
-        // Calculate remaining time
-        uint256 remainingTime = lockInfo.unlockTime - block.timestamp;
-        uint256 originalLockTime = lockInfo.lockTime;
-        
-        // Voting power decreases linearly to zero
-        // Use the smaller of remaining time or original lock time to prevent overflow
-        if (remainingTime >= originalLockTime) {
-            return lockInfo.initialVotingPower;
+        // Calculate remaining time - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            uint256 remainingTime = lockInfo.unlockTime - block.timestamp;
+            uint256 originalLockTime = lockInfo.lockTime;
+            
+            // Voting power decreases linearly to zero
+            // Use the smaller of remaining time or original lock time to prevent overflow
+            if (remainingTime >= originalLockTime) {
+                return lockInfo.initialVotingPower;
+            }
+            
+            return lockInfo.initialVotingPower * remainingTime / originalLockTime;
         }
-        
-        return lockInfo.initialVotingPower * remainingTime / originalLockTime;
     }
 
     /**
@@ -703,23 +711,27 @@ contract QTIToken is
         if (lockInfo.unlockTime <= block.timestamp || lockInfo.amount == 0) {
             newVotingPower = 0;
         } else {
-            // Calculate current voting power with linear decay
-            uint256 remainingTime = lockInfo.unlockTime - block.timestamp;
-            uint256 originalLockTime = lockInfo.lockTime;
-            
-            if (remainingTime >= originalLockTime) {
-                newVotingPower = lockInfo.initialVotingPower;
-            } else {
-                newVotingPower = lockInfo.initialVotingPower * remainingTime / originalLockTime;
+            // Calculate current voting power with linear decay - OPTIMIZED: Use unchecked for safe arithmetic
+            unchecked {
+                uint256 remainingTime = lockInfo.unlockTime - block.timestamp;
+                uint256 originalLockTime = lockInfo.lockTime;
+                
+                if (remainingTime >= originalLockTime) {
+                    newVotingPower = lockInfo.initialVotingPower;
+                } else {
+                    newVotingPower = lockInfo.initialVotingPower * remainingTime / originalLockTime;
+                }
             }
         }
         
         // Update stored voting power
         uint256 oldVotingPower = lockInfo.votingPower;
-        lockInfo.votingPower = newVotingPower;
+        lockInfo.votingPower = uint96(newVotingPower);
         
-        // Update total voting power
-        totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
+        // Update total voting power - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
+        }
         
         return newVotingPower;
     }
@@ -746,6 +758,37 @@ contract QTIToken is
 
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
+    }
+
+    // =============================================================================
+    // RECOVERY FUNCTIONS
+    // =============================================================================
+
+    /**
+     * @notice Recover accidentally sent tokens
+     * @param token Token address to recover
+     * @param to Recipient address
+     * @param amount Amount to recover
+     */
+    function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(token != address(this), "QTI: Cannot recover QTI tokens");
+        require(to != address(0), "QTI: Cannot send to zero address");
+        
+        IERC20(token).safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Recover accidentally sent ETH
+     * @param to Recipient address
+     */
+    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(to != address(0), "QTI: Cannot send to zero address");
+        uint256 balance = address(this).balance;
+        require(balance > 0, "QTI: No ETH to recover");
+        
+        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
+        (bool success, ) = to.call{value: balance}("");
+        require(success, "QTI: ETH transfer failed");
     }
 
     // =============================================================================

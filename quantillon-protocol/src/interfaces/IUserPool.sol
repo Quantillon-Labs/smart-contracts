@@ -206,4 +206,59 @@ interface IUserPool {
      * @notice Whether the pool operations are active (not paused)
      */
     function isPoolActive() external view returns (bool);
+
+    // AccessControl functions
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    function grantRole(bytes32 role, address account) external;
+    function revokeRole(bytes32 role, address account) external;
+    function renounceRole(bytes32 role, address callerConfirmation) external;
+
+    // Pausable functions
+    function paused() external view returns (bool);
+
+    // UUPS functions
+    function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+
+    // Constants
+    function GOVERNANCE_ROLE() external view returns (bytes32);
+    function EMERGENCY_ROLE() external view returns (bytes32);
+    function UPGRADER_ROLE() external view returns (bytes32);
+    function BLOCKS_PER_DAY() external view returns (uint256);
+    function MAX_REWARD_PERIOD() external view returns (uint256);
+
+    // State variables
+    function qeuro() external view returns (address);
+    function usdc() external view returns (address);
+    function vault() external view returns (address);
+    function yieldShift() external view returns (address);
+    function stakingAPY() external view returns (uint256);
+    function depositAPY() external view returns (uint256);
+    function minStakeAmount() external view returns (uint256);
+    function unstakingCooldown() external view returns (uint256);
+    function depositFee() external view returns (uint256);
+    function withdrawalFee() external view returns (uint256);
+    function performanceFee() external view returns (uint256);
+    function totalDeposits() external view returns (uint256);
+    function totalStakes() external view returns (uint256);
+    function totalUsers() external view returns (uint256);
+    function accumulatedYieldPerShare() external view returns (uint256);
+    function lastYieldDistribution() external view returns (uint256);
+    function totalYieldDistributed() external view returns (uint256);
+    function userLastRewardBlock(address) external view returns (uint256);
+    function hasDeposited(address) external view returns (bool);
+    function userInfo(address) external view returns (
+        uint256 qeuroBalance,
+        uint256 stakedAmount,
+        uint256 pendingRewards,
+        uint256 depositHistory,
+        uint256 lastStakeTime,
+        uint256 unstakeRequestTime,
+        uint256 unstakeAmount
+    );
+
+    // Recovery functions
+    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverETH(address payable to) external;
 } 

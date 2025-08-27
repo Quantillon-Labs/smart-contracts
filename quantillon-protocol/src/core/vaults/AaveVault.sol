@@ -723,7 +723,6 @@ contract AaveVault is
             cutoffTime = block.timestamp - MAX_TIME_ELAPSED;
         }
         
-        // SECURITY FIX: Gas Optimization - Batch Data Loading
         // First, collect valid snapshots in memory to reduce storage reads
         uint256[] memory validYields = new uint256[](length);
         uint256 validCount = 0;
@@ -797,5 +796,19 @@ contract AaveVault is
         require(to != address(0), "AaveVault: Cannot send to zero address");
         
         IERC20(token).safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Recover accidentally sent ETH
+     * @param to Recipient address
+     */
+    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(to != address(0), "AaveVault: Cannot send to zero address");
+        uint256 balance = address(this).balance;
+        require(balance > 0, "AaveVault: No ETH to recover");
+        
+        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
+        (bool success, ) = to.call{value: balance}("");
+        require(success, "AaveVault: ETH transfer failed");
     }
 }

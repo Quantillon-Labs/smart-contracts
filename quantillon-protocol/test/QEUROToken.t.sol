@@ -998,7 +998,8 @@ contract QEUROTokenTestSuite is Test {
         assertEq(burnedThisHour, 0);
         assertEq(mintLimit, qeuroToken.mintRateLimit());
         assertEq(burnLimit, qeuroToken.burnRateLimit());
-        assertEq(nextResetTime, qeuroToken.lastRateLimitReset() + 1 hours);
+        (,, uint64 lastReset) = qeuroToken.rateLimitInfo();
+        assertEq(nextResetTime, lastReset + 1 hours);
         
         // Mint some tokens and check again
         vm.prank(vault);

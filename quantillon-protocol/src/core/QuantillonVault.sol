@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Internal interfaces of the Quantillon protocol
-import "../interfaces/IQEURO.sol";
+import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IChainlinkOracle.sol";
 import "../libraries/VaultMath.sol";
 
@@ -23,38 +23,33 @@ import "../libraries/VaultMath.sol";
  * @notice Main vault managing QEURO minting against USDC collateral
  * 
  * @dev Main characteristics:
- *      - Overcollateralized stablecoin minting mechanism
- *      - USDC as primary collateral for QEURO minting
+ *      - Simple USDC to QEURO swap mechanism
+ *      - USDC as input for QEURO minting
  *      - Real-time EUR/USD price oracle integration
- *      - Automatic liquidation system for risk management
  *      - Dynamic fee structure for protocol sustainability
  *      - Emergency pause mechanism for crisis situations
  *      - Upgradeable via UUPS pattern
  * 
  * @dev Minting mechanics:
- *      - Users deposit USDC as collateral
+ *      - Users swap USDC for QEURO
  *      - QEURO is minted based on EUR/USD exchange rate
- *      - Minimum collateralization ratio enforced (e.g., 101%)
  *      - Minting fees charged for protocol revenue
- *      - Collateral ratio monitored continuously
+ *      - Simple 1:1 exchange with price conversion
  * 
  * @dev Redemption mechanics:
  *      - Users can redeem QEURO back to USDC
  *      - Redemption based on current EUR/USD exchange rate
  *      - Protocol fees charged on redemptions
- *      - Collateral returned to user after fee deduction
+ *      - USDC returned to user after fee deduction
  * 
  * @dev Risk management:
- *      - Minimum collateralization ratio requirements
- *      - Liquidation thresholds and penalties
- *      - Real-time collateral ratio monitoring
- *      - Automatic liquidation of undercollateralized positions
+ *      - Real-time price monitoring
  *      - Emergency pause capabilities
+ *      - Slippage protection on swaps
  * 
  * @dev Fee structure:
  *      - Minting fees for creating QEURO
  *      - Redemption fees for converting QEURO back to USDC
- *      - Liquidation penalties for risk management
  *      - Dynamic fee adjustment based on market conditions
  * 
  * @dev Security features:
@@ -93,12 +88,9 @@ contract QuantillonVault is
     /// @dev Should be assigned to governance multisig or DAO
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     
-    /// @notice Role for liquidating undercollateralized positions
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to trusted liquidators or automated systems
-    bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
+
     
-    /// @notice Role for emergency operations (pause, emergency liquidations)
+    /// @notice Role for emergency operations (pause)
     /// @dev keccak256 hash avoids role collisions with other contracts
     /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
@@ -121,7 +113,7 @@ contract QuantillonVault is
     /// @notice QEURO token contract for minting and burning
     /// @dev Used for all QEURO minting and burning operations
     /// @dev Should be the official QEURO token contract
-    IQEURO public qeuro;
+    IQEUROToken public qeuro;
     
     /// @notice USDC token used as collateral
     /// @dev Used for all collateral deposits, withdrawals, and fee payments
@@ -130,7 +122,7 @@ contract QuantillonVault is
     
     /// @notice Chainlink oracle contract for EUR/USD price feeds
     /// @dev Provides real-time EUR/USD exchange rates for minting and redemption
-    /// @dev Used for collateral ratio calculations and liquidation checks
+    /// @dev Used for price calculations in swap operations
     IChainlinkOracle public oracle;
 
     // Protocol parameters (configurable by governance)
@@ -224,10 +216,9 @@ contract QuantillonVault is
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
         _grantRole(UPGRADER_ROLE, admin);
-        // LIQUIDATOR_ROLE will be assigned separately to bots/keepers
 
         // Connections to external contracts
-        qeuro = IQEURO(_qeuro);
+        qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
 
@@ -284,9 +275,11 @@ contract QuantillonVault is
         // Transfer USDC from user
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
 
-        // Update global balances
-        totalUsdcHeld += usdcAmount;
-        totalMinted += qeuroToMint;
+        // Update global balances - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            totalUsdcHeld += usdcAmount;
+            totalMinted += qeuroToMint;
+        }
 
         // Mint QEURO to user
         qeuro.mint(msg.sender, qeuroToMint);
@@ -340,9 +333,11 @@ contract QuantillonVault is
         // Burn QEURO from the user
         qeuro.burn(msg.sender, qeuroAmount);
 
-        // Update global balances
-        totalUsdcHeld -= usdcToReturn;
-        totalMinted -= qeuroAmount;
+        // Update global balances - OPTIMIZED: Use unchecked for safe arithmetic
+        unchecked {
+            totalUsdcHeld -= usdcToReturn;
+            totalMinted -= qeuroAmount;
+        }
 
         // Transfer net USDC to the user (fees kept in the vault)
         usdc.safeTransfer(msg.sender, netUsdcToReturn);
@@ -511,8 +506,6 @@ contract QuantillonVault is
      * 
      * @dev When paused:
      *      - No mint/redeem possible
-     *      - No add/remove collateral
-     *      - Liquidations suspended
      *      - Read functions still active
      */
     function pause() external onlyRole(EMERGENCY_ROLE) {
@@ -598,25 +591,7 @@ contract QuantillonVault is
     // ADVANCED VIEW FUNCTIONS - Advanced read functions
     // =============================================================================
 
-    /**
-     * @notice Retrieves the list of liquidatable users
-     * 
-     * @return liquidatableUsers Addresses of liquidatable users
-     * @return debtAmounts Corresponding debts
-     * 
-     * @dev Gas-expensive function, use off-chain only
-     */
-    function getLiquidatableUsers(uint256 /* maxUsers */) 
-        external 
-        view 
-        returns (address[] memory liquidatableUsers, uint256[] memory debtAmounts) 
-    {
-        // Note: This function would require a registry of users
-        // For this implementation, we return empty arrays
-        // In production, use events to track users
-        liquidatableUsers = new address[](0);
-        debtAmounts = new uint256[](0);
-    }
+
 
 
 

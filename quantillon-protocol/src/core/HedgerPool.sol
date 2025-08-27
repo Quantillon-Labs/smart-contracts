@@ -411,19 +411,19 @@ contract HedgerPool is
         // Transfer USDC from hedger
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
 
-        // Create new position
-        positionId = nextPositionId++;
-        
-        HedgePosition storage position = positions[positionId];
-        position.hedger = msg.sender;
-        position.positionSize = positionSize;
-        position.margin = netMargin;
-        position.entryPrice = eurUsdPrice;
-        position.leverage = leverage;
-        position.entryTime = block.timestamp;
-        position.lastUpdateTime = block.timestamp;
-        position.unrealizedPnL = 0;
-        position.isActive = true;
+                    // Create new position
+            positionId = nextPositionId++;
+            
+            HedgePosition storage position = positions[positionId];
+            position.hedger = msg.sender;
+            position.positionSize = positionSize;
+            position.margin = netMargin;
+            position.entryTime = block.timestamp;
+            position.lastUpdateTime = block.timestamp;
+            position.leverage = leverage;
+            position.entryPrice = eurUsdPrice;
+            position.unrealizedPnL = 0;
+            position.isActive = true;
 
         // Update hedger info
         HedgerInfo storage hedger = hedgers[msg.sender];
@@ -522,27 +522,27 @@ contract HedgerPool is
 
      */
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {
-        // Remove from hedger.positionIds array
-        uint256[] storage positionIds = hedgers[hedger].positionIds;
-        uint256 positionIdsLength = positionIds.length; // Cache length
-        for (uint256 i = 0; i < positionIdsLength; i++) {
-            if (positionIds[i] == positionId) {
-                // SECURITY FIX: Replace with last element and pop for efficient cleanup
-                positionIds[i] = positionIds[positionIdsLength - 1];
-                positionIds.pop();
-                break;
+        unchecked {
+            // Remove from hedger.positionIds array
+            uint256[] storage positionIds = hedgers[hedger].positionIds;
+            uint256 positionIdsLength = positionIds.length;
+            for (uint256 i = 0; i < positionIdsLength; i++) {
+                if (positionIds[i] == positionId) {
+                    positionIds[i] = positionIds[positionIdsLength - 1];
+                    positionIds.pop();
+                    break;
+                }
             }
-        }
-        
-        // Remove from hedgerPositions array
-        uint256[] storage hedgerPos = hedgerPositions[hedger];
-        uint256 hedgerPosLength = hedgerPos.length; // Cache length
-        for (uint256 i = 0; i < hedgerPosLength; i++) {
-            if (hedgerPos[i] == positionId) {
-                // SECURITY FIX: Replace with last element and pop for efficient cleanup
-                hedgerPos[i] = hedgerPos[hedgerPosLength - 1];
-                hedgerPos.pop();
-                break;
+            
+            // Remove from hedgerPositions array
+            uint256[] storage hedgerPos = hedgerPositions[hedger];
+            uint256 hedgerPosLength = hedgerPos.length;
+            for (uint256 i = 0; i < hedgerPosLength; i++) {
+                if (hedgerPos[i] == positionId) {
+                    hedgerPos[i] = hedgerPos[hedgerPosLength - 1];
+                    hedgerPos.pop();
+                    break;
+                }
             }
         }
     }
@@ -1271,7 +1271,7 @@ contract HedgerPool is
         uint256 totalMargin_,
         uint256 totalExposure_
     ) {
-        HedgerInfo storage hedgerInfo = hedgers[hedger];
+        HedgerInfo memory hedgerInfo = hedgers[hedger];
         totalPositions = hedgerInfo.positionIds.length;
         activePositions = activePositionCount[hedger];
         totalMargin_ = hedgerInfo.totalMargin;
@@ -1453,5 +1453,36 @@ contract HedgerPool is
     function _hasPendingLiquidationCommitment(address hedger, uint256 positionId) internal view returns (bool) {
         // SECURITY FIX: Direct check using the pending liquidation mapping
         return hasPendingLiquidation[hedger][positionId];
+    }
+
+    // =============================================================================
+    // RECOVERY FUNCTIONS
+    // =============================================================================
+
+    /**
+     * @notice Recover accidentally sent tokens
+     * @param token Token address to recover
+     * @param to Recipient address
+     * @param amount Amount to recover
+     */
+    function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(token != address(usdc) && to != address(0), "HedgerPool: Invalid params");
+        
+        IERC20(token).safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Recover accidentally sent ETH
+     * @param to Recipient address
+     */
+    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(to != address(0), "HedgerPool: Cannot send to zero address");
+        
+        uint256 balance = address(this).balance;
+        require(balance > 0, "HedgerPool: No ETH to recover");
+        
+        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
+        (bool success, ) = to.call{value: balance}("");
+        require(success, "HedgerPool: ETH transfer failed");
     }
 }

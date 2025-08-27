@@ -2,12 +2,12 @@
 pragma solidity 0.8.24;
 
 /**
- * @title IQTI
+ * @title IQTIToken
  * @notice Interface for the QTI governance token with vote-escrow mechanics
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
-interface IQTI {
+interface IQTIToken {
     /**
      * @notice Initializes the QTI token
      * @param admin Admin address
@@ -185,4 +185,70 @@ interface IQTI {
     function decimals() external view returns (uint8);
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
+    
+    // Additional ERC20 functions
+    function transfer(address to, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    
+    // AccessControl functions
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    function grantRole(bytes32 role, address account) external;
+    function revokeRole(bytes32 role, address account) external;
+    function renounceRole(bytes32 role, address callerConfirmation) external;
+    
+    // Pausable functions
+    function paused() external view returns (bool);
+    
+    // UUPS functions
+    function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+    
+    // Constants
+    function GOVERNANCE_ROLE() external view returns (bytes32);
+    function EMERGENCY_ROLE() external view returns (bytes32);
+    function UPGRADER_ROLE() external view returns (bytes32);
+    function MAX_LOCK_TIME() external view returns (uint256);
+    function MIN_LOCK_TIME() external view returns (uint256);
+    function WEEK() external view returns (uint256);
+    function MAX_VE_QTI_MULTIPLIER() external view returns (uint256);
+    function MAX_TIME_ELAPSED() external view returns (uint256);
+    function TOTAL_SUPPLY_CAP() external view returns (uint256);
+    
+    // State variables
+    function locks(address) external view returns (
+        uint256 amount,
+        uint256 unlockTime,
+        uint256 votingPower,
+        uint256 lastClaimTime,
+        uint256 initialVotingPower,
+        uint256 lockTime
+    );
+    function totalLocked() external view returns (uint256);
+    function totalVotingPower() external view returns (uint256);
+    function proposals(uint256) external view returns (
+        address proposer,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 forVotes,
+        uint256 againstVotes,
+        bool executed,
+        bool canceled,
+        string memory description
+    );
+    function nextProposalId() external view returns (uint256);
+    function proposalThreshold() external view returns (uint256);
+    function minVotingPeriod() external view returns (uint256);
+    function maxVotingPeriod() external view returns (uint256);
+    function quorumVotes() external view returns (uint256);
+    function treasury() external view returns (address);
+    function decentralizationStartTime() external view returns (uint256);
+    function decentralizationDuration() external view returns (uint256);
+    function currentDecentralizationLevel() external view returns (uint256);
+
+    // Recovery functions
+    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverETH(address payable to) external;
 }

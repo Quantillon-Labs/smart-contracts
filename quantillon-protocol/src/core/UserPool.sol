@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/IQEURO.sol";
+import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IQuantillonVault.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
@@ -114,7 +114,7 @@ contract UserPool is
     /// @notice QEURO token contract for minting and burning
     /// @dev Used for all QEURO minting and burning operations
     /// @dev Should be the official QEURO token contract
-    IQEURO public qeuro;
+    IQEUROToken public qeuro;
     
     /// @notice USDC token contract for deposits and withdrawals
     /// @dev Used for all USDC deposits and withdrawals
@@ -319,7 +319,7 @@ contract UserPool is
         _grantRole(EMERGENCY_ROLE, admin);
         _grantRole(UPGRADER_ROLE, admin);
 
-        qeuro = IQEURO(_qeuro);
+        qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         vault = IQuantillonVault(_vault);
         yieldShift = IYieldShift(_yieldShift);
@@ -867,4 +867,36 @@ contract UserPool is
         override 
         onlyRole(UPGRADER_ROLE) 
     {}
+
+    // =============================================================================
+    // RECOVERY FUNCTIONS
+    // =============================================================================
+
+    /**
+     * @notice Recover accidentally sent tokens
+     * @param token Token address to recover
+     * @param to Recipient address
+     * @param amount Amount to recover
+     */
+    function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(token != address(qeuro), "UserPool: Cannot recover QEURO");
+        require(token != address(usdc), "UserPool: Cannot recover USDC");
+        require(to != address(0), "UserPool: Cannot send to zero address");
+        
+        IERC20(token).safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Recover accidentally sent ETH
+     * @param to Recipient address
+     */
+    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(to != address(0), "UserPool: Cannot send to zero address");
+        uint256 balance = address(this).balance;
+        require(balance > 0, "UserPool: No ETH to recover");
+        
+        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
+        (bool success, ) = to.call{value: balance}("");
+        require(success, "UserPool: ETH transfer failed");
+    }
 }

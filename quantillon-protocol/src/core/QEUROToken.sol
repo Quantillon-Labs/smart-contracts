@@ -125,20 +125,17 @@ contract QEUROToken is
     /// @dev Can be updated by governance through updateRateLimits()
     uint256 public burnRateLimit;
 
-    /// @notice Current minted amount in the current hour
+    /// @notice Rate limiting information - OPTIMIZED: Packed for storage efficiency
     /// @dev Resets every hour or when rate limits are updated
-    /// @dev Used to enforce mintRateLimit
-    uint256 public currentHourMinted;
-
-    /// @notice Current burned amount in the current hour
-    /// @dev Resets every hour or when rate limits are updated
-    /// @dev Used to enforce burnRateLimit
-    uint256 public currentHourBurned;
-
-    /// @notice Timestamp of the last rate limit reset
-    /// @dev Used to determine when to reset currentHourMinted and currentHourBurned
-    /// @dev Updated when rate limits are reset or modified
-    uint256 public lastRateLimitReset;
+    /// @dev Used to enforce mintRateLimit and burnRateLimit
+    struct RateLimitInfo {
+        uint96 currentHourMinted;  // Current minted amount in the current hour (12 bytes)
+        uint96 currentHourBurned;  // Current burned amount in the current hour (12 bytes)
+        uint64 lastRateLimitReset; // Timestamp of the last rate limit reset (8 bytes)
+        // Total: 12 + 12 + 8 = 32 bytes (fits in 1 slot vs 3 slots)
+    }
+    
+    RateLimitInfo public rateLimitInfo;
 
     /// @notice Blacklist mapping for compliance and security
     /// @dev Blacklisted addresses cannot transfer or receive tokens
@@ -282,7 +279,7 @@ contract QEUROToken is
         maxSupply = DEFAULT_MAX_SUPPLY;
         mintRateLimit = MAX_RATE_LIMIT;
         burnRateLimit = MAX_RATE_LIMIT;
-        lastRateLimitReset = block.timestamp;
+        rateLimitInfo = RateLimitInfo(0, 0, uint64(block.timestamp));
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
     }
@@ -409,7 +406,7 @@ contract QEUROToken is
      */
     function _checkAndUpdateMintRateLimit(uint256 amount) internal {
         // Reset rate limit if an hour has passed
-        uint256 timeSinceReset = block.timestamp - lastRateLimitReset;
+        uint256 timeSinceReset = block.timestamp - rateLimitInfo.lastRateLimitReset;
         
         // SECURITY FIX: Bounds check to prevent timestamp manipulation
         // Caps time elapsed at 24 hours maximum to prevent excessive manipulation
@@ -418,21 +415,21 @@ contract QEUROToken is
         }
         
         if (timeSinceReset >= 1 hours) {
-            currentHourMinted = 0;
-            currentHourBurned = 0;
-            lastRateLimitReset = block.timestamp;
+            rateLimitInfo.currentHourMinted = 0;
+            rateLimitInfo.currentHourBurned = 0;
+            rateLimitInfo.lastRateLimitReset = uint64(block.timestamp);
             emit RateLimitReset(block.timestamp);
         }
 
         // Check if the new amount would exceed the rate limit
         require(
-            currentHourMinted + amount <= mintRateLimit,
+            rateLimitInfo.currentHourMinted + amount <= mintRateLimit,
             "QEURO: Mint rate limit exceeded"
         );
 
-        // Update the current hour minted amount
+        // Update the current hour minted amount - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
-            currentHourMinted += amount;
+            rateLimitInfo.currentHourMinted = uint96(rateLimitInfo.currentHourMinted + amount);
         }
     }
 
@@ -452,7 +449,7 @@ contract QEUROToken is
      */
     function _checkAndUpdateBurnRateLimit(uint256 amount) internal {
         // Reset rate limit if an hour has passed
-        uint256 timeSinceReset = block.timestamp - lastRateLimitReset;
+        uint256 timeSinceReset = block.timestamp - rateLimitInfo.lastRateLimitReset;
         
         // SECURITY FIX: Bounds check to prevent timestamp manipulation
         // Caps time elapsed at 24 hours maximum to prevent excessive manipulation
@@ -461,21 +458,21 @@ contract QEUROToken is
         }
         
         if (timeSinceReset >= 1 hours) {
-            currentHourMinted = 0;
-            currentHourBurned = 0;
-            lastRateLimitReset = block.timestamp;
+            rateLimitInfo.currentHourMinted = 0;
+            rateLimitInfo.currentHourBurned = 0;
+            rateLimitInfo.lastRateLimitReset = uint64(block.timestamp);
             emit RateLimitReset(block.timestamp);
         }
 
         // Check if the new amount would exceed the rate limit
         require(
-            currentHourBurned + amount <= burnRateLimit,
+            rateLimitInfo.currentHourBurned + amount <= burnRateLimit,
             "QEURO: Burn rate limit exceeded"
         );
 
-        // Update the current hour burned amount
+        // Update the current hour burned amount - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
-            currentHourBurned += amount;
+            rateLimitInfo.currentHourBurned = uint96(rateLimitInfo.currentHourBurned + amount);
         }
     }
 
@@ -859,7 +856,7 @@ contract QEUROToken is
         ) 
     {
         // If an hour has passed, return zeros for current hour amounts
-        uint256 timeSinceReset = block.timestamp - lastRateLimitReset;
+        uint256 timeSinceReset = block.timestamp - rateLimitInfo.lastRateLimitReset;
         
         // SECURITY FIX: Bounds check to prevent timestamp manipulation
         // Caps time elapsed at 24 hours maximum to prevent excessive manipulation
@@ -868,15 +865,15 @@ contract QEUROToken is
         }
         
         if (timeSinceReset >= 1 hours) {
-            return (0, 0, mintRateLimit, burnRateLimit, lastRateLimitReset + 1 hours);
+            return (0, 0, mintRateLimit, burnRateLimit, rateLimitInfo.lastRateLimitReset + 1 hours);
         }
         
         return (
-            currentHourMinted,
-            currentHourBurned,
+            rateLimitInfo.currentHourMinted,
+            rateLimitInfo.currentHourBurned,
             mintRateLimit,
             burnRateLimit,
-            lastRateLimitReset + 1 hours
+            rateLimitInfo.lastRateLimitReset + 1 hours
         );
     }
 

@@ -224,4 +224,22 @@ interface IYieldShift {
      * @dev Only callable by governance role
      */
     function forceUpdateYieldDistribution() external;
+
+    // AccessControl functions
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    function grantRole(bytes32 role, address account) external;
+    function revokeRole(bytes32 role, address account) external;
+    function renounceRole(bytes32 role, address callerConfirmation) external;
+
+    // Pausable functions
+    function paused() external view returns (bool);
+
+    // UUPS functions
+    function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+
+    // Recovery functions
+    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverETH(address payable to) external;
 } 

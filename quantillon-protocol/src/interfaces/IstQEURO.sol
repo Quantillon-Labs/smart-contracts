@@ -130,4 +130,43 @@ interface IstQEURO {
     function decimals() external view returns (uint8);
     function totalSupply() external view returns (uint256);
     function balanceOf(address account) external view returns (uint256);
+
+    // ERC20 functions
+    function transfer(address to, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+
+    // AccessControl functions
+    function hasRole(bytes32 role, address account) external view returns (bool);
+    function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    function grantRole(bytes32 role, address account) external;
+    function revokeRole(bytes32 role, address account) external;
+    function renounceRole(bytes32 role, address callerConfirmation) external;
+
+    // Pausable functions
+    function paused() external view returns (bool);
+
+    // UUPS functions
+    function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
+
+    // Constants
+    function GOVERNANCE_ROLE() external view returns (bytes32);
+    function YIELD_MANAGER_ROLE() external view returns (bytes32);
+    function EMERGENCY_ROLE() external view returns (bytes32);
+    function UPGRADER_ROLE() external view returns (bytes32);
+
+    // State variables
+    function qeuro() external view returns (address);
+    function yieldShift() external view returns (address);
+    function usdc() external view returns (address);
+    function treasury() external view returns (address);
+    function exchangeRate() external view returns (uint256);
+    function lastUpdateTime() external view returns (uint256);
+    function totalUnderlying() external view returns (uint256);
+    function totalYieldEarned() external view returns (uint256);
+    function yieldFee() external view returns (uint256);
+    function minYieldThreshold() external view returns (uint256);
+    function maxUpdateFrequency() external view returns (uint256);
 }

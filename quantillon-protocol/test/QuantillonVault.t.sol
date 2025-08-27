@@ -66,7 +66,7 @@ contract QuantillonVaultTestSuite is Test {
     address public emergency = address(0x3);
     address public user1 = address(0x4);
     address public user2 = address(0x5);
-    address public liquidator = address(0x6);
+
     
     // Mock contracts
     address public mockUSDC = address(0x7);
@@ -124,9 +124,6 @@ contract QuantillonVaultTestSuite is Test {
         vault.grantRole(keccak256("GOVERNANCE_ROLE"), governance);
         vm.prank(admin);
         vault.grantRole(keccak256("EMERGENCY_ROLE"), emergency);
-        vm.prank(admin);
-        vault.grantRole(keccak256("LIQUIDATOR_ROLE"), liquidator);
-        
         // Setup mocks
         _setupMocks();
         
@@ -902,20 +899,7 @@ contract QuantillonVaultTestSuite is Test {
         assertGt(usdcAmount, 0);
     }
     
-    // =============================================================================
-    // ADVANCED VIEW FUNCTION TESTS
-    // =============================================================================
-    
-    /**
-     * @notice Test getting liquidatable users (empty for this implementation)
-     * @dev Verifies that the function returns empty arrays as expected
-     */
-    function test_View_GetLiquidatableUsers() public {
-        (address[] memory liquidatableUsers, uint256[] memory debtAmounts) = vault.getLiquidatableUsers(10);
-        
-        assertEq(liquidatableUsers.length, 0);
-        assertEq(debtAmounts.length, 0);
-    }
+
     
     // =============================================================================
     // UPGRADE TESTS

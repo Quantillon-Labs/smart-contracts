@@ -1130,4 +1130,79 @@ contract AaveVaultTestSuite is Test {
         // Check that rewards were claimed
         assertGt(rewardsClaimed, 0);
     }
+
+    // =============================================================================
+    // MISSING FUNCTION TESTS - Ensuring 100% coverage
+    // =============================================================================
+
+    /**
+     * @notice Test get Aave configuration
+     * @dev Verifies that Aave configuration can be retrieved
+     */
+    function test_View_GetAaveConfig() public {
+        (address aavePool_, address aUSDC_, uint256 harvestThreshold_, uint256 yieldFee_, uint256 maxExposure_) = aaveVault.getAaveConfig();
+        
+        assertEq(aavePool_, address(aavePool));
+        assertEq(aUSDC_, address(aUSDC));
+        assertGt(harvestThreshold_, 0);
+        assertGt(yieldFee_, 0);
+        assertGt(maxExposure_, 0);
+    }
+
+    // =============================================================================
+    // RECOVERY FUNCTION TESTS
+    // =============================================================================
+
+    /**
+     * @notice Test recovering ETH
+     * @dev Verifies that admin can recover accidentally sent ETH
+     */
+    function test_Recovery_RecoverETH() public {
+        uint256 recoveryAmount = 1 ether;
+        uint256 initialBalance = admin.balance;
+        
+        // Send ETH to the contract
+        vm.deal(address(aaveVault), recoveryAmount);
+        
+        // Admin recovers ETH
+        vm.prank(admin);
+        aaveVault.recoverETH(payable(admin));
+        
+        uint256 finalBalance = admin.balance;
+        assertEq(finalBalance, initialBalance + recoveryAmount);
+    }
+
+    /**
+     * @notice Test recovering ETH by non-admin (should revert)
+     * @dev Verifies that only admin can recover ETH
+     */
+    function test_Recovery_RecoverETHByNonAdmin_Revert() public {
+        vm.deal(address(aaveVault), 1 ether);
+        
+        vm.prank(vaultManager);
+        vm.expectRevert();
+        aaveVault.recoverETH(payable(vaultManager));
+    }
+
+    /**
+     * @notice Test recovering ETH to zero address (should revert)
+     * @dev Verifies that ETH cannot be recovered to zero address
+     */
+    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+        vm.deal(address(aaveVault), 1 ether);
+        
+        vm.prank(admin);
+        vm.expectRevert("AaveVault: Cannot send to zero address");
+        aaveVault.recoverETH(payable(address(0)));
+    }
+
+    /**
+     * @notice Test recovering ETH when contract has no ETH (should revert)
+     * @dev Verifies that recovery fails when there's no ETH to recover
+     */
+    function test_Recovery_RecoverETHNoBalance_Revert() public {
+        vm.prank(admin);
+        vm.expectRevert("AaveVault: No ETH to recover");
+        aaveVault.recoverETH(payable(admin));
+    }
 }

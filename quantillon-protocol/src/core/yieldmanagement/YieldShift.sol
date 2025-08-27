@@ -496,7 +496,6 @@ contract YieldShift is
             cutoffTime = 0; // Prevent underflow
         }
         
-        // SECURITY FIX: Gas Optimization - Batch Data Loading
         // First, collect valid snapshots in memory to reduce storage reads
         uint256[] memory validShifts = new uint256[](length);
         uint256 validCount = 0;
@@ -827,5 +826,36 @@ contract YieldShift is
             userPoolSize: isUserPool ? poolSize : 0,
             hedgerPoolSize: isUserPool ? 0 : poolSize
         }));
+    }
+
+    // =============================================================================
+    // RECOVERY FUNCTIONS
+    // =============================================================================
+
+    /**
+     * @notice Recover accidentally sent tokens
+     * @param token Token address to recover
+     * @param to Recipient address
+     * @param amount Amount to recover
+     */
+    function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(token != address(usdc), "YieldShift: Cannot recover USDC");
+        require(to != address(0), "YieldShift: Cannot send to zero address");
+        
+        IERC20(token).safeTransfer(to, amount);
+    }
+
+    /**
+     * @notice Recover accidentally sent ETH
+     * @param to Recipient address
+     */
+    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(to != address(0), "YieldShift: Cannot send to zero address");
+        uint256 balance = address(this).balance;
+        require(balance > 0, "YieldShift: No ETH to recover");
+        
+        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
+        (bool success, ) = to.call{value: balance}("");
+        require(success, "YieldShift: ETH transfer failed");
     }
 }

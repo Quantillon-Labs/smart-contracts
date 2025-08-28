@@ -8,7 +8,15 @@ import "./ValidationLibrary.sol";
 /**
  * @title VaultLibrary
  * @notice Library for common vault operations to reduce contract bytecode size
- * @dev Extracts common vault logic to reduce duplication across vault contracts
+ * 
+ * @dev Main characteristics:
+ *      - Deposit and withdrawal validation functions
+ *      - Yield distribution and position validation
+ *      - Liquidation and emergency recovery validation
+ *      - Rebalancing and yield shift parameter validation
+ * 
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
  */
 library VaultLibrary {
     

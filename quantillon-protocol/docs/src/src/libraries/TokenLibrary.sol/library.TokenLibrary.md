@@ -1,9 +1,19 @@
 # TokenLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/libraries/TokenLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/libraries/TokenLibrary.sol)
+
+**Author:**
+Quantillon Labs
 
 Library for common token operations to reduce contract bytecode size
 
-*Extracts common token logic to reduce duplication across token contracts*
+*Main characteristics:
+- Token transfer, mint, and burn validation functions
+- Permit and delegation parameter validation
+- Governance proposal and voting parameter validation
+- Reduces duplication across QEURO, QTI, and stQEURO token contracts*
+
+**Note:**
+team@quantillon.money
 
 
 ## Functions

@@ -1,12 +1,17 @@
 # VaultMath
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/libraries/VaultMath.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/libraries/VaultMath.sol)
 
 **Author:**
 Quantillon Labs
 
 Mathematical operations library for Quantillon Protocol
 
-*Provides safe math operations with high precision for financial calculations*
+*Main characteristics:
+- Safe mathematical operations with overflow protection
+- High precision financial calculations for collateral and debt ratios
+- Currency conversion between EUR and USD with proper precision handling
+- Yield distribution and compound interest calculations
+- Decimal scaling utilities for different token precisions*
 
 **Note:**
 team@quantillon.money

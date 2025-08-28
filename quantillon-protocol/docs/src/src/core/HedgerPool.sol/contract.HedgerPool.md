@@ -1,8 +1,52 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+
+**Author:**
+Quantillon Labs
+
+Manages hedging positions and risk management for the Quantillon protocol
+
+*Main characteristics:
+- Leveraged hedging positions against EUR/USD exchange rate movements
+- Real-time price oracle integration for position management
+- Liquidation mechanisms for risk management
+- Yield distribution to hedgers based on interest rate differentials
+- Emergency pause mechanism for crisis situations
+- Upgradeable via UUPS pattern*
+
+*Hedging mechanics:
+- Hedgers can open leveraged positions against EUR/USD movements
+- Positions are collateralized with USDC
+- Real-time P&L calculation based on oracle prices
+- Automatic liquidation when margin ratios fall below threshold
+- Liquidation commitment system for MEV protection*
+
+*Risk management:
+- Minimum margin ratios and maximum leverage limits
+- Liquidation thresholds and penalty mechanisms
+- Position size limits per hedger
+- Emergency pause capabilities
+- Oracle price validation and staleness checks*
+
+*Yield distribution:
+- Hedgers earn yield based on interest rate differentials
+- Yield shift mechanism for dynamic allocation
+- Block-based reward calculations to prevent manipulation
+- Claim mechanisms for accumulated rewards*
+
+*Security features:
+- Role-based access control for all critical operations
+- Reentrancy protection for all external calls
+- Emergency pause mechanism for crisis situations
+- Upgradeable architecture for future improvements
+- Secure liquidation mechanisms
+- Oracle price validation*
+
+**Note:**
+team@quantillon.money
 
 
 ## State Variables

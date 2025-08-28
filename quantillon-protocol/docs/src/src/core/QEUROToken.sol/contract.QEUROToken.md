@@ -1,11 +1,13 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
-**Author:**
-Quantillon Labs
+**Authors:**
+Quantillon Labs, Quantillon Labs
+
+Euro-pegged stablecoin token for the Quantillon protocol
 
 Euro-pegged stablecoin token for the Quantillon protocol
 
@@ -32,8 +34,33 @@ Euro-pegged stablecoin token for the Quantillon protocol
 - Decimals: 18 (standard for ERC20 tokens)
 - Peg: 1:1 with Euro (managed by vault operations)*
 
-**Note:**
-team@quantillon.money
+*Main characteristics:
+- Standard ERC20 with 18 decimals
+- Mint/Burn controlled only by the vault
+- Emergency pause in case of issues
+- Upgradeable via UUPS pattern
+- Dynamic supply cap for governance flexibility
+- Blacklist/whitelist functionality for compliance
+- Rate limiting for mint/burn operations
+- Decimal precision handling for external price feeds*
+
+*Security features:
+- Role-based access control for all critical operations
+- Emergency pause mechanism for crisis situations
+- Rate limiting to prevent abuse
+- Blacklist/whitelist for regulatory compliance
+- Upgradeable architecture for future improvements*
+
+*Tokenomics:
+- Initial supply: 0 (all tokens minted through vault operations)
+- Maximum supply: Configurable by governance (default 100M QEURO)
+- Decimals: 18 (standard for ERC20 tokens)
+- Peg: 1:1 with Euro (managed by vault operations)*
+
+**Notes:**
+- team@quantillon.money
+
+- team@quantillon.money
 
 
 ## State Variables

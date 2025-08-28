@@ -1,5 +1,5 @@
 # SecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/core/SecureUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/SecureUpgradeable.sol)
 
 **Inherits:**
 UUPSUpgradeable, AccessControlUpgradeable
@@ -9,7 +9,31 @@ Quantillon Labs
 
 Secure base contract for upgradeable contracts with timelock protection
 
-*Replaces UUPSUpgradeable with timelock and multi-sig requirements*
+*Main characteristics:
+- Timelock-protected upgrade mechanism
+- Multi-sig approval requirements for upgrades
+- Emergency upgrade capabilities for crisis situations
+- Governance-controlled upgrade parameters
+- Secure upgrade proposal and execution system
+- Upgrade security status monitoring*
+
+*Upgrade mechanics:
+- Propose upgrades through timelock contract
+- Multi-sig signers must approve upgrades
+- Timelock delay prevents immediate execution
+- Emergency upgrades bypass timelock in crisis
+- Upgrade cancellation capabilities*
+
+*Security features:
+- Role-based access control for upgrade operations
+- Timelock protection against rushed upgrades
+- Multi-sig requirements for consensus
+- Emergency override capabilities
+- Upgrade proposal validation
+- Execution safeguards*
+
+**Note:**
+team@quantillon.money
 
 
 ## State Variables

@@ -4,7 +4,15 @@ pragma solidity 0.8.24;
 /**
  * @title ErrorLibrary
  * @notice Custom errors for Quantillon Protocol
- * @dev Replaces require statements with custom errors to reduce contract size
+ * 
+ * @dev Main characteristics:
+ *      - Comprehensive error definitions for all protocol operations
+ *      - Replaces require statements with custom errors to reduce gas costs
+ *      - Categorized errors for access control, validation, state, operations
+ *      - Supports governance, vault, yield, and liquidation operations
+ * 
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
  */
 library ErrorLibrary {
     // Access Control Errors

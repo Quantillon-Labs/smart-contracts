@@ -4,7 +4,14 @@ pragma solidity 0.8.24;
 /**
  * @title VaultMath
  * @notice Mathematical operations library for Quantillon Protocol
- * @dev Provides safe math operations with high precision for financial calculations
+ * 
+ * @dev Main characteristics:
+ *      - Safe mathematical operations with overflow protection
+ *      - High precision financial calculations for collateral and debt ratios
+ *      - Currency conversion between EUR and USD with proper precision handling
+ *      - Yield distribution and compound interest calculations
+ *      - Decimal scaling utilities for different token precisions
+ * 
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */

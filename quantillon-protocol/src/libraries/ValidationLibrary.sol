@@ -6,7 +6,15 @@ import "./ErrorLibrary.sol";
 /**
  * @title ValidationLibrary
  * @notice Validation functions for Quantillon Protocol
- * @dev Extracts validation logic to reduce contract size
+ * 
+ * @dev Main characteristics:
+ *      - Comprehensive parameter validation for leverage, margin, fees, and rates
+ *      - Time-based validation for holding periods and liquidation cooldowns
+ *      - Balance and exposure validation functions
+ *      - Array and position validation utilities
+ * 
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
  */
 library ValidationLibrary {
     function validateLeverage(uint256 leverage, uint256 maxLeverage) internal pure {

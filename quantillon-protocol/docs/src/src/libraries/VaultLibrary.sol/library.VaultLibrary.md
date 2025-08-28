@@ -1,9 +1,19 @@
 # VaultLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/libraries/VaultLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/libraries/VaultLibrary.sol)
+
+**Author:**
+Quantillon Labs
 
 Library for common vault operations to reduce contract bytecode size
 
-*Extracts common vault logic to reduce duplication across vault contracts*
+*Main characteristics:
+- Deposit and withdrawal validation functions
+- Yield distribution and position validation
+- Liquidation and emergency recovery validation
+- Rebalancing and yield shift parameter validation*
+
+**Note:**
+team@quantillon.money
 
 
 ## Functions

@@ -1,9 +1,19 @@
 # ErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/libraries/ErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/libraries/ErrorLibrary.sol)
+
+**Author:**
+Quantillon Labs
 
 Custom errors for Quantillon Protocol
 
-*Replaces require statements with custom errors to reduce contract size*
+*Main characteristics:
+- Comprehensive error definitions for all protocol operations
+- Replaces require statements with custom errors to reduce gas costs
+- Categorized errors for access control, validation, state, operations
+- Supports governance, vault, yield, and liquidation operations*
+
+**Note:**
+team@quantillon.money
 
 
 ## Errors

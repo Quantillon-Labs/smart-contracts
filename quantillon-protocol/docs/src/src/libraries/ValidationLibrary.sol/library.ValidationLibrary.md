@@ -1,9 +1,19 @@
 # ValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/libraries/ValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/libraries/ValidationLibrary.sol)
+
+**Author:**
+Quantillon Labs
 
 Validation functions for Quantillon Protocol
 
-*Extracts validation logic to reduce contract size*
+*Main characteristics:
+- Comprehensive parameter validation for leverage, margin, fees, and rates
+- Time-based validation for holding periods and liquidation cooldowns
+- Balance and exposure validation functions
+- Array and position validation utilities*
+
+**Note:**
+team@quantillon.money
 
 
 ## Functions

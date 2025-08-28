@@ -1,9 +1,19 @@
 # AccessControlLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/libraries/AccessControlLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/libraries/AccessControlLibrary.sol)
+
+**Author:**
+Quantillon Labs
 
 Access control functions for Quantillon Protocol
 
-*Extracts role checking logic to reduce contract size*
+*Main characteristics:
+- Role-based access control validation functions
+- Address and amount validation utilities
+- Reduces contract bytecode size through library extraction
+- Provides standardized error handling for access control*
+
+**Note:**
+team@quantillon.money
 
 
 ## Functions

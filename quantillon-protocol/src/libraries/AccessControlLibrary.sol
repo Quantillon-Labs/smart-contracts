@@ -7,7 +7,15 @@ import "./ErrorLibrary.sol";
 /**
  * @title AccessControlLibrary
  * @notice Access control functions for Quantillon Protocol
- * @dev Extracts role checking logic to reduce contract size
+ * 
+ * @dev Main characteristics:
+ *      - Role-based access control validation functions
+ *      - Address and amount validation utilities
+ *      - Reduces contract bytecode size through library extraction
+ *      - Provides standardized error handling for access control
+ * 
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
  */
 library AccessControlLibrary {
     function onlyGovernance(AccessControlUpgradeable accessControl) internal view {

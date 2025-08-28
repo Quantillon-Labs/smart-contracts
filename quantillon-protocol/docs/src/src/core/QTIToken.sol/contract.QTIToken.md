@@ -1,11 +1,13 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
-**Author:**
-Quantillon Labs
+**Authors:**
+Quantillon Labs, Quantillon Labs
+
+Governance token for Quantillon Protocol with vote-escrow mechanics
 
 Governance token for Quantillon Protocol with vote-escrow mechanics
 
@@ -45,8 +47,46 @@ Governance token for Quantillon Protocol with vote-escrow mechanics
 - Decimals: 18 (standard for ERC20 tokens)
 - Governance power: Based on locked amount and duration*
 
-**Note:**
-team@quantillon.money
+*Main characteristics:
+- Standard ERC20 with 18 decimals
+- Vote-escrow (ve) mechanics for governance power
+- Progressive decentralization through governance
+- Emergency pause mechanism for crisis situations
+- Upgradeable via UUPS pattern
+- Fixed supply cap for tokenomics
+- Governance proposal and voting system
+- Lock-based voting power calculation*
+
+*Vote-escrow mechanics:
+- Users can lock QTI tokens for governance power
+- Longer locks = higher voting power (up to 4x multiplier)
+- Minimum lock: 7 days, Maximum lock: 4 years
+- Voting power decreases linearly over time
+- Locked tokens cannot be transferred until unlock*
+
+*Governance features:
+- Proposal creation with minimum threshold
+- Voting period with configurable duration
+- Vote counting and execution
+- Proposal cancellation and emergency actions*
+
+*Security features:
+- Role-based access control for all critical operations
+- Emergency pause mechanism for crisis situations
+- Upgradeable architecture for future improvements
+- Secure vote-escrow mechanics
+- Proposal execution safeguards*
+
+*Tokenomics:
+- Total supply: 100,000,000 QTI (fixed cap)
+- Initial distribution: Through protocol mechanisms
+- Decimals: 18 (standard for ERC20 tokens)
+- Governance power: Based on locked amount and duration*
+
+**Notes:**
+- team@quantillon.money
+
+- team@quantillon.money
 
 
 ## State Variables

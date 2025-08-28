@@ -9,7 +9,15 @@ import "./ErrorLibrary.sol";
 /**
  * @title TokenLibrary
  * @notice Library for common token operations to reduce contract bytecode size
- * @dev Extracts common token logic to reduce duplication across token contracts
+ * 
+ * @dev Main characteristics:
+ *      - Token transfer, mint, and burn validation functions
+ *      - Permit and delegation parameter validation
+ *      - Governance proposal and voting parameter validation
+ *      - Reduces duplication across QEURO, QTI, and stQEURO token contracts
+ * 
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
  */
 library TokenLibrary {
     

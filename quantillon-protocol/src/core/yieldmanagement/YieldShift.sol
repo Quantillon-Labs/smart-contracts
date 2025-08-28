@@ -16,6 +16,7 @@ import "../../libraries/VaultMath.sol";
 import "../../libraries/ErrorLibrary.sol";
 import "../../libraries/AccessControlLibrary.sol";
 import "../../libraries/ValidationLibrary.sol";
+import "../../libraries/VaultLibrary.sol";
 import "../SecureUpgradeable.sol";
 
 contract YieldShift is 
@@ -29,6 +30,7 @@ contract YieldShift is
     using VaultMath for uint256;
     using AccessControlLibrary for AccessControlUpgradeable;
     using ValidationLibrary for uint256;
+    using VaultLibrary for address;
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
@@ -57,8 +59,8 @@ contract YieldShift is
     uint256 public userYieldPool;
     uint256 public hedgerYieldPool;
     
-    mapping(string => uint256) public yieldSources;
-    string[] public yieldSourceNames;
+    mapping(bytes32 => uint256) public yieldSources;
+    bytes32[] public yieldSourceNames;
     
     mapping(address => uint256) public userPendingYield;
     mapping(address => uint256) public hedgerPendingYield;
@@ -145,9 +147,9 @@ contract YieldShift is
 
         _recordPoolSnapshot();
 
-        yieldSourceNames.push("aave");
-        yieldSourceNames.push("fees");
-        yieldSourceNames.push("interest_differential");
+        yieldSourceNames.push(keccak256("aave"));
+        yieldSourceNames.push(keccak256("fees"));
+        yieldSourceNames.push(keccak256("interest_differential"));
     }
 
     function updateYieldDistribution() external nonReentrant whenNotPaused {
@@ -173,7 +175,7 @@ contract YieldShift is
         );
     }
 
-    function addYield(uint256 yieldAmount, string calldata source) 
+    function addYield(uint256 yieldAmount, bytes32 source) 
         external 
         nonReentrant 
     {
@@ -194,7 +196,7 @@ contract YieldShift is
             stQEURO.distributeYield(userAllocation);
         }
         
-        emit YieldAdded(yieldAmount, source, block.timestamp);
+        emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), block.timestamp);
     }
 
     function claimUserYield(address user) 

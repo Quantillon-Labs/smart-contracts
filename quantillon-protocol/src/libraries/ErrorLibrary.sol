@@ -131,6 +131,18 @@ library ErrorLibrary {
     error PositionAlreadyClosed();
     error PositionNotLiquidatable();
     
+    // Governance Errors
+    error InsufficientVotingPower();
+    error VotingPeriodTooShort();
+    error VotingPeriodTooLong();
+    error ProposalNotFound();
+    error ProposalAlreadyExecuted();
+    error ProposalAlreadyCanceled();
+    error VotingNotActive();
+    error AlreadyVoted();
+    error QuorumNotMet();
+    error ProposalThresholdNotMet();
+    
     // Reward Errors
     error RewardOverflow();
     error RewardCalculationError();
@@ -153,4 +165,36 @@ library ErrorLibrary {
     error ConfigUpdateFailed();
     error ConfigValueTooHigh();
     error ConfigValueTooLow();
+    
+    // Additional Errors for Libraries
+    error InvalidDescription();
+    error ExpiredDeadline();
+    error InvalidRebalancing();
+    error RateLimitExceeded();
+    error BlacklistedAddress();
+    error NotWhitelisted();
+    error RateLimitTooHigh();
+    error AlreadyBlacklisted();
+    error NotBlacklisted();
+    error AlreadyWhitelisted();
+    error PrecisionTooHigh();
+    error TooManyDecimals();
+    error CannotRecoverQEURO();
+    error NewCapBelowCurrentSupply();
+    
+    // Vote-Escrow Errors
+    error LockTimeTooShort();
+    error LockTimeTooLong();
+    error LockNotExpired();
+    error NothingToUnlock();
+    
+    // Voting Errors
+    error VotingNotStarted();
+    error VotingEnded();
+    error NoVotingPower();
+    error VotingNotEnded();
+    error ProposalFailed();
+    error ProposalExecutionFailed();
+    error CannotRecoverQTI();
+    error ProposalCanceled();
 }

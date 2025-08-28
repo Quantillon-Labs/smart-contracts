@@ -13,6 +13,12 @@ import "./SecureUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+// Custom libraries for bytecode reduction
+import "../libraries/ErrorLibrary.sol";
+import "../libraries/AccessControlLibrary.sol";
+import "../libraries/ValidationLibrary.sol";
+import "../libraries/TokenLibrary.sol";
+
 /**
  * @title QTIToken
  * @notice Governance token for Quantillon Protocol with vote-escrow mechanics
@@ -64,6 +70,9 @@ contract QTIToken is
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
+    using AccessControlLibrary for AccessControlUpgradeable;
+    using ValidationLibrary for uint256;
+    using TokenLibrary for address;
 
     // =============================================================================
     // CONSTANTS AND ROLES - Protocol roles and limits
@@ -279,9 +288,9 @@ contract QTIToken is
         address _treasury,
         address timelock
     ) public initializer {
-        require(admin != address(0), "QTI: Admin cannot be zero");
-        require(_treasury != address(0), "QTI: Treasury cannot be zero");
-        require(timelock != address(0), "QTI: Timelock cannot be zero");
+        AccessControlLibrary.validateAddress(admin);
+        AccessControlLibrary.validateAddress(_treasury);
+        AccessControlLibrary.validateAddress(timelock);
 
         __ERC20_init("Quantillon Token", "QTI");
         __AccessControl_init();
@@ -320,10 +329,10 @@ contract QTIToken is
      * @return veQTI Voting power calculated for the locked amount
      */
     function lock(uint256 amount, uint256 lockTime) external whenNotPaused returns (uint256 veQTI) {
-        require(amount > 0, "QTI: Amount must be positive");
-        require(lockTime >= MIN_LOCK_TIME, "QTI: Lock time too short");
-        require(lockTime <= MAX_LOCK_TIME, "QTI: Lock time too long");
-        require(balanceOf(msg.sender) >= amount, "QTI: Insufficient balance");
+        ValidationLibrary.validatePositiveAmount(amount);
+        if (lockTime < MIN_LOCK_TIME) revert ErrorLibrary.LockTimeTooShort();
+        if (lockTime > MAX_LOCK_TIME) revert ErrorLibrary.LockTimeTooLong();
+        if (balanceOf(msg.sender) < amount) revert ErrorLibrary.InsufficientBalance();
 
 
 
@@ -370,8 +379,8 @@ contract QTIToken is
      */
     function unlock() external whenNotPaused returns (uint256 amount) {
         LockInfo storage lockInfo = locks[msg.sender];
-        require(lockInfo.unlockTime <= block.timestamp, "QTI: Lock not expired");
-        require(lockInfo.amount > 0, "QTI: Nothing to unlock");
+        if (lockInfo.unlockTime > block.timestamp) revert ErrorLibrary.LockNotExpired();
+        if (lockInfo.amount == 0) revert ErrorLibrary.NothingToUnlock();
 
 
 
@@ -484,9 +493,9 @@ contract QTIToken is
     ) external whenNotPaused returns (uint256 proposalId) {
         // Update voting power to current time before checking threshold
         uint256 currentVotingPower = _updateVotingPower(msg.sender);
-        require(currentVotingPower >= proposalThreshold, "QTI: Insufficient voting power");
-        require(votingPeriod >= minVotingPeriod, "QTI: Voting period too short");
-        require(votingPeriod <= maxVotingPeriod, "QTI: Voting period too long");
+        if (currentVotingPower < proposalThreshold) revert ErrorLibrary.InsufficientVotingPower();
+        if (votingPeriod < minVotingPeriod) revert ErrorLibrary.VotingPeriodTooShort();
+        if (votingPeriod > maxVotingPeriod) revert ErrorLibrary.VotingPeriodTooLong();
 
         proposalId = nextProposalId++;
         
@@ -507,13 +516,13 @@ contract QTIToken is
      */
     function vote(uint256 proposalId, bool support) external whenNotPaused {
         Proposal storage proposal = proposals[proposalId];
-        require(block.timestamp >= proposal.startTime, "QTI: Voting not started");
-        require(block.timestamp < proposal.endTime, "QTI: Voting ended");
-        require(!proposal.receipts[msg.sender].hasVoted, "QTI: Already voted");
+        if (block.timestamp < proposal.startTime) revert ErrorLibrary.VotingNotStarted();
+        if (block.timestamp >= proposal.endTime) revert ErrorLibrary.VotingEnded();
+        if (proposal.receipts[msg.sender].hasVoted) revert ErrorLibrary.AlreadyVoted();
 
         // Update voting power to current time before voting
         uint256 votingPower = _updateVotingPower(msg.sender);
-        require(votingPower > 0, "QTI: No voting power");
+        if (votingPower == 0) revert ErrorLibrary.NoVotingPower();
 
         proposal.receipts[msg.sender] = Receipt({
             hasVoted: true,
@@ -536,18 +545,18 @@ contract QTIToken is
      */
     function executeProposal(uint256 proposalId) external {
         Proposal storage proposal = proposals[proposalId];
-        require(block.timestamp >= proposal.endTime, "QTI: Voting not ended");
-        require(!proposal.executed, "QTI: Already executed");
-        require(!proposal.canceled, "QTI: Proposal canceled");
-        require(proposal.forVotes > proposal.againstVotes, "QTI: Proposal failed");
-        require(proposal.forVotes + proposal.againstVotes >= quorumVotes, "QTI: Quorum not met");
+        if (block.timestamp < proposal.endTime) revert ErrorLibrary.VotingNotEnded();
+        if (proposal.executed) revert ErrorLibrary.ProposalAlreadyExecuted();
+        if (proposal.canceled) revert ErrorLibrary.ProposalCanceled();
+        if (proposal.forVotes <= proposal.againstVotes) revert ErrorLibrary.ProposalFailed();
+        if (proposal.forVotes + proposal.againstVotes < quorumVotes) revert ErrorLibrary.QuorumNotMet();
 
         proposal.executed = true;
 
         // Execute the proposal data
         if (proposal.data.length > 0) {
             (bool success, ) = address(this).call(proposal.data);
-            require(success, "QTI: Proposal execution failed");
+            if (!success) revert ErrorLibrary.ProposalExecutionFailed();
         }
 
         emit ProposalExecuted(proposalId);
@@ -559,12 +568,11 @@ contract QTIToken is
      */
     function cancelProposal(uint256 proposalId) external {
         Proposal storage proposal = proposals[proposalId];
-        require(
-            msg.sender == proposal.proposer || hasRole(GOVERNANCE_ROLE, msg.sender),
-            "QTI: Not authorized"
-        );
-        require(!proposal.executed, "QTI: Already executed");
-        require(!proposal.canceled, "QTI: Already canceled");
+        if (msg.sender != proposal.proposer && !hasRole(GOVERNANCE_ROLE, msg.sender)) {
+            revert ErrorLibrary.NotAuthorized();
+        }
+        if (proposal.executed) revert ErrorLibrary.ProposalAlreadyExecuted();
+        if (proposal.canceled) revert ErrorLibrary.ProposalAlreadyCanceled();
 
         proposal.canceled = true;
         emit ProposalCanceled(proposalId);
@@ -653,7 +661,7 @@ contract QTIToken is
      * @param _treasury New treasury address
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
-        require(_treasury != address(0), "QTI: Treasury cannot be zero");
+        AccessControlLibrary.validateAddress(_treasury);
         treasury = _treasury;
     }
 
@@ -769,8 +777,8 @@ contract QTIToken is
      * @param amount Amount to recover
      */
     function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(token != address(this), "QTI: Cannot recover QTI tokens");
-        require(to != address(0), "QTI: Cannot send to zero address");
+        if (token == address(this)) revert ErrorLibrary.CannotRecoverQTI();
+        AccessControlLibrary.validateAddress(to);
         
         IERC20(token).safeTransfer(to, amount);
     }
@@ -780,13 +788,13 @@ contract QTIToken is
      * @param to Recipient address
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "QTI: Cannot send to zero address");
+        AccessControlLibrary.validateAddress(to);
         uint256 balance = address(this).balance;
-        require(balance > 0, "QTI: No ETH to recover");
+        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
         
         // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
         (bool success, ) = to.call{value: balance}("");
-        require(success, "QTI: ETH transfer failed");
+        if (!success) revert ErrorLibrary.ETHTransferFailed();
     }
 
     // =============================================================================

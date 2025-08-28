@@ -11,7 +11,7 @@ evm_version = "paris"
 
 # Optimization
 optimizer = true
-optimizer_runs = 1000000  # Optimized for runtime gas efficiency
+optimizer_runs = 1  # Optimized for deployment size (bytecode reduction)
 via_ir = true
 
 # Gas settings
@@ -62,6 +62,20 @@ remappings = [
 optimizer = true
 optimizer_runs = 1000000  # Higher optimization for mainnet
 via_ir = true
+
+# Bytecode size optimization profile
+[profile.size_optimized]
+optimizer = true
+optimizer_runs = 1  # Optimize for deployment size
+via_ir = true
+# Additional size optimizations
+[profile.size_optimized.fuzz]
+runs = 1000
+
+[profile.size_optimized.invariant]
+runs = 256
+depth = 15
+fail_on_revert = false
 
 # Testing profile
 [profile.test]

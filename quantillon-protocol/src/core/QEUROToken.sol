@@ -23,6 +23,12 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 // UUPS: Universal Upgradeable Proxy Standard (more gas-efficient than Transparent)
 import "./SecureUpgradeable.sol";
 
+// Custom libraries for bytecode reduction
+import "../libraries/ErrorLibrary.sol";
+import "../libraries/AccessControlLibrary.sol";
+import "../libraries/ValidationLibrary.sol";
+import "../libraries/TokenLibrary.sol";
+
 /**
  * @title QEUROToken
  * @notice Euro-pegged stablecoin token for the Quantillon protocol
@@ -61,6 +67,9 @@ contract QEUROToken is
     SecureUpgradeable        // Secure upgrade pattern
 {
     using SafeERC20 for IERC20;
+    using AccessControlLibrary for AccessControlUpgradeable;
+    using ValidationLibrary for uint256;
+    using TokenLibrary for address;
 
     // =============================================================================
     // CONSTANTS - Protocol roles and limits
@@ -256,9 +265,9 @@ contract QEUROToken is
         address timelock
     ) public initializer {
         // Input parameter validation
-        require(admin != address(0), "QEURO: Admin cannot be zero address");
-        require(vault != address(0), "QEURO: Vault cannot be zero address");
-        require(timelock != address(0), "QEURO: Timelock cannot be zero address");
+        AccessControlLibrary.validateAddress(admin);
+        AccessControlLibrary.validateAddress(vault);
+        AccessControlLibrary.validateAddress(timelock);
 
         // Initialize parent contracts
         __ERC20_init("Quantillon Euro", "QEURO");
@@ -317,25 +326,21 @@ contract QEUROToken is
         whenNotPaused            // Not in pause mode
     {
         // Strict parameter validation
-        require(to != address(0), "QEURO: Cannot mint to zero address");
-        require(amount > 0, "QEURO: Amount must be greater than zero");
+        TokenLibrary.validateMint(to, amount, totalSupply(), maxSupply);
         
         // Blacklist check
-        require(!isBlacklisted[to], "QEURO: Recipient is blacklisted");
+        if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
         
         // Whitelist check (if enabled)
-        if (whitelistEnabled) {
-            require(isWhitelisted[to], "QEURO: Recipient not whitelisted");
+        if (whitelistEnabled && !isWhitelisted[to]) {
+            revert ErrorLibrary.NotWhitelisted();
         }
 
         // Rate limiting check
         _checkAndUpdateMintRateLimit(amount);
         
         // Supply cap verification to prevent excessive inflation
-        require(
-            totalSupply() + amount <= maxSupply, 
-            "QEURO: Would exceed max supply"
-        );
+        // Handled by TokenLibrary.validateMint()
 
         // Actual mint (secure OpenZeppelin function)
         _mint(to, amount);
@@ -371,9 +376,7 @@ contract QEUROToken is
         whenNotPaused            // Not in pause mode
     {
         // Parameter validation
-        require(from != address(0), "QEURO: Cannot burn from zero address");
-        require(amount > 0, "QEURO: Amount must be greater than zero");
-        require(balanceOf(from) >= amount, "QEURO: Insufficient balance to burn");
+        TokenLibrary.validateBurn(from, amount, balanceOf(from));
 
         // Rate limiting check
         _checkAndUpdateBurnRateLimit(amount);
@@ -421,10 +424,9 @@ contract QEUROToken is
         }
 
         // Check if the new amount would exceed the rate limit
-        require(
-            rateLimitInfo.currentHourMinted + amount <= mintRateLimit,
-            "QEURO: Mint rate limit exceeded"
-        );
+        if (rateLimitInfo.currentHourMinted + amount > mintRateLimit) {
+            revert ErrorLibrary.RateLimitExceeded();
+        }
 
         // Update the current hour minted amount - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
@@ -464,10 +466,9 @@ contract QEUROToken is
         }
 
         // Check if the new amount would exceed the rate limit
-        require(
-            rateLimitInfo.currentHourBurned + amount <= burnRateLimit,
-            "QEURO: Burn rate limit exceeded"
-        );
+        if (rateLimitInfo.currentHourBurned + amount > burnRateLimit) {
+            revert ErrorLibrary.RateLimitExceeded();
+        }
 
         // Update the current hour burned amount - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
@@ -492,10 +493,10 @@ contract QEUROToken is
         external 
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
-        require(newMintLimit > 0, "QEURO: Mint limit must be positive");
-        require(newBurnLimit > 0, "QEURO: Burn limit must be positive");
-        require(newMintLimit <= MAX_RATE_LIMIT, "QEURO: Mint limit too high");
-        require(newBurnLimit <= MAX_RATE_LIMIT, "QEURO: Burn limit too high");
+        ValidationLibrary.validatePositiveAmount(newMintLimit);
+        ValidationLibrary.validatePositiveAmount(newBurnLimit);
+        if (newMintLimit > MAX_RATE_LIMIT) revert ErrorLibrary.RateLimitTooHigh();
+        if (newBurnLimit > MAX_RATE_LIMIT) revert ErrorLibrary.RateLimitTooHigh();
 
         mintRateLimit = newMintLimit;
         burnRateLimit = newBurnLimit;
@@ -524,8 +525,8 @@ contract QEUROToken is
         external 
         onlyRole(COMPLIANCE_ROLE) 
     {
-        require(account != address(0), "QEURO: Cannot blacklist zero address");
-        require(!isBlacklisted[account], "QEURO: Address already blacklisted");
+        AccessControlLibrary.validateAddress(account);
+        if (isBlacklisted[account]) revert ErrorLibrary.AlreadyBlacklisted();
         
         isBlacklisted[account] = true;
         emit AddressBlacklisted(account, reason);
@@ -546,7 +547,7 @@ contract QEUROToken is
         external 
         onlyRole(COMPLIANCE_ROLE) 
     {
-        require(isBlacklisted[account], "QEURO: Address not blacklisted");
+        if (!isBlacklisted[account]) revert ErrorLibrary.NotBlacklisted();
         
         isBlacklisted[account] = false;
         emit AddressUnblacklisted(account);
@@ -568,8 +569,8 @@ contract QEUROToken is
         external 
         onlyRole(COMPLIANCE_ROLE) 
     {
-        require(account != address(0), "QEURO: Cannot whitelist zero address");
-        require(!isWhitelisted[account], "QEURO: Address already whitelisted");
+        AccessControlLibrary.validateAddress(account);
+        if (isWhitelisted[account]) revert ErrorLibrary.AlreadyWhitelisted();
         
         isWhitelisted[account] = true;
         emit AddressWhitelisted(account);
@@ -590,7 +591,7 @@ contract QEUROToken is
         external 
         onlyRole(COMPLIANCE_ROLE) 
     {
-        require(isWhitelisted[account], "QEURO: Address not whitelisted");
+        if (!isWhitelisted[account]) revert ErrorLibrary.NotWhitelisted();
         
         isWhitelisted[account] = false;
         emit AddressUnwhitelisted(account);
@@ -634,8 +635,8 @@ contract QEUROToken is
         external 
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
-        require(newPrecision > 0, "QEURO: Precision must be positive");
-        require(newPrecision <= PRECISION, "QEURO: Precision too high");
+        ValidationLibrary.validatePositiveAmount(newPrecision);
+        if (newPrecision > PRECISION) revert ErrorLibrary.PrecisionTooHigh();
 
         uint256 oldPrecision = minPricePrecision;
         minPricePrecision = newPrecision;
@@ -661,8 +662,8 @@ contract QEUROToken is
         pure 
         returns (uint256) 
     {
-        require(feedDecimals <= 18, "QEURO: Too many decimals");
-        require(price > 0, "QEURO: Price must be positive");
+        if (feedDecimals > 18) revert ErrorLibrary.TooManyDecimals();
+        ValidationLibrary.validatePositiveAmount(price);
 
         if (feedDecimals == 18) {
             return price;
@@ -863,16 +864,16 @@ contract QEUROToken is
         uint256 amount
     ) internal override whenNotPaused {
         // Blacklist checks (skip for mint operations)
-        if (from != address(0)) {
-            require(!isBlacklisted[from], "QEURO: Sender is blacklisted");
+        if (from != address(0) && isBlacklisted[from]) {
+            revert ErrorLibrary.BlacklistedAddress();
         }
-        if (to != address(0)) {
-            require(!isBlacklisted[to], "QEURO: Recipient is blacklisted");
+        if (to != address(0) && isBlacklisted[to]) {
+            revert ErrorLibrary.BlacklistedAddress();
         }
 
         // Whitelist checks (if enabled, skip for burn operations)
-        if (whitelistEnabled && to != address(0)) {
-            require(isWhitelisted[to], "QEURO: Recipient not whitelisted");
+        if (whitelistEnabled && to != address(0) && !isWhitelisted[to]) {
+            revert ErrorLibrary.NotWhitelisted();
         }
 
         super._update(from, to, amount);
@@ -917,8 +918,8 @@ contract QEUROToken is
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Prevents recovery of own QEURO tokens (security)
-        require(token != address(this), "QEURO: Cannot recover QEURO tokens");
-        require(to != address(0), "QEURO: Cannot send to zero address");
+        if (token == address(this)) revert ErrorLibrary.CannotRecoverQEURO();
+        AccessControlLibrary.validateAddress(to);
         
         // Transfer of external token using SafeERC20
         IERC20(token).safeTransfer(to, amount);
@@ -937,14 +938,14 @@ contract QEUROToken is
      *      - Uses call() for reliable ETH transfers to any contract
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "QEURO: Cannot send to zero address");
+        AccessControlLibrary.validateAddress(to);
         uint256 balance = address(this).balance;
-        require(balance > 0, "QEURO: No ETH to recover");
+        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
         
         // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
         // transfer() has 2300 gas stipend which can fail with complex receive/fallback logic
         (bool success, ) = to.call{value: balance}("");
-        require(success, "QEURO: ETH transfer failed");
+        if (!success) revert ErrorLibrary.ETHTransferFailed();
     }
 
     // =============================================================================
@@ -971,8 +972,8 @@ contract QEUROToken is
         external 
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
-        require(newMaxSupply >= totalSupply(), "QEURO: New cap below current supply");
-        require(newMaxSupply > 0, "QEURO: Max supply must be positive");
+        if (newMaxSupply < totalSupply()) revert ErrorLibrary.NewCapBelowCurrentSupply();
+        ValidationLibrary.validatePositiveAmount(newMaxSupply);
         
         uint256 oldCap = maxSupply;
         maxSupply = newMaxSupply;

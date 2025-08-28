@@ -13,15 +13,11 @@ import "../../interfaces/IHedgerPool.sol";
 import "../../interfaces/IAaveVault.sol";
 import "../../interfaces/IstQEURO.sol";
 import "../../libraries/VaultMath.sol";
+import "../../libraries/ErrorLibrary.sol";
+import "../../libraries/AccessControlLibrary.sol";
+import "../../libraries/ValidationLibrary.sol";
 import "../SecureUpgradeable.sol";
 
-/**
- * @title YieldShift
- * @notice Dynamic yield redistribution mechanism between Users and Hedgers
- * @dev Core innovation of Quantillon Protocol - balances pools via yield incentives
- * @author Quantillon Labs
- * @custom:security-contact team@quantillon.money
- */
 contract YieldShift is 
     Initializable,
     ReentrancyGuardUpgradeable,
@@ -31,70 +27,46 @@ contract YieldShift is
 {
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
+    using AccessControlLibrary for AccessControlUpgradeable;
+    using ValidationLibrary for uint256;
 
-    // =============================================================================
-    // CONSTANTS AND ROLES
-    // =============================================================================
-    
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
-
-    // =============================================================================
-    // STATE VARIABLES
-    // =============================================================================
-    
-    /// @notice USDC token contract
     IERC20 public usdc;
-    
-    /// @notice User pool contract
     IUserPool public userPool;
-    
-    /// @notice Hedger pool contract
     IHedgerPool public hedgerPool;
-    
-    /// @notice Aave vault contract
     IAaveVault public aaveVault;
-    
-    /// @notice stQEURO token contract (primary yield-bearing token)
     IstQEURO public stQEURO;
 
-    // Yield Shift Configuration
-    uint256 public baseYieldShift;          // Base yield shift percentage (bps)
-    uint256 public maxYieldShift;           // Maximum yield shift (bps) 
-    uint256 public adjustmentSpeed;         // Speed of yield shift adjustments
-    uint256 public targetPoolRatio;        // Target user/hedger pool ratio
+    uint256 public baseYieldShift;
+    uint256 public maxYieldShift;
+    uint256 public adjustmentSpeed;
+    uint256 public targetPoolRatio;
     
-    // Time-weighted average protection
     uint256 public constant MIN_HOLDING_PERIOD = 7 days;
     uint256 public constant TWAP_PERIOD = 24 hours;
-    uint256 public constant MAX_TIME_ELAPSED = 365 days; // Maximum time elapsed for calculations
+    uint256 public constant MAX_TIME_ELAPSED = 365 days;
     
-    // Current State
-    uint256 public currentYieldShift;       // Current yield shift percentage
-    uint256 public lastUpdateTime;          // Last yield shift update time
+    uint256 public currentYieldShift;
+    uint256 public lastUpdateTime;
     
-    // Yield Tracking
-    uint256 public totalYieldGenerated;     // Total yield generated
-    uint256 public totalYieldDistributed;   // Total yield distributed
-    uint256 public userYieldPool;           // Yield allocated to users
-    uint256 public hedgerYieldPool;         // Yield allocated to hedgers
+    uint256 public totalYieldGenerated;
+    uint256 public totalYieldDistributed;
+    uint256 public userYieldPool;
+    uint256 public hedgerYieldPool;
     
-    // Yield Sources
-    mapping(string => uint256) public yieldSources; // Track yield by source
-    string[] public yieldSourceNames;       // Array of yield source names
+    mapping(string => uint256) public yieldSources;
+    string[] public yieldSourceNames;
     
-    // User and Hedger yield tracking
     mapping(address => uint256) public userPendingYield;
     mapping(address => uint256) public hedgerPendingYield;
     mapping(address => uint256) public userLastClaim;
     mapping(address => uint256) public hedgerLastClaim;
     
-    // Time-weighted average tracking
     mapping(address => uint256) public lastDepositTime;
     
-    // Pool history for TWAP calculations
     struct PoolSnapshot {
         uint256 timestamp;
         uint256 userPoolSize;
@@ -105,17 +77,12 @@ contract YieldShift is
     PoolSnapshot[] public hedgerPoolHistory;
     uint256 public constant MAX_HISTORY_LENGTH = 1000;
 
-    // Yield Shift History (for historical metrics)
     struct YieldShiftSnapshot {
         uint256 timestamp;
         uint256 yieldShift;
     }
     YieldShiftSnapshot[] public yieldShiftHistory;
 
-    // =============================================================================
-    // EVENTS
-    // =============================================================================
-    
     event YieldDistributionUpdated(
         uint256 newYieldShift,
         uint256 userYieldAllocation,
@@ -133,10 +100,6 @@ contract YieldShift is
         uint256 adjustmentSpeed
     );
 
-    // =============================================================================
-    // INITIALIZER
-    // =============================================================================
-
     constructor() {
         _disableInitializers();
     }
@@ -150,12 +113,12 @@ contract YieldShift is
         address _stQEURO,
         address timelock
     ) public initializer {
-        require(admin != address(0), "YieldShift: Admin cannot be zero");
-        require(_usdc != address(0), "YieldShift: USDC cannot be zero");
-        require(_userPool != address(0), "YieldShift: UserPool cannot be zero");
-        require(_hedgerPool != address(0), "YieldShift: HedgerPool cannot be zero");
-        require(_aaveVault != address(0), "YieldShift: AaveVault cannot be zero");
-        require(_stQEURO != address(0), "YieldShift: stQEURO cannot be zero");
+        AccessControlLibrary.validateAddress(admin);
+        AccessControlLibrary.validateAddress(_usdc);
+        AccessControlLibrary.validateAddress(_userPool);
+        AccessControlLibrary.validateAddress(_hedgerPool);
+        AccessControlLibrary.validateAddress(_aaveVault);
+        AccessControlLibrary.validateAddress(_stQEURO);
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -173,50 +136,33 @@ contract YieldShift is
         aaveVault = IAaveVault(_aaveVault);
         stQEURO = IstQEURO(_stQEURO);
 
-        // Default configuration
-        baseYieldShift = 5000;          // 50% base allocation to each pool
-        maxYieldShift = 9000;           // Max 90% to one side
-        adjustmentSpeed = 100;          // 1% adjustment per update
-        targetPoolRatio = 10000;        // 1:1 target ratio (100%)
+        baseYieldShift = 5000;
+        maxYieldShift = 9000;
+        adjustmentSpeed = 100;
+        targetPoolRatio = 10000;
         currentYieldShift = baseYieldShift;
         lastUpdateTime = block.timestamp;
 
-        // Initialize pool history for TWAP calculations
         _recordPoolSnapshot();
 
-        // Initialize yield source tracking
         yieldSourceNames.push("aave");
         yieldSourceNames.push("fees");
         yieldSourceNames.push("interest_differential");
     }
 
-    // =============================================================================
-    // CORE YIELD DISTRIBUTION FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Update yield distribution based on time-weighted average pool balances
-     * @dev Uses TWAP to prevent gaming by large actors
-     */
     function updateYieldDistribution() external nonReentrant whenNotPaused {
-        // Use time-weighted average instead of spot values
         uint256 avgUserPoolSize = getTimeWeightedAverage(userPoolHistory, TWAP_PERIOD, true);
         uint256 avgHedgerPoolSize = getTimeWeightedAverage(hedgerPoolHistory, TWAP_PERIOD, false);
         
         uint256 poolRatio = avgHedgerPoolSize == 0 ? type(uint256).max : 
                            avgUserPoolSize.mulDiv(10000, avgHedgerPoolSize);
         
-        // Calculate optimal yield shift
         uint256 optimalShift = _calculateOptimalYieldShift(poolRatio);
-        
-        // Apply gradual adjustment
         uint256 newYieldShift = _applyGradualAdjustment(optimalShift);
         
-        // Update current yield shift
         currentYieldShift = newYieldShift;
         lastUpdateTime = block.timestamp;
         
-        // Record current pool sizes in history
         _recordPoolSnapshot();
         
         emit YieldDistributionUpdated(
@@ -227,131 +173,102 @@ contract YieldShift is
         );
     }
 
-    /**
-     * @notice Add new yield from protocol operations
-     */
     function addYield(uint256 yieldAmount, string calldata source) 
         external 
-        onlyRole(YIELD_MANAGER_ROLE) 
         nonReentrant 
     {
-        require(yieldAmount > 0, "YieldShift: Yield amount must be positive");
+        AccessControlLibrary.onlyYieldManager(this);
+        ValidationLibrary.validatePositiveAmount(yieldAmount);
         
-        // Track yield by source
         yieldSources[source] += yieldAmount;
         totalYieldGenerated += yieldAmount;
         
-        // Distribute yield based on current shift
         uint256 userAllocation = yieldAmount.mulDiv(currentYieldShift, 10000);
         uint256 hedgerAllocation = yieldAmount - userAllocation;
         
         userYieldPool += userAllocation;
         hedgerYieldPool += hedgerAllocation;
         
-        // Send yield to stQEURO contract (primary yield-bearing token)
         if (userAllocation > 0) {
-            // Transfer USDC to stQEURO for yield distribution
             usdc.safeTransfer(address(stQEURO), userAllocation);
-            // Notify stQEURO to distribute yield
             stQEURO.distributeYield(userAllocation);
         }
         
         emit YieldAdded(yieldAmount, source, block.timestamp);
     }
 
-    /**
-     * @notice Claim pending yield for a user
-     */
     function claimUserYield(address user) 
         external 
         nonReentrant 
-        checkHoldingPeriod
         returns (uint256 yieldAmount) 
     {
-        require(msg.sender == user || msg.sender == address(userPool), "YieldShift: Unauthorized");
+        if (msg.sender != user && msg.sender != address(userPool)) {
+            revert ErrorLibrary.NotAuthorized();
+        }
         
         yieldAmount = userPendingYield[user];
         
         if (yieldAmount > 0) {
-            require(userYieldPool >= yieldAmount, "YieldShift: Insufficient user yield pool");
+            if (userYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
             
             userPendingYield[user] = 0;
             userLastClaim[user] = block.timestamp;
             userYieldPool -= yieldAmount;
             totalYieldDistributed += yieldAmount;
             
-            // Transfer USDC yield to user
             usdc.safeTransfer(user, yieldAmount);
             
             emit UserYieldClaimed(user, yieldAmount, block.timestamp);
         }
     }
 
-    /**
-     * @notice Claim pending yield for a hedger
-     */
     function claimHedgerYield(address hedger) 
         external 
         nonReentrant 
-        checkHoldingPeriod
         returns (uint256 yieldAmount) 
     {
-        require(msg.sender == hedger || msg.sender == address(hedgerPool), "YieldShift: Unauthorized");
+        if (msg.sender != hedger && msg.sender != address(hedgerPool)) {
+            revert ErrorLibrary.NotAuthorized();
+        }
         
         yieldAmount = hedgerPendingYield[hedger];
         
         if (yieldAmount > 0) {
-            require(hedgerYieldPool >= yieldAmount, "YieldShift: Insufficient hedger yield pool");
+            if (hedgerYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
             
             hedgerPendingYield[hedger] = 0;
             hedgerLastClaim[hedger] = block.timestamp;
             hedgerYieldPool -= yieldAmount;
             totalYieldDistributed += yieldAmount;
             
-            // Transfer USDC yield to hedger
             usdc.safeTransfer(hedger, yieldAmount);
             
             emit HedgerYieldClaimed(hedger, yieldAmount, block.timestamp);
         }
     }
 
-    // =============================================================================
-    // YIELD CALCULATION FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Calculate optimal yield shift based on pool ratio
-     */
     function _calculateOptimalYieldShift(uint256 poolRatio) internal view returns (uint256) {
-        // If pools are balanced (ratio near target), use base shift
-        if (_isWithinTolerance(poolRatio, targetPoolRatio, 1000)) { // 10% tolerance
+        if (_isWithinTolerance(poolRatio, targetPoolRatio, 1000)) {
             return baseYieldShift;
         }
         
-        // If user pool is too large (ratio > target), shift more yield to hedgers
         if (poolRatio > targetPoolRatio) {
             uint256 excess = poolRatio - targetPoolRatio;
             uint256 adjustment = excess.mulDiv(maxYieldShift - baseYieldShift, targetPoolRatio);
             return VaultMath.min(baseYieldShift - adjustment, maxYieldShift);
-        }
-        
-        // If hedger pool is too large (ratio < target), shift more yield to users
-        else {
+        } else {
             uint256 deficit = targetPoolRatio - poolRatio;
             uint256 adjustment = deficit.mulDiv(maxYieldShift - baseYieldShift, targetPoolRatio);
             return VaultMath.min(baseYieldShift + adjustment, maxYieldShift);
         }
     }
 
-    /**
-     * @notice Apply gradual adjustment to avoid sudden shifts
-     */
     function _applyGradualAdjustment(uint256 targetShift) internal view returns (uint256) {
         if (targetShift == currentYieldShift) {
             return currentYieldShift;
         }
         
-        uint256 maxAdjustment = adjustmentSpeed; // Basis points per update
+        uint256 maxAdjustment = adjustmentSpeed;
         
         if (targetShift > currentYieldShift) {
             uint256 increase = VaultMath.min(targetShift - currentYieldShift, maxAdjustment);
@@ -362,9 +279,6 @@ contract YieldShift is
         }
     }
 
-    /**
-     * @notice Get current pool metrics for yield shift calculation
-     */
     function _getCurrentPoolMetrics() internal view returns (
         uint256 userPoolSize,
         uint256 hedgerPoolSize,
@@ -380,9 +294,6 @@ contract YieldShift is
         }
     }
 
-    /**
-     * @notice Check if value is within tolerance of target
-     */
     function _isWithinTolerance(uint256 value, uint256 target, uint256 toleranceBps) 
         internal 
         pure 
@@ -394,21 +305,12 @@ contract YieldShift is
         return value >= target - tolerance && value <= target + tolerance;
     }
 
-    /**
-     * @notice Update last deposit time for a user
-     * @param user User address
-     */
     function updateLastDepositTime(address user) external {
-        require(
-            msg.sender == address(userPool) || msg.sender == address(hedgerPool),
-            "YieldShift: Unauthorized"
-        );
+        if (msg.sender != address(userPool) && msg.sender != address(hedgerPool)) {
+            revert ErrorLibrary.NotAuthorized();
+        }
         lastDepositTime[user] = block.timestamp;
     }
-
-    // =============================================================================
-    // VIEW FUNCTIONS
-    // =============================================================================
 
     function getCurrentYieldShift() external view returns (uint256) {
         return currentYieldShift;
@@ -472,7 +374,6 @@ contract YieldShift is
         protocolFees = yieldSources["fees"];
         interestDifferential = yieldSources["interest_differential"];
         
-        // Calculate other sources
         uint256 knownSources = aaveYield + protocolFees + interestDifferential;
         otherSources = totalYieldGenerated > knownSources ? 
             totalYieldGenerated - knownSources : 0;
@@ -484,24 +385,22 @@ contract YieldShift is
         uint256 minShift,
         uint256 volatility
     ) {
-        uint256 length = yieldShiftHistory.length; // Cache length
+        uint256 length = yieldShiftHistory.length;
         if (length == 0) {
             return (currentYieldShift, currentYieldShift, currentYieldShift, 0);
         }
         
         uint256 cutoffTime = block.timestamp - period;
         
-        // Bounds check: prevent manipulation by ensuring reasonable cutoff time
         if (cutoffTime > block.timestamp) {
-            cutoffTime = 0; // Prevent underflow
+            cutoffTime = 0;
         }
         
-        // First, collect valid snapshots in memory to reduce storage reads
         uint256[] memory validShifts = new uint256[](length);
         uint256 validCount = 0;
         
         for (uint256 i = 0; i < length; i++) {
-            YieldShiftSnapshot memory snapshot = yieldShiftHistory[i]; // Load once
+            YieldShiftSnapshot memory snapshot = yieldShiftHistory[i];
             if (snapshot.timestamp >= cutoffTime) {
                 validShifts[validCount] = snapshot.yieldShift;
                 validCount++;
@@ -512,7 +411,6 @@ contract YieldShift is
             return (currentYieldShift, currentYieldShift, currentYieldShift, 0);
         }
         
-        // Process in memory to avoid repeated storage reads
         uint256 sumShifts = 0;
         maxShift = 0;
         minShift = type(uint256).max;
@@ -526,7 +424,6 @@ contract YieldShift is
         
         averageShift = sumShifts / validCount;
         
-        // Calculate volatility (standard deviation) using cached data
         uint256 sumSquaredDeviations = 0;
         for (uint256 i = 0; i < validCount; i++) {
             uint256 shift = validShifts[i];
@@ -547,7 +444,6 @@ contract YieldShift is
     ) {
         totalYieldDistributed_ = totalYieldDistributed;
         
-        // Get pool statistics for averages
         (uint256 totalUsers, , , ) = userPool.getPoolMetrics();
         uint256 activeHedgers = hedgerPool.activeHedgers();
         
@@ -556,7 +452,6 @@ contract YieldShift is
         averageHedgerYield = activeHedgers > 0 ? 
             hedgerYieldPool / activeHedgers : 0;
         
-        // Yield efficiency: percentage of generated yield that's been distributed
         yieldEfficiency = totalYieldGenerated > 0 ? 
             totalYieldDistributed_.mulDiv(10000, totalYieldGenerated) : 0;
     }
@@ -571,19 +466,16 @@ contract YieldShift is
         return totalAvailable.mulDiv(10000 - currentYieldShift, 10000);
     }
 
-    // =============================================================================
-    // GOVERNANCE FUNCTIONS
-    // =============================================================================
-
     function setYieldShiftParameters(
         uint256 _baseYieldShift,
         uint256 _maxYieldShift,
         uint256 _adjustmentSpeed
-    ) external onlyRole(GOVERNANCE_ROLE) {
-        require(_baseYieldShift <= 10000, "YieldShift: Base shift too high");
-        require(_maxYieldShift <= 10000, "YieldShift: Max shift too high");
-        require(_maxYieldShift >= _baseYieldShift, "YieldShift: Invalid shift range");
-        require(_adjustmentSpeed <= 1000, "YieldShift: Adjustment speed too high"); // Max 10% per update
+    ) external {
+        AccessControlLibrary.onlyGovernance(this);
+        ValidationLibrary.validateYieldShift(_baseYieldShift);
+        ValidationLibrary.validateYieldShift(_maxYieldShift);
+        if (_maxYieldShift < _baseYieldShift) revert ErrorLibrary.InvalidShiftRange();
+        ValidationLibrary.validateAdjustmentSpeed(_adjustmentSpeed, 1000);
 
         baseYieldShift = _baseYieldShift;
         maxYieldShift = _maxYieldShift;
@@ -592,20 +484,15 @@ contract YieldShift is
         emit YieldShiftParametersUpdated(_baseYieldShift, _maxYieldShift, _adjustmentSpeed);
     }
 
-    function setTargetPoolRatio(uint256 _targetPoolRatio) 
-        external 
-        onlyRole(GOVERNANCE_ROLE) 
-    {
-        require(_targetPoolRatio > 0, "YieldShift: Target ratio must be positive");
-        require(_targetPoolRatio <= 50000, "YieldShift: Target ratio too high"); // Max 5:1
+    function setTargetPoolRatio(uint256 _targetPoolRatio) external {
+        AccessControlLibrary.onlyGovernance(this);
+        ValidationLibrary.validateTargetRatio(_targetPoolRatio, 50000);
         
         targetPoolRatio = _targetPoolRatio;
     }
 
-    function updateYieldAllocation(address user, uint256 amount, bool isUser) 
-        external 
-        onlyRole(YIELD_MANAGER_ROLE) 
-    {
+    function updateYieldAllocation(address user, uint256 amount, bool isUser) external {
+        AccessControlLibrary.onlyYieldManager(this);
         if (isUser) {
             userPendingYield[user] += amount;
         } else {
@@ -613,16 +500,10 @@ contract YieldShift is
         }
     }
 
-    // =============================================================================
-    // EMERGENCY FUNCTIONS
-    // =============================================================================
-
-    function emergencyYieldDistribution(uint256 userAmount, uint256 hedgerAmount) 
-        external 
-        onlyRole(EMERGENCY_ROLE) 
-    {
-        require(userAmount <= userYieldPool, "YieldShift: Insufficient user yield");
-        require(hedgerAmount <= hedgerYieldPool, "YieldShift: Insufficient hedger yield");
+    function emergencyYieldDistribution(uint256 userAmount, uint256 hedgerAmount) external {
+        AccessControlLibrary.onlyEmergencyRole(this);
+        if (userAmount > userYieldPool) revert ErrorLibrary.InsufficientYield();
+        if (hedgerAmount > hedgerYieldPool) revert ErrorLibrary.InsufficientYield();
         
         if (userAmount > 0) {
             userYieldPool -= userAmount;
@@ -635,11 +516,13 @@ contract YieldShift is
         }
     }
 
-    function pauseYieldDistribution() external onlyRole(EMERGENCY_ROLE) {
+    function pauseYieldDistribution() external {
+        AccessControlLibrary.onlyEmergencyRole(this);
         _pause();
     }
 
-    function resumeYieldDistribution() external onlyRole(EMERGENCY_ROLE) {
+    function resumeYieldDistribution() external {
+        AccessControlLibrary.onlyEmergencyRole(this);
         _unpause();
     }
 
@@ -656,117 +539,63 @@ contract YieldShift is
         return !paused();
     }
 
-    // =============================================================================
-    // AUTOMATED FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Harvest yield from Aave and distribute automatically
-     */
     function harvestAndDistributeAaveYield() external nonReentrant {
         uint256 yieldHarvested = aaveVault.harvestAaveYield();
         
         if (yieldHarvested > 0) {
-            // Transfer harvested yield to this contract
             usdc.safeTransferFrom(address(aaveVault), address(this), yieldHarvested);
-            
-            // Add to yield pool
             this.addYield(yieldHarvested, "aave");
-            
-            // Update yield distribution
             this.updateYieldDistribution();
         }
     }
 
-    /**
-     * @notice Update yield distribution if conditions are met
-     * @dev Uses TWAP and includes holding period checks with bounds checking
-     * 
-
-     */
     function checkAndUpdateYieldDistribution() external {
-        // Only update if significant time has passed or pool imbalance is high
         uint256 timeSinceUpdate = block.timestamp - lastUpdateTime;
         
-        // SECURITY FIX: Bounds check to prevent timestamp manipulation
         if (timeSinceUpdate > MAX_TIME_ELAPSED) {
             timeSinceUpdate = MAX_TIME_ELAPSED;
         }
         
         bool timeCondition = timeSinceUpdate >= TWAP_PERIOD;
         
-        // SECURITY FIX: Use TWAP for pool ratio calculation to prevent gaming
         uint256 avgUserPoolSize = getTimeWeightedAverage(userPoolHistory, TWAP_PERIOD, true);
         uint256 avgHedgerPoolSize = getTimeWeightedAverage(hedgerPoolHistory, TWAP_PERIOD, false);
         uint256 poolRatio = avgHedgerPoolSize == 0 ? type(uint256).max : 
                            avgUserPoolSize.mulDiv(10000, avgHedgerPoolSize);
         
-        bool imbalanceCondition = !_isWithinTolerance(poolRatio, targetPoolRatio, 2000); // 20% tolerance
+        bool imbalanceCondition = !_isWithinTolerance(poolRatio, targetPoolRatio, 2000);
         
         if (timeCondition || imbalanceCondition) {
             this.updateYieldDistribution();
         }
     }
 
-    /**
-     * @notice Force update yield distribution (governance only)
-     * @dev Emergency function to update yield distribution when normal conditions aren't met
-     */
-    function forceUpdateYieldDistribution() external onlyRole(GOVERNANCE_ROLE) {
+    function forceUpdateYieldDistribution() external {
+        AccessControlLibrary.onlyGovernance(this);
         this.updateYieldDistribution();
     }
 
-
-
-    /**
-     * @notice Modifier to check minimum holding period with bounds checking
-     * 
-
-     */
-    modifier checkHoldingPeriod() {
-        uint256 timeSinceDeposit = block.timestamp - lastDepositTime[msg.sender];
-        
-        // SECURITY FIX: Bounds check to prevent timestamp manipulation
-        if (timeSinceDeposit > MAX_TIME_ELAPSED) {
-            timeSinceDeposit = MAX_TIME_ELAPSED;
-        }
-        
-        require(
-            timeSinceDeposit >= MIN_HOLDING_PERIOD,
-            "YieldShift: Holding period not met"
-        );
-        _;
-    }
-
-    /**
-     * @notice Calculate time-weighted average pool size over a specified period
-     * @param poolHistory Array of pool snapshots
-     * @param period Time period to calculate average over
-     * @param isUserPool Whether this is for user pool (true) or hedger pool (false)
-     * @return Time-weighted average pool size
-     */
     function getTimeWeightedAverage(PoolSnapshot[] storage poolHistory, uint256 period, bool isUserPool) 
         internal 
         view 
         returns (uint256) 
     {
-        uint256 length = poolHistory.length; // Cache length
+        uint256 length = poolHistory.length;
         if (length == 0) {
             return 0;
         }
         
         uint256 cutoffTime = block.timestamp - period;
         
-        // Bounds check: prevent manipulation by ensuring reasonable cutoff time
         if (cutoffTime > block.timestamp) {
-            cutoffTime = 0; // Prevent underflow
+            cutoffTime = 0;
         }
         
         uint256 totalWeightedValue = 0;
         uint256 totalWeight = 0;
         
         for (uint256 i = 0; i < length; i++) {
-            PoolSnapshot memory snapshot = poolHistory[i]; // Load once
+            PoolSnapshot memory snapshot = poolHistory[i];
             if (snapshot.timestamp >= cutoffTime) {
                 uint256 weight = snapshot.timestamp - cutoffTime;
                 uint256 poolSize = isUserPool ? snapshot.userPoolSize : snapshot.hedgerPoolSize;
@@ -776,7 +605,6 @@ contract YieldShift is
         }
         
         if (totalWeight == 0) {
-            // Use cached length for last element access
             uint256 lastPoolSize = isUserPool ? 
                 poolHistory[length - 1].userPoolSize : 
                 poolHistory[length - 1].hedgerPoolSize;
@@ -786,31 +614,17 @@ contract YieldShift is
         return totalWeightedValue / totalWeight;
     }
 
-    /**
-     * @notice Record current pool sizes in history for TWAP calculations
-     */
     function _recordPoolSnapshot() internal {
         (uint256 userPoolSize, uint256 hedgerPoolSize,) = _getCurrentPoolMetrics();
         
-        // Add to user pool history
         _addToPoolHistory(userPoolHistory, userPoolSize, true);
-        
-        // Add to hedger pool history
         _addToPoolHistory(hedgerPoolHistory, hedgerPoolSize, false);
     }
 
-    /**
-     * @notice Add snapshot to pool history array
-     * @param poolHistory Array to add snapshot to
-     * @param poolSize Current pool size
-     * @param isUserPool Whether this is for user pool (true) or hedger pool (false)
-     */
     function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool) internal {
-        uint256 length = poolHistory.length; // Cache length
+        uint256 length = poolHistory.length;
         
-        // Remove oldest snapshot if at capacity
         if (length >= MAX_HISTORY_LENGTH) {
-            // Shift array left to remove first element
             for (uint256 i = 0; i < length - 1; i++) {
                 poolHistory[i] = poolHistory[i + 1];
             }
@@ -824,34 +638,21 @@ contract YieldShift is
         }));
     }
 
-    // =============================================================================
-    // RECOVERY FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Recover accidentally sent tokens
-     * @param token Token address to recover
-     * @param to Recipient address
-     * @param amount Amount to recover
-     */
-    function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(token != address(usdc), "YieldShift: Cannot recover USDC");
-        require(to != address(0), "YieldShift: Cannot send to zero address");
+    function recoverToken(address token, address to, uint256 amount) external {
+        AccessControlLibrary.onlyAdmin(this);
+        if (token == address(usdc)) revert ErrorLibrary.CannotRecoverUSDC();
+        AccessControlLibrary.validateAddress(to);
         
         IERC20(token).safeTransfer(to, amount);
     }
 
-    /**
-     * @notice Recover accidentally sent ETH
-     * @param to Recipient address
-     */
-    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "YieldShift: Cannot send to zero address");
+    function recoverETH(address payable to) external {
+        AccessControlLibrary.onlyAdmin(this);
+        AccessControlLibrary.validateAddress(to);
         uint256 balance = address(this).balance;
-        require(balance > 0, "YieldShift: No ETH to recover");
+        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
         
-        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
         (bool success, ) = to.call{value: balance}("");
-        require(success, "YieldShift: ETH transfer failed");
+        if (!success) revert ErrorLibrary.ETHTransferFailed();
     }
 }

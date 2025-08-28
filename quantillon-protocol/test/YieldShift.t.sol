@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {Test, console2} from "forge-std/Test.sol";
 import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 
 /**
@@ -304,7 +305,7 @@ contract YieldShiftTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("YieldShift: Admin cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData);
     }
     
@@ -326,7 +327,7 @@ contract YieldShiftTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("YieldShift: USDC cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData);
     }
 
@@ -399,7 +400,7 @@ contract YieldShiftTestSuite is Test {
      */
     function test_YieldDistribution_AddYieldZeroAmount_Revert() public {
         vm.prank(yieldManager);
-        vm.expectRevert("YieldShift: Yield amount must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         yieldShift.addYield(0, "test_source");
     }
 
@@ -491,7 +492,7 @@ contract YieldShiftTestSuite is Test {
         
         // Try to claim before holding period
         vm.prank(user);
-        vm.expectRevert("YieldShift: Holding period not met");
+        vm.expectRevert(ErrorLibrary.HoldingPeriodNotMet.selector);
         yieldShift.claimUserYield(user);
     }
     
@@ -514,7 +515,7 @@ contract YieldShiftTestSuite is Test {
         
         // Try to claim by unauthorized address
         vm.prank(hedger);
-        vm.expectRevert("YieldShift: Unauthorized");
+        vm.expectRevert(ErrorLibrary.NotAuthorized.selector);
         yieldShift.claimUserYield(user);
     }
 

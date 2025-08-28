@@ -7,6 +7,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
+import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 /**
  * @title HedgerPoolTestSuite
@@ -259,7 +260,7 @@ contract HedgerPoolTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("HedgerPool: Admin cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero USDC
@@ -273,7 +274,7 @@ contract HedgerPoolTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("HedgerPool: USDC cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation2), initData2);
         
         // Test with zero oracle
@@ -287,7 +288,7 @@ contract HedgerPoolTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("HedgerPool: Oracle cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation3), initData3);
         
         // Test with zero YieldShift
@@ -301,7 +302,7 @@ contract HedgerPoolTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("HedgerPool: YieldShift cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation4), initData4);
     }
     
@@ -390,7 +391,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 excessiveLeverage = 15; // Above max leverage of 10
         
         vm.prank(hedger1);
-        vm.expectRevert("HedgerPool: Leverage too high");
+        vm.expectRevert(ErrorLibrary.LeverageTooHigh.selector);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, excessiveLeverage);
     }
     
@@ -449,7 +450,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Position_CloseNonExistentPosition_Revert() public {
         vm.prank(hedger1);
-        vm.expectRevert("HedgerPool: Not position owner");
+        vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
         hedgerPool.exitHedgePosition(999);
     }
     
@@ -464,7 +465,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Try to close by different user
         vm.prank(hedger2);
-        vm.expectRevert("HedgerPool: Not position owner");
+        vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
         hedgerPool.exitHedgePosition(positionId);
     }
 
@@ -504,7 +505,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Margin_AddMarginToNonExistentPosition_Revert() public {
         vm.prank(hedger1);
-        vm.expectRevert("HedgerPool: Not position owner");
+        vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
         hedgerPool.addMargin(999, 1000 * 1e6);
     }
     
@@ -519,7 +520,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Try to add margin by different user
         vm.prank(hedger2);
-        vm.expectRevert("HedgerPool: Not position owner");
+        vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
         hedgerPool.addMargin(positionId, 1000 * 1e6);
     }
     
@@ -559,7 +560,7 @@ contract HedgerPoolTestSuite is Test {
         // Try to remove too much margin
         uint256 tooMuchMargin = MARGIN_AMOUNT * 9 / 10; // Remove 90% of margin
         vm.prank(hedger1);
-        vm.expectRevert("HedgerPool: Would breach minimum margin");
+        vm.expectRevert(ErrorLibrary.MarginRatioTooLow.selector);
         hedgerPool.removeMargin(positionId, tooMuchMargin);
     }
 
@@ -634,7 +635,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Try to liquidate healthy position
         vm.prank(liquidator);
-        vm.expectRevert("HedgerPool: No valid commitment");
+        vm.expectRevert(ErrorLibrary.NoValidCommitment.selector);
         hedgerPool.liquidateHedger(hedger1, positionId, bytes32(0));
     }
 
@@ -1207,7 +1208,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Recovery_RecoverUSDCToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("HedgerPool: Invalid params");
+        vm.expectRevert(ErrorLibrary.CannotRecoverUSDC.selector);
         hedgerPool.recoverToken(mockUSDC, admin, 1000e18);
     }
 
@@ -1219,7 +1220,7 @@ contract HedgerPoolTestSuite is Test {
         MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
         
         vm.prank(admin);
-        vm.expectRevert("HedgerPool: Invalid params");
+        vm.expectRevert(ErrorLibrary.CannotSendToZero.selector);
         hedgerPool.recoverToken(address(mockToken), address(0), 1000e18);
     }
 
@@ -1262,7 +1263,7 @@ contract HedgerPoolTestSuite is Test {
         vm.deal(address(hedgerPool), 1 ether);
         
         vm.prank(admin);
-        vm.expectRevert("HedgerPool: Cannot send to zero address");
+        vm.expectRevert(ErrorLibrary.CannotSendToZero.selector);
         hedgerPool.recoverETH(payable(address(0)));
     }
 
@@ -1272,7 +1273,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("HedgerPool: No ETH to recover");
+        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
         hedgerPool.recoverETH(payable(admin));
     }
 }

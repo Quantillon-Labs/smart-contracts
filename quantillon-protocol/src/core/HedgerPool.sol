@@ -11,6 +11,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IChainlinkOracle.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
+import "../libraries/ErrorLibrary.sol";
+import "../libraries/AccessControlLibrary.sol";
+import "../libraries/ValidationLibrary.sol";
 import "./SecureUpgradeable.sol";
 
 contract HedgerPool is 
@@ -22,6 +25,8 @@ contract HedgerPool is
 {
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
+    using AccessControlLibrary for AccessControlUpgradeable;
+    using ValidationLibrary for uint256;
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
@@ -150,10 +155,10 @@ contract HedgerPool is
         address _yieldShift,
         address timelock
     ) public initializer {
-        require(admin != address(0), "HedgerPool: Admin cannot be zero");
-        require(_usdc != address(0), "HedgerPool: USDC cannot be zero");
-        require(_oracle != address(0), "HedgerPool: Oracle cannot be zero");
-        require(_yieldShift != address(0), "HedgerPool: YieldShift cannot be zero");
+        AccessControlLibrary.validateAddress(admin);
+        AccessControlLibrary.validateAddress(_usdc);
+        AccessControlLibrary.validateAddress(_oracle);
+        AccessControlLibrary.validateAddress(_yieldShift);
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -189,22 +194,18 @@ contract HedgerPool is
         whenNotPaused 
         returns (uint256 positionId) 
     {
-        require(usdcAmount > 0, "HedgerPool: Amount must be positive");
-        require(leverage <= maxLeverage, "HedgerPool: Leverage too high");
-        require(leverage > 0, "HedgerPool: Leverage must be positive");
-        require(
-            activePositionCount[msg.sender] < MAX_POSITIONS_PER_HEDGER,
-            "HedgerPool: Too many active positions"
-        );
+        ValidationLibrary.validatePositiveAmount(usdcAmount);
+        ValidationLibrary.validateLeverage(leverage, maxLeverage);
+        ValidationLibrary.validatePositionCount(activePositionCount[msg.sender], MAX_POSITIONS_PER_HEDGER);
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "HedgerPool: Invalid EUR/USD price");
+        ValidationLibrary.validateOraclePrice(isValid);
 
         uint256 fee = usdcAmount.percentageOf(entryFee);
         uint256 netMargin = usdcAmount - fee;
         uint256 positionSize = netMargin.mulDiv(leverage, 1);
         uint256 marginRatio = netMargin.mulDiv(10000, positionSize);
-        require(marginRatio >= minMarginRatio, "HedgerPool: Insufficient margin ratio");
+        ValidationLibrary.validateMarginRatio(marginRatio, minMarginRatio);
 
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
 
@@ -254,11 +255,11 @@ contract HedgerPool is
         returns (int256 pnl) 
     {
         HedgePosition storage position = positions[positionId];
-        require(position.hedger == msg.sender, "HedgerPool: Not position owner");
-        require(position.isActive, "HedgerPool: Position not active");
+        ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
+        ValidationLibrary.validatePositionActive(position.isActive);
 
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "HedgerPool: Invalid EUR/USD price");
+        ValidationLibrary.validateOraclePrice(isValid);
 
         pnl = _calculatePnL(position, currentPrice);
 
@@ -315,19 +316,15 @@ contract HedgerPool is
         whenNotPaused 
     {
         HedgePosition storage position = positions[positionId];
-        require(position.hedger == msg.sender, "HedgerPool: Not position owner");
-        require(position.isActive, "HedgerPool: Position not active");
-        require(amount > 0, "HedgerPool: Amount must be positive");
+        ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
+        ValidationLibrary.validatePositionActive(position.isActive);
+        ValidationLibrary.validatePositiveAmount(amount);
         
-        require(
-            block.timestamp >= lastLiquidationAttempt[msg.sender] + LIQUIDATION_COOLDOWN,
-            "HedgerPool: Cannot add margin during liquidation cooldown"
-        );
+        ValidationLibrary.validateLiquidationCooldown(lastLiquidationAttempt[msg.sender], LIQUIDATION_COOLDOWN);
         
-        require(
-            !_hasPendingLiquidationCommitment(msg.sender, positionId),
-            "HedgerPool: Cannot add margin with pending liquidation commitment"
-        );
+        if (_hasPendingLiquidationCommitment(msg.sender, positionId)) {
+            revert ErrorLibrary.PendingLiquidationCommitment();
+        }
 
         uint256 fee = amount.percentageOf(marginFee);
         uint256 netAmount = amount - fee;
@@ -350,14 +347,14 @@ contract HedgerPool is
         whenNotPaused 
     {
         HedgePosition storage position = positions[positionId];
-        require(position.hedger == msg.sender, "HedgerPool: Not position owner");
-        require(position.isActive, "HedgerPool: Position not active");
-        require(amount > 0, "HedgerPool: Amount must be positive");
-        require(position.margin >= amount, "HedgerPool: Insufficient margin");
+        ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
+        ValidationLibrary.validatePositionActive(position.isActive);
+        ValidationLibrary.validatePositiveAmount(amount);
+        if (position.margin < amount) revert ErrorLibrary.InsufficientMargin();
 
         uint256 newMargin = position.margin - amount;
         uint256 newMarginRatio = newMargin.mulDiv(10000, position.positionSize);
-        require(newMarginRatio >= minMarginRatio, "HedgerPool: Would breach minimum margin");
+        ValidationLibrary.validateMarginRatio(newMarginRatio, minMarginRatio);
 
         position.margin = newMargin;
 
@@ -373,12 +370,13 @@ contract HedgerPool is
         address hedger,
         uint256 positionId,
         bytes32 salt
-    ) external onlyRole(LIQUIDATOR_ROLE) {
-        require(hedger != address(0), "HedgerPool: Invalid hedger address");
-        require(positionId > 0, "HedgerPool: Invalid position ID");
+    ) external {
+        AccessControlLibrary.onlyLiquidatorRole(this);
+        AccessControlLibrary.validateAddress(hedger);
+        if (positionId == 0) revert ErrorLibrary.InvalidPosition();
         
         bytes32 commitment = keccak256(abi.encodePacked(hedger, positionId, salt, msg.sender));
-        require(!liquidationCommitments[commitment], "HedgerPool: Commitment already exists");
+        ValidationLibrary.validateCommitmentNotExists(liquidationCommitments[commitment]);
         
         liquidationCommitments[commitment] = true;
         liquidationCommitmentTimes[commitment] = block.timestamp;
@@ -391,22 +389,24 @@ contract HedgerPool is
         address hedger, 
         uint256 positionId,
         bytes32 salt
-    ) external onlyRole(LIQUIDATOR_ROLE) nonReentrant returns (uint256 liquidationReward) {
+    ) external nonReentrant returns (uint256 liquidationReward) {
+        AccessControlLibrary.onlyLiquidatorRole(this);
+        
         HedgePosition storage position = positions[positionId];
-        require(position.hedger == hedger, "HedgerPool: Invalid hedger");
-        require(position.isActive, "HedgerPool: Position not active");
+        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
+        ValidationLibrary.validatePositionActive(position.isActive);
 
         bytes32 commitment = keccak256(abi.encodePacked(hedger, positionId, salt, msg.sender));
-        require(liquidationCommitments[commitment], "HedgerPool: No valid commitment");
+        ValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
         
         delete liquidationCommitments[commitment];
         delete liquidationCommitmentTimes[commitment];
         hasPendingLiquidation[hedger][positionId] = false;
 
-        require(_isPositionLiquidatable(positionId), "HedgerPool: Position not liquidatable");
+        if (!_isPositionLiquidatable(positionId)) revert ErrorLibrary.PositionNotLiquidatable();
 
         (, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "HedgerPool: Invalid EUR/USD price");
+        ValidationLibrary.validateOraclePrice(isValid);
 
         liquidationReward = position.margin.percentageOf(liquidationPenalty);
         uint256 remainingMargin = position.margin - liquidationReward;
@@ -493,7 +493,7 @@ contract HedgerPool is
                 .mulDiv(timeElapsed, 365 days);
             
             uint256 newPendingRewards = hedgerInfo.pendingRewards + reward;
-            require(newPendingRewards >= hedgerInfo.pendingRewards, "HedgerPool: Reward overflow");
+            if (newPendingRewards < hedgerInfo.pendingRewards) revert ErrorLibrary.RewardOverflow();
             hedgerInfo.pendingRewards = newPendingRewards;
             
             hedgerLastRewardBlock[hedger] = currentBlock;
@@ -513,7 +513,7 @@ contract HedgerPool is
         ) 
     {
         HedgePosition storage position = positions[positionId];
-        require(position.hedger == hedger, "HedgerPool: Invalid hedger");
+        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
         
         (currentPrice, ) = oracle.getEurUsdPrice();
         
@@ -533,7 +533,7 @@ contract HedgerPool is
         returns (uint256) 
     {
         HedgePosition storage position = positions[positionId];
-        require(position.hedger == hedger, "HedgerPool: Invalid hedger");
+        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
         
         if (position.positionSize == 0) return 0;
         return position.margin.mulDiv(10000, position.positionSize);
@@ -545,7 +545,7 @@ contract HedgerPool is
         returns (bool) 
     {
         HedgePosition storage position = positions[positionId];
-        require(position.hedger == hedger, "HedgerPool: Invalid hedger");
+        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
         
         return _isPositionLiquidatable(positionId);
     }
@@ -588,20 +588,17 @@ contract HedgerPool is
         return totalExposure;
     }
 
-
-
-
-
     function updateHedgingParameters(
         uint256 newMinMarginRatio,
         uint256 newLiquidationThreshold,
         uint256 newMaxLeverage,
         uint256 newLiquidationPenalty
-    ) external onlyRole(GOVERNANCE_ROLE) {
-        require(newMinMarginRatio >= 500, "HedgerPool: Min margin too low");
-        require(newLiquidationThreshold < newMinMarginRatio, "HedgerPool: Invalid thresholds");
-        require(newMaxLeverage <= 20, "HedgerPool: Max leverage too high");
-        require(newLiquidationPenalty <= 1000, "HedgerPool: Penalty too high");
+    ) external {
+        AccessControlLibrary.onlyGovernance(this);
+        if (newMinMarginRatio < 500) revert ErrorLibrary.ConfigValueTooLow();
+        if (newLiquidationThreshold >= newMinMarginRatio) revert ErrorLibrary.ConfigInvalid();
+        if (newMaxLeverage > 20) revert ErrorLibrary.ConfigValueTooHigh();
+        if (newLiquidationPenalty > 1000) revert ErrorLibrary.ConfigValueTooHigh();
 
         minMarginRatio = newMinMarginRatio;
         liquidationThreshold = newLiquidationThreshold;
@@ -609,11 +606,9 @@ contract HedgerPool is
         liquidationPenalty = newLiquidationPenalty;
     }
 
-    function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) 
-        external 
-        onlyRole(GOVERNANCE_ROLE) 
-    {
-        require(newEurRate <= 2000 && newUsdRate <= 2000, "HedgerPool: Rates too high");
+    function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external {
+        AccessControlLibrary.onlyGovernance(this);
+        if (newEurRate > 2000 || newUsdRate > 2000) revert ErrorLibrary.ConfigValueTooHigh();
         
         eurInterestRate = newEurRate;
         usdInterestRate = newUsdRate;
@@ -623,23 +618,23 @@ contract HedgerPool is
         uint256 _entryFee,
         uint256 _exitFee,
         uint256 _marginFee
-    ) external onlyRole(GOVERNANCE_ROLE) {
-        require(_entryFee <= 100, "HedgerPool: Entry fee too high");
-        require(_exitFee <= 100, "HedgerPool: Exit fee too high");
-        require(_marginFee <= 50, "HedgerPool: Margin fee too high");
+    ) external {
+        AccessControlLibrary.onlyGovernance(this);
+        ValidationLibrary.validateFee(_entryFee, 100);
+        ValidationLibrary.validateFee(_exitFee, 100);
+        ValidationLibrary.validateFee(_marginFee, 50);
 
         entryFee = _entryFee;
         exitFee = _exitFee;
         marginFee = _marginFee;
     }
 
-    function emergencyClosePosition(address hedger, uint256 positionId) 
-        external 
-        onlyRole(EMERGENCY_ROLE) 
-    {
+    function emergencyClosePosition(address hedger, uint256 positionId) external {
+        AccessControlLibrary.onlyEmergencyRole(this);
+        
         HedgePosition storage position = positions[positionId];
-        require(position.hedger == hedger, "HedgerPool: Invalid hedger");
-        require(position.isActive, "HedgerPool: Position not active");
+        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
+        ValidationLibrary.validatePositionActive(position.isActive);
 
         HedgerInfo storage hedgerInfo = hedgers[hedger];
         hedgerInfo.totalMargin -= position.margin;
@@ -656,11 +651,13 @@ contract HedgerPool is
         activePositionCount[hedger]--;
     }
 
-    function pause() external onlyRole(EMERGENCY_ROLE) {
+    function pause() external {
+        AccessControlLibrary.onlyEmergencyRole(this);
         _pause();
     }
 
-    function unpause() external onlyRole(EMERGENCY_ROLE) {
+    function unpause() external {
+        AccessControlLibrary.onlyEmergencyRole(this);
         _unpause();
     }
 
@@ -694,46 +691,43 @@ contract HedgerPool is
         return !paused();
     }
 
-    function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) 
-        external 
-        onlyRole(LIQUIDATOR_ROLE) 
-    {
+    function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external {
+        AccessControlLibrary.onlyLiquidatorRole(this);
         if (block.timestamp > lastLiquidationAttempt[hedger] + 1 hours) {
             hasPendingLiquidation[hedger][positionId] = false;
         }
     }
 
-    function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) 
-        external 
-        onlyRole(LIQUIDATOR_ROLE) 
-    {
+    function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external {
+        AccessControlLibrary.onlyLiquidatorRole(this);
         bytes32 commitment = keccak256(abi.encodePacked(hedger, positionId, salt, msg.sender));
-        require(liquidationCommitments[commitment], "HedgerPool: Commitment does not exist");
+        ValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
         
         delete liquidationCommitments[commitment];
         delete liquidationCommitmentTimes[commitment];
         hasPendingLiquidation[hedger][positionId] = false;
     }
 
-
-
     function _hasPendingLiquidationCommitment(address hedger, uint256 positionId) internal view returns (bool) {
         return hasPendingLiquidation[hedger][positionId];
     }
 
-    function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(token != address(usdc) && to != address(0), "HedgerPool: Invalid params");
+    function recoverToken(address token, address to, uint256 amount) external {
+        AccessControlLibrary.onlyAdmin(this);
+        if (token == address(usdc)) revert ErrorLibrary.CannotRecoverUSDC();
+        AccessControlLibrary.validateAddress(to);
         
         IERC20(token).safeTransfer(to, amount);
     }
 
-    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "HedgerPool: Cannot send to zero address");
+    function recoverETH(address payable to) external {
+        AccessControlLibrary.onlyAdmin(this);
+        AccessControlLibrary.validateAddress(to);
         
         uint256 balance = address(this).balance;
-        require(balance > 0, "HedgerPool: No ETH to recover");
+        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
         
         (bool success, ) = to.call{value: balance}("");
-        require(success, "HedgerPool: ETH transfer failed");
+        if (!success) revert ErrorLibrary.ETHTransferFailed();
     }
 }

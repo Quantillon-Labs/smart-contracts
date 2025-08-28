@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {Test, console2} from "forge-std/Test.sol";
 import {AaveVault} from "../src/core/vaults/AaveVault.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 
 /**
@@ -452,7 +453,7 @@ contract AaveVaultTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("AaveVault: Admin cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData);
     }
     
@@ -473,7 +474,7 @@ contract AaveVaultTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("AaveVault: USDC cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData);
     }
 
@@ -527,7 +528,7 @@ contract AaveVaultTestSuite is Test {
      */
     function test_AaveIntegration_DeployToAaveZeroAmount_Revert() public {
         vm.prank(vaultManager);
-        vm.expectRevert("AaveVault: Amount must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         aaveVault.deployToAave(0);
     }
     
@@ -542,7 +543,7 @@ contract AaveVaultTestSuite is Test {
         usdc.approve(address(aaveVault), excessiveAmount);
         
         vm.prank(vaultManager);
-        vm.expectRevert("AaveVault: Would exceed max exposure");
+        vm.expectRevert(ErrorLibrary.WouldExceedLimit.selector);
         aaveVault.deployToAave(excessiveAmount);
     }
     
@@ -654,7 +655,7 @@ contract AaveVaultTestSuite is Test {
         aUSDC.mint(address(aaveVault), 500 * 1e6); // 500 USDC yield (below 1000 threshold)
         
         vm.prank(vaultManager);
-        vm.expectRevert("AaveVault: Yield below threshold");
+        vm.expectRevert(ErrorLibrary.YieldBelowThreshold.selector);
         aaveVault.harvestAaveYield();
     }
     
@@ -874,7 +875,7 @@ contract AaveVaultTestSuite is Test {
         uint256 excessiveExposure = 2000000000 * 1e6; // 2B USDC (exceeds 1B limit)
         
         vm.prank(governance);
-        vm.expectRevert("AaveVault: Max exposure too high");
+        vm.expectRevert(ErrorLibrary.ConfigValueTooHigh.selector);
         aaveVault.setMaxAaveExposure(excessiveExposure);
     }
     
@@ -959,12 +960,12 @@ contract AaveVaultTestSuite is Test {
     function test_Configuration_UpdateParametersInvalid_Revert() public {
         // Test yield fee too high
         vm.prank(governance);
-        vm.expectRevert("AaveVault: Yield fee too high");
+        vm.expectRevert(ErrorLibrary.FeeTooHigh.selector);
         aaveVault.updateAaveParameters(1000 * 1e6, 2500, 500); // 25% fee
         
         // Test rebalance threshold too high
         vm.prank(governance);
-        vm.expectRevert("AaveVault: Rebalance threshold too high");
+        vm.expectRevert(ErrorLibrary.InvalidThreshold.selector);
         aaveVault.updateAaveParameters(1000 * 1e6, 1000, 2500); // 25% threshold
     }
     
@@ -1047,7 +1048,7 @@ contract AaveVaultTestSuite is Test {
      */
     function test_Emergency_RecoverUsdc_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("AaveVault: Cannot recover USDC");
+        vm.expectRevert(ErrorLibrary.CannotRecoverUSDC.selector);
         aaveVault.recoverToken(address(usdc), recipient, 1000 * 1e6);
     }
     
@@ -1057,7 +1058,7 @@ contract AaveVaultTestSuite is Test {
      */
     function test_Emergency_RecoverAUsdc_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("AaveVault: Cannot recover aUSDC");
+        vm.expectRevert(ErrorLibrary.CannotRecoverAToken.selector);
         aaveVault.recoverToken(address(aUSDC), recipient, 1000 * 1e6);
     }
 
@@ -1182,7 +1183,7 @@ contract AaveVaultTestSuite is Test {
         vm.deal(address(aaveVault), 1 ether);
         
         vm.prank(admin);
-        vm.expectRevert("AaveVault: Cannot send to zero address");
+        vm.expectRevert(ErrorLibrary.CannotSendToZero.selector);
         aaveVault.recoverETH(payable(address(0)));
     }
 
@@ -1192,7 +1193,7 @@ contract AaveVaultTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("AaveVault: No ETH to recover");
+        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
         aaveVault.recoverETH(payable(admin));
     }
 }

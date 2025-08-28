@@ -97,7 +97,7 @@ function copyCustomFiles() {
   }
 
   // Copy favicon.png
-  const faviconSrc = path.join(__dirname, "..", "docs", FAVICON_PNG);
+  const faviconSrc = path.join(__dirname, FAVICON_PNG);
   const faviconDst = path.join(DOCS_DIR, FAVICON_PNG);
   if (fs.existsSync(faviconSrc)) {
     fs.copyFileSync(faviconSrc, faviconDst);

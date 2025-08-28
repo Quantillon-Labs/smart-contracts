@@ -87,7 +87,7 @@ function ensureThemeAtRoot() {
 
 function copyCustomFiles() {
   // Copy custom JavaScript file
-  const customJsSrc = path.join(__dirname, "..", "docs", CUSTOM_JS);
+  const customJsSrc = path.join(__dirname, CUSTOM_JS);
   const customJsDst = path.join(DOCS_DIR, CUSTOM_JS);
   if (fs.existsSync(customJsSrc)) {
     fs.copyFileSync(customJsSrc, customJsDst);

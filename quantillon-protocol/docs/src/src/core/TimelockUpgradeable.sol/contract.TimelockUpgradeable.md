@@ -1,0 +1,509 @@
+# TimelockUpgradeable
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/TimelockUpgradeable.sol)
+
+**Inherits:**
+Initializable, AccessControlUpgradeable, PausableUpgradeable
+
+**Author:**
+Quantillon Labs
+
+Secure upgrade mechanism with timelock and multi-sig requirements
+
+*Replaces unrestricted upgrade capability with governance-controlled upgrades*
+
+
+## State Variables
+### UPGRADE_DELAY
+Minimum delay for upgrades (48 hours)
+
+
+```solidity
+uint256 public constant UPGRADE_DELAY = 48 hours;
+```
+
+
+### MAX_UPGRADE_DELAY
+Maximum delay for upgrades (7 days)
+
+
+```solidity
+uint256 public constant MAX_UPGRADE_DELAY = 7 days;
+```
+
+
+### MIN_MULTISIG_APPROVALS
+Minimum number of multi-sig approvals required
+
+
+```solidity
+uint256 public constant MIN_MULTISIG_APPROVALS = 2;
+```
+
+
+### MAX_MULTISIG_SIGNERS
+Maximum number of multi-sig signers
+
+
+```solidity
+uint256 public constant MAX_MULTISIG_SIGNERS = 5;
+```
+
+
+### UPGRADE_PROPOSER_ROLE
+Role for proposing upgrades
+
+
+```solidity
+bytes32 public constant UPGRADE_PROPOSER_ROLE = keccak256("UPGRADE_PROPOSER_ROLE");
+```
+
+
+### UPGRADE_EXECUTOR_ROLE
+Role for executing upgrades after timelock
+
+
+```solidity
+bytes32 public constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE");
+```
+
+
+### EMERGENCY_UPGRADER_ROLE
+Role for emergency upgrades (bypasses timelock)
+
+
+```solidity
+bytes32 public constant EMERGENCY_UPGRADER_ROLE = keccak256("EMERGENCY_UPGRADER_ROLE");
+```
+
+
+### MULTISIG_MANAGER_ROLE
+Role for managing multi-sig signers
+
+
+```solidity
+bytes32 public constant MULTISIG_MANAGER_ROLE = keccak256("MULTISIG_MANAGER_ROLE");
+```
+
+
+### pendingUpgrades
+Pending upgrades by implementation address
+
+
+```solidity
+mapping(address => PendingUpgrade) public pendingUpgrades;
+```
+
+
+### multisigSigners
+Multi-sig signers
+
+
+```solidity
+mapping(address => bool) public multisigSigners;
+```
+
+
+### multisigSignerCount
+Number of active multi-sig signers
+
+
+```solidity
+uint256 public multisigSignerCount;
+```
+
+
+### upgradeApprovals
+Upgrade approvals by signer
+
+
+```solidity
+mapping(address => mapping(address => bool)) public upgradeApprovals;
+```
+
+
+### upgradeApprovalCount
+Number of approvals for each pending upgrade
+
+
+```solidity
+mapping(address => uint256) public upgradeApprovalCount;
+```
+
+
+### emergencyMode
+Whether emergency mode is active
+
+
+```solidity
+bool public emergencyMode;
+```
+
+
+## Functions
+### onlyMultisigSigner
+
+
+```solidity
+modifier onlyMultisigSigner();
+```
+
+### onlyEmergencyUpgrader
+
+
+```solidity
+modifier onlyEmergencyUpgrader();
+```
+
+### initialize
+
+
+```solidity
+function initialize(address admin) public initializer;
+```
+
+### proposeUpgrade
+
+Propose an upgrade with timelock
+
+
+```solidity
+function proposeUpgrade(address newImplementation, string calldata description, uint256 customDelay)
+    external
+    onlyRole(UPGRADE_PROPOSER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newImplementation`|`address`|Address of the new implementation|
+|`description`|`string`|Description of the upgrade|
+|`customDelay`|`uint256`|Optional custom delay (must be >= UPGRADE_DELAY)|
+
+
+### approveUpgrade
+
+Approve a pending upgrade (multi-sig signer only)
+
+
+```solidity
+function approveUpgrade(address implementation) external onlyMultisigSigner;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`implementation`|`address`|Address of the implementation to approve|
+
+
+### revokeUpgradeApproval
+
+Revoke approval for a pending upgrade
+
+
+```solidity
+function revokeUpgradeApproval(address implementation) external onlyMultisigSigner;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`implementation`|`address`|Address of the implementation to revoke approval for|
+
+
+### executeUpgrade
+
+Execute an upgrade after timelock and multi-sig approval
+
+
+```solidity
+function executeUpgrade(address implementation) external onlyRole(UPGRADE_EXECUTOR_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`implementation`|`address`|Address of the implementation to execute|
+
+
+### cancelUpgrade
+
+Cancel a pending upgrade (only proposer or admin)
+
+
+```solidity
+function cancelUpgrade(address implementation) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`implementation`|`address`|Address of the implementation to cancel|
+
+
+### emergencyUpgrade
+
+Emergency upgrade (bypasses timelock, requires emergency mode)
+
+
+```solidity
+function emergencyUpgrade(address newImplementation, string calldata description) external onlyEmergencyUpgrader;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newImplementation`|`address`|Address of the new implementation|
+|`description`|`string`|Description of the emergency upgrade|
+
+
+### addMultisigSigner
+
+Add a multi-sig signer
+
+
+```solidity
+function addMultisigSigner(address signer) external onlyRole(MULTISIG_MANAGER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`signer`|`address`|Address of the signer to add|
+
+
+### removeMultisigSigner
+
+Remove a multi-sig signer
+
+
+```solidity
+function removeMultisigSigner(address signer) external onlyRole(MULTISIG_MANAGER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`signer`|`address`|Address of the signer to remove|
+
+
+### toggleEmergencyMode
+
+Toggle emergency mode
+
+
+```solidity
+function toggleEmergencyMode(bool enabled, string calldata reason) external onlyRole(EMERGENCY_UPGRADER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|Whether to enable emergency mode|
+|`reason`|`string`|Reason for the emergency mode change|
+
+
+### getPendingUpgrade
+
+Get pending upgrade details
+
+
+```solidity
+function getPendingUpgrade(address implementation) external view returns (PendingUpgrade memory upgrade);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`implementation`|`address`|Address of the implementation|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`upgrade`|`PendingUpgrade`|Pending upgrade details|
+
+
+### canExecuteUpgrade
+
+Check if an upgrade can be executed
+
+
+```solidity
+function canExecuteUpgrade(address implementation) external view returns (bool canExecute);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`implementation`|`address`|Address of the implementation|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`canExecute`|`bool`|Whether the upgrade can be executed|
+
+
+### hasUpgradeApproval
+
+Get upgrade approval status for a signer
+
+
+```solidity
+function hasUpgradeApproval(address signer, address implementation) external view returns (bool approved);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`signer`|`address`|Address of the signer|
+|`implementation`|`address`|Address of the implementation|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`approved`|`bool`|Whether the signer has approved the upgrade|
+
+
+### getMultisigSigners
+
+Get all multi-sig signers
+
+
+```solidity
+function getMultisigSigners() external view returns (address[] memory signers);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`signers`|`address[]`|Array of signer addresses|
+
+
+### _clearUpgradeApprovals
+
+Clear all approvals for an implementation
+
+
+```solidity
+function _clearUpgradeApprovals(address implementation) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`implementation`|`address`|Address of the implementation|
+
+
+### _clearSignerApprovals
+
+Clear all approvals from a specific signer
+
+
+```solidity
+function _clearSignerApprovals(address signer) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`signer`|`address`|Address of the signer|
+
+
+### _addMultisigSigner
+
+Add a multisig signer (internal)
+
+
+```solidity
+function _addMultisigSigner(address signer) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`signer`|`address`|Address of the signer|
+
+
+### pause
+
+Pause the timelock contract
+
+
+```solidity
+function pause() external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+
+### unpause
+
+Unpause the timelock contract
+
+
+```solidity
+function unpause() external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+
+## Events
+### UpgradeProposed
+
+```solidity
+event UpgradeProposed(
+    address indexed implementation,
+    uint256 proposedAt,
+    uint256 executableAt,
+    string description,
+    address indexed proposer
+);
+```
+
+### UpgradeApproved
+
+```solidity
+event UpgradeApproved(address indexed implementation, address indexed signer, uint256 approvalCount);
+```
+
+### UpgradeExecuted
+
+```solidity
+event UpgradeExecuted(address indexed implementation, address indexed executor, uint256 executedAt);
+```
+
+### UpgradeCancelled
+
+```solidity
+event UpgradeCancelled(address indexed implementation, address indexed canceller);
+```
+
+### MultisigSignerAdded
+
+```solidity
+event MultisigSignerAdded(address indexed signer);
+```
+
+### MultisigSignerRemoved
+
+```solidity
+event MultisigSignerRemoved(address indexed signer);
+```
+
+### EmergencyModeToggled
+
+```solidity
+event EmergencyModeToggled(bool enabled, string reason);
+```
+
+## Structs
+### PendingUpgrade
+
+```solidity
+struct PendingUpgrade {
+    address implementation;
+    uint256 proposedAt;
+    uint256 executableAt;
+    string description;
+    bool isEmergency;
+    address proposer;
+}
+```
+

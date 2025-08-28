@@ -1,0 +1,24 @@
+[submodule "quantillon-roadmap-nft/lib/forge-std"]
+	path = quantillon-roadmap-nft/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "quantillon-roadmap-nft/lib/openzeppelin-contracts-upgradeable"]
+	path = quantillon-roadmap-nft/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
+[submodule "quantillon-protocol/lib/forge-std"]
+	path = quantillon-protocol/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "quantillon-protocol/lib/openzeppelin-contracts"]
+	path = quantillon-protocol/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "quantillon-protocol/lib/foundry-devops"]
+	path = quantillon-protocol/lib/foundry-devops
+	url = https://github.com/chainaccelorg/foundry-devops
+[submodule "quantillon-protocol/lib/chainlink-brownie-contracts"]
+	path = quantillon-protocol/lib/chainlink-brownie-contracts
+	url = https://github.com/smartcontractkit/chainlink-brownie-contracts
+[submodule "quantillon-protocol/lib/solidity-bytes-utils"]
+	path = quantillon-protocol/lib/solidity-bytes-utils
+	url = https://github.com/GNSPS/solidity-bytes-utils
+[submodule "quantillon-protocol/lib/openzeppelin-contracts-upgradeable"]
+	path = quantillon-protocol/lib/openzeppelin-contracts-upgradeable
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable

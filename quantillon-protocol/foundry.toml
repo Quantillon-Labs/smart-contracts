@@ -1,0 +1,83 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+cache_path = "cache"
+
+# Solidity version
+solc_version = "0.8.24"
+evm_version = "paris"
+
+# Optimization
+optimizer = true
+optimizer_runs = 1  # Optimized for deployment size (bytecode reduction)
+via_ir = true
+
+# Gas settings
+gas_price = 0
+gas_limit = 30000000
+block_gas_limit = 30000000
+
+# Base network configuration
+[rpc_endpoints]
+base = "https://mainnet.base.org"
+base_sepolia = "https://sepolia.base.org"
+ethereum = "https://eth.llamarpc.com"
+arbitrum = "https://arb1.arbitrum.io/rpc"
+
+[etherscan]
+base = { key = "${BASESCAN_API_KEY}", url = "https://api.basescan.org/api" }
+base_sepolia = { key = "${BASESCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
+
+# Testing configuration
+[profile.default.fuzz]
+runs = 1000
+
+[profile.default.invariant]
+runs = 256
+depth = 15
+fail_on_revert = false
+
+# Remappings for dependencies
+remappings = [
+    "@openzeppelin/=lib/openzeppelin-contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+    "@chainlink/=lib/chainlink-brownie-contracts/",
+    "@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/",
+    "@foundry-devops/=lib/foundry-devops/",
+    "forge-std/=lib/forge-std/src/"
+]
+
+# Additional compiler settings
+# SMTChecker disabled to avoid Horn solver warnings
+# Uncomment and install z3/Eldarica if formal verification is needed
+# [profile.default.model_checker]
+# contracts = { "src" = [ "all" ] }
+# engine = "chc"
+# targets = [ "assert", "underflow", "overflow", "divByZero", "constantCondition", "popEmptyArray", "outOfBounds" ]
+
+# Production profile for deployment
+[profile.production]
+optimizer = true
+optimizer_runs = 1000000  # Higher optimization for mainnet
+via_ir = true
+
+# Bytecode size optimization profile
+[profile.size_optimized]
+optimizer = true
+optimizer_runs = 1  # Optimize for deployment size
+via_ir = true
+# Additional size optimizations
+[profile.size_optimized.fuzz]
+runs = 1000
+
+[profile.size_optimized.invariant]
+runs = 256
+depth = 15
+fail_on_revert = false
+
+# Testing profile
+[profile.test]
+optimizer = false
+via_ir = false

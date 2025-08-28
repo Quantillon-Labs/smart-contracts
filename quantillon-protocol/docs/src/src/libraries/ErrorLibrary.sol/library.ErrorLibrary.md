@@ -1,5 +1,5 @@
 # ErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/9eefa03bf794fa559e611658208a6e8b169d2d57/src/libraries/ErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/477557f93b6372714192a8d5a721cd226821245f/src/libraries/ErrorLibrary.sol)
 
 Custom errors for Quantillon Protocol
 
@@ -571,6 +571,66 @@ error PositionAlreadyClosed();
 error PositionNotLiquidatable();
 ```
 
+### InsufficientVotingPower
+
+```solidity
+error InsufficientVotingPower();
+```
+
+### VotingPeriodTooShort
+
+```solidity
+error VotingPeriodTooShort();
+```
+
+### VotingPeriodTooLong
+
+```solidity
+error VotingPeriodTooLong();
+```
+
+### ProposalNotFound
+
+```solidity
+error ProposalNotFound();
+```
+
+### ProposalAlreadyExecuted
+
+```solidity
+error ProposalAlreadyExecuted();
+```
+
+### ProposalAlreadyCanceled
+
+```solidity
+error ProposalAlreadyCanceled();
+```
+
+### VotingNotActive
+
+```solidity
+error VotingNotActive();
+```
+
+### AlreadyVoted
+
+```solidity
+error AlreadyVoted();
+```
+
+### QuorumNotMet
+
+```solidity
+error QuorumNotMet();
+```
+
+### ProposalThresholdNotMet
+
+```solidity
+error ProposalThresholdNotMet();
+```
+
 ### RewardOverflow
 
 ```solidity
@@ -659,5 +719,161 @@ error ConfigValueTooHigh();
 
 ```solidity
 error ConfigValueTooLow();
+```
+
+### InvalidDescription
+
+```solidity
+error InvalidDescription();
+```
+
+### ExpiredDeadline
+
+```solidity
+error ExpiredDeadline();
+```
+
+### InvalidRebalancing
+
+```solidity
+error InvalidRebalancing();
+```
+
+### RateLimitExceeded
+
+```solidity
+error RateLimitExceeded();
+```
+
+### BlacklistedAddress
+
+```solidity
+error BlacklistedAddress();
+```
+
+### NotWhitelisted
+
+```solidity
+error NotWhitelisted();
+```
+
+### RateLimitTooHigh
+
+```solidity
+error RateLimitTooHigh();
+```
+
+### AlreadyBlacklisted
+
+```solidity
+error AlreadyBlacklisted();
+```
+
+### NotBlacklisted
+
+```solidity
+error NotBlacklisted();
+```
+
+### AlreadyWhitelisted
+
+```solidity
+error AlreadyWhitelisted();
+```
+
+### PrecisionTooHigh
+
+```solidity
+error PrecisionTooHigh();
+```
+
+### TooManyDecimals
+
+```solidity
+error TooManyDecimals();
+```
+
+### CannotRecoverQEURO
+
+```solidity
+error CannotRecoverQEURO();
+```
+
+### NewCapBelowCurrentSupply
+
+```solidity
+error NewCapBelowCurrentSupply();
+```
+
+### LockTimeTooShort
+
+```solidity
+error LockTimeTooShort();
+```
+
+### LockTimeTooLong
+
+```solidity
+error LockTimeTooLong();
+```
+
+### LockNotExpired
+
+```solidity
+error LockNotExpired();
+```
+
+### NothingToUnlock
+
+```solidity
+error NothingToUnlock();
+```
+
+### VotingNotStarted
+
+```solidity
+error VotingNotStarted();
+```
+
+### VotingEnded
+
+```solidity
+error VotingEnded();
+```
+
+### NoVotingPower
+
+```solidity
+error NoVotingPower();
+```
+
+### VotingNotEnded
+
+```solidity
+error VotingNotEnded();
+```
+
+### ProposalFailed
+
+```solidity
+error ProposalFailed();
+```
+
+### ProposalExecutionFailed
+
+```solidity
+error ProposalExecutionFailed();
+```
+
+### CannotRecoverQTI
+
+```solidity
+error CannotRecoverQTI();
+```
+
+### ProposalCanceled
+
+```solidity
+error ProposalCanceled();
 ```
 

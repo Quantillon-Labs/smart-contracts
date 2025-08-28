@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/9eefa03bf794fa559e611658208a6e8b169d2d57/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -33,7 +33,7 @@ Euro-pegged stablecoin token for the Quantillon protocol
 - Peg: 1:1 with Euro (managed by vault operations)*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -230,7 +230,7 @@ uint256 public minPricePrecision;
 ### constructor
 
 **Note:**
-oz-upgrades-unsafe-allow: constructor
+constructor
 
 
 ```solidity

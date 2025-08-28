@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/9eefa03bf794fa559e611658208a6e8b169d2d57/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -332,7 +332,7 @@ function removeMargin(uint256 positionId, uint256 amount) external nonReentrant 
 
 
 ```solidity
-function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external onlyRole(LIQUIDATOR_ROLE);
+function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
 ```
 
 ### liquidateHedger
@@ -341,7 +341,6 @@ function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) ext
 ```solidity
 function liquidateHedger(address hedger, uint256 positionId, bytes32 salt)
     external
-    onlyRole(LIQUIDATOR_ROLE)
     nonReentrant
     returns (uint256 liquidationReward);
 ```
@@ -424,42 +423,42 @@ function updateHedgingParameters(
     uint256 newLiquidationThreshold,
     uint256 newMaxLeverage,
     uint256 newLiquidationPenalty
-) external onlyRole(GOVERNANCE_ROLE);
+) external;
 ```
 
 ### updateInterestRates
 
 
 ```solidity
-function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external onlyRole(GOVERNANCE_ROLE);
+function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external;
 ```
 
 ### setHedgingFees
 
 
 ```solidity
-function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external onlyRole(GOVERNANCE_ROLE);
+function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external;
 ```
 
 ### emergencyClosePosition
 
 
 ```solidity
-function emergencyClosePosition(address hedger, uint256 positionId) external onlyRole(EMERGENCY_ROLE);
+function emergencyClosePosition(address hedger, uint256 positionId) external;
 ```
 
 ### pause
 
 
 ```solidity
-function pause() external onlyRole(EMERGENCY_ROLE);
+function pause() external;
 ```
 
 ### unpause
 
 
 ```solidity
-function unpause() external onlyRole(EMERGENCY_ROLE);
+function unpause() external;
 ```
 
 ### hasPendingLiquidationCommitment
@@ -497,16 +496,14 @@ function isHedgingActive() external view returns (bool);
 
 
 ```solidity
-function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external onlyRole(LIQUIDATOR_ROLE);
+function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
 ```
 
 ### cancelLiquidationCommitment
 
 
 ```solidity
-function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt)
-    external
-    onlyRole(LIQUIDATOR_ROLE);
+function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;
 ```
 
 ### _hasPendingLiquidationCommitment
@@ -520,14 +517,14 @@ function _hasPendingLiquidationCommitment(address hedger, uint256 positionId) in
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverToken(address token, address to, uint256 amount) external;
 ```
 
 ### recoverETH
 
 
 ```solidity
-function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverETH(address payable to) external;
 ```
 
 ## Events

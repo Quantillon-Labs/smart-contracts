@@ -1,5 +1,5 @@
 # SecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/SecureUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/9eefa03bf794fa559e611658208a6e8b169d2d57/src/core/SecureUpgradeable.sol)
 
 **Inherits:**
 UUPSUpgradeable, AccessControlUpgradeable

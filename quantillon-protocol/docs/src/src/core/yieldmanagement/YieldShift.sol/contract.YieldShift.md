@@ -1,18 +1,8 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/9eefa03bf794fa559e611658208a6e8b169d2d57/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
-
-**Author:**
-Quantillon Labs
-
-Dynamic yield redistribution mechanism between Users and Hedgers
-
-*Core innovation of Quantillon Protocol - balances pools via yield incentives*
-
-**Note:**
-security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -38,8 +28,6 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
 
 ### usdc
-USDC token contract
-
 
 ```solidity
 IERC20 public usdc;
@@ -47,8 +35,6 @@ IERC20 public usdc;
 
 
 ### userPool
-User pool contract
-
 
 ```solidity
 IUserPool public userPool;
@@ -56,8 +42,6 @@ IUserPool public userPool;
 
 
 ### hedgerPool
-Hedger pool contract
-
 
 ```solidity
 IHedgerPool public hedgerPool;
@@ -65,8 +49,6 @@ IHedgerPool public hedgerPool;
 
 
 ### aaveVault
-Aave vault contract
-
 
 ```solidity
 IAaveVault public aaveVault;
@@ -74,8 +56,6 @@ IAaveVault public aaveVault;
 
 
 ### stQEURO
-stQEURO token contract (primary yield-bearing token)
-
 
 ```solidity
 IstQEURO public stQEURO;
@@ -275,10 +255,6 @@ function initialize(
 
 ### updateYieldDistribution
 
-Update yield distribution based on time-weighted average pool balances
-
-*Uses TWAP to prevent gaming by large actors*
-
 
 ```solidity
 function updateYieldDistribution() external nonReentrant whenNotPaused;
@@ -286,34 +262,26 @@ function updateYieldDistribution() external nonReentrant whenNotPaused;
 
 ### addYield
 
-Add new yield from protocol operations
-
 
 ```solidity
-function addYield(uint256 yieldAmount, string calldata source) external onlyRole(YIELD_MANAGER_ROLE) nonReentrant;
+function addYield(uint256 yieldAmount, string calldata source) external nonReentrant;
 ```
 
 ### claimUserYield
 
-Claim pending yield for a user
-
 
 ```solidity
-function claimUserYield(address user) external nonReentrant checkHoldingPeriod returns (uint256 yieldAmount);
+function claimUserYield(address user) external nonReentrant returns (uint256 yieldAmount);
 ```
 
 ### claimHedgerYield
 
-Claim pending yield for a hedger
-
 
 ```solidity
-function claimHedgerYield(address hedger) external nonReentrant checkHoldingPeriod returns (uint256 yieldAmount);
+function claimHedgerYield(address hedger) external nonReentrant returns (uint256 yieldAmount);
 ```
 
 ### _calculateOptimalYieldShift
-
-Calculate optimal yield shift based on pool ratio
 
 
 ```solidity
@@ -322,16 +290,12 @@ function _calculateOptimalYieldShift(uint256 poolRatio) internal view returns (u
 
 ### _applyGradualAdjustment
 
-Apply gradual adjustment to avoid sudden shifts
-
 
 ```solidity
 function _applyGradualAdjustment(uint256 targetShift) internal view returns (uint256);
 ```
 
 ### _getCurrentPoolMetrics
-
-Get current pool metrics for yield shift calculation
 
 
 ```solidity
@@ -343,8 +307,6 @@ function _getCurrentPoolMetrics()
 
 ### _isWithinTolerance
 
-Check if value is within tolerance of target
-
 
 ```solidity
 function _isWithinTolerance(uint256 value, uint256 target, uint256 toleranceBps) internal pure returns (bool);
@@ -352,18 +314,10 @@ function _isWithinTolerance(uint256 value, uint256 target, uint256 toleranceBps)
 
 ### updateLastDepositTime
 
-Update last deposit time for a user
-
 
 ```solidity
 function updateLastDepositTime(address user) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|User address|
-
 
 ### getCurrentYieldShift
 
@@ -473,44 +427,42 @@ function _calculateHedgerAllocation() internal view returns (uint256);
 
 
 ```solidity
-function setYieldShiftParameters(uint256 _baseYieldShift, uint256 _maxYieldShift, uint256 _adjustmentSpeed)
-    external
-    onlyRole(GOVERNANCE_ROLE);
+function setYieldShiftParameters(uint256 _baseYieldShift, uint256 _maxYieldShift, uint256 _adjustmentSpeed) external;
 ```
 
 ### setTargetPoolRatio
 
 
 ```solidity
-function setTargetPoolRatio(uint256 _targetPoolRatio) external onlyRole(GOVERNANCE_ROLE);
+function setTargetPoolRatio(uint256 _targetPoolRatio) external;
 ```
 
 ### updateYieldAllocation
 
 
 ```solidity
-function updateYieldAllocation(address user, uint256 amount, bool isUser) external onlyRole(YIELD_MANAGER_ROLE);
+function updateYieldAllocation(address user, uint256 amount, bool isUser) external;
 ```
 
 ### emergencyYieldDistribution
 
 
 ```solidity
-function emergencyYieldDistribution(uint256 userAmount, uint256 hedgerAmount) external onlyRole(EMERGENCY_ROLE);
+function emergencyYieldDistribution(uint256 userAmount, uint256 hedgerAmount) external;
 ```
 
 ### pauseYieldDistribution
 
 
 ```solidity
-function pauseYieldDistribution() external onlyRole(EMERGENCY_ROLE);
+function pauseYieldDistribution() external;
 ```
 
 ### resumeYieldDistribution
 
 
 ```solidity
-function resumeYieldDistribution() external onlyRole(EMERGENCY_ROLE);
+function resumeYieldDistribution() external;
 ```
 
 ### getYieldShiftConfig
@@ -532,18 +484,12 @@ function isYieldDistributionActive() external view returns (bool);
 
 ### harvestAndDistributeAaveYield
 
-Harvest yield from Aave and distribute automatically
-
 
 ```solidity
 function harvestAndDistributeAaveYield() external nonReentrant;
 ```
 
 ### checkAndUpdateYieldDistribution
-
-Update yield distribution if conditions are met
-
-*Uses TWAP and includes holding period checks with bounds checking*
 
 
 ```solidity
@@ -552,27 +498,12 @@ function checkAndUpdateYieldDistribution() external;
 
 ### forceUpdateYieldDistribution
 
-Force update yield distribution (governance only)
-
-*Emergency function to update yield distribution when normal conditions aren't met*
-
 
 ```solidity
-function forceUpdateYieldDistribution() external onlyRole(GOVERNANCE_ROLE);
-```
-
-### checkHoldingPeriod
-
-Modifier to check minimum holding period with bounds checking
-
-
-```solidity
-modifier checkHoldingPeriod();
+function forceUpdateYieldDistribution() external;
 ```
 
 ### getTimeWeightedAverage
-
-Calculate time-weighted average pool size over a specified period
 
 
 ```solidity
@@ -581,24 +512,8 @@ function getTimeWeightedAverage(PoolSnapshot[] storage poolHistory, uint256 peri
     view
     returns (uint256);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`poolHistory`|`PoolSnapshot[]`|Array of pool snapshots|
-|`period`|`uint256`|Time period to calculate average over|
-|`isUserPool`|`bool`|Whether this is for user pool (true) or hedger pool (false)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Time-weighted average pool size|
-
 
 ### _recordPoolSnapshot
-
-Record current pool sizes in history for TWAP calculations
 
 
 ```solidity
@@ -607,52 +522,24 @@ function _recordPoolSnapshot() internal;
 
 ### _addToPoolHistory
 
-Add snapshot to pool history array
-
 
 ```solidity
 function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool) internal;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`poolHistory`|`PoolSnapshot[]`|Array to add snapshot to|
-|`poolSize`|`uint256`|Current pool size|
-|`isUserPool`|`bool`|Whether this is for user pool (true) or hedger pool (false)|
-
 
 ### recoverToken
 
-Recover accidentally sent tokens
-
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverToken(address token, address to, uint256 amount) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`token`|`address`|Token address to recover|
-|`to`|`address`|Recipient address|
-|`amount`|`uint256`|Amount to recover|
-
 
 ### recoverETH
 
-Recover accidentally sent ETH
-
 
 ```solidity
-function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverETH(address payable to) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`to`|`address payable`|Recipient address|
-
 
 ## Events
 ### YieldDistributionUpdated

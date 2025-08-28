@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/9eefa03bf794fa559e611658208a6e8b169d2d57/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -172,37 +172,28 @@ function initialize(
 
 
 ```solidity
-function deployToAave(uint256 amount)
-    external
-    onlyRole(VAULT_MANAGER_ROLE)
-    nonReentrant
-    whenNotPaused
-    returns (uint256 aTokensReceived);
+function deployToAave(uint256 amount) external nonReentrant whenNotPaused returns (uint256 aTokensReceived);
 ```
 
 ### withdrawFromAave
 
 
 ```solidity
-function withdrawFromAave(uint256 amount)
-    external
-    onlyRole(VAULT_MANAGER_ROLE)
-    nonReentrant
-    returns (uint256 usdcWithdrawn);
+function withdrawFromAave(uint256 amount) external nonReentrant returns (uint256 usdcWithdrawn);
 ```
 
 ### claimAaveRewards
 
 
 ```solidity
-function claimAaveRewards() external onlyRole(VAULT_MANAGER_ROLE) nonReentrant returns (uint256 rewardsClaimed);
+function claimAaveRewards() external nonReentrant returns (uint256 rewardsClaimed);
 ```
 
 ### harvestAaveYield
 
 
 ```solidity
-function harvestAaveYield() external onlyRole(VAULT_MANAGER_ROLE) nonReentrant returns (uint256 yieldHarvested);
+function harvestAaveYield() external nonReentrant returns (uint256 yieldHarvested);
 ```
 
 ### getAvailableYield
@@ -278,7 +269,7 @@ function _isAaveHealthy() internal view returns (bool);
 
 
 ```solidity
-function autoRebalance() external onlyRole(VAULT_MANAGER_ROLE) returns (bool rebalanced, uint256 newAllocation);
+function autoRebalance() external returns (bool rebalanced, uint256 newAllocation);
 ```
 
 ### calculateOptimalAllocation
@@ -292,14 +283,14 @@ function calculateOptimalAllocation() external view returns (uint256 optimalAllo
 
 
 ```solidity
-function setMaxAaveExposure(uint256 _maxExposure) external onlyRole(GOVERNANCE_ROLE);
+function setMaxAaveExposure(uint256 _maxExposure) external;
 ```
 
 ### emergencyWithdrawFromAave
 
 
 ```solidity
-function emergencyWithdrawFromAave() external onlyRole(EMERGENCY_ROLE) returns (uint256 amountWithdrawn);
+function emergencyWithdrawFromAave() external returns (uint256 amountWithdrawn);
 ```
 
 ### getRiskMetrics
@@ -317,8 +308,7 @@ function getRiskMetrics()
 
 ```solidity
 function updateAaveParameters(uint256 newHarvestThreshold, uint256 newYieldFee, uint256 newRebalanceThreshold)
-    external
-    onlyRole(GOVERNANCE_ROLE);
+    external;
 ```
 
 ### getAaveConfig
@@ -335,35 +325,35 @@ function getAaveConfig()
 
 
 ```solidity
-function toggleEmergencyMode(bool enabled, string calldata reason) external onlyRole(EMERGENCY_ROLE);
+function toggleEmergencyMode(bool enabled, string calldata reason) external;
 ```
 
 ### pause
 
 
 ```solidity
-function pause() external onlyRole(EMERGENCY_ROLE);
+function pause() external;
 ```
 
 ### unpause
 
 
 ```solidity
-function unpause() external onlyRole(EMERGENCY_ROLE);
+function unpause() external;
 ```
 
 ### recoverToken
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverToken(address token, address to, uint256 amount) external;
 ```
 
 ### recoverETH
 
 
 ```solidity
-function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverETH(address payable to) external;
 ```
 
 ## Events

@@ -1,5 +1,5 @@
 # IQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/interfaces/IQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/9eefa03bf794fa559e611658208a6e8b169d2d57/src/interfaces/IQEUROToken.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Read-only interface for the QEURO token
 *Exposes ERC20 metadata and helper views used by integrators*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions

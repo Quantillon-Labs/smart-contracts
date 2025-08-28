@@ -1,5 +1,5 @@
 # VaultMath
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdfa9b97a216b9d7d0aa6ab6f91d4d59eb78a4cf/src/libraries/VaultMath.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/9eefa03bf794fa559e611658208a6e8b169d2d57/src/libraries/VaultMath.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Mathematical operations library for Quantillon Protocol
 *Provides safe math operations with high precision for financial calculations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables

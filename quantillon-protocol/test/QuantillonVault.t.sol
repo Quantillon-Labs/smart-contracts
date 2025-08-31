@@ -177,7 +177,7 @@ contract QuantillonVaultTestSuite is Test {
      * @notice Test successful initialization
      * @dev Verifies that the contract is properly initialized with correct roles and settings
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check roles are properly assigned
         assertTrue(vault.hasRole(0x00, admin)); // DEFAULT_ADMIN_ROLE is 0x00
         assertTrue(vault.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
@@ -462,7 +462,7 @@ contract QuantillonVaultTestSuite is Test {
      * @notice Test calculating mint amount
      * @dev Verifies that mint amount calculations are correct
      */
-    function test_View_CalculateMintAmount() public {
+    function test_View_CalculateMintAmount() public view {
         uint256 usdcAmount = MINT_AMOUNT;
         
         (uint256 qeuroAmount, uint256 fee) = vault.calculateMintAmount(usdcAmount);
@@ -476,7 +476,7 @@ contract QuantillonVaultTestSuite is Test {
      * @notice Test calculating redeem amount
      * @dev Verifies that redeem amount calculations are correct
      */
-    function test_View_CalculateRedeemAmount() public {
+    function test_View_CalculateRedeemAmount() public view {
         uint256 qeuroAmount = REDEEM_AMOUNT;
         
         (uint256 usdcAmount, uint256 fee) = vault.calculateRedeemAmount(qeuroAmount);

@@ -113,7 +113,7 @@ contract QEUROTokenTestSuite is Test {
      * @notice Test successful contract initialization
      * @dev Verifies that the contract is properly initialized with correct roles and settings
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check token details
         assertEq(qeuroToken.name(), "Quantillon Euro");
         assertEq(qeuroToken.symbol(), "QEURO");
@@ -881,7 +881,7 @@ contract QEUROTokenTestSuite is Test {
      * @notice Test price normalization with different decimal precisions
      * @dev Verifies that price normalization works correctly for different feed decimals
      */
-    function test_Utility_NormalizePrice() public {
+    function test_Utility_NormalizePrice() public view {
         // Test with 8 decimals (like Chainlink)
         uint256 price8Decimals = 100000000; // 1.00 with 8 decimals
         uint256 normalized = qeuroToken.normalizePrice(price8Decimals, 8);
@@ -920,7 +920,7 @@ contract QEUROTokenTestSuite is Test {
      * @notice Test price precision validation
      * @dev Verifies that price precision validation works correctly
      */
-    function test_Utility_ValidatePricePrecision() public {
+    function test_Utility_ValidatePricePrecision() public view {
         // Test with valid precision (normalized to 18 decimals)
         // minPrecision is 1e8, so we need a price that when normalized to 18 decimals is >= 1e8
         uint256 validPrice = 1; // 1 with 8 decimals, normalized to 18 decimals = 1e10
@@ -970,7 +970,7 @@ contract QEUROTokenTestSuite is Test {
      * @notice Test token info retrieval
      * @dev Verifies that complete token information is returned correctly
      */
-    function test_Utility_GetTokenInfo() public {
+    function test_Utility_GetTokenInfo() public view {
         (
             string memory name_,
             string memory symbol_,

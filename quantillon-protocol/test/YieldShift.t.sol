@@ -120,7 +120,7 @@ contract MockHedgerPool {
 contract MockAaveVault {
     uint256 public yieldAmount = 50000 * 1e6; // 50K USDC yield
     
-    function harvestAaveYield() external returns (uint256) {
+    function harvestAaveYield() external view returns (uint256) {
         return yieldAmount;
     }
     
@@ -297,7 +297,7 @@ contract YieldShiftTestSuite is Test {
      * @notice Test successful initialization
      * @dev Verifies proper contract setup and configuration
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check roles
         assertTrue(yieldShift.hasRole(yieldShift.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(yieldShift.hasRole(yieldShift.GOVERNANCE_ROLE(), admin));
@@ -376,7 +376,7 @@ contract YieldShiftTestSuite is Test {
      * @notice Test yield distribution update
      * @dev Verifies yield distribution mechanism
      */
-    function test_YieldDistribution_UpdateYieldDistribution() public {
+    function test_YieldDistribution_UpdateYieldDistribution() public view {
         // Test yield distribution configuration instead of the update function
         (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed, uint256 lastUpdate) = yieldShift.getYieldShiftConfig();
         
@@ -670,7 +670,7 @@ contract YieldShiftTestSuite is Test {
      * @notice Test pool metrics retrieval
      * @dev Verifies pool metrics calculation
      */
-    function test_PoolMetrics_GetPoolMetrics() public {
+    function test_PoolMetrics_GetPoolMetrics() public view {
         (uint256 userPoolSize, uint256 hedgerPoolSize, uint256 poolRatio, uint256 targetRatio) = yieldShift.getPoolMetrics();
         
         assertEq(userPoolSize, userPool.getTotalDeposits());
@@ -686,7 +686,7 @@ contract YieldShiftTestSuite is Test {
      * @notice Test optimal yield shift calculation
      * @dev Verifies yield shift optimization logic
      */
-    function test_PoolMetrics_CalculateOptimalYieldShift() public {
+    function test_PoolMetrics_CalculateOptimalYieldShift() public view {
         (uint256 optimalShift, uint256 currentDeviation) = yieldShift.calculateOptimalYieldShift();
         
         // Check that optimal shift is within bounds
@@ -1059,7 +1059,7 @@ contract YieldShiftTestSuite is Test {
      * @notice Test historical yield shift data
      * @dev Verifies historical data calculations
      */
-    function test_ViewFunctions_GetHistoricalYieldShift() public {
+    function test_ViewFunctions_GetHistoricalYieldShift() public view {
         // Test historical data without updating yield distribution to avoid TWAP issues
         // Get historical data for last 1 hour (should return current state if no history)
         (uint256 averageShift, uint256 maxShift, uint256 minShift, uint256 volatility) = yieldShift.getHistoricalYieldShift(1 hours);
@@ -1294,7 +1294,7 @@ contract YieldShiftTestSuite is Test {
      * @notice Test get yield shift configuration
      * @dev Verifies that yield shift configuration can be retrieved
      */
-    function test_View_GetYieldShiftConfig() public {
+    function test_View_GetYieldShiftConfig() public view {
         (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed_, uint256 lastUpdate) = yieldShift.getYieldShiftConfig();
         
         assertGt(baseShift, 0);

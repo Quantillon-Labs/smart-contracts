@@ -212,7 +212,7 @@ contract HedgerPoolTestSuite is Test {
      * @notice Test successful contract initialization
      * @dev Verifies that the contract is properly initialized with correct roles and settings
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check roles are properly assigned
         assertTrue(hedgerPool.hasRole(0x00, admin)); // DEFAULT_ADMIN_ROLE is 0x00
         assertTrue(hedgerPool.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
@@ -1056,7 +1056,7 @@ contract HedgerPoolTestSuite is Test {
      * @notice Test get hedging configuration
      * @dev Verifies that hedging configuration can be retrieved
      */
-    function test_View_GetHedgingConfig() public {
+    function test_View_GetHedgingConfig() public view {
         (uint256 minMarginRatio_, uint256 liquidationThreshold_, uint256 maxLeverage_, uint256 liquidationPenalty_, uint256 entryFee_, uint256 exitFee_) = hedgerPool.getHedgingConfig();
         
         assertGt(maxLeverage_, 0);

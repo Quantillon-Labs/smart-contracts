@@ -250,7 +250,7 @@ contract UserPoolTestSuite is Test {
      * @notice Test successful contract initialization
      * @dev Verifies that the contract is properly initialized with correct roles and settings
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check roles are properly assigned
         assertTrue(userPool.hasRole(0x00, admin)); // DEFAULT_ADMIN_ROLE is 0x00
         assertTrue(userPool.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
@@ -816,7 +816,7 @@ contract UserPoolTestSuite is Test {
      * @notice Test calculating projected rewards
      * @dev Verifies that projected rewards are calculated correctly
      */
-    function test_View_CalculateProjectedRewards() public {
+    function test_View_CalculateProjectedRewards() public view {
         uint256 duration = 365 days;
         uint256 projectedRewards = userPool.calculateProjectedRewards(STAKE_AMOUNT, duration);
         
@@ -1191,7 +1191,7 @@ contract UserPoolTestSuite is Test {
      * @notice Test get staking APY
      * @dev Verifies that staking APY can be retrieved
      */
-    function test_View_GetStakingAPY() public {
+    function test_View_GetStakingAPY() public view {
         uint256 stakingAPY = userPool.getStakingAPY();
         assertGe(stakingAPY, 0);
     }
@@ -1200,7 +1200,7 @@ contract UserPoolTestSuite is Test {
      * @notice Test get deposit APY
      * @dev Verifies that deposit APY can be retrieved
      */
-    function test_View_GetDepositAPY() public {
+    function test_View_GetDepositAPY() public view {
         uint256 depositAPY = userPool.getDepositAPY();
         assertGe(depositAPY, 0);
     }
@@ -1209,7 +1209,7 @@ contract UserPoolTestSuite is Test {
      * @notice Test get pool configuration
      * @dev Verifies that pool configuration can be retrieved
      */
-    function test_View_GetPoolConfig() public {
+    function test_View_GetPoolConfig() public view {
         (uint256 minStakeAmount_, uint256 unstakingCooldown_, uint256 depositFee_, uint256 withdrawalFee_, uint256 performanceFee_) = userPool.getPoolConfig();
         
         assertGe(depositFee_, 0);

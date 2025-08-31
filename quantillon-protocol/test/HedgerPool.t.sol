@@ -260,7 +260,7 @@ contract HedgerPoolTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero USDC
@@ -274,7 +274,7 @@ contract HedgerPoolTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation2), initData2);
         
         // Test with zero oracle
@@ -288,7 +288,7 @@ contract HedgerPoolTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation3), initData3);
         
         // Test with zero YieldShift
@@ -302,7 +302,7 @@ contract HedgerPoolTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation4), initData4);
     }
     

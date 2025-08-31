@@ -229,7 +229,8 @@ contract stQEUROTokenTestSuite is Test {
      * @dev Verifies that initialization fails with invalid parameters
      */
     function test_Initialization_ZeroAddresses_Revert() public {
-        stQEUROToken newImplementation = new stQEUROToken();
+        // Create implementation once to reuse
+        stQEUROToken implementation = new stQEUROToken();
         
         // Test with zero admin
         bytes memory initData1 = abi.encodeWithSelector(
@@ -243,10 +244,9 @@ contract stQEUROTokenTestSuite is Test {
         );
         
         vm.expectRevert("stQEURO: Admin cannot be zero");
-        new ERC1967Proxy(address(newImplementation), initData1);
+        new ERC1967Proxy(address(implementation), initData1);
         
         // Test with zero QEURO
-        stQEUROToken newImplementation2 = new stQEUROToken();
         bytes memory initData2 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
             admin,
@@ -258,10 +258,9 @@ contract stQEUROTokenTestSuite is Test {
         );
         
         vm.expectRevert("stQEURO: QEURO cannot be zero");
-        new ERC1967Proxy(address(newImplementation2), initData2);
+        new ERC1967Proxy(address(implementation), initData2);
         
         // Test with zero YieldShift
-        stQEUROToken newImplementation3 = new stQEUROToken();
         bytes memory initData3 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
             admin,
@@ -273,10 +272,9 @@ contract stQEUROTokenTestSuite is Test {
         );
         
         vm.expectRevert("stQEURO: YieldShift cannot be zero");
-        new ERC1967Proxy(address(newImplementation3), initData3);
+        new ERC1967Proxy(address(implementation), initData3);
         
         // Test with zero USDC
-        stQEUROToken newImplementation4 = new stQEUROToken();
         bytes memory initData4 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
             admin,
@@ -288,10 +286,9 @@ contract stQEUROTokenTestSuite is Test {
         );
         
         vm.expectRevert("stQEURO: USDC cannot be zero");
-        new ERC1967Proxy(address(newImplementation4), initData4);
+        new ERC1967Proxy(address(implementation), initData4);
         
         // Test with zero treasury
-        stQEUROToken newImplementation5 = new stQEUROToken();
         bytes memory initData5 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
             admin,
@@ -303,7 +300,7 @@ contract stQEUROTokenTestSuite is Test {
         );
         
         vm.expectRevert("stQEURO: Treasury cannot be zero");
-        new ERC1967Proxy(address(newImplementation5), initData5);
+        new ERC1967Proxy(address(implementation), initData5);
     }
     
     /**

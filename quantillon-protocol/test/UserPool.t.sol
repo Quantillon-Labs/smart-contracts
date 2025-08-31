@@ -283,7 +283,8 @@ contract UserPoolTestSuite is Test {
      * @dev Verifies that initialization fails with invalid parameters
      */
     function test_Initialization_ZeroAddresses_Revert() public {
-        UserPool newImplementation = new UserPool();
+        // Create implementation once to reuse
+        UserPool implementation = new UserPool();
         
         // Test with zero admin
         bytes memory initData1 = abi.encodeWithSelector(
@@ -297,10 +298,9 @@ contract UserPoolTestSuite is Test {
         );
         
         vm.expectRevert("UserPool: Admin cannot be zero");
-        new ERC1967Proxy(address(newImplementation), initData1);
+        new ERC1967Proxy(address(implementation), initData1);
         
         // Test with zero QEURO
-        UserPool newImplementation2 = new UserPool();
         bytes memory initData2 = abi.encodeWithSelector(
             UserPool.initialize.selector,
             admin,
@@ -312,10 +312,9 @@ contract UserPoolTestSuite is Test {
         );
         
         vm.expectRevert("UserPool: QEURO cannot be zero");
-        new ERC1967Proxy(address(newImplementation2), initData2);
+        new ERC1967Proxy(address(implementation), initData2);
         
         // Test with zero USDC
-        UserPool newImplementation3 = new UserPool();
         bytes memory initData3 = abi.encodeWithSelector(
             UserPool.initialize.selector,
             admin,
@@ -327,10 +326,9 @@ contract UserPoolTestSuite is Test {
         );
         
         vm.expectRevert("UserPool: USDC cannot be zero");
-        new ERC1967Proxy(address(newImplementation3), initData3);
+        new ERC1967Proxy(address(implementation), initData3);
         
         // Test with zero vault
-        UserPool newImplementation4 = new UserPool();
         bytes memory initData4 = abi.encodeWithSelector(
             UserPool.initialize.selector,
             admin,
@@ -342,10 +340,9 @@ contract UserPoolTestSuite is Test {
         );
         
         vm.expectRevert("UserPool: Vault cannot be zero");
-        new ERC1967Proxy(address(newImplementation4), initData4);
+        new ERC1967Proxy(address(implementation), initData4);
         
         // Test with zero YieldShift
-        UserPool newImplementation5 = new UserPool();
         bytes memory initData5 = abi.encodeWithSelector(
             UserPool.initialize.selector,
             admin,
@@ -357,7 +354,7 @@ contract UserPoolTestSuite is Test {
         );
         
         vm.expectRevert("UserPool: YieldShift cannot be zero");
-        new ERC1967Proxy(address(newImplementation5), initData5);
+        new ERC1967Proxy(address(implementation), initData5);
     }
     
     /**

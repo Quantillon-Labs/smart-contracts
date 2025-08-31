@@ -229,7 +229,7 @@ contract MockPoolAddressesProvider {
         return poolAddress;
     }
     
-    function getPriceOracle() external view returns (address) {
+    function getPriceOracle() external pure returns (address) {
         return address(0x1);
     }
 }
@@ -410,7 +410,7 @@ contract AaveVaultTestSuite is Test {
      * @notice Test successful initialization
      * @dev Verifies proper contract setup and configuration
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check roles
         assertTrue(aaveVault.hasRole(aaveVault.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(aaveVault.hasRole(aaveVault.GOVERNANCE_ROLE(), admin));
@@ -752,7 +752,7 @@ contract AaveVaultTestSuite is Test {
      * @notice Test getting Aave APY
      * @dev Verifies APY calculation
      */
-    function test_AavePosition_GetAaveAPY() public {
+    function test_AavePosition_GetAaveAPY() public view {
         uint256 aaveAPY = aaveVault.getAaveAPY();
         
         // Check that APY is reasonable (should be around 3% based on mock)
@@ -790,7 +790,7 @@ contract AaveVaultTestSuite is Test {
      * @notice Test getting Aave market data
      * @dev Verifies market data retrieval
      */
-    function test_AaveMarket_GetAaveMarketData() public {
+    function test_AaveMarket_GetAaveMarketData() public view {
         (uint256 supplyRate, uint256 utilizationRate, uint256 totalSupply, uint256 availableLiquidity) = aaveVault.getAaveMarketData();
         
         // Check market data
@@ -806,7 +806,7 @@ contract AaveVaultTestSuite is Test {
      * @notice Test checking Aave health
      * @dev Verifies health monitoring
      */
-    function test_AaveMarket_CheckAaveHealth() public {
+    function test_AaveMarket_CheckAaveHealth() public view {
         (bool isHealthy, bool pauseStatus, uint256 lastUpdate) = aaveVault.checkAaveHealth();
         
         // Check health status
@@ -844,7 +844,7 @@ contract AaveVaultTestSuite is Test {
      * @notice Test calculating optimal allocation
      * @dev Verifies allocation optimization
      */
-    function test_AutomaticStrategies_CalculateOptimalAllocation() public {
+    function test_AutomaticStrategies_CalculateOptimalAllocation() public view {
         (uint256 optimalAllocation, uint256 expectedYield) = aaveVault.calculateOptimalAllocation();
         
         // Check optimal allocation
@@ -1135,7 +1135,7 @@ contract AaveVaultTestSuite is Test {
      * @notice Test get Aave configuration
      * @dev Verifies that Aave configuration can be retrieved
      */
-    function test_View_GetAaveConfig() public {
+    function test_View_GetAaveConfig() public view {
         (address aavePool_, address aUSDC_, uint256 harvestThreshold_, uint256 yieldFee_, uint256 maxExposure_) = aaveVault.getAaveConfig();
         
         assertEq(aavePool_, address(aavePool));

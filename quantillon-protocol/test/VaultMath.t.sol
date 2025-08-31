@@ -109,7 +109,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test mulDiv with normal values
      * @dev Verifies basic multiplication and division with rounding
      */
-    function test_BasicMath_MulDivNormal() public {
+    function test_BasicMath_MulDivNormal() public pure {
         uint256 result = VaultMath.mulDiv(100, 200, 50);
         assertEq(result, 400);
     }
@@ -118,7 +118,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test mulDiv with rounding up
      * @dev Verifies that remainder >= divisor/2 results in rounding up
      */
-    function test_BasicMath_MulDivRoundingUp() public {
+    function test_BasicMath_MulDivRoundingUp() public pure {
         uint256 result = VaultMath.mulDiv(100, 201, 50);
         assertEq(result, 402); // Should round up from 402.02
     }
@@ -127,7 +127,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test mulDiv with rounding down
      * @dev Verifies that remainder < divisor/2 results in rounding down
      */
-    function test_BasicMath_MulDivRoundingDown() public {
+    function test_BasicMath_MulDivRoundingDown() public pure {
         uint256 result = VaultMath.mulDiv(100, 199, 50);
         assertEq(result, 398); // Should round down from 398.02
     }
@@ -136,7 +136,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test mulDiv with zero values
      * @dev Verifies behavior with zero inputs
      */
-    function test_BasicMath_MulDivWithZeros() public {
+    function test_BasicMath_MulDivWithZeros() public pure {
         uint256 result1 = VaultMath.mulDiv(0, 100, 50);
         assertEq(result1, 0);
         
@@ -167,7 +167,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test min function
      * @dev Verifies minimum value calculation
      */
-    function test_BasicMath_Min() public {
+    function test_BasicMath_Min() public pure {
         assertEq(VaultMath.min(100, 200), 100);
         assertEq(VaultMath.min(200, 100), 100);
         assertEq(VaultMath.min(100, 100), 100);
@@ -177,7 +177,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test max function
      * @dev Verifies maximum value calculation
      */
-    function test_BasicMath_Max() public {
+    function test_BasicMath_Max() public pure {
         assertEq(VaultMath.max(100, 200), 200);
         assertEq(VaultMath.max(200, 100), 200);
         assertEq(VaultMath.max(100, 100), 100);
@@ -191,30 +191,30 @@ contract VaultMathTestSuite is Test {
      * @notice Test percentageOf with normal values
      * @dev Verifies percentage calculation
      */
-    function test_Percentage_PercentageOfNormal() public {
-        uint256 result = VaultMath.percentageOf(1000, 500); // 5% of 1000
-        assertEq(result, 50);
+    function test_Percentage_PercentageOfNormal() public pure {
+        uint256 result = VaultMath.percentageOf(1000, 25);
+        assertEq(result, 250); // 25% of 1000 = 250
     }
     
     /**
      * @notice Test percentageOf with zero values
      * @dev Verifies behavior with zero inputs
      */
-    function test_Percentage_PercentageOfWithZeros() public {
-        uint256 result1 = VaultMath.percentageOf(0, 500);
-        assertEq(result1, 0);
+    function test_Percentage_PercentageOfWithZeros() public pure {
+        uint256 result = VaultMath.percentageOf(0, 50);
+        assertEq(result, 0);
         
-        uint256 result2 = VaultMath.percentageOf(1000, 0);
-        assertEq(result2, 0);
+        result = VaultMath.percentageOf(1000, 0);
+        assertEq(result, 0);
     }
     
     /**
      * @notice Test percentageOf with 100% should return full amount
      * @dev Verifies 100% calculation
      */
-    function test_Percentage_PercentageOf100Percent() public {
-        uint256 result = VaultMath.percentageOf(1000, BASIS_POINTS);
-        assertEq(result, 1000);
+    function test_Percentage_PercentageOf100Percent() public pure {
+        uint256 result = VaultMath.percentageOf(1000, 100);
+        assertEq(result, 1000); // 100% of 1000 = 1000
     }
     
     /**
@@ -234,7 +234,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test EUR to USD conversion
      * @dev Verifies EUR to USD conversion with exchange rate
      */
-    function test_Currency_EurToUsd() public {
+    function test_Currency_EurToUsd() public pure {
         uint256 eurAmount = 100 * 1e18; // 100 EUR
         uint256 rate = 110 * 1e16; // 1.10 EUR/USD
         
@@ -246,7 +246,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test USD to EUR conversion
      * @dev Verifies USD to EUR conversion with exchange rate
      */
-    function test_Currency_UsdToEur() public {
+    function test_Currency_UsdToEur() public pure {
         uint256 usdAmount = 110 * 1e18; // 110 USD
         uint256 rate = 110 * 1e16; // 1.10 EUR/USD
         
@@ -258,7 +258,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test EUR to USD conversion with USDC precision
      * @dev Verifies conversion with 6-decimal USDC precision
      */
-    function test_Currency_EurToUsdWithUsdcPrecision() public {
+    function test_Currency_EurToUsdWithUsdcPrecision() public pure {
         uint256 eurAmount = 100 * 1e18; // 100 EUR
         uint256 rate = 110 * 1e16; // 1.10 EUR/USD
         
@@ -270,7 +270,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test USD to EUR conversion with USDC precision
      * @dev Verifies conversion from 6-decimal USDC to 18-decimal EUR
      */
-    function test_Currency_UsdToEurWithUsdcPrecision() public {
+    function test_Currency_UsdToEurWithUsdcPrecision() public pure {
         uint256 usdAmount = 110 * 1e6; // 110 USDC
         uint256 rate = 110 * 1e16; // 1.10 EUR/USD
         
@@ -282,7 +282,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test currency conversion with zero values
      * @dev Verifies behavior with zero inputs
      */
-    function test_Currency_ConversionWithZeros() public {
+    function test_Currency_ConversionWithZeros() public pure {
         uint256 result1 = VaultMath.eurToUsd(0, TEST_RATE);
         assertEq(result1, 0);
         
@@ -301,7 +301,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test collateralization ratio calculation
      * @dev Verifies collateralization ratio calculation
      */
-    function test_Collateralization_CalculateCollateralRatio() public {
+    function test_Collateralization_CalculateCollateralRatio() public pure {
         uint256 collateralValue = 1100 * 1e18; // 1100 USD
         uint256 debtValue = 1000 * 1e18; // 1000 USD
         
@@ -313,7 +313,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test collateralization ratio with zero debt
      * @dev Verifies infinite ratio when no debt
      */
-    function test_Collateralization_CalculateCollateralRatioZeroDebt() public {
+    function test_Collateralization_CalculateCollateralRatioZeroDebt() public pure {
         uint256 collateralValue = 1000 * 1e18;
         uint256 debtValue = 0;
         
@@ -325,7 +325,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test required USDC collateral calculation
      * @dev Verifies required collateral calculation
      */
-    function test_Collateralization_CalculateRequiredUsdcCollateral() public {
+    function test_Collateralization_CalculateRequiredUsdcCollateral() public pure {
         uint256 debtAmount = 1000 * 1e18; // 1000 QEURO
         uint256 eurUsdRate = 110 * 1e16; // 1.10 EUR/USD
         uint256 collateralRatio = 101 * 1e16; // 101%
@@ -342,7 +342,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test maximum QEURO debt calculation
      * @dev Verifies maximum debt calculation
      */
-    function test_Collateralization_CalculateMaxQeuroDebt() public {
+    function test_Collateralization_CalculateMaxQeuroDebt() public pure {
         uint256 collateralAmount = 1111 * 1e6; // 1111 USDC
         uint256 eurUsdRate = 110 * 1e16; // 1.10 EUR/USD
         uint256 collateralRatio = 101 * 1e16; // 101%
@@ -359,7 +359,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test collateral sufficiency check
      * @dev Verifies collateral sufficiency validation
      */
-    function test_Collateralization_IsCollateralSufficient() public {
+    function test_Collateralization_IsCollateralSufficient() public pure {
         uint256 collateralAmount = 1111 * 1e6; // 1111 USDC
         uint256 debtAmount = 1000 * 1e18; // 1000 QEURO
         uint256 eurUsdRate = 110 * 1e16; // 1.10 EUR/USD
@@ -378,7 +378,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test collateral sufficiency with insufficient collateral
      * @dev Verifies insufficient collateral detection
      */
-    function test_Collateralization_IsCollateralInsufficient() public {
+    function test_Collateralization_IsCollateralInsufficient() public pure {
         uint256 collateralAmount = 1000 * 1e6; // 1000 USDC
         uint256 debtAmount = 1000 * 1e18; // 1000 QEURO
         uint256 eurUsdRate = 110 * 1e16; // 1.10 EUR/USD
@@ -397,7 +397,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test collateral sufficiency with zero debt
      * @dev Verifies that zero debt is always sufficient
      */
-    function test_Collateralization_IsCollateralSufficientZeroDebt() public {
+    function test_Collateralization_IsCollateralSufficientZeroDebt() public pure {
         uint256 collateralAmount = 1000 * 1e6;
         uint256 debtAmount = 0;
         uint256 eurUsdRate = 110 * 1e16;
@@ -414,7 +414,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test liquidation penalty calculation
      * @dev Verifies liquidation penalty calculation
      */
-    function test_Collateralization_CalculateLiquidationPenalty() public {
+    function test_Collateralization_CalculateLiquidationPenalty() public pure {
         uint256 collateralAmount = 1000 * 1e18;
         uint256 penaltyRate = 500; // 5%
         
@@ -430,7 +430,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test yield distribution calculation
      * @dev Verifies yield distribution between users and hedgers
      */
-    function test_Yield_CalculateYieldDistribution() public {
+    function test_Yield_CalculateYieldDistribution() public pure {
         uint256 totalYield = 1000 * 1e18;
         uint256 yieldShiftBps = 2000; // 20%
         
@@ -447,7 +447,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test yield distribution with zero yield
      * @dev Verifies behavior with zero total yield
      */
-    function test_Yield_CalculateYieldDistributionZeroYield() public {
+    function test_Yield_CalculateYieldDistributionZeroYield() public pure {
         uint256 totalYield = 0;
         uint256 yieldShiftBps = 2000;
         
@@ -475,7 +475,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test compound interest calculation
      * @dev Verifies compound interest calculation
      */
-    function test_Yield_CalculateCompoundInterest() public {
+    function test_Yield_CalculateCompoundInterest() public pure {
         uint256 principal = 1000 * 1e18;
         uint256 rate = 1000; // 10% annual rate
         uint256 timeElapsed = 365 days; // 1 year
@@ -488,7 +488,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test compound interest with zero time
      * @dev Verifies that zero time returns original principal
      */
-    function test_Yield_CalculateCompoundInterestZeroTime() public {
+    function test_Yield_CalculateCompoundInterestZeroTime() public pure {
         uint256 principal = 1000 * 1e18;
         uint256 rate = 1000;
         uint256 timeElapsed = 0;
@@ -501,7 +501,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test compound interest with zero rate
      * @dev Verifies that zero rate returns original principal
      */
-    function test_Yield_CalculateCompoundInterestZeroRate() public {
+    function test_Yield_CalculateCompoundInterestZeroRate() public pure {
         uint256 principal = 1000 * 1e18;
         uint256 rate = 0;
         uint256 timeElapsed = 365 days;
@@ -518,7 +518,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test decimal scaling - increase precision
      * @dev Verifies scaling from lower to higher precision
      */
-    function test_Utility_ScaleDecimalsIncrease() public {
+    function test_Utility_ScaleDecimalsIncrease() public pure {
         uint256 value = 1000; // 6 decimals
         uint256 scaled = VaultMath.scaleDecimals(value, 6, 18);
         assertEq(scaled, 1000 * 1e12); // 1000 * 10^12
@@ -528,7 +528,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test decimal scaling - decrease precision
      * @dev Verifies scaling from higher to lower precision
      */
-    function test_Utility_ScaleDecimalsDecrease() public {
+    function test_Utility_ScaleDecimalsDecrease() public pure {
         uint256 value = 1000 * 1e12; // 18 decimals
         uint256 scaled = VaultMath.scaleDecimals(value, 18, 6);
         assertEq(scaled, 1000); // 1000
@@ -538,7 +538,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test decimal scaling - same precision
      * @dev Verifies no change when scaling to same precision
      */
-    function test_Utility_ScaleDecimalsSame() public {
+    function test_Utility_ScaleDecimalsSame() public pure {
         uint256 value = 1000 * 1e18;
         uint256 scaled = VaultMath.scaleDecimals(value, 18, 18);
         assertEq(scaled, value);
@@ -548,7 +548,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test decimal scaling with rounding up
      * @dev Verifies proper rounding when decreasing precision
      */
-    function test_Utility_ScaleDecimalsRoundingUp() public {
+    function test_Utility_ScaleDecimalsRoundingUp() public pure {
         // 1000.5 with 18 decimals = 1000.5 * 1e18 = 1000500000000000000000000
         // When scaling to 6 decimals: 1000500000000000000000000 / 1e12 = 1000500000
         // Since remainder is 0, it rounds down to 1000500000
@@ -561,7 +561,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test decimal scaling with rounding down
      * @dev Verifies proper rounding when decreasing precision
      */
-    function test_Utility_ScaleDecimalsRoundingDown() public {
+    function test_Utility_ScaleDecimalsRoundingDown() public pure {
         // 1000.4 with 18 decimals = 1000.4 * 1e18 = 1000400000000000000000000
         // When scaling to 6 decimals: 1000400000000000000000000 / 1e12 = 1000400000
         // Since remainder is 0, it rounds down to 1000400000
@@ -574,7 +574,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test tolerance checking within tolerance
      * @dev Verifies values within tolerance are accepted
      */
-    function test_Utility_IsWithinToleranceWithin() public {
+    function test_Utility_IsWithinToleranceWithin() public pure {
         uint256 value1 = 1000 * 1e18;
         uint256 value2 = 1010 * 1e18; // 1% higher
         uint256 toleranceBps = 200; // 2% tolerance
@@ -587,7 +587,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test tolerance checking outside tolerance
      * @dev Verifies values outside tolerance are rejected
      */
-    function test_Utility_IsWithinToleranceOutside() public {
+    function test_Utility_IsWithinToleranceOutside() public pure {
         uint256 value1 = 1000 * 1e18;
         uint256 value2 = 1030 * 1e18; // 3% higher
         uint256 toleranceBps = 200; // 2% tolerance
@@ -600,7 +600,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test tolerance checking with equal values
      * @dev Verifies equal values are always within tolerance
      */
-    function test_Utility_IsWithinToleranceEqual() public {
+    function test_Utility_IsWithinToleranceEqual() public pure {
         uint256 value1 = 1000 * 1e18;
         uint256 value2 = 1000 * 1e18;
         uint256 toleranceBps = 100; // 1% tolerance
@@ -617,7 +617,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test extreme values in mulDiv
      * @dev Verifies behavior with very large numbers
      */
-    function test_EdgeCases_MulDivExtremeValues() public {
+    function test_EdgeCases_MulDivExtremeValues() public pure {
         uint256 result = VaultMath.mulDiv(type(uint256).max, 1, type(uint256).max);
         assertEq(result, 1);
     }
@@ -626,7 +626,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test extreme values in percentage calculation
      * @dev Verifies behavior with maximum percentage
      */
-    function test_EdgeCases_PercentageExtremeValues() public {
+    function test_EdgeCases_PercentageExtremeValues() public pure {
         // Use a smaller value to avoid overflow
         uint256 result = VaultMath.percentageOf(1000 * 1e18, MAX_PERCENTAGE);
         assertEq(result, 1000 * 1e18 * 100); // MAX_PERCENTAGE = 1000000 = 10000%
@@ -636,7 +636,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test extreme values in currency conversion
      * @dev Verifies behavior with maximum values
      */
-    function test_EdgeCases_CurrencyConversionExtremeValues() public {
+    function test_EdgeCases_CurrencyConversionExtremeValues() public pure {
         // Use a smaller value to avoid overflow
         uint256 result = VaultMath.eurToUsd(1000 * 1e18, PRECISION);
         assertEq(result, 1000 * 1e18);
@@ -646,7 +646,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test extreme values in collateralization ratio
      * @dev Verifies behavior with maximum values
      */
-    function test_EdgeCases_CollateralizationExtremeValues() public {
+    function test_EdgeCases_CollateralizationExtremeValues() public pure {
         // Use smaller values to avoid overflow
         uint256 ratio = VaultMath.calculateCollateralRatio(1000 * 1e18, 1);
         // The result should be 1000 * 1e18 * 1e18 / 1 = 1000 * 1e36
@@ -663,7 +663,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test complete collateralization workflow
      * @dev Verifies end-to-end collateralization calculations
      */
-    function test_Integration_CompleteCollateralizationWorkflow() public {
+    function test_Integration_CompleteCollateralizationWorkflow() public pure {
         // Initial parameters
         uint256 debtAmount = 1000 * 1e18; // 1000 QEURO
         uint256 eurUsdRate = 110 * 1e16; // 1.10 EUR/USD
@@ -695,7 +695,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test complete yield distribution workflow
      * @dev Verifies end-to-end yield distribution calculations
      */
-    function test_Integration_CompleteYieldWorkflow() public {
+    function test_Integration_CompleteYieldWorkflow() public pure {
         // Initial parameters
         uint256 totalYield = 1000 * 1e18;
         uint256 yieldShiftBps = 2000; // 20%
@@ -717,7 +717,7 @@ contract VaultMathTestSuite is Test {
      * @notice Test complete currency conversion workflow
      * @dev Verifies end-to-end currency conversion calculations
      */
-    function test_Integration_CompleteCurrencyWorkflow() public {
+    function test_Integration_CompleteCurrencyWorkflow() public pure {
         // Initial EUR amount
         uint256 eurAmount = 1000 * 1e18; // 1000 EUR
         uint256 eurUsdRate = 110 * 1e16; // 1.10 EUR/USD
@@ -744,7 +744,7 @@ contract VaultMathTestSuite is Test {
      * @notice Bounded fuzzing test for percentageOf with realistic input ranges
      * @dev Uses bounded percentage to avoid "Percentage too high" errors
      */
-    function testFuzz_PercentageOfBounded(uint256 value, uint256 percentage) public {
+    function testFuzz_PercentageOfBounded(uint256 value, uint256 percentage) public view {
         // Bound inputs to very conservative ranges to avoid overflow
         vm.assume(value <= 1e15); // Much more conservative bound
         vm.assume(percentage <= 10000); // 100% in basis points (BASIS_POINTS)
@@ -760,7 +760,7 @@ contract VaultMathTestSuite is Test {
      * @notice Bounded fuzzing test for calculateYieldDistribution with realistic input ranges
      * @dev Uses bounded yieldShiftBps to avoid "Invalid yield shift" errors
      */
-    function testFuzz_CalculateYieldDistributionBounded(uint256 totalYield, uint256 yieldShiftBps) public {
+    function testFuzz_CalculateYieldDistributionBounded(uint256 totalYield, uint256 yieldShiftBps) public view {
         // Bound inputs to very conservative ranges to avoid overflow
         vm.assume(totalYield <= 1e15); // Much more conservative bound
         vm.assume(yieldShiftBps <= 10000); // 100% in basis points (BASIS_POINTS)

@@ -173,7 +173,7 @@ contract ChainlinkOracleTestSuite is Test {
      * @notice Test successful initialization
      * @dev Verifies proper initialization with valid parameters
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check roles - admin should have all roles
         assertTrue(oracle.hasRole(oracle.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(oracle.hasRole(oracle.ORACLE_MANAGER_ROLE(), admin));
@@ -201,7 +201,7 @@ contract ChainlinkOracleTestSuite is Test {
      * @notice Test successful EUR/USD price fetching
      * @dev Verifies price fetching with valid data
      */
-    function test_PriceFetching_GetEurUsdPriceSuccess() public {
+    function test_PriceFetching_GetEurUsdPriceSuccess() public view {
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         
         assertEq(price, EUR_USD_PRICE);
@@ -212,7 +212,7 @@ contract ChainlinkOracleTestSuite is Test {
      * @notice Test successful USDC/USD price fetching
      * @dev Verifies price fetching with valid data
      */
-    function test_PriceFetching_GetUsdcUsdPriceSuccess() public {
+    function test_PriceFetching_GetUsdcUsdPriceSuccess() public view {
         (uint256 price, bool isValid) = oracle.getUsdcUsdPrice();
         
         assertEq(price, USDC_USD_PRICE);
@@ -641,7 +641,7 @@ contract ChainlinkOracleTestSuite is Test {
      * @notice Test oracle health with all systems operational
      * @dev Verifies health monitoring
      */
-    function test_HealthMonitoring_HealthyOracle() public {
+    function test_HealthMonitoring_HealthyOracle() public view {
         (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) = oracle.getOracleHealth();
         
         assertTrue(isHealthy);
@@ -702,7 +702,7 @@ contract ChainlinkOracleTestSuite is Test {
      * @notice Test EUR/USD details
      * @dev Verifies detailed price information
      */
-    function test_HealthMonitoring_GetEurUsdDetails() public {
+    function test_HealthMonitoring_GetEurUsdDetails() public view {
         (uint256 currentPrice, uint256 lastValidPrice, uint256 lastUpdate, bool isStale, bool withinBounds) = oracle.getEurUsdDetails();
         
         assertEq(currentPrice, EUR_USD_PRICE);
@@ -716,7 +716,7 @@ contract ChainlinkOracleTestSuite is Test {
      * @notice Test oracle configuration
      * @dev Verifies configuration retrieval
      */
-    function test_HealthMonitoring_GetOracleConfig() public {
+    function test_HealthMonitoring_GetOracleConfig() public view {
         (uint256 minPrice, uint256 maxPrice, uint256 maxStaleness, uint256 usdcTolerance, bool circuitBreakerActive) = oracle.getOracleConfig();
         
         assertEq(minPrice, MIN_EUR_USD_PRICE);
@@ -730,7 +730,7 @@ contract ChainlinkOracleTestSuite is Test {
      * @notice Test price feed addresses
      * @dev Verifies address retrieval
      */
-    function test_HealthMonitoring_GetPriceFeedAddresses() public {
+    function test_HealthMonitoring_GetPriceFeedAddresses() public view {
         (address eurUsdFeed, address usdcUsdFeed, uint8 eurUsdDecimals, uint8 usdcUsdDecimals) = oracle.getPriceFeedAddresses();
         
         assertEq(eurUsdFeed, address(mockEurUsdFeed));
@@ -743,7 +743,7 @@ contract ChainlinkOracleTestSuite is Test {
      * @notice Test price feed connectivity
      * @dev Verifies connectivity checking
      */
-    function test_HealthMonitoring_CheckPriceFeedConnectivity() public {
+    function test_HealthMonitoring_CheckPriceFeedConnectivity() public view {
         (bool eurUsdConnected, bool usdcUsdConnected, uint80 eurUsdLatestRound, uint80 usdcUsdLatestRound) = oracle.checkPriceFeedConnectivity();
         
         assertTrue(eurUsdConnected);

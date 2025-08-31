@@ -40,7 +40,7 @@ contract QEUROTokenBasicTest is Test {
         qeuroToken = QEUROToken(address(proxy));
     }
     
-    function test_Initialization() public {
+    function test_Initialization() public view {
         assertEq(qeuroToken.name(), "Quantillon Euro");
         assertEq(qeuroToken.symbol(), "QEURO");
         assertEq(qeuroToken.decimals(), 18);

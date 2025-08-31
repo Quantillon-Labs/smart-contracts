@@ -135,7 +135,7 @@ contract QTITokenTestSuite is Test {
      * @notice Test successful contract initialization
      * @dev Verifies that the contract is properly initialized with correct roles and settings
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check token details
         assertEq(qtiToken.name(), "Quantillon Token");
         assertEq(qtiToken.symbol(), "QTI");
@@ -531,7 +531,7 @@ contract QTITokenTestSuite is Test {
      * @notice Bounded fuzzing test for mint function with realistic input ranges
      * @dev Uses bounded amount to avoid zero amount edge case
      */
-    function testFuzz_MintBounded(address to, uint256 amount) public {
+    function testFuzz_MintBounded(address to, uint256 amount) public view {
         // Bound inputs to very conservative ranges to avoid supply cap issues
         vm.assume(to != address(0));
         vm.assume(amount > 0 && amount <= 100); // Max 0.0000000001 token (much smaller bound)
@@ -1253,7 +1253,7 @@ contract QTITokenTestSuite is Test {
      * @notice Test MEV protection for governance execution
      * @dev Verifies that proposal execution has random delays to prevent sandwich attacks
      */
-    function test_Security_MEVProtectionForGovernance() public {
+    function test_Security_MEVProtectionForGovernance() public pure {
         // TODO: Implement MEV protection tests after contract functions are updated
         // This test is temporarily disabled due to missing contract functions
         assertTrue(true, "MEV protection test placeholder");
@@ -1263,7 +1263,7 @@ contract QTITokenTestSuite is Test {
      * @notice Test that MEV protection prevents immediate execution
      * @dev Verifies that proposals cannot be executed immediately after scheduling
      */
-    function test_Security_MEVProtectionPreventsImmediateExecution() public {
+    function test_Security_MEVProtectionPreventsImmediateExecution() public pure {
         // TODO: Implement MEV protection tests after contract functions are updated
         // This test is temporarily disabled due to missing contract functions
         assertTrue(true, "MEV protection test placeholder");
@@ -1273,7 +1273,7 @@ contract QTITokenTestSuite is Test {
      * @notice Test that execution hash verification prevents unauthorized execution
      * @dev Verifies that only the correct execution hash can be used
      */
-    function test_Security_ExecutionHashVerification() public {
+    function test_Security_ExecutionHashVerification() public pure {
         // TODO: Implement MEV protection tests after contract functions are updated
         // This test is temporarily disabled due to missing contract functions
         assertTrue(true, "MEV protection test placeholder");

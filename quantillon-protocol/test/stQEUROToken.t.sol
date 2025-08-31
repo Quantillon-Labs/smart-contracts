@@ -195,7 +195,7 @@ contract stQEUROTokenTestSuite is Test {
      * @notice Test successful contract initialization
      * @dev Verifies that the contract is properly initialized with correct roles and settings
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         // Check token details
         assertEq(stQEURO.name(), "Staked Quantillon Euro");
         assertEq(stQEURO.symbol(), "stQEURO");
@@ -685,7 +685,7 @@ contract stQEUROTokenTestSuite is Test {
      * @notice Test QEURO equivalent for user with no balance
      * @dev Verifies that QEURO equivalent returns 0 for users with no stQEURO
      */
-    function test_ExchangeRate_GetQEUROEquivalentNoBalance() public {
+    function test_ExchangeRate_GetQEUROEquivalentNoBalance() public view {
         uint256 qeuroEquivalent = stQEURO.getQEUROEquivalent(user1);
         assertEq(qeuroEquivalent, 0);
     }

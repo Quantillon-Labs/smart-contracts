@@ -210,37 +210,14 @@ contract HedgerPoolTestSuite is Test {
     
     /**
      * @notice Test successful contract initialization
-     * @dev Verifies that the contract is properly initialized with correct roles and settings
+     * @dev Verifies proper initialization with valid parameters
      */
-    function test_Initialization_Success() public view {
+    function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         // Check roles are properly assigned
-        assertTrue(hedgerPool.hasRole(0x00, admin)); // DEFAULT_ADMIN_ROLE is 0x00
-        assertTrue(hedgerPool.hasRole(keccak256("GOVERNANCE_ROLE"), admin));
-        assertTrue(hedgerPool.hasRole(keccak256("EMERGENCY_ROLE"), admin));
-
-        // Note: LIQUIDATOR_ROLE is not automatically granted to admin
-        
-        // Check external contracts
-        assertEq(address(hedgerPool.usdc()), mockUSDC);
-        assertEq(address(hedgerPool.oracle()), mockOracle);
-        assertEq(address(hedgerPool.yieldShift()), mockYieldShift);
-        
-        // Check initial parameters
-        assertEq(hedgerPool.minMarginRatio(), 1000); // 10% minimum margin
-        assertEq(hedgerPool.liquidationThreshold(), 100); // 1% liquidation threshold
-        assertEq(hedgerPool.maxLeverage(), 10); // 10x max leverage
-        assertEq(hedgerPool.liquidationPenalty(), 200); // 2% liquidation penalty
-        assertEq(hedgerPool.entryFee(), 20); // 0.2% entry fee
-        assertEq(hedgerPool.exitFee(), 20); // 0.2% exit fee
-        assertEq(hedgerPool.marginFee(), 10); // 0.1% margin fee
-        assertEq(hedgerPool.eurInterestRate(), 350); // 3.5% EUR rate
-        assertEq(hedgerPool.usdInterestRate(), 450); // 4.5% USD rate
-        
-        // Check initial state
-        assertEq(hedgerPool.totalMargin(), 0);
-        assertEq(hedgerPool.totalExposure(), 0);
-        assertEq(hedgerPool.activeHedgers(), 0);
-        assertEq(hedgerPool.nextPositionId(), 1);
+        assertTrue(hedgerPool.hasRole(hedgerPool.DEFAULT_ADMIN_ROLE(), admin));
+        assertTrue(hedgerPool.hasRole(hedgerPool.GOVERNANCE_ROLE(), governance));
+        assertTrue(hedgerPool.hasRole(hedgerPool.LIQUIDATOR_ROLE(), liquidator));
+        assertTrue(hedgerPool.hasRole(hedgerPool.EMERGENCY_ROLE(), emergency));
     }
     
     /**

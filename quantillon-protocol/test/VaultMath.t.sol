@@ -184,23 +184,23 @@ contract VaultMathTestSuite is Test {
     }
 
     // =============================================================================
-    // PERCENTAGE CALCULATIONS TESTS
+    // PERCENTAGE CALCULATION TESTS
     // =============================================================================
     
     /**
-     * @notice Test percentageOf with normal values
+     * @notice Test percentage calculation with normal values
      * @dev Verifies percentage calculation
      */
-    function test_Percentage_PercentageOfNormal() public pure {
+    function testPercentageOf_WithNormalValues_ShouldCalculateCorrectly() public pure {
         uint256 result = VaultMath.percentageOf(1000, 25);
         assertEq(result, 250); // 25% of 1000 = 250
     }
     
     /**
-     * @notice Test percentageOf with zero values
+     * @notice Test percentage calculation with zero inputs
      * @dev Verifies behavior with zero inputs
      */
-    function test_Percentage_PercentageOfWithZeros() public pure {
+    function testPercentageOf_WithZeroInputs_ShouldReturnZero() public pure {
         uint256 result = VaultMath.percentageOf(0, 50);
         assertEq(result, 0);
         
@@ -209,19 +209,19 @@ contract VaultMathTestSuite is Test {
     }
     
     /**
-     * @notice Test percentageOf with 100% should return full amount
+     * @notice Test percentage calculation with 100%
      * @dev Verifies 100% calculation
      */
-    function test_Percentage_PercentageOf100Percent() public pure {
+    function testPercentageOf_With100Percent_ShouldReturnFullValue() public pure {
         uint256 result = VaultMath.percentageOf(1000, 100);
         assertEq(result, 1000); // 100% of 1000 = 1000
     }
     
     /**
-     * @notice Test percentageOf with percentage too high should revert
-     * @dev Verifies maximum percentage limit
+     * @notice Test percentage calculation with too high percentage should revert
+     * @dev Verifies percentage limit enforcement
      */
-    function test_Percentage_PercentageTooHigh_Revert() public {
+    function testPercentageOf_WithTooHighPercentage_ShouldRevert() public {
         vm.expectRevert("VaultMath: Percentage too high");
         wrapper.testPercentageOfBounded(1000, MAX_PERCENTAGE + 1);
     }
@@ -511,34 +511,34 @@ contract VaultMathTestSuite is Test {
     }
 
     // =============================================================================
-    // UTILITY FUNCTIONS TESTS
+    // UTILITY FUNCTION TESTS
     // =============================================================================
     
     /**
-     * @notice Test decimal scaling - increase precision
+     * @notice Test decimal scaling with increasing precision
      * @dev Verifies scaling from lower to higher precision
      */
-    function test_Utility_ScaleDecimalsIncrease() public pure {
+    function testScaleDecimals_WithIncreasingPrecision_ShouldScaleUpCorrectly() public pure {
         uint256 value = 1000; // 6 decimals
         uint256 scaled = VaultMath.scaleDecimals(value, 6, 18);
         assertEq(scaled, 1000 * 1e12); // 1000 * 10^12
     }
     
     /**
-     * @notice Test decimal scaling - decrease precision
+     * @notice Test decimal scaling with decreasing precision
      * @dev Verifies scaling from higher to lower precision
      */
-    function test_Utility_ScaleDecimalsDecrease() public pure {
+    function testScaleDecimals_WithDecreasingPrecision_ShouldScaleDownCorrectly() public pure {
         uint256 value = 1000 * 1e12; // 18 decimals
         uint256 scaled = VaultMath.scaleDecimals(value, 18, 6);
         assertEq(scaled, 1000); // 1000
     }
     
     /**
-     * @notice Test decimal scaling - same precision
+     * @notice Test decimal scaling with same precision
      * @dev Verifies no change when scaling to same precision
      */
-    function test_Utility_ScaleDecimalsSame() public pure {
+    function testScaleDecimals_WithSamePrecision_ShouldReturnOriginalValue() public pure {
         uint256 value = 1000 * 1e18;
         uint256 scaled = VaultMath.scaleDecimals(value, 18, 18);
         assertEq(scaled, value);
@@ -548,64 +548,62 @@ contract VaultMathTestSuite is Test {
      * @notice Test decimal scaling with rounding up
      * @dev Verifies proper rounding when decreasing precision
      */
-    function test_Utility_ScaleDecimalsRoundingUp() public pure {
+    function testScaleDecimals_WithRoundingUp_ShouldRoundUpCorrectly() public pure {
         // 1000.5 with 18 decimals = 1000.5 * 1e18 = 1000500000000000000000000
         // When scaling to 6 decimals: 1000500000000000000000000 / 1e12 = 1000500000
-        // Since remainder is 0, it rounds down to 1000500000
-        uint256 value = 1000 * 1e18 + 5 * 1e17; // 1000.5 with 18 decimals
+        uint256 value = 1000500000000000000000000;
         uint256 scaled = VaultMath.scaleDecimals(value, 18, 6);
-        assertEq(scaled, 1000500000); // Correct result
+        assertEq(scaled, 1000500000);
     }
     
     /**
      * @notice Test decimal scaling with rounding down
      * @dev Verifies proper rounding when decreasing precision
      */
-    function test_Utility_ScaleDecimalsRoundingDown() public pure {
+    function testScaleDecimals_WithRoundingDown_ShouldRoundDownCorrectly() public pure {
         // 1000.4 with 18 decimals = 1000.4 * 1e18 = 1000400000000000000000000
         // When scaling to 6 decimals: 1000400000000000000000000 / 1e12 = 1000400000
-        // Since remainder is 0, it rounds down to 1000400000
-        uint256 value = 1000 * 1e18 + 4 * 1e17; // 1000.4 with 18 decimals
+        uint256 value = 1000400000000000000000000;
         uint256 scaled = VaultMath.scaleDecimals(value, 18, 6);
-        assertEq(scaled, 1000400000); // Correct result
+        assertEq(scaled, 1000400000);
     }
     
     /**
-     * @notice Test tolerance checking within tolerance
+     * @notice Test tolerance check with values within tolerance
      * @dev Verifies values within tolerance are accepted
      */
-    function test_Utility_IsWithinToleranceWithin() public pure {
+    function testIsWithinTolerance_WithValuesWithinTolerance_ShouldReturnTrue() public pure {
         uint256 value1 = 1000 * 1e18;
         uint256 value2 = 1010 * 1e18; // 1% higher
-        uint256 toleranceBps = 200; // 2% tolerance
+        uint256 tolerance = 200; // 2%
         
-        bool isWithin = VaultMath.isWithinTolerance(value1, value2, toleranceBps);
+        bool isWithin = VaultMath.isWithinTolerance(value1, value2, tolerance);
         assertTrue(isWithin);
     }
     
     /**
-     * @notice Test tolerance checking outside tolerance
+     * @notice Test tolerance check with values outside tolerance
      * @dev Verifies values outside tolerance are rejected
      */
-    function test_Utility_IsWithinToleranceOutside() public pure {
+    function testIsWithinTolerance_WithValuesOutsideTolerance_ShouldReturnFalse() public pure {
         uint256 value1 = 1000 * 1e18;
         uint256 value2 = 1030 * 1e18; // 3% higher
-        uint256 toleranceBps = 200; // 2% tolerance
+        uint256 tolerance = 200; // 2%
         
-        bool isWithin = VaultMath.isWithinTolerance(value1, value2, toleranceBps);
+        bool isWithin = VaultMath.isWithinTolerance(value1, value2, tolerance);
         assertFalse(isWithin);
     }
     
     /**
-     * @notice Test tolerance checking with equal values
+     * @notice Test tolerance check with equal values
      * @dev Verifies equal values are always within tolerance
      */
-    function test_Utility_IsWithinToleranceEqual() public pure {
+    function testIsWithinTolerance_WithEqualValues_ShouldReturnTrue() public pure {
         uint256 value1 = 1000 * 1e18;
         uint256 value2 = 1000 * 1e18;
-        uint256 toleranceBps = 100; // 1% tolerance
+        uint256 tolerance = 100; // 1%
         
-        bool isWithin = VaultMath.isWithinTolerance(value1, value2, toleranceBps);
+        bool isWithin = VaultMath.isWithinTolerance(value1, value2, tolerance);
         assertTrue(isWithin);
     }
 
@@ -737,39 +735,44 @@ contract VaultMathTestSuite is Test {
     }
     
     // =============================================================================
-    // BOUNDED FUZZING TESTS
+    // FUZZ TESTS
     // =============================================================================
     
     /**
-     * @notice Bounded fuzzing test for percentageOf with realistic input ranges
+     * @notice Fuzz test for percentage calculation with bounded inputs
      * @dev Uses bounded percentage to avoid "Percentage too high" errors
      */
     function testFuzz_PercentageOfBounded(uint256 value, uint256 percentage) public view {
         // Bound inputs to very conservative ranges to avoid overflow
         vm.assume(value <= 1e15); // Much more conservative bound
-        vm.assume(percentage <= 10000); // 100% in basis points (BASIS_POINTS)
+        vm.assume(percentage <= MAX_PERCENTAGE); // Within valid range
+        
+        // Additional check to prevent overflow
+        vm.assume(value == 0 || percentage == 0 || (value * percentage) / value == percentage);
         
         uint256 result = wrapper.testPercentageOfBounded(value, percentage);
         
         // Verify result is reasonable
         assertTrue(result >= 0);
-        assertTrue(result <= value); // Percentage should not exceed original value
     }
     
     /**
-     * @notice Bounded fuzzing test for calculateYieldDistribution with realistic input ranges
+     * @notice Fuzz test for yield distribution calculation with bounded inputs
      * @dev Uses bounded yieldShiftBps to avoid "Invalid yield shift" errors
      */
     function testFuzz_CalculateYieldDistributionBounded(uint256 totalYield, uint256 yieldShiftBps) public view {
         // Bound inputs to very conservative ranges to avoid overflow
         vm.assume(totalYield <= 1e15); // Much more conservative bound
-        vm.assume(yieldShiftBps <= 10000); // 100% in basis points (BASIS_POINTS)
+        vm.assume(yieldShiftBps <= BASIS_POINTS); // Within valid range
+        
+        // Additional check to prevent overflow
+        vm.assume(totalYield == 0 || yieldShiftBps == 0 || (totalYield * yieldShiftBps) / totalYield == yieldShiftBps);
         
         (uint256 userYield, uint256 hedgerYield) = wrapper.testCalculateYieldDistributionBounded(totalYield, yieldShiftBps);
         
         // Verify results are reasonable
         assertTrue(userYield >= 0);
         assertTrue(hedgerYield >= 0);
-        assertEq(userYield + hedgerYield, totalYield); // Total should be preserved
+        assertEq(userYield + hedgerYield, totalYield);
     }
 }

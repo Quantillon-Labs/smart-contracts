@@ -40,14 +40,22 @@ contract QEUROTokenBasicTest is Test {
         qeuroToken = QEUROToken(address(proxy));
     }
     
-    function test_Initialization() public view {
+    /**
+     * @notice Test successful contract initialization
+     * @dev Verifies proper initialization with valid parameters
+     */
+    function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         assertEq(qeuroToken.name(), "Quantillon Euro");
         assertEq(qeuroToken.symbol(), "QEURO");
         assertEq(qeuroToken.decimals(), 18);
         assertEq(qeuroToken.totalSupply(), 0);
     }
     
-    function test_Mint() public {
+    /**
+     * @notice Test token minting with valid parameters
+     * @dev Verifies that tokens can be minted successfully
+     */
+    function testMint_WithValidParameters_ShouldMintTokens() public {
         vm.prank(vault);
         qeuroToken.mint(user1, 1000 * 1e18);
         

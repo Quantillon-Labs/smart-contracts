@@ -12,8 +12,9 @@ interface IQTIToken {
      * @notice Initializes the QTI token
      * @param admin Admin address
      * @param _treasury Treasury address
+     * @param timelock Timelock address
      */
-    function initialize(address admin, address _treasury) external;
+    function initialize(address admin, address _treasury, address timelock) external;
 
     /**
      * @notice Lock QTI tokens for voting power

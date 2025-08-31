@@ -79,7 +79,7 @@ interface IQEUROToken {
     );
 
     // Initialization
-    function initialize(address admin, address vault) external;
+    function initialize(address admin, address vault, address timelock) external;
 
     // Core functions
     function mint(address to, uint256 amount) external;

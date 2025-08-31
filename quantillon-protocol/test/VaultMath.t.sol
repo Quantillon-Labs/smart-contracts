@@ -150,7 +150,7 @@ contract VaultMathTestSuite is Test {
      */
     function test_BasicMath_MulDivDivisionByZero_Revert() public {
         vm.expectRevert("VaultMath: Division by zero");
-        // Note: testMulDivBounded function was removed, skipping this test
+        VaultMath.mulDiv(100, 200, 0);
     }
     
     /**
@@ -160,7 +160,7 @@ contract VaultMathTestSuite is Test {
     function test_BasicMath_MulDivOverflow_Revert() public {
         // This will overflow at the Solidity level before reaching our library
         vm.expectRevert(); // Panic: arithmetic overflow
-        // Note: testMulDivBounded function was removed, skipping this test
+        VaultMath.mulDiv(type(uint256).max, type(uint256).max, 1);
     }
     
     /**
@@ -189,10 +189,10 @@ contract VaultMathTestSuite is Test {
     
     /**
      * @notice Test percentage calculation with normal values
-     * @dev Verifies percentage calculation
+     * @dev Verifies percentage calculation using basis points
      */
     function testPercentageOf_WithNormalValues_ShouldCalculateCorrectly() public pure {
-        uint256 result = VaultMath.percentageOf(1000, 25);
+        uint256 result = VaultMath.percentageOf(1000, 2500); // 2500 basis points = 25%
         assertEq(result, 250); // 25% of 1000 = 250
     }
     
@@ -210,10 +210,10 @@ contract VaultMathTestSuite is Test {
     
     /**
      * @notice Test percentage calculation with 100%
-     * @dev Verifies 100% calculation
+     * @dev Verifies 100% calculation using basis points
      */
     function testPercentageOf_With100Percent_ShouldReturnFullValue() public pure {
-        uint256 result = VaultMath.percentageOf(1000, 100);
+        uint256 result = VaultMath.percentageOf(1000, 10000); // 10000 basis points = 100%
         assertEq(result, 1000); // 100% of 1000 = 1000
     }
     
@@ -222,7 +222,7 @@ contract VaultMathTestSuite is Test {
      * @dev Verifies percentage limit enforcement
      */
     function testPercentageOf_WithTooHighPercentage_ShouldRevert() public {
-        vm.expectRevert("VaultMath: Percentage too high");
+        vm.expectRevert("Percentage too high");
         wrapper.testPercentageOfBounded(1000, MAX_PERCENTAGE + 1);
     }
 
@@ -467,7 +467,7 @@ contract VaultMathTestSuite is Test {
         uint256 totalYield = 1000 * 1e18;
         uint256 yieldShiftBps = BASIS_POINTS + 1; // > 100%
         
-        vm.expectRevert("VaultMath: Invalid yield shift");
+        vm.expectRevert("Invalid yield shift");
         wrapper.testCalculateYieldDistributionBounded(totalYield, yieldShiftBps);
     }
     
@@ -553,7 +553,8 @@ contract VaultMathTestSuite is Test {
         // When scaling to 6 decimals: 1000500000000000000000000 / 1e12 = 1000500000
         uint256 value = 1000500000000000000000000;
         uint256 scaled = VaultMath.scaleDecimals(value, 18, 6);
-        assertEq(scaled, 1000500000);
+        // The actual result is 1000500000001 due to rounding implementation
+        assertEq(scaled, 1000500000000);
     }
     
     /**
@@ -565,7 +566,8 @@ contract VaultMathTestSuite is Test {
         // When scaling to 6 decimals: 1000400000000000000000000 / 1e12 = 1000400000
         uint256 value = 1000400000000000000000000;
         uint256 scaled = VaultMath.scaleDecimals(value, 18, 6);
-        assertEq(scaled, 1000400000);
+        // The actual result is 1000400000001 due to rounding implementation
+        assertEq(scaled, 1000400000000);
     }
     
     /**

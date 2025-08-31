@@ -62,6 +62,10 @@ contract YieldShift is
     mapping(bytes32 => uint256) public yieldSources;
     bytes32[] public yieldSourceNames;
     
+    // Add yield source authorization mappings
+    mapping(address => bool) public authorizedYieldSources;
+    mapping(address => bytes32) public sourceToYieldType;
+    
     mapping(address => uint256) public userPendingYield;
     mapping(address => uint256) public hedgerPendingYield;
     mapping(address => uint256) public userLastClaim;
@@ -101,6 +105,9 @@ contract YieldShift is
         uint256 maxYieldShift,
         uint256 adjustmentSpeed
     );
+    
+    event YieldSourceAuthorized(address indexed source, bytes32 indexed yieldType);
+    event YieldSourceRevoked(address indexed source);
 
     constructor() {
         _disableInitializers();
@@ -150,6 +157,10 @@ contract YieldShift is
         yieldSourceNames.push(keccak256("aave"));
         yieldSourceNames.push(keccak256("fees"));
         yieldSourceNames.push(keccak256("interest_differential"));
+        
+        // Authorize the contract itself for known yield sources
+        authorizedYieldSources[address(this)] = true;
+        sourceToYieldType[address(this)] = keccak256("aave");
     }
 
     function updateYieldDistribution() external nonReentrant whenNotPaused {
@@ -179,7 +190,47 @@ contract YieldShift is
         external 
         nonReentrant 
     {
-        AccessControlLibrary.onlyYieldManager(this);
+        // Verify caller is authorized for this yield source
+        require(
+            authorizedYieldSources[msg.sender] && 
+            sourceToYieldType[msg.sender] == source,
+            "Unauthorized yield source"
+        );
+        
+        ValidationLibrary.validatePositiveAmount(yieldAmount);
+        
+        // Verify USDC was actually received
+        uint256 balanceBefore = usdc.balanceOf(address(this));
+        usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
+        uint256 balanceAfter = usdc.balanceOf(address(this));
+        require(
+            balanceAfter - balanceBefore == yieldAmount,
+            "Yield amount mismatch"
+        );
+        
+        yieldSources[source] += yieldAmount;
+        totalYieldGenerated += yieldAmount;
+        
+        uint256 userAllocation = yieldAmount.mulDiv(currentYieldShift, 10000);
+        uint256 hedgerAllocation = yieldAmount - userAllocation;
+        
+        userYieldPool += userAllocation;
+        hedgerYieldPool += hedgerAllocation;
+        
+        if (userAllocation > 0) {
+            usdc.safeTransfer(address(stQEURO), userAllocation);
+            stQEURO.distributeYield(userAllocation);
+        }
+        
+        emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), block.timestamp);
+    }
+
+    /**
+     * @notice Internal function to add yield (bypasses authorization for internal calls)
+     * @param yieldAmount Amount of yield to add
+     * @param source Source identifier
+     */
+    function _addYieldInternal(uint256 yieldAmount, bytes32 source) internal {
         ValidationLibrary.validatePositiveAmount(yieldAmount);
         
         yieldSources[source] += yieldAmount;
@@ -211,6 +262,11 @@ contract YieldShift is
         yieldAmount = userPendingYield[user];
         
         if (yieldAmount > 0) {
+            // Check holding period
+            if (block.timestamp < lastDepositTime[user] + MIN_HOLDING_PERIOD) {
+                revert ErrorLibrary.HoldingPeriodNotMet();
+            }
+            
             if (userYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
             
             userPendingYield[user] = 0;
@@ -372,9 +428,9 @@ contract YieldShift is
         uint256 interestDifferential,
         uint256 otherSources
     ) {
-        aaveYield = yieldSources["aave"];
-        protocolFees = yieldSources["fees"];
-        interestDifferential = yieldSources["interest_differential"];
+        aaveYield = yieldSources[keccak256("aave")];
+        protocolFees = yieldSources[keccak256("fees")];
+        interestDifferential = yieldSources[keccak256("interest_differential")];
         
         uint256 knownSources = aaveYield + protocolFees + interestDifferential;
         otherSources = totalYieldGenerated > knownSources ? 
@@ -392,21 +448,22 @@ contract YieldShift is
             return (currentYieldShift, currentYieldShift, currentYieldShift, 0);
         }
         
-        uint256 cutoffTime = block.timestamp - period;
-        
-        if (cutoffTime > block.timestamp) {
-            cutoffTime = 0;
-        }
+        uint256 cutoffTime = block.timestamp > period ? 
+            block.timestamp - period : 0;
         
         uint256[] memory validShifts = new uint256[](length);
         uint256 validCount = 0;
         
-        for (uint256 i = 0; i < length; i++) {
-            YieldShiftSnapshot memory snapshot = yieldShiftHistory[i];
+        // Cache storage reference to avoid multiple SLOAD operations
+        YieldShiftSnapshot memory snapshot;
+        
+        for (uint256 i = 0; i < length;) {
+            snapshot = yieldShiftHistory[i];
             if (snapshot.timestamp >= cutoffTime) {
                 validShifts[validCount] = snapshot.yieldShift;
                 validCount++;
             }
+            unchecked { ++i; }
         }
         
         if (validCount == 0) {
@@ -493,6 +550,38 @@ contract YieldShift is
         targetPoolRatio = _targetPoolRatio;
     }
 
+    /**
+     * @notice Authorize a yield source for specific yield type
+     * @param source Address of the yield source
+     * @param yieldType Type of yield this source is authorized for
+     */
+    function authorizeYieldSource(
+        address source,
+        bytes32 yieldType
+    ) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(source);
+        
+        authorizedYieldSources[source] = true;
+        sourceToYieldType[source] = yieldType;
+        
+        emit YieldSourceAuthorized(source, yieldType);
+    }
+
+    /**
+     * @notice Revoke authorization for a yield source
+     * @param source Address of the yield source to revoke
+     */
+    function revokeYieldSource(address source) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(source);
+        
+        authorizedYieldSources[source] = false;
+        sourceToYieldType[source] = bytes32(0);
+        
+        emit YieldSourceRevoked(source);
+    }
+
     function updateYieldAllocation(address user, uint256 amount, bool isUser) external {
         AccessControlLibrary.onlyYieldManager(this);
         if (isUser) {
@@ -541,12 +630,23 @@ contract YieldShift is
         return !paused();
     }
 
+    /**
+     * @notice Check if an address is authorized for a specific yield type
+     * @param source Address to check
+     * @param yieldType Yield type to check
+     * @return True if authorized
+     */
+    function isYieldSourceAuthorized(address source, bytes32 yieldType) external view returns (bool) {
+        return authorizedYieldSources[source] && sourceToYieldType[source] == yieldType;
+    }
+
     function harvestAndDistributeAaveYield() external nonReentrant {
         uint256 yieldHarvested = aaveVault.harvestAaveYield();
         
         if (yieldHarvested > 0) {
             usdc.safeTransferFrom(address(aaveVault), address(this), yieldHarvested);
-            this.addYield(yieldHarvested, "aave");
+            // Directly call addYield since this contract is authorized for "aave" yield
+            _addYieldInternal(yieldHarvested, keccak256("aave"));
             this.updateYieldDistribution();
         }
     }
@@ -587,30 +687,40 @@ contract YieldShift is
             return 0;
         }
         
-        uint256 cutoffTime = block.timestamp - period;
-        
-        if (cutoffTime > block.timestamp) {
-            cutoffTime = 0;
-        }
+        uint256 cutoffTime = block.timestamp > period ? 
+            block.timestamp - period : 0;
         
         uint256 totalWeightedValue = 0;
         uint256 totalWeight = 0;
         
-        for (uint256 i = 0; i < length; i++) {
-            PoolSnapshot memory snapshot = poolHistory[i];
-            if (snapshot.timestamp >= cutoffTime) {
-                uint256 weight = snapshot.timestamp - cutoffTime;
-                uint256 poolSize = isUserPool ? snapshot.userPoolSize : snapshot.hedgerPoolSize;
-                totalWeightedValue += poolSize * weight;
-                totalWeight += weight;
+        // Cache storage reference to avoid multiple SLOAD operations
+        PoolSnapshot memory snapshot;
+        uint256 timestamp;
+        uint256 poolSize;
+        
+        for (uint256 i = 0; i < length;) {
+            snapshot = poolHistory[i];
+            timestamp = snapshot.timestamp;
+            
+            if (timestamp >= cutoffTime) {
+                poolSize = isUserPool ? 
+                    snapshot.userPoolSize : 
+                    snapshot.hedgerPoolSize;
+                
+                unchecked {
+                    uint256 weight = timestamp - cutoffTime;
+                    totalWeightedValue += poolSize * weight;
+                    totalWeight += weight;
+                }
             }
+            
+            unchecked { ++i; }
         }
         
         if (totalWeight == 0) {
-            uint256 lastPoolSize = isUserPool ? 
-                poolHistory[length - 1].userPoolSize : 
-                poolHistory[length - 1].hedgerPoolSize;
-            return lastPoolSize;
+            // Cache the last snapshot to avoid another storage read
+            snapshot = poolHistory[length - 1];
+            return isUserPool ? snapshot.userPoolSize : snapshot.hedgerPoolSize;
         }
         
         return totalWeightedValue / totalWeight;
@@ -627,8 +737,10 @@ contract YieldShift is
         uint256 length = poolHistory.length;
         
         if (length >= MAX_HISTORY_LENGTH) {
-            for (uint256 i = 0; i < length - 1; i++) {
+            // Optimize the shift operation by using unchecked arithmetic
+            for (uint256 i = 0; i < length - 1;) {
                 poolHistory[i] = poolHistory[i + 1];
+                unchecked { ++i; }
             }
             poolHistory.pop();
         }

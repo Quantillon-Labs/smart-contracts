@@ -82,6 +82,11 @@ contract HedgerPool is
     mapping(address => HedgerInfo) public hedgers;
     mapping(address => uint256[]) public hedgerPositions;
 
+    // O(1) position removal mappings to prevent unbounded loops
+    mapping(address => mapping(uint256 => bool)) public hedgerHasPosition;
+    mapping(address => mapping(uint256 => uint256)) public positionIndex;
+    mapping(address => mapping(uint256 => uint256)) public hedgerPositionIndex;
+
     uint256 public totalYieldEarned;
     uint256 public interestDifferentialPool;
 
@@ -230,10 +235,19 @@ contract HedgerPool is
             activeHedgers++;
         }
         
+        // Add to hedgers[hedger].positionIds array with O(1) indexing
         hedger.positionIds.push(positionId);
+        positionIndex[msg.sender][positionId] = hedger.positionIds.length - 1;
+        
         hedger.totalMargin += netMargin;
         hedger.totalExposure += positionSize;
+        
+        // Add to hedgerPositions[hedger] array with O(1) indexing
         hedgerPositions[msg.sender].push(positionId);
+        hedgerPositionIndex[msg.sender][positionId] = hedgerPositions[msg.sender].length - 1;
+        
+        // Mark position as owned by hedger
+        hedgerHasPosition[msg.sender][positionId] = true;
 
         activePositionCount[msg.sender]++;
 
@@ -288,28 +302,85 @@ contract HedgerPool is
         emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, block.timestamp);
     }
 
-    function _removePositionFromArrays(address hedger, uint256 positionId) internal {
-        unchecked {
-            uint256[] storage positionIds = hedgers[hedger].positionIds;
-            uint256 positionIdsLength = positionIds.length;
-            for (uint256 i = 0; i < positionIdsLength; i++) {
-                if (positionIds[i] == positionId) {
-                    positionIds[i] = positionIds[positionIdsLength - 1];
-                    positionIds.pop();
-                    break;
-                }
-            }
+    function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPositions) 
+        external 
+        nonReentrant 
+        whenNotPaused 
+        returns (int256[] memory pnls) 
+    {
+        require(positionIds.length <= maxPositions, "Too many positions");
+        require(maxPositions <= 10, "Max 10 positions per tx");
+        
+        pnls = new int256[](positionIds.length);
+        
+        for (uint i = 0; i < positionIds.length; i++) {
+            HedgePosition storage position = positions[positionIds[i]];
+            ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
+            ValidationLibrary.validatePositionActive(position.isActive);
+
+            (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+            ValidationLibrary.validateOraclePrice(isValid);
+
+            int256 pnl = _calculatePnL(position, currentPrice);
+            pnls[i] = pnl;
+
+            uint256 grossPayout = uint256(int256(position.margin) + pnl);
+            uint256 exitFeeAmount = grossPayout.percentageOf(exitFee);
+            uint256 netPayout = grossPayout - exitFeeAmount;
+
+            HedgerInfo storage hedger = hedgers[msg.sender];
+            hedger.totalMargin -= position.margin;
+            hedger.totalExposure -= position.positionSize;
+
+            totalMargin -= position.margin;
+            totalExposure -= position.positionSize;
+
+            position.isActive = false;
+            _removePositionFromArrays(msg.sender, positionIds[i]);
             
-            uint256[] storage hedgerPos = hedgerPositions[hedger];
-            uint256 hedgerPosLength = hedgerPos.length;
-            for (uint256 i = 0; i < hedgerPosLength; i++) {
-                if (hedgerPos[i] == positionId) {
-                    hedgerPos[i] = hedgerPos[hedgerPosLength - 1];
-                    hedgerPos.pop();
-                    break;
-                }
+            activePositionCount[msg.sender]--;
+
+            if (netPayout > 0) {
+                usdc.safeTransfer(msg.sender, netPayout);
             }
+
+            emit HedgePositionClosed(msg.sender, positionIds[i], currentPrice, pnl, block.timestamp);
         }
+    }
+
+    function _removePositionFromArrays(address hedger, uint256 positionId) internal {
+        require(hedgerHasPosition[hedger][positionId], "Position not found");
+        
+        // O(1) removal from hedgers[hedger].positionIds array
+        uint256 index = positionIndex[hedger][positionId];
+        uint256[] storage positionIds = hedgers[hedger].positionIds;
+        uint256 lastIndex = positionIds.length - 1;
+        
+        if (index != lastIndex) {
+            uint256 lastPositionId = positionIds[lastIndex];
+            positionIds[index] = lastPositionId;
+            positionIndex[hedger][lastPositionId] = index;
+        }
+        
+        positionIds.pop();
+        
+        // O(1) removal from hedgerPositions[hedger] array
+        uint256[] storage hedgerPos = hedgerPositions[hedger];
+        uint256 posIndex = hedgerPositionIndex[hedger][positionId];
+        uint256 posLastIndex = hedgerPos.length - 1;
+        
+        if (posIndex != posLastIndex) {
+            uint256 posLastPositionId = hedgerPos[posLastIndex];
+            hedgerPos[posIndex] = posLastPositionId;
+            hedgerPositionIndex[hedger][posLastPositionId] = posIndex;
+        }
+        
+        hedgerPos.pop();
+        
+        // Clean up mappings
+        delete positionIndex[hedger][positionId];
+        delete hedgerPositionIndex[hedger][positionId];
+        delete hedgerHasPosition[hedger][positionId];
     }
 
     function addMargin(uint256 positionId, uint256 amount) 

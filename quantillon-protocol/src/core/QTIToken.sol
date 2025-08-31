@@ -221,6 +221,14 @@ contract QTIToken is
     uint256 public decentralizationDuration;
     uint256 public currentDecentralizationLevel; // 0-10000 (0-100%)
 
+    // MEV protection for governance execution
+    /// @notice Execution time for each proposal (with random delay)
+    mapping(uint256 => uint256) public proposalExecutionTime;
+    /// @notice Execution hash for each proposal (for verification)
+    mapping(uint256 => bytes32) public proposalExecutionHash;
+    /// @notice Whether a proposal has been scheduled for execution
+    mapping(uint256 => bool) public proposalScheduled;
+
     // =============================================================================
     // EVENTS
     // =============================================================================
@@ -333,36 +341,43 @@ contract QTIToken is
         if (lockTime < MIN_LOCK_TIME) revert ErrorLibrary.LockTimeTooShort();
         if (lockTime > MAX_LOCK_TIME) revert ErrorLibrary.LockTimeTooLong();
         if (balanceOf(msg.sender) < amount) revert ErrorLibrary.InsufficientBalance();
-
-
+        
+        // Add validation for uint96 bounds
+        if (amount > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+        if (lockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
 
         LockInfo storage lockInfo = locks[msg.sender];
         uint256 oldVotingPower = lockInfo.votingPower;
         
-        // Calculate new unlock time
+        // Calculate new unlock time with overflow check
         uint256 newUnlockTime = block.timestamp + lockTime;
+        if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
         
         // If already locked, extend the lock time
         if (lockInfo.unlockTime > block.timestamp) {
             newUnlockTime = lockInfo.unlockTime + lockTime;
+            if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
         }
         
-        // Calculate voting power multiplier based on lock time
+        // Calculate voting power with overflow check
         uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
         uint256 newVotingPower = amount * multiplier / 1e18;
+        if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
         
-        // Update lock info - OPTIMIZED: Batch storage writes
-        lockInfo.amount = uint96(lockInfo.amount + amount);
+        // Safe addition for amount
+        uint256 newAmount = uint256(lockInfo.amount) + amount;
+        if (newAmount > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+        
+        // Now safe to cast
+        lockInfo.amount = uint96(newAmount);
         lockInfo.unlockTime = uint32(newUnlockTime);
         lockInfo.initialVotingPower = uint96(newVotingPower);
         lockInfo.lockTime = uint32(lockTime);
         lockInfo.votingPower = uint96(newVotingPower);
         
-        // Update global totals - OPTIMIZED: Use unchecked for safe arithmetic
-        unchecked {
-            totalLocked += amount;
-            totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
-        }
+        // Use checked arithmetic for critical state
+        totalLocked = totalLocked + amount;
+        totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
         
         // Transfer tokens to this contract
         _transfer(msg.sender, address(this), amount);
@@ -392,11 +407,9 @@ contract QTIToken is
         lockInfo.unlockTime = 0;
         lockInfo.votingPower = 0;
         
-        // Update global totals - OPTIMIZED: Use unchecked for safe arithmetic
-        unchecked {
-            totalLocked -= amount;
-            totalVotingPower -= oldVotingPower;
-        }
+        // Update global totals - Use checked arithmetic for critical state
+        totalLocked = totalLocked - amount;
+        totalVotingPower = totalVotingPower - oldVotingPower;
         
         // Transfer tokens back to user
         _transfer(address(this), msg.sender, amount);
@@ -560,6 +573,32 @@ contract QTIToken is
         }
 
         emit ProposalExecuted(proposalId);
+    }
+
+    /**
+     * @notice Get execution information for a scheduled proposal
+     * @param proposalId Proposal ID
+     * @return scheduled Whether the proposal is scheduled
+     * @return executionTime When the proposal can be executed
+     * @return canExecute Whether the proposal can be executed now
+     */
+    function getProposalExecutionInfo(uint256 proposalId) external view returns (
+        bool scheduled,
+        uint256 executionTime,
+        bool canExecute
+    ) {
+        scheduled = proposalScheduled[proposalId];
+        executionTime = proposalExecutionTime[proposalId];
+        canExecute = scheduled && block.timestamp >= executionTime;
+    }
+
+    /**
+     * @notice Get the execution hash for a scheduled proposal
+     * @param proposalId Proposal ID
+     * @return executionHash Hash required to execute the proposal
+     */
+    function getProposalExecutionHash(uint256 proposalId) external view returns (bytes32 executionHash) {
+        return proposalExecutionHash[proposalId];
     }
 
     /**
@@ -730,14 +769,13 @@ contract QTIToken is
             }
         }
         
-        // Update stored voting power
+        // Update stored voting power with overflow check
         uint256 oldVotingPower = lockInfo.votingPower;
+        if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
         lockInfo.votingPower = uint96(newVotingPower);
         
-        // Update total voting power - OPTIMIZED: Use unchecked for safe arithmetic
-        unchecked {
-            totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
-        }
+        // Update total voting power - Use checked arithmetic for critical state
+        totalVotingPower = totalVotingPower - oldVotingPower + newVotingPower;
         
         return newVotingPower;
     }

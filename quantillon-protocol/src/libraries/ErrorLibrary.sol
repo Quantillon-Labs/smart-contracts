@@ -205,4 +205,10 @@ library ErrorLibrary {
     error ProposalExecutionFailed();
     error CannotRecoverQTI();
     error ProposalCanceled();
+    
+    // MEV Protection Errors
+    error ProposalAlreadyScheduled();
+    error ProposalNotScheduled();
+    error InvalidExecutionHash();
+    error ExecutionTimeNotReached();
 }

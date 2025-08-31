@@ -225,7 +225,10 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_PriceFetching_EurUsdStaleData() public {
         // Set stale timestamp by warping time forward
-        vm.warp(block.timestamp + MAX_PRICE_STALENESS + 1);
+        vm.warp(block.timestamp + 3600 + 900 + 1);
+        
+        // Update the mock's timestamp to be stale (beyond the combined threshold)
+        mockEurUsdFeed.setUpdatedAt(block.timestamp - 3600 - 900 - 1);
         
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         
@@ -240,7 +243,10 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_PriceFetching_UsdcUsdStaleData() public {
         // Set stale timestamp by warping time forward
-        vm.warp(block.timestamp + MAX_PRICE_STALENESS + 1);
+        vm.warp(block.timestamp + 3600 + 900 + 1);
+        
+        // Update the mock's timestamp to be stale (beyond the combined threshold)
+        mockUsdcUsdFeed.setUpdatedAt(block.timestamp - 3600 - 900 - 1);
         
         (uint256 price, bool isValid) = oracle.getUsdcUsdPrice();
         
@@ -649,7 +655,11 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_HealthMonitoring_StaleEurUsdData() public {
         // Set stale timestamp by warping time forward
-        vm.warp(block.timestamp + MAX_PRICE_STALENESS + 1);
+        vm.warp(block.timestamp + 3600 + 900 + 1);
+        
+        // Update the mock's timestamp to be stale (beyond the combined threshold)
+        mockEurUsdFeed.setUpdatedAt(block.timestamp - 3600 - 900 - 1);
+        mockUsdcUsdFeed.setUpdatedAt(block.timestamp - 3600 - 900 - 1);
         
         (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) = oracle.getOracleHealth();
         
@@ -859,6 +869,34 @@ contract ChainlinkOracleTestSuite is Test {
         // Both should scale to 1.10e18 when converted
         // Note: This tests the internal scaling logic indirectly
         assertTrue(true); // Placeholder for scaling verification
+    }
+
+    /**
+     * @notice Test timestamp manipulation protection
+     * @dev Verifies that the oracle rejects manipulated timestamps
+     */
+    function test_Security_TimestampManipulationProtection() public {
+        // Ensure we have a reasonable timestamp to work with
+        vm.warp(1000000); // Set to a reasonable timestamp
+        
+        // Test with a very old timestamp (2 hours ago) - should be rejected
+        uint256 oldTimestamp = block.timestamp - 7200; // 2 hours ago
+        mockEurUsdFeed.setUpdatedAt(oldTimestamp);
+        
+        // Test that the oracle correctly rejects this as stale
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        assertFalse(isValid, "Should reject stale price even with manipulated timestamp");
+        assertGt(price, 0, "Should return last valid price when invalid");
+        
+        // Test with a suspiciously large time difference (manipulation attempt)
+        // This should be beyond the normal staleness window + drift tolerance (900 seconds)
+        uint256 suspiciousTimestamp = block.timestamp - 3600 - 900 - 100; // Beyond tolerance
+        mockEurUsdFeed.setUpdatedAt(suspiciousTimestamp);
+        
+        // Test that the oracle correctly rejects suspicious timestamps
+        (price, isValid) = oracle.getEurUsdPrice();
+        assertFalse(isValid, "Should reject suspicious timestamp differences");
+        assertGt(price, 0, "Should return last valid price when invalid");
     }
 }
 

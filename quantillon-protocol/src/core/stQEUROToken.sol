@@ -287,10 +287,8 @@ contract stQEUROToken is
         // SECURITY FIX: Use safeTransferFrom for reliable QEURO transfers
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
 
-        // Update totals - OPTIMIZED: Use unchecked for safe arithmetic
-        unchecked {
-            totalUnderlying += qeuroAmount;
-        }
+        // Update totals - Use checked arithmetic for critical state
+        totalUnderlying = totalUnderlying + qeuroAmount;
 
         // Mint stQEURO to user
         _mint(msg.sender, stQEUROAmount);
@@ -321,10 +319,8 @@ contract stQEUROToken is
         // Burn stQEURO from user
         _burn(msg.sender, stQEUROAmount);
 
-        // Update totals - OPTIMIZED: Use unchecked for safe arithmetic
-        unchecked {
-            totalUnderlying -= qeuroAmount;
-        }
+        // Update totals - Use checked arithmetic for critical state
+        totalUnderlying = totalUnderlying - qeuroAmount;
 
         // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
         // safeTransfer() will revert on failure, preventing silent failures
@@ -362,10 +358,8 @@ contract stQEUROToken is
         exchangeRate = exchangeRate + (netYield.mulDiv(1e18, totalSupply()));
         lastUpdateTime = block.timestamp;
 
-        // Update totals - OPTIMIZED: Use unchecked for safe arithmetic
-        unchecked {
-            totalYieldEarned += netYield;
-        }
+        // Update totals - Use checked arithmetic for critical state
+        totalYieldEarned = totalYieldEarned + netYield;
 
         emit ExchangeRateUpdated(oldRate, exchangeRate, block.timestamp);
         emit YieldDistributed(netYield, exchangeRate);
@@ -470,7 +464,10 @@ contract stQEUROToken is
      * @notice Calculate current exchange rate including accrued yield
      */
     function _calculateCurrentExchangeRate() internal view returns (uint256) {
-        if (totalSupply() == 0) return 1e18;
+        uint256 supply = totalSupply();
+        
+        // Minimum supply threshold to prevent manipulation
+        if (supply < 1e6) return 1e18; // Minimum 0.000000000001 stQEURO
 
         // Get yield from YieldShift
         uint256 pendingYield = yieldShift.getUserPendingYield(address(this));
@@ -478,9 +475,21 @@ contract stQEUROToken is
         if (pendingYield >= minYieldThreshold || 
             block.timestamp >= lastUpdateTime + maxUpdateFrequency) {
             
-            // Calculate new exchange rate
+            // Add bounds checking
             uint256 totalValue = totalUnderlying + pendingYield;
-            return totalValue.mulDiv(1e18, totalSupply());
+            
+            // Prevent extreme exchange rates
+            uint256 newRate = totalValue.mulDiv(1e18, supply);
+            
+            // Limit rate changes to prevent manipulation
+            uint256 maxChange = exchangeRate / 10; // Max 10% change
+            if (newRate > exchangeRate + maxChange) {
+                newRate = exchangeRate + maxChange;
+            } else if (newRate < exchangeRate - maxChange) {
+                newRate = exchangeRate - maxChange;
+            }
+            
+            return newRate;
         }
         
         return exchangeRate;
@@ -549,7 +558,7 @@ contract stQEUROToken is
             uint256 qeuroAmount = stQEUROBalance.mulDiv(exchangeRate, 1e18);
             
             _burn(user, stQEUROBalance);
-            totalUnderlying -= qeuroAmount;
+            totalUnderlying = totalUnderlying - qeuroAmount;
             
             // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
             // safeTransfer() will revert on failure, preventing silent failures

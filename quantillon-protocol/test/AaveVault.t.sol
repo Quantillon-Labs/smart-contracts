@@ -149,12 +149,17 @@ contract MockAavePool {
         // Check balance (but don't require transfer approval in mock)
         require(aUSDC.balanceOf(msg.sender) >= actualAmount, "Insufficient aUSDC");
         
-        // Simulate burning aUSDC by reducing balance
+        // Simulate burning aUSDC by reducing balance of the caller (vault)
         aUSDC.setBalance(msg.sender, aUSDC.balanceOf(msg.sender) - actualAmount);
         
         // Transfer USDC to recipient (with some yield if available)
         uint256 yield = actualAmount * 5 / 1000; // 0.5% yield
         uint256 totalToTransfer = actualAmount + yield;
+        
+        // Ensure we have enough USDC to transfer
+        if (usdc.balanceOf(address(this)) < totalToTransfer) {
+            usdc.mint(address(this), totalToTransfer - usdc.balanceOf(address(this)));
+        }
         
         usdc.transfer(to, totalToTransfer);
         return totalToTransfer;
@@ -275,7 +280,7 @@ contract MockRewardsController {
 contract MockYieldShift {
     uint256 public currentYieldShift = 5000; // 50%
     
-    function addYield(uint256 amount, string calldata source) external {
+    function addYield(uint256 amount, bytes32 source) external {
         // Mock implementation
     }
     
@@ -655,7 +660,7 @@ contract AaveVaultTestSuite is Test {
         aUSDC.mint(address(aaveVault), 500 * 1e6); // 500 USDC yield (below 1000 threshold)
         
         vm.prank(vaultManager);
-        vm.expectRevert(ErrorLibrary.YieldBelowThreshold.selector);
+        vm.expectRevert(ErrorLibrary.BelowThreshold.selector);
         aaveVault.harvestAaveYield();
     }
     
@@ -1183,7 +1188,7 @@ contract AaveVaultTestSuite is Test {
         vm.deal(address(aaveVault), 1 ether);
         
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotSendToZero.selector);
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         aaveVault.recoverETH(payable(address(0)));
     }
 

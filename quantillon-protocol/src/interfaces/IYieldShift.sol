@@ -29,7 +29,7 @@ interface IYieldShift {
      * @param yieldAmount Yield amount in USDC equivalent
      * @param source Source identifier (e.g., "aave", "fees")
      */
-    function addYield(uint256 yieldAmount, string calldata source) external;
+    function addYield(uint256 yieldAmount, bytes32 source) external;
 
     /**
      * @notice Claim pending yield for a user
@@ -155,6 +155,27 @@ interface IYieldShift {
      * @param _targetPoolRatio Target ratio
      */
     function setTargetPoolRatio(uint256 _targetPoolRatio) external;
+
+    /**
+     * @notice Authorize a yield source for specific yield type
+     * @param source Address of the yield source
+     * @param yieldType Type of yield this source is authorized for
+     */
+    function authorizeYieldSource(address source, bytes32 yieldType) external;
+
+    /**
+     * @notice Revoke authorization for a yield source
+     * @param source Address of the yield source to revoke
+     */
+    function revokeYieldSource(address source) external;
+
+    /**
+     * @notice Check if an address is authorized for a specific yield type
+     * @param source Address to check
+     * @param yieldType Yield type to check
+     * @return True if authorized
+     */
+    function isYieldSourceAuthorized(address source, bytes32 yieldType) external view returns (bool);
 
     /**
      * @notice Update yield allocation for a participant

@@ -70,6 +70,14 @@ contract ChainlinkOracle is
     /// @notice Basis for basis points calculations
     uint256 public constant BASIS_POINTS = 10000;
 
+    /// @notice Maximum timestamp drift tolerance (15 minutes)
+    /// @dev Prevents timestamp manipulation attacks by miners
+    uint256 public constant MAX_TIMESTAMP_DRIFT = 900;
+    
+    /// @notice Blocks per hour for block-based staleness checks
+    /// @dev ~12 second blocks on Ethereum, ~2 second blocks on L2s
+    uint256 public constant BLOCKS_PER_HOUR = 300;
+
     // =============================================================================
     // STATE VARIABLES - Contract state variables
     // =============================================================================
@@ -94,6 +102,10 @@ contract ChainlinkOracle is
     
     /// @notice Timestamp of the last valid price update
     uint256 public lastPriceUpdateTime;
+
+    /// @notice Block number of the last valid price update
+    /// @dev Used for block-based staleness checks to prevent timestamp manipulation
+    uint256 public lastPriceUpdateBlock;
 
     /// @notice Circuit breaker status (true = triggered, fixed prices)
     bool public circuitBreakerTriggered;
@@ -214,6 +226,23 @@ contract ChainlinkOracle is
     }
 
     /**
+     * @notice Validates if a timestamp is recent enough to prevent manipulation attacks
+     * @param reportedTime The timestamp to validate
+     * @return true if the timestamp is valid, false otherwise
+     */
+    function _validateTimestamp(uint256 reportedTime) internal view returns (bool) {
+        // Reject if reported time is in the future
+        if (reportedTime > block.timestamp) return false;
+        
+        // Check if the timestamp is too old (beyond normal staleness + drift)
+        // Use safe arithmetic to prevent underflow
+        uint256 maxAllowedAge = MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT;
+        if (block.timestamp > reportedTime + maxAllowedAge) return false;
+        
+        return true;
+    }
+
+    /**
      * @notice Updates and validates internal prices
      * @dev Internal function called during initialization and resets
      * @dev FIXED: No longer calls external functions on itself during initialization
@@ -229,8 +258,8 @@ contract ChainlinkOracle is
         bool eurUsdValid = true;
         uint256 eurUsdPrice = 0;
         
-        // Check if EUR/USD price is fresh and positive
-        if (block.timestamp - eurUsdUpdatedAt > MAX_PRICE_STALENESS || eurUsdRawPrice <= 0) {
+        // Check if EUR/USD price is fresh and positive with timestamp validation
+        if (!_validateTimestamp(eurUsdUpdatedAt) || eurUsdRawPrice <= 0) {
             eurUsdValid = false;
         } else {
             // Convert Chainlink decimals to 18 decimals
@@ -264,7 +293,7 @@ contract ChainlinkOracle is
         
         // Calculate USDC/USD price for event emission
         uint256 usdcUsdPrice = 1e18; // Default fallback
-        if (block.timestamp - usdcUsdUpdatedAt <= MAX_PRICE_STALENESS && usdcUsdRawPrice > 0) {
+        if (_validateTimestamp(usdcUsdUpdatedAt) && usdcUsdRawPrice > 0) {
             uint8 usdcUsdFeedDecimals = usdcUsdPriceFeed.decimals();
             usdcUsdPrice = _scalePrice(usdcUsdRawPrice, usdcUsdFeedDecimals);
             
@@ -281,6 +310,7 @@ contract ChainlinkOracle is
         // Update internal values
         lastValidEurUsdPrice = eurUsdPrice;
         lastPriceUpdateTime = block.timestamp;
+        lastPriceUpdateBlock = block.number;
 
         // Emit update event
         emit PriceUpdated(eurUsdPrice, usdcUsdPrice, block.timestamp);
@@ -344,7 +374,7 @@ contract ChainlinkOracle is
             uint256 updatedAt,
             uint80
         ) {
-            eurUsdFresh = (block.timestamp - updatedAt) <= MAX_PRICE_STALENESS;
+            eurUsdFresh = _validateTimestamp(updatedAt);
         } catch {
             eurUsdFresh = false;
         }
@@ -357,7 +387,7 @@ contract ChainlinkOracle is
             uint256 updatedAt,
             uint80
         ) {
-            usdcUsdFresh = (block.timestamp - updatedAt) <= MAX_PRICE_STALENESS;
+            usdcUsdFresh = _validateTimestamp(updatedAt);
         } catch {
             usdcUsdFresh = false;
         }
@@ -403,7 +433,7 @@ contract ChainlinkOracle is
                 uint256 updatedAt,
                 uint80
             ) {
-                if (block.timestamp - updatedAt <= MAX_PRICE_STALENESS && rawPrice > 0) {
+                if (_validateTimestamp(updatedAt) && rawPrice > 0) {
                     uint8 feedDecimals = eurUsdPriceFeed.decimals();
                     currentPrice = _scalePrice(rawPrice, feedDecimals);
                     
@@ -441,7 +471,7 @@ contract ChainlinkOracle is
             uint256 updatedAt,
             uint80
         ) {
-            isStale = (block.timestamp - updatedAt) > MAX_PRICE_STALENESS;
+            isStale = !_validateTimestamp(updatedAt);
         } catch {
             isStale = true;
         }
@@ -669,8 +699,8 @@ contract ChainlinkOracle is
         // Fetch data from Chainlink
         (, int256 rawPrice, , uint256 updatedAt, ) = eurUsdPriceFeed.latestRoundData();
         
-        // Data freshness check
-        if (block.timestamp - updatedAt > MAX_PRICE_STALENESS) {
+        // Data freshness check with timestamp validation
+        if (!_validateTimestamp(updatedAt)) {
             return (lastValidEurUsdPrice, false);
         }
 
@@ -716,8 +746,8 @@ contract ChainlinkOracle is
         // Fetch from Chainlink
         (, int256 rawPrice, , uint256 updatedAt, ) = usdcUsdPriceFeed.latestRoundData();
         
-        // Freshness check
-        if (block.timestamp - updatedAt > MAX_PRICE_STALENESS || rawPrice <= 0) {
+        // Freshness check with timestamp validation
+        if (!_validateTimestamp(updatedAt) || rawPrice <= 0) {
             return (1e18, false); // Fallback to $1.00
         }
 

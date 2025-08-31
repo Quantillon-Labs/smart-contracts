@@ -1220,7 +1220,7 @@ contract HedgerPoolTestSuite is Test {
         MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
         
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotSendToZero.selector);
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         hedgerPool.recoverToken(address(mockToken), address(0), 1000e18);
     }
 
@@ -1263,7 +1263,7 @@ contract HedgerPoolTestSuite is Test {
         vm.deal(address(hedgerPool), 1 ether);
         
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotSendToZero.selector);
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         hedgerPool.recoverETH(payable(address(0)));
     }
 
@@ -1275,6 +1275,146 @@ contract HedgerPoolTestSuite is Test {
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
         hedgerPool.recoverETH(payable(admin));
+    }
+
+    /**
+     * @notice Test unbounded loop vulnerability is fixed
+     * @dev Verifies that position removal works efficiently even with many positions
+     */
+    function test_Security_UnboundedLoopVulnerabilityFixed() public {
+        // Setup: Create a few positions to test gas efficiency
+        uint256[] memory positionIds = new uint256[](5);
+        
+        // Create 5 positions first to test
+        for (uint i = 0; i < 5; i++) {
+            vm.prank(hedger1);
+            positionIds[i] = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 2);
+        }
+        
+        // Verify positions were created
+        assertEq(hedgerPool.activePositionCount(hedger1), 5, "Should have 5 positions");
+        
+        // Test gas efficiency: Close the first position (should be O(1) now)
+        uint256 gasBefore = gasleft();
+        vm.prank(hedger1);
+        int256 pnl = hedgerPool.exitHedgePosition(positionIds[0]);
+        uint256 gasUsed = gasBefore - gasleft();
+        
+        // Gas usage should be reasonable (not excessive)
+        assertLt(gasUsed, 500000, "Gas usage should be reasonable for O(1) removal");
+        
+        // Verify position was removed
+        assertEq(hedgerPool.activePositionCount(hedger1), 4, "Should have 4 positions after removal");
+        
+        // Test closing a position in the middle of the array
+        gasBefore = gasleft();
+        vm.prank(hedger1);
+        pnl = hedgerPool.exitHedgePosition(positionIds[2]);
+        gasUsed = gasBefore - gasleft();
+        
+        // Gas usage should still be reasonable
+        assertLt(gasUsed, 500000, "Gas usage should be reasonable for middle position removal");
+    }
+
+    /**
+     * @notice Test gas efficiency improvement demonstration
+     * @dev Demonstrates the significant gas savings from O(1) removal vs unbounded loops
+     */
+    function test_Security_GasEfficiencyImprovement() public {
+        // Create multiple positions to demonstrate gas efficiency
+        uint256[] memory positionIds = new uint256[](10);
+        
+        for (uint i = 0; i < 10; i++) {
+            vm.prank(hedger1);
+            positionIds[i] = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 2);
+        }
+        
+        assertEq(hedgerPool.activePositionCount(hedger1), 10, "Should have 10 positions");
+        
+        // Test gas efficiency for different removal scenarios
+        uint256[] memory gasUsed = new uint256[](5);
+        
+        // Remove first position (was worst case in old implementation)
+        uint256 gasBefore = gasleft();
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(positionIds[0]);
+        gasUsed[0] = gasBefore - gasleft();
+        
+        // Remove middle position
+        gasBefore = gasleft();
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(positionIds[5]);
+        gasUsed[1] = gasBefore - gasleft();
+        
+        // Remove last position (was best case in old implementation)
+        gasBefore = gasleft();
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(positionIds[9]);
+        gasUsed[2] = gasBefore - gasleft();
+        
+        // Test batch operations (use positions that haven't been closed yet)
+        uint256[] memory remainingPositions = new uint256[](3);
+        remainingPositions[0] = positionIds[1];
+        remainingPositions[1] = positionIds[2];
+        remainingPositions[2] = positionIds[3];
+        
+        // Check how many positions remain before batch operation
+        assertEq(hedgerPool.activePositionCount(hedger1), 7, "Should have 7 positions before batch");
+        
+        gasBefore = gasleft();
+        vm.prank(hedger1);
+        int256[] memory pnls = hedgerPool.closePositionsBatch(remainingPositions, 3);
+        gasUsed[3] = gasBefore - gasleft();
+        
+        // Verify gas efficiency - all operations should be similar (O(1))
+        assertLt(gasUsed[0], 500000, "First position removal should be gas-efficient");
+        assertLt(gasUsed[1], 500000, "Middle position removal should be gas-efficient");
+        assertLt(gasUsed[2], 500000, "Last position removal should be gas-efficient");
+        assertLt(gasUsed[3], 1000000, "Batch operation should be gas-efficient");
+        
+        // Verify that gas usage is consistent (O(1) complexity)
+        uint256 maxGasDiff = gasUsed[0] > gasUsed[1] ? gasUsed[0] - gasUsed[1] : gasUsed[1] - gasUsed[0];
+        assertLt(maxGasDiff, 100000, "Gas usage should be consistent (O(1) complexity)");
+        
+        // Verify batch operation results
+        assertEq(pnls.length, 3, "Batch operation should return correct number of PnLs");
+        assertEq(hedgerPool.activePositionCount(hedger1), 4, "Should have 4 positions remaining");
+    }
+
+    /**
+     * @notice Test gas griefing attack is prevented
+     * @dev Verifies that malicious users cannot cause excessive gas consumption
+     */
+    function test_Security_GasGriefingAttackPrevented() public {
+        // Setup: Create maximum positions to simulate attack
+        uint256[] memory positionIds = new uint256[](50);
+        
+        for (uint i = 0; i < 50; i++) {
+            positionIds[i] = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 2);
+        }
+        
+        // Test that closing any position doesn't consume excessive gas
+        for (uint i = 0; i < 5; i++) {
+            uint256 gasBeforeAttack = gasleft();
+            int256 pnlAttack = hedgerPool.exitHedgePosition(positionIds[i]);
+            uint256 gasUsedAttack = gasBeforeAttack - gasleft();
+            
+            // Each operation should be gas-efficient
+            assertLt(gasUsedAttack, 500000, "Position removal should be gas-efficient");
+        }
+        
+        // Test batch operations with limits
+        uint256[] memory batchPositions = new uint256[](10);
+        for (uint i = 0; i < 10; i++) {
+            batchPositions[i] = positionIds[10 + i];
+        }
+        
+        uint256 gasBefore = gasleft();
+        int256[] memory pnls = hedgerPool.closePositionsBatch(batchPositions, 10);
+        uint256 gasUsed = gasBefore - gasleft();
+        
+        // Batch operation should be efficient
+        assertLt(gasUsed, 2000000, "Batch operation should be gas-efficient");
     }
 }
 

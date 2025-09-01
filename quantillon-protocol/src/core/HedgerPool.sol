@@ -414,42 +414,56 @@ contract HedgerPool is
         HedgerInfo storage hedger = hedgers[msg.sender];
         
         for (uint i = 0; i < positionIds.length; i++) {
-            // GAS OPTIMIZATION: Cache position data to avoid multiple storage reads
-            HedgePosition storage position = positions[positionIds[i]];
-            uint128 positionMargin = position.margin;
-            uint128 positionSize = position.positionSize;
-            address positionHedger = position.hedger;
-            bool positionIsActive = position.isActive;
-            
-            ValidationLibrary.validatePositionOwner(positionHedger, msg.sender);
-            ValidationLibrary.validatePositionActive(positionIsActive);
-
-            int256 pnl = _calculatePnL(position, currentPrice);
-            pnls[i] = pnl;
-
-            uint256 grossPayout = uint256(int256(uint256(positionMargin)) + pnl);
-            uint256 exitFeeAmount = grossPayout.percentageOf(exitFee);
-            uint256 netPayout = grossPayout - exitFeeAmount;
-
-            // Update hedger totals
-            hedger.totalMargin -= positionMargin;
-            hedger.totalExposure -= positionSize;
-
-            totalMargin -= positionMargin;
-            totalExposure -= positionSize;
-
-            // Update position state
-            position.isActive = false;
-            _removePositionFromArrays(msg.sender, positionIds[i]);
-            
-            activePositionCount[msg.sender]--;
-
-            if (netPayout > 0) {
-                usdc.safeTransfer(msg.sender, netPayout);
-            }
-
-            emit HedgePositionClosed(msg.sender, positionIds[i], currentPrice, pnl, block.timestamp);
+            pnls[i] = _closeSinglePosition(positionIds[i], currentPrice, hedger);
         }
+    }
+
+    /**
+     * @notice Close a single hedge position
+     * @param positionId The ID of the position to close
+     * @param currentPrice The current EUR/USD price
+     * @param hedger The hedger info storage reference
+     * @return pnl The profit/loss for the position
+     */
+    function _closeSinglePosition(
+        uint256 positionId, 
+        uint256 currentPrice, 
+        HedgerInfo storage hedger
+    ) internal returns (int256 pnl) {
+        // GAS OPTIMIZATION: Cache position data to avoid multiple storage reads
+        HedgePosition storage position = positions[positionId];
+        uint128 positionMargin = position.margin;
+        uint128 positionSize = position.positionSize;
+        address positionHedger = position.hedger;
+        bool positionIsActive = position.isActive;
+        
+        ValidationLibrary.validatePositionOwner(positionHedger, msg.sender);
+        ValidationLibrary.validatePositionActive(positionIsActive);
+
+        pnl = _calculatePnL(position, currentPrice);
+
+        uint256 grossPayout = uint256(int256(uint256(positionMargin)) + pnl);
+        uint256 exitFeeAmount = grossPayout.percentageOf(exitFee);
+        uint256 netPayout = grossPayout - exitFeeAmount;
+
+        // Update hedger totals
+        hedger.totalMargin -= positionMargin;
+        hedger.totalExposure -= positionSize;
+
+        totalMargin -= positionMargin;
+        totalExposure -= positionSize;
+
+        // Update position state
+        position.isActive = false;
+        _removePositionFromArrays(msg.sender, positionId);
+        
+        activePositionCount[msg.sender]--;
+
+        if (netPayout > 0) {
+            usdc.safeTransfer(msg.sender, netPayout);
+        }
+
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, block.timestamp);
     }
 
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {

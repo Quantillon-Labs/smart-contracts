@@ -50,12 +50,11 @@ remappings = [
 ]
 
 # Additional compiler settings
-# SMTChecker disabled to avoid Horn solver warnings
-# Uncomment and install z3/Eldarica if formal verification is needed
-# [profile.default.model_checker]
-# contracts = { "src" = [ "all" ] }
-# engine = "chc"
-# targets = [ "assert", "underflow", "overflow", "divByZero", "constantCondition", "popEmptyArray", "outOfBounds" ]
+# Formal verification with SMTChecker enabled
+[profile.default.model_checker]
+contracts = { "src" = [ "all" ] }
+engine = "chc"
+targets = [ "assert", "underflow", "overflow", "divByZero", "constantCondition", "popEmptyArray", "outOfBounds" ]
 
 # Production profile for deployment
 [profile.production]

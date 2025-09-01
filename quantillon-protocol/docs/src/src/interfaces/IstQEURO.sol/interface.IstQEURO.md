@@ -1,5 +1,5 @@
 # IstQEURO
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/interfaces/IstQEURO.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/interfaces/IstQEURO.sol)
 
 **Author:**
 Quantillon Labs
@@ -7,7 +7,7 @@ Quantillon Labs
 Interface for the stQEURO yield-bearing wrapper token (yield accrual mechanism)
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -17,7 +17,14 @@ Initializes the stQEURO token
 
 
 ```solidity
-function initialize(address admin, address _qeuro, address _yieldShift, address _usdc, address _treasury) external;
+function initialize(
+    address admin,
+    address _qeuro,
+    address _yieldShift,
+    address _usdc,
+    address _treasury,
+    address timelock
+) external;
 ```
 **Parameters**
 
@@ -28,6 +35,7 @@ function initialize(address admin, address _qeuro, address _yieldShift, address 
 |`_yieldShift`|`address`|YieldShift contract address|
 |`_usdc`|`address`|USDC token address|
 |`_treasury`|`address`|Treasury address|
+|`timelock`|`address`||
 
 
 ### stake
@@ -71,6 +79,57 @@ function unstake(uint256 stQEUROAmount) external returns (uint256 qeuroAmount);
 |----|----|-----------|
 |`qeuroAmount`|`uint256`|Amount of QEURO received|
 
+
+### batchStake
+
+Batch stake QEURO amounts
+
+
+```solidity
+function batchStake(uint256[] calldata qeuroAmounts) external returns (uint256[] memory stQEUROAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmounts`|`uint256[]`|Array of QEURO amounts|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`stQEUROAmounts`|`uint256[]`|Array of stQEURO minted|
+
+
+### batchUnstake
+
+Batch unstake stQEURO amounts
+
+
+```solidity
+function batchUnstake(uint256[] calldata stQEUROAmounts) external returns (uint256[] memory qeuroAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`stQEUROAmounts`|`uint256[]`|Array of stQEURO amounts|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmounts`|`uint256[]`|Array of QEURO returned|
+
+
+### batchTransfer
+
+Batch transfer stQEURO to multiple recipients
+
+
+```solidity
+function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external returns (bool);
+```
 
 ### distributeYield
 

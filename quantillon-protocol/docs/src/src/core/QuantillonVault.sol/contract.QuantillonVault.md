@@ -1,13 +1,11 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
-**Authors:**
-Quantillon Labs, Quantillon Labs
-
-Main vault managing QEURO minting against USDC collateral
+**Author:**
+Quantillon Labs
 
 Main vault managing QEURO minting against USDC collateral
 
@@ -55,54 +53,8 @@ Main vault managing QEURO minting against USDC collateral
 - Chainlink oracle for EUR/USD price feeds
 - Vault math library for precise calculations*
 
-*Main characteristics:
-- Simple USDC to QEURO swap mechanism
-- USDC as input for QEURO minting
-- Real-time EUR/USD price oracle integration
-- Dynamic fee structure for protocol sustainability
-- Emergency pause mechanism for crisis situations
-- Upgradeable via UUPS pattern*
-
-*Minting mechanics:
-- Users swap USDC for QEURO
-- QEURO is minted based on EUR/USD exchange rate
-- Minting fees charged for protocol revenue
-- Simple 1:1 exchange with price conversion*
-
-*Redemption mechanics:
-- Users can redeem QEURO back to USDC
-- Redemption based on current EUR/USD exchange rate
-- Protocol fees charged on redemptions
-- USDC returned to user after fee deduction*
-
-*Risk management:
-- Real-time price monitoring
-- Emergency pause capabilities
-- Slippage protection on swaps*
-
-*Fee structure:
-- Minting fees for creating QEURO
-- Redemption fees for converting QEURO back to USDC
-- Dynamic fee adjustment based on market conditions*
-
-*Security features:
-- Role-based access control for all critical operations
-- Reentrancy protection for all external calls
-- Emergency pause mechanism for crisis situations
-- Upgradeable architecture for future improvements
-- Secure collateral management
-- Oracle price validation*
-
-*Integration points:
-- QEURO token for minting and burning
-- USDC for collateral deposits and withdrawals
-- Chainlink oracle for EUR/USD price feeds
-- Vault math library for precise calculations*
-
-**Notes:**
-- team@quantillon.money
-
-- team@quantillon.money
+**Note:**
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -236,10 +188,23 @@ uint256 private lastPriceUpdateTime;
 
 
 ## Functions
+### flashLoanProtection
+
+Modifier to protect against flash loan attacks
+
+*Checks that the contract's USDC balance doesn't decrease during execution*
+
+*This prevents flash loans that would drain USDC from the contract*
+
+
+```solidity
+modifier flashLoanProtection();
+```
+
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -289,7 +254,7 @@ Simple swap with protocol fee applied*
 
 
 ```solidity
-function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external nonReentrant whenNotPaused;
+function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external nonReentrant whenNotPaused flashLoanProtection;
 ```
 **Parameters**
 
@@ -312,7 +277,7 @@ Redeems QEURO for USDC
 
 
 ```solidity
-function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentrant whenNotPaused;
+function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentrant whenNotPaused flashLoanProtection;
 ```
 **Parameters**
 
@@ -537,8 +502,10 @@ event QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmoun
 ### ParametersUpdated
 Emitted when parameters are changed
 
+*OPTIMIZED: Indexed parameter type for efficient filtering*
+
 
 ```solidity
-event ParametersUpdated(uint256 mintFee, uint256 redemptionFee);
+event ParametersUpdated(string indexed parameterType, uint256 mintFee, uint256 redemptionFee);
 ```
 

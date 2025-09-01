@@ -1,8 +1,73 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+
+**Author:**
+Quantillon Labs
+
+Aave integration vault for yield generation through USDC lending
+
+*Main characteristics:
+- USDC deposits into Aave lending protocol for yield generation
+- Automatic yield harvesting and distribution
+- Risk management with exposure limits and health monitoring
+- Emergency withdrawal capabilities for crisis situations
+- Dynamic allocation based on market conditions
+- Upgradeable via UUPS pattern*
+
+*Deposit mechanics:
+- USDC supplied to Aave protocol for lending
+- Receives aUSDC tokens representing interest-bearing deposits
+- Principal tracking for yield calculation
+- Maximum exposure limits for risk management
+- Health checks before deposits*
+
+*Yield harvesting:
+- Automatic detection of accrued interest
+- Threshold-based harvesting to optimize gas costs
+- Protocol fees charged on harvested yield
+- Net yield distributed to yield shift mechanism
+- Real-time yield tracking and reporting*
+
+*Risk management:
+- Maximum Aave exposure limits (default 50M USDC)
+- Utilization rate monitoring for liquidity risk
+- Emergency mode for immediate withdrawals
+- Health monitoring of Aave protocol status
+- Slippage protection on withdrawals*
+
+*Allocation strategy:
+- Dynamic allocation based on Aave APY
+- Rebalancing thresholds for optimal yield
+- Market condition adjustments
+- Liquidity availability considerations
+- Expected yield calculations*
+
+*Fee structure:
+- Yield fees charged on harvested interest (default 10%)
+- Protocol fees for sustainability
+- Dynamic fee adjustment based on performance
+- Fee collection and distribution tracking*
+
+*Security features:
+- Role-based access control for all critical operations
+- Reentrancy protection for all external calls
+- Emergency pause mechanism for crisis situations
+- Upgradeable architecture for future improvements
+- Secure withdrawal validation
+- Health monitoring and circuit breakers*
+
+*Integration points:
+- Aave lending protocol for yield generation
+- USDC for deposits and withdrawals
+- aUSDC tokens for interest accrual tracking
+- Yield shift mechanism for yield distribution
+- Rewards controller for additional incentives*
+
+**Note:**
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -358,21 +423,25 @@ function recoverETH(address payable to) external;
 
 ## Events
 ### DeployedToAave
+*OPTIMIZED: Indexed operation type for efficient filtering*
+
 
 ```solidity
-event DeployedToAave(uint256 amount, uint256 aTokensReceived, uint256 newBalance);
+event DeployedToAave(string indexed operationType, uint256 amount, uint256 aTokensReceived, uint256 newBalance);
 ```
 
 ### WithdrawnFromAave
 
 ```solidity
-event WithdrawnFromAave(uint256 amountRequested, uint256 amountWithdrawn, uint256 newBalance);
+event WithdrawnFromAave(
+    string indexed operationType, uint256 amountRequested, uint256 amountWithdrawn, uint256 newBalance
+);
 ```
 
 ### AaveYieldHarvested
 
 ```solidity
-event AaveYieldHarvested(uint256 yieldHarvested, uint256 protocolFee, uint256 netYield);
+event AaveYieldHarvested(string indexed harvestType, uint256 yieldHarvested, uint256 protocolFee, uint256 netYield);
 ```
 
 ### AaveRewardsClaimed
@@ -382,26 +451,28 @@ event AaveRewardsClaimed(address indexed rewardToken, uint256 rewardAmount, addr
 ```
 
 ### PositionRebalanced
+*OPTIMIZED: Indexed reason and parameter for efficient filtering*
+
 
 ```solidity
-event PositionRebalanced(uint256 oldAllocation, uint256 newAllocation, string reason);
+event PositionRebalanced(string indexed reason, uint256 oldAllocation, uint256 newAllocation);
 ```
 
 ### AaveParameterUpdated
 
 ```solidity
-event AaveParameterUpdated(string parameter, uint256 oldValue, uint256 newValue);
+event AaveParameterUpdated(string indexed parameter, uint256 oldValue, uint256 newValue);
 ```
 
 ### EmergencyWithdrawal
 
 ```solidity
-event EmergencyWithdrawal(uint256 amountWithdrawn, string reason, uint256 timestamp);
+event EmergencyWithdrawal(string indexed reason, uint256 amountWithdrawn, uint256 timestamp);
 ```
 
 ### EmergencyModeToggled
 
 ```solidity
-event EmergencyModeToggled(bool enabled, string reason);
+event EmergencyModeToggled(string indexed reason, bool enabled);
 ```
 

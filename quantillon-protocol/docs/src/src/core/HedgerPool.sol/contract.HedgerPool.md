@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -7,46 +7,74 @@ Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpg
 **Author:**
 Quantillon Labs
 
-Manages hedging positions and risk management for the Quantillon protocol
+EUR/USD hedging pool for managing currency risk and providing yield
 
 *Main characteristics:
-- Leveraged hedging positions against EUR/USD exchange rate movements
-- Real-time price oracle integration for position management
-- Liquidation mechanisms for risk management
-- Yield distribution to hedgers based on interest rate differentials
+- EUR/USD currency hedging through leveraged positions
+- Margin-based trading with liquidation system
+- Interest rate differential yield generation
+- Multi-position management per hedger
 - Emergency pause mechanism for crisis situations
 - Upgradeable via UUPS pattern*
 
-*Hedging mechanics:
-- Hedgers can open leveraged positions against EUR/USD movements
-- Positions are collateralized with USDC
-- Real-time P&L calculation based on oracle prices
-- Automatic liquidation when margin ratios fall below threshold
-- Liquidation commitment system for MEV protection*
+*Position mechanics:
+- Hedgers open leveraged EUR/USD positions
+- Positions require minimum margin ratio (default 10%)
+- Maximum leverage of 10x to limit risk exposure
+- Position sizes tracked for risk management
+- Entry and exit fees charged for protocol revenue*
+
+*Margin system:
+- Initial margin required for position opening
+- Margin can be added to strengthen positions
+- Margin removal allowed if above minimum ratio
+- Real-time margin ratio calculations
+- Margin fees charged on additions*
+
+*Liquidation system:
+- Two-phase liquidation with commit-reveal pattern
+- Liquidation threshold below minimum margin ratio (default 1%)
+- Liquidation penalty rewarded to liquidators (default 2%)
+- Cooldown period prevents liquidation manipulation
+- Emergency position closure for critical situations*
+
+*Yield generation:
+- Interest rate differential between EUR and USD rates
+- Rewards distributed based on position exposure
+- Time-weighted reward calculations
+- Integration with yield shift mechanism
+- Automatic reward accumulation and claiming*
 
 *Risk management:
-- Minimum margin ratios and maximum leverage limits
-- Liquidation thresholds and penalty mechanisms
-- Position size limits per hedger
-- Emergency pause capabilities
-- Oracle price validation and staleness checks*
+- Maximum positions per hedger (50) to prevent concentration
+- Real-time oracle price monitoring
+- Position size limits and exposure tracking
+- Liquidation cooldown mechanisms
+- Emergency position closure capabilities*
 
-*Yield distribution:
-- Hedgers earn yield based on interest rate differentials
-- Yield shift mechanism for dynamic allocation
-- Block-based reward calculations to prevent manipulation
-- Claim mechanisms for accumulated rewards*
+*Fee structure:
+- Entry fees for opening positions (default 0.2%)
+- Exit fees for closing positions (default 0.2%)
+- Margin fees for adding collateral (default 0.1%)
+- Dynamic fee adjustment based on market conditions*
 
 *Security features:
 - Role-based access control for all critical operations
 - Reentrancy protection for all external calls
 - Emergency pause mechanism for crisis situations
 - Upgradeable architecture for future improvements
-- Secure liquidation mechanisms
-- Oracle price validation*
+- Secure position and margin management
+- Two-phase liquidation for manipulation resistance*
+
+*Integration points:
+- USDC for margin deposits and withdrawals
+- Chainlink oracle for EUR/USD price feeds
+- Yield shift mechanism for reward distribution
+- Vault math library for precise calculations
+- Position tracking and management systems*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -218,6 +246,27 @@ mapping(address => uint256[]) public hedgerPositions;
 ```
 
 
+### hedgerHasPosition
+
+```solidity
+mapping(address => mapping(uint256 => bool)) public hedgerHasPosition;
+```
+
+
+### positionIndex
+
+```solidity
+mapping(address => mapping(uint256 => uint256)) public positionIndex;
+```
+
+
+### hedgerPositionIndex
+
+```solidity
+mapping(address => mapping(uint256 => uint256)) public hedgerPositionIndex;
+```
+
+
 ### totalYieldEarned
 
 ```solidity
@@ -317,6 +366,19 @@ mapping(address => mapping(uint256 => bool)) public hasPendingLiquidation;
 
 
 ## Functions
+### flashLoanProtection
+
+Modifier to protect against flash loan attacks
+
+*Checks that the contract's USDC balance doesn't decrease during execution*
+
+*This prevents flash loans that would drain USDC from the contract*
+
+
+```solidity
+modifier flashLoanProtection();
+```
+
 ### constructor
 
 
@@ -341,6 +403,7 @@ function enterHedgePosition(uint256 usdcAmount, uint256 leverage)
     external
     nonReentrant
     whenNotPaused
+    flashLoanProtection
     returns (uint256 positionId);
 ```
 
@@ -348,7 +411,23 @@ function enterHedgePosition(uint256 usdcAmount, uint256 leverage)
 
 
 ```solidity
-function exitHedgePosition(uint256 positionId) external nonReentrant whenNotPaused returns (int256 pnl);
+function exitHedgePosition(uint256 positionId)
+    external
+    nonReentrant
+    whenNotPaused
+    flashLoanProtection
+    returns (int256 pnl);
+```
+
+### closePositionsBatch
+
+
+```solidity
+function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPositions)
+    external
+    nonReentrant
+    whenNotPaused
+    returns (int256[] memory pnls);
 ```
 
 ### _removePositionFromArrays
@@ -627,30 +706,34 @@ event HedgingRewardsClaimed(
 
 ## Structs
 ### HedgePosition
+*OPTIMIZED: Packed struct for gas efficiency*
+
 
 ```solidity
 struct HedgePosition {
     address hedger;
-    uint256 positionSize;
-    uint256 margin;
-    uint256 entryPrice;
-    uint256 leverage;
-    uint256 entryTime;
-    uint256 lastUpdateTime;
-    int256 unrealizedPnL;
+    uint96 positionSize;
+    uint96 margin;
+    uint96 entryPrice;
+    uint32 entryTime;
+    uint32 lastUpdateTime;
+    uint16 leverage;
     bool isActive;
+    int128 unrealizedPnL;
 }
 ```
 
 ### HedgerInfo
+*OPTIMIZED: Packed struct for gas efficiency*
+
 
 ```solidity
 struct HedgerInfo {
     uint256[] positionIds;
-    uint256 totalMargin;
-    uint256 totalExposure;
-    uint256 pendingRewards;
-    uint256 lastRewardClaim;
+    uint128 totalMargin;
+    uint128 totalExposure;
+    uint128 pendingRewards;
+    uint64 lastRewardClaim;
     bool isActive;
 }
 ```

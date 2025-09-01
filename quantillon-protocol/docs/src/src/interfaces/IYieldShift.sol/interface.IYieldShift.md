@@ -1,5 +1,5 @@
 # IYieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/interfaces/IYieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/interfaces/IYieldShift.sol)
 
 **Author:**
 Quantillon Labs
@@ -7,7 +7,7 @@ Quantillon Labs
 Interface for YieldShift dynamic yield redistribution
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -53,14 +53,14 @@ Add new yield to be distributed
 
 
 ```solidity
-function addYield(uint256 yieldAmount, string calldata source) external;
+function addYield(uint256 yieldAmount, bytes32 source) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`yieldAmount`|`uint256`|Yield amount in USDC equivalent|
-|`source`|`string`|Source identifier (e.g., "aave", "fees")|
+|`source`|`bytes32`|Source identifier (e.g., "aave", "fees")|
 
 
 ### claimUserYield
@@ -306,6 +306,59 @@ function setTargetPoolRatio(uint256 _targetPoolRatio) external;
 |Name|Type|Description|
 |----|----|-----------|
 |`_targetPoolRatio`|`uint256`|Target ratio|
+
+
+### authorizeYieldSource
+
+Authorize a yield source for specific yield type
+
+
+```solidity
+function authorizeYieldSource(address source, bytes32 yieldType) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Address of the yield source|
+|`yieldType`|`bytes32`|Type of yield this source is authorized for|
+
+
+### revokeYieldSource
+
+Revoke authorization for a yield source
+
+
+```solidity
+function revokeYieldSource(address source) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Address of the yield source to revoke|
+
+
+### isYieldSourceAuthorized
+
+Check if an address is authorized for a specific yield type
+
+
+```solidity
+function isYieldSourceAuthorized(address source, bytes32 yieldType) external view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Address to check|
+|`yieldType`|`bytes32`|Yield type to check|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True if authorized|
 
 
 ### updateYieldAllocation

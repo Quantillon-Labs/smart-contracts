@@ -8,6 +8,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 /**
  * @title QEUROTokenBasicTest
  * @notice Basic test suite for QEUROToken using proxy pattern
+ * @custom:security-contact team@quantillon.money
  */
 contract QEUROTokenBasicTest is Test {
     QEUROToken public implementation;

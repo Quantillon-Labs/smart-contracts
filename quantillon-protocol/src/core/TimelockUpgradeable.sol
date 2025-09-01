@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 /**
  * @title TimelockUpgradeable
  * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
  * @notice Secure upgrade mechanism with timelock and multi-sig requirements
  * @dev Replaces unrestricted upgrade capability with governance-controlled upgrades
  */

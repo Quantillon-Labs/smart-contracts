@@ -8,6 +8,7 @@ import "../interfaces/ITimelockUpgradeable.sol";
 /**
  * @title SecureUpgradeable
  * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
  * @notice Secure base contract for upgradeable contracts with timelock protection
  * @dev Replaces UUPSUpgradeable with timelock and multi-sig requirements
  */

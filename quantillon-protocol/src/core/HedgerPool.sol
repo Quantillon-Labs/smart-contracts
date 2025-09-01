@@ -17,6 +17,77 @@ import "../libraries/ValidationLibrary.sol";
 import "../libraries/VaultLibrary.sol";
 import "./SecureUpgradeable.sol";
 
+/**
+ * @title HedgerPool
+ * @notice EUR/USD hedging pool for managing currency risk and providing yield
+ * 
+ * @dev Main characteristics:
+ *      - EUR/USD currency hedging through leveraged positions
+ *      - Margin-based trading with liquidation system
+ *      - Interest rate differential yield generation
+ *      - Multi-position management per hedger
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable via UUPS pattern
+ * 
+ * @dev Position mechanics:
+ *      - Hedgers open leveraged EUR/USD positions
+ *      - Positions require minimum margin ratio (default 10%)
+ *      - Maximum leverage of 10x to limit risk exposure
+ *      - Position sizes tracked for risk management
+ *      - Entry and exit fees charged for protocol revenue
+ * 
+ * @dev Margin system:
+ *      - Initial margin required for position opening
+ *      - Margin can be added to strengthen positions
+ *      - Margin removal allowed if above minimum ratio
+ *      - Real-time margin ratio calculations
+ *      - Margin fees charged on additions
+ * 
+ * @dev Liquidation system:
+ *      - Two-phase liquidation with commit-reveal pattern
+ *      - Liquidation threshold below minimum margin ratio (default 1%)
+ *      - Liquidation penalty rewarded to liquidators (default 2%)
+ *      - Cooldown period prevents liquidation manipulation
+ *      - Emergency position closure for critical situations
+ * 
+ * @dev Yield generation:
+ *      - Interest rate differential between EUR and USD rates
+ *      - Rewards distributed based on position exposure
+ *      - Time-weighted reward calculations
+ *      - Integration with yield shift mechanism
+ *      - Automatic reward accumulation and claiming
+ * 
+ * @dev Risk management:
+ *      - Maximum positions per hedger (50) to prevent concentration
+ *      - Real-time oracle price monitoring
+ *      - Position size limits and exposure tracking
+ *      - Liquidation cooldown mechanisms
+ *      - Emergency position closure capabilities
+ * 
+ * @dev Fee structure:
+ *      - Entry fees for opening positions (default 0.2%)
+ *      - Exit fees for closing positions (default 0.2%)
+ *      - Margin fees for adding collateral (default 0.1%)
+ *      - Dynamic fee adjustment based on market conditions
+ * 
+ * @dev Security features:
+ *      - Role-based access control for all critical operations
+ *      - Reentrancy protection for all external calls
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable architecture for future improvements
+ *      - Secure position and margin management
+ *      - Two-phase liquidation for manipulation resistance
+ * 
+ * @dev Integration points:
+ *      - USDC for margin deposits and withdrawals
+ *      - Chainlink oracle for EUR/USD price feeds
+ *      - Yield shift mechanism for reward distribution
+ *      - Vault math library for precise calculations
+ *      - Position tracking and management systems
+ * 
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
+ */
 contract HedgerPool is 
     Initializable,
     ReentrancyGuardUpgradeable,

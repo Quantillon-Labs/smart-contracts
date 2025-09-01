@@ -306,6 +306,112 @@ contract QEUROTokenTestSuite is Test {
         assertEq(qeuroToken.balanceOf(user1), INITIAL_MINT_AMOUNT - SMALL_AMOUNT);
         assertEq(qeuroToken.totalSupply(), INITIAL_MINT_AMOUNT - SMALL_AMOUNT);
     }
+
+    // =============================================================================
+    // BATCH FUNCTION TESTS
+    // =============================================================================
+
+    function test_BatchMint_Success() public {
+        address[] memory recipients = new address[](2);
+        recipients[0] = user1;
+        recipients[1] = user2;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100 * 1e18;
+        amounts[1] = 200 * 1e18;
+
+        vm.prank(vault);
+        qeuroToken.batchMint(recipients, amounts);
+
+        assertEq(qeuroToken.balanceOf(user1), amounts[0]);
+        assertEq(qeuroToken.balanceOf(user2), amounts[1]);
+        assertEq(qeuroToken.totalSupply(), amounts[0] + amounts[1]);
+    }
+
+    function test_BatchMint_ArrayLengthMismatch_Revert() public {
+        address[] memory recipients = new address[](2);
+        recipients[0] = user1;
+        recipients[1] = user2;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 100 * 1e18;
+
+        vm.prank(vault);
+        vm.expectRevert(ErrorLibrary.ArrayLengthMismatch.selector);
+        qeuroToken.batchMint(recipients, amounts);
+    }
+
+    function test_BatchBurn_Success() public {
+        // Mint first
+        vm.prank(vault);
+        qeuroToken.mint(user1, 300 * 1e18);
+        vm.prank(vault);
+        qeuroToken.mint(user2, 400 * 1e18);
+
+        address[] memory froms = new address[](2);
+        froms[0] = user1;
+        froms[1] = user2;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100 * 1e18;
+        amounts[1] = 200 * 1e18;
+
+        vm.prank(vault);
+        qeuroToken.batchBurn(froms, amounts);
+
+        assertEq(qeuroToken.balanceOf(user1), 200 * 1e18);
+        assertEq(qeuroToken.balanceOf(user2), 200 * 1e18);
+    }
+
+    function test_BatchTransfer_Success() public {
+        // Mint to user1
+        vm.prank(vault);
+        qeuroToken.mint(user1, 500 * 1e18);
+
+        address[] memory recipients = new address[](2);
+        recipients[0] = user2;
+        recipients[1] = user3;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100 * 1e18;
+        amounts[1] = 150 * 1e18;
+
+        vm.prank(user1);
+        qeuroToken.batchTransfer(recipients, amounts);
+
+        assertEq(qeuroToken.balanceOf(user1), 250 * 1e18);
+        assertEq(qeuroToken.balanceOf(user2), 100 * 1e18);
+        assertEq(qeuroToken.balanceOf(user3), 150 * 1e18);
+    }
+
+    function test_BatchCompliance_WhitelistAndBlacklist() public {
+        // Batch whitelist
+        address[] memory accounts = new address[](2);
+        accounts[0] = user1;
+        accounts[1] = user2;
+
+        vm.prank(compliance);
+        qeuroToken.batchWhitelistAddresses(accounts);
+        assertTrue(qeuroToken.isWhitelisted(user1));
+        assertTrue(qeuroToken.isWhitelisted(user2));
+
+        // Batch unwhitelist
+        vm.prank(compliance);
+        qeuroToken.batchUnwhitelistAddresses(accounts);
+        assertFalse(qeuroToken.isWhitelisted(user1));
+        assertFalse(qeuroToken.isWhitelisted(user2));
+
+        // Batch blacklist
+        string[] memory reasons = new string[](2);
+        reasons[0] = "r1";
+        reasons[1] = "r2";
+        vm.prank(compliance);
+        qeuroToken.batchBlacklistAddresses(accounts, reasons);
+        assertTrue(qeuroToken.isBlacklisted(user1));
+        assertTrue(qeuroToken.isBlacklisted(user2));
+
+        // Batch unblacklist
+        vm.prank(compliance);
+        qeuroToken.batchUnblacklistAddresses(accounts);
+        assertFalse(qeuroToken.isBlacklisted(user1));
+        assertFalse(qeuroToken.isBlacklisted(user2));
+    }
     
     /**
      * @notice Test burning by non-vault address should revert

@@ -419,6 +419,156 @@ contract QTIToken is
     }
 
     /**
+     * @notice Batch lock QTI tokens for voting power for multiple amounts
+     * @param amounts Array of QTI amounts to lock
+     * @param lockTimes Array of lock durations (must be >= MIN_LOCK_TIME)
+     * @return veQTIAmounts Array of voting power calculated for each locked amount
+     */
+    function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes) 
+        external 
+        whenNotPaused 
+        returns (uint256[] memory veQTIAmounts) 
+    {
+        if (amounts.length != lockTimes.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        veQTIAmounts = new uint256[](amounts.length);
+        uint256 totalAmount = 0;
+        
+        // Pre-validate all inputs
+        for (uint256 i = 0; i < amounts.length; i++) {
+            ValidationLibrary.validatePositiveAmount(amounts[i]);
+            if (lockTimes[i] < MIN_LOCK_TIME) revert ErrorLibrary.LockTimeTooShort();
+            if (lockTimes[i] > MAX_LOCK_TIME) revert ErrorLibrary.LockTimeTooLong();
+            if (amounts[i] > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+            if (lockTimes[i] > type(uint32).max) revert ErrorLibrary.InvalidTime();
+            
+            totalAmount += amounts[i];
+        }
+        
+        if (balanceOf(msg.sender) < totalAmount) revert ErrorLibrary.InsufficientBalance();
+        
+        LockInfo storage lockInfo = locks[msg.sender];
+        uint256 oldVotingPower = lockInfo.votingPower;
+        uint256 totalNewVotingPower = 0;
+        uint256 totalNewAmount = uint256(lockInfo.amount);
+        
+        // Process each lock
+        for (uint256 i = 0; i < amounts.length; i++) {
+            uint256 amount = amounts[i];
+            uint256 lockTime = lockTimes[i];
+            
+            // Calculate new unlock time with overflow check
+            uint256 newUnlockTime = block.timestamp + lockTime;
+            if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
+            
+            // If already locked, extend the lock time
+            if (lockInfo.unlockTime > block.timestamp) {
+                newUnlockTime = lockInfo.unlockTime + lockTime;
+                if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
+            }
+            
+            // Calculate voting power with overflow check
+            uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
+            uint256 newVotingPower = amount * multiplier / 1e18;
+            if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+            
+            veQTIAmounts[i] = newVotingPower;
+            totalNewVotingPower += newVotingPower;
+            totalNewAmount += amount;
+            
+            // Update lock info for the last iteration
+            if (i == amounts.length - 1) {
+                if (totalNewAmount > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+                if (totalNewVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+                
+                lockInfo.amount = uint96(totalNewAmount);
+                lockInfo.unlockTime = uint32(newUnlockTime);
+                lockInfo.initialVotingPower = uint96(totalNewVotingPower);
+                lockInfo.lockTime = uint32(lockTime); // Use the last lock time
+                lockInfo.votingPower = uint96(totalNewVotingPower);
+            }
+            
+            emit TokensLocked(msg.sender, amount, newUnlockTime, newVotingPower);
+        }
+        
+        // Update global totals once
+        totalLocked = totalLocked + totalAmount;
+        totalVotingPower = totalVotingPower - oldVotingPower + totalNewVotingPower;
+        
+        // Transfer tokens to this contract once
+        _transfer(msg.sender, address(this), totalAmount);
+        
+        emit VotingPowerUpdated(msg.sender, oldVotingPower, totalNewVotingPower);
+    }
+
+    /**
+     * @notice Batch unlock QTI tokens for multiple users (admin function)
+     * @param users Array of user addresses to unlock for
+     * @return amounts Array of QTI amounts unlocked
+     */
+    function batchUnlock(address[] calldata users) 
+        external 
+        onlyRole(GOVERNANCE_ROLE)
+        whenNotPaused 
+        returns (uint256[] memory amounts) 
+    {
+        amounts = new uint256[](users.length);
+        
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            LockInfo storage lockInfo = locks[user];
+            
+            if (lockInfo.unlockTime > block.timestamp) revert ErrorLibrary.LockNotExpired();
+            if (lockInfo.amount == 0) revert ErrorLibrary.NothingToUnlock();
+
+            uint256 amount = lockInfo.amount;
+            uint256 oldVotingPower = lockInfo.votingPower;
+            amounts[i] = amount;
+            
+            // Clear lock info
+            lockInfo.amount = 0;
+            lockInfo.unlockTime = 0;
+            lockInfo.votingPower = 0;
+            
+            // Update global totals
+            totalLocked = totalLocked - amount;
+            totalVotingPower = totalVotingPower - oldVotingPower;
+            
+            // Transfer tokens back to user
+            _transfer(address(this), user, amount);
+            
+            emit TokensUnlocked(user, amount, oldVotingPower);
+            emit VotingPowerUpdated(user, oldVotingPower, 0);
+        }
+    }
+
+    /**
+     * @notice Batch transfer QTI tokens to multiple addresses
+     * @param recipients Array of recipient addresses
+     * @param amounts Array of amounts to transfer
+     */
+    function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
+        external
+        whenNotPaused
+        returns (bool)
+    {
+        if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        // Pre-validate recipients and amounts
+        for (uint256 i = 0; i < recipients.length; i++) {
+            if (recipients[i] == address(0)) revert ErrorLibrary.InvalidAddress();
+            if (amounts[i] == 0) revert ErrorLibrary.InvalidAmount();
+        }
+        
+        // Perform transfers using OpenZeppelin's transfer mechanism
+        for (uint256 i = 0; i < recipients.length; i++) {
+            _transfer(msg.sender, recipients[i], amounts[i]);
+        }
+        
+        return true;
+    }
+
+    /**
      * @notice Get voting power for an address with linear decay
      * @param user Address to get voting power for
      * @return votingPower Current voting power of the user (decays linearly over time)
@@ -550,6 +700,44 @@ contract QTIToken is
         }
 
         emit Voted(proposalId, msg.sender, support, votingPower);
+    }
+
+    /**
+     * @notice Batch vote on multiple proposals
+     * @param proposalIds Array of proposal IDs to vote on
+     * @param supportVotes Array of vote directions (true for yes, false for no)
+     */
+    function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes) external whenNotPaused {
+        if (proposalIds.length != supportVotes.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        // Update voting power once for the batch
+        uint256 votingPower = _updateVotingPower(msg.sender);
+        if (votingPower == 0) revert ErrorLibrary.NoVotingPower();
+        
+        // Process each vote
+        for (uint256 i = 0; i < proposalIds.length; i++) {
+            uint256 proposalId = proposalIds[i];
+            bool support = supportVotes[i];
+            
+            Proposal storage proposal = proposals[proposalId];
+            if (block.timestamp < proposal.startTime) revert ErrorLibrary.VotingNotStarted();
+            if (block.timestamp >= proposal.endTime) revert ErrorLibrary.VotingEnded();
+            if (proposal.receipts[msg.sender].hasVoted) revert ErrorLibrary.AlreadyVoted();
+
+            proposal.receipts[msg.sender] = Receipt({
+                hasVoted: true,
+                support: support,
+                votes: votingPower
+            });
+
+            if (support) {
+                proposal.forVotes += votingPower;
+            } else {
+                proposal.againstVotes += votingPower;
+            }
+
+            emit Voted(proposalId, msg.sender, support, votingPower);
+        }
     }
 
     /**

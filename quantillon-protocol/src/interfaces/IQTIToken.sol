@@ -31,6 +31,21 @@ interface IQTIToken {
     function unlock() external returns (uint256 amount);
 
     /**
+     * @notice Batch lock QTI tokens for voting power
+     * @param amounts Array of amounts to lock
+     * @param lockTimes Array of corresponding lock durations
+     * @return veQTIAmounts Array of voting power received per lock
+     */
+    function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes) external returns (uint256[] memory veQTIAmounts);
+
+    /**
+     * @notice Batch unlock QTI tokens for multiple users (admin/governance)
+     * @param users Array of user addresses to unlock for
+     * @return amounts Array of amounts unlocked per user
+     */
+    function batchUnlock(address[] calldata users) external returns (uint256[] memory amounts);
+
+    /**
      * @notice Get voting power for an address
      * @param user User address
      * @return votingPower Current voting power
@@ -81,6 +96,13 @@ interface IQTIToken {
      * @param support True for yes, false for no
      */
     function vote(uint256 proposalId, bool support) external;
+
+    /**
+     * @notice Batch vote on multiple proposals
+     * @param proposalIds Array of proposal IDs
+     * @param supportVotes Array of vote choices (true/false)
+     */
+    function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes) external;
 
     /**
      * @notice Execute a successful proposal

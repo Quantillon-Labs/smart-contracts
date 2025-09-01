@@ -84,6 +84,9 @@ interface IQEUROToken {
     // Core functions
     function mint(address to, uint256 amount) external;
     function burn(address from, uint256 amount) external;
+    function batchMint(address[] calldata recipients, uint256[] calldata amounts) external;
+    function batchBurn(address[] calldata froms, uint256[] calldata amounts) external;
+    function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external returns (bool);
 
     // Rate limiting
     function updateRateLimits(uint256 newMintLimit, uint256 newBurnLimit) external;
@@ -94,6 +97,10 @@ interface IQEUROToken {
     function whitelistAddress(address account) external;
     function unwhitelistAddress(address account) external;
     function toggleWhitelistMode(bool enabled) external;
+    function batchBlacklistAddresses(address[] calldata accounts, string[] calldata reasons) external;
+    function batchUnblacklistAddresses(address[] calldata accounts) external;
+    function batchWhitelistAddresses(address[] calldata accounts) external;
+    function batchUnwhitelistAddresses(address[] calldata accounts) external;
 
     // Decimal precision functions
     function updateMinPricePrecision(uint256 newPrecision) external;

@@ -379,18 +379,22 @@ contract stQEUROToken is
         // Update totals once
         totalUnderlying = totalUnderlying + totalQeuroAmount;
 
+        // GAS OPTIMIZATION: Cache msg.sender and exchange rate to avoid repeated storage reads
+        address staker = msg.sender;
+        uint256 exchangeRate_ = exchangeRate;
+        
         // Process each stake
         for (uint256 i = 0; i < qeuroAmounts.length; i++) {
             uint256 qeuroAmount = qeuroAmounts[i];
             
             // Calculate stQEURO amount based on current exchange rate
-            uint256 stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate);
+            uint256 stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate_);
             stQEUROAmounts[i] = stQEUROAmount;
 
             // Mint stQEURO to user
-            _mint(msg.sender, stQEUROAmount);
+            _mint(staker, stQEUROAmount);
 
-            emit QEUROStaked(msg.sender, qeuroAmount, stQEUROAmount);
+            emit QEUROStaked(staker, qeuroAmount, stQEUROAmount);
         }
     }
 
@@ -430,18 +434,21 @@ contract stQEUROToken is
         // Ensure we have enough QEURO
         require(totalUnderlying >= totalQeuroAmount, "stQEURO: Insufficient underlying");
 
+        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
+        address unstaker = msg.sender;
+        
         // Process each unstake
         for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
             uint256 stQEUROAmount = stQEUROAmounts[i];
             uint256 qeuroAmount = qeuroAmounts[i];
 
             // Burn stQEURO from user
-            _burn(msg.sender, stQEUROAmount);
+            _burn(unstaker, stQEUROAmount);
 
             // Transfer QEURO to user
-            IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroAmount);
+            IERC20(address(qeuro)).safeTransfer(unstaker, qeuroAmount);
 
-            emit QEUROUnstaked(msg.sender, stQEUROAmount, qeuroAmount);
+            emit QEUROUnstaked(unstaker, stQEUROAmount, qeuroAmount);
         }
 
         // Update totals once at the end
@@ -466,9 +473,12 @@ contract stQEUROToken is
             require(amounts[i] > 0, "stQEURO: Amount must be positive");
         }
         
+        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
+        address sender = msg.sender;
+        
         // Perform transfers using OpenZeppelin's transfer mechanism
         for (uint256 i = 0; i < recipients.length; i++) {
-            _transfer(msg.sender, recipients[i], amounts[i]);
+            _transfer(sender, recipients[i], amounts[i]);
         }
         
         return true;

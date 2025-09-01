@@ -475,18 +475,22 @@ contract QTIToken is
         uint256 totalNewVotingPower = 0;
         uint256 totalNewAmount = uint256(lockInfo.amount);
         
+        // GAS OPTIMIZATION: Cache timestamp and lock info to avoid repeated storage reads
+        uint256 currentTimestamp = block.timestamp;
+        uint256 lockInfoUnlockTime = lockInfo.unlockTime;
+        
         // Process each lock
         for (uint256 i = 0; i < amounts.length; i++) {
             uint256 amount = amounts[i];
             uint256 lockTime = lockTimes[i];
             
             // Calculate new unlock time with overflow check
-            uint256 newUnlockTime = block.timestamp + lockTime;
+            uint256 newUnlockTime = currentTimestamp + lockTime;
             if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
             
             // If already locked, extend the lock time
-            if (lockInfo.unlockTime > block.timestamp) {
-                newUnlockTime = lockInfo.unlockTime + lockTime;
+            if (lockInfoUnlockTime > currentTimestamp) {
+                newUnlockTime = lockInfoUnlockTime + lockTime;
                 if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
             }
             
@@ -537,11 +541,14 @@ contract QTIToken is
     {
         amounts = new uint256[](users.length);
         
+        // GAS OPTIMIZATION: Cache timestamp to avoid repeated block.timestamp calls
+        uint256 currentTimestamp = block.timestamp;
+        
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
             LockInfo storage lockInfo = locks[user];
             
-            if (lockInfo.unlockTime > block.timestamp) revert ErrorLibrary.LockNotExpired();
+            if (lockInfo.unlockTime > currentTimestamp) revert ErrorLibrary.LockNotExpired();
             if (lockInfo.amount == 0) revert ErrorLibrary.NothingToUnlock();
 
             uint256 amount = lockInfo.amount;
@@ -584,9 +591,12 @@ contract QTIToken is
             if (amounts[i] == 0) revert ErrorLibrary.InvalidAmount();
         }
         
+        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
+        address sender = msg.sender;
+        
         // Perform transfers using OpenZeppelin's transfer mechanism
         for (uint256 i = 0; i < recipients.length; i++) {
-            _transfer(msg.sender, recipients[i], amounts[i]);
+            _transfer(sender, recipients[i], amounts[i]);
         }
         
         return true;
@@ -738,17 +748,21 @@ contract QTIToken is
         uint256 votingPower = _updateVotingPower(msg.sender);
         if (votingPower == 0) revert ErrorLibrary.NoVotingPower();
         
+        // GAS OPTIMIZATION: Cache timestamp and msg.sender to avoid repeated calls
+        uint256 currentTimestamp = block.timestamp;
+        address sender = msg.sender;
+        
         // Process each vote
         for (uint256 i = 0; i < proposalIds.length; i++) {
             uint256 proposalId = proposalIds[i];
             bool support = supportVotes[i];
             
             Proposal storage proposal = proposals[proposalId];
-            if (block.timestamp < proposal.startTime) revert ErrorLibrary.VotingNotStarted();
-            if (block.timestamp >= proposal.endTime) revert ErrorLibrary.VotingEnded();
-            if (proposal.receipts[msg.sender].hasVoted) revert ErrorLibrary.AlreadyVoted();
+            if (currentTimestamp < proposal.startTime) revert ErrorLibrary.VotingNotStarted();
+            if (currentTimestamp >= proposal.endTime) revert ErrorLibrary.VotingEnded();
+            if (proposal.receipts[sender].hasVoted) revert ErrorLibrary.AlreadyVoted();
 
-            proposal.receipts[msg.sender] = Receipt({
+            proposal.receipts[sender] = Receipt({
                 hasVoted: true,
                 support: support,
                 votes: votingPower
@@ -760,7 +774,7 @@ contract QTIToken is
                 proposal.againstVotes += votingPower;
             }
 
-            emit Voted(proposalId, msg.sender, support, votingPower);
+            emit Voted(proposalId, sender, support, votingPower);
         }
     }
 

@@ -445,20 +445,24 @@ contract UserPool is
             totalUsers++;
         }
         
+        // GAS OPTIMIZATION: Cache vault address and deposit fee to avoid repeated storage reads
+        address vaultAddress = address(vault);
+        uint256 depositFee_ = depositFee;
+        
         // Process each deposit
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 minQeuroOut = minQeuroOuts[i];
             
             // Calculate deposit fee
-            uint256 fee = usdcAmount.percentageOf(depositFee);
+            uint256 fee = usdcAmount.percentageOf(depositFee_);
             uint256 netAmount = usdcAmount - fee;
             
             // Store expected balance before external call
             uint256 qeuroBefore = qeuro.balanceOf(address(this));
             
             // Approve vault to spend USDC
-            usdc.safeIncreaseAllowance(address(vault), netAmount);
+            usdc.safeIncreaseAllowance(vaultAddress, netAmount);
             
             // Mint QEURO through vault
             vault.mintQEURO(netAmount, minQeuroOut);
@@ -554,6 +558,10 @@ contract UserPool is
         // Transfer total QEURO from user FIRST
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
+        // GAS OPTIMIZATION: Cache vault address and withdrawal fee to avoid repeated storage reads
+        address vaultAddress = address(vault);
+        uint256 withdrawalFee_ = withdrawalFee;
+        
         // Process each withdrawal
         for (uint256 i = 0; i < qeuroAmounts.length; i++) {
             uint256 qeuroAmount = qeuroAmounts[i];
@@ -570,7 +578,7 @@ contract UserPool is
             uint256 usdcReceived = usdcAfter - usdcBefore;
 
             // Calculate withdrawal fee
-            uint256 fee = usdcReceived.percentageOf(withdrawalFee);
+            uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
             uint256 netAmount = usdcReceived - fee;
             usdcReceivedAmounts[i] = netAmount;
 
@@ -628,9 +636,12 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         uint256 totalQeuroAmount = 0;
         
+        // GAS OPTIMIZATION: Cache minStakeAmount to avoid repeated storage reads
+        uint256 minStakeAmount_ = minStakeAmount;
+        
         // Pre-validate amounts and calculate total
         for (uint256 i = 0; i < qeuroAmounts.length; i++) {
-            require(qeuroAmounts[i] >= minStakeAmount, "UserPool: Amount below minimum");
+            require(qeuroAmounts[i] >= minStakeAmount_, "UserPool: Amount below minimum");
             totalQeuroAmount += qeuroAmounts[i];
         }
         
@@ -640,18 +651,21 @@ contract UserPool is
         // Transfer total QEURO from user FIRST
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
+        // GAS OPTIMIZATION: Cache timestamp to avoid repeated block.timestamp calls
+        uint64 currentTimestamp = uint64(block.timestamp);
+        
         // Process each stake
         for (uint256 i = 0; i < qeuroAmounts.length; i++) {
             uint256 qeuroAmount = qeuroAmounts[i];
             
             // Update user staking info
             user.stakedAmount += uint128(qeuroAmount);
-            user.lastStakeTime = uint64(block.timestamp);
+            user.lastStakeTime = currentTimestamp;
             
             // Update pool totals
             totalStakes += qeuroAmount;
 
-            emit QEUROStaked(msg.sender, qeuroAmount, block.timestamp);
+            emit QEUROStaked(msg.sender, qeuroAmount, currentTimestamp);
         }
     }
 
@@ -739,6 +753,9 @@ contract UserPool is
     {
         rewardAmounts = new uint256[](users.length);
         
+        // GAS OPTIMIZATION: Cache timestamp to avoid repeated block.timestamp calls
+        uint64 currentTimestamp = uint64(block.timestamp);
+        
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
             _updatePendingRewards(user);
@@ -753,7 +770,7 @@ contract UserPool is
                 // Mint reward tokens (could be QEURO or QTI)
                 qeuro.mint(user, rewardAmount);
                 
-                emit StakingRewardsClaimed(user, rewardAmount, block.timestamp);
+                emit StakingRewardsClaimed(user, rewardAmount, currentTimestamp);
             }
         }
     }

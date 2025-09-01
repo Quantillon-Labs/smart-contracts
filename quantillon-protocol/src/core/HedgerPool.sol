@@ -406,28 +406,39 @@ contract HedgerPool is
         
         pnls = new int256[](positionIds.length);
         
+        // GAS OPTIMIZATION: Cache oracle price outside loop to avoid multiple external calls
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        ValidationLibrary.validateOraclePrice(isValid);
+        
+        // GAS OPTIMIZATION: Cache hedger info outside loop
+        HedgerInfo storage hedger = hedgers[msg.sender];
+        
         for (uint i = 0; i < positionIds.length; i++) {
+            // GAS OPTIMIZATION: Cache position data to avoid multiple storage reads
             HedgePosition storage position = positions[positionIds[i]];
-            ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
-            ValidationLibrary.validatePositionActive(position.isActive);
-
-            (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
-            ValidationLibrary.validateOraclePrice(isValid);
+            uint128 positionMargin = position.margin;
+            uint128 positionSize = position.positionSize;
+            address positionHedger = position.hedger;
+            bool positionIsActive = position.isActive;
+            
+            ValidationLibrary.validatePositionOwner(positionHedger, msg.sender);
+            ValidationLibrary.validatePositionActive(positionIsActive);
 
             int256 pnl = _calculatePnL(position, currentPrice);
             pnls[i] = pnl;
 
-            uint256 grossPayout = uint256(int256(uint256(position.margin)) + pnl);
+            uint256 grossPayout = uint256(int256(uint256(positionMargin)) + pnl);
             uint256 exitFeeAmount = grossPayout.percentageOf(exitFee);
             uint256 netPayout = grossPayout - exitFeeAmount;
 
-            HedgerInfo storage hedger = hedgers[msg.sender];
-            hedger.totalMargin -= position.margin;
-            hedger.totalExposure -= position.positionSize;
+            // Update hedger totals
+            hedger.totalMargin -= positionMargin;
+            hedger.totalExposure -= positionSize;
 
-            totalMargin -= position.margin;
-            totalExposure -= position.positionSize;
+            totalMargin -= positionMargin;
+            totalExposure -= positionSize;
 
+            // Update position state
             position.isActive = false;
             _removePositionFromArrays(msg.sender, positionIds[i]);
             

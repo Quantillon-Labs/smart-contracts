@@ -400,10 +400,13 @@ contract QEUROToken is
         // Rate limiting for the whole batch
         _checkAndUpdateMintRateLimit(totalAmount);
 
+        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
+        address minter = msg.sender;
+        
         // Perform mints
         for (uint256 i = 0; i < recipients.length; i++) {
             _mint(recipients[i], amounts[i]);
-            emit TokensMinted(recipients[i], amounts[i], msg.sender);
+            emit TokensMinted(recipients[i], amounts[i], minter);
         }
     }
 
@@ -482,10 +485,13 @@ contract QEUROToken is
         // Rate limiting for the whole batch
         _checkAndUpdateBurnRateLimit(totalAmount);
 
+        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
+        address burner = msg.sender;
+        
         // Perform burns
         for (uint256 i = 0; i < froms.length; i++) {
             _burn(froms[i], amounts[i]);
-            emit TokensBurned(froms[i], amounts[i], msg.sender);
+            emit TokensBurned(froms[i], amounts[i], burner);
         }
     }
 

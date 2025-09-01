@@ -189,14 +189,16 @@ contract UserPool is
     /// @notice User information data structure
     /// @dev Stores all information about a user's deposits, stakes, and rewards
     /// @dev Used for user management and reward calculations
+    /// @dev OPTIMIZED: Timestamps and amounts packed for gas efficiency
     struct UserInfo {
-        uint256 qeuroBalance;               // QEURO balance from deposits (18 decimals)
-        uint256 stakedAmount;               // QEURO amount currently staked (18 decimals)
-        uint256 pendingRewards;             // Pending staking rewards in QEURO (18 decimals)
-        uint256 depositHistory;             // Total historical deposits in USDC (6 decimals)
-        uint256 lastStakeTime;              // Timestamp of last staking action
-        uint256 unstakeRequestTime;         // Timestamp when unstaking was requested
-        uint256 unstakeAmount;              // Amount being unstaked (18 decimals)
+        uint128 qeuroBalance;               // QEURO balance from deposits (18 decimals, max ~340B)
+        uint128 stakedAmount;               // QEURO amount currently staked (18 decimals, max ~340B)
+        uint128 pendingRewards;             // Pending staking rewards in QEURO (18 decimals, max ~340B)
+        uint128 unstakeAmount;              // Amount being unstaked (18 decimals, max ~340B)
+        uint96 depositHistory;              // Total historical deposits in USDC (6 decimals, max ~79B USDC)
+        uint64 lastStakeTime;               // Timestamp of last staking action (until year 2554)
+        uint64 unstakeRequestTime;          // Timestamp when unstaking was requested (until year 2554)
+        // Total: 16+16+16+16+12+8+8 = 92 bytes (3 slots vs 7 slots = 57% gas savings)
     }
     
     // Storage mappings
@@ -381,8 +383,8 @@ contract UserPool is
         qeuroMinted = qeuroAfter - qeuroBefore;
         
         // Update user balance and pool totals
-        user.qeuroBalance += qeuroMinted;
-        user.depositHistory += usdcAmount;
+        user.qeuroBalance += uint128(qeuroMinted);
+        user.depositHistory += uint96(usdcAmount);
         totalDeposits += netAmount;
 
         // Transfer QEURO to user as final step
@@ -450,8 +452,8 @@ contract UserPool is
             qeuroMintedAmounts[i] = qeuroMinted;
             
             // Update user balance and pool totals
-            user.qeuroBalance += qeuroMinted;
-            user.depositHistory += usdcAmount;
+            user.qeuroBalance += uint128(qeuroMinted);
+            user.depositHistory += uint96(usdcAmount);
             totalDeposits += netAmount;
 
             // Transfer QEURO to user
@@ -492,7 +494,7 @@ contract UserPool is
         uint256 netAmount = usdcReceived - fee;
 
         // Update user info
-        user.qeuroBalance -= qeuroAmount;
+        user.qeuroBalance -= uint128(qeuroAmount);
         
         // Update pool totals
         totalDeposits -= netAmount;
@@ -555,7 +557,7 @@ contract UserPool is
             usdcReceivedAmounts[i] = netAmount;
 
             // Update user info
-            user.qeuroBalance -= qeuroAmount;
+            user.qeuroBalance -= uint128(qeuroAmount);
             
             // Update pool totals
             totalDeposits -= netAmount;
@@ -589,8 +591,8 @@ contract UserPool is
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
         
         // Update user staking info
-        user.stakedAmount += qeuroAmount;
-        user.lastStakeTime = block.timestamp;
+        user.stakedAmount += uint128(qeuroAmount);
+        user.lastStakeTime = uint64(block.timestamp);
         
         // Update pool totals
         totalStakes += qeuroAmount;
@@ -625,8 +627,8 @@ contract UserPool is
             uint256 qeuroAmount = qeuroAmounts[i];
             
             // Update user staking info
-            user.stakedAmount += qeuroAmount;
-            user.lastStakeTime = block.timestamp;
+            user.stakedAmount += uint128(qeuroAmount);
+            user.lastStakeTime = uint64(block.timestamp);
             
             // Update pool totals
             totalStakes += qeuroAmount;
@@ -649,8 +651,8 @@ contract UserPool is
         _updatePendingRewards(msg.sender);
         
         // Set unstaking request
-        user.unstakeRequestTime = block.timestamp;
-        user.unstakeAmount = qeuroAmount;
+        user.unstakeRequestTime = uint64(block.timestamp);
+        user.unstakeAmount = uint128(qeuroAmount);
     }
 
     /**
@@ -669,7 +671,7 @@ contract UserPool is
         uint256 amount = user.unstakeAmount;
         
         // Update user staking info
-        user.stakedAmount -= amount;
+        user.stakedAmount -= uint128(amount);
         user.unstakeAmount = 0;
         user.unstakeRequestTime = 0;
         
@@ -789,16 +791,16 @@ contract UserPool is
             }
             
             // Calculate time-based staking rewards
-            uint256 stakingReward = userdata.stakedAmount
+            uint256 stakingReward = uint256(userdata.stakedAmount)
                 .mulDiv(stakingAPY, 10000)
                 .mulDiv(timeElapsed, 365 days);
             
             // Calculate yield-based rewards
-            uint256 yieldReward = userdata.stakedAmount
+            uint256 yieldReward = uint256(userdata.stakedAmount)
                 .mulDiv(accumulatedYieldPerShare, 1e18);
             
-            userdata.pendingRewards += stakingReward + yieldReward;
-            userdata.lastStakeTime = block.timestamp;
+            userdata.pendingRewards += uint128(stakingReward + yieldReward);
+            userdata.lastStakeTime = uint64(block.timestamp);
             
             // Update last reward block
             userLastRewardBlock[user] = currentBlock;
@@ -853,14 +855,14 @@ contract UserPool is
             timeElapsed = MAX_REWARD_PERIOD;
         }
         
-        uint256 stakingReward = userdata.stakedAmount
+        uint256 stakingReward = uint256(userdata.stakedAmount)
             .mulDiv(stakingAPY, 10000)
             .mulDiv(timeElapsed, 365 days);
         
-        uint256 yieldReward = userdata.stakedAmount
+        uint256 yieldReward = uint256(userdata.stakedAmount)
             .mulDiv(accumulatedYieldPerShare, 1e18);
         
-        return userdata.pendingRewards + stakingReward + yieldReward;
+        return uint256(userdata.pendingRewards) + stakingReward + yieldReward;
     }
 
     /**

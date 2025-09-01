@@ -18,6 +18,7 @@ import "../libraries/ErrorLibrary.sol";
 import "../libraries/AccessControlLibrary.sol";
 import "../libraries/ValidationLibrary.sol";
 import "../libraries/TokenLibrary.sol";
+import "../libraries/FlashLoanProtection.sol";
 
 /**
  * @title QTIToken
@@ -289,6 +290,22 @@ contract QTIToken is
     event DecentralizationLevelUpdated(uint256 indexed newLevel);
 
     // =============================================================================
+    // MODIFIERS - Access control and security
+    // =============================================================================
+
+    /**
+     * @notice Modifier to protect against flash loan attacks
+     * @dev Checks that the contract's QTI balance doesn't decrease during execution
+     * @dev This prevents flash loans that would drain QTI from the contract
+     */
+    modifier flashLoanProtection() {
+        uint256 balanceBefore = balanceOf(address(this));
+        _;
+        uint256 balanceAfter = balanceOf(address(this));
+        require(balanceAfter >= balanceBefore, "Flash loan detected: QTI balance decreased");
+    }
+
+    // =============================================================================
     // INITIALIZER
     // =============================================================================
 
@@ -341,7 +358,7 @@ contract QTIToken is
      * @param lockTime Duration to lock (must be >= MIN_LOCK_TIME)
      * @return veQTI Voting power calculated for the locked amount
      */
-    function lock(uint256 amount, uint256 lockTime) external whenNotPaused returns (uint256 veQTI) {
+    function lock(uint256 amount, uint256 lockTime) external whenNotPaused flashLoanProtection returns (uint256 veQTI) {
         ValidationLibrary.validatePositiveAmount(amount);
         if (lockTime < MIN_LOCK_TIME) revert ErrorLibrary.LockTimeTooShort();
         if (lockTime > MAX_LOCK_TIME) revert ErrorLibrary.LockTimeTooLong();
@@ -432,6 +449,7 @@ contract QTIToken is
     function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes) 
         external 
         whenNotPaused 
+        flashLoanProtection
         returns (uint256[] memory veQTIAmounts) 
     {
         if (amounts.length != lockTimes.length) revert ErrorLibrary.ArrayLengthMismatch();
@@ -555,6 +573,7 @@ contract QTIToken is
     function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
         external
         whenNotPaused
+        flashLoanProtection
         returns (bool)
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
@@ -712,7 +731,7 @@ contract QTIToken is
      * @param proposalIds Array of proposal IDs to vote on
      * @param supportVotes Array of vote directions (true for yes, false for no)
      */
-    function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes) external whenNotPaused {
+    function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes) external whenNotPaused flashLoanProtection {
         if (proposalIds.length != supportVotes.length) revert ErrorLibrary.ArrayLengthMismatch();
         
         // Update voting power once for the batch

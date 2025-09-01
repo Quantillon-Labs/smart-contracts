@@ -289,6 +289,22 @@ contract UserPool is
     event PoolParameterUpdated(string indexed parameter, uint256 oldValue, uint256 newValue);
 
     // =============================================================================
+    // MODIFIERS - Access control and security
+    // =============================================================================
+
+    /**
+     * @notice Modifier to protect against flash loan attacks
+     * @dev Checks that the contract's USDC balance doesn't decrease during execution
+     * @dev This prevents flash loans that would drain USDC from the contract
+     */
+    modifier flashLoanProtection() {
+        uint256 balanceBefore = usdc.balanceOf(address(this));
+        _;
+        uint256 balanceAfter = usdc.balanceOf(address(this));
+        require(balanceAfter >= balanceBefore, "Flash loan detected: USDC balance decreased");
+    }
+
+    // =============================================================================
     // INITIALIZER
     // =============================================================================
 
@@ -405,6 +421,7 @@ contract UserPool is
         external
         nonReentrant
         whenNotPaused
+        flashLoanProtection
         returns (uint256[] memory qeuroMintedAmounts)
     {
         if (usdcAmounts.length != minQeuroOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
@@ -475,6 +492,7 @@ contract UserPool is
         external 
         nonReentrant 
         whenNotPaused 
+        flashLoanProtection
         returns (uint256 usdcReceived) 
     {
         require(qeuroAmount > 0, "UserPool: Amount must be positive");

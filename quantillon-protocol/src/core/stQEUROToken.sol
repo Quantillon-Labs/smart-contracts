@@ -218,6 +218,22 @@ contract stQEUROToken is
     event YieldParametersUpdated(string indexed parameterType, uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency);
 
     // =============================================================================
+    // MODIFIERS - Access control and security
+    // =============================================================================
+
+    /**
+     * @notice Modifier to protect against flash loan attacks
+     * @dev Checks that the contract's total underlying QEURO doesn't decrease during execution
+     * @dev This prevents flash loans that would drain QEURO from the contract
+     */
+    modifier flashLoanProtection() {
+        uint256 totalUnderlyingBefore = totalUnderlying;
+        _;
+        uint256 totalUnderlyingAfter = totalUnderlying;
+        require(totalUnderlyingAfter >= totalUnderlyingBefore, "Flash loan detected: Total underlying decreased");
+    }
+
+    // =============================================================================
     // INITIALIZER - Contract initialization
     // =============================================================================
 
@@ -276,7 +292,7 @@ contract stQEUROToken is
      * @param qeuroAmount Amount of QEURO to stake
      * @return stQEUROAmount Amount of stQEURO received
      */
-    function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused returns (uint256 stQEUROAmount) {
+    function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused flashLoanProtection returns (uint256 stQEUROAmount) {
         require(qeuroAmount > 0, "stQEURO: Amount must be positive");
         require(qeuro.balanceOf(msg.sender) >= qeuroAmount, "stQEURO: Insufficient QEURO balance");
 

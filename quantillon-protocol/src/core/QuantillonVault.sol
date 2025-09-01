@@ -170,6 +170,22 @@ contract QuantillonVault is
     );
 
     // =============================================================================
+    // MODIFIERS - Access control and security
+    // =============================================================================
+
+    /**
+     * @notice Modifier to protect against flash loan attacks
+     * @dev Checks that the contract's USDC balance doesn't decrease during execution
+     * @dev This prevents flash loans that would drain USDC from the contract
+     */
+    modifier flashLoanProtection() {
+        uint256 balanceBefore = usdc.balanceOf(address(this));
+        _;
+        uint256 balanceAfter = usdc.balanceOf(address(this));
+        require(balanceAfter >= balanceBefore, "Flash loan detected: USDC balance decreased");
+    }
+
+    // =============================================================================
     // INITIALIZER - Initial vault configuration
     // =============================================================================
 
@@ -251,7 +267,7 @@ contract QuantillonVault is
     function mintQEURO(
         uint256 usdcAmount,
         uint256 minQeuroOut
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused flashLoanProtection {
         // Input validations
         require(usdcAmount > 0, "Vault: Amount must be positive");
 
@@ -303,7 +319,7 @@ contract QuantillonVault is
     function redeemQEURO(
         uint256 qeuroAmount,
         uint256 minUsdcOut
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused flashLoanProtection {
         // Input validations
         require(qeuroAmount > 0, "Vault: Amount must be positive");
 

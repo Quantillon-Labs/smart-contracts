@@ -200,7 +200,8 @@ contract stQEUROToken is
     /// @param yieldAmount Amount of yield distributed (18 decimals)
     /// @param newExchangeRate New exchange rate after distribution (18 decimals)
     /// @dev Used to track yield distributions and their impact
-    event YieldDistributed(uint256 yieldAmount, uint256 newExchangeRate);
+    /// @dev OPTIMIZED: Indexed exchange rate for efficient filtering
+    event YieldDistributed(uint256 yieldAmount, uint256 indexed newExchangeRate);
     
     /// @notice Emitted when a user claims yield
     /// @param user Address of the user who claimed yield
@@ -213,7 +214,8 @@ contract stQEUROToken is
     /// @param minYieldThreshold New minimum yield threshold
     /// @param maxUpdateFrequency New maximum update frequency
     /// @dev Used to track parameter changes by governance
-    event YieldParametersUpdated(uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency);
+    /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
+    event YieldParametersUpdated(string indexed parameterType, uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency);
 
     // =============================================================================
     // INITIALIZER - Contract initialization
@@ -641,7 +643,7 @@ contract stQEUROToken is
         minYieldThreshold = _minYieldThreshold;
         maxUpdateFrequency = _maxUpdateFrequency;
 
-        emit YieldParametersUpdated(_yieldFee, _minYieldThreshold, _maxUpdateFrequency);
+        emit YieldParametersUpdated("yield", _yieldFee, _minYieldThreshold, _maxUpdateFrequency);
     }
 
     /**

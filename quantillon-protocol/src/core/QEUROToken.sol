@@ -166,15 +166,15 @@ contract QEUROToken is
     /// @param to Recipient of the tokens
     /// @param amount Amount minted in wei (18 decimals)
     /// @param minter Address that performed the mint (vault)
-    /// @dev Indexed parameters allow efficient filtering of events
-    event TokensMinted(address indexed to, uint256 amount, address indexed minter);
+    /// @dev OPTIMIZED: Indexed amount for efficient filtering by mint size
+    event TokensMinted(address indexed to, uint256 indexed amount, address indexed minter);
     
     /// @notice Emitted when tokens are burned
     /// @param from Address from which tokens are burned
     /// @param amount Amount burned in wei (18 decimals)
     /// @param burner Address that performed the burn (vault)
-    /// @dev Indexed parameters allow efficient filtering of events
-    event TokensBurned(address indexed from, uint256 amount, address indexed burner);
+    /// @dev OPTIMIZED: Indexed amount for efficient filtering by burn size
+    event TokensBurned(address indexed from, uint256 indexed amount, address indexed burner);
     
     /// @notice Emitted when the supply limit is modified
     /// @param oldCap Old supply limit in wei (18 decimals)
@@ -185,14 +185,14 @@ contract QEUROToken is
     /// @notice Emitted when rate limits are updated
     /// @param mintLimit New mint rate limit in wei per hour (18 decimals)
     /// @param burnLimit New burn rate limit in wei per hour (18 decimals)
-    /// @dev Emitted when governance updates rate limits
-    event RateLimitsUpdated(uint256 mintLimit, uint256 burnLimit);
+    /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
+    event RateLimitsUpdated(string indexed limitType, uint256 mintLimit, uint256 burnLimit);
 
     /// @notice Emitted when an address is blacklisted
     /// @param account Address that was blacklisted
     /// @param reason Reason for blacklisting (for compliance records)
-    /// @dev Emitted when COMPLIANCE_ROLE blacklists an address
-    event AddressBlacklisted(address indexed account, string reason);
+    /// @dev OPTIMIZED: Indexed reason for efficient filtering by blacklist type
+    event AddressBlacklisted(address indexed account, string indexed reason);
 
     /// @notice Emitted when an address is removed from blacklist
     /// @param account Address that was removed from blacklist
@@ -222,8 +222,8 @@ contract QEUROToken is
 
     /// @notice Emitted when rate limit is reset
     /// @param timestamp Timestamp of reset
-    /// @dev Emitted when rate limits are reset (hourly or manual)
-    event RateLimitReset(uint256 timestamp);
+    /// @dev OPTIMIZED: Indexed timestamp for efficient time-based filtering
+    event RateLimitReset(uint256 indexed timestamp);
 
     // =============================================================================
     // INITIALIZER - Replaces constructor for upgradeable contracts
@@ -582,7 +582,7 @@ contract QEUROToken is
 
         rateLimitCaps = RateLimitCaps(uint128(newMintLimit), uint128(newBurnLimit));
 
-        emit RateLimitsUpdated(newMintLimit, newBurnLimit);
+        emit RateLimitsUpdated("rate_limits", newMintLimit, newBurnLimit);
     }
 
     // =============================================================================

@@ -152,14 +152,16 @@ contract AaveVault is
     uint256 public emergencyExitThreshold;
     bool public emergencyMode;
 
-    event DeployedToAave(uint256 amount, uint256 aTokensReceived, uint256 newBalance);
-    event WithdrawnFromAave(uint256 amountRequested, uint256 amountWithdrawn, uint256 newBalance);
-    event AaveYieldHarvested(uint256 yieldHarvested, uint256 protocolFee, uint256 netYield);
+    /// @dev OPTIMIZED: Indexed operation type for efficient filtering
+    event DeployedToAave(string indexed operationType, uint256 amount, uint256 aTokensReceived, uint256 newBalance);
+    event WithdrawnFromAave(string indexed operationType, uint256 amountRequested, uint256 amountWithdrawn, uint256 newBalance);
+    event AaveYieldHarvested(string indexed harvestType, uint256 yieldHarvested, uint256 protocolFee, uint256 netYield);
     event AaveRewardsClaimed(address indexed rewardToken, uint256 rewardAmount, address recipient);
-    event PositionRebalanced(uint256 oldAllocation, uint256 newAllocation, string reason);
-    event AaveParameterUpdated(string parameter, uint256 oldValue, uint256 newValue);
-    event EmergencyWithdrawal(uint256 amountWithdrawn, string reason, uint256 timestamp);
-    event EmergencyModeToggled(bool enabled, string reason);
+    /// @dev OPTIMIZED: Indexed reason and parameter for efficient filtering
+    event PositionRebalanced(string indexed reason, uint256 oldAllocation, uint256 newAllocation);
+    event AaveParameterUpdated(string indexed parameter, uint256 oldValue, uint256 newValue);
+    event EmergencyWithdrawal(string indexed reason, uint256 amountWithdrawn, uint256 timestamp);
+    event EmergencyModeToggled(string indexed reason, bool enabled);
 
     constructor() {
         _disableInitializers();
@@ -233,7 +235,7 @@ contract AaveVault is
         
         principalDeposited += amount;
         
-        emit DeployedToAave(amount, aTokensReceived, balanceAfter);
+        emit DeployedToAave("deploy", amount, aTokensReceived, balanceAfter);
     }
 
     function withdrawFromAave(uint256 amount) 
@@ -288,7 +290,7 @@ contract AaveVault is
             uint256 principalWithdrawn = VaultMath.min(actualReceived, principalDeposited);
             principalDeposited -= principalWithdrawn;
             
-            emit WithdrawnFromAave(amount, actualReceived, aUSDC.balanceOf(address(this)));
+            emit WithdrawnFromAave("withdraw", amount, actualReceived, aUSDC.balanceOf(address(this)));
             
         } catch Error(string memory reason) {
             revert(string(abi.encodePacked("Aave withdrawal failed: ", reason)));
@@ -353,7 +355,7 @@ contract AaveVault is
                 yieldShift.addYield(netYield, bytes32("aave"));
             }
             
-            emit AaveYieldHarvested(actualYieldReceived, protocolFee, netYield);
+            emit AaveYieldHarvested("harvest", actualYieldReceived, protocolFee, netYield);
             
             yieldHarvested = actualYieldReceived;
             
@@ -468,7 +470,7 @@ contract AaveVault is
             rebalanced = true;
             newAllocation = optimalAllocation;
             
-            emit PositionRebalanced(currentAllocation, newAllocation, "Auto rebalance");
+            emit PositionRebalanced("Auto rebalance", currentAllocation, newAllocation);
         }
     }
 
@@ -528,8 +530,8 @@ contract AaveVault is
                 uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, principalDeposited);
                 principalDeposited -= principalWithdrawn;
                 
-                emit EmergencyWithdrawal(amountWithdrawn, "Emergency exit from Aave", block.timestamp);
-                emit EmergencyModeToggled(true, "Emergency withdrawal executed");
+                        emit EmergencyWithdrawal("Emergency exit from Aave", amountWithdrawn, block.timestamp);
+        emit EmergencyModeToggled("Emergency withdrawal executed", true);
                 
             } catch Error(string memory reason) {
                 revert(string(abi.encodePacked("Emergency Aave withdrawal failed: ", reason)));
@@ -585,7 +587,7 @@ contract AaveVault is
     function toggleEmergencyMode(bool enabled, string calldata reason) external {
         AccessControlLibrary.onlyEmergencyRole(this);
         emergencyMode = enabled;
-        emit EmergencyModeToggled(enabled, reason);
+        emit EmergencyModeToggled(reason, enabled);
     }
 
     function pause() external {

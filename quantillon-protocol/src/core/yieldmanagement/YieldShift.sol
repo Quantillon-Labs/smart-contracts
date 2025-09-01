@@ -157,18 +157,22 @@ contract YieldShift is
     }
     YieldShiftSnapshot[] public yieldShiftHistory;
 
+    /// @dev OPTIMIZED: Indexed timestamp for efficient time-based filtering
     event YieldDistributionUpdated(
         uint256 newYieldShift,
         uint256 userYieldAllocation,
         uint256 hedgerYieldAllocation,
-        uint256 timestamp
+        uint256 indexed timestamp
     );
     
     event UserYieldClaimed(address indexed user, uint256 yieldAmount, uint256 timestamp);
     event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 timestamp);
-    event YieldAdded(uint256 yieldAmount, string source, uint256 timestamp);
+    /// @dev OPTIMIZED: Indexed source and timestamp for efficient filtering
+    event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp);
     
+    /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
     event YieldShiftParametersUpdated(
+        string indexed parameterType,
         uint256 baseYieldShift,
         uint256 maxYieldShift,
         uint256 adjustmentSpeed
@@ -608,7 +612,7 @@ contract YieldShift is
         maxYieldShift = _maxYieldShift;
         adjustmentSpeed = _adjustmentSpeed;
 
-        emit YieldShiftParametersUpdated(_baseYieldShift, _maxYieldShift, _adjustmentSpeed);
+        emit YieldShiftParametersUpdated("shift", _baseYieldShift, _maxYieldShift, _adjustmentSpeed);
     }
 
     function setTargetPoolRatio(uint256 _targetPoolRatio) external {

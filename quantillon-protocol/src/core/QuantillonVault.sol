@@ -162,7 +162,9 @@ contract QuantillonVault is
     );
     
     /// @notice Emitted when parameters are changed
+    /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
     event ParametersUpdated(
+        string indexed parameterType,
         uint256 mintFee, 
         uint256 redemptionFee
     );
@@ -445,7 +447,7 @@ contract QuantillonVault is
         mintFee = _mintFee;
         redemptionFee = _redemptionFee;
 
-        emit ParametersUpdated(_mintFee, _redemptionFee);
+        emit ParametersUpdated("fees", _mintFee, _redemptionFee);
     }
 
 

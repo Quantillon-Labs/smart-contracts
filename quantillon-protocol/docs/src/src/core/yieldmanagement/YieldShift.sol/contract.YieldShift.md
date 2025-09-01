@@ -1,8 +1,73 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+
+**Author:**
+Quantillon Labs
+
+Dynamic yield distribution system balancing rewards between users and hedgers
+
+*Main characteristics:
+- Dynamic yield allocation based on pool balance ratios
+- Time-weighted average price (TWAP) calculations for stability
+- Multiple yield sources integration (Aave, fees, interest differentials)
+- Automatic yield distribution with holding period requirements
+- Emergency pause mechanism for crisis situations
+- Upgradeable via UUPS pattern*
+
+*Yield shift mechanics:
+- Base yield shift determines default allocation (default 50/50)
+- Maximum yield shift caps allocation changes (default 90/10)
+- Adjustment speed controls how quickly shifts occur
+- Target pool ratio defines optimal balance point
+- Real-time calculations based on pool metrics*
+
+*Distribution algorithm:
+- Monitors user pool vs hedger pool size ratios
+- Adjusts yield allocation to incentivize balance
+- Higher user pool → more yield to hedgers (attract hedging)
+- Higher hedger pool → more yield to users (attract deposits)
+- Gradual adjustments prevent dramatic shifts*
+
+*Yield sources:
+- Aave yield from USDC deposits in lending protocols
+- Protocol fees from minting, redemption, and trading
+- Interest rate differentials from hedging operations
+- External yield farming opportunities
+- Authorized source validation for security*
+
+*Time-weighted calculations:
+- 24-hour TWAP for pool size measurements
+- Historical data tracking for trend analysis
+- Maximum history length prevents unbounded storage
+- Drift tolerance for timestamp validation
+- Automatic data cleanup and optimization*
+
+*Holding period requirements:
+- Minimum 7-day holding period for yield claims
+- Prevents yield farming attacks and speculation
+- Encourages long-term protocol participation
+- Tracked per user with deposit timestamps*
+
+*Security features:
+- Role-based access control for all critical operations
+- Reentrancy protection for all external calls
+- Emergency pause mechanism for crisis situations
+- Upgradeable architecture for future improvements
+- Authorized yield source validation
+- Secure yield distribution mechanisms*
+
+*Integration points:
+- User pool for deposit and staking metrics
+- Hedger pool for hedging exposure metrics
+- Aave vault for yield generation and harvesting
+- stQEURO token for user yield distribution
+- USDC for yield payments and transfers*
+
+**Note:**
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -167,6 +232,20 @@ bytes32[] public yieldSourceNames;
 ```
 
 
+### authorizedYieldSources
+
+```solidity
+mapping(address => bool) public authorizedYieldSources;
+```
+
+
+### sourceToYieldType
+
+```solidity
+mapping(address => bytes32) public sourceToYieldType;
+```
+
+
 ### userPendingYield
 
 ```solidity
@@ -266,6 +345,22 @@ function updateYieldDistribution() external nonReentrant whenNotPaused;
 ```solidity
 function addYield(uint256 yieldAmount, bytes32 source) external nonReentrant;
 ```
+
+### _addYieldInternal
+
+Internal function to add yield (bypasses authorization for internal calls)
+
+
+```solidity
+function _addYieldInternal(uint256 yieldAmount, bytes32 source) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`yieldAmount`|`uint256`|Amount of yield to add|
+|`source`|`bytes32`|Source identifier|
+
 
 ### claimUserYield
 
@@ -437,6 +532,37 @@ function setYieldShiftParameters(uint256 _baseYieldShift, uint256 _maxYieldShift
 function setTargetPoolRatio(uint256 _targetPoolRatio) external;
 ```
 
+### authorizeYieldSource
+
+Authorize a yield source for specific yield type
+
+
+```solidity
+function authorizeYieldSource(address source, bytes32 yieldType) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Address of the yield source|
+|`yieldType`|`bytes32`|Type of yield this source is authorized for|
+
+
+### revokeYieldSource
+
+Revoke authorization for a yield source
+
+
+```solidity
+function revokeYieldSource(address source) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Address of the yield source to revoke|
+
+
 ### updateYieldAllocation
 
 
@@ -481,6 +607,28 @@ function getYieldShiftConfig()
 ```solidity
 function isYieldDistributionActive() external view returns (bool);
 ```
+
+### isYieldSourceAuthorized
+
+Check if an address is authorized for a specific yield type
+
+
+```solidity
+function isYieldSourceAuthorized(address source, bytes32 yieldType) external view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Address to check|
+|`yieldType`|`bytes32`|Yield type to check|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True if authorized|
+
 
 ### harvestAndDistributeAaveYield
 
@@ -543,10 +691,12 @@ function recoverETH(address payable to) external;
 
 ## Events
 ### YieldDistributionUpdated
+*OPTIMIZED: Indexed timestamp for efficient time-based filtering*
+
 
 ```solidity
 event YieldDistributionUpdated(
-    uint256 newYieldShift, uint256 userYieldAllocation, uint256 hedgerYieldAllocation, uint256 timestamp
+    uint256 newYieldShift, uint256 userYieldAllocation, uint256 hedgerYieldAllocation, uint256 indexed timestamp
 );
 ```
 
@@ -563,34 +713,56 @@ event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 ti
 ```
 
 ### YieldAdded
+*OPTIMIZED: Indexed source and timestamp for efficient filtering*
+
 
 ```solidity
-event YieldAdded(uint256 yieldAmount, string source, uint256 timestamp);
+event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp);
 ```
 
 ### YieldShiftParametersUpdated
+*OPTIMIZED: Indexed parameter type for efficient filtering*
+
 
 ```solidity
-event YieldShiftParametersUpdated(uint256 baseYieldShift, uint256 maxYieldShift, uint256 adjustmentSpeed);
+event YieldShiftParametersUpdated(
+    string indexed parameterType, uint256 baseYieldShift, uint256 maxYieldShift, uint256 adjustmentSpeed
+);
+```
+
+### YieldSourceAuthorized
+
+```solidity
+event YieldSourceAuthorized(address indexed source, bytes32 indexed yieldType);
+```
+
+### YieldSourceRevoked
+
+```solidity
+event YieldSourceRevoked(address indexed source);
 ```
 
 ## Structs
 ### PoolSnapshot
+*OPTIMIZED: Packed struct for gas efficiency in historical arrays*
+
 
 ```solidity
 struct PoolSnapshot {
-    uint256 timestamp;
-    uint256 userPoolSize;
-    uint256 hedgerPoolSize;
+    uint128 userPoolSize;
+    uint128 hedgerPoolSize;
+    uint64 timestamp;
 }
 ```
 
 ### YieldShiftSnapshot
+*OPTIMIZED: Packed struct for gas efficiency in yield shift tracking*
+
 
 ```solidity
 struct YieldShiftSnapshot {
-    uint256 timestamp;
-    uint256 yieldShift;
+    uint128 yieldShift;
+    uint64 timestamp;
 }
 ```
 

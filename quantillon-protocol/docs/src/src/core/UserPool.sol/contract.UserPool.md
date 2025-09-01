@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -63,7 +63,7 @@ Manages QEURO user deposits, staking, and yield distribution
 - Vault math library for calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -362,6 +362,19 @@ uint256 public constant MAX_REWARD_PERIOD = 365 days;
 
 
 ## Functions
+### flashLoanProtection
+
+Modifier to protect against flash loan attacks
+
+*Checks that the contract's USDC balance doesn't decrease during execution*
+
+*This prevents flash loans that would drain USDC from the contract*
+
+
+```solidity
+modifier flashLoanProtection();
+```
+
 ### constructor
 
 
@@ -407,6 +420,36 @@ function deposit(uint256 usdcAmount, uint256 minQeuroOut)
 |`qeuroMinted`|`uint256`|Amount of QEURO minted (18 decimals)|
 
 
+### batchDeposit
+
+Batch deposit USDC to mint QEURO for multiple amounts
+
+*This function allows users to make multiple deposits in one transaction.
+Each deposit includes a fee and handles the minting process.*
+
+
+```solidity
+function batchDeposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts)
+    external
+    nonReentrant
+    whenNotPaused
+    flashLoanProtection
+    returns (uint256[] memory qeuroMintedAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmounts`|`uint256[]`|Array of USDC amounts to deposit (6 decimals)|
+|`minQeuroOuts`|`uint256[]`|Array of minimum QEURO amounts to receive (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroMintedAmounts`|`uint256[]`|Array of QEURO amounts minted (18 decimals)|
+
+
 ### withdraw
 
 Withdraw USDC by burning QEURO
@@ -420,6 +463,7 @@ function withdraw(uint256 qeuroAmount, uint256 minUsdcOut)
     external
     nonReentrant
     whenNotPaused
+    flashLoanProtection
     returns (uint256 usdcReceived);
 ```
 **Parameters**
@@ -434,6 +478,35 @@ function withdraw(uint256 qeuroAmount, uint256 minUsdcOut)
 |Name|Type|Description|
 |----|----|-----------|
 |`usdcReceived`|`uint256`|Amount of USDC received (6 decimals)|
+
+
+### batchWithdraw
+
+Batch withdraw USDC by burning QEURO for multiple amounts
+
+*This function allows users to make multiple withdrawals in one transaction.
+Each withdrawal includes a fee and handles the redemption process.*
+
+
+```solidity
+function batchWithdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
+    external
+    nonReentrant
+    whenNotPaused
+    returns (uint256[] memory usdcReceivedAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmounts`|`uint256[]`|Array of QEURO amounts to burn (18 decimals)|
+|`minUsdcOuts`|`uint256[]`|Array of minimum USDC amounts to receive (6 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcReceivedAmounts`|`uint256[]`|Array of USDC amounts received (6 decimals)|
 
 
 ### stake
@@ -452,6 +525,24 @@ function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused;
 |Name|Type|Description|
 |----|----|-----------|
 |`qeuroAmount`|`uint256`|Amount of QEURO to stake (18 decimals)|
+
+
+### batchStake
+
+Batch stake QEURO tokens for multiple amounts
+
+*This function allows users to make multiple stakes in one transaction.
+Each stake must meet minimum requirements and updates rewards.*
+
+
+```solidity
+function batchStake(uint256[] calldata qeuroAmounts) external nonReentrant whenNotPaused;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmounts`|`uint256[]`|Array of QEURO amounts to stake (18 decimals)|
 
 
 ### requestUnstake
@@ -500,6 +591,34 @@ function claimStakingRewards() external nonReentrant returns (uint256 rewardAmou
 |Name|Type|Description|
 |----|----|-----------|
 |`rewardAmount`|`uint256`|Amount of QEURO rewards claimed (18 decimals)|
+
+
+### batchRewardClaim
+
+Batch claim staking rewards for multiple users (admin function)
+
+*This function allows admins to claim rewards for multiple users in one transaction.
+Useful for protocol-wide reward distributions or automated reward processing.*
+
+
+```solidity
+function batchRewardClaim(address[] calldata users)
+    external
+    nonReentrant
+    onlyRole(GOVERNANCE_ROLE)
+    returns (uint256[] memory rewardAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`users`|`address[]`|Array of user addresses to claim rewards for|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`rewardAmounts`|`uint256[]`|Array of reward amounts claimed for each user (18 decimals)|
 
 
 ### distributeYield
@@ -993,11 +1112,11 @@ event StakingRewardsClaimed(address indexed user, uint256 rewardAmount, uint256 
 ### YieldDistributed
 Emitted when yield is distributed to stakers
 
-*Indexed parameters allow efficient filtering of events*
+*OPTIMIZED: Indexed timestamp for efficient time-based filtering*
 
 
 ```solidity
-event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 timestamp);
+event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 indexed timestamp);
 ```
 
 **Parameters**
@@ -1011,11 +1130,11 @@ event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 timest
 ### PoolParameterUpdated
 Emitted when pool parameters are updated
 
-*Indexed parameters allow efficient filtering of events*
+*OPTIMIZED: Indexed parameter name for efficient filtering by parameter type*
 
 
 ```solidity
-event PoolParameterUpdated(string parameter, uint256 oldValue, uint256 newValue);
+event PoolParameterUpdated(string indexed parameter, uint256 oldValue, uint256 newValue);
 ```
 
 **Parameters**
@@ -1034,16 +1153,18 @@ User information data structure
 
 *Used for user management and reward calculations*
 
+*OPTIMIZED: Timestamps and amounts packed for gas efficiency*
+
 
 ```solidity
 struct UserInfo {
-    uint256 qeuroBalance;
-    uint256 stakedAmount;
-    uint256 pendingRewards;
-    uint256 depositHistory;
-    uint256 lastStakeTime;
-    uint256 unstakeRequestTime;
-    uint256 unstakeAmount;
+    uint128 qeuroBalance;
+    uint128 stakedAmount;
+    uint128 pendingRewards;
+    uint128 unstakeAmount;
+    uint96 depositHistory;
+    uint64 lastStakeTime;
+    uint64 unstakeRequestTime;
 }
 ```
 

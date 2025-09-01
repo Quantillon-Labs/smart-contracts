@@ -1,5 +1,5 @@
 # IQTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/interfaces/IQTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/interfaces/IQTIToken.sol)
 
 **Author:**
 Quantillon Labs
@@ -7,7 +7,7 @@ Quantillon Labs
 Interface for the QTI governance token with vote-escrow mechanics
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -17,7 +17,7 @@ Initializes the QTI token
 
 
 ```solidity
-function initialize(address admin, address _treasury) external;
+function initialize(address admin, address _treasury, address timelock) external;
 ```
 **Parameters**
 
@@ -25,6 +25,7 @@ function initialize(address admin, address _treasury) external;
 |----|----|-----------|
 |`admin`|`address`|Admin address|
 |`_treasury`|`address`|Treasury address|
+|`timelock`|`address`|Timelock address|
 
 
 ### lock
@@ -62,6 +63,51 @@ function unlock() external returns (uint256 amount);
 |Name|Type|Description|
 |----|----|-----------|
 |`amount`|`uint256`|Amount of QTI unlocked|
+
+
+### batchLock
+
+Batch lock QTI tokens for voting power
+
+
+```solidity
+function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes)
+    external
+    returns (uint256[] memory veQTIAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amounts`|`uint256[]`|Array of amounts to lock|
+|`lockTimes`|`uint256[]`|Array of corresponding lock durations|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`veQTIAmounts`|`uint256[]`|Array of voting power received per lock|
+
+
+### batchUnlock
+
+Batch unlock QTI tokens for multiple users (admin/governance)
+
+
+```solidity
+function batchUnlock(address[] calldata users) external returns (uint256[] memory amounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`users`|`address[]`|Array of user addresses to unlock for|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amounts`|`uint256[]`|Array of amounts unlocked per user|
 
 
 ### getVotingPower
@@ -175,6 +221,22 @@ function vote(uint256 proposalId, bool support) external;
 |----|----|-----------|
 |`proposalId`|`uint256`|Proposal ID|
 |`support`|`bool`|True for yes, false for no|
+
+
+### batchVote
+
+Batch vote on multiple proposals
+
+
+```solidity
+function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposalIds`|`uint256[]`|Array of proposal IDs|
+|`supportVotes`|`bool[]`|Array of vote choices (true/false)|
 
 
 ### executeProposal

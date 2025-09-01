@@ -1,13 +1,11 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
-**Authors:**
-Quantillon Labs, Quantillon Labs
-
-Governance token for Quantillon Protocol with vote-escrow mechanics
+**Author:**
+Quantillon Labs
 
 Governance token for Quantillon Protocol with vote-escrow mechanics
 
@@ -47,46 +45,8 @@ Governance token for Quantillon Protocol with vote-escrow mechanics
 - Decimals: 18 (standard for ERC20 tokens)
 - Governance power: Based on locked amount and duration*
 
-*Main characteristics:
-- Standard ERC20 with 18 decimals
-- Vote-escrow (ve) mechanics for governance power
-- Progressive decentralization through governance
-- Emergency pause mechanism for crisis situations
-- Upgradeable via UUPS pattern
-- Fixed supply cap for tokenomics
-- Governance proposal and voting system
-- Lock-based voting power calculation*
-
-*Vote-escrow mechanics:
-- Users can lock QTI tokens for governance power
-- Longer locks = higher voting power (up to 4x multiplier)
-- Minimum lock: 7 days, Maximum lock: 4 years
-- Voting power decreases linearly over time
-- Locked tokens cannot be transferred until unlock*
-
-*Governance features:
-- Proposal creation with minimum threshold
-- Voting period with configurable duration
-- Vote counting and execution
-- Proposal cancellation and emergency actions*
-
-*Security features:
-- Role-based access control for all critical operations
-- Emergency pause mechanism for crisis situations
-- Upgradeable architecture for future improvements
-- Secure vote-escrow mechanics
-- Proposal execution safeguards*
-
-*Tokenomics:
-- Total supply: 100,000,000 QTI (fixed cap)
-- Initial distribution: Through protocol mechanisms
-- Decimals: 18 (standard for ERC20 tokens)
-- Governance power: Based on locked amount and duration*
-
-**Notes:**
-- team@quantillon.money
-
-- team@quantillon.money
+**Note:**
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -351,7 +311,47 @@ uint256 public currentDecentralizationLevel;
 ```
 
 
+### proposalExecutionTime
+Execution time for each proposal (with random delay)
+
+
+```solidity
+mapping(uint256 => uint256) public proposalExecutionTime;
+```
+
+
+### proposalExecutionHash
+Execution hash for each proposal (for verification)
+
+
+```solidity
+mapping(uint256 => bytes32) public proposalExecutionHash;
+```
+
+
+### proposalScheduled
+Whether a proposal has been scheduled for execution
+
+
+```solidity
+mapping(uint256 => bool) public proposalScheduled;
+```
+
+
 ## Functions
+### flashLoanProtection
+
+Modifier to protect against flash loan attacks
+
+*Checks that the contract's QTI balance doesn't decrease during execution*
+
+*This prevents flash loans that would drain QTI from the contract*
+
+
+```solidity
+modifier flashLoanProtection();
+```
+
 ### constructor
 
 
@@ -372,7 +372,7 @@ Lock QTI tokens for voting power
 
 
 ```solidity
-function lock(uint256 amount, uint256 lockTime) external whenNotPaused returns (uint256 veQTI);
+function lock(uint256 amount, uint256 lockTime) external whenNotPaused flashLoanProtection returns (uint256 veQTI);
 ```
 **Parameters**
 
@@ -401,6 +401,77 @@ function unlock() external whenNotPaused returns (uint256 amount);
 |Name|Type|Description|
 |----|----|-----------|
 |`amount`|`uint256`|Amount of QTI unlocked|
+
+
+### batchLock
+
+Batch lock QTI tokens for voting power for multiple amounts
+
+
+```solidity
+function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes)
+    external
+    whenNotPaused
+    flashLoanProtection
+    returns (uint256[] memory veQTIAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amounts`|`uint256[]`|Array of QTI amounts to lock|
+|`lockTimes`|`uint256[]`|Array of lock durations (must be >= MIN_LOCK_TIME)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`veQTIAmounts`|`uint256[]`|Array of voting power calculated for each locked amount|
+
+
+### batchUnlock
+
+Batch unlock QTI tokens for multiple users (admin function)
+
+
+```solidity
+function batchUnlock(address[] calldata users)
+    external
+    onlyRole(GOVERNANCE_ROLE)
+    whenNotPaused
+    returns (uint256[] memory amounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`users`|`address[]`|Array of user addresses to unlock for|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amounts`|`uint256[]`|Array of QTI amounts unlocked|
+
+
+### batchTransfer
+
+Batch transfer QTI tokens to multiple addresses
+
+
+```solidity
+function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
+    external
+    whenNotPaused
+    flashLoanProtection
+    returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`recipients`|`address[]`|Array of recipient addresses|
+|`amounts`|`uint256[]`|Array of amounts to transfer|
 
 
 ### getVotingPower
@@ -517,6 +588,25 @@ function vote(uint256 proposalId, bool support) external whenNotPaused;
 |`support`|`bool`|True for yes, false for no|
 
 
+### batchVote
+
+Batch vote on multiple proposals
+
+
+```solidity
+function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes)
+    external
+    whenNotPaused
+    flashLoanProtection;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposalIds`|`uint256[]`|Array of proposal IDs to vote on|
+|`supportVotes`|`bool[]`|Array of vote directions (true for yes, false for no)|
+
+
 ### executeProposal
 
 Execute a successful proposal
@@ -530,6 +620,53 @@ function executeProposal(uint256 proposalId) external;
 |Name|Type|Description|
 |----|----|-----------|
 |`proposalId`|`uint256`|Proposal ID|
+
+
+### getProposalExecutionInfo
+
+Get execution information for a scheduled proposal
+
+
+```solidity
+function getProposalExecutionInfo(uint256 proposalId)
+    external
+    view
+    returns (bool scheduled, uint256 executionTime, bool canExecute);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposalId`|`uint256`|Proposal ID|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`scheduled`|`bool`|Whether the proposal is scheduled|
+|`executionTime`|`uint256`|When the proposal can be executed|
+|`canExecute`|`bool`|Whether the proposal can be executed now|
+
+
+### getProposalExecutionHash
+
+Get the execution hash for a scheduled proposal
+
+
+```solidity
+function getProposalExecutionHash(uint256 proposalId) external view returns (bytes32 executionHash);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposalId`|`uint256`|Proposal ID|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`executionHash`|`bytes32`|Hash required to execute the proposal|
 
 
 ### cancelProposal
@@ -788,9 +925,11 @@ function getGovernanceInfo()
 ### TokensLocked
 Emitted when tokens are locked for voting power
 
+*OPTIMIZED: Indexed amount and unlockTime for efficient filtering*
+
 
 ```solidity
-event TokensLocked(address indexed user, uint256 amount, uint256 unlockTime, uint256 votingPower);
+event TokensLocked(address indexed user, uint256 indexed amount, uint256 indexed unlockTime, uint256 votingPower);
 ```
 
 **Parameters**
@@ -805,9 +944,11 @@ event TokensLocked(address indexed user, uint256 amount, uint256 unlockTime, uin
 ### TokensUnlocked
 Emitted when tokens are unlocked after lock period expires
 
+*OPTIMIZED: Indexed amount for efficient filtering by unlock size*
+
 
 ```solidity
-event TokensUnlocked(address indexed user, uint256 amount, uint256 votingPower);
+event TokensUnlocked(address indexed user, uint256 indexed amount, uint256 votingPower);
 ```
 
 **Parameters**
@@ -853,9 +994,11 @@ event ProposalCreated(uint256 indexed proposalId, address indexed proposer, stri
 ### Voted
 Emitted when a user votes on a proposal
 
+*OPTIMIZED: Indexed support for efficient filtering by vote direction*
+
 
 ```solidity
-event Voted(uint256 indexed proposalId, address indexed voter, bool support, uint256 votes);
+event Voted(uint256 indexed proposalId, address indexed voter, bool indexed support, uint256 votes);
 ```
 
 **Parameters**
@@ -898,15 +1041,20 @@ event ProposalCanceled(uint256 indexed proposalId);
 ### GovernanceParametersUpdated
 Emitted when governance parameters are updated
 
+*OPTIMIZED: Indexed parameter type for efficient filtering*
+
 
 ```solidity
-event GovernanceParametersUpdated(uint256 proposalThreshold, uint256 minVotingPeriod, uint256 quorumVotes);
+event GovernanceParametersUpdated(
+    string indexed parameterType, uint256 proposalThreshold, uint256 minVotingPeriod, uint256 quorumVotes
+);
 ```
 
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
+|`parameterType`|`string`||
 |`proposalThreshold`|`uint256`|New minimum QTI required to propose|
 |`minVotingPeriod`|`uint256`|New minimum voting period|
 |`quorumVotes`|`uint256`|New quorum required for proposals to pass|
@@ -914,9 +1062,11 @@ event GovernanceParametersUpdated(uint256 proposalThreshold, uint256 minVotingPe
 ### DecentralizationLevelUpdated
 Emitted when the decentralization level is updated
 
+*OPTIMIZED: Indexed level for efficient filtering by decentralization stage*
+
 
 ```solidity
-event DecentralizationLevelUpdated(uint256 newLevel);
+event DecentralizationLevelUpdated(uint256 indexed newLevel);
 ```
 
 **Parameters**

@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -61,7 +61,7 @@ Yield-bearing wrapper for QEURO tokens (yield accrual mechanism)
 - Vault math library for calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -250,10 +250,23 @@ uint256 public maxUpdateFrequency;
 
 
 ## Functions
+### flashLoanProtection
+
+Modifier to protect against flash loan attacks
+
+*Checks that the contract's total underlying QEURO doesn't decrease during execution*
+
+*This prevents flash loans that would drain QEURO from the contract*
+
+
+```solidity
+modifier flashLoanProtection();
+```
+
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -280,7 +293,12 @@ Stake QEURO to receive stQEURO
 
 
 ```solidity
-function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused returns (uint256 stQEUROAmount);
+function stake(uint256 qeuroAmount)
+    external
+    nonReentrant
+    whenNotPaused
+    flashLoanProtection
+    returns (uint256 stQEUROAmount);
 ```
 **Parameters**
 
@@ -314,6 +332,75 @@ function unstake(uint256 stQEUROAmount) external nonReentrant whenNotPaused retu
 |Name|Type|Description|
 |----|----|-----------|
 |`qeuroAmount`|`uint256`|Amount of QEURO received|
+
+
+### batchStake
+
+Batch stake QEURO to receive stQEURO for multiple amounts
+
+
+```solidity
+function batchStake(uint256[] calldata qeuroAmounts)
+    external
+    nonReentrant
+    whenNotPaused
+    returns (uint256[] memory stQEUROAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmounts`|`uint256[]`|Array of QEURO amounts to stake|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`stQEUROAmounts`|`uint256[]`|Array of stQEURO amounts received|
+
+
+### batchUnstake
+
+Batch unstake QEURO by burning stQEURO for multiple amounts
+
+
+```solidity
+function batchUnstake(uint256[] calldata stQEUROAmounts)
+    external
+    nonReentrant
+    whenNotPaused
+    returns (uint256[] memory qeuroAmounts);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`stQEUROAmounts`|`uint256[]`|Array of stQEURO amounts to burn|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmounts`|`uint256[]`|Array of QEURO amounts received|
+
+
+### batchTransfer
+
+Batch transfer stQEURO tokens to multiple addresses
+
+
+```solidity
+function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
+    external
+    whenNotPaused
+    returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`recipients`|`address[]`|Array of recipient addresses|
+|`amounts`|`uint256[]`|Array of amounts to transfer|
 
 
 ### distributeYield
@@ -570,9 +657,11 @@ Emitted when yield is distributed to stQEURO holders
 
 *Used to track yield distributions and their impact*
 
+*OPTIMIZED: Indexed exchange rate for efficient filtering*
+
 
 ```solidity
-event YieldDistributed(uint256 yieldAmount, uint256 newExchangeRate);
+event YieldDistributed(uint256 yieldAmount, uint256 indexed newExchangeRate);
 ```
 
 **Parameters**
@@ -604,15 +693,20 @@ Emitted when yield parameters are updated
 
 *Used to track parameter changes by governance*
 
+*OPTIMIZED: Indexed parameter type for efficient filtering*
+
 
 ```solidity
-event YieldParametersUpdated(uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency);
+event YieldParametersUpdated(
+    string indexed parameterType, uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency
+);
 ```
 
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
+|`parameterType`|`string`||
 |`yieldFee`|`uint256`|New yield fee in basis points|
 |`minYieldThreshold`|`uint256`|New minimum yield threshold|
 |`maxUpdateFrequency`|`uint256`|New maximum update frequency|

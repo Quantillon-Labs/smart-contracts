@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -17,7 +17,7 @@ EUR/USD and USDC/USD price manager for Quantillon Protocol
 - Data freshness checks*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -76,6 +76,28 @@ Basis for basis points calculations
 
 ```solidity
 uint256 public constant BASIS_POINTS = 10000;
+```
+
+
+### MAX_TIMESTAMP_DRIFT
+Maximum timestamp drift tolerance (15 minutes)
+
+*Prevents timestamp manipulation attacks by miners*
+
+
+```solidity
+uint256 public constant MAX_TIMESTAMP_DRIFT = 900;
+```
+
+
+### BLOCKS_PER_HOUR
+Blocks per hour for block-based staleness checks
+
+*~12 second blocks on Ethereum, ~2 second blocks on L2s*
+
+
+```solidity
+uint256 public constant BLOCKS_PER_HOUR = 300;
 ```
 
 
@@ -139,6 +161,17 @@ uint256 public lastPriceUpdateTime;
 ```
 
 
+### lastPriceUpdateBlock
+Block number of the last valid price update
+
+*Used for block-based staleness checks to prevent timestamp manipulation*
+
+
+```solidity
+uint256 public lastPriceUpdateBlock;
+```
+
+
 ### circuitBreakerTriggered
 Circuit breaker status (true = triggered, fixed prices)
 
@@ -163,7 +196,7 @@ uint256 public usdcToleranceBps;
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -222,6 +255,27 @@ function _divRound(uint256 a, uint256 b) internal pure returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|Result of division with rounding to nearest|
+
+
+### _validateTimestamp
+
+Validates if a timestamp is recent enough to prevent manipulation attacks
+
+
+```solidity
+function _validateTimestamp(uint256 reportedTime) internal view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`reportedTime`|`uint256`|The timestamp to validate|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|true if the timestamp is valid, false otherwise|
 
 
 ### _updatePrices
@@ -553,17 +607,21 @@ function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external on
 ### PriceUpdated
 Emitted on each valid price update
 
+*OPTIMIZED: Indexed timestamp for efficient time-based filtering*
+
 
 ```solidity
-event PriceUpdated(uint256 eurUsdPrice, uint256 usdcUsdPrice, uint256 timestamp);
+event PriceUpdated(uint256 eurUsdPrice, uint256 usdcUsdPrice, uint256 indexed timestamp);
 ```
 
 ### CircuitBreakerTriggered
 Emitted when the circuit breaker is triggered
 
+*OPTIMIZED: Indexed reason for efficient filtering by trigger type*
+
 
 ```solidity
-event CircuitBreakerTriggered(uint256 attemptedPrice, uint256 lastValidPrice, string reason);
+event CircuitBreakerTriggered(uint256 attemptedPrice, uint256 lastValidPrice, string indexed reason);
 ```
 
 ### CircuitBreakerReset
@@ -577,9 +635,11 @@ event CircuitBreakerReset(address indexed admin);
 ### PriceBoundsUpdated
 Emitted when price bounds are modified
 
+*OPTIMIZED: Indexed bound type for efficient filtering*
+
 
 ```solidity
-event PriceBoundsUpdated(uint256 newMinPrice, uint256 newMaxPrice);
+event PriceBoundsUpdated(string indexed boundType, uint256 newMinPrice, uint256 newMaxPrice);
 ```
 
 ### PriceFeedsUpdated

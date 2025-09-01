@@ -1,13 +1,11 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
-**Authors:**
-Quantillon Labs, Quantillon Labs
-
-Euro-pegged stablecoin token for the Quantillon protocol
+**Author:**
+Quantillon Labs
 
 Euro-pegged stablecoin token for the Quantillon protocol
 
@@ -34,33 +32,8 @@ Euro-pegged stablecoin token for the Quantillon protocol
 - Decimals: 18 (standard for ERC20 tokens)
 - Peg: 1:1 with Euro (managed by vault operations)*
 
-*Main characteristics:
-- Standard ERC20 with 18 decimals
-- Mint/Burn controlled only by the vault
-- Emergency pause in case of issues
-- Upgradeable via UUPS pattern
-- Dynamic supply cap for governance flexibility
-- Blacklist/whitelist functionality for compliance
-- Rate limiting for mint/burn operations
-- Decimal precision handling for external price feeds*
-
-*Security features:
-- Role-based access control for all critical operations
-- Emergency pause mechanism for crisis situations
-- Rate limiting to prevent abuse
-- Blacklist/whitelist for regulatory compliance
-- Upgradeable architecture for future improvements*
-
-*Tokenomics:
-- Initial supply: 0 (all tokens minted through vault operations)
-- Maximum supply: Configurable by governance (default 100M QEURO)
-- Decimals: 18 (standard for ERC20 tokens)
-- Peg: 1:1 with Euro (managed by vault operations)*
-
-**Notes:**
-- team@quantillon.money
-
-- team@quantillon.money
+**Note:**
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -168,29 +141,10 @@ uint256 public maxSupply;
 ```
 
 
-### mintRateLimit
-Rate limit for mint operations (per hour)
-
-*Prevents rapid minting that could destabilize the protocol*
-
-*Can be updated by governance through updateRateLimits()*
-
+### rateLimitCaps
 
 ```solidity
-uint256 public mintRateLimit;
-```
-
-
-### burnRateLimit
-Rate limit for burn operations (per hour)
-
-*Prevents rapid burning that could destabilize the protocol*
-
-*Can be updated by governance through updateRateLimits()*
-
-
-```solidity
-uint256 public burnRateLimit;
+RateLimitCaps public rateLimitCaps;
 ```
 
 
@@ -254,10 +208,23 @@ uint256 public minPricePrecision;
 
 
 ## Functions
+### flashLoanProtection
+
+Modifier to protect against flash loan attacks
+
+*Checks that the contract's QEURO balance doesn't decrease during execution*
+
+*This prevents flash loans that would drain QEURO from the contract*
+
+
+```solidity
+modifier flashLoanProtection();
+```
+
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -327,6 +294,30 @@ function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) whenNot
 |`amount`|`uint256`|Amount of tokens to mint (in wei, 18 decimals)|
 
 
+### batchMint
+
+Batch mint QEURO tokens to multiple addresses
+
+*Applies the same validations as single mint per item to avoid bypassing
+rate limits, blacklist/whitelist checks, and max supply constraints.
+Using external mint for each entry reuses all checks and events.*
+
+
+```solidity
+function batchMint(address[] calldata recipients, uint256[] calldata amounts)
+    external
+    onlyRole(MINTER_ROLE)
+    whenNotPaused
+    flashLoanProtection;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`recipients`|`address[]`|Array of recipient addresses|
+|`amounts`|`uint256[]`|Array of amounts to mint (18 decimals)|
+
+
 ### burn
 
 Burns QEURO tokens from a specified address
@@ -347,7 +338,7 @@ Note: The vault must have an allowance or be authorized otherwise*
 
 
 ```solidity
-function burn(address from, uint256 amount) external onlyRole(BURNER_ROLE) whenNotPaused;
+function burn(address from, uint256 amount) external onlyRole(BURNER_ROLE) whenNotPaused flashLoanProtection;
 ```
 **Parameters**
 
@@ -355,6 +346,29 @@ function burn(address from, uint256 amount) external onlyRole(BURNER_ROLE) whenN
 |----|----|-----------|
 |`from`|`address`|Address from which to burn tokens|
 |`amount`|`uint256`|Amount of tokens to burn|
+
+
+### batchBurn
+
+Batch burn QEURO tokens from multiple addresses
+
+*Applies the same validations as single burn per item to avoid bypassing
+rate limits and balance checks. Accumulates total for rate limiting.*
+
+
+```solidity
+function batchBurn(address[] calldata froms, uint256[] calldata amounts)
+    external
+    onlyRole(BURNER_ROLE)
+    whenNotPaused
+    flashLoanProtection;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`froms`|`address[]`|Array of addresses to burn from|
+|`amounts`|`uint256[]`|Array of amounts to burn (18 decimals)|
 
 
 ### _checkAndUpdateMintRateLimit
@@ -415,7 +429,7 @@ Updates rate limits for mint and burn operations
 - Validates new limits
 - Ensures new limits are not zero
 - Ensures new limits are not too high
-- Updates mintRateLimit and burnRateLimit
+- Updates rateLimitCaps (mint and burn) in a single storage slot
 - Emits RateLimitsUpdated event*
 
 
@@ -545,6 +559,77 @@ function toggleWhitelistMode(bool enabled) external onlyRole(COMPLIANCE_ROLE);
 |Name|Type|Description|
 |----|----|-----------|
 |`enabled`|`bool`|Whether to enable whitelist mode|
+
+
+### batchBlacklistAddresses
+
+Batch blacklist multiple addresses
+
+*Only callable by compliance role*
+
+
+```solidity
+function batchBlacklistAddresses(address[] calldata accounts, string[] calldata reasons)
+    external
+    onlyRole(COMPLIANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`accounts`|`address[]`|Array of addresses to blacklist|
+|`reasons`|`string[]`|Array of reasons for blacklisting|
+
+
+### batchUnblacklistAddresses
+
+Batch unblacklist multiple addresses
+
+*Only callable by compliance role*
+
+
+```solidity
+function batchUnblacklistAddresses(address[] calldata accounts) external onlyRole(COMPLIANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`accounts`|`address[]`|Array of addresses to remove from blacklist|
+
+
+### batchWhitelistAddresses
+
+Batch whitelist multiple addresses
+
+*Only callable by compliance role*
+
+
+```solidity
+function batchWhitelistAddresses(address[] calldata accounts) external onlyRole(COMPLIANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`accounts`|`address[]`|Array of addresses to whitelist|
+
+
+### batchUnwhitelistAddresses
+
+Batch unwhitelist multiple addresses
+
+*Only callable by compliance role*
+
+
+```solidity
+function batchUnwhitelistAddresses(address[] calldata accounts) external onlyRole(COMPLIANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`accounts`|`address[]`|Array of addresses to remove from whitelist|
 
 
 ### updateMinPricePrecision
@@ -767,13 +852,13 @@ function getSupplyUtilization() external view returns (uint256);
 |`<none>`|`uint256`|Percentage in basis points (0-10000, where 10000 = 100%)|
 
 
-### _update
+### batchTransfer
 
 Calculates remaining space for minting new tokens
 
 Gets current rate limit status
 
-Hook called before each token transfer
+Batch transfer QEURO tokens to multiple addresses
 
 *Security considerations:
 - Calculates remaining capacity by subtracting currentSupply from maxSupply
@@ -785,6 +870,34 @@ Hook called before each token transfer
 - Returns zeros if an hour has passed
 - Returns current limits and next reset time
 - Includes bounds checking to prevent timestamp manipulation*
+
+*Performs multiple transfers from msg.sender to recipients.
+Uses OpenZeppelin's transfer mechanism with compliance checks.*
+
+
+```solidity
+function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
+    external
+    whenNotPaused
+    returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`recipients`|`address[]`|Array of recipient addresses|
+|`amounts`|`uint256[]`|Array of amounts to transfer (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|Number of tokens that can still be minted|
+
+
+### _update
+
+Hook called before each token transfer
 
 *Adds pause verification and blacklist checks to standard OpenZeppelin transfers*
 
@@ -929,15 +1042,45 @@ function getTokenInfo()
 |`burnRateLimit_`|`uint256`|Current burn rate limit|
 
 
+### mintRateLimit
+
+Get current mint rate limit (per hour)
+
+
+```solidity
+function mintRateLimit() external view returns (uint256 limit);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`limit`|`uint256`|Mint rate limit in wei per hour (18 decimals)|
+
+
+### burnRateLimit
+
+Get current burn rate limit (per hour)
+
+
+```solidity
+function burnRateLimit() external view returns (uint256 limit);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`limit`|`uint256`|Burn rate limit in wei per hour (18 decimals)|
+
+
 ## Events
 ### TokensMinted
 Emitted when tokens are minted
 
-*Indexed parameters allow efficient filtering of events*
+*OPTIMIZED: Indexed amount for efficient filtering by mint size*
 
 
 ```solidity
-event TokensMinted(address indexed to, uint256 amount, address indexed minter);
+event TokensMinted(address indexed to, uint256 indexed amount, address indexed minter);
 ```
 
 **Parameters**
@@ -951,11 +1094,11 @@ event TokensMinted(address indexed to, uint256 amount, address indexed minter);
 ### TokensBurned
 Emitted when tokens are burned
 
-*Indexed parameters allow efficient filtering of events*
+*OPTIMIZED: Indexed amount for efficient filtering by burn size*
 
 
 ```solidity
-event TokensBurned(address indexed from, uint256 amount, address indexed burner);
+event TokensBurned(address indexed from, uint256 indexed amount, address indexed burner);
 ```
 
 **Parameters**
@@ -986,28 +1129,29 @@ event SupplyCapUpdated(uint256 oldCap, uint256 newCap);
 ### RateLimitsUpdated
 Emitted when rate limits are updated
 
-*Emitted when governance updates rate limits*
+*OPTIMIZED: Indexed parameter type for efficient filtering*
 
 
 ```solidity
-event RateLimitsUpdated(uint256 mintLimit, uint256 burnLimit);
+event RateLimitsUpdated(string indexed limitType, uint256 mintLimit, uint256 burnLimit);
 ```
 
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
+|`limitType`|`string`||
 |`mintLimit`|`uint256`|New mint rate limit in wei per hour (18 decimals)|
 |`burnLimit`|`uint256`|New burn rate limit in wei per hour (18 decimals)|
 
 ### AddressBlacklisted
 Emitted when an address is blacklisted
 
-*Emitted when COMPLIANCE_ROLE blacklists an address*
+*OPTIMIZED: Indexed reason for efficient filtering by blacklist type*
 
 
 ```solidity
-event AddressBlacklisted(address indexed account, string reason);
+event AddressBlacklisted(address indexed account, string indexed reason);
 ```
 
 **Parameters**
@@ -1101,11 +1245,11 @@ event MinPricePrecisionUpdated(uint256 oldPrecision, uint256 newPrecision);
 ### RateLimitReset
 Emitted when rate limit is reset
 
-*Emitted when rate limits are reset (hourly or manual)*
+*OPTIMIZED: Indexed timestamp for efficient time-based filtering*
 
 
 ```solidity
-event RateLimitReset(uint256 timestamp);
+event RateLimitReset(uint256 indexed timestamp);
 ```
 
 **Parameters**
@@ -1115,6 +1259,19 @@ event RateLimitReset(uint256 timestamp);
 |`timestamp`|`uint256`|Timestamp of reset|
 
 ## Structs
+### RateLimitCaps
+Packed rate limit caps for mint and burn (per hour)
+
+*Two uint128 packed into one slot for storage efficiency*
+
+
+```solidity
+struct RateLimitCaps {
+    uint128 mint;
+    uint128 burn;
+}
+```
+
 ### RateLimitInfo
 Rate limiting information - OPTIMIZED: Packed for storage efficiency
 

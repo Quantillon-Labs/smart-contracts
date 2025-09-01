@@ -1,5 +1,5 @@
 # IQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/996f4133ba7998f0eb28738b06e228de221fcf63/src/interfaces/IQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/interfaces/IQEUROToken.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Read-only interface for the QEURO token
 *Exposes ERC20 metadata and helper views used by integrators*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -143,7 +143,7 @@ function getTokenInfo()
 
 
 ```solidity
-function initialize(address admin, address vault) external;
+function initialize(address admin, address vault, address timelock) external;
 ```
 
 ### mint
@@ -158,6 +158,27 @@ function mint(address to, uint256 amount) external;
 
 ```solidity
 function burn(address from, uint256 amount) external;
+```
+
+### batchMint
+
+
+```solidity
+function batchMint(address[] calldata recipients, uint256[] calldata amounts) external;
+```
+
+### batchBurn
+
+
+```solidity
+function batchBurn(address[] calldata froms, uint256[] calldata amounts) external;
+```
+
+### batchTransfer
+
+
+```solidity
+function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external returns (bool);
 ```
 
 ### updateRateLimits
@@ -200,6 +221,34 @@ function unwhitelistAddress(address account) external;
 
 ```solidity
 function toggleWhitelistMode(bool enabled) external;
+```
+
+### batchBlacklistAddresses
+
+
+```solidity
+function batchBlacklistAddresses(address[] calldata accounts, string[] calldata reasons) external;
+```
+
+### batchUnblacklistAddresses
+
+
+```solidity
+function batchUnblacklistAddresses(address[] calldata accounts) external;
+```
+
+### batchWhitelistAddresses
+
+
+```solidity
+function batchWhitelistAddresses(address[] calldata accounts) external;
+```
+
+### batchUnwhitelistAddresses
+
+
+```solidity
+function batchUnwhitelistAddresses(address[] calldata accounts) external;
 ```
 
 ### updateMinPricePrecision

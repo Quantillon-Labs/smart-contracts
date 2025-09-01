@@ -1,70 +1,23 @@
-# SecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/SecureUpgradeable.sol)
-
-**Inherits:**
-UUPSUpgradeable, AccessControlUpgradeable
+# ISecureUpgradeable
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/interfaces/ISecureUpgradeable.sol)
 
 **Author:**
 Quantillon Labs
 
-Secure base contract for upgradeable contracts with timelock protection
-
-*Replaces UUPSUpgradeable with timelock and multi-sig requirements*
+Interface for the SecureUpgradeable base contract
 
 **Note:**
 security-contact: team@quantillon.money
 
 
-## State Variables
-### UPGRADER_ROLE
-Role for upgrade operations
-
-
-```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
-```
-
-
-### timelock
-Timelock contract for secure upgrades
-
-
-```solidity
-ITimelockUpgradeable public timelock;
-```
-
-
-### secureUpgradesEnabled
-Whether the contract is using secure upgrades
-
-
-```solidity
-bool public secureUpgradesEnabled;
-```
-
-
 ## Functions
-### onlyTimelock
-
-
-```solidity
-modifier onlyTimelock();
-```
-
-### __SecureUpgradeable_init
-
-
-```solidity
-function __SecureUpgradeable_init(address _timelock) internal onlyInitializing;
-```
-
 ### setTimelock
 
 Set the timelock contract
 
 
 ```solidity
-function setTimelock(address _timelock) external onlyRole(DEFAULT_ADMIN_ROLE);
+function setTimelock(address _timelock) external;
 ```
 **Parameters**
 
@@ -79,7 +32,7 @@ Toggle secure upgrades
 
 
 ```solidity
-function toggleSecureUpgrades(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
+function toggleSecureUpgrades(bool enabled) external;
 ```
 **Parameters**
 
@@ -94,9 +47,7 @@ Propose an upgrade through the timelock
 
 
 ```solidity
-function proposeUpgrade(address newImplementation, string calldata description, uint256 customDelay)
-    external
-    onlyRole(UPGRADER_ROLE);
+function proposeUpgrade(address newImplementation, string calldata description, uint256 customDelay) external;
 ```
 **Parameters**
 
@@ -113,7 +64,7 @@ Execute an upgrade through the timelock
 
 
 ```solidity
-function executeUpgrade(address newImplementation) external onlyTimelock;
+function executeUpgrade(address newImplementation) external;
 ```
 **Parameters**
 
@@ -128,7 +79,7 @@ Emergency upgrade (bypasses timelock, requires emergency mode)
 
 
 ```solidity
-function emergencyUpgrade(address newImplementation, string calldata description) external onlyRole(UPGRADER_ROLE);
+function emergencyUpgrade(address newImplementation, string calldata description) external;
 ```
 **Parameters**
 
@@ -136,21 +87,6 @@ function emergencyUpgrade(address newImplementation, string calldata description
 |----|----|-----------|
 |`newImplementation`|`address`|Address of the new implementation|
 |`description`|`string`|Description of the emergency upgrade|
-
-
-### _authorizeUpgrade
-
-Authorize upgrade (overrides UUPSUpgradeable)
-
-
-```solidity
-function _authorizeUpgrade(address newImplementation) internal override;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newImplementation`|`address`|Address of the new implementation|
 
 
 ### isUpgradePending
@@ -245,7 +181,7 @@ Disable secure upgrades in emergency
 
 
 ```solidity
-function emergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE);
+function emergencyDisableSecureUpgrades() external;
 ```
 
 ### enableSecureUpgrades
@@ -254,25 +190,76 @@ Enable secure upgrades after emergency
 
 
 ```solidity
-function enableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE);
+function enableSecureUpgrades() external;
 ```
 
-## Events
-### TimelockSet
+### timelock
+
 
 ```solidity
-event TimelockSet(address indexed timelock);
+function timelock() external view returns (ITimelockUpgradeable);
 ```
 
-### SecureUpgradesToggled
+### secureUpgradesEnabled
+
 
 ```solidity
-event SecureUpgradesToggled(bool enabled);
+function secureUpgradesEnabled() external view returns (bool);
 ```
 
-### SecureUpgradeAuthorized
+### UPGRADER_ROLE
+
 
 ```solidity
-event SecureUpgradeAuthorized(address indexed newImplementation, address indexed authorizedBy);
+function UPGRADER_ROLE() external view returns (bytes32);
+```
+
+### hasRole
+
+
+```solidity
+function hasRole(bytes32 role, address account) external view returns (bool);
+```
+
+### getRoleAdmin
+
+
+```solidity
+function getRoleAdmin(bytes32 role) external view returns (bytes32);
+```
+
+### grantRole
+
+
+```solidity
+function grantRole(bytes32 role, address account) external;
+```
+
+### revokeRole
+
+
+```solidity
+function revokeRole(bytes32 role, address account) external;
+```
+
+### renounceRole
+
+
+```solidity
+function renounceRole(bytes32 role, address callerConfirmation) external;
+```
+
+### upgradeTo
+
+
+```solidity
+function upgradeTo(address newImplementation) external;
+```
+
+### upgradeToAndCall
+
+
+```solidity
+function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
 ```
 

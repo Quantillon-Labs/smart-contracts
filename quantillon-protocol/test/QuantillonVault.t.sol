@@ -50,7 +50,13 @@ contract MockToken {
 /**
  * @title QuantillonVaultTestSuite
  * @notice Comprehensive test suite for QuantillonVault contract
- * @dev Tests all major functionality including minting, redemption, governance, and emergency functions
+ * @dev Uses proxy deployments and Foundry cheatcodes to validate:
+ *      - Initialization and access control
+ *      - Minting and redemption flows with price oracle usage
+ *      - Governance parameter updates and role-restricted actions
+ *      - Emergency pause/unpause and recovery mechanisms
+ *      - Edge cases for zero addresses, insufficient balances, and reverts
+ * @custom:security-contact team@quantillon.money
  */
 contract QuantillonVaultTestSuite is Test {
     // =============================================================================

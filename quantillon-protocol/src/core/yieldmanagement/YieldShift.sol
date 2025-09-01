@@ -19,6 +19,70 @@ import "../../libraries/ValidationLibrary.sol";
 import "../../libraries/VaultLibrary.sol";
 import "../SecureUpgradeable.sol";
 
+/**
+ * @title YieldShift
+ * @notice Dynamic yield distribution system balancing rewards between users and hedgers
+ * 
+ * @dev Main characteristics:
+ *      - Dynamic yield allocation based on pool balance ratios
+ *      - Time-weighted average price (TWAP) calculations for stability
+ *      - Multiple yield sources integration (Aave, fees, interest differentials)
+ *      - Automatic yield distribution with holding period requirements
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable via UUPS pattern
+ * 
+ * @dev Yield shift mechanics:
+ *      - Base yield shift determines default allocation (default 50/50)
+ *      - Maximum yield shift caps allocation changes (default 90/10)
+ *      - Adjustment speed controls how quickly shifts occur
+ *      - Target pool ratio defines optimal balance point
+ *      - Real-time calculations based on pool metrics
+ * 
+ * @dev Distribution algorithm:
+ *      - Monitors user pool vs hedger pool size ratios
+ *      - Adjusts yield allocation to incentivize balance
+ *      - Higher user pool → more yield to hedgers (attract hedging)
+ *      - Higher hedger pool → more yield to users (attract deposits)
+ *      - Gradual adjustments prevent dramatic shifts
+ * 
+ * @dev Yield sources:
+ *      - Aave yield from USDC deposits in lending protocols
+ *      - Protocol fees from minting, redemption, and trading
+ *      - Interest rate differentials from hedging operations
+ *      - External yield farming opportunities
+ *      - Authorized source validation for security
+ * 
+ * @dev Time-weighted calculations:
+ *      - 24-hour TWAP for pool size measurements
+ *      - Historical data tracking for trend analysis
+ *      - Maximum history length prevents unbounded storage
+ *      - Drift tolerance for timestamp validation
+ *      - Automatic data cleanup and optimization
+ * 
+ * @dev Holding period requirements:
+ *      - Minimum 7-day holding period for yield claims
+ *      - Prevents yield farming attacks and speculation
+ *      - Encourages long-term protocol participation
+ *      - Tracked per user with deposit timestamps
+ * 
+ * @dev Security features:
+ *      - Role-based access control for all critical operations
+ *      - Reentrancy protection for all external calls
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable architecture for future improvements
+ *      - Authorized yield source validation
+ *      - Secure yield distribution mechanisms
+ * 
+ * @dev Integration points:
+ *      - User pool for deposit and staking metrics
+ *      - Hedger pool for hedging exposure metrics
+ *      - Aave vault for yield generation and harvesting
+ *      - stQEURO token for user yield distribution
+ *      - USDC for yield payments and transfers
+ * 
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
+ */
 contract YieldShift is 
     Initializable,
     ReentrancyGuardUpgradeable,

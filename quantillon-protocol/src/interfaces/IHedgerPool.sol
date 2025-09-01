@@ -4,6 +4,9 @@ pragma solidity 0.8.24;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IHedgerPool {
+    /**
+     * @custom:security-contact team@quantillon.money
+     */
     // Core hedging functions
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external returns (uint256 positionId);
     function exitHedgePosition(uint256 positionId) external returns (int256 pnl);

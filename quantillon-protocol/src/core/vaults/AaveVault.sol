@@ -15,6 +15,11 @@ import "../../libraries/AccessControlLibrary.sol";
 import "../../libraries/ValidationLibrary.sol";
 import "../SecureUpgradeable.sol";
 
+/**
+ * @title AaveVault
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
+ */
 interface IPool {
     function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
     function withdraw(address asset, uint256 amount, address to) external returns (uint256);
@@ -48,6 +53,70 @@ struct ReserveData {
     uint128 isolationModeTotalDebt;
 }
 
+/**
+ * @title AaveVault
+ * @notice Aave integration vault for yield generation through USDC lending
+ * 
+ * @dev Main characteristics:
+ *      - USDC deposits into Aave lending protocol for yield generation
+ *      - Automatic yield harvesting and distribution
+ *      - Risk management with exposure limits and health monitoring
+ *      - Emergency withdrawal capabilities for crisis situations
+ *      - Dynamic allocation based on market conditions
+ *      - Upgradeable via UUPS pattern
+ * 
+ * @dev Deposit mechanics:
+ *      - USDC supplied to Aave protocol for lending
+ *      - Receives aUSDC tokens representing interest-bearing deposits
+ *      - Principal tracking for yield calculation
+ *      - Maximum exposure limits for risk management
+ *      - Health checks before deposits
+ * 
+ * @dev Yield harvesting:
+ *      - Automatic detection of accrued interest
+ *      - Threshold-based harvesting to optimize gas costs
+ *      - Protocol fees charged on harvested yield
+ *      - Net yield distributed to yield shift mechanism
+ *      - Real-time yield tracking and reporting
+ * 
+ * @dev Risk management:
+ *      - Maximum Aave exposure limits (default 50M USDC)
+ *      - Utilization rate monitoring for liquidity risk
+ *      - Emergency mode for immediate withdrawals
+ *      - Health monitoring of Aave protocol status
+ *      - Slippage protection on withdrawals
+ * 
+ * @dev Allocation strategy:
+ *      - Dynamic allocation based on Aave APY
+ *      - Rebalancing thresholds for optimal yield
+ *      - Market condition adjustments
+ *      - Liquidity availability considerations
+ *      - Expected yield calculations
+ * 
+ * @dev Fee structure:
+ *      - Yield fees charged on harvested interest (default 10%)
+ *      - Protocol fees for sustainability
+ *      - Dynamic fee adjustment based on performance
+ *      - Fee collection and distribution tracking
+ * 
+ * @dev Security features:
+ *      - Role-based access control for all critical operations
+ *      - Reentrancy protection for all external calls
+ *      - Emergency pause mechanism for crisis situations
+ *      - Upgradeable architecture for future improvements
+ *      - Secure withdrawal validation
+ *      - Health monitoring and circuit breakers
+ * 
+ * @dev Integration points:
+ *      - Aave lending protocol for yield generation
+ *      - USDC for deposits and withdrawals
+ *      - aUSDC tokens for interest accrual tracking
+ *      - Yield shift mechanism for yield distribution
+ *      - Rewards controller for additional incentives
+ * 
+ * @author Quantillon Labs
+ * @custom:security-contact team@quantillon.money
+ */
 contract AaveVault is 
     Initializable,
     ReentrancyGuardUpgradeable,

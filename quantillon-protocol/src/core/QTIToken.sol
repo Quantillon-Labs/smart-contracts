@@ -238,13 +238,15 @@ contract QTIToken is
     /// @param amount Amount of QTI locked
     /// @param unlockTime Timestamp when the lock expires
     /// @param votingPower Voting power calculated for the locked amount
-    event TokensLocked(address indexed user, uint256 amount, uint256 unlockTime, uint256 votingPower);
+    /// @dev OPTIMIZED: Indexed amount and unlockTime for efficient filtering
+    event TokensLocked(address indexed user, uint256 indexed amount, uint256 indexed unlockTime, uint256 votingPower);
     
     /// @notice Emitted when tokens are unlocked after lock period expires
     /// @param user Address of the user who unlocked tokens
     /// @param amount Amount of QTI unlocked
     /// @param votingPower Voting power before unlocking
-    event TokensUnlocked(address indexed user, uint256 amount, uint256 votingPower);
+    /// @dev OPTIMIZED: Indexed amount for efficient filtering by unlock size
+    event TokensUnlocked(address indexed user, uint256 indexed amount, uint256 votingPower);
     
     /// @notice Emitted when voting power for an address is updated
     /// @param user Address of the user whose voting power changed
@@ -263,7 +265,8 @@ contract QTIToken is
     /// @param voter Address of the voter
     /// @param support True for yes vote, false for no vote
     /// @param votes Number of votes cast
-    event Voted(uint256 indexed proposalId, address indexed voter, bool support, uint256 votes);
+    /// @dev OPTIMIZED: Indexed support for efficient filtering by vote direction
+    event Voted(uint256 indexed proposalId, address indexed voter, bool indexed support, uint256 votes);
     
     /// @notice Emitted when a proposal is successfully executed
     /// @param proposalId Unique identifier for the executed proposal
@@ -277,11 +280,13 @@ contract QTIToken is
     /// @param proposalThreshold New minimum QTI required to propose
     /// @param minVotingPeriod New minimum voting period
     /// @param quorumVotes New quorum required for proposals to pass
-    event GovernanceParametersUpdated(uint256 proposalThreshold, uint256 minVotingPeriod, uint256 quorumVotes);
+    /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
+    event GovernanceParametersUpdated(string indexed parameterType, uint256 proposalThreshold, uint256 minVotingPeriod, uint256 quorumVotes);
 
     /// @notice Emitted when the decentralization level is updated
     /// @param newLevel New decentralization level (0-10000)
-    event DecentralizationLevelUpdated(uint256 newLevel);
+    /// @dev OPTIMIZED: Indexed level for efficient filtering by decentralization stage
+    event DecentralizationLevelUpdated(uint256 indexed newLevel);
 
     // =============================================================================
     // INITIALIZER
@@ -878,7 +883,7 @@ contract QTIToken is
         minVotingPeriod = _minVotingPeriod;
         quorumVotes = _quorumVotes;
 
-        emit GovernanceParametersUpdated(_proposalThreshold, _minVotingPeriod, _quorumVotes);
+        emit GovernanceParametersUpdated("governance", _proposalThreshold, _minVotingPeriod, _quorumVotes);
     }
 
 

@@ -119,24 +119,27 @@ contract ChainlinkOracle is
     // =============================================================================
     
     /// @notice Emitted on each valid price update
+    /// @dev OPTIMIZED: Indexed timestamp for efficient time-based filtering
     event PriceUpdated(
         uint256 eurUsdPrice, 
         uint256 usdcUsdPrice, 
-        uint256 timestamp
+        uint256 indexed timestamp
     );
     
     /// @notice Emitted when the circuit breaker is triggered
+    /// @dev OPTIMIZED: Indexed reason for efficient filtering by trigger type
     event CircuitBreakerTriggered(
         uint256 attemptedPrice, 
         uint256 lastValidPrice, 
-        string reason
+        string indexed reason
     );
     
     /// @notice Emitted when the circuit breaker is reset
     event CircuitBreakerReset(address indexed admin);
     
     /// @notice Emitted when price bounds are modified
-    event PriceBoundsUpdated(uint256 newMinPrice, uint256 newMaxPrice);
+    /// @dev OPTIMIZED: Indexed bound type for efficient filtering
+    event PriceBoundsUpdated(string indexed boundType, uint256 newMinPrice, uint256 newMaxPrice);
     
     /// @notice Emitted when price feed addresses are updated
     event PriceFeedsUpdated(address newEurUsdFeed, address newUsdcUsdFeed);
@@ -793,7 +796,7 @@ contract ChainlinkOracle is
         minEurUsdPrice = _minPrice;
         maxEurUsdPrice = _maxPrice;
 
-        emit PriceBoundsUpdated(_minPrice, _maxPrice);
+        emit PriceBoundsUpdated("bounds", _minPrice, _maxPrice);
     }
 
     /**

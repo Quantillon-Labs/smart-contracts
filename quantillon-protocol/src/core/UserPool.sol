@@ -278,15 +278,15 @@ contract UserPool is
     /// @param totalYield Total amount of yield distributed (18 decimals)
     /// @param yieldPerShare Amount of yield per staked QEURO share (18 decimals)
     /// @param timestamp Timestamp of the yield distribution
-    /// @dev Indexed parameters allow efficient filtering of events
-    event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 timestamp);
+    /// @dev OPTIMIZED: Indexed timestamp for efficient time-based filtering
+    event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 indexed timestamp);
 
     /// @notice Emitted when pool parameters are updated
     /// @param parameter Name of the parameter updated
     /// @param oldValue Original value of the parameter
     /// @param newValue New value of the parameter
-    /// @dev Indexed parameters allow efficient filtering of events
-    event PoolParameterUpdated(string parameter, uint256 oldValue, uint256 newValue);
+    /// @dev OPTIMIZED: Indexed parameter name for efficient filtering by parameter type
+    event PoolParameterUpdated(string indexed parameter, uint256 oldValue, uint256 newValue);
 
     // =============================================================================
     // INITIALIZER

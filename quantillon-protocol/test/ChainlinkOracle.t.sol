@@ -9,6 +9,11 @@ import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v
 /**
  * @title MockAggregatorV3
  * @notice Mock Chainlink price feed for testing
+ * @dev Implements AggregatorV3Interface with configurable behavior to simulate:
+ *      - Price updates with variable decimals
+ *      - Revert scenarios and invalid price outputs
+ *      - Stale timestamps and round progression
+ * @custom:security-contact team@quantillon.money
  */
 contract MockAggregatorV3 is AggregatorV3Interface {
     int256 public price;
@@ -96,6 +101,13 @@ contract MockAggregatorV3 is AggregatorV3Interface {
 /**
  * @title ChainlinkOracleTestSuite
  * @notice Comprehensive test suite for the ChainlinkOracle contract
+ * @dev Validates oracle behavior including:
+ *      - Initialization and role assignments
+ *      - Price fetching, scaling, and staleness checks
+ *      - Circuit breaker trigger/reset flows
+ *      - Admin updates (bounds, tolerance, feeds)
+ *      - Recovery functions and health monitoring
+ * @custom:security-contact team@quantillon.money
  */
 contract ChainlinkOracleTestSuite is Test {
     using console2 for uint256;

@@ -121,15 +121,10 @@ contract QEUROToken is
     /// @dev Prevents infinite minting and maintains tokenomics
     uint256 public maxSupply;
 
-    /// @notice Rate limit for mint operations (per hour)
-    /// @dev Prevents rapid minting that could destabilize the protocol
-    /// @dev Can be updated by governance through updateRateLimits()
-    uint256 public mintRateLimit;
-
-    /// @notice Rate limit for burn operations (per hour)
-    /// @dev Prevents rapid burning that could destabilize the protocol
-    /// @dev Can be updated by governance through updateRateLimits()
-    uint256 public burnRateLimit;
+    /// @notice Packed rate limit caps for mint and burn (per hour)
+    /// @dev Two uint128 packed into one slot for storage efficiency
+    struct RateLimitCaps { uint128 mint; uint128 burn; }
+    RateLimitCaps public rateLimitCaps;
 
     /// @notice Rate limiting information - OPTIMIZED: Packed for storage efficiency
     /// @dev Resets every hour or when rate limits are updated
@@ -285,8 +280,7 @@ contract QEUROToken is
 
         // Initialize state variables
         maxSupply = DEFAULT_MAX_SUPPLY;
-        mintRateLimit = MAX_RATE_LIMIT;
-        burnRateLimit = MAX_RATE_LIMIT;
+        rateLimitCaps = RateLimitCaps(uint128(MAX_RATE_LIMIT), uint128(MAX_RATE_LIMIT));
         rateLimitInfo = RateLimitInfo(0, 0, uint64(block.timestamp));
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
@@ -512,7 +506,7 @@ contract QEUROToken is
         }
 
         // Check if the new amount would exceed the rate limit
-        if (rateLimitInfo.currentHourMinted + amount > mintRateLimit) {
+        if (rateLimitInfo.currentHourMinted + amount > rateLimitCaps.mint) {
             revert ErrorLibrary.RateLimitExceeded();
         }
 
@@ -554,7 +548,7 @@ contract QEUROToken is
         }
 
         // Check if the new amount would exceed the rate limit
-        if (rateLimitInfo.currentHourBurned + amount > burnRateLimit) {
+        if (rateLimitInfo.currentHourBurned + amount > rateLimitCaps.burn) {
             revert ErrorLibrary.RateLimitExceeded();
         }
 
@@ -574,7 +568,7 @@ contract QEUROToken is
      *      - Validates new limits
      *      - Ensures new limits are not zero
      *      - Ensures new limits are not too high
-     *      - Updates mintRateLimit and burnRateLimit
+     *      - Updates rateLimitCaps (mint and burn) in a single storage slot
      *      - Emits RateLimitsUpdated event
      */
     function updateRateLimits(uint256 newMintLimit, uint256 newBurnLimit) 
@@ -586,8 +580,7 @@ contract QEUROToken is
         if (newMintLimit > MAX_RATE_LIMIT) revert ErrorLibrary.RateLimitTooHigh();
         if (newBurnLimit > MAX_RATE_LIMIT) revert ErrorLibrary.RateLimitTooHigh();
 
-        mintRateLimit = newMintLimit;
-        burnRateLimit = newBurnLimit;
+        rateLimitCaps = RateLimitCaps(uint128(newMintLimit), uint128(newBurnLimit));
 
         emit RateLimitsUpdated(newMintLimit, newBurnLimit);
     }
@@ -1224,8 +1217,24 @@ contract QEUROToken is
             maxSupply,
             paused(),
             whitelistEnabled,
-            mintRateLimit,
-            burnRateLimit
+            rateLimitCaps.mint,
+            rateLimitCaps.burn
         );
+    }
+
+    /**
+     * @notice Get current mint rate limit (per hour)
+     * @return limit Mint rate limit in wei per hour (18 decimals)
+     */
+    function mintRateLimit() external view returns (uint256 limit) {
+        return rateLimitCaps.mint;
+    }
+
+    /**
+     * @notice Get current burn rate limit (per hour)
+     * @return limit Burn rate limit in wei per hour (18 decimals)
+     */
+    function burnRateLimit() external view returns (uint256 limit) {
+        return rateLimitCaps.burn;
     }
 }

@@ -128,25 +128,29 @@ contract HedgerPool is
     uint256 public eurInterestRate;
     uint256 public usdInterestRate;
 
+    /// @dev OPTIMIZED: Packed struct for gas efficiency
     struct HedgePosition {
-        address hedger;
-        uint256 positionSize;
-        uint256 margin;
-        uint256 entryPrice;
-        uint256 leverage;
-        uint256 entryTime;
-        uint256 lastUpdateTime;
-        int256 unrealizedPnL;
-        bool isActive;
+        address hedger;                     // Address of position owner (20 bytes)
+        uint96 positionSize;               // Position size in USD (12 bytes, max ~79B USD)
+        uint96 margin;                     // Margin amount in USDC (12 bytes, max ~79B USDC)
+        uint96 entryPrice;                 // Entry price (12 bytes, scaled appropriately)
+        uint32 entryTime;                  // Entry timestamp (4 bytes, until year 2106)
+        uint32 lastUpdateTime;             // Last update timestamp (4 bytes, until year 2106)
+        uint16 leverage;                   // Leverage multiplier (2 bytes, max 65535x)
+        bool isActive;                     // Position status (1 byte)
+        int128 unrealizedPnL;              // Unrealized P&L (16 bytes, max ~170B USD)
+        // Total: 20+12+12+12+4+4+2+1+16 = 83 bytes (3 slots vs 9 slots = 67% gas savings)
     }
 
+    /// @dev OPTIMIZED: Packed struct for gas efficiency
     struct HedgerInfo {
-        uint256[] positionIds;
-        uint256 totalMargin;
-        uint256 totalExposure;
-        uint256 pendingRewards;
-        uint256 lastRewardClaim;
-        bool isActive;
+        uint256[] positionIds;              // Dynamic array (separate storage)
+        uint128 totalMargin;                // Total margin across positions (16 bytes, max ~340B USDC)
+        uint128 totalExposure;              // Total exposure across positions (16 bytes, max ~340B USD)
+        uint128 pendingRewards;             // Pending rewards (16 bytes, max ~340B tokens)
+        uint64 lastRewardClaim;             // Last reward claim timestamp (8 bytes, until year 2554)
+        bool isActive;                      // Hedger status (1 byte)
+        // Total: 32+16+16+16+8+1 = 89 bytes (3 slots vs 6 slots = 50% gas savings)
     }
 
     mapping(uint256 => HedgePosition) public positions;
@@ -291,12 +295,12 @@ contract HedgerPool is
         
         HedgePosition storage position = positions[positionId];
         position.hedger = msg.sender;
-        position.positionSize = positionSize;
-        position.margin = netMargin;
-        position.entryTime = block.timestamp;
-        position.lastUpdateTime = block.timestamp;
-        position.leverage = leverage;
-        position.entryPrice = eurUsdPrice;
+        position.positionSize = uint96(positionSize);
+        position.margin = uint96(netMargin);
+        position.entryTime = uint32(block.timestamp);
+        position.lastUpdateTime = uint32(block.timestamp);
+        position.leverage = uint16(leverage);
+        position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
 
@@ -310,8 +314,8 @@ contract HedgerPool is
         hedger.positionIds.push(positionId);
         positionIndex[msg.sender][positionId] = hedger.positionIds.length - 1;
         
-        hedger.totalMargin += netMargin;
-        hedger.totalExposure += positionSize;
+        hedger.totalMargin += uint128(netMargin);
+        hedger.totalExposure += uint128(positionSize);
         
         // Add to hedgerPositions[hedger] array with O(1) indexing
         hedgerPositions[msg.sender].push(positionId);
@@ -350,16 +354,16 @@ contract HedgerPool is
 
         pnl = _calculatePnL(position, currentPrice);
 
-        uint256 grossPayout = uint256(int256(position.margin) + pnl);
+        uint256 grossPayout = uint256(int256(uint256(position.margin)) + pnl);
         uint256 exitFeeAmount = grossPayout.percentageOf(exitFee);
         uint256 netPayout = grossPayout - exitFeeAmount;
 
         HedgerInfo storage hedger = hedgers[msg.sender];
-        hedger.totalMargin -= position.margin;
-        hedger.totalExposure -= position.positionSize;
+        hedger.totalMargin -= uint128(position.margin);
+        hedger.totalExposure -= uint128(position.positionSize);
 
-        totalMargin -= position.margin;
-        totalExposure -= position.positionSize;
+        totalMargin -= uint256(position.margin);
+        totalExposure -= uint256(position.positionSize);
 
         position.isActive = false;
         _removePositionFromArrays(msg.sender, positionId);
@@ -395,7 +399,7 @@ contract HedgerPool is
             int256 pnl = _calculatePnL(position, currentPrice);
             pnls[i] = pnl;
 
-            uint256 grossPayout = uint256(int256(position.margin) + pnl);
+            uint256 grossPayout = uint256(int256(uint256(position.margin)) + pnl);
             uint256 exitFeeAmount = grossPayout.percentageOf(exitFee);
             uint256 netPayout = grossPayout - exitFeeAmount;
 
@@ -475,12 +479,12 @@ contract HedgerPool is
 
         usdc.safeTransferFrom(msg.sender, address(this), amount);
 
-        position.margin += netAmount;
+        position.margin += uint96(netAmount);
 
-        hedgers[msg.sender].totalMargin += netAmount;
+        hedgers[msg.sender].totalMargin += uint128(netAmount);
         totalMargin += netAmount;
 
-        uint256 newMarginRatio = position.margin.mulDiv(10000, position.positionSize);
+        uint256 newMarginRatio = uint256(position.margin).mulDiv(10000, uint256(position.positionSize));
 
         emit MarginAdded(msg.sender, positionId, netAmount, newMarginRatio);
     }
@@ -494,15 +498,15 @@ contract HedgerPool is
         ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
         ValidationLibrary.validatePositionActive(position.isActive);
         ValidationLibrary.validatePositiveAmount(amount);
-        if (position.margin < amount) revert ErrorLibrary.InsufficientMargin();
+        if (uint256(position.margin) < amount) revert ErrorLibrary.InsufficientMargin();
 
-        uint256 newMargin = position.margin - amount;
-        uint256 newMarginRatio = newMargin.mulDiv(10000, position.positionSize);
+        uint256 newMargin = uint256(position.margin) - amount;
+        uint256 newMarginRatio = newMargin.mulDiv(10000, uint256(position.positionSize));
         ValidationLibrary.validateMarginRatio(newMarginRatio, minMarginRatio);
 
-        position.margin = newMargin;
+        position.margin = uint96(newMargin);
 
-        hedgers[msg.sender].totalMargin -= amount;
+        hedgers[msg.sender].totalMargin -= uint128(amount);
         totalMargin -= amount;
 
         usdc.safeTransfer(msg.sender, amount);
@@ -552,12 +556,12 @@ contract HedgerPool is
         (, bool isValid) = oracle.getEurUsdPrice();
         ValidationLibrary.validateOraclePrice(isValid);
 
-        liquidationReward = position.margin.percentageOf(liquidationPenalty);
-        uint256 remainingMargin = position.margin - liquidationReward;
+        liquidationReward = uint256(position.margin).percentageOf(liquidationPenalty);
+        uint256 remainingMargin = uint256(position.margin) - liquidationReward;
 
         HedgerInfo storage hedgerInfo = hedgers[hedger];
-        hedgerInfo.totalMargin -= position.margin;
-        hedgerInfo.totalExposure -= position.positionSize;
+        hedgerInfo.totalMargin -= uint128(position.margin);
+        hedgerInfo.totalExposure -= uint128(position.positionSize);
 
         totalMargin -= position.margin;
         totalExposure -= position.positionSize;
@@ -598,7 +602,7 @@ contract HedgerPool is
         
         if (totalRewards > 0) {
             hedgerInfo.pendingRewards = 0;
-            hedgerInfo.lastRewardClaim = block.timestamp;
+            hedgerInfo.lastRewardClaim = uint64(block.timestamp);
             
             if (yieldShiftRewards > 0) {
                 yieldShift.claimHedgerYield(hedger);
@@ -632,13 +636,13 @@ contract HedgerPool is
             uint256 interestDifferential = usdInterestRate > eurInterestRate ? 
                 usdInterestRate - eurInterestRate : 0;
             
-            uint256 reward = hedgerInfo.totalExposure
+            uint256 reward = uint256(hedgerInfo.totalExposure)
                 .mulDiv(interestDifferential, 10000)
                 .mulDiv(timeElapsed, 365 days);
             
-            uint256 newPendingRewards = hedgerInfo.pendingRewards + reward;
-            if (newPendingRewards < hedgerInfo.pendingRewards) revert ErrorLibrary.RewardOverflow();
-            hedgerInfo.pendingRewards = newPendingRewards;
+            uint256 newPendingRewards = uint256(hedgerInfo.pendingRewards) + reward;
+            if (newPendingRewards < uint256(hedgerInfo.pendingRewards)) revert ErrorLibrary.RewardOverflow();
+            hedgerInfo.pendingRewards = uint128(newPendingRewards);
             
             hedgerLastRewardBlock[hedger] = currentBlock;
         }
@@ -680,7 +684,7 @@ contract HedgerPool is
         if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
         
         if (position.positionSize == 0) return 0;
-        return position.margin.mulDiv(10000, position.positionSize);
+        return uint256(position.margin).mulDiv(10000, uint256(position.positionSize));
     }
 
     function isHedgerLiquidatable(address hedger, uint256 positionId) 
@@ -702,7 +706,7 @@ contract HedgerPool is
         if (!isValid) return false;
         
         int256 pnl = _calculatePnL(position, currentPrice);
-        int256 effectiveMargin = int256(position.margin) + pnl;
+        int256 effectiveMargin = int256(uint256(position.margin)) + pnl;
         
         if (effectiveMargin <= 0) return true;
         
@@ -715,15 +719,15 @@ contract HedgerPool is
         view 
         returns (int256) 
     {
-        int256 priceChange = int256(position.entryPrice) - int256(currentPrice);
+        int256 priceChange = int256(uint256(position.entryPrice)) - int256(currentPrice);
         
         if (priceChange >= 0) {
             uint256 absPriceChange = uint256(priceChange);
-            uint256 intermediate = position.positionSize.mulDiv(absPriceChange, position.entryPrice);
+            uint256 intermediate = uint256(position.positionSize).mulDiv(absPriceChange, uint256(position.entryPrice));
             return int256(intermediate);
         } else {
             uint256 absPriceChange = uint256(-priceChange);
-            uint256 intermediate = position.positionSize.mulDiv(absPriceChange, position.entryPrice);
+            uint256 intermediate = uint256(position.positionSize).mulDiv(absPriceChange, uint256(position.entryPrice));
             return -int256(intermediate);
         }
     }
@@ -781,8 +785,8 @@ contract HedgerPool is
         ValidationLibrary.validatePositionActive(position.isActive);
 
         HedgerInfo storage hedgerInfo = hedgers[hedger];
-        hedgerInfo.totalMargin -= position.margin;
-        hedgerInfo.totalExposure -= position.positionSize;
+        hedgerInfo.totalMargin -= uint128(position.margin);
+        hedgerInfo.totalExposure -= uint128(position.positionSize);
 
         totalMargin -= position.margin;
         totalExposure -= position.positionSize;

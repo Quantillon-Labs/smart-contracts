@@ -137,19 +137,23 @@ contract YieldShift is
     
     mapping(address => uint256) public lastDepositTime;
     
+    /// @dev OPTIMIZED: Packed struct for gas efficiency in historical arrays
     struct PoolSnapshot {
-        uint256 timestamp;
-        uint256 userPoolSize;
-        uint256 hedgerPoolSize;
+        uint128 userPoolSize;               // User pool size (16 bytes, max ~340B)
+        uint128 hedgerPoolSize;             // Hedger pool size (16 bytes, max ~340B)
+        uint64 timestamp;                   // Timestamp (8 bytes, until year 2554)
+        // Total: 16+16+8 = 40 bytes (2 slots vs 3 slots = 33% gas savings)
     }
     
     PoolSnapshot[] public userPoolHistory;
     PoolSnapshot[] public hedgerPoolHistory;
     uint256 public constant MAX_HISTORY_LENGTH = 1000;
 
+    /// @dev OPTIMIZED: Packed struct for gas efficiency in yield shift tracking
     struct YieldShiftSnapshot {
-        uint256 timestamp;
-        uint256 yieldShift;
+        uint128 yieldShift;                 // Yield shift percentage (16 bytes, max ~340B)
+        uint64 timestamp;                   // Timestamp (8 bytes, until year 2554)
+        // Total: 16+8 = 24 bytes (1 slot vs 2 slots = 50% gas savings)
     }
     YieldShiftSnapshot[] public yieldShiftHistory;
 
@@ -810,9 +814,9 @@ contract YieldShift is
         }
         
         poolHistory.push(PoolSnapshot({
-            timestamp: block.timestamp,
-            userPoolSize: isUserPool ? poolSize : 0,
-            hedgerPoolSize: isUserPool ? 0 : poolSize
+            timestamp: uint64(block.timestamp),
+            userPoolSize: isUserPool ? uint128(poolSize) : 0,
+            hedgerPoolSize: isUserPool ? 0 : uint128(poolSize)
         }));
     }
 

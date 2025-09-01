@@ -626,8 +626,9 @@ contract QTITokenTestSuite is Test {
         vm.prank(user1);
         qtiToken.batchTransfer(recipients, amounts);
 
-        assertEq(qtiToken.balanceOf(user2), amounts[0]);
-        assertEq(qtiToken.balanceOf(user3), amounts[1]);
+        // Check that balances increased by the transferred amounts
+        assertEq(qtiToken.balanceOf(user2), INITIAL_MINT_AMOUNT + amounts[0]);
+        assertEq(qtiToken.balanceOf(user3), INITIAL_MINT_AMOUNT + amounts[1]);
     }
 
     function test_BatchVote_Success() public {

@@ -16,6 +16,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
+import "../libraries/ErrorLibrary.sol";
 import "./SecureUpgradeable.sol";
 
 /**
@@ -327,6 +328,132 @@ contract stQEUROToken is
         IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroAmount);
 
         emit QEUROUnstaked(msg.sender, stQEUROAmount, qeuroAmount);
+    }
+
+    /**
+     * @notice Batch stake QEURO to receive stQEURO for multiple amounts
+     * @param qeuroAmounts Array of QEURO amounts to stake
+     * @return stQEUROAmounts Array of stQEURO amounts received
+     */
+    function batchStake(uint256[] calldata qeuroAmounts) 
+        external 
+        nonReentrant 
+        whenNotPaused 
+        returns (uint256[] memory stQEUROAmounts) 
+    {
+        stQEUROAmounts = new uint256[](qeuroAmounts.length);
+        uint256 totalQeuroAmount = 0;
+        
+        // Pre-validate amounts and calculate total
+        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
+            require(qeuroAmounts[i] > 0, "stQEURO: Amount must be positive");
+            totalQeuroAmount += qeuroAmounts[i];
+        }
+        
+        require(qeuro.balanceOf(msg.sender) >= totalQeuroAmount, "stQEURO: Insufficient QEURO balance");
+
+        // Update exchange rate before staking (once for the batch)
+        _updateExchangeRate();
+
+        // Transfer total QEURO from user FIRST
+        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
+
+        // Update totals once
+        totalUnderlying = totalUnderlying + totalQeuroAmount;
+
+        // Process each stake
+        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
+            uint256 qeuroAmount = qeuroAmounts[i];
+            
+            // Calculate stQEURO amount based on current exchange rate
+            uint256 stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate);
+            stQEUROAmounts[i] = stQEUROAmount;
+
+            // Mint stQEURO to user
+            _mint(msg.sender, stQEUROAmount);
+
+            emit QEUROStaked(msg.sender, qeuroAmount, stQEUROAmount);
+        }
+    }
+
+    /**
+     * @notice Batch unstake QEURO by burning stQEURO for multiple amounts
+     * @param stQEUROAmounts Array of stQEURO amounts to burn
+     * @return qeuroAmounts Array of QEURO amounts received
+     */
+    function batchUnstake(uint256[] calldata stQEUROAmounts) 
+        external 
+        nonReentrant 
+        whenNotPaused 
+        returns (uint256[] memory qeuroAmounts) 
+    {
+        qeuroAmounts = new uint256[](stQEUROAmounts.length);
+        uint256 totalStQEUROAmount = 0;
+        uint256 totalQeuroAmount = 0;
+        
+        // Pre-validate amounts and calculate totals
+        for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
+            require(stQEUROAmounts[i] > 0, "stQEURO: Amount must be positive");
+            totalStQEUROAmount += stQEUROAmounts[i];
+        }
+        
+        require(balanceOf(msg.sender) >= totalStQEUROAmount, "stQEURO: Insufficient stQEURO balance");
+
+        // Update exchange rate before unstaking (once for the batch)
+        _updateExchangeRate();
+
+        // Calculate total QEURO to return and validate
+        for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
+            uint256 qeuroAmount = stQEUROAmounts[i].mulDiv(exchangeRate, 1e18);
+            qeuroAmounts[i] = qeuroAmount;
+            totalQeuroAmount += qeuroAmount;
+        }
+
+        // Ensure we have enough QEURO
+        require(totalUnderlying >= totalQeuroAmount, "stQEURO: Insufficient underlying");
+
+        // Process each unstake
+        for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
+            uint256 stQEUROAmount = stQEUROAmounts[i];
+            uint256 qeuroAmount = qeuroAmounts[i];
+
+            // Burn stQEURO from user
+            _burn(msg.sender, stQEUROAmount);
+
+            // Transfer QEURO to user
+            IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroAmount);
+
+            emit QEUROUnstaked(msg.sender, stQEUROAmount, qeuroAmount);
+        }
+
+        // Update totals once at the end
+        totalUnderlying = totalUnderlying - totalQeuroAmount;
+    }
+
+    /**
+     * @notice Batch transfer stQEURO tokens to multiple addresses
+     * @param recipients Array of recipient addresses
+     * @param amounts Array of amounts to transfer
+     */
+    function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
+        external
+        whenNotPaused
+        returns (bool)
+    {
+        if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        // Pre-validate recipients and amounts
+        for (uint256 i = 0; i < recipients.length; i++) {
+            require(recipients[i] != address(0), "stQEURO: Cannot transfer to zero address");
+            require(amounts[i] > 0, "stQEURO: Amount must be positive");
+        }
+        
+        // Perform transfers using OpenZeppelin's transfer mechanism
+        for (uint256 i = 0; i < recipients.length; i++) {
+            _transfer(msg.sender, recipients[i], amounts[i]);
+        }
+        
+        return true;
     }
 
     // =============================================================================

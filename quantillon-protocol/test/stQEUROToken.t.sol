@@ -420,6 +420,61 @@ contract stQEUROTokenTestSuite is Test {
         // Check total underlying (should be 0)
         assertEq(stQEURO.totalUnderlying(), 0);
     }
+
+    // =============================================================================
+    // BATCH FUNCTION TESTS
+    // =============================================================================
+
+    function test_BatchStake_Success() public {
+        uint256[] memory amounts = new uint256[](3);
+        amounts[0] = 10_000 * 1e18;
+        amounts[1] = 20_000 * 1e18;
+        amounts[2] = 30_000 * 1e18;
+
+        vm.prank(user1);
+        uint256[] memory minted = stQEURO.batchStake(amounts);
+
+        assertEq(minted.length, 3);
+        assertEq(stQEURO.balanceOf(user1), 60_000 * 1e18);
+        assertEq(stQEURO.totalUnderlying(), 60_000 * 1e18);
+    }
+
+    function test_BatchUnstake_Success() public {
+        // Stake first
+        vm.prank(user1);
+        stQEURO.stake(60_000 * 1e18);
+
+        uint256[] memory burnAmounts = new uint256[](2);
+        burnAmounts[0] = 10_000 * 1e18;
+        burnAmounts[1] = 20_000 * 1e18;
+
+        vm.prank(user1);
+        uint256[] memory received = stQEURO.batchUnstake(burnAmounts);
+
+        assertEq(received.length, 2);
+        assertEq(stQEURO.balanceOf(user1), 30_000 * 1e18);
+        assertEq(stQEURO.totalUnderlying(), 30_000 * 1e18);
+    }
+
+    function test_BatchTransfer_Success() public {
+        // Stake then transfer out
+        vm.prank(user1);
+        stQEURO.stake(50_000 * 1e18);
+
+        address[] memory recipients = new address[](2);
+        recipients[0] = user2;
+        recipients[1] = user3;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 5_000 * 1e18;
+        amounts[1] = 10_000 * 1e18;
+
+        vm.prank(user1);
+        stQEURO.batchTransfer(recipients, amounts);
+
+        assertEq(stQEURO.balanceOf(user1), 35_000 * 1e18);
+        assertEq(stQEURO.balanceOf(user2), 5_000 * 1e18);
+        assertEq(stQEURO.balanceOf(user3), 10_000 * 1e18);
+    }
     
     /**
      * @notice Test unstaking with zero amount should revert

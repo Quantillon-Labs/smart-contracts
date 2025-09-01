@@ -350,6 +350,53 @@ contract QEUROToken is
     }
 
     /**
+     * @notice Batch mint QEURO tokens to multiple addresses
+     * 
+     * @param recipients Array of recipient addresses
+     * @param amounts Array of amounts to mint (18 decimals)
+     *
+     * @dev Applies the same validations as single mint per item to avoid bypassing
+     *      rate limits, blacklist/whitelist checks, and max supply constraints.
+     *      Using external mint for each entry reuses all checks and events.
+     */
+    function batchMint(address[] calldata recipients, uint256[] calldata amounts)
+        external
+        onlyRole(MINTER_ROLE)
+        whenNotPaused
+    {
+        if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        uint256 totalAmount = 0;
+        
+        // Pre-validate inputs and compliance per recipient
+        for (uint256 i = 0; i < recipients.length; i++) {
+            address to = recipients[i];
+            uint256 amount = amounts[i];
+            
+            if (to == address(0)) revert ErrorLibrary.InvalidAddress();
+            if (amount == 0) revert ErrorLibrary.InvalidAmount();
+            
+            if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
+            if (whitelistEnabled && !isWhitelisted[to]) revert ErrorLibrary.NotWhitelisted();
+            
+            // Accumulate total to check supply cap and rate limits once
+            totalAmount = totalAmount + amount;
+        }
+        
+        // Supply cap verification for the whole batch
+        if (totalSupply() + totalAmount > maxSupply) revert ErrorLibrary.WouldExceedLimit();
+
+        // Rate limiting for the whole batch
+        _checkAndUpdateMintRateLimit(totalAmount);
+
+        // Perform mints
+        for (uint256 i = 0; i < recipients.length; i++) {
+            _mint(recipients[i], amounts[i]);
+            emit TokensMinted(recipients[i], amounts[i], msg.sender);
+        }
+    }
+
+    /**
      * @notice Burns QEURO tokens from a specified address
      * 
      * @param from Address from which to burn tokens
@@ -386,6 +433,47 @@ contract QEUROToken is
         
         // Event for tracking
         emit TokensBurned(from, amount, msg.sender);
+    }
+
+    /**
+     * @notice Batch burn QEURO tokens from multiple addresses
+     * 
+     * @param froms Array of addresses to burn from
+     * @param amounts Array of amounts to burn (18 decimals)
+     *
+     * @dev Applies the same validations as single burn per item to avoid bypassing
+     *      rate limits and balance checks. Accumulates total for rate limiting.
+     */
+    function batchBurn(address[] calldata froms, uint256[] calldata amounts)
+        external
+        onlyRole(BURNER_ROLE)
+        whenNotPaused
+    {
+        if (froms.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        uint256 totalAmount = 0;
+        
+        // Pre-validate inputs per address
+        for (uint256 i = 0; i < froms.length; i++) {
+            address from = froms[i];
+            uint256 amount = amounts[i];
+            
+            if (from == address(0)) revert ErrorLibrary.InvalidAddress();
+            if (amount == 0) revert ErrorLibrary.InvalidAmount();
+            if (balanceOf(from) < amount) revert ErrorLibrary.InsufficientBalance();
+            
+            // Accumulate total to check rate limits once
+            totalAmount = totalAmount + amount;
+        }
+        
+        // Rate limiting for the whole batch
+        _checkAndUpdateBurnRateLimit(totalAmount);
+
+        // Perform burns
+        for (uint256 i = 0; i < froms.length; i++) {
+            _burn(froms[i], amounts[i]);
+            emit TokensBurned(froms[i], amounts[i], msg.sender);
+        }
     }
 
     // =============================================================================
@@ -615,6 +703,83 @@ contract QEUROToken is
         emit WhitelistModeToggled(enabled);
     }
 
+    /**
+     * @notice Batch blacklist multiple addresses
+     * @param accounts Array of addresses to blacklist
+     * @param reasons Array of reasons for blacklisting
+     * @dev Only callable by compliance role
+     */
+    function batchBlacklistAddresses(address[] calldata accounts, string[] calldata reasons)
+        external
+        onlyRole(COMPLIANCE_ROLE)
+    {
+        if (accounts.length != reasons.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        for (uint256 i = 0; i < accounts.length; i++) {
+            address account = accounts[i];
+            AccessControlLibrary.validateAddress(account);
+            if (isBlacklisted[account]) revert ErrorLibrary.AlreadyBlacklisted();
+            
+            isBlacklisted[account] = true;
+            emit AddressBlacklisted(account, reasons[i]);
+        }
+    }
+
+    /**
+     * @notice Batch unblacklist multiple addresses
+     * @param accounts Array of addresses to remove from blacklist
+     * @dev Only callable by compliance role
+     */
+    function batchUnblacklistAddresses(address[] calldata accounts)
+        external
+        onlyRole(COMPLIANCE_ROLE)
+    {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            address account = accounts[i];
+            if (!isBlacklisted[account]) revert ErrorLibrary.NotBlacklisted();
+            
+            isBlacklisted[account] = false;
+            emit AddressUnblacklisted(account);
+        }
+    }
+
+    /**
+     * @notice Batch whitelist multiple addresses
+     * @param accounts Array of addresses to whitelist
+     * @dev Only callable by compliance role
+     */
+    function batchWhitelistAddresses(address[] calldata accounts)
+        external
+        onlyRole(COMPLIANCE_ROLE)
+    {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            address account = accounts[i];
+            AccessControlLibrary.validateAddress(account);
+            if (isWhitelisted[account]) revert ErrorLibrary.AlreadyWhitelisted();
+            
+            isWhitelisted[account] = true;
+            emit AddressWhitelisted(account);
+        }
+    }
+
+    /**
+     * @notice Batch unwhitelist multiple addresses
+     * @param accounts Array of addresses to remove from whitelist
+     * @dev Only callable by compliance role
+     */
+    function batchUnwhitelistAddresses(address[] calldata accounts)
+        external
+        onlyRole(COMPLIANCE_ROLE)
+    {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            address account = accounts[i];
+            if (!isWhitelisted[account]) revert ErrorLibrary.NotWhitelisted();
+            
+            isWhitelisted[account] = false;
+            emit AddressUnwhitelisted(account);
+        }
+    }
+
     // =============================================================================
     // DECIMAL PRECISION FUNCTIONS - Handle precision issues with external price feeds
     // =============================================================================
@@ -838,6 +1003,44 @@ contract QEUROToken is
      *      - Includes bounds checking to prevent timestamp manipulation
      */
 
+
+    /**
+     * @notice Batch transfer QEURO tokens to multiple addresses
+     * 
+     * @param recipients Array of recipient addresses
+     * @param amounts Array of amounts to transfer (18 decimals)
+     *
+     * @dev Performs multiple transfers from msg.sender to recipients.
+     *      Uses OpenZeppelin's transfer mechanism with compliance checks.
+     */
+    function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
+        external
+        whenNotPaused
+        returns (bool)
+    {
+        if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        // Pre-validate recipients and amounts
+        for (uint256 i = 0; i < recipients.length; i++) {
+            address to = recipients[i];
+            uint256 amount = amounts[i];
+            
+            if (to == address(0)) revert ErrorLibrary.InvalidAddress();
+            if (amount == 0) revert ErrorLibrary.InvalidAmount();
+            
+            // Check compliance (blacklist/whitelist) per recipient
+            if (isBlacklisted[msg.sender]) revert ErrorLibrary.BlacklistedAddress();
+            if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
+            if (whitelistEnabled && !isWhitelisted[to]) revert ErrorLibrary.NotWhitelisted();
+        }
+        
+        // Perform transfers using OpenZeppelin's transfer mechanism
+        for (uint256 i = 0; i < recipients.length; i++) {
+            _transfer(msg.sender, recipients[i], amounts[i]);
+        }
+        
+        return true;
+    }
 
     // =============================================================================
     // INTERNAL OVERRIDES - OpenZeppelin behavior modifications

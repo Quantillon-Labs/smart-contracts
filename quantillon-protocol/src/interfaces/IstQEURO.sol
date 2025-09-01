@@ -21,7 +21,8 @@ interface IstQEURO {
         address _qeuro,
         address _yieldShift,
         address _usdc,
-        address _treasury
+        address _treasury,
+        address timelock
     ) external;
 
     /**
@@ -37,6 +38,25 @@ interface IstQEURO {
      * @return qeuroAmount Amount of QEURO received
      */
     function unstake(uint256 stQEUROAmount) external returns (uint256 qeuroAmount);
+
+    /**
+     * @notice Batch stake QEURO amounts
+     * @param qeuroAmounts Array of QEURO amounts
+     * @return stQEUROAmounts Array of stQEURO minted
+     */
+    function batchStake(uint256[] calldata qeuroAmounts) external returns (uint256[] memory stQEUROAmounts);
+
+    /**
+     * @notice Batch unstake stQEURO amounts
+     * @param stQEUROAmounts Array of stQEURO amounts
+     * @return qeuroAmounts Array of QEURO returned
+     */
+    function batchUnstake(uint256[] calldata stQEUROAmounts) external returns (uint256[] memory qeuroAmounts);
+
+    /**
+     * @notice Batch transfer stQEURO to multiple recipients
+     */
+    function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external returns (bool);
 
     /**
      * @notice Distribute yield to stQEURO holders (increases exchange rate)

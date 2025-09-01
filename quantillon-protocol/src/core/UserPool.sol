@@ -16,6 +16,7 @@ import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IQuantillonVault.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
+import "../libraries/ErrorLibrary.sol";
 import "./SecureUpgradeable.sol";
 
 /**
@@ -391,6 +392,76 @@ contract UserPool is
     }
 
     /**
+     * @notice Batch deposit USDC to mint QEURO for multiple amounts
+     * @dev This function allows users to make multiple deposits in one transaction.
+     *      Each deposit includes a fee and handles the minting process.
+     * @param usdcAmounts Array of USDC amounts to deposit (6 decimals)
+     * @param minQeuroOuts Array of minimum QEURO amounts to receive (18 decimals)
+     * @return qeuroMintedAmounts Array of QEURO amounts minted (18 decimals)
+     */
+    function batchDeposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts)
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256[] memory qeuroMintedAmounts)
+    {
+        if (usdcAmounts.length != minQeuroOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        qeuroMintedAmounts = new uint256[](usdcAmounts.length);
+        uint256 totalUsdcAmount = 0;
+        
+        // Pre-validate amounts and calculate total
+        for (uint256 i = 0; i < usdcAmounts.length; i++) {
+            require(usdcAmounts[i] > 0, "UserPool: Amount must be positive");
+            totalUsdcAmount += usdcAmounts[i];
+        }
+        
+        // Transfer total USDC from user FIRST
+        usdc.safeTransferFrom(msg.sender, address(this), totalUsdcAmount);
+        
+        // Update state BEFORE external calls
+        UserInfo storage user = userInfo[msg.sender];
+        if (!hasDeposited[msg.sender]) {
+            hasDeposited[msg.sender] = true;
+            totalUsers++;
+        }
+        
+        // Process each deposit
+        for (uint256 i = 0; i < usdcAmounts.length; i++) {
+            uint256 usdcAmount = usdcAmounts[i];
+            uint256 minQeuroOut = minQeuroOuts[i];
+            
+            // Calculate deposit fee
+            uint256 fee = usdcAmount.percentageOf(depositFee);
+            uint256 netAmount = usdcAmount - fee;
+            
+            // Store expected balance before external call
+            uint256 qeuroBefore = qeuro.balanceOf(address(this));
+            
+            // Approve vault to spend USDC
+            usdc.safeIncreaseAllowance(address(vault), netAmount);
+            
+            // Mint QEURO through vault
+            vault.mintQEURO(netAmount, minQeuroOut);
+            
+            // Calculate actual minted amount
+            uint256 qeuroAfter = qeuro.balanceOf(address(this));
+            uint256 qeuroMinted = qeuroAfter - qeuroBefore;
+            qeuroMintedAmounts[i] = qeuroMinted;
+            
+            // Update user balance and pool totals
+            user.qeuroBalance += qeuroMinted;
+            user.depositHistory += usdcAmount;
+            totalDeposits += netAmount;
+
+            // Transfer QEURO to user
+            IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
+
+            emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
+        }
+    }
+
+    /**
      * @notice Withdraw USDC by burning QEURO
      * @dev This function allows users to withdraw their QEURO and receive USDC.
      *      It includes a withdrawal fee and handles the redemption process.
@@ -432,6 +503,70 @@ contract UserPool is
         emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, block.timestamp);
     }
 
+    /**
+     * @notice Batch withdraw USDC by burning QEURO for multiple amounts
+     * @dev This function allows users to make multiple withdrawals in one transaction.
+     *      Each withdrawal includes a fee and handles the redemption process.
+     * @param qeuroAmounts Array of QEURO amounts to burn (18 decimals)
+     * @param minUsdcOuts Array of minimum USDC amounts to receive (6 decimals)
+     * @return usdcReceivedAmounts Array of USDC amounts received (6 decimals)
+     */
+    function batchWithdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256[] memory usdcReceivedAmounts)
+    {
+        if (qeuroAmounts.length != minUsdcOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        
+        usdcReceivedAmounts = new uint256[](qeuroAmounts.length);
+        UserInfo storage user = userInfo[msg.sender];
+        uint256 totalQeuroAmount = 0;
+        
+        // Pre-validate amounts and calculate total
+        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
+            require(qeuroAmounts[i] > 0, "UserPool: Amount must be positive");
+            totalQeuroAmount += qeuroAmounts[i];
+        }
+        
+        require(user.qeuroBalance >= totalQeuroAmount, "UserPool: Insufficient balance");
+        
+        // Transfer total QEURO from user FIRST
+        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
+        
+        // Process each withdrawal
+        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
+            uint256 qeuroAmount = qeuroAmounts[i];
+            uint256 minUsdcOut = minUsdcOuts[i];
+            
+            // Store balance before redemption
+            uint256 usdcBefore = usdc.balanceOf(address(this));
+            
+            // Redeem USDC through vault
+            vault.redeemQEURO(qeuroAmount, minUsdcOut);
+            
+            // Calculate received amount
+            uint256 usdcAfter = usdc.balanceOf(address(this));
+            uint256 usdcReceived = usdcAfter - usdcBefore;
+
+            // Calculate withdrawal fee
+            uint256 fee = usdcReceived.percentageOf(withdrawalFee);
+            uint256 netAmount = usdcReceived - fee;
+            usdcReceivedAmounts[i] = netAmount;
+
+            // Update user info
+            user.qeuroBalance -= qeuroAmount;
+            
+            // Update pool totals
+            totalDeposits -= netAmount;
+
+            // Transfer USDC to user
+            usdc.safeTransfer(msg.sender, netAmount);
+
+            emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, block.timestamp);
+        }
+    }
+
     // =============================================================================
     // STAKING FUNCTIONS
     // =============================================================================
@@ -461,6 +596,43 @@ contract UserPool is
         totalStakes += qeuroAmount;
 
         emit QEUROStaked(msg.sender, qeuroAmount, block.timestamp);
+    }
+
+    /**
+     * @notice Batch stake QEURO tokens for multiple amounts
+     * @dev This function allows users to make multiple stakes in one transaction.
+     *      Each stake must meet minimum requirements and updates rewards.
+     * @param qeuroAmounts Array of QEURO amounts to stake (18 decimals)
+     */
+    function batchStake(uint256[] calldata qeuroAmounts) external nonReentrant whenNotPaused {
+        UserInfo storage user = userInfo[msg.sender];
+        uint256 totalQeuroAmount = 0;
+        
+        // Pre-validate amounts and calculate total
+        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
+            require(qeuroAmounts[i] >= minStakeAmount, "UserPool: Amount below minimum");
+            totalQeuroAmount += qeuroAmounts[i];
+        }
+        
+        // Update pending rewards before staking (once for the batch)
+        _updatePendingRewards(msg.sender);
+        
+        // Transfer total QEURO from user FIRST
+        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
+        
+        // Process each stake
+        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
+            uint256 qeuroAmount = qeuroAmounts[i];
+            
+            // Update user staking info
+            user.stakedAmount += qeuroAmount;
+            user.lastStakeTime = block.timestamp;
+            
+            // Update pool totals
+            totalStakes += qeuroAmount;
+
+            emit QEUROStaked(msg.sender, qeuroAmount, block.timestamp);
+        }
     }
 
     /**
@@ -529,6 +701,40 @@ contract UserPool is
             qeuro.mint(msg.sender, rewardAmount);
             
             emit StakingRewardsClaimed(msg.sender, rewardAmount, block.timestamp);
+        }
+    }
+
+    /**
+     * @notice Batch claim staking rewards for multiple users (admin function)
+     * @dev This function allows admins to claim rewards for multiple users in one transaction.
+     *      Useful for protocol-wide reward distributions or automated reward processing.
+     * @param users Array of user addresses to claim rewards for
+     * @return rewardAmounts Array of reward amounts claimed for each user (18 decimals)
+     */
+    function batchRewardClaim(address[] calldata users) 
+        external 
+        nonReentrant 
+        onlyRole(GOVERNANCE_ROLE)
+        returns (uint256[] memory rewardAmounts) 
+    {
+        rewardAmounts = new uint256[](users.length);
+        
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            _updatePendingRewards(user);
+            
+            UserInfo storage userInfo_ = userInfo[user];
+            uint256 rewardAmount = userInfo_.pendingRewards;
+            rewardAmounts[i] = rewardAmount;
+            
+            if (rewardAmount > 0) {
+                userInfo_.pendingRewards = 0;
+                
+                // Mint reward tokens (could be QEURO or QTI)
+                qeuro.mint(user, rewardAmount);
+                
+                emit StakingRewardsClaimed(user, rewardAmount, block.timestamp);
+            }
         }
     }
 

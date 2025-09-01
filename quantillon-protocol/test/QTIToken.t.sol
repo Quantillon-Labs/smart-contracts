@@ -573,6 +573,86 @@ contract QTITokenTestSuite is Test {
         assertEq(endTime, block.timestamp + 5 days);
         assertEq(description, "Test proposal");
     }
+
+    // =============================================================================
+    // BATCH FUNCTION TESTS
+    // =============================================================================
+
+    function test_BatchLock_Success() public {
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100_000 * 1e18;
+        amounts[1] = 50_000 * 1e18;
+        uint256[] memory times = new uint256[](2);
+        times[0] = ONE_MONTH;
+        times[1] = ONE_WEEK;
+
+        vm.prank(user1);
+        uint256[] memory ve = qtiToken.batchLock(amounts, times);
+        assertEq(ve.length, 2);
+
+        (uint256 amount,, uint256 votingPower,,,) = qtiToken.getLockInfo(user1);
+        assertEq(amount, amounts[0] + amounts[1]);
+        assertGt(votingPower, 0);
+    }
+
+    function test_BatchUnlock_Admin_Success() public {
+        // two users lock
+        vm.prank(user1);
+        qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
+        vm.prank(user2);
+        qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
+
+        vm.warp(block.timestamp + ONE_MONTH + 1);
+
+        address[] memory users = new address[](2);
+        users[0] = user1;
+        users[1] = user2;
+
+        vm.prank(governance);
+        uint256[] memory unlocked = qtiToken.batchUnlock(users);
+        assertEq(unlocked.length, 2);
+        assertEq(unlocked[0], LOCK_AMOUNT);
+        assertEq(unlocked[1], LOCK_AMOUNT);
+    }
+
+    function test_BatchTransfer_Success() public {
+        address[] memory recipients = new address[](2);
+        recipients[0] = user2;
+        recipients[1] = user3;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 10_000 * 1e18;
+        amounts[1] = 5_000 * 1e18;
+
+        vm.prank(user1);
+        qtiToken.batchTransfer(recipients, amounts);
+
+        assertEq(qtiToken.balanceOf(user2), amounts[0]);
+        assertEq(qtiToken.balanceOf(user3), amounts[1]);
+    }
+
+    function test_BatchVote_Success() public {
+        vm.prank(user1);
+        qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
+        vm.prank(user1);
+        uint256 p1 = qtiToken.createProposal("P1", 5 days, "");
+        vm.prank(user1);
+        uint256 p2 = qtiToken.createProposal("P2", 5 days, "");
+
+        uint256[] memory proposals = new uint256[](2);
+        proposals[0] = p1;
+        proposals[1] = p2;
+        bool[] memory choices = new bool[](2);
+        choices[0] = true;
+        choices[1] = false;
+
+        vm.prank(user1);
+        qtiToken.batchVote(proposals, choices);
+
+        (bool hasVoted1,,) = qtiToken.getReceipt(p1, user1);
+        (bool hasVoted2,,) = qtiToken.getReceipt(p2, user1);
+        assertTrue(hasVoted1);
+        assertTrue(hasVoted2);
+    }
     
     /**
      * @notice Test proposal creation with insufficient voting power should revert

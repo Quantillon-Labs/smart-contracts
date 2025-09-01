@@ -226,6 +226,22 @@ contract QEUROToken is
     event RateLimitReset(uint256 indexed timestamp);
 
     // =============================================================================
+    // MODIFIERS - Access control and security
+    // =============================================================================
+
+    /**
+     * @notice Modifier to protect against flash loan attacks
+     * @dev Checks that the contract's QEURO balance doesn't decrease during execution
+     * @dev This prevents flash loans that would drain QEURO from the contract
+     */
+    modifier flashLoanProtection() {
+        uint256 balanceBefore = balanceOf(address(this));
+        _;
+        uint256 balanceAfter = balanceOf(address(this));
+        require(balanceAfter >= balanceBefore, "Flash loan detected: QEURO balance decreased");
+    }
+
+    // =============================================================================
     // INITIALIZER - Replaces constructor for upgradeable contracts
     // =============================================================================
     
@@ -357,6 +373,7 @@ contract QEUROToken is
         external
         onlyRole(MINTER_ROLE)
         whenNotPaused
+        flashLoanProtection
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
         
@@ -415,6 +432,7 @@ contract QEUROToken is
         external 
         onlyRole(BURNER_ROLE)    // Only the vault can burn
         whenNotPaused            // Not in pause mode
+        flashLoanProtection
     {
         // Parameter validation
         TokenLibrary.validateBurn(from, amount, balanceOf(from));
@@ -442,6 +460,7 @@ contract QEUROToken is
         external
         onlyRole(BURNER_ROLE)
         whenNotPaused
+        flashLoanProtection
     {
         if (froms.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
         

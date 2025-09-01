@@ -226,6 +226,22 @@ contract HedgerPool is
         uint256 totalRewards
     );
 
+    // =============================================================================
+    // MODIFIERS - Access control and security
+    // =============================================================================
+
+    /**
+     * @notice Modifier to protect against flash loan attacks
+     * @dev Checks that the contract's USDC balance doesn't decrease during execution
+     * @dev This prevents flash loans that would drain USDC from the contract
+     */
+    modifier flashLoanProtection() {
+        uint256 balanceBefore = usdc.balanceOf(address(this));
+        _;
+        uint256 balanceAfter = usdc.balanceOf(address(this));
+        require(balanceAfter >= balanceBefore, "Flash loan detected: USDC balance decreased");
+    }
+
     constructor() {
         _disableInitializers();
     }
@@ -274,6 +290,7 @@ contract HedgerPool is
         external 
         nonReentrant 
         whenNotPaused 
+        flashLoanProtection
         returns (uint256 positionId) 
     {
         ValidationLibrary.validatePositiveAmount(usdcAmount);
@@ -343,6 +360,7 @@ contract HedgerPool is
         external 
         nonReentrant 
         whenNotPaused 
+        flashLoanProtection
         returns (int256 pnl) 
     {
         HedgePosition storage position = positions[positionId];

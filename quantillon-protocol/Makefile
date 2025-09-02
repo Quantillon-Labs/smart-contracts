@@ -47,6 +47,8 @@ slither:
 	@echo "🔍 Running Slither security analysis..."
 	@cd "$(CURDIR)" && ./scripts/run-slither.sh
 
+
+
 # Run comprehensive security checks
 security: build slither
 	@echo "🛡️  Security analysis complete!"

@@ -28,6 +28,7 @@ import "../libraries/ErrorLibrary.sol";
 import "../libraries/AccessControlLibrary.sol";
 import "../libraries/ValidationLibrary.sol";
 import "../libraries/TokenLibrary.sol";
+import "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
  * @title QEUROToken
@@ -161,6 +162,10 @@ contract QEUROToken is
     /// @dev Used to validate price feed precision for accurate calculations
     /// @dev Can be updated by governance through updateMinPricePrecision()
     uint256 public minPricePrecision;
+    
+    /// @notice Treasury address for ETH recovery
+    /// @dev SECURITY: Only this address can receive ETH from recoverETH function
+    address public treasury;
 
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
@@ -191,6 +196,10 @@ contract QEUROToken is
     /// @param burnLimit New burn rate limit in wei per hour (18 decimals)
     /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
     event RateLimitsUpdated(string indexed limitType, uint256 mintLimit, uint256 burnLimit);
+    
+    /// @notice Emitted when treasury address is updated
+    /// @param treasury New treasury address
+    event TreasuryUpdated(address indexed treasury);
 
     /// @notice Emitted when an address is blacklisted
     /// @param account Address that was blacklisted
@@ -228,6 +237,11 @@ contract QEUROToken is
     /// @param blockNumber Block number when reset occurred
     /// @dev OPTIMIZED: Indexed block number for efficient block-based filtering
     event RateLimitReset(uint256 indexed blockNumber);
+
+    /// @notice Emitted when ETH is recovered to treasury
+    /// @param to Address to which ETH was recovered
+    /// @param amount Amount of ETH recovered
+    event ETHRecovered(address indexed to, uint256 indexed amount);
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -277,12 +291,14 @@ contract QEUROToken is
     function initialize(
         address admin,
         address vault,
-        address timelock
+        address timelock,
+        address _treasury
     ) public initializer {
         // Input parameter validation
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(vault);
         AccessControlLibrary.validateAddress(timelock);
+        AccessControlLibrary.validateAddress(_treasury);
 
         // Initialize parent contracts
         __ERC20_init("Quantillon Euro", "QEURO");
@@ -304,6 +320,7 @@ contract QEUROToken is
         rateLimitInfo = RateLimitInfo(0, 0, uint64(block.number));
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
+        treasury = _treasury;
     }
 
     // =============================================================================
@@ -1161,26 +1178,16 @@ contract QEUROToken is
     }
 
     /**
-     * @notice Recovers ETH accidentally sent
-     * @param to ETH recipient
-     * 
-
-     * 
-     * @dev Security considerations:
-     *      - Only DEFAULT_ADMIN_ROLE can recover
-     *      - Prevents sending to zero address
-     *      - Validates balance before attempting transfer
-     *      - Uses call() for reliable ETH transfers to any contract
+     * @notice Recover ETH to treasury address only
+     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+     * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AccessControlLibrary.validateAddress(to);
-        uint256 balance = address(this).balance;
-        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
+        // Use the shared library for secure ETH recovery
+        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
         
-        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
-        // transfer() has 2300 gas stipend which can fail with complex receive/fallback logic
-        (bool success, ) = to.call{value: balance}("");
-        if (!success) revert ErrorLibrary.ETHTransferFailed();
+        // Emit event for tracking
+        emit ETHRecovered(to, address(this).balance);
     }
 
     // =============================================================================
@@ -1214,6 +1221,17 @@ contract QEUROToken is
         maxSupply = newMaxSupply;
         
         emit SupplyCapUpdated(oldCap, newMaxSupply);
+    }
+    
+    /**
+     * @notice Update treasury address
+     * @dev SECURITY: Only governance can update treasury address
+     * @param _treasury New treasury address
+     */
+    function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        AccessControlLibrary.validateAddress(_treasury);
+        treasury = _treasury;
+        emit TreasuryUpdated(_treasury);
     }
 
     /**

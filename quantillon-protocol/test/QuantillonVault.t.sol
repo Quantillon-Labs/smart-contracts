@@ -99,7 +99,8 @@ contract QuantillonVaultTestSuite is Test {
             QEUROToken.initialize.selector,
             admin,
             address(0x123), // mock vault address
-            address(0x456)  // mock timelock address
+            address(0x456),  // mock timelock address
+            admin // Use admin as treasury for testing
         );
         qeuroToken = QEUROToken(address(new ERC1967Proxy(address(implementation), initData)));
         
@@ -111,7 +112,7 @@ contract QuantillonVaultTestSuite is Test {
             address(qeuroToken),
             mockUSDC,
             mockOracle,
-            address(0x789) // mock timelock address
+            address(0x789) // mock timelock address (also used as treasury)
         );
         vault = QuantillonVault(address(new ERC1967Proxy(address(vaultImplementation), vaultInitData)));
         

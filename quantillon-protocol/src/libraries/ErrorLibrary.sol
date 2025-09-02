@@ -57,6 +57,7 @@ library ErrorLibrary {
     error AboveLimit();
     error WouldExceedLimit();
     error WouldBreachMinimum();
+    error NoChangeDetected();
     
     // Operation Errors
     error DivisionByZero();

@@ -343,7 +343,7 @@ contract UserPoolTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        userPool.initialize(admin, mockQEURO, mockUSDC, mockVault, mockYieldShift, mockTimelock);
+        userPool.initialize(admin, mockQEURO, mockUSDC, mockVault, mockYieldShift, mockTimelock, admin);
     }
 
     // =============================================================================

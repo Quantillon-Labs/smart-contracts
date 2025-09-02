@@ -24,6 +24,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+// Treasury recovery library for secure ETH recovery
+import "../libraries/TreasuryRecoveryLibrary.sol";
+
 /**
  * @title ChainlinkOracle
  * @notice EUR/USD and USDC/USD price manager for Quantillon Protocol
@@ -86,7 +89,13 @@ contract ChainlinkOracle is
     AggregatorV3Interface public eurUsdPriceFeed;
     
     /// @notice Interface to Chainlink USDC/USD price feed
+    /// @dev Used for USDC price validation and cross-checking
+    /// @dev Should be the official USDC/USD Chainlink feed
     AggregatorV3Interface public usdcUsdPriceFeed;
+
+    /// @notice Treasury address for ETH recovery
+    /// @dev SECURITY: Only this address can receive ETH from recoverETH function
+    address public treasury;
 
     /// @notice Minimum accepted EUR/USD price (lower circuit breaker)
     /// @dev Initialized to 0.80 USD per EUR (extreme crisis)
@@ -144,6 +153,13 @@ contract ChainlinkOracle is
     /// @notice Emitted when price feed addresses are updated
     event PriceFeedsUpdated(address newEurUsdFeed, address newUsdcUsdFeed);
 
+    /// @notice Emitted when treasury address is updated
+    /// @param newTreasury New treasury address
+    event TreasuryUpdated(address indexed newTreasury);
+
+    /// @notice Emitted when ETH is recovered from the contract
+    event ETHRecovered(address indexed to, uint256 amount);
+
     // =============================================================================
     // INITIALIZER - Initial contract configuration
     // =============================================================================
@@ -159,6 +175,7 @@ contract ChainlinkOracle is
      * @param admin Address with administrator privileges
      * @param _eurUsdPriceFeed Chainlink EUR/USD price feed address on Base
      * @param _usdcUsdPriceFeed Chainlink USDC/USD price feed address on Base
+     * @param _treasury Treasury address for ETH recovery
      * 
      * @dev This function:
      *      1. Configures access roles
@@ -169,12 +186,14 @@ contract ChainlinkOracle is
     function initialize(
         address admin,
         address _eurUsdPriceFeed,
-        address _usdcUsdPriceFeed
+        address _usdcUsdPriceFeed,
+        address _treasury
     ) public initializer {
         // Input parameter validation
         require(admin != address(0), "Oracle: Admin cannot be zero");
         require(_eurUsdPriceFeed != address(0), "Oracle: EUR/USD feed cannot be zero");
         require(_usdcUsdPriceFeed != address(0), "Oracle: USDC/USD feed cannot be zero");
+        require(_treasury != address(0), "Oracle: Treasury cannot be zero");
 
         // OpenZeppelin module initialization
         __AccessControl_init();
@@ -190,6 +209,7 @@ contract ChainlinkOracle is
         // Initialize price feed interfaces
         eurUsdPriceFeed = AggregatorV3Interface(_eurUsdPriceFeed);
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdPriceFeed);
+        treasury = _treasury;
 
         // Default price bounds configuration
         // EUR/USD historically between 0.80 and 1.40 in extreme cases
@@ -201,6 +221,17 @@ contract ChainlinkOracle is
 
         // Initialize with current price
         _updatePrices();
+    }
+
+    /**
+     * @notice Update treasury address
+     * @dev SECURITY: Only admin can update treasury address
+     * @param _treasury New treasury address
+     */
+    function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_treasury != address(0), "Oracle: Treasury cannot be zero");
+        treasury = _treasury;
+        emit TreasuryUpdated(_treasury);
     }
 
     /**
@@ -252,9 +283,11 @@ contract ChainlinkOracle is
      */
     function _updatePrices() internal {
         // Fetch EUR/USD price data directly from Chainlink
+        // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
         (, int256 eurUsdRawPrice, , uint256 eurUsdUpdatedAt, ) = eurUsdPriceFeed.latestRoundData();
         
         // Fetch USDC/USD price data directly from Chainlink
+        // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
         (, int256 usdcUsdRawPrice, , uint256 usdcUsdUpdatedAt, ) = usdcUsdPriceFeed.latestRoundData();
         
         // Validate EUR/USD price
@@ -624,10 +657,9 @@ contract ChainlinkOracle is
     }
 
     /**
-     * @notice Recovers ETH accidentally sent to the oracle contract
-     * @param to Recipient address
-     * 
-
+     * @notice Recover ETH to treasury address only
+     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+     * @param to Treasury address (must match the contract's treasury)
      * 
      * @dev Security considerations:
      *      - Only DEFAULT_ADMIN_ROLE can recover
@@ -636,14 +668,11 @@ contract ChainlinkOracle is
      *      - Uses call() for reliable ETH transfers to any contract
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "Oracle: Cannot send to zero address");
-        uint256 balance = address(this).balance;
-        require(balance > 0, "Oracle: No ETH to recover");
+        // Use the shared library for secure ETH recovery
+        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
         
-        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
-        // transfer() has 2300 gas stipend which can fail with complex receive/fallback logic
-        (bool success, ) = to.call{value: balance}("");
-        require(success, "Oracle: ETH transfer failed");
+        // Emit event for tracking
+        emit ETHRecovered(to, address(this).balance);
     }
 
     // =============================================================================
@@ -700,6 +729,7 @@ contract ChainlinkOracle is
         }
 
         // Fetch data from Chainlink
+        // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
         (, int256 rawPrice, , uint256 updatedAt, ) = eurUsdPriceFeed.latestRoundData();
         
         // Data freshness check with timestamp validation
@@ -747,6 +777,7 @@ contract ChainlinkOracle is
      */
     function getUsdcUsdPrice() external view returns (uint256 price, bool isValid) {
         // Fetch from Chainlink
+        // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
         (, int256 rawPrice, , uint256 updatedAt, ) = usdcUsdPriceFeed.latestRoundData();
         
         // Freshness check with timestamp validation

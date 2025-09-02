@@ -122,6 +122,7 @@ contract YieldShift is
     uint256 public totalYieldDistributed;
     uint256 public userYieldPool;
     uint256 public hedgerYieldPool;
+    address public treasury;
     
     mapping(bytes32 => uint256) public yieldSources;
     bytes32[] public yieldSourceNames;
@@ -224,6 +225,7 @@ contract YieldShift is
         currentYieldShift = baseYieldShift;
         lastUpdateTime = block.timestamp;
 
+        // Initialize arrays to prevent uninitialized state variable warnings
         _recordPoolSnapshot();
 
         yieldSourceNames.push(keccak256("aave"));
@@ -275,6 +277,7 @@ contract YieldShift is
         uint256 balanceBefore = usdc.balanceOf(address(this));
         usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
         uint256 balanceAfter = usdc.balanceOf(address(this));
+        // SECURITY: Verify USDC was actually received (safe equality check for transfer validation)
         require(
             balanceAfter - balanceBefore == yieldAmount,
             "Yield amount mismatch"
@@ -575,6 +578,7 @@ contract YieldShift is
     ) {
         totalYieldDistributed_ = totalYieldDistributed;
         
+        // SECURITY: Only need total users, ignore other return values (safe to ignore for performance metrics)
         (uint256 totalUsers, , , ) = userPool.getPoolMetrics();
         uint256 activeHedgers = hedgerPool.activeHedgers();
         
@@ -825,6 +829,7 @@ contract YieldShift is
         AccessControlLibrary.onlyAdmin(this);
         AccessControlLibrary.validateAddress(to);
         uint256 balance = address(this).balance;
+        // SECURITY: Check if there's ETH to recover (safe equality check)
         if (balance == 0) revert ErrorLibrary.NoETHToRecover();
         
         (bool success, ) = to.call{value: balance}("");

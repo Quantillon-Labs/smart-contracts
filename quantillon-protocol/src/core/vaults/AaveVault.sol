@@ -151,6 +151,7 @@ contract AaveVault is
     uint256 public utilizationLimit;
     uint256 public emergencyExitThreshold;
     bool public emergencyMode;
+    address public treasury;
 
     /// @dev OPTIMIZED: Indexed operation type for efficient filtering
     event DeployedToAave(string indexed operationType, uint256 amount, uint256 aTokensReceived, uint256 newBalance);
@@ -252,6 +253,7 @@ contract AaveVault is
         ValidationLibrary.validatePositiveAmount(amount);
         
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
+        // SECURITY: Check if there are Aave tokens to withdraw (safe equality check)
         if (aaveBalance == 0) revert ErrorLibrary.InsufficientBalance();
         
         uint256 withdrawAmount = amount;
@@ -469,7 +471,10 @@ contract AaveVault is
         uint256 currentBalance = aUSDC.balanceOf(address(this));
         uint256 totalAssets = currentBalance + usdc.balanceOf(address(this));
         
-        if (totalAssets == 0) return (false, 0, 0);
+        if (totalAssets == 0) {
+            // SECURITY: No assets to rebalance (safe equality check)
+            return (false, 0, 0);
+        }
         
         uint256 currentAllocation = currentBalance.mulDiv(10000, totalAssets);
         uint256 allocationDiff = optimalAllocation > currentAllocation ?
@@ -568,6 +573,7 @@ contract AaveVault is
         uint256 totalAssets = aaveBalance + usdc.balanceOf(address(this));
         exposureRatio = totalAssets > 0 ? aaveBalance.mulDiv(10000, totalAssets) : 0;
         concentrationRisk = exposureRatio > 8000 ? 3 : exposureRatio > 6000 ? 2 : 1;
+        // SECURITY: Only need utilization rate, ignore other return values (safe to ignore for risk metrics)
         (, uint256 utilizationRate, , ) = this.getAaveMarketData();
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
     }
@@ -631,6 +637,7 @@ contract AaveVault is
         AccessControlLibrary.onlyAdmin(this);
         AccessControlLibrary.validateAddress(to);
         uint256 balance = address(this).balance;
+        // SECURITY: Check if there's ETH to recover (safe equality check)
         if (balance == 0) revert ErrorLibrary.NoETHToRecover();
         
         (bool success, ) = to.call{value: balance}("");

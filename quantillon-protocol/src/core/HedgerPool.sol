@@ -108,6 +108,7 @@ contract HedgerPool is
     IERC20 public usdc;
     IChainlinkOracle public oracle;
     IYieldShift public yieldShift;
+    address public treasury;
 
     uint256 public minMarginRatio;
     uint256 public liquidationThreshold;
@@ -229,6 +230,7 @@ contract HedgerPool is
     );
 
     event ETHRecovered(address indexed to, uint256 indexed amount);
+    event TreasuryUpdated(address indexed treasury);
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -255,12 +257,14 @@ contract HedgerPool is
         address _usdc,
         address _oracle,
         address _yieldShift,
-        address timelock
+        address timelock,
+        address _treasury
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(_usdc);
         AccessControlLibrary.validateAddress(_oracle);
         AccessControlLibrary.validateAddress(_yieldShift);
+        AccessControlLibrary.validateAddress(_treasury);
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -274,6 +278,7 @@ contract HedgerPool is
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
+        treasury = _treasury;
 
         minMarginRatio = 1000;
         liquidationThreshold = 100;
@@ -600,6 +605,7 @@ contract HedgerPool is
 
         if (!_isPositionLiquidatable(positionId)) revert ErrorLibrary.PositionNotLiquidatable();
 
+        // SECURITY: Only need validation status, ignore price (safe to ignore for liquidation)
         (, bool isValid) = oracle.getEurUsdPrice();
         ValidationLibrary.validateOraclePrice(isValid);
 
@@ -669,7 +675,7 @@ contract HedgerPool is
             uint256 currentBlock = block.number;
             uint256 lastRewardBlock = hedgerLastRewardBlock[hedger];
             
-            if (lastRewardBlock == 0) {
+            if (lastRewardBlock == 0 || hedgerInfo.totalExposure == 0) {
                 hedgerLastRewardBlock[hedger] = currentBlock;
                 return;
             }
@@ -926,26 +932,37 @@ contract HedgerPool is
         IERC20(token).safeTransfer(to, amount);
     }
 
+    /**
+     * @notice Recover ETH to treasury address only
+     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+     * @param to Treasury address (must match the contract's treasury)
+     */
     function recoverETH(address payable to) external {
         AccessControlLibrary.onlyAdmin(this);
-        AccessControlLibrary.validateAddress(to);
         
-        // SECURITY: Only allow recovery to trusted addresses or treasury
+        // SECURITY: Only allow recovery to the contract's treasury address
         // This prevents arbitrary ETH transfers that could be exploited
-        if (to == address(0)) revert ErrorLibrary.InvalidAddress();
+        if (to != treasury) revert ErrorLibrary.InvalidAddress();
         
         uint256 balance = address(this).balance;
+        // SECURITY: Check if there's ETH to recover (safe equality check)
         if (balance == 0) revert ErrorLibrary.NoETHToRecover();
-        
-        // SECURITY: Add additional validation for large amounts
-        if (balance > 100 ether) {
-            // For large amounts, require additional governance approval
-            AccessControlLibrary.onlyGovernance(this);
-        }
         
         (bool success, ) = to.call{value: balance}("");
         if (!success) revert ErrorLibrary.ETHTransferFailed();
         
         emit ETHRecovered(to, balance);
+    }
+    
+    /**
+     * @notice Update treasury address
+     * @dev SECURITY: Only governance can update treasury address
+     * @param _treasury New treasury address
+     */
+    function updateTreasury(address _treasury) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(_treasury);
+        treasury = _treasury;
+        emit TreasuryUpdated(_treasury);
     }
 }

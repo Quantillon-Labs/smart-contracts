@@ -48,6 +48,7 @@ interface IAaveVault {
     /**
      * @notice Harvest Aave yield and distribute via YieldShift
      * @return yieldHarvested Amount harvested
+     * @dev This function calls YieldShift.harvestAndDistributeAaveYield() to handle distribution
      */
     function harvestAaveYield() external returns (uint256 yieldHarvested);
 

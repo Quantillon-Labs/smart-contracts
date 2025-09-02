@@ -703,24 +703,13 @@ contract YieldShift is
     }
 
     /**
-     * @notice Check if an address is authorized for a specific yield type
-     * @param source Address to check
-     * @param yieldType Yield type to check
+     * @notice Check if a yield source is authorized
+     * @param source Source address
+     * @param yieldType Yield type identifier
      * @return True if authorized
      */
     function isYieldSourceAuthorized(address source, bytes32 yieldType) external view returns (bool) {
         return authorizedYieldSources[source] && sourceToYieldType[source] == yieldType;
-    }
-
-    function harvestAndDistributeAaveYield() external nonReentrant {
-        uint256 yieldHarvested = aaveVault.harvestAaveYield();
-        
-        if (yieldHarvested > 0) {
-            usdc.safeTransferFrom(address(aaveVault), address(this), yieldHarvested);
-            // Directly call addYield since this contract is authorized for "aave" yield
-            _addYieldInternal(yieldHarvested, keccak256("aave"));
-            this.updateYieldDistribution();
-        }
     }
 
     function checkAndUpdateYieldDistribution() external {

@@ -35,16 +35,11 @@ else
     echo "⚠️  Slither analysis found issues - check the output below"
 fi
 
-# Clean up temporary file
-if [ -f "slither-temp-output.txt" ]; then
-    rm slither-temp-output.txt
-fi
-
 # Generate beautiful human-readable report
 echo "📝 Generating beautiful human-readable report..."
 
 # Create the beautiful report
-cat > slither-report.txt << 'EOF'
+cat > slither-report.txt << EOF
 🎨 QUANTILLON PROTOCOL - ENHANCED SECURITY ANALYSIS REPORT
 ═══════════════════════════════════════════════════════════════════
 Generated: $(date)
@@ -55,18 +50,21 @@ Configuration: slither.config.json
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
 
-# Add issue counts with proper error handling
-if [ -f "slither-temp-output.txt" ]; then
-    HIGH_ISSUES=$(grep -c "arbitrary from\|reentrancy\|uninitialized state variables\|dangerous strict equalities\|functions that send ether to arbitrary destinations" slither-temp-output.txt 2>/dev/null || echo "0")
-    MEDIUM_ISSUES=$(grep -c "unused-return\|reentrancy-no-eth\|incorrect-equality" slither-temp-output.txt 2>/dev/null || echo "0")
-    LOW_ISSUES=$(grep -c "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" slither-temp-output.txt 2>/dev/null || echo "0")
-    INFO_ISSUES=$(grep -c "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" slither-temp-output.txt 2>/dev/null || echo "0")
-else
-    HIGH_ISSUES=0
-    MEDIUM_ISSUES=0
-    LOW_ISSUES=0
-    INFO_ISSUES=0
-fi
+        # Add issue counts with proper error handling
+        if [ -f "slither-temp-output.txt" ]; then
+            echo "🔍 Debug: Found slither-temp-output.txt, analyzing issues..."
+            HIGH_ISSUES=$(grep -c "sends eth to arbitrary user\|uninitialized state variables\|dangerous strict equality\|reentrancy" slither-temp-output.txt 2>/dev/null || echo "0")
+            MEDIUM_ISSUES=$(grep -c "never initialized\|unused-return\|reentrancy-no-eth" slither-temp-output.txt 2>/dev/null || echo "0")
+            LOW_ISSUES=$(grep -c "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" slither-temp-output.txt 2>/dev/null || echo "0")
+            INFO_ISSUES=$(grep -c "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" slither-temp-output.txt 2>/dev/null || echo "0")
+            echo "🔍 Debug: HIGH_ISSUES=$HIGH_ISSUES, MEDIUM_ISSUES=$MEDIUM_ISSUES, LOW_ISSUES=$LOW_ISSUES, INFO_ISSUES=$INFO_ISSUES"
+        else
+            echo "🔍 Debug: slither-temp-output.txt not found!"
+            HIGH_ISSUES=0
+            MEDIUM_ISSUES=0
+            LOW_ISSUES=0
+            INFO_ISSUES=0
+        fi
 
 cat >> slither-report.txt << EOF
 🔴 High Priority Issues: $HIGH_ISSUES
@@ -80,7 +78,7 @@ EOF
 
 # Extract and format high priority issues
 if [ -f "slither-temp-output.txt" ]; then
-    grep -A 5 -B 2 "arbitrary from\|reentrancy\|uninitialized state variables\|dangerous strict equalities\|functions that send ether to arbitrary destinations" slither-temp-output.txt | while IFS= read -r line; do
+            grep -A 5 -B 2 "sends eth to arbitrary user\|uninitialized state variables\|dangerous strict equality\|reentrancy" slither-temp-output.txt | while IFS= read -r line; do
         if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
             echo "🚨 ISSUE: $line" >> slither-report.txt
             echo "   Priority: HIGH" >> slither-report.txt
@@ -110,7 +108,7 @@ EOF
 
 # Extract and format medium priority issues
 if [ -f "slither-temp-output.txt" ]; then
-    grep -A 5 -B 2 "unused-return\|reentrancy-no-eth\|incorrect-equality" slither-temp-output.txt | while IFS= read -r line; do
+            grep -A 5 -B 2 "never initialized\|unused-return\|reentrancy-no-eth" slither-temp-output.txt | while IFS= read -r line; do
         if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
             echo "⚠️  ISSUE: $line" >> slither-report.txt
             echo "   Priority: MEDIUM" >> slither-report.txt
@@ -307,5 +305,10 @@ fi
 
 # Deactivate virtual environment
 deactivate
+
+# Clean up temporary file
+if [ -f "slither-temp-output.txt" ]; then
+    rm slither-temp-output.txt
+fi
 
 echo "🎯 Enhanced Slither analysis complete!"

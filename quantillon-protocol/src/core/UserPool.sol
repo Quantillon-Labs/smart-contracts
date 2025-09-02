@@ -18,6 +18,7 @@ import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
 import "../libraries/ErrorLibrary.sol";
 import "./SecureUpgradeable.sol";
+import "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
  * @title UserPool
@@ -128,6 +129,10 @@ contract UserPool is
     /// @dev Handles yield distribution and management
     /// @dev Used for yield calculations and distributions
     IYieldShift public yieldShift;
+
+    /// @notice Treasury address for ETH recovery
+    /// @dev SECURITY: Only this address can receive ETH from recoverETH function
+    address public treasury;
 
     // Pool configuration parameters
     /// @notice Staking APY in basis points
@@ -288,6 +293,11 @@ contract UserPool is
     /// @dev OPTIMIZED: Indexed parameter name for efficient filtering by parameter type
     event PoolParameterUpdated(string indexed parameter, uint256 oldValue, uint256 newValue);
 
+    /// @notice Emitted when ETH is recovered to the treasury
+    /// @param to Recipient address
+    /// @param amount Amount of ETH recovered
+    event ETHRecovered(address indexed to, uint256 indexed amount);
+
     // =============================================================================
     // MODIFIERS - Access control and security
     // =============================================================================
@@ -318,13 +328,15 @@ contract UserPool is
         address _usdc,
         address _vault,
         address _yieldShift,
-        address timelock
+        address timelock,
+        address _treasury
     ) public initializer {
         require(admin != address(0), "UserPool: Admin cannot be zero");
         require(_qeuro != address(0), "UserPool: QEURO cannot be zero");
         require(_usdc != address(0), "UserPool: USDC cannot be zero");
         require(_vault != address(0), "UserPool: Vault cannot be zero");
         require(_yieldShift != address(0), "UserPool: YieldShift cannot be zero");
+        require(_treasury != address(0), "UserPool: Treasury cannot be zero");
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -339,6 +351,7 @@ contract UserPool is
         usdc = IERC20(_usdc);
         vault = IQuantillonVault(_vault);
         yieldShift = IYieldShift(_yieldShift);
+        treasury = _treasury;
 
         // Default parameters
         stakingAPY = 800;           // 8% APY for staking
@@ -349,6 +362,11 @@ contract UserPool is
         depositFee = 10;            // 0.1% deposit fee
         withdrawalFee = 20;         // 0.2% withdrawal fee
         performanceFee = 1000;      // 10% performance fee
+        
+        // Initialize yield tracking variables to prevent uninitialized state variable warnings
+        accumulatedYieldPerShare = 0;
+        lastYieldDistribution = block.timestamp;
+        totalYieldDistributed = 0;
     }
 
     // =============================================================================
@@ -820,7 +838,7 @@ contract UserPool is
             uint256 lastRewardBlock = userLastRewardBlock[user];
             
             if (lastRewardBlock == 0) {
-                // First time claiming, set initial block
+                // SECURITY: First time claiming, set initial block (safe equality check)
                 userLastRewardBlock[user] = currentBlock;
                 return;
             }
@@ -889,6 +907,7 @@ contract UserPool is
         uint256 lastRewardBlock = userLastRewardBlock[user];
         
         if (lastRewardBlock == 0) {
+            // SECURITY: First time claiming, return existing rewards (safe equality check)
             return userdata.pendingRewards;
         }
         
@@ -1138,16 +1157,15 @@ contract UserPool is
     }
 
     /**
-     * @notice Recover accidentally sent ETH
-     * @param to Recipient address
+     * @notice Recover ETH to treasury address only
+     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+     * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "UserPool: Cannot send to zero address");
-        uint256 balance = address(this).balance;
-        require(balance > 0, "UserPool: No ETH to recover");
+        // Use the shared library for secure ETH recovery
+        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
         
-        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
-        (bool success, ) = to.call{value: balance}("");
-        require(success, "UserPool: ETH transfer failed");
+        // Emit event for tracking
+        emit ETHRecovered(to, address(this).balance);
     }
 }

@@ -119,7 +119,8 @@ contract HedgerPoolTestSuite is Test {
             mockUSDC,
             mockOracle,
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin // Use admin as treasury for testing
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -290,7 +291,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        hedgerPool.initialize(admin, mockUSDC, mockOracle, mockYieldShift, mockTimelock);
+        hedgerPool.initialize(admin, mockUSDC, mockOracle, mockYieldShift, mockTimelock, admin);
     }
 
     // =============================================================================
@@ -460,7 +461,8 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Add margin (with delay to avoid liquidation cooldown)
-        vm.warp(block.timestamp + 2 hours); // Wait for liquidation cooldown
+        // SECURITY: Wait for liquidation cooldown (600 blocks = ~2 hours at 12 seconds per block)
+        vm.roll(block.number + 600);
         uint256 additionalMargin = 5000 * 1e6; // 5k USDC
         vm.prank(hedger1);
         hedgerPool.addMargin(positionId, additionalMargin);
@@ -854,7 +856,8 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Add margin (with delay to avoid liquidation cooldown)
-        vm.warp(block.timestamp + 2 hours); // Wait for liquidation cooldown
+        // SECURITY: Wait for liquidation cooldown (600 blocks = ~2 hours at 12 seconds per block)
+        vm.roll(block.number + 600);
         vm.prank(hedger1);
         hedgerPool.addMargin(positionId, 2000 * 1e6);
         
@@ -976,8 +979,8 @@ contract HedgerPoolTestSuite is Test {
         bytes32 salt = keccak256(abi.encodePacked("test"));
         hedgerPool.commitLiquidation(hedger1, positionId, salt);
         
-        // Fast forward time to make commitment expire
-        vm.warp(block.timestamp + 1 hours + 1);
+        // Fast forward blocks to make commitment expire (301 blocks > 300 block cooldown)
+        vm.roll(block.number + 301);
         
         // Clear expired commitment
         vm.prank(liquidator);

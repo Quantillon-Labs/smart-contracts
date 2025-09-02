@@ -17,6 +17,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IChainlinkOracle.sol";
 import "../libraries/VaultMath.sol";
+import "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
  * @title QuantillonVault
@@ -121,6 +122,10 @@ contract QuantillonVault is
     /// @dev Provides real-time EUR/USD exchange rates for minting and redemption
     /// @dev Used for price calculations in swap operations
     IChainlinkOracle public oracle;
+
+    /// @notice Treasury address for ETH recovery
+    /// @dev SECURITY: Only this address can receive ETH from recoverETH function
+    address public treasury;
 
     // Protocol parameters (configurable by governance)
     
@@ -237,6 +242,7 @@ contract QuantillonVault is
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
+        treasury = timelock; // Set treasury to timelock
 
         // Default protocol parameters
         mintFee = 1e15;                 // 0.1% mint fee
@@ -568,10 +574,9 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Recovers ETH accidentally sent
-     * @param to ETH recipient
-     * 
-
+     * @notice Recover ETH to treasury address only
+     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+     * @param to Treasury address (must match the contract's treasury)
      * 
      * @dev Security considerations:
      *      - Only DEFAULT_ADMIN_ROLE can recover
@@ -580,7 +585,10 @@ contract QuantillonVault is
      *      - Uses call() for reliable ETH transfers to any contract
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "Vault: Cannot send to zero address");
+        // SECURITY: Only allow recovery to the contract's treasury address
+        // This prevents arbitrary ETH transfers that could be exploited
+        require(to == treasury, "Vault: Only treasury can receive ETH");
+        
         uint256 balance = address(this).balance;
         require(balance > 0, "Vault: No ETH to recover");
         

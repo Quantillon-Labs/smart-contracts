@@ -18,6 +18,7 @@ import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
 import "../libraries/ErrorLibrary.sol";
 import "./SecureUpgradeable.sol";
+import "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
  * @title stQEUROToken
@@ -216,6 +217,11 @@ contract stQEUROToken is
     /// @dev Used to track parameter changes by governance
     /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
     event YieldParametersUpdated(string indexed parameterType, uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency);
+
+    /// @notice Emitted when ETH is recovered to the treasury
+    /// @param to Address to which ETH was recovered
+    /// @param amount Amount of ETH recovered
+    event ETHRecovered(address indexed to, uint256 indexed amount);
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -744,18 +750,15 @@ contract stQEUROToken is
     }
 
     /**
-     * @notice Recover accidentally sent ETH
-     * 
-
+     * @notice Recover ETH to treasury address only
+     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+     * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "stQEURO: Cannot send to zero address");
-        uint256 balance = address(this).balance;
-        require(balance > 0, "stQEURO: No ETH to recover");
+        // Use the shared library for secure ETH recovery
+        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
         
-        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
-        // transfer() has 2300 gas stipend which can fail with complex receive/fallback logic
-        (bool success, ) = to.call{value: balance}("");
-        require(success, "stQEURO: ETH transfer failed");
+        // Emit event for tracking
+        emit ETHRecovered(to, address(this).balance);
     }
 }

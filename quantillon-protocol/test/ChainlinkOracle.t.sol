@@ -160,7 +160,8 @@ contract ChainlinkOracleTestSuite is Test {
             ChainlinkOracle.initialize.selector,
             admin,
             address(mockEurUsdFeed),
-            address(mockUsdcUsdFeed)
+            address(mockUsdcUsdFeed),
+            admin // Use admin as treasury for testing
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(

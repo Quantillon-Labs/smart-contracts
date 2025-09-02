@@ -19,6 +19,7 @@ import "../libraries/AccessControlLibrary.sol";
 import "../libraries/ValidationLibrary.sol";
 import "../libraries/TokenLibrary.sol";
 import "../libraries/FlashLoanProtection.sol";
+import "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
  * @title QTIToken
@@ -289,6 +290,11 @@ contract QTIToken is
     /// @dev OPTIMIZED: Indexed level for efficient filtering by decentralization stage
     event DecentralizationLevelUpdated(uint256 indexed newLevel);
 
+    /// @notice Emitted when ETH is recovered from the contract
+    /// @param to Recipient address
+    /// @param amount Amount of ETH recovered
+    event ETHRecovered(address indexed to, uint256 indexed amount);
+
     // =============================================================================
     // MODIFIERS - Access control and security
     // =============================================================================
@@ -372,10 +378,12 @@ contract QTIToken is
         uint256 oldVotingPower = lockInfo.votingPower;
         
         // Calculate new unlock time with overflow check
+        // SECURITY: Using block.timestamp for unlock time calculation (acceptable for time-based logic)
         uint256 newUnlockTime = block.timestamp + lockTime;
         if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
         
         // If already locked, extend the lock time
+        // SECURITY: Using block.timestamp for lock expiration check (acceptable for time-based logic)
         if (lockInfo.unlockTime > block.timestamp) {
             newUnlockTime = lockInfo.unlockTime + lockTime;
             if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
@@ -416,6 +424,7 @@ contract QTIToken is
      */
     function unlock() external whenNotPaused returns (uint256 amount) {
         LockInfo storage lockInfo = locks[msg.sender];
+        // SECURITY: Using block.timestamp for lock expiration check (acceptable for time-based logic)
         if (lockInfo.unlockTime > block.timestamp) revert ErrorLibrary.LockNotExpired();
         if (lockInfo.amount == 0) revert ErrorLibrary.NothingToUnlock();
 
@@ -476,6 +485,7 @@ contract QTIToken is
         uint256 totalNewAmount = uint256(lockInfo.amount);
         
         // GAS OPTIMIZATION: Cache timestamp and lock info to avoid repeated storage reads
+        // SECURITY: Using block.timestamp for unlock time calculation (acceptable for time-based logic)
         uint256 currentTimestamp = block.timestamp;
         uint256 lockInfoUnlockTime = lockInfo.unlockTime;
         
@@ -542,6 +552,7 @@ contract QTIToken is
         amounts = new uint256[](users.length);
         
         // GAS OPTIMIZATION: Cache timestamp and array length to avoid repeated calls
+        // SECURITY: Using block.timestamp for lock expiration check (acceptable for time-based logic)
         uint256 currentTimestamp = block.timestamp;
         uint256 length = users.length;
         
@@ -708,6 +719,11 @@ contract QTIToken is
         proposal.endTime = block.timestamp + votingPeriod;
         proposal.description = description;
         proposal.data = data;
+
+        // Initialize execution-related mappings to prevent uninitialized state variable warnings
+        proposalExecutionTime[proposalId] = 0;
+        proposalExecutionHash[proposalId] = bytes32(0);
+        proposalScheduled[proposalId] = false;
 
         emit ProposalCreated(proposalId, msg.sender, description);
     }
@@ -1054,17 +1070,16 @@ contract QTIToken is
     }
 
     /**
-     * @notice Recover accidentally sent ETH
-     * @param to Recipient address
+     * @notice Recover accidentally sent ETH to treasury address only
+     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+     * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AccessControlLibrary.validateAddress(to);
-        uint256 balance = address(this).balance;
-        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
+        // Use the shared library for secure ETH recovery
+        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
         
-        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
-        (bool success, ) = to.call{value: balance}("");
-        if (!success) revert ErrorLibrary.ETHTransferFailed();
+        // Emit event for tracking
+        emit ETHRecovered(to, address(this).balance);
     }
 
     // =============================================================================

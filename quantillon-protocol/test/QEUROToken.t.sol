@@ -90,7 +90,8 @@ contract QEUROTokenTestSuite is Test {
             QEUROToken.initialize.selector,
             admin,
             vault,
-            mockTimelock
+            mockTimelock,
+            admin // Use admin as treasury for testing
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -143,7 +144,8 @@ contract QEUROTokenTestSuite is Test {
             QEUROToken.initialize.selector,
             address(0),
             vault,
-            address(0x123)
+            address(0x123),
+            admin
         );
         
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
@@ -155,7 +157,8 @@ contract QEUROTokenTestSuite is Test {
             QEUROToken.initialize.selector,
             admin,
             address(0),
-            address(0x123)
+            address(0x123),
+            admin
         );
         
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
@@ -169,7 +172,7 @@ contract QEUROTokenTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        qeuroToken.initialize(admin, vault, address(0x123));
+        qeuroToken.initialize(admin, vault, address(0x123), admin);
     }
 
     // =============================================================================
@@ -274,9 +277,9 @@ contract QEUROTokenTestSuite is Test {
             qeuroToken.mint(user1, toMint);
             remaining -= toMint;
             
-            // Advance time to reset rate limit if needed
+            // Advance blocks to reset rate limit if needed (300 blocks = ~1 hour)
             if (remaining > 0) {
-                vm.warp(block.timestamp + 1 hours);
+                vm.roll(block.number + 300);
             }
         }
         
@@ -532,7 +535,7 @@ contract QEUROTokenTestSuite is Test {
                 remaining -= toMint;
                 
                 if (remaining > 0) {
-                    vm.warp(block.timestamp + 1 hours);
+                    vm.roll(block.number + 300); // Advance 300 blocks (~1 hour)
                 }
             }
         } else {
@@ -561,8 +564,8 @@ contract QEUROTokenTestSuite is Test {
         vm.prank(vault);
         qeuroToken.mint(user1, rateLimit);
         
-        // Advance time by 1 hour
-        vm.warp(block.timestamp + 1 hours);
+        // Advance blocks by 1 hour (300 blocks at 12 seconds per block)
+        vm.roll(block.number + 300);
         
         // Now should be able to mint again
         vm.prank(vault);

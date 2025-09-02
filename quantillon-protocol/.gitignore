@@ -13,3 +13,42 @@ lib/openzeppelin-contracts-upgradeable/
 
 # Cursor rules
 .cursorrules
+
+# Python virtual environments
+venv/
+env/
+.venv/
+.env/
+env.bak/
+.venv.bak/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Slither analysis reports and security files
+slither-report.json
+slither-report.sarif
+slither-report.*
+*.slither
+.slither/
+slither-cache/

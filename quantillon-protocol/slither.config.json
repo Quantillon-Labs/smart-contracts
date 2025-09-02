@@ -1,0 +1,13 @@
+{
+  "filter_paths": "lib,test,out,cache",
+  "exclude_informational": false,
+  "exclude_low": false,
+  "exclude_medium": false,
+  "exclude_high": false,
+  "detectors_to_exclude": [
+    "naming-convention",
+    "external-function"
+  ],
+  "json": "slither-report.json",
+  "sarif": "slither-report.sarif"
+}

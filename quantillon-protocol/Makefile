@@ -51,6 +51,8 @@ slither:
 
 # Run comprehensive security checks
 security: build slither
+
+
 	@echo "🛡️  Security analysis complete!"
 
 # Run all checks

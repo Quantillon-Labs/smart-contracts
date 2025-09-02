@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -61,7 +61,7 @@ Yield-bearing wrapper for QEURO tokens (yield accrual mechanism)
 - Vault math library for calculations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -266,7 +266,7 @@ modifier flashLoanProtection();
 ### constructor
 
 **Note:**
-oz-upgrades-unsafe-allow: constructor
+constructor
 
 
 ```solidity
@@ -590,12 +590,20 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recover accidentally sent ETH
+Recover ETH to treasury address only
+
+*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 
 ```solidity
 function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address payable`|Treasury address (must match the contract's treasury)|
+
 
 ## Events
 ### QEUROStaked
@@ -710,4 +718,19 @@ event YieldParametersUpdated(
 |`yieldFee`|`uint256`|New yield fee in basis points|
 |`minYieldThreshold`|`uint256`|New minimum yield threshold|
 |`maxUpdateFrequency`|`uint256`|New maximum update frequency|
+
+### ETHRecovered
+Emitted when ETH is recovered to the treasury
+
+
+```solidity
+event ETHRecovered(address indexed to, uint256 indexed amount);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address`|Address to which ETH was recovered|
+|`amount`|`uint256`|Amount of ETH recovered|
 

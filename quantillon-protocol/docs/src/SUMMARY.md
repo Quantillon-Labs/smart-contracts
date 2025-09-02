@@ -35,6 +35,7 @@
     - [ErrorLibrary](src/libraries/ErrorLibrary.sol/library.ErrorLibrary.md)
     - [FlashLoanProtection](src/libraries/FlashLoanProtection.sol/library.FlashLoanProtection.md)
     - [TokenLibrary](src/libraries/TokenLibrary.sol/library.TokenLibrary.md)
+    - [TreasuryRecoveryLibrary](src/libraries/TreasuryRecoveryLibrary.sol/library.TreasuryRecoveryLibrary.md)
     - [ValidationLibrary](src/libraries/ValidationLibrary.sol/library.ValidationLibrary.md)
     - [VaultLibrary](src/libraries/VaultLibrary.sol/library.VaultLibrary.md)
     - [VaultMath](src/libraries/VaultMath.sol/library.VaultMath.md)

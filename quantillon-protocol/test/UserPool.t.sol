@@ -7,6 +7,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
 import {IQuantillonVault} from "../src/interfaces/IQuantillonVault.sol";
+import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 /**
  * @title UserPoolTestSuite
@@ -86,7 +87,8 @@ contract UserPoolTestSuite is Test {
             mockUSDC,
             mockVault,
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin // Use admin as treasury for testing
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -273,7 +275,8 @@ contract UserPoolTestSuite is Test {
             mockUSDC,
             mockVault,
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert("UserPool: Admin cannot be zero");
@@ -287,7 +290,8 @@ contract UserPoolTestSuite is Test {
             mockUSDC,
             mockVault,
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert("UserPool: QEURO cannot be zero");
@@ -301,7 +305,8 @@ contract UserPoolTestSuite is Test {
             address(0),
             mockVault,
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert("UserPool: USDC cannot be zero");
@@ -315,7 +320,8 @@ contract UserPoolTestSuite is Test {
             mockUSDC,
             address(0),
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert("UserPool: Vault cannot be zero");
@@ -329,7 +335,8 @@ contract UserPoolTestSuite is Test {
             mockUSDC,
             mockVault,
             address(0),
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert("UserPool: YieldShift cannot be zero");
@@ -1337,8 +1344,8 @@ contract UserPoolTestSuite is Test {
     }
 
     /**
-     * @notice Test recovering ETH
-     * @dev Verifies that admin can recover accidentally sent ETH
+     * @notice Test recovering ETH to treasury address
+     * @dev Verifies that admin can recover accidentally sent ETH to treasury only
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
@@ -1347,7 +1354,7 @@ contract UserPoolTestSuite is Test {
         // Send ETH to the contract
         vm.deal(address(userPool), recoveryAmount);
         
-        // Admin recovers ETH
+        // Admin recovers ETH to treasury (admin)
         vm.prank(admin);
         userPool.recoverETH(payable(admin));
         
@@ -1364,19 +1371,19 @@ contract UserPoolTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        userPool.recoverETH(payable(user1));
+        userPool.recoverETH(payable(admin));
     }
 
     /**
-     * @notice Test recovering ETH to zero address (should revert)
-     * @dev Verifies that ETH cannot be recovered to zero address
+     * @notice Test recovering ETH to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
      */
-    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
         vm.deal(address(userPool), 1 ether);
         
         vm.prank(admin);
-        vm.expectRevert("UserPool: Cannot send to zero address");
-        userPool.recoverETH(payable(address(0)));
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        userPool.recoverETH(payable(user1)); // user1 is not treasury
     }
 
     /**
@@ -1385,7 +1392,7 @@ contract UserPoolTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("UserPool: No ETH to recover");
+        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
         userPool.recoverETH(payable(admin));
     }
 }

@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -17,7 +17,7 @@ EUR/USD and USDC/USD price manager for Quantillon Protocol
 - Data freshness checks*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -113,9 +113,24 @@ AggregatorV3Interface public eurUsdPriceFeed;
 ### usdcUsdPriceFeed
 Interface to Chainlink USDC/USD price feed
 
+*Used for USDC price validation and cross-checking*
+
+*Should be the official USDC/USD Chainlink feed*
+
 
 ```solidity
 AggregatorV3Interface public usdcUsdPriceFeed;
+```
+
+
+### treasury
+Treasury address for ETH recovery
+
+*SECURITY: Only this address can receive ETH from recoverETH function*
+
+
+```solidity
+address public treasury;
 ```
 
 
@@ -196,7 +211,7 @@ uint256 public usdcToleranceBps;
 ### constructor
 
 **Note:**
-oz-upgrades-unsafe-allow: constructor
+constructor
 
 
 ```solidity
@@ -215,7 +230,9 @@ Initializes the oracle contract with Chainlink price feeds
 
 
 ```solidity
-function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed) public initializer;
+function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed, address _treasury)
+    public
+    initializer;
 ```
 **Parameters**
 
@@ -224,6 +241,24 @@ function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPri
 |`admin`|`address`|Address with administrator privileges|
 |`_eurUsdPriceFeed`|`address`|Chainlink EUR/USD price feed address on Base|
 |`_usdcUsdPriceFeed`|`address`|Chainlink USDC/USD price feed address on Base|
+|`_treasury`|`address`|Treasury address for ETH recovery|
+
+
+### updateTreasury
+
+Update treasury address
+
+*SECURITY: Only admin can update treasury address*
+
+
+```solidity
+function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_treasury`|`address`|New treasury address|
 
 
 ### unpause
@@ -456,7 +491,9 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recovers ETH accidentally sent to the oracle contract
+Recover ETH to treasury address only
+
+*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 *Security considerations:
 - Only DEFAULT_ADMIN_ROLE can recover
@@ -472,7 +509,7 @@ function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`to`|`address payable`|Recipient address|
+|`to`|`address payable`|Treasury address (must match the contract's treasury)|
 
 
 ### resetCircuitBreaker
@@ -648,5 +685,27 @@ Emitted when price feed addresses are updated
 
 ```solidity
 event PriceFeedsUpdated(address newEurUsdFeed, address newUsdcUsdFeed);
+```
+
+### TreasuryUpdated
+Emitted when treasury address is updated
+
+
+```solidity
+event TreasuryUpdated(address indexed newTreasury);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newTreasury`|`address`|New treasury address|
+
+### ETHRecovered
+Emitted when ETH is recovered from the contract
+
+
+```solidity
+event ETHRecovered(address indexed to, uint256 amount);
 ```
 

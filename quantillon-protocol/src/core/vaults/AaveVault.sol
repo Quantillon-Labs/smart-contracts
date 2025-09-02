@@ -13,6 +13,7 @@ import "../../libraries/VaultMath.sol";
 import "../../libraries/ErrorLibrary.sol";
 import "../../libraries/AccessControlLibrary.sol";
 import "../../libraries/ValidationLibrary.sol";
+import "../../libraries/TreasuryRecoveryLibrary.sol";
 import "../SecureUpgradeable.sol";
 
 /**
@@ -174,12 +175,14 @@ contract AaveVault is
         address _aaveProvider,
         address _rewardsController,
         address _yieldShift,
-        address timelock
+        address timelock,
+        address _treasury
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(_usdc);
         AccessControlLibrary.validateAddress(_aaveProvider);
         AccessControlLibrary.validateAddress(_yieldShift);
+        AccessControlLibrary.validateAddress(_treasury);
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -196,6 +199,7 @@ contract AaveVault is
         aavePool = IPool(aaveProvider.getPool());
         rewardsController = IRewardsController(_rewardsController);
         yieldShift = IYieldShift(_yieldShift);
+        treasury = _treasury;
 
         ReserveData memory reserveData = aavePool.getReserveData(address(usdc));
         aUSDC = IERC20(reserveData.aTokenAddress);
@@ -635,12 +639,7 @@ contract AaveVault is
 
     function recoverETH(address payable to) external {
         AccessControlLibrary.onlyAdmin(this);
-        AccessControlLibrary.validateAddress(to);
-        uint256 balance = address(this).balance;
-        // SECURITY: Check if there's ETH to recover (safe equality check)
-        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
-        
-        (bool success, ) = to.call{value: balance}("");
-        if (!success) revert ErrorLibrary.ETHTransferFailed();
+        // Use the shared library for secure ETH recovery
+        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
     }
 }

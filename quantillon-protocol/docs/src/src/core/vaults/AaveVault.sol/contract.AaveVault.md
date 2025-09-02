@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -67,7 +67,7 @@ Aave integration vault for yield generation through USDC lending
 - Rewards controller for additional incentives*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -211,6 +211,13 @@ bool public emergencyMode;
 ```
 
 
+### treasury
+
+```solidity
+address public treasury;
+```
+
+
 ## Functions
 ### constructor
 
@@ -229,7 +236,8 @@ function initialize(
     address _aaveProvider,
     address _rewardsController,
     address _yieldShift,
-    address timelock
+    address timelock,
+    address _treasury
 ) public initializer;
 ```
 
@@ -334,7 +342,7 @@ function _isAaveHealthy() internal view returns (bool);
 
 
 ```solidity
-function autoRebalance() external returns (bool rebalanced, uint256 newAllocation);
+function autoRebalance() external returns (bool rebalanced, uint256 newAllocation, uint256 expectedYield);
 ```
 
 ### calculateOptimalAllocation

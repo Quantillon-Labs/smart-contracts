@@ -1,5 +1,5 @@
 # IYieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/interfaces/IYieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/interfaces/IYieldShift.sol)
 
 **Author:**
 Quantillon Labs
@@ -7,7 +7,7 @@ Quantillon Labs
 Interface for YieldShift dynamic yield redistribution
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -440,15 +440,6 @@ Whether yield distribution is active (not paused)
 
 ```solidity
 function isYieldDistributionActive() external view returns (bool);
-```
-
-### harvestAndDistributeAaveYield
-
-Harvest and distribute Aave yield (if any)
-
-
-```solidity
-function harvestAndDistributeAaveYield() external;
 ```
 
 ### checkAndUpdateYieldDistribution

@@ -17,6 +17,7 @@ import "../../libraries/ErrorLibrary.sol";
 import "../../libraries/AccessControlLibrary.sol";
 import "../../libraries/ValidationLibrary.sol";
 import "../../libraries/VaultLibrary.sol";
+import "../../libraries/TreasuryRecoveryLibrary.sol";
 import "../SecureUpgradeable.sol";
 
 /**
@@ -193,7 +194,8 @@ contract YieldShift is
         address _hedgerPool,
         address _aaveVault,
         address _stQEURO,
-        address timelock
+        address timelock,
+        address _treasury
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(_usdc);
@@ -201,6 +203,7 @@ contract YieldShift is
         AccessControlLibrary.validateAddress(_hedgerPool);
         AccessControlLibrary.validateAddress(_aaveVault);
         AccessControlLibrary.validateAddress(_stQEURO);
+        AccessControlLibrary.validateAddress(_treasury);
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -217,6 +220,7 @@ contract YieldShift is
         hedgerPool = IHedgerPool(_hedgerPool);
         aaveVault = IAaveVault(_aaveVault);
         stQEURO = IstQEURO(_stQEURO);
+        treasury = _treasury;
 
         baseYieldShift = 5000;
         maxYieldShift = 9000;
@@ -827,12 +831,7 @@ contract YieldShift is
 
     function recoverETH(address payable to) external {
         AccessControlLibrary.onlyAdmin(this);
-        AccessControlLibrary.validateAddress(to);
-        uint256 balance = address(this).balance;
-        // SECURITY: Check if there's ETH to recover (safe equality check)
-        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
-        
-        (bool success, ) = to.call{value: balance}("");
-        if (!success) revert ErrorLibrary.ETHTransferFailed();
+        // Use the shared library for secure ETH recovery
+        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
     }
 }

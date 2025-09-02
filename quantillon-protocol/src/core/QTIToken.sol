@@ -541,10 +541,11 @@ contract QTIToken is
     {
         amounts = new uint256[](users.length);
         
-        // GAS OPTIMIZATION: Cache timestamp to avoid repeated block.timestamp calls
+        // GAS OPTIMIZATION: Cache timestamp and array length to avoid repeated calls
         uint256 currentTimestamp = block.timestamp;
+        uint256 length = users.length;
         
-        for (uint256 i = 0; i < users.length; i++) {
+        for (uint256 i = 0; i < length;) {
             address user = users[i];
             LockInfo storage lockInfo = locks[user];
             
@@ -560,15 +561,20 @@ contract QTIToken is
             lockInfo.unlockTime = 0;
             lockInfo.votingPower = 0;
             
-            // Update global totals
-            totalLocked = totalLocked - amount;
-            totalVotingPower = totalVotingPower - oldVotingPower;
+            // Update global totals - GAS OPTIMIZATION: Use unchecked for safe arithmetic
+            unchecked {
+                totalLocked = totalLocked - amount;
+                totalVotingPower = totalVotingPower - oldVotingPower;
+            }
             
             // Transfer tokens back to user
             _transfer(address(this), user, amount);
             
             emit TokensUnlocked(user, amount, oldVotingPower);
             emit VotingPowerUpdated(user, oldVotingPower, 0);
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
         }
     }
 

@@ -467,18 +467,25 @@ contract stQEUROToken is
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
         
-        // Pre-validate recipients and amounts
-        for (uint256 i = 0; i < recipients.length; i++) {
-            require(recipients[i] != address(0), "stQEURO: Cannot transfer to zero address");
-            require(amounts[i] > 0, "stQEURO: Amount must be positive");
-        }
-        
-        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
+        // GAS OPTIMIZATION: Cache array length and msg.sender to avoid repeated access
+        uint256 length = recipients.length;
         address sender = msg.sender;
         
+        // Pre-validate recipients and amounts
+        for (uint256 i = 0; i < length;) {
+            require(recipients[i] != address(0), "stQEURO: Cannot transfer to zero address");
+            require(amounts[i] > 0, "stQEURO: Amount must be positive");
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
+        }
+        
         // Perform transfers using OpenZeppelin's transfer mechanism
-        for (uint256 i = 0; i < recipients.length; i++) {
+        for (uint256 i = 0; i < length;) {
             _transfer(sender, recipients[i], amounts[i]);
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
         }
         
         return true;

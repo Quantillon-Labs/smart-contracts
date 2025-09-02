@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 # Run Slither analysis with checklist output for detailed findings
 echo "🚀 Running Slither analysis..."
-slither . --config-file slither.config.json --checklist --checklist-limit 10 > slither-report-raw.txt 2>&1
+SLITHER_OUTPUT=$(slither . --config-file slither.config.json --checklist --checklist-limit 10 2>&1)
 
 # Check exit code
 if [ $? -eq 0 ]; then
@@ -50,10 +50,10 @@ Configuration: slither.config.json
 EOF
 
 # Add issue counts
-HIGH_ISSUES=$(cat slither-report-raw.txt | grep -c "arbitrary from\|reentrancy\|uninitialized state variables\|dangerous strict equalities\|functions that send ether to arbitrary destinations" 2>/dev/null || echo "0")
-MEDIUM_ISSUES=$(cat slither-report-raw.txt | grep -c "unused-return\|reentrancy-no-eth\|incorrect-equality" 2>/dev/null || echo "0")
-LOW_ISSUES=$(cat slither-report-raw.txt | grep -c "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" 2>/dev/null || echo "0")
-INFO_ISSUES=$(cat slither-report-raw.txt | grep -c "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" 2>/dev/null || echo "0")
+HIGH_ISSUES=$(echo "$SLITHER_OUTPUT" | grep -c "arbitrary from\|reentrancy\|uninitialized state variables\|dangerous strict equalities\|functions that send ether to arbitrary destinations" 2>/dev/null || echo "0")
+MEDIUM_ISSUES=$(echo "$SLITHER_OUTPUT" | grep -c "unused-return\|reentrancy-no-eth\|incorrect-equality" 2>/dev/null || echo "0")
+LOW_ISSUES=$(echo "$SLITHER_OUTPUT" | grep -c "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" 2>/dev/null || echo "0")
+INFO_ISSUES=$(echo "$SLITHER_OUTPUT" | grep -c "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" 2>/dev/null || echo "0")
 
 cat >> slither-report.txt << EOF
 🔴 High Priority Issues: $HIGH_ISSUES
@@ -66,7 +66,7 @@ cat >> slither-report.txt << EOF
 EOF
 
 # Extract and format high priority issues
-cat slither-report-raw.txt | grep -A 5 -B 2 "arbitrary from\|reentrancy\|uninitialized state variables\|dangerous strict equalities\|functions that send ether to arbitrary destinations" | while IFS= read -r line; do
+echo "$SLITHER_OUTPUT" | grep -A 5 -B 2 "arbitrary from\|reentrancy\|uninitialized state variables\|dangerous strict equalities\|functions that send ether to arbitrary destinations" | while IFS= read -r line; do
     if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
         echo "🚨 ISSUE: $line" >> slither-report.txt
         echo "   Priority: HIGH" >> slither-report.txt
@@ -94,7 +94,7 @@ cat >> slither-report.txt << 'EOF'
 EOF
 
 # Extract and format medium priority issues
-cat slither-report-raw.txt | grep -A 5 -B 2 "unused-return\|reentrancy-no-eth\|incorrect-equality" | while IFS= read -r line; do
+echo "$SLITHER_OUTPUT" | grep -A 5 -B 2 "unused-return\|reentrancy-no-eth\|incorrect-equality" | while IFS= read -r line; do
     if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
         echo "⚠️  ISSUE: $line" >> slither-report.txt
         echo "   Priority: MEDIUM" >> slither-report.txt
@@ -122,7 +122,7 @@ cat >> slither-report.txt << 'EOF'
 EOF
 
 # Extract and format low priority issues (limited to key ones)
-cat slither-report-raw.txt | grep -A 3 -B 1 "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" | head -30 | while IFS= read -r line; do
+echo "$SLITHER_OUTPUT" | grep -A 3 -B 1 "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" | head -30 | while IFS= read -r line; do
     if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
         echo "💡 ISSUE: $line" >> slither-report.txt
         echo "   Priority: LOW" >> slither-report.txt
@@ -150,7 +150,7 @@ cat >> slither-report.txt << 'EOF'
 EOF
 
 # Extract and format informational issues (limited to key ones)
-cat slither-report-raw.txt | grep -A 3 -B 1 "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" | head -20 | while IFS= read -r line; do
+echo "$SLITHER_OUTPUT" | grep -A 3 -B 1 "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" | head -20 | while IFS= read -r line; do
     if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
         echo "ℹ️  ISSUE: $line" >> slither-report.txt
         echo "   Priority: INFORMATIONAL" >> slither-report.txt
@@ -209,7 +209,7 @@ fi
 cat >> slither-report.txt << 'EOF'
 
 📚 RESOURCES & NEXT STEPS:
-   • Review complete technical details in slither-report-raw.txt
+   • Review complete technical details in the generated report above
    • Check Slither documentation for each issue type
    • Consider automated fixes where possible
    • Run security analysis after each fix to verify resolution
@@ -232,7 +232,6 @@ cat >> slither-report.txt << 'EOF'
 
 ═══════════════════════════════════════════════════════════════════
 Report generated by Enhanced Slither Analysis Script
-For technical details, see slither-report-raw.txt
 EOF
 
 echo "✨ Beautiful human-readable report generated: slither-report.txt"
@@ -253,7 +252,6 @@ echo "   - Console output (above)"
 echo "   - slither-report.json (detailed JSON)"
 echo "   - slither-report.sarif (IDE integration)"
 echo "   - slither-report.txt (beautiful human-readable report)"
-echo "   - slither-report-raw.txt (raw Slither output)"
 echo ""
 echo "💡 For complete findings, check slither-report.txt"
 echo "🔧 Run 'make slither' to regenerate reports"

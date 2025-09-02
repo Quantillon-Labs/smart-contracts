@@ -174,7 +174,9 @@ contract HedgerPool is
     uint256 public constant BLOCKS_PER_DAY = 7200;
     uint256 public constant MAX_REWARD_PERIOD = 365 days;
 
-    uint256 public constant LIQUIDATION_COOLDOWN = 1 hours;
+    /// @dev Cooldown period in blocks (~1 hour assuming 12 second blocks)
+    /// @dev Using block numbers instead of timestamps for security against miner manipulation
+    uint256 public constant LIQUIDATION_COOLDOWN = 300;
     mapping(bytes32 => bool) public liquidationCommitments;
     mapping(bytes32 => uint256) public liquidationCommitmentTimes;
     mapping(address => uint256) public lastLiquidationAttempt;
@@ -572,10 +574,10 @@ contract HedgerPool is
         ValidationLibrary.validateCommitmentNotExists(liquidationCommitments[commitment]);
         
         liquidationCommitments[commitment] = true;
-        liquidationCommitmentTimes[commitment] = block.timestamp;
+        liquidationCommitmentTimes[commitment] = block.number;
         
         hasPendingLiquidation[hedger][positionId] = true;
-        lastLiquidationAttempt[hedger] = block.timestamp;
+        lastLiquidationAttempt[hedger] = block.number;
     }
 
     function liquidateHedger(
@@ -650,7 +652,8 @@ contract HedgerPool is
             hedgerInfo.lastRewardClaim = uint64(block.timestamp);
             
             if (yieldShiftRewards > 0) {
-                yieldShift.claimHedgerYield(hedger);
+                bool claimed = yieldShift.claimHedgerYield(hedger);
+                if (!claimed) revert ErrorLibrary.YieldClaimFailed();
             }
             
             usdc.safeTransfer(hedger, totalRewards);
@@ -711,7 +714,8 @@ contract HedgerPool is
         HedgePosition storage position = positions[positionId];
         if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
         
-        (currentPrice, ) = oracle.getEurUsdPrice();
+        (currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert ErrorLibrary.InvalidOraclePrice();
         
         return (
             position.positionSize,
@@ -887,9 +891,15 @@ contract HedgerPool is
         return !paused();
     }
 
+    /**
+     * @notice Clear expired liquidation commitment after cooldown period
+     * @dev Uses block numbers instead of timestamps for security against miner manipulation
+     * @param hedger Address of the hedger
+     * @param positionId ID of the position
+     */
     function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external {
         AccessControlLibrary.onlyLiquidatorRole(this);
-        if (block.timestamp > lastLiquidationAttempt[hedger] + 1 hours) {
+        if (block.number > lastLiquidationAttempt[hedger] + LIQUIDATION_COOLDOWN) {
             hasPendingLiquidation[hedger][positionId] = false;
         }
     }

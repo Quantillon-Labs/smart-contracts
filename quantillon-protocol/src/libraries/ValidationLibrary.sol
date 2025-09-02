@@ -65,7 +65,7 @@ library ValidationLibrary {
     }
     
     function validateLiquidationCooldown(uint256 lastAttempt, uint256 cooldown) internal view {
-        if (block.timestamp < lastAttempt + cooldown) revert ErrorLibrary.LiquidationCooldown();
+        if (block.number < lastAttempt + cooldown) revert ErrorLibrary.LiquidationCooldown();
     }
     
     function validateBalance(uint256 balance, uint256 required) internal pure {

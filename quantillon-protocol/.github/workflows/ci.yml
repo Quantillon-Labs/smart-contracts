@@ -1,0 +1,53 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: nightly
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        forge install
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+    
+    - name: Build contracts
+      run: forge build
+    
+    - name: Run tests
+      run: forge test
+    
+    - name: Generate coverage
+      run: forge coverage --report lcov
+    
+    - name: Run Slither security analysis
+      run: |
+        source venv/bin/activate
+        slither . --config-file slither.config.json
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false

@@ -45,7 +45,7 @@ coverage:
 # Run Slither security analysis
 slither:
 	@echo "🔍 Running Slither security analysis..."
-	./scripts/run-slither.sh
+	@cd "$(CURDIR)" && ./scripts/run-slither.sh
 
 # Run comprehensive security checks
 security: build slither

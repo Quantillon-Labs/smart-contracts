@@ -547,10 +547,17 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         uint256 totalQeuroAmount = 0;
         
+        // GAS OPTIMIZATION: Cache array length to avoid repeated access
+        uint256 length = qeuroAmounts.length;
+        
         // Pre-validate amounts and calculate total
-        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
+        for (uint256 i = 0; i < length;) {
             require(qeuroAmounts[i] > 0, "UserPool: Amount must be positive");
-            totalQeuroAmount += qeuroAmounts[i];
+            // GAS OPTIMIZATION: Use unchecked for safe addition
+            unchecked { totalQeuroAmount += qeuroAmounts[i]; }
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
         }
         
         require(user.qeuroBalance >= totalQeuroAmount, "UserPool: Insufficient balance");
@@ -563,7 +570,7 @@ contract UserPool is
         uint256 withdrawalFee_ = withdrawalFee;
         
         // Process each withdrawal
-        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
+        for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 minUsdcOut = minUsdcOuts[i];
             
@@ -582,16 +589,19 @@ contract UserPool is
             uint256 netAmount = usdcReceived - fee;
             usdcReceivedAmounts[i] = netAmount;
 
-            // Update user info
-            user.qeuroBalance -= uint128(qeuroAmount);
-            
-            // Update pool totals
-            totalDeposits -= netAmount;
+            // Update user info - GAS OPTIMIZATION: Use unchecked for safe arithmetic
+            unchecked {
+                user.qeuroBalance -= uint128(qeuroAmount);
+                totalDeposits -= netAmount;
+            }
 
             // Transfer USDC to user
             usdc.safeTransfer(msg.sender, netAmount);
 
             emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, block.timestamp);
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
         }
     }
 

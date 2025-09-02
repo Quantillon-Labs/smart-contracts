@@ -669,25 +669,28 @@ contract HedgerPool is
                 return;
             }
             
-            uint256 blocksElapsed = currentBlock - lastRewardBlock;
-            uint256 timeElapsed = blocksElapsed * 12;
-            
-            if (timeElapsed > MAX_REWARD_PERIOD) {
-                timeElapsed = MAX_REWARD_PERIOD;
+            // GAS OPTIMIZATION: Use unchecked for safe arithmetic
+            unchecked {
+                uint256 blocksElapsed = currentBlock - lastRewardBlock;
+                uint256 timeElapsed = blocksElapsed * 12;
+                
+                if (timeElapsed > MAX_REWARD_PERIOD) {
+                    timeElapsed = MAX_REWARD_PERIOD;
+                }
+                
+                uint256 interestDifferential = usdInterestRate > eurInterestRate ? 
+                    usdInterestRate - eurInterestRate : 0;
+                
+                uint256 reward = uint256(hedgerInfo.totalExposure)
+                    .mulDiv(interestDifferential, 10000)
+                    .mulDiv(timeElapsed, 365 days);
+                
+                uint256 newPendingRewards = uint256(hedgerInfo.pendingRewards) + reward;
+                if (newPendingRewards < uint256(hedgerInfo.pendingRewards)) revert ErrorLibrary.RewardOverflow();
+                hedgerInfo.pendingRewards = uint128(newPendingRewards);
+                
+                hedgerLastRewardBlock[hedger] = currentBlock;
             }
-            
-            uint256 interestDifferential = usdInterestRate > eurInterestRate ? 
-                usdInterestRate - eurInterestRate : 0;
-            
-            uint256 reward = uint256(hedgerInfo.totalExposure)
-                .mulDiv(interestDifferential, 10000)
-                .mulDiv(timeElapsed, 365 days);
-            
-            uint256 newPendingRewards = uint256(hedgerInfo.pendingRewards) + reward;
-            if (newPendingRewards < uint256(hedgerInfo.pendingRewards)) revert ErrorLibrary.RewardOverflow();
-            hedgerInfo.pendingRewards = uint128(newPendingRewards);
-            
-            hedgerLastRewardBlock[hedger] = currentBlock;
         }
     }
 

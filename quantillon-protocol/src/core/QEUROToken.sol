@@ -1038,8 +1038,12 @@ contract QEUROToken is
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
         
+        // GAS OPTIMIZATION: Cache array length and msg.sender to avoid repeated access
+        uint256 length = recipients.length;
+        address sender = msg.sender;
+        
         // Pre-validate recipients and amounts
-        for (uint256 i = 0; i < recipients.length; i++) {
+        for (uint256 i = 0; i < length;) {
             address to = recipients[i];
             uint256 amount = amounts[i];
             
@@ -1047,14 +1051,20 @@ contract QEUROToken is
             if (amount == 0) revert ErrorLibrary.InvalidAmount();
             
             // Check compliance (blacklist/whitelist) per recipient
-            if (isBlacklisted[msg.sender]) revert ErrorLibrary.BlacklistedAddress();
+            if (isBlacklisted[sender]) revert ErrorLibrary.BlacklistedAddress();
             if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
             if (whitelistEnabled && !isWhitelisted[to]) revert ErrorLibrary.NotWhitelisted();
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
         }
         
         // Perform transfers using OpenZeppelin's transfer mechanism
-        for (uint256 i = 0; i < recipients.length; i++) {
-            _transfer(msg.sender, recipients[i], amounts[i]);
+        for (uint256 i = 0; i < length;) {
+            _transfer(sender, recipients[i], amounts[i]);
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
         }
         
         return true;

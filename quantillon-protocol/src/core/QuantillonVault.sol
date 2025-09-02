@@ -349,7 +349,7 @@ contract QuantillonVault is
         // Burn QEURO from the user
         qeuro.burn(msg.sender, qeuroAmount);
 
-        // Update global balances - OPTIMIZED: Use unchecked for safe arithmetic
+        // Update global balances - GAS OPTIMIZATION: Use unchecked for safe arithmetic
         unchecked {
             totalUsdcHeld -= usdcToReturn;
             totalMinted -= qeuroAmount;

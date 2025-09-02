@@ -461,15 +461,15 @@ contract AaveVault is
 
     function autoRebalance() 
         external 
-        returns (bool rebalanced, uint256 newAllocation) 
+        returns (bool rebalanced, uint256 newAllocation, uint256 expectedYield) 
     {
         AccessControlLibrary.onlyVaultManager(this);
         
-        (uint256 optimalAllocation, ) = this.calculateOptimalAllocation();
+        (uint256 optimalAllocation, uint256 _expectedYield) = this.calculateOptimalAllocation();
         uint256 currentBalance = aUSDC.balanceOf(address(this));
         uint256 totalAssets = currentBalance + usdc.balanceOf(address(this));
         
-        if (totalAssets == 0) return (false, 0);
+        if (totalAssets == 0) return (false, 0, 0);
         
         uint256 currentAllocation = currentBalance.mulDiv(10000, totalAssets);
         uint256 allocationDiff = optimalAllocation > currentAllocation ?
@@ -479,8 +479,11 @@ contract AaveVault is
         if (allocationDiff >= rebalanceThreshold) {
             rebalanced = true;
             newAllocation = optimalAllocation;
+            expectedYield = _expectedYield;
             
             emit PositionRebalanced("Auto rebalance", currentAllocation, newAllocation);
+        } else {
+            expectedYield = _expectedYield;
         }
     }
 

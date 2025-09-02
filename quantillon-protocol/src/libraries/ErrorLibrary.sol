@@ -107,6 +107,7 @@ library ErrorLibrary {
     error YieldNotAvailable();
     error YieldDistributionFailed();
     error YieldCalculationError();
+    error YieldClaimFailed();
     
     // Liquidation Errors
     error LiquidationNotAllowed();

@@ -102,10 +102,14 @@ contract QEUROToken is
     /// @dev Value: 100,000,000 * 10^18 = 100,000,000 QEURO
     uint256 public constant DEFAULT_MAX_SUPPLY = 100_000_000 * 1e18;
 
-    /// @notice Maximum rate limit for mint/burn operations (per hour)
+    /// @notice Maximum rate limit for mint/burn operations (per reset period)
     /// @dev Prevents abuse and provides time for emergency response
-    /// @dev Value: 10,000,000 * 10^18 = 10,000,000 QEURO per hour
-    uint256 public constant MAX_RATE_LIMIT = 10_000_000 * 1e18; // 10M QEURO per hour
+    /// @dev Value: 10,000,000 * 10^18 = 10,000,000 QEURO per reset period (~300 blocks)
+    uint256 public constant MAX_RATE_LIMIT = 10_000_000 * 1e18; // 10M QEURO per reset period
+
+    /// @notice Rate limit reset period in blocks (~1 hour assuming 12 second blocks)
+    /// @dev Using block numbers instead of timestamps for security against miner manipulation
+    uint256 public constant RATE_LIMIT_RESET_PERIOD = 300;
 
     /// @notice Precision for decimal calculations (18 decimals)
     /// @dev Standard precision used throughout the protocol
@@ -127,12 +131,12 @@ contract QEUROToken is
     RateLimitCaps public rateLimitCaps;
 
     /// @notice Rate limiting information - OPTIMIZED: Packed for storage efficiency
-    /// @dev Resets every hour or when rate limits are updated
+    /// @dev Resets every ~300 blocks (~1 hour assuming 12 second blocks) or when rate limits are updated
     /// @dev Used to enforce mintRateLimit and burnRateLimit
     struct RateLimitInfo {
         uint96 currentHourMinted;  // Current minted amount in the current hour (12 bytes)
         uint96 currentHourBurned;  // Current burned amount in the current hour (12 bytes)
-        uint64 lastRateLimitReset; // Timestamp of the last rate limit reset (8 bytes)
+        uint64 lastRateLimitReset; // Block number of the last rate limit reset (8 bytes)
         // Total: 12 + 12 + 8 = 32 bytes (fits in 1 slot vs 3 slots)
     }
     
@@ -221,9 +225,9 @@ contract QEUROToken is
     event MinPricePrecisionUpdated(uint256 oldPrecision, uint256 newPrecision);
 
     /// @notice Emitted when rate limit is reset
-    /// @param timestamp Timestamp of reset
-    /// @dev OPTIMIZED: Indexed timestamp for efficient time-based filtering
-    event RateLimitReset(uint256 indexed timestamp);
+    /// @param blockNumber Block number when reset occurred
+    /// @dev OPTIMIZED: Indexed block number for efficient block-based filtering
+    event RateLimitReset(uint256 indexed blockNumber);
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -297,7 +301,7 @@ contract QEUROToken is
         // Initialize state variables
         maxSupply = DEFAULT_MAX_SUPPLY;
         rateLimitCaps = RateLimitCaps(uint128(MAX_RATE_LIMIT), uint128(MAX_RATE_LIMIT));
-        rateLimitInfo = RateLimitInfo(0, 0, uint64(block.timestamp));
+        rateLimitInfo = RateLimitInfo(0, 0, uint64(block.number));
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
     }
@@ -505,29 +509,29 @@ contract QEUROToken is
      * @dev Internal function to enforce rate limiting
      * 
      * @dev Security considerations:
-     *      - Resets rate limit if an hour has passed
+     *      - Resets rate limit if reset period has passed (~300 blocks)
      *      - Checks if the new amount would exceed the rate limit
      *      - Updates the current hour minted amount
      *      - Throws an error if rate limit is exceeded
-     *      - Includes bounds checking to prevent timestamp manipulation
+     *      - Includes bounds checking to prevent block manipulation
      * 
 
      */
     function _checkAndUpdateMintRateLimit(uint256 amount) internal {
-        // Reset rate limit if an hour has passed
-        uint256 timeSinceReset = block.timestamp - rateLimitInfo.lastRateLimitReset;
+        // Reset rate limit if reset period has passed (using block numbers)
+        uint256 blocksSinceReset = block.number - rateLimitInfo.lastRateLimitReset;
         
-        // SECURITY FIX: Bounds check to prevent timestamp manipulation
-        // Caps time elapsed at 24 hours maximum to prevent excessive manipulation
-        if (timeSinceReset > 24 hours) {
-            timeSinceReset = 24 hours; // Cap at 24 hours maximum
+        // SECURITY FIX: Bounds check to prevent block manipulation
+        // Caps blocks elapsed at 7200 blocks maximum (~24 hours) to prevent excessive manipulation
+        if (blocksSinceReset > 7200) {
+            blocksSinceReset = 7200; // Cap at 7200 blocks maximum (~24 hours)
         }
         
-        if (timeSinceReset >= 1 hours) {
+        if (blocksSinceReset >= RATE_LIMIT_RESET_PERIOD) {
             rateLimitInfo.currentHourMinted = 0;
             rateLimitInfo.currentHourBurned = 0;
-            rateLimitInfo.lastRateLimitReset = uint64(block.timestamp);
-            emit RateLimitReset(block.timestamp);
+            rateLimitInfo.lastRateLimitReset = uint64(block.number);
+            emit RateLimitReset(block.number);
         }
 
         // Check if the new amount would exceed the rate limit
@@ -547,29 +551,29 @@ contract QEUROToken is
      * @dev Internal function to enforce rate limiting
      * 
      * @dev Security considerations:
-     *      - Resets rate limit if an hour has passed
+     *      - Resets rate limit if reset period has passed (~300 blocks)
      *      - Checks if the new amount would exceed the rate limit
      *      - Updates the current hour burned amount
      *      - Throws an error if rate limit is exceeded
-     *      - Includes bounds checking to prevent timestamp manipulation
+     *      - Includes bounds checking to prevent block manipulation
      * 
 
      */
     function _checkAndUpdateBurnRateLimit(uint256 amount) internal {
-        // Reset rate limit if an hour has passed
-        uint256 timeSinceReset = block.timestamp - rateLimitInfo.lastRateLimitReset;
+        // Reset rate limit if reset period has passed (using block numbers)
+        uint256 blocksSinceReset = block.number - rateLimitInfo.lastRateLimitReset;
         
-        // SECURITY FIX: Bounds check to prevent timestamp manipulation
-        // Caps time elapsed at 24 hours maximum to prevent excessive manipulation
-        if (timeSinceReset > 24 hours) {
-            timeSinceReset = 24 hours; // Cap at 24 hours maximum
+        // SECURITY FIX: Bounds check to prevent block manipulation
+        // Caps blocks elapsed at 7200 blocks maximum (~24 hours) to prevent excessive manipulation
+        if (blocksSinceReset > 7200) {
+            blocksSinceReset = 7200; // Cap at 7200 blocks maximum (~24 hours)
         }
         
-        if (timeSinceReset >= 1 hours) {
+        if (blocksSinceReset >= RATE_LIMIT_RESET_PERIOD) {
             rateLimitInfo.currentHourMinted = 0;
             rateLimitInfo.currentHourBurned = 0;
-            rateLimitInfo.lastRateLimitReset = uint64(block.timestamp);
-            emit RateLimitReset(block.timestamp);
+            rateLimitInfo.lastRateLimitReset = uint64(block.number);
+            emit RateLimitReset(block.number);
         }
 
         // Check if the new amount would exceed the rate limit
@@ -585,8 +589,8 @@ contract QEUROToken is
 
     /**
      * @notice Updates rate limits for mint and burn operations
-     * @param newMintLimit New mint rate limit per hour
-     * @param newBurnLimit New burn rate limit per hour
+     * @param newMintLimit New mint rate limit per reset period (~300 blocks)
+     * @param newBurnLimit New burn rate limit per reset period (~300 blocks)
      * @dev Only callable by admin
      * 
      * @dev Security considerations:

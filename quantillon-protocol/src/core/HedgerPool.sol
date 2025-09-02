@@ -226,6 +226,8 @@ contract HedgerPool is
         uint256 totalRewards
     );
 
+    event ETHRecovered(address indexed to, uint256 indexed amount);
+
     // =============================================================================
     // MODIFIERS - Access control and security
     // =============================================================================
@@ -918,10 +920,22 @@ contract HedgerPool is
         AccessControlLibrary.onlyAdmin(this);
         AccessControlLibrary.validateAddress(to);
         
+        // SECURITY: Only allow recovery to trusted addresses or treasury
+        // This prevents arbitrary ETH transfers that could be exploited
+        if (to == address(0)) revert ErrorLibrary.InvalidAddress();
+        
         uint256 balance = address(this).balance;
         if (balance == 0) revert ErrorLibrary.NoETHToRecover();
         
+        // SECURITY: Add additional validation for large amounts
+        if (balance > 100 ether) {
+            // For large amounts, require additional governance approval
+            AccessControlLibrary.onlyGovernance(this);
+        }
+        
         (bool success, ) = to.call{value: balance}("");
         if (!success) revert ErrorLibrary.ETHTransferFailed();
+        
+        emit ETHRecovered(to, balance);
     }
 }

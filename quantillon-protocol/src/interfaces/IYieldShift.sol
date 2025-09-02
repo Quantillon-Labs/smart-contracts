@@ -222,11 +222,6 @@ interface IYieldShift {
     function isYieldDistributionActive() external view returns (bool);
 
     /**
-     * @notice Harvest and distribute Aave yield (if any)
-     */
-    function harvestAndDistributeAaveYield() external;
-
-    /**
      * @notice Check if an update to yield distribution is needed and apply if so
      */
     function checkAndUpdateYieldDistribution() external;

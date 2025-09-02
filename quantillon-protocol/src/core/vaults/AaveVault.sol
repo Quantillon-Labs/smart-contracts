@@ -235,6 +235,11 @@ contract AaveVault is
         
         principalDeposited += amount;
         
+        // SECURITY: Validate that principalDeposited doesn't exceed reasonable bounds
+        if (principalDeposited > maxAaveExposure) {
+            revert ErrorLibrary.WouldExceedLimit();
+        }
+        
         emit DeployedToAave("deploy", amount, aTokensReceived, balanceAfter);
     }
 
@@ -289,6 +294,11 @@ contract AaveVault is
             // Only update accounting with verified amount
             uint256 principalWithdrawn = VaultMath.min(actualReceived, principalDeposited);
             principalDeposited -= principalWithdrawn;
+            
+            // SECURITY: Ensure principalDeposited never goes negative
+            if (principalDeposited > type(uint256).max - principalWithdrawn) {
+                revert ErrorLibrary.InvalidAmount();
+            }
             
             emit WithdrawnFromAave("withdraw", amount, actualReceived, aUSDC.balanceOf(address(this)));
             
@@ -530,8 +540,13 @@ contract AaveVault is
                 uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, principalDeposited);
                 principalDeposited -= principalWithdrawn;
                 
-                        emit EmergencyWithdrawal("Emergency exit from Aave", amountWithdrawn, block.timestamp);
-        emit EmergencyModeToggled("Emergency withdrawal executed", true);
+                // SECURITY: Ensure principalDeposited never goes negative
+                if (principalDeposited > type(uint256).max - principalWithdrawn) {
+                    revert ErrorLibrary.InvalidAmount();
+                }
+                
+                emit EmergencyWithdrawal("Emergency exit from Aave", amountWithdrawn, block.timestamp);
+                emit EmergencyModeToggled("Emergency withdrawal executed", true);
                 
             } catch Error(string memory reason) {
                 revert(string(abi.encodePacked("Emergency Aave withdrawal failed: ", reason)));

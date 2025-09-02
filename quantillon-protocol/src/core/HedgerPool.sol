@@ -652,8 +652,8 @@ contract HedgerPool is
             hedgerInfo.lastRewardClaim = uint64(block.timestamp);
             
             if (yieldShiftRewards > 0) {
-                bool claimed = yieldShift.claimHedgerYield(hedger);
-                if (!claimed) revert ErrorLibrary.YieldClaimFailed();
+                uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);
+                if (claimedAmount == 0) revert ErrorLibrary.YieldClaimFailed();
             }
             
             usdc.safeTransfer(hedger, totalRewards);
@@ -714,14 +714,14 @@ contract HedgerPool is
         HedgePosition storage position = positions[positionId];
         if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
         
-        (currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        (uint256 oraclePrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert ErrorLibrary.InvalidOraclePrice();
         
         return (
             position.positionSize,
             position.margin,
             position.entryPrice,
-            currentPrice,
+            oraclePrice,
             position.leverage,
             position.lastUpdateTime
         );

@@ -800,7 +800,7 @@ contract AaveVaultTestSuite is Test {
         
         // Test auto rebalancing
         vm.prank(vaultManager);
-        (bool rebalanced, uint256 newAllocation) = aaveVault.autoRebalance();
+        (bool rebalanced, uint256 newAllocation, uint256 expectedYield) = aaveVault.autoRebalance();
         
         // Check rebalancing result
         assertGe(newAllocation, 0);

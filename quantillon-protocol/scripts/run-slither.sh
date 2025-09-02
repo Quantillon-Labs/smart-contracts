@@ -3,6 +3,9 @@
 # Slither Security Analysis Script for Quantillon Protocol
 # This script runs Slither analysis on the smart contracts
 
+# Ensure we're in the project root directory
+cd "$(dirname "$0")/.."
+
 echo "🔍 Running Slither Security Analysis..."
 
 # Check if Python virtual environment exists

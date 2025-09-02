@@ -39,12 +39,14 @@ make docs
 
 ### `run-slither.sh` - Slither Security Scanner
 
-**Purpose**: Runs comprehensive security analysis on all smart contracts using Slither.
+**Purpose**: Runs comprehensive security analysis on all smart contracts using Slither with integrated human-readable output.
 
 **Features**:
 - Automated Python virtual environment management
 - Dependency installation and updates
 - Comprehensive security scanning with custom configuration
+- **Integrated human-readable parser** (no separate script needed)
+- Security findings summary with actionable recommendations
 - Integration with Foundry workflow
 - Detailed security reports in multiple formats
 
@@ -67,9 +69,10 @@ make security
 - Custom detector exclusions for false positives
 
 **Output**:
-- Console output with security findings
-- `slither-report.json` - Machine-readable results
-- `slither-report.sarif` - IDE integration format
+- **Console output** with security findings and human-readable summary
+- **`slither-report.txt`** - Human-readable text report
+- **`slither-report.json`** - Machine-readable results
+- **`slither-report.sarif`** - IDE integration format
 
 ---
 

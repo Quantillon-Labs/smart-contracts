@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -63,7 +63,7 @@ Manages QEURO user deposits, staking, and yield distribution
 - Vault math library for calculations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -142,6 +142,17 @@ Yield shift mechanism for yield management
 
 ```solidity
 IYieldShift public yieldShift;
+```
+
+
+### treasury
+Treasury address for ETH recovery
+
+*SECURITY: Only this address can receive ETH from recoverETH function*
+
+
+```solidity
+address public treasury;
 ```
 
 
@@ -386,9 +397,15 @@ constructor();
 
 
 ```solidity
-function initialize(address admin, address _qeuro, address _usdc, address _vault, address _yieldShift, address timelock)
-    public
-    initializer;
+function initialize(
+    address admin,
+    address _qeuro,
+    address _usdc,
+    address _vault,
+    address _yieldShift,
+    address timelock,
+    address _treasury
+) public initializer;
 ```
 
 ### deposit
@@ -1003,7 +1020,9 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recover accidentally sent ETH
+Recover ETH to treasury address only
+
+*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 
 ```solidity
@@ -1013,7 +1032,7 @@ function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`to`|`address payable`|Recipient address|
+|`to`|`address payable`|Treasury address (must match the contract's treasury)|
 
 
 ## Events
@@ -1144,6 +1163,21 @@ event PoolParameterUpdated(string indexed parameter, uint256 oldValue, uint256 n
 |`parameter`|`string`|Name of the parameter updated|
 |`oldValue`|`uint256`|Original value of the parameter|
 |`newValue`|`uint256`|New value of the parameter|
+
+### ETHRecovered
+Emitted when ETH is recovered to the treasury
+
+
+```solidity
+event ETHRecovered(address indexed to, uint256 indexed amount);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address`|Recipient address|
+|`amount`|`uint256`|Amount of ETH recovered|
 
 ## Structs
 ### UserInfo

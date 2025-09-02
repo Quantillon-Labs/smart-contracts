@@ -372,7 +372,8 @@ contract AaveVaultTestSuite is Test {
             address(aaveProvider),
             address(rewardsController),
             address(yieldShift),
-            mockTimelock
+            mockTimelock,
+            admin // Use admin as treasury for testing
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -436,7 +437,8 @@ contract AaveVaultTestSuite is Test {
             address(aaveProvider),
             address(rewardsController),
             address(yieldShift),
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
@@ -457,7 +459,8 @@ contract AaveVaultTestSuite is Test {
             address(aaveProvider),
             address(rewardsController),
             address(yieldShift),
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
@@ -1108,8 +1111,8 @@ contract AaveVaultTestSuite is Test {
     // =============================================================================
 
     /**
-     * @notice Test recovering ETH
-     * @dev Verifies that admin can recover accidentally sent ETH
+     * @notice Test recovering ETH to treasury address
+     * @dev Verifies that admin can recover accidentally sent ETH to treasury only
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
@@ -1118,7 +1121,7 @@ contract AaveVaultTestSuite is Test {
         // Send ETH to the contract
         vm.deal(address(aaveVault), recoveryAmount);
         
-        // Admin recovers ETH
+        // Admin recovers ETH to treasury (admin)
         vm.prank(admin);
         aaveVault.recoverETH(payable(admin));
         
@@ -1135,19 +1138,19 @@ contract AaveVaultTestSuite is Test {
         
         vm.prank(vaultManager);
         vm.expectRevert();
-        aaveVault.recoverETH(payable(vaultManager));
+        aaveVault.recoverETH(payable(admin));
     }
 
     /**
-     * @notice Test recovering ETH to zero address (should revert)
-     * @dev Verifies that ETH cannot be recovered to zero address
+     * @notice Test recovering ETH to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
      */
-    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
         vm.deal(address(aaveVault), 1 ether);
         
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        aaveVault.recoverETH(payable(address(0)));
+        aaveVault.recoverETH(payable(vaultManager)); // vaultManager is not treasury
     }
 
     /**

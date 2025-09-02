@@ -5,6 +5,7 @@
 - [ErrorLibrary](ErrorLibrary.sol/library.ErrorLibrary.md)
 - [FlashLoanProtection](FlashLoanProtection.sol/library.FlashLoanProtection.md)
 - [TokenLibrary](TokenLibrary.sol/library.TokenLibrary.md)
+- [TreasuryRecoveryLibrary](TreasuryRecoveryLibrary.sol/library.TreasuryRecoveryLibrary.md)
 - [ValidationLibrary](ValidationLibrary.sol/library.ValidationLibrary.md)
 - [VaultLibrary](VaultLibrary.sol/library.VaultLibrary.md)
 - [VaultMath](VaultMath.sol/library.VaultMath.md)

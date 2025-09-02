@@ -6,6 +6,7 @@ import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
+import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 /**
  * @title stQEUROTokenTestSuite
@@ -1035,32 +1036,30 @@ contract stQEUROTokenTestSuite is Test {
     }
     
     /**
-     * @notice Test recovering ETH
-     * @dev Verifies that admin can recover accidentally sent ETH
+     * @notice Test recovering ETH to treasury address
+     * @dev Verifies that admin can recover accidentally sent ETH to treasury only
      */
     function test_Recovery_RecoverETH() public {
-        address payable recipient = payable(address(0x456));
-        
         // Fund the contract with some ETH
         vm.deal(address(stQEURO), 1 ether);
         
         vm.prank(admin);
-        stQEURO.recoverETH(recipient);
+        stQEURO.recoverETH(payable(treasury)); // Must be treasury address
         
         // Should not revert (mock call will succeed)
     }
     
     /**
-     * @notice Test recovering ETH to zero address should revert
-     * @dev Verifies that ETH cannot be recovered to zero address
+     * @notice Test recovering ETH to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
      */
-    function test_Recovery_RecoverETHToZero_Revert() public {
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
         // Fund the contract with some ETH
         vm.deal(address(stQEURO), 1 ether);
         
         vm.prank(admin);
-        vm.expectRevert("stQEURO: Cannot send to zero address");
-        stQEURO.recoverETH(payable(address(0)));
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        stQEURO.recoverETH(payable(address(0x456))); // Not treasury
     }
     
     /**
@@ -1073,7 +1072,7 @@ contract stQEUROTokenTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        stQEURO.recoverETH(payable(address(0x456)));
+        stQEURO.recoverETH(payable(treasury));
     }
 
     // =============================================================================

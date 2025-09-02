@@ -1278,21 +1278,21 @@ contract QTITokenTestSuite is Test {
     }
 
     /**
-     * @notice Test recovering ETH
-     * @dev Verifies that admin can recover accidentally sent ETH
+     * @notice Test recovering ETH to treasury address
+     * @dev Verifies that admin can recover accidentally sent ETH to treasury only
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
-        uint256 initialBalance = admin.balance;
+        uint256 initialBalance = treasury.balance;
         
         // Send ETH to the contract
         vm.deal(address(qtiToken), recoveryAmount);
         
-        // Admin recovers ETH
+        // Admin recovers ETH to treasury
         vm.prank(admin);
-        qtiToken.recoverETH(payable(admin));
+        qtiToken.recoverETH(payable(treasury));
         
-        uint256 finalBalance = admin.balance;
+        uint256 finalBalance = treasury.balance;
         assertEq(finalBalance, initialBalance + recoveryAmount);
     }
 
@@ -1305,19 +1305,19 @@ contract QTITokenTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        qtiToken.recoverETH(payable(user1));
+        qtiToken.recoverETH(payable(admin));
     }
 
     /**
-     * @notice Test recovering ETH to zero address (should revert)
-     * @dev Verifies that ETH cannot be recovered to zero address
+     * @notice Test recovering ETH to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
      */
-    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
         vm.deal(address(qtiToken), 1 ether);
         
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        qtiToken.recoverETH(payable(address(0)));
+        qtiToken.recoverETH(payable(user1)); // user1 is not treasury
     }
 
     /**
@@ -1327,7 +1327,7 @@ contract QTITokenTestSuite is Test {
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
-        qtiToken.recoverETH(payable(admin));
+        qtiToken.recoverETH(payable(treasury));
     }
 
     /**

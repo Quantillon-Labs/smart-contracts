@@ -5,6 +5,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 /**
  * @title MockAggregatorV3
@@ -602,8 +603,8 @@ contract ChainlinkOracleTestSuite is Test {
     }
     
     /**
-     * @notice Test ETH recovery
-     * @dev Verifies ETH recovery functionality
+     * @notice Test ETH recovery to treasury address
+     * @dev Verifies ETH recovery functionality to treasury only
      */
     function test_Recovery_RecoverETH() public {
         uint256 ethAmount = 1 ether;
@@ -612,24 +613,24 @@ contract ChainlinkOracleTestSuite is Test {
         vm.deal(address(oracle), ethAmount);
         assertEq(address(oracle).balance, ethAmount);
         
-        // Recover ETH
+        // Recover ETH to treasury (admin)
         vm.prank(admin);
-        oracle.recoverETH(payable(recipient));
+        oracle.recoverETH(payable(admin));
         
-        assertEq(recipient.balance, ethAmount);
+        assertEq(admin.balance, ethAmount);
         assertEq(address(oracle).balance, 0);
     }
     
     /**
-     * @notice Test ETH recovery to zero address should revert
-     * @dev Verifies parameter validation
+     * @notice Test ETH recovery to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
      */
-    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
         vm.deal(address(oracle), 1 ether);
         
         vm.prank(admin);
-        vm.expectRevert("Oracle: Cannot send to zero address");
-        oracle.recoverETH(payable(address(0)));
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        oracle.recoverETH(payable(recipient)); // recipient is not treasury
     }
     
     /**
@@ -638,8 +639,8 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("Oracle: No ETH to recover");
-        oracle.recoverETH(payable(recipient));
+        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
+        oracle.recoverETH(payable(admin));
     }
 
     // =============================================================================

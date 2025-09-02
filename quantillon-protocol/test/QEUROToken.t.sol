@@ -1142,19 +1142,19 @@ contract QEUROTokenTestSuite is Test {
     }
     
     /**
-     * @notice Test recovering ETH
-     * @dev Verifies that admin can recover accidentally sent ETH
+     * @notice Test recovering ETH to treasury address
+     * @dev Verifies that admin can recover accidentally sent ETH to treasury only
      */
     function test_Recovery_RecoverETH() public {
         // Send ETH to the contract
         vm.deal(address(qeuroToken), 1 ether);
         
-        uint256 initialBalance = user1.balance;
+        uint256 initialBalance = admin.balance; // admin is treasury
         
         vm.prank(admin);
-        qeuroToken.recoverETH(payable(user1));
+        qeuroToken.recoverETH(payable(admin)); // Must be treasury address
         
-        assertEq(user1.balance, initialBalance + 1 ether);
+        assertEq(admin.balance, initialBalance + 1 ether);
     }
     
     /**
@@ -1166,7 +1166,29 @@ contract QEUROTokenTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        qeuroToken.recoverETH(payable(user2));
+        qeuroToken.recoverETH(payable(admin));
+    }
+    
+    /**
+     * @notice Test recovering ETH to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
+     */
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
+        vm.deal(address(qeuroToken), 1 ether);
+        
+        vm.prank(admin);
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        qeuroToken.recoverETH(payable(user1)); // user1 is not treasury
+    }
+    
+    /**
+     * @notice Test recovering ETH when no ETH available should revert
+     * @dev Verifies that recovery fails when contract has no ETH
+     */
+    function test_Recovery_RecoverETHNoBalance_Revert() public {
+        vm.prank(admin);
+        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
+        qeuroToken.recoverETH(payable(admin));
     }
 
     // =============================================================================

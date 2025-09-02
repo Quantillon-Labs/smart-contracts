@@ -1,5 +1,5 @@
 # IstQEURO
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/interfaces/IstQEURO.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/interfaces/IstQEURO.sol)
 
 **Author:**
 Quantillon Labs
@@ -7,7 +7,7 @@ Quantillon Labs
 Interface for the stQEURO yield-bearing wrapper token (yield accrual mechanism)
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions

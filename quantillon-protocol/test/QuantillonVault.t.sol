@@ -8,6 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 /**
  * @title MockToken
@@ -77,6 +78,7 @@ contract QuantillonVaultTestSuite is Test {
     // Mock contracts
     address public mockUSDC = address(0x7);
     address public mockOracle = address(0x8);
+    address public mockTimelock = address(0x789); // mock timelock address (also used as treasury)
     
     // =============================================================================
     // TEST CONSTANTS
@@ -112,7 +114,7 @@ contract QuantillonVaultTestSuite is Test {
             address(qeuroToken),
             mockUSDC,
             mockOracle,
-            address(0x789) // mock timelock address (also used as treasury)
+            mockTimelock // mock timelock address (also used as treasury)
         );
         vault = QuantillonVault(address(new ERC1967Proxy(address(vaultImplementation), vaultInitData)));
         
@@ -785,18 +787,18 @@ contract QuantillonVaultTestSuite is Test {
     }
     
     /**
-     * @notice Test recovering ETH
-     * @dev Verifies that admin can recover accidentally sent ETH
+     * @notice Test recovering ETH to treasury address
+     * @dev Verifies that admin can recover accidentally sent ETH to treasury only
      */
     function test_Recovery_RecoverETH() public {
         // Fund the vault with ETH
         vm.deal(address(vault), 1 ether);
         
         vm.prank(admin);
-        vault.recoverETH(payable(user1));
+        vault.recoverETH(payable(mockTimelock)); // Must be treasury address
         
         // Verify ETH was transferred
-        assertEq(user1.balance, 100 ether + 1 ether);
+        assertEq(mockTimelock.balance, 1 ether);
     }
     
     /**
@@ -808,19 +810,19 @@ contract QuantillonVaultTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        vault.recoverETH(payable(user2));
+        vault.recoverETH(payable(admin));
     }
     
     /**
-     * @notice Test recovering ETH to zero address should revert
-     * @dev Verifies that zero address is rejected
+     * @notice Test recovering ETH to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
      */
-    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
         vm.deal(address(vault), 1 ether);
         
         vm.prank(admin);
-        vm.expectRevert("Vault: Cannot send to zero address");
-        vault.recoverETH(payable(address(0)));
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vault.recoverETH(payable(user1)); // user1 is not treasury
     }
     
     /**
@@ -829,8 +831,8 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoETHAvailable_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("Vault: No ETH to recover");
-        vault.recoverETH(payable(user1));
+        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
+        vault.recoverETH(payable(mockTimelock));
     }
     
     // =============================================================================

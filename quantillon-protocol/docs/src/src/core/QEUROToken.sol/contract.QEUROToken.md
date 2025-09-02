@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -33,7 +33,7 @@ Euro-pegged stablecoin token for the Quantillon protocol
 - Peg: 1:1 with Euro (managed by vault operations)*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -103,15 +103,26 @@ uint256 public constant DEFAULT_MAX_SUPPLY = 100_000_000 * 1e18;
 
 
 ### MAX_RATE_LIMIT
-Maximum rate limit for mint/burn operations (per hour)
+Maximum rate limit for mint/burn operations (per reset period)
 
 *Prevents abuse and provides time for emergency response*
 
-*Value: 10,000,000 * 10^18 = 10,000,000 QEURO per hour*
+*Value: 10,000,000 * 10^18 = 10,000,000 QEURO per reset period (~300 blocks)*
 
 
 ```solidity
 uint256 public constant MAX_RATE_LIMIT = 10_000_000 * 1e18;
+```
+
+
+### RATE_LIMIT_RESET_PERIOD
+Rate limit reset period in blocks (~1 hour assuming 12 second blocks)
+
+*Using block numbers instead of timestamps for security against miner manipulation*
+
+
+```solidity
+uint256 public constant RATE_LIMIT_RESET_PERIOD = 300;
 ```
 
 
@@ -207,6 +218,17 @@ uint256 public minPricePrecision;
 ```
 
 
+### treasury
+Treasury address for ETH recovery
+
+*SECURITY: Only this address can receive ETH from recoverETH function*
+
+
+```solidity
+address public treasury;
+```
+
+
 ## Functions
 ### flashLoanProtection
 
@@ -224,7 +246,7 @@ modifier flashLoanProtection();
 ### constructor
 
 **Note:**
-oz-upgrades-unsafe-allow: constructor
+constructor
 
 
 ```solidity
@@ -250,7 +272,7 @@ Initializes the QEURO token (called only once at deployment)
 
 
 ```solidity
-function initialize(address admin, address vault, address timelock) public initializer;
+function initialize(address admin, address vault, address timelock, address _treasury) public initializer;
 ```
 **Parameters**
 
@@ -259,6 +281,7 @@ function initialize(address admin, address vault, address timelock) public initi
 |`admin`|`address`|Address that will have the DEFAULT_ADMIN_ROLE|
 |`vault`|`address`|Address of the QuantillonVault (will get MINTER_ROLE and BURNER_ROLE)|
 |`timelock`|`address`||
+|`_treasury`|`address`||
 
 
 ### mint
@@ -378,11 +401,11 @@ Checks and updates mint rate limit
 *Internal function to enforce rate limiting*
 
 *Security considerations:
-- Resets rate limit if an hour has passed
+- Resets rate limit if reset period has passed (~300 blocks)
 - Checks if the new amount would exceed the rate limit
 - Updates the current hour minted amount
 - Throws an error if rate limit is exceeded
-- Includes bounds checking to prevent timestamp manipulation*
+- Includes bounds checking to prevent block manipulation*
 
 
 ```solidity
@@ -402,11 +425,11 @@ Checks and updates burn rate limit
 *Internal function to enforce rate limiting*
 
 *Security considerations:
-- Resets rate limit if an hour has passed
+- Resets rate limit if reset period has passed (~300 blocks)
 - Checks if the new amount would exceed the rate limit
 - Updates the current hour burned amount
 - Throws an error if rate limit is exceeded
-- Includes bounds checking to prevent timestamp manipulation*
+- Includes bounds checking to prevent block manipulation*
 
 
 ```solidity
@@ -440,8 +463,8 @@ function updateRateLimits(uint256 newMintLimit, uint256 newBurnLimit) external o
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newMintLimit`|`uint256`|New mint rate limit per hour|
-|`newBurnLimit`|`uint256`|New burn rate limit per hour|
+|`newMintLimit`|`uint256`|New mint rate limit per reset period (~300 blocks)|
+|`newBurnLimit`|`uint256`|New burn rate limit per reset period (~300 blocks)|
 
 
 ### blacklistAddress
@@ -955,13 +978,9 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recovers ETH accidentally sent
+Recover ETH to treasury address only
 
-*Security considerations:
-- Only DEFAULT_ADMIN_ROLE can recover
-- Prevents sending to zero address
-- Validates balance before attempting transfer
-- Uses call() for reliable ETH transfers to any contract*
+*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 
 ```solidity
@@ -971,7 +990,7 @@ function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`to`|`address payable`|ETH recipient|
+|`to`|`address payable`|Treasury address (must match the contract's treasury)|
 
 
 ### updateMaxSupply
@@ -999,6 +1018,23 @@ function updateMaxSupply(uint256 newMaxSupply) external onlyRole(DEFAULT_ADMIN_R
 |Name|Type|Description|
 |----|----|-----------|
 |`newMaxSupply`|`uint256`|New supply limit|
+
+
+### updateTreasury
+
+Update treasury address
+
+*SECURITY: Only governance can update treasury address*
+
+
+```solidity
+function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_treasury`|`address`|New treasury address|
 
 
 ### getTokenInfo
@@ -1144,6 +1180,20 @@ event RateLimitsUpdated(string indexed limitType, uint256 mintLimit, uint256 bur
 |`mintLimit`|`uint256`|New mint rate limit in wei per hour (18 decimals)|
 |`burnLimit`|`uint256`|New burn rate limit in wei per hour (18 decimals)|
 
+### TreasuryUpdated
+Emitted when treasury address is updated
+
+
+```solidity
+event TreasuryUpdated(address indexed treasury);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`treasury`|`address`|New treasury address|
+
 ### AddressBlacklisted
 Emitted when an address is blacklisted
 
@@ -1245,18 +1295,33 @@ event MinPricePrecisionUpdated(uint256 oldPrecision, uint256 newPrecision);
 ### RateLimitReset
 Emitted when rate limit is reset
 
-*OPTIMIZED: Indexed timestamp for efficient time-based filtering*
+*OPTIMIZED: Indexed block number for efficient block-based filtering*
 
 
 ```solidity
-event RateLimitReset(uint256 indexed timestamp);
+event RateLimitReset(uint256 indexed blockNumber);
 ```
 
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`timestamp`|`uint256`|Timestamp of reset|
+|`blockNumber`|`uint256`|Block number when reset occurred|
+
+### ETHRecovered
+Emitted when ETH is recovered to treasury
+
+
+```solidity
+event ETHRecovered(address indexed to, uint256 indexed amount);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address`|Address to which ETH was recovered|
+|`amount`|`uint256`|Amount of ETH recovered|
 
 ## Structs
 ### RateLimitCaps
@@ -1275,7 +1340,7 @@ struct RateLimitCaps {
 ### RateLimitInfo
 Rate limiting information - OPTIMIZED: Packed for storage efficiency
 
-*Resets every hour or when rate limits are updated*
+*Resets every ~300 blocks (~1 hour assuming 12 second blocks) or when rate limits are updated*
 
 *Used to enforce mintRateLimit and burnRateLimit*
 

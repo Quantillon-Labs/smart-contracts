@@ -101,7 +101,8 @@ contract QuantillonInvariants is Test {
             QTIToken.initialize.selector,
             admin,
             treasury,
-            mockTimelock
+            mockTimelock,
+            admin // Use admin as treasury for testing
         );
         ERC1967Proxy qtiProxy = new ERC1967Proxy(address(qtiImplementation), qtiInitData);
         qtiToken = QTIToken(address(qtiProxy));
@@ -112,7 +113,8 @@ contract QuantillonInvariants is Test {
             QEUROToken.initialize.selector,
             admin,
             treasury,
-            mockTimelock
+            mockTimelock,
+            admin // Use admin as treasury for testing
         );
         ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroImplementation), qeuroInitData);
         qeuroToken = QEUROToken(address(qeuroProxy));

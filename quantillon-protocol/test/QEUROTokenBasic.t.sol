@@ -30,7 +30,8 @@ contract QEUROTokenBasicTest is Test {
             QEUROToken.initialize.selector,
             admin,
             vault,
-            mockTimelock
+            mockTimelock,
+            admin // Use admin as treasury for testing
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(

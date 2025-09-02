@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -74,7 +74,7 @@ EUR/USD hedging pool for managing currency risk and providing yield
 - Position tracking and management systems*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -117,6 +117,13 @@ IChainlinkOracle public oracle;
 
 ```solidity
 IYieldShift public yieldShift;
+```
+
+
+### treasury
+
+```solidity
+address public treasury;
 ```
 
 
@@ -331,9 +338,13 @@ uint256 public constant MAX_REWARD_PERIOD = 365 days;
 
 
 ### LIQUIDATION_COOLDOWN
+*Cooldown period in blocks (~1 hour assuming 12 second blocks)*
+
+*Using block numbers instead of timestamps for security against miner manipulation*
+
 
 ```solidity
-uint256 public constant LIQUIDATION_COOLDOWN = 1 hours;
+uint256 public constant LIQUIDATION_COOLDOWN = 300;
 ```
 
 
@@ -390,9 +401,14 @@ constructor();
 
 
 ```solidity
-function initialize(address admin, address _usdc, address _oracle, address _yieldShift, address timelock)
-    public
-    initializer;
+function initialize(
+    address admin,
+    address _usdc,
+    address _oracle,
+    address _yieldShift,
+    address timelock,
+    address _treasury
+) public initializer;
 ```
 
 ### enterHedgePosition
@@ -429,6 +445,31 @@ function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPosition
     whenNotPaused
     returns (int256[] memory pnls);
 ```
+
+### _closeSinglePosition
+
+Close a single hedge position
+
+
+```solidity
+function _closeSinglePosition(uint256 positionId, uint256 currentPrice, HedgerInfo storage hedger)
+    internal
+    returns (int256 pnl);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The ID of the position to close|
+|`currentPrice`|`uint256`|The current EUR/USD price|
+|`hedger`|`HedgerInfo`|The hedger info storage reference|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pnl`|`int256`|The profit/loss for the position|
+
 
 ### _removePositionFromArrays
 
@@ -617,10 +658,21 @@ function isHedgingActive() external view returns (bool);
 
 ### clearExpiredLiquidationCommitment
 
+Clear expired liquidation commitment after cooldown period
+
+*Uses block numbers instead of timestamps for security against miner manipulation*
+
 
 ```solidity
 function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger|
+|`positionId`|`uint256`|ID of the position|
+
 
 ### cancelLiquidationCommitment
 
@@ -645,10 +697,37 @@ function recoverToken(address token, address to, uint256 amount) external;
 
 ### recoverETH
 
+Recover ETH to treasury address only
+
+*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
+
 
 ```solidity
 function recoverETH(address payable to) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address payable`|Treasury address (must match the contract's treasury)|
+
+
+### updateTreasury
+
+Update treasury address
+
+*SECURITY: Only governance can update treasury address*
+
+
+```solidity
+function updateTreasury(address _treasury) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_treasury`|`address`|New treasury address|
+
 
 ## Events
 ### HedgePositionOpened
@@ -702,6 +781,18 @@ event HedgerLiquidated(
 event HedgingRewardsClaimed(
     address indexed hedger, uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards
 );
+```
+
+### ETHRecovered
+
+```solidity
+event ETHRecovered(address indexed to, uint256 indexed amount);
+```
+
+### TreasuryUpdated
+
+```solidity
+event TreasuryUpdated(address indexed treasury);
 ```
 
 ## Structs

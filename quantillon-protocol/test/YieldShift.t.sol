@@ -221,7 +221,8 @@ contract YieldShiftTestSuite is Test {
             address(hedgerPool),
             address(aaveVault),
             address(stQEURO),
-            mockTimelock
+            mockTimelock,
+            admin // Use admin as treasury for testing
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -326,7 +327,8 @@ contract YieldShiftTestSuite is Test {
             address(hedgerPool),
             address(aaveVault),
             address(stQEURO),
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
@@ -348,7 +350,8 @@ contract YieldShiftTestSuite is Test {
             address(hedgerPool),
             address(aaveVault),
             address(stQEURO),
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
@@ -1371,8 +1374,8 @@ contract YieldShiftTestSuite is Test {
     }
 
     /**
-     * @notice Test recovering ETH
-     * @dev Verifies that admin can recover accidentally sent ETH
+     * @notice Test recovering ETH to treasury address
+     * @dev Verifies that admin can recover accidentally sent ETH to treasury only
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
@@ -1381,7 +1384,7 @@ contract YieldShiftTestSuite is Test {
         // Send ETH to the contract
         vm.deal(address(yieldShift), recoveryAmount);
         
-        // Admin recovers ETH
+        // Admin recovers ETH to treasury (admin)
         vm.prank(admin);
         yieldShift.recoverETH(payable(admin));
         
@@ -1398,19 +1401,19 @@ contract YieldShiftTestSuite is Test {
         
         vm.prank(user);
         vm.expectRevert();
-        yieldShift.recoverETH(payable(user));
+        yieldShift.recoverETH(payable(admin));
     }
 
     /**
-     * @notice Test recovering ETH to zero address (should revert)
-     * @dev Verifies that ETH cannot be recovered to zero address
+     * @notice Test recovering ETH to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
      */
-    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
         vm.deal(address(yieldShift), 1 ether);
         
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        yieldShift.recoverETH(payable(address(0)));
+        yieldShift.recoverETH(payable(user)); // user is not treasury
     }
 
     /**

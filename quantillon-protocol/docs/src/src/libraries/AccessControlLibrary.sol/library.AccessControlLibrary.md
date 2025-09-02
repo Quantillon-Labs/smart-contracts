@@ -1,5 +1,5 @@
 # AccessControlLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/libraries/AccessControlLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/libraries/AccessControlLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -13,7 +13,7 @@ Access control functions for Quantillon Protocol
 - Provides standardized error handling for access control*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions

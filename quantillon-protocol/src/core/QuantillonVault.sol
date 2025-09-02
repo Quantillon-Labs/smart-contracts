@@ -585,17 +585,8 @@ contract QuantillonVault is
      *      - Uses call() for reliable ETH transfers to any contract
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // SECURITY: Only allow recovery to the contract's treasury address
-        // This prevents arbitrary ETH transfers that could be exploited
-        require(to == treasury, "Vault: Only treasury can receive ETH");
-        
-        uint256 balance = address(this).balance;
-        require(balance > 0, "Vault: No ETH to recover");
-        
-        // SECURITY FIX: Use call() instead of transfer() for reliable ETH transfers
-        // transfer() has 2300 gas stipend which can fail with complex receive/fallback logic
-        (bool success, ) = to.call{value: balance}("");
-        require(success, "Vault: ETH transfer failed");
+        // Use the shared library for secure ETH recovery
+        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
     }
 
     // =============================================================================

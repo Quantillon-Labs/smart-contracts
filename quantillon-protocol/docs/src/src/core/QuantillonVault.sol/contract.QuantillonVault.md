@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -54,7 +54,7 @@ Main vault managing QEURO minting against USDC collateral
 - Vault math library for precise calculations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -120,6 +120,17 @@ Chainlink oracle contract for EUR/USD price feeds
 
 ```solidity
 IChainlinkOracle public oracle;
+```
+
+
+### treasury
+Treasury address for ETH recovery
+
+*SECURITY: Only this address can receive ETH from recoverETH function*
+
+
+```solidity
+address public treasury;
 ```
 
 
@@ -204,7 +215,7 @@ modifier flashLoanProtection();
 ### constructor
 
 **Note:**
-oz-upgrades-unsafe-allow: constructor
+constructor
 
 
 ```solidity
@@ -463,7 +474,9 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recovers ETH accidentally sent
+Recover ETH to treasury address only
+
+*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 *Security considerations:
 - Only DEFAULT_ADMIN_ROLE can recover
@@ -479,7 +492,7 @@ function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`to`|`address payable`|ETH recipient|
+|`to`|`address payable`|Treasury address (must match the contract's treasury)|
 
 
 ## Events

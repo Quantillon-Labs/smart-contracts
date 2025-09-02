@@ -1,5 +1,5 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -46,7 +46,7 @@ Governance token for Quantillon Protocol with vote-escrow mechanics
 - Governance power: Based on locked amount and duration*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -880,7 +880,9 @@ function recoverToken(address token, address to, uint256 amount) external onlyRo
 
 ### recoverETH
 
-Recover accidentally sent ETH
+Recover accidentally sent ETH to treasury address only
+
+*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 
 ```solidity
@@ -890,7 +892,7 @@ function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`to`|`address payable`|Recipient address|
+|`to`|`address payable`|Treasury address (must match the contract's treasury)|
 
 
 ### getGovernanceInfo
@@ -1074,6 +1076,21 @@ event DecentralizationLevelUpdated(uint256 indexed newLevel);
 |Name|Type|Description|
 |----|----|-----------|
 |`newLevel`|`uint256`|New decentralization level (0-10000)|
+
+### ETHRecovered
+Emitted when ETH is recovered from the contract
+
+
+```solidity
+event ETHRecovered(address indexed to, uint256 indexed amount);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`to`|`address`|Recipient address|
+|`amount`|`uint256`|Amount of ETH recovered|
 
 ## Structs
 ### LockInfo

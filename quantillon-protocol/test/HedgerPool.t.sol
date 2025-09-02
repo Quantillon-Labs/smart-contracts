@@ -235,7 +235,8 @@ contract HedgerPoolTestSuite is Test {
             mockUSDC,
             mockOracle,
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
@@ -249,7 +250,8 @@ contract HedgerPoolTestSuite is Test {
             address(0),
             mockOracle,
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
@@ -263,7 +265,8 @@ contract HedgerPoolTestSuite is Test {
             mockUSDC,
             address(0),
             mockYieldShift,
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
@@ -277,7 +280,8 @@ contract HedgerPoolTestSuite is Test {
             mockUSDC,
             mockOracle,
             address(0),
-            mockTimelock
+            mockTimelock,
+            admin
         );
         
         vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
@@ -1205,8 +1209,8 @@ contract HedgerPoolTestSuite is Test {
     }
 
     /**
-     * @notice Test recovering ETH
-     * @dev Verifies that admin can recover accidentally sent ETH
+     * @notice Test recovering ETH to treasury address
+     * @dev Verifies that admin can recover accidentally sent ETH to treasury only
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
@@ -1215,7 +1219,7 @@ contract HedgerPoolTestSuite is Test {
         // Send ETH to the contract
         vm.deal(address(hedgerPool), recoveryAmount);
         
-        // Admin recovers ETH
+        // Admin recovers ETH to treasury (admin)
         vm.prank(admin);
         hedgerPool.recoverETH(payable(admin));
         
@@ -1232,19 +1236,19 @@ contract HedgerPoolTestSuite is Test {
         
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.recoverETH(payable(hedger1));
+        hedgerPool.recoverETH(payable(admin));
     }
 
     /**
-     * @notice Test recovering ETH to zero address (should revert)
-     * @dev Verifies that ETH cannot be recovered to zero address
+     * @notice Test recovering ETH to non-treasury address should revert
+     * @dev Verifies that ETH can only be recovered to treasury address
      */
-    function test_Recovery_RecoverETHToZeroAddress_Revert() public {
+    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
         vm.deal(address(hedgerPool), 1 ether);
         
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        hedgerPool.recoverETH(payable(address(0)));
+        hedgerPool.recoverETH(payable(hedger1)); // hedger1 is not treasury
     }
 
     /**

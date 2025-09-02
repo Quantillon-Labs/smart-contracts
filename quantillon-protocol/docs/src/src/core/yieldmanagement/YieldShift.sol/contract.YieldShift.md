@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0e00532d7586178229ff1180b9b225e8c7a432fb/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -67,7 +67,7 @@ Dynamic yield distribution system balancing rewards between users and hedgers
 - USDC for yield payments and transfers*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -218,6 +218,13 @@ uint256 public hedgerYieldPool;
 ```
 
 
+### treasury
+
+```solidity
+address public treasury;
+```
+
+
 ### yieldSources
 
 ```solidity
@@ -328,7 +335,8 @@ function initialize(
     address _hedgerPool,
     address _aaveVault,
     address _stQEURO,
-    address timelock
+    address timelock,
+    address _treasury
 ) public initializer;
 ```
 
@@ -610,7 +618,7 @@ function isYieldDistributionActive() external view returns (bool);
 
 ### isYieldSourceAuthorized
 
-Check if an address is authorized for a specific yield type
+Check if a yield source is authorized
 
 
 ```solidity
@@ -620,8 +628,8 @@ function isYieldSourceAuthorized(address source, bytes32 yieldType) external vie
 
 |Name|Type|Description|
 |----|----|-----------|
-|`source`|`address`|Address to check|
-|`yieldType`|`bytes32`|Yield type to check|
+|`source`|`address`|Source address|
+|`yieldType`|`bytes32`|Yield type identifier|
 
 **Returns**
 
@@ -629,13 +637,6 @@ function isYieldSourceAuthorized(address source, bytes32 yieldType) external vie
 |----|----|-----------|
 |`<none>`|`bool`|True if authorized|
 
-
-### harvestAndDistributeAaveYield
-
-
-```solidity
-function harvestAndDistributeAaveYield() external nonReentrant;
-```
 
 ### checkAndUpdateYieldDistribution
 

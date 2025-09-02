@@ -37,7 +37,19 @@ make docs
 
 ## 🔍 Security Analysis
 
-### `run-slither.sh` - Slither Security Scanner
+### `run-slither.sh` - Enhanced Slither Security Scanner (Beautiful Formatting)
+
+**Purpose**: Runs Slither analysis with enhanced visual formatting, emojis, and improved readability.
+
+**Features**:
+- **🎨 Beautiful Visual Design**: Enhanced section separators and formatting
+- **🚨 Color-Coded Priority Levels**: Clear visual distinction between issue types
+- **📌 Icon-Based Findings**: Each finding marked with relevant icons
+- **━━━ Enhanced Separators**: Better visual organization of sections
+- **🔍 Improved Readability**: Cleaner, more engaging output format
+- **🔧 Integrated Parser**: Human-readable output by default
+- **📊 Comprehensive Analysis**: Security findings with actionable recommendations
+- **🔄 Automated Workflow**: Python environment management and dependency installation
 
 **Purpose**: Runs comprehensive security analysis on all smart contracts using Slither with integrated human-readable output.
 
@@ -50,7 +62,7 @@ make docs
 - Integration with Foundry workflow
 - Detailed security reports in multiple formats
 
-**Usage**:
+ep the enhanced o**Usage**:
 ```bash
 # Direct execution
 ./scripts/run-slither.sh

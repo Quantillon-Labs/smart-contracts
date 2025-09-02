@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# Slither Security Analysis Script for Quantillon Protocol
-# This script runs Slither analysis on the smart contracts
+# Enhanced Slither Security Analysis Script for Quantillon Protocol
+# This script runs Slither analysis with beautiful, readable output
 
 # Ensure we're in the project root directory
 cd "$(dirname "$0")/.."
 
-echo "🔍 Running Slither Security Analysis..."
+echo "🔍 Running Enhanced Slither Security Analysis..."
+echo ""
 
 # Check if Python virtual environment exists
 if [ ! -d "venv" ]; then
@@ -22,108 +23,273 @@ source venv/bin/activate
 echo "📥 Installing Slither dependencies..."
 pip install -r requirements.txt
 
-# Run Slither analysis with human-readable output
+# Run Slither analysis with checklist output for detailed findings
 echo "🚀 Running Slither analysis..."
-slither . --config-file slither.config.json --print human-summary
+slither . --config-file slither.config.json --checklist --checklist-limit 10 > slither-report-raw.txt 2>&1
 
 # Check exit code
 if [ $? -eq 0 ]; then
     echo "✅ Slither analysis completed successfully"
 else
-    echo "⚠️  Slither analysis found issues - check the output above"
+    echo "⚠️  Slither analysis found issues - check the output below"
 fi
 
-# Generate human-readable text report
-echo "📝 Generating human-readable text report..."
-slither . --config-file slither.config.json --print human-summary > slither-report.txt 2>&1
+# Generate beautiful human-readable report
+echo "📝 Generating beautiful human-readable report..."
 
-# Parse and display results in human-readable format
-echo ""
-echo "📖 PARSING RESULTS FOR HUMAN READABILITY"
-echo "========================================"
-echo ""
+# Create the beautiful report
+cat > slither-report.txt << 'EOF'
+🎨 QUANTILLON PROTOCOL - ENHANCED SECURITY ANALYSIS REPORT
+═══════════════════════════════════════════════════════════════════
+Generated: $(date)
+Tool: Slither Security Analyzer
+Configuration: slither.config.json
 
-# Extract summary information
-echo "📊 ANALYSIS SUMMARY"
-echo "-------------------"
-TOTAL_CONTRACTS=$(cat slither-report.txt | grep "Total number of contracts" | sed 's/.*: //' | head -1)
-SOURCE_SLOC=$(cat slither-report.txt | grep "SLOC in source files" | sed 's/.*: //' | head -1)
-DEPENDENCY_SLOC=$(cat slither-report.txt | grep "SLOC in dependencies" | sed 's/.*: //' | head -1)
+📊 EXECUTIVE SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
 
-if [ ! -z "$TOTAL_CONTRACTS" ]; then
-    echo "📦 Total Contracts: $TOTAL_CONTRACTS"
-fi
-if [ ! -z "$SOURCE_SLOC" ]; then
-    echo "📝 Source Code: $SOURCE_SLOC lines"
-fi
-if [ ! -z "$DEPENDENCY_SLOC" ]; then
-    echo "🔗 Dependencies: $DEPENDENCY_SLOC lines"
-fi
-echo ""
+# Add issue counts
+HIGH_ISSUES=$(cat slither-report-raw.txt | grep -c "arbitrary from\|reentrancy\|uninitialized state variables\|dangerous strict equalities\|functions that send ether to arbitrary destinations" 2>/dev/null || echo "0")
+MEDIUM_ISSUES=$(cat slither-report-raw.txt | grep -c "unused-return\|reentrancy-no-eth\|incorrect-equality" 2>/dev/null || echo "0")
+LOW_ISSUES=$(cat slither-report-raw.txt | grep -c "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" 2>/dev/null || echo "0")
+INFO_ISSUES=$(cat slither-report-raw.txt | grep -c "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" 2>/dev/null || echo "0")
 
-# Extract issue counts
-echo "🚨 SECURITY ISSUES BY PRIORITY"
-echo "------------------------------"
-HIGH_ISSUES=$(cat slither-report.txt | grep "high issues" | sed 's/.*: //' | head -1)
-MEDIUM_ISSUES=$(cat slither-report.txt | grep "medium issues" | sed 's/.*: //' | head -1)
-LOW_ISSUES=$(cat slither-report.txt | grep "low issues" | sed 's/.*: //' | head -1)
-INFO_ISSUES=$(cat slither-report.txt | grep "informational issues" | sed 's/.*: //' | head -1)
+cat >> slither-report.txt << EOF
+🔴 High Priority Issues: $HIGH_ISSUES
+🟡 Medium Priority Issues: $MEDIUM_ISSUES  
+🟢 Low Priority Issues: $LOW_ISSUES
+ℹ️  Informational Issues: $INFO_ISSUES
 
-if [ ! -z "$HIGH_ISSUES" ]; then
-    echo "🔴 High Priority: $HIGH_ISSUES"
-fi
-if [ ! -z "$MEDIUM_ISSUES" ]; then
-    echo "🟡 Medium Priority: $MEDIUM_ISSUES"
-fi
-if [ ! -z "$LOW_ISSUES" ]; then
-    echo "🟢 Low Priority: $LOW_ISSUES"
-fi
-if [ ! -z "$INFO_ISSUES" ]; then
-    echo "ℹ️  Informational: $INFO_ISSUES"
-fi
-echo ""
+🚨 CRITICAL FINDINGS (High Priority)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
 
-# Show top contracts analyzed
-echo "📋 TOP CONTRACTS ANALYZED"
-echo "-------------------------"
-cat slither-report.txt | grep "^[A-Z][a-zA-Z0-9]*" | grep -v "Total\|Number\|Source\|assembly\|optimization\|informational\|low\|medium\|high\|Compiled\|ERCs\|INFO" | head -10 | while read contract; do
-    if [[ $contract =~ ^[A-Z][a-zA-Z0-9]* ]]; then
-        echo "📄 $contract"
+# Extract and format high priority issues
+cat slither-report-raw.txt | grep -A 5 -B 2 "arbitrary from\|reentrancy\|uninitialized state variables\|dangerous strict equalities\|functions that send ether to arbitrary destinations" | while IFS= read -r line; do
+    if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
+        echo "🚨 ISSUE: $line" >> slither-report.txt
+        echo "   Priority: HIGH" >> slither-report.txt
+    elif [[ $line =~ "Reference:" ]]; then
+        echo "   🔗 Documentation: $line" >> slither-report.txt
+    elif [[ $line =~ "src/core/" ]]; then
+        echo "   📍 Location: $line" >> slither-report.txt
+    elif [[ $line =~ "Dangerous calls:" ]]; then
+        echo "   ⚠️  $line" >> slither-report.txt
+    elif [[ $line =~ "State variables written after the call" ]]; then
+        echo "   🔄 $line" >> slither-report.txt
+    elif [[ $line =~ "External calls:" ]]; then
+        echo "   📞 $line" >> slither-report.txt
+    elif [[ $line =~ "^- " ]]; then
+        echo "      └─ $line" >> slither-report.txt
+    elif [[ -n "$line" && ! $line =~ "━━━" && ! $line =~ "═══" ]]; then
+        echo "   ℹ️  $line" >> slither-report.txt
     fi
 done
 
+cat >> slither-report.txt << 'EOF'
+
+⚠️  MEDIUM PRIORITY FINDINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
+
+# Extract and format medium priority issues
+cat slither-report-raw.txt | grep -A 5 -B 2 "unused-return\|reentrancy-no-eth\|incorrect-equality" | while IFS= read -r line; do
+    if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
+        echo "⚠️  ISSUE: $line" >> slither-report.txt
+        echo "   Priority: MEDIUM" >> slither-report.txt
+    elif [[ $line =~ "Reference:" ]]; then
+        echo "   🔗 Documentation: $line" >> slither-report.txt
+    elif [[ $line =~ "src/core/" ]]; then
+        echo "   📍 Location: $line" >> slither-report.txt
+    elif [[ $line =~ "Dangerous calls:" ]]; then
+        echo "   ⚠️  $line" >> slither-report.txt
+    elif [[ $line =~ "State variables written after the call" ]]; then
+        echo "   🔄 $line" >> slither-report.txt
+    elif [[ $line =~ "External calls:" ]]; then
+        echo "   📞 $line" >> slither-report.txt
+    elif [[ $line =~ "^- " ]]; then
+        echo "      └─ $line" >> slither-report.txt
+    elif [[ -n "$line" && ! $line =~ "━━━" && ! $line =~ "═══" ]]; then
+        echo "   ℹ️  $line" >> slither-report.txt
+    fi
+done
+
+cat >> slither-report.txt << 'EOF'
+
+💡 LOW PRIORITY FINDINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
+
+# Extract and format low priority issues (limited to key ones)
+cat slither-report-raw.txt | grep -A 3 -B 1 "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" | head -30 | while IFS= read -r line; do
+    if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
+        echo "💡 ISSUE: $line" >> slither-report.txt
+        echo "   Priority: LOW" >> slither-report.txt
+    elif [[ $line =~ "Reference:" ]]; then
+        echo "   🔗 Documentation: $line" >> slither-report.txt
+    elif [[ $line =~ "src/core/" ]]; then
+        echo "   📍 Location: $line" >> slither-report.txt
+    elif [[ $line =~ "Dangerous calls:" ]]; then
+        echo "   ⚠️  $line" >> slither-report.txt
+    elif [[ $line =~ "State variables written after the call" ]]; then
+        echo "   🔄 $line" >> slither-report.txt
+    elif [[ $line =~ "External calls:" ]]; then
+        echo "   📞 $line" >> slither-report.txt
+    elif [[ $line =~ "^- " ]]; then
+        echo "      └─ $line" >> slither-report.txt
+    elif [[ -n "$line" && ! $line =~ "━━━" && ! $line =~ "═══" ]]; then
+        echo "   ℹ️  $line" >> slither-report.txt
+    fi
+done
+
+cat >> slither-report.txt << 'EOF'
+
+ℹ️  INFORMATIONAL FINDINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
+
+# Extract and format informational issues (limited to key ones)
+cat slither-report-raw.txt | grep -A 3 -B 1 "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" | head -20 | while IFS= read -r line; do
+    if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
+        echo "ℹ️  ISSUE: $line" >> slither-report.txt
+        echo "   Priority: INFORMATIONAL" >> slither-report.txt
+    elif [[ $line =~ "Reference:" ]]; then
+        echo "   🔗 Documentation: $line" >> slither-report.txt
+    elif [[ $line =~ "src/core/" ]]; then
+        echo "   📍 Location: $line" >> slither-report.txt
+    elif [[ $line =~ "Dangerous calls:" ]]; then
+        echo "   ⚠️  $line" >> slither-report.txt
+    elif [[ $line =~ "State variables written after the call" ]]; then
+        echo "   🔄 $line" >> slither-report.txt
+    elif [[ $line =~ "External calls:" ]]; then
+        echo "   📞 $line" >> slither-report.txt
+    elif [[ $line =~ "^- " ]]; then
+        echo "      └─ $line" >> slither-report.txt
+    elif [[ -n "$line" && ! $line =~ "━━━" && ! $line =~ "═══" ]]; then
+        echo "   ℹ️  $line" >> slither-report.txt
+    fi
+done
+
+cat >> slither-report.txt << 'EOF'
+
+🎯 ACTION PLAN & RECOMMENDATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 IMMEDIATE ACTIONS REQUIRED:
+EOF
+
+if [ "$HIGH_ISSUES" != "0" ]; then
+    echo "   • Fix $HIGH_ISSUES high-priority issues (reentrancy, arbitrary ETH transfers)" >> slither-report.txt
+    echo "   • Focus on functions that send ETH to arbitrary destinations" >> slither-report.txt
+    echo "   • Address uninitialized state variables" >> slither-report.txt
+fi
+
+cat >> slither-report.txt << 'EOF'
+
+⚠️  NEXT DEVELOPMENT CYCLE:
+EOF
+
+if [ "$MEDIUM_ISSUES" != "0" ]; then
+    echo "   • Address $MEDIUM_ISSUES medium-priority issues" >> slither-report.txt
+    echo "   • Fix unused return values and incorrect equality comparisons" >> slither-report.txt
+    echo "   • Implement proper reentrancy guards" >> slither-report.txt
+fi
+
+cat >> slither-report.txt << 'EOF'
+
+💡 IMPROVEMENT OPPORTUNITIES:
+EOF
+
+if [ "$LOW_ISSUES" != "0" ]; then
+    echo "   • Consider $LOW_ISSUES low-priority items for future optimizations" >> slither-report.txt
+    echo "   • Address timestamp usage and shadowing issues" >> slither-report.txt
+    echo "   • Optimize loops and external calls" >> slither-report.txt
+fi
+
+cat >> slither-report.txt << 'EOF'
+
+📚 RESOURCES & NEXT STEPS:
+   • Review complete technical details in slither-report-raw.txt
+   • Check Slither documentation for each issue type
+   • Consider automated fixes where possible
+   • Run security analysis after each fix to verify resolution
+   • Integrate security checks into your CI/CD pipeline
+
+🔒 SECURITY STATUS:
+EOF
+
+if [ "$HIGH_ISSUES" = "0" ]; then
+    echo "   ✅ No critical vulnerabilities found!" >> slither-report.txt
+elif [ "$HIGH_ISSUES" -lt 5 ]; then
+    echo "   🟡 Low critical vulnerability count - good progress!" >> slither-report.txt
+else
+    echo "   🔴 Multiple critical vulnerabilities require immediate attention!" >> slither-report.txt
+fi
+
+cat >> slither-report.txt << 'EOF'
+
+🌟 REMEMBER: Security is an ongoing process, not a one-time check!
+
+═══════════════════════════════════════════════════════════════════
+Report generated by Enhanced Slither Analysis Script
+For technical details, see slither-report-raw.txt
+EOF
+
+echo "✨ Beautiful human-readable report generated: slither-report.txt"
+
+# Now display the beautiful report in console
 echo ""
-# Show key security findings summary
-echo "🔍 KEY SECURITY FINDINGS SUMMARY"
-echo "-------------------------------"
-if [ ! -z "$HIGH_ISSUES" ]; then
-    echo "💡 The analysis found $HIGH_ISSUES high-priority issues that require immediate attention"
-fi
-if [ ! -z "$MEDIUM_ISSUES" ]; then
-    echo "⚠️  There are $MEDIUM_ISSUES medium-priority issues that should be addressed soon"
-fi
-if [ ! -z "$LOW_ISSUES" ] && [ ! -z "$INFO_ISSUES" ]; then
-    echo "📝 $LOW_ISSUES low-priority issues and $INFO_ISSUES informational items for improvement"
-fi
-echo ""
-echo "🔧 RECOMMENDATIONS:"
-echo "   - Review high-priority findings first"
-echo "   - Address medium-priority issues in next development cycle"
-echo "   - Consider low-priority items for future optimizations"
-echo "   - Use detailed console output above for specific vulnerability details"
+echo "🎨 ENHANCED SECURITY ANALYSIS REPORT"
+echo "═══════════════════════════════════════════════════════════════════"
 echo ""
 
-echo "========================================"
+# Display the beautiful report content
+cat slither-report.txt
+
+echo ""
+echo "═══════════════════════════════════════════════════════════════════"
 echo "📊 Reports generated:"
 echo "   - Console output (above)"
 echo "   - slither-report.json (detailed JSON)"
 echo "   - slither-report.sarif (IDE integration)"
-echo "   - slither-report.txt (human-readable)"
+echo "   - slither-report.txt (beautiful human-readable report)"
+echo "   - slither-report-raw.txt (raw Slither output)"
 echo ""
-echo "💡 For detailed findings, check the console output above"
+echo "💡 For complete findings, check slither-report.txt"
 echo "🔧 Run 'make slither' to regenerate reports"
+
+# Add a beautiful final summary
+echo ""
+echo "🎯 QUICK ACTION SUMMARY"
+echo "═══════════════════════════════════════════════════════════════════"
+echo ""
+echo "🚨 IMMEDIATE ACTIONS:"
+if [ "$HIGH_ISSUES" != "0" ]; then
+    echo "   • Fix $HIGH_ISSUES high-priority issues (reentrancy, arbitrary ETH)"
+fi
+if [ "$MEDIUM_ISSUES" != "0" ]; then
+    echo "   • Address $MEDIUM_ISSUES medium-priority issues (unused returns, equality)"
+fi
+echo ""
+echo "💡 NEXT STEPS:"
+echo "   • Review detailed findings in slither-report.txt"
+echo "   • Prioritize fixes based on impact and exploitability"
+echo "   • Consider automated fixes where possible"
+echo "   • Run 'make slither' after each fix to verify resolution"
+echo ""
+echo "🔒 SECURITY STATUS:"
+if [ "$HIGH_ISSUES" = "0" ]; then
+    echo "   ✅ No critical vulnerabilities found!"
+elif [ "$HIGH_ISSUES" -lt 5 ]; then
+    echo "   🟡 Low critical vulnerability count - good progress!"
+else
+    echo "   🔴 Multiple critical vulnerabilities require immediate attention!"
+fi
+echo ""
+echo "🌟 REMEMBER: Security is an ongoing process, not a one-time check!"
+echo ""
 
 # Deactivate virtual environment
 deactivate
 
-echo "🎯 Slither analysis complete!"
+echo "🎯 Enhanced Slither analysis complete!"

@@ -674,11 +674,10 @@ contract ChainlinkOracle is
      *      - Uses call() for reliable ETH transfers to any contract
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // SECURITY FIX: Emit event before external call to prevent reentrancy
+        emit ETHRecovered(to, address(this).balance);
         // Use the shared library for secure ETH recovery
         TreasuryRecoveryLibrary.recoverETH(treasury, to);
-        
-        // Emit event for tracking
-        emit ETHRecovered(to, address(this).balance);
     }
 
     // =============================================================================

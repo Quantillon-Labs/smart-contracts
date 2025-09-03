@@ -258,7 +258,7 @@ contract HedgerPool is
         address _usdc,
         address _oracle,
         address _yieldShift,
-        address timelock,
+        address _timelock,
         address _treasury
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
@@ -270,7 +270,7 @@ contract HedgerPool is
         __ReentrancyGuard_init();
         __AccessControl_init();
         __Pausable_init();
-        __SecureUpgradeable_init(timelock);
+        __SecureUpgradeable_init(_timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
@@ -939,8 +939,9 @@ contract HedgerPool is
      */
     function recoverETH(address payable to) external {
         AccessControlLibrary.onlyAdmin(this);
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        // SECURITY FIX: Emit event before external call to prevent reentrancy
         emit ETHRecovered(to, address(this).balance);
+        TreasuryRecoveryLibrary.recoverETH(treasury, to);
     }
     
     /**

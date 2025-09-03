@@ -1076,11 +1076,10 @@ contract QTIToken is
      * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // SECURITY FIX: Emit event before external call to prevent reentrancy
+        emit ETHRecovered(to, address(this).balance);
         // Use the shared library for secure ETH recovery
         TreasuryRecoveryLibrary.recoverETH(treasury, to);
-        
-        // Emit event for tracking
-        emit ETHRecovered(to, address(this).balance);
     }
 
     // =============================================================================

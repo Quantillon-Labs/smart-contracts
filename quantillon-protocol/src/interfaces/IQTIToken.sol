@@ -188,18 +188,18 @@ interface IQTIToken {
 
     /**
      * @notice Get governance information
-     * @return totalLocked Total locked QTI
-     * @return totalVotingPower Total voting power
-     * @return proposalThreshold Proposal threshold
-     * @return quorumVotes Quorum requirement
-     * @return currentDecentralizationLevel Current decentralization level
+     * @return _totalLocked Total locked QTI
+     * @return _totalVotingPower Total voting power
+     * @return _proposalThreshold Proposal threshold
+     * @return _quorumVotes Quorum requirement
+     * @return _currentDecentralizationLevel Current decentralization level
      */
     function getGovernanceInfo() external view returns (
-        uint256 totalLocked,
-        uint256 totalVotingPower,
-        uint256 proposalThreshold,
-        uint256 quorumVotes,
-        uint256 currentDecentralizationLevel
+        uint256 _totalLocked,
+        uint256 _totalVotingPower,
+        uint256 _proposalThreshold,
+        uint256 _quorumVotes,
+        uint256 _currentDecentralizationLevel
     );
 
     // ERC20 functions

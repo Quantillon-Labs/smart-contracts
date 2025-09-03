@@ -175,7 +175,7 @@ contract AaveVault is
         address _aaveProvider,
         address _rewardsController,
         address _yieldShift,
-        address timelock,
+        address _timelock,
         address _treasury
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
@@ -187,7 +187,7 @@ contract AaveVault is
         __ReentrancyGuard_init();
         __AccessControl_init();
         __Pausable_init();
-        __SecureUpgradeable_init(timelock);
+        __SecureUpgradeable_init(_timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
@@ -348,12 +348,14 @@ contract AaveVault is
         
         uint256 usdcBefore = usdc.balanceOf(address(this));
         
-        // Perform yield withdrawal and validate return value
+        // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
+        // First: Perform external call and get result
+        uint256 actualYieldReceived;
         try aavePool.withdraw(address(usdc), availableYield, address(this)) 
             returns (uint256 withdrawn) 
         {
             uint256 usdcAfter = usdc.balanceOf(address(this));
-            uint256 actualYieldReceived = usdcAfter - usdcBefore;
+            actualYieldReceived = usdcAfter - usdcBefore;
             
             // Verify actual received matches returned amount
             if (actualYieldReceived != withdrawn) {
@@ -362,24 +364,26 @@ contract AaveVault is
             
             ValidationLibrary.validateSlippage(actualYieldReceived, availableYield, 100);
             
-            totalYieldHarvested += actualYieldReceived;
-            totalFeesCollected += protocolFee;
-            lastHarvestTime = block.timestamp;
-            
-            if (netYield > 0) {
-                usdc.safeIncreaseAllowance(address(yieldShift), netYield);
-                yieldShift.addYield(netYield, bytes32("aave"));
-            }
-            
-            emit AaveYieldHarvested("harvest", actualYieldReceived, protocolFee, netYield);
-            
-            yieldHarvested = actualYieldReceived;
-            
         } catch Error(string memory reason) {
             revert(string(abi.encodePacked("Aave yield harvest failed: ", reason)));
         } catch {
             revert("Aave yield harvest failed");
         }
+        
+        // Second: Update state variables (EFFECTS)
+        totalYieldHarvested += actualYieldReceived;
+        totalFeesCollected += protocolFee;
+        lastHarvestTime = block.timestamp;
+        
+        // Third: Perform external interactions (INTERACTIONS)
+        if (netYield > 0) {
+            usdc.safeIncreaseAllowance(address(yieldShift), netYield);
+            yieldShift.addYield(netYield, bytes32("aave"));
+        }
+        
+        emit AaveYieldHarvested("harvest", actualYieldReceived, protocolFee, netYield);
+        
+        yieldHarvested = actualYieldReceived;
     }
 
     function getAvailableYield() public view returns (uint256) {
@@ -532,40 +536,44 @@ contract AaveVault is
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
         
         if (aaveBalance > 0) {
+            // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
+            // First: Set emergency mode
             emergencyMode = true;
             
             uint256 usdcBefore = usdc.balanceOf(address(this));
             
-            // Perform emergency withdrawal and validate return value
+            // Second: Perform external call and get result
+            uint256 actualReceived = 0; // Initialize to prevent uninitialized variable warning
             try aavePool.withdraw(address(usdc), type(uint256).max, address(this)) 
                 returns (uint256 withdrawn) 
             {
                 uint256 usdcAfter = usdc.balanceOf(address(this));
-                uint256 actualReceived = usdcAfter - usdcBefore;
+                actualReceived = usdcAfter - usdcBefore;
                 
                 // Verify actual received matches returned amount
                 if (actualReceived != withdrawn) {
                     revert ErrorLibrary.ExcessiveSlippage();
                 }
                 
-                amountWithdrawn = actualReceived;
-                
-                uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, principalDeposited);
-                principalDeposited -= principalWithdrawn;
-                
-                // SECURITY: Ensure principalDeposited never goes negative
-                if (principalDeposited > type(uint256).max - principalWithdrawn) {
-                    revert ErrorLibrary.InvalidAmount();
-                }
-                
-                emit EmergencyWithdrawal("Emergency exit from Aave", amountWithdrawn, block.timestamp);
-                emit EmergencyModeToggled("Emergency withdrawal executed", true);
-                
             } catch Error(string memory reason) {
                 revert(string(abi.encodePacked("Emergency Aave withdrawal failed: ", reason)));
             } catch {
                 revert("Emergency Aave withdrawal failed");
             }
+            
+            // Third: Update state variables (EFFECTS)
+            amountWithdrawn = actualReceived;
+            uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, principalDeposited);
+            principalDeposited -= principalWithdrawn;
+            
+            // SECURITY: Ensure principalDeposited never goes negative
+            if (principalDeposited > type(uint256).max - principalWithdrawn) {
+                revert ErrorLibrary.InvalidAmount();
+            }
+            
+            // Fourth: Emit events
+            emit EmergencyWithdrawal("Emergency exit from Aave", amountWithdrawn, block.timestamp);
+            emit EmergencyModeToggled("Emergency withdrawal executed", true);
         }
     }
 

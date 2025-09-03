@@ -255,7 +255,7 @@ contract stQEUROToken is
         address _yieldShift,
         address _usdc,
         address _treasury,
-        address timelock
+        address _timelock
     ) public initializer {
         require(admin != address(0), "stQEURO: Admin cannot be zero");
         require(_qeuro != address(0), "stQEURO: QEURO cannot be zero");
@@ -267,7 +267,7 @@ contract stQEUROToken is
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-        __SecureUpgradeable_init(timelock);
+        __SecureUpgradeable_init(_timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
@@ -752,10 +752,9 @@ contract stQEUROToken is
      * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // SECURITY FIX: Emit event before external call to prevent reentrancy
+        emit ETHRecovered(to, address(this).balance);
         // Use the shared library for secure ETH recovery
         TreasuryRecoveryLibrary.recoverETH(treasury, to);
-        
-        // Emit event for tracking
-        emit ETHRecovered(to, address(this).balance);
     }
 }

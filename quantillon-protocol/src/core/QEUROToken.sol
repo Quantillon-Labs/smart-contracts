@@ -291,20 +291,20 @@ contract QEUROToken is
     function initialize(
         address admin,
         address vault,
-        address timelock,
+        address _timelock,
         address _treasury
     ) public initializer {
         // Input parameter validation
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(vault);
-        AccessControlLibrary.validateAddress(timelock);
+        AccessControlLibrary.validateAddress(_timelock);
         AccessControlLibrary.validateAddress(_treasury);
 
         // Initialize parent contracts
         __ERC20_init("Quantillon Euro", "QEURO");
         __AccessControl_init();
         __Pausable_init();
-        __SecureUpgradeable_init(timelock);
+        __SecureUpgradeable_init(_timelock);
 
         // Set up roles and permissions
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -1166,11 +1166,10 @@ contract QEUROToken is
      * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // SECURITY FIX: Emit event before external call to prevent reentrancy
+        emit ETHRecovered(to, address(this).balance);
         // Use the shared library for secure ETH recovery
         TreasuryRecoveryLibrary.recoverETH(treasury, to);
-        
-        // Emit event for tracking
-        emit ETHRecovered(to, address(this).balance);
     }
 
     // =============================================================================

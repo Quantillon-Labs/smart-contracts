@@ -218,20 +218,20 @@ contract QuantillonVault is
         address _qeuro,
         address _usdc,
         address _oracle,
-        address timelock
+        address _timelock
     ) public initializer {
         // Validation of critical parameters
         require(admin != address(0), "Vault: Admin cannot be zero");
         require(_qeuro != address(0), "Vault: QEURO cannot be zero");
         require(_usdc != address(0), "Vault: USDC cannot be zero");
         require(_oracle != address(0), "Vault: Oracle cannot be zero");
-        require(timelock != address(0), "Vault: Timelock cannot be zero");
+        require(_timelock != address(0), "Vault: Timelock cannot be zero");
 
         // Initialization of security modules
         __ReentrancyGuard_init();     // Reentrancy protection
         __AccessControl_init();        // Role system
         __Pausable_init();            // Pause mechanism
-        __SecureUpgradeable_init(timelock); // Secure upgrades
+        __SecureUpgradeable_init(_timelock); // Secure upgrades
 
         // Configuration of access roles
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -242,7 +242,7 @@ contract QuantillonVault is
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
-        treasury = timelock; // Set treasury to timelock
+        treasury = _timelock; // Set treasury to timelock
 
         // Default protocol parameters
         mintFee = 1e15;                 // 0.1% mint fee
@@ -352,16 +352,17 @@ contract QuantillonVault is
             "Vault: Insufficient USDC reserves"
         );
 
-        // Burn QEURO from the user
+        // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
+        // First: Perform external call (INTERACTIONS)
         qeuro.burn(msg.sender, qeuroAmount);
 
-        // Update global balances - GAS OPTIMIZATION: Use unchecked for safe arithmetic
+        // Second: Update state variables (EFFECTS)
         unchecked {
             totalUsdcHeld -= usdcToReturn;
             totalMinted -= qeuroAmount;
         }
 
-        // Transfer net USDC to the user (fees kept in the vault)
+        // Third: External interactions (INTERACTIONS)
         usdc.safeTransfer(msg.sender, netUsdcToReturn);
 
         emit QEURORedeemed(msg.sender, qeuroAmount, netUsdcToReturn);

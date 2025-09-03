@@ -1,11 +1,5 @@
 {
-  "filter_paths": [
-    "^lib/.*",
-    "^node_modules/.*",
-    "^out/.*",
-    "^cache/.*",
-    "^test/.*"
-  ],
+  "filter_paths": "lib,test,out,cache,node_modules",
   "exclude_informational": false,
   "exclude_low": false,
   "exclude_medium": false,
@@ -13,7 +7,7 @@
 
   "detectors_to_exclude": [
     "naming-convention",
-    "external-function"       // keep if it’s noisy; remove to re-enable
+    "external-function"
   ],
 
   "solc_version": "0.8.24",

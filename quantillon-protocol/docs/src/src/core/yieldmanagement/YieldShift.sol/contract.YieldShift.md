@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -29,7 +29,9 @@ Dynamic yield distribution system balancing rewards between users and hedgers
 - Adjusts yield allocation to incentivize balance
 - Higher user pool → more yield to hedgers (attract hedging)
 - Higher hedger pool → more yield to users (attract deposits)
-- Gradual adjustments prevent dramatic shifts*
+- Gradual adjustments prevent dramatic shifts
+- Flash deposit protection through eligible pool size calculations
+- Only deposits meeting holding period requirements count toward yield distribution*
 
 *Yield sources:
 - Aave yield from USDC deposits in lending protocols
@@ -49,7 +51,10 @@ Dynamic yield distribution system balancing rewards between users and hedgers
 - Minimum 7-day holding period for yield claims
 - Prevents yield farming attacks and speculation
 - Encourages long-term protocol participation
-- Tracked per user with deposit timestamps*
+- Tracked per user with deposit timestamps
+- Enhanced protection against flash deposit manipulation
+- Eligible pool sizes exclude recent deposits from yield calculations
+- Dynamic discount system based on deposit timing and activity*
 
 *Security features:
 - Role-based access control for all critical operations
@@ -57,7 +62,10 @@ Dynamic yield distribution system balancing rewards between users and hedgers
 - Emergency pause mechanism for crisis situations
 - Upgradeable architecture for future improvements
 - Authorized yield source validation
-- Secure yield distribution mechanisms*
+- Secure yield distribution mechanisms
+- Flash deposit attack prevention through holding period requirements
+- Eligible pool size calculations for yield distribution
+- Time-weighted protection against yield manipulation*
 
 *Integration points:
 - User pool for deposit and staking metrics
@@ -392,6 +400,91 @@ function _getCurrentPoolMetrics()
     returns (uint256 userPoolSize, uint256 hedgerPoolSize, uint256 poolRatio);
 ```
 
+### _getEligiblePoolMetrics
+
+Get eligible pool metrics that only count deposits meeting holding period requirements
+
+*SECURITY: Prevents flash deposit attacks by excluding recent deposits from yield calculations*
+
+
+```solidity
+function _getEligiblePoolMetrics()
+    internal
+    view
+    returns (uint256 userPoolSize, uint256 hedgerPoolSize, uint256 poolRatio);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`userPoolSize`|`uint256`|Eligible user pool size (deposits older than MIN_HOLDING_PERIOD)|
+|`hedgerPoolSize`|`uint256`|Eligible hedger pool size (deposits older than MIN_HOLDING_PERIOD)|
+|`poolRatio`|`uint256`|Ratio of eligible pool sizes|
+
+
+### _calculateEligibleUserPoolSize
+
+Calculate eligible user pool size excluding recent deposits
+
+*Only counts deposits older than MIN_HOLDING_PERIOD*
+
+
+```solidity
+function _calculateEligibleUserPoolSize(uint256 totalUserPoolSize) internal view returns (uint256 eligibleSize);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalUserPoolSize`|`uint256`|Current total user pool size|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eligibleSize`|`uint256`|Eligible pool size for yield calculations|
+
+
+### _calculateEligibleHedgerPoolSize
+
+Calculate eligible hedger pool size excluding recent deposits
+
+*Only counts deposits older than MIN_HOLDING_PERIOD*
+
+
+```solidity
+function _calculateEligibleHedgerPoolSize(uint256 totalHedgerPoolSize) internal view returns (uint256 eligibleSize);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalHedgerPoolSize`|`uint256`|Current total hedger pool size|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eligibleSize`|`uint256`|Eligible pool size for yield calculations|
+
+
+### _calculateHoldingPeriodDiscount
+
+Calculate holding period discount based on recent deposit activity
+
+*Returns a percentage (in basis points) representing eligible deposits*
+
+
+```solidity
+function _calculateHoldingPeriodDiscount() internal view returns (uint256 discountBps);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`discountBps`|`uint256`|Discount in basis points (10000 = 100%)|
+
+
 ### _isWithinTolerance
 
 
@@ -470,6 +563,29 @@ function getYieldSources()
     view
     returns (uint256 aaveYield, uint256 protocolFees, uint256 interestDifferential, uint256 otherSources);
 ```
+
+### getHoldingPeriodProtectionStatus
+
+Returns the current holding period protection status
+
+*Useful for monitoring and debugging holding period protection*
+
+
+```solidity
+function getHoldingPeriodProtectionStatus()
+    external
+    view
+    returns (uint256 minHoldingPeriod, uint256 baseDiscount, uint256 currentDiscount, uint256 timeSinceLastUpdate);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`minHoldingPeriod`|`uint256`|Current minimum holding period|
+|`baseDiscount`|`uint256`|Current base discount percentage|
+|`currentDiscount`|`uint256`|Current calculated discount percentage|
+|`timeSinceLastUpdate`|`uint256`|Time since last yield distribution update|
+
 
 ### getHistoricalYieldShift
 
@@ -653,6 +769,24 @@ function getTimeWeightedAverage(PoolSnapshot[] storage poolHistory, uint256 peri
 function _recordPoolSnapshot() internal;
 ```
 
+### _recordPoolSnapshotWithEligibleSizes
+
+Record pool snapshot using eligible pool sizes to prevent manipulation
+
+*SECURITY: Uses eligible pool sizes that respect holding period requirements*
+
+
+```solidity
+function _recordPoolSnapshotWithEligibleSizes(uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eligibleUserPoolSize`|`uint256`|Eligible user pool size for yield calculations|
+|`eligibleHedgerPoolSize`|`uint256`|Eligible hedger pool size for yield calculations|
+
+
 ### _addToPoolHistory
 
 
@@ -673,6 +807,26 @@ function recoverToken(address token, uint256 amount) external;
 ```solidity
 function recoverETH() external;
 ```
+
+### updateHoldingPeriodProtection
+
+Update holding period protection parameters
+
+*SECURITY: Only governance can update these critical security parameters*
+
+
+```solidity
+function updateHoldingPeriodProtection(uint256 _minHoldingPeriod, uint256 _baseDiscount, uint256 _maxTimeFactor)
+    external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_minHoldingPeriod`|`uint256`|New minimum holding period in seconds|
+|`_baseDiscount`|`uint256`|New base discount percentage in basis points|
+|`_maxTimeFactor`|`uint256`|New maximum time factor discount in basis points|
+
 
 ## Events
 ### YieldDistributionUpdated
@@ -713,6 +867,12 @@ event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed tim
 event YieldShiftParametersUpdated(
     string indexed parameterType, uint256 baseYieldShift, uint256 maxYieldShift, uint256 adjustmentSpeed
 );
+```
+
+### HoldingPeriodProtectionUpdated
+
+```solidity
+event HoldingPeriodProtectionUpdated(uint256 minHoldingPeriod, uint256 baseDiscount, uint256 maxTimeFactor);
 ```
 
 ### YieldSourceAuthorized

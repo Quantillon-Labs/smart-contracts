@@ -10,7 +10,6 @@
     "external-function"
   ],
 
-  "solc_version": "0.8.24",
   "solc_args": "--optimize --via-ir",
   "solc_remaps": [
     "forge-std/=lib/forge-std/src/",

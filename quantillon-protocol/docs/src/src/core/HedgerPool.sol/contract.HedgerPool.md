@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -64,7 +64,10 @@ EUR/USD hedging pool for managing currency risk and providing yield
 - Emergency pause mechanism for crisis situations
 - Upgradeable architecture for future improvements
 - Secure position and margin management
-- Two-phase liquidation for manipulation resistance*
+- Two-phase liquidation for manipulation resistance
+- Overflow protection for packed struct fields
+- Comprehensive validation before type casting
+- Maximum value constraints to prevent storage corruption*
 
 *Integration points:
 - USDC for margin deposits and withdrawals
@@ -159,6 +162,66 @@ uint256 public liquidationPenalty;
 
 ```solidity
 uint256 public constant MAX_POSITIONS_PER_HEDGER = 50;
+```
+
+
+### MAX_POSITION_SIZE
+
+```solidity
+uint256 public constant MAX_POSITION_SIZE = type(uint96).max;
+```
+
+
+### MAX_MARGIN
+
+```solidity
+uint256 public constant MAX_MARGIN = type(uint96).max;
+```
+
+
+### MAX_ENTRY_PRICE
+
+```solidity
+uint256 public constant MAX_ENTRY_PRICE = type(uint96).max;
+```
+
+
+### MAX_LEVERAGE
+
+```solidity
+uint256 public constant MAX_LEVERAGE = type(uint16).max;
+```
+
+
+### MAX_TOTAL_MARGIN
+
+```solidity
+uint256 public constant MAX_TOTAL_MARGIN = type(uint128).max;
+```
+
+
+### MAX_TOTAL_EXPOSURE
+
+```solidity
+uint256 public constant MAX_TOTAL_EXPOSURE = type(uint128).max;
+```
+
+
+### MAX_PENDING_REWARDS
+
+```solidity
+uint256 public constant MAX_PENDING_REWARDS = type(uint128).max;
+```
+
+
+### MAX_BATCH_SIZE
+Maximum batch size for position operations to prevent DoS
+
+*Prevents out-of-gas attacks through large arrays*
+
+
+```solidity
+uint256 public constant MAX_BATCH_SIZE = 50;
 ```
 
 
@@ -452,7 +515,7 @@ Close a single hedge position
 
 
 ```solidity
-function _closeSinglePosition(uint256 positionId, uint256 currentPrice, HedgerInfo storage hedger)
+function _closeSinglePosition(uint256 positionId, uint256 currentPrice, HedgerInfo storage hedger, uint256 exitFee_)
     internal
     returns (int256 pnl);
 ```
@@ -463,6 +526,7 @@ function _closeSinglePosition(uint256 positionId, uint256 currentPrice, HedgerIn
 |`positionId`|`uint256`|The ID of the position to close|
 |`currentPrice`|`uint256`|The current EUR/USD price|
 |`hedger`|`HedgerInfo`|The hedger info storage reference|
+|`exitFee_`|`uint256`||
 
 **Returns**
 
@@ -649,6 +713,40 @@ function getHedgingConfig()
     );
 ```
 
+### getMaxValues
+
+Returns the current maximum values for packed struct fields
+
+*Useful for monitoring and debugging overflow protection*
+
+
+```solidity
+function getMaxValues()
+    external
+    view
+    returns (
+        uint256 maxPositionSize,
+        uint256 maxMargin,
+        uint256 maxEntryPrice,
+        uint256 maxLeverage,
+        uint256 maxTotalMargin,
+        uint256 maxTotalExposure,
+        uint256 maxPendingRewards
+    );
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`maxPositionSize`|`uint256`|Maximum allowed position size|
+|`maxMargin`|`uint256`|Maximum allowed margin|
+|`maxEntryPrice`|`uint256`|Maximum allowed entry price|
+|`maxLeverage`|`uint256`|Maximum allowed leverage|
+|`maxTotalMargin`|`uint256`|Maximum allowed total margin|
+|`maxTotalExposure`|`uint256`|Maximum allowed total exposure|
+|`maxPendingRewards`|`uint256`|Maximum allowed pending rewards|
+
+
 ### isHedgingActive
 
 
@@ -723,6 +821,40 @@ function updateTreasury(address _treasury) external;
 |`_treasury`|`address`|New treasury address|
 
 
+### updateMaxValues
+
+Update maximum values for packed struct fields
+
+*SECURITY: Only governance can update these critical security parameters*
+
+*Note: These are currently constants, so this function is a placeholder
+for future governance control over these parameters*
+
+
+```solidity
+function updateMaxValues(
+    uint256 _maxPositionSize,
+    uint256 _maxMargin,
+    uint256 _maxEntryPrice,
+    uint256 _maxLeverage,
+    uint256 _maxTotalMargin,
+    uint256 _maxTotalExposure,
+    uint256 _maxPendingRewards
+) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_maxPositionSize`|`uint256`|New maximum position size|
+|`_maxMargin`|`uint256`|New maximum margin|
+|`_maxEntryPrice`|`uint256`|New maximum entry price|
+|`_maxLeverage`|`uint256`|New maximum leverage|
+|`_maxTotalMargin`|`uint256`|New maximum total margin|
+|`_maxTotalExposure`|`uint256`|New maximum total exposure|
+|`_maxPendingRewards`|`uint256`|New maximum pending rewards|
+
+
 ## Events
 ### HedgePositionOpened
 
@@ -789,9 +921,25 @@ event ETHRecovered(address indexed to, uint256 indexed amount);
 event TreasuryUpdated(address indexed treasury);
 ```
 
+### MaxValuesUpdated
+
+```solidity
+event MaxValuesUpdated(
+    uint256 maxPositionSize,
+    uint256 maxMargin,
+    uint256 maxEntryPrice,
+    uint256 maxLeverage,
+    uint256 maxTotalMargin,
+    uint256 maxTotalExposure,
+    uint256 maxPendingRewards
+);
+```
+
 ## Structs
 ### HedgePosition
 *OPTIMIZED: Packed struct for gas efficiency*
+
+*SECURITY: All values are validated before casting to prevent overflow*
 
 
 ```solidity
@@ -810,6 +958,8 @@ struct HedgePosition {
 
 ### HedgerInfo
 *OPTIMIZED: Packed struct for gas efficiency*
+
+*SECURITY: All values are validated before casting to prevent overflow*
 
 
 ```solidity

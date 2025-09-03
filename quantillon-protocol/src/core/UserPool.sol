@@ -414,12 +414,6 @@ contract UserPool is
             totalUsers++;
         }
         
-        // Update state BEFORE external calls
-        // UPDATE STATE BEFORE EXTERNAL CALLS (CEI Pattern - Checks-Effects-Interactions)
-        // Update user balance and pool totals BEFORE external call to prevent reentrancy
-        user.depositHistory += uint96(usdcAmount);
-        totalDeposits += netAmount;
-        
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
         
@@ -433,7 +427,10 @@ contract UserPool is
         uint256 qeuroAfter = qeuro.balanceOf(address(this));
         qeuroMinted = qeuroAfter - qeuroBefore;
         
-        // Update user balance AFTER external call (safe to do now)
+        // UPDATE STATE AFTER EXTERNAL CALL (CEI Pattern - Checks-Effects-Interactions)
+        // Update user balance and pool totals AFTER external call to prevent reentrancy
+        user.depositHistory += uint96(usdcAmount);
+        totalDeposits += netAmount;
         user.qeuroBalance += uint128(qeuroMinted);
 
         emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
@@ -469,14 +466,14 @@ contract UserPool is
         // Transfer total USDC from user FIRST
         usdc.safeTransferFrom(msg.sender, address(this), totalUsdcAmount);
         
-        // Update state BEFORE external calls
+        // Initialize user info
         UserInfo storage user = userInfo[msg.sender];
         if (!hasDeposited[msg.sender]) {
             hasDeposited[msg.sender] = true;
             totalUsers++;
         }
         
-
+        // Process all external calls FIRST (INTERACTIONS)
         address vaultAddress = address(vault);
         uint256 depositFee_ = depositFee;
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
@@ -502,6 +499,7 @@ contract UserPool is
             qeuroMintedAmounts[i] = qeuroMinted;
         }
         
+        // UPDATE STATE AFTER ALL EXTERNAL CALLS (CEI Pattern - Checks-Effects-Interactions)
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 netAmount = usdcAmount - usdcAmount.percentageOf(depositFee_);
@@ -557,11 +555,11 @@ contract UserPool is
         uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
         uint256 netAmount = usdcReceived - fee;
 
-
+        // UPDATE STATE AFTER EXTERNAL CALL (CEI Pattern - Checks-Effects-Interactions)
         user.qeuroBalance -= uint128(qeuroAmount);
         totalDeposits -= netAmount;
 
-
+        // Transfer USDC to user
         usdc.safeTransfer(msg.sender, netAmount);
 
         emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, block.timestamp);
@@ -605,11 +603,10 @@ contract UserPool is
         // Transfer total QEURO from user FIRST
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
-
+        // Process all external calls FIRST (INTERACTIONS)
         address vaultAddress = address(vault);
         uint256 withdrawalFee_ = withdrawalFee;
         
-
         for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 minUsdcOut = minUsdcOuts[i];
@@ -632,7 +629,7 @@ contract UserPool is
             unchecked { ++i; }
         }
         
-
+        // UPDATE STATE AFTER ALL EXTERNAL CALLS (CEI Pattern - Checks-Effects-Interactions)
         for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 netAmount = usdcReceivedAmounts[i];

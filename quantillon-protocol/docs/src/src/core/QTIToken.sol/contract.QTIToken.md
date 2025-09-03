@@ -1,5 +1,5 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -77,15 +77,46 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
 
 ### MAX_LOCK_TIME
-Maximum lock time for vote-escrow (4 years)
+Maximum lock time for QTI tokens
 
-*Prevents infinite locks and ensures token circulation*
-
-*Value: 4 * 365 days = 1,460 days*
+*Prevents extremely long locks that could impact governance*
 
 
 ```solidity
-uint256 public constant MAX_LOCK_TIME = 4 * 365 days;
+uint256 public constant MAX_LOCK_TIME = 365 days;
+```
+
+
+### MAX_BATCH_SIZE
+Maximum batch size for lock operations to prevent DoS
+
+*Prevents out-of-gas attacks through large arrays*
+
+
+```solidity
+uint256 public constant MAX_BATCH_SIZE = 100;
+```
+
+
+### MAX_UNLOCK_BATCH_SIZE
+Maximum batch size for unlock operations to prevent DoS
+
+*Prevents out-of-gas attacks through large user arrays*
+
+
+```solidity
+uint256 public constant MAX_UNLOCK_BATCH_SIZE = 50;
+```
+
+
+### MAX_VOTE_BATCH_SIZE
+Maximum batch size for voting operations to prevent DoS
+
+*Prevents out-of-gas attacks through large proposal arrays*
+
+
+```solidity
+uint256 public constant MAX_VOTE_BATCH_SIZE = 50;
 ```
 
 

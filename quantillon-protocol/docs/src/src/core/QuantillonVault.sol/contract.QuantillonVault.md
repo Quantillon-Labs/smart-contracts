@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -21,18 +21,25 @@ Main vault managing QEURO minting against USDC collateral
 - Users swap USDC for QEURO
 - QEURO is minted based on EUR/USD exchange rate
 - Minting fees charged for protocol revenue
-- Simple 1:1 exchange with price conversion*
+- Simple 1:1 exchange with price conversion
+- Price deviation protection prevents flash loan manipulation
+- Block-based validation ensures price freshness*
 
 *Redemption mechanics:
 - Users can redeem QEURO back to USDC
 - Redemption based on current EUR/USD exchange rate
 - Protocol fees charged on redemptions
-- USDC returned to user after fee deduction*
+- USDC returned to user after fee deduction
+- Same price deviation protection as minting
+- Consistent security across all operations*
 
 *Risk management:
 - Real-time price monitoring
 - Emergency pause capabilities
-- Slippage protection on swaps*
+- Slippage protection on swaps
+- Flash loan attack prevention via price deviation checks
+- Block-based price manipulation detection
+- Comprehensive oracle validation and fallback mechanisms*
 
 *Fee structure:
 - Minting fees for creating QEURO
@@ -45,7 +52,10 @@ Main vault managing QEURO minting against USDC collateral
 - Emergency pause mechanism for crisis situations
 - Upgradeable architecture for future improvements
 - Secure collateral management
-- Oracle price validation*
+- Oracle price validation
+- Flash loan protection through price deviation checks
+- Block-based price update validation
+- Comprehensive price manipulation attack prevention*
 
 *Integration points:
 - QEURO token for minting and burning
@@ -81,6 +91,30 @@ Role for emergency operations (pause)
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+```
+
+
+### MAX_PRICE_DEVIATION
+Maximum allowed price deviation between consecutive price updates (in basis points)
+
+*Prevents flash loan price manipulation attacks*
+
+*200 basis points = 2% maximum deviation*
+
+
+```solidity
+uint256 private constant MAX_PRICE_DEVIATION = 200;
+```
+
+
+### MIN_BLOCKS_BETWEEN_UPDATES
+Minimum number of blocks required between price updates for deviation checks
+
+*Prevents manipulation within the same block*
+
+
+```solidity
+uint256 private constant MIN_BLOCKS_BETWEEN_UPDATES = 1;
 ```
 
 
@@ -177,6 +211,28 @@ Total QEURO in circulation (minted by this vault)
 
 ```solidity
 uint256 public totalMinted;
+```
+
+
+### lastValidEurUsdPrice
+Last valid EUR/USD price used in operations
+
+*Used for price deviation checks to prevent manipulation*
+
+
+```solidity
+uint256 private lastValidEurUsdPrice;
+```
+
+
+### lastPriceUpdateBlock
+Block number of the last price update
+
+*Used to ensure minimum blocks between updates for deviation checks*
+
+
+```solidity
+uint256 private lastPriceUpdateBlock;
 ```
 
 
@@ -387,6 +443,29 @@ function updateOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE);
 |`_oracle`|`address`|New oracle address|
 
 
+### updatePriceProtectionParams
+
+Updates price deviation protection parameters
+
+*Only governance can update these security parameters*
+
+*Note: This function requires converting constants to state variables
+for full implementation. Currently a placeholder for future governance control.*
+
+
+```solidity
+function updatePriceProtectionParams(uint256 _maxPriceDeviation, uint256 _minBlocksBetweenUpdates)
+    external
+    onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_maxPriceDeviation`|`uint256`|New maximum price deviation in basis points|
+|`_minBlocksBetweenUpdates`|`uint256`|New minimum blocks between updates|
+
+
 ### withdrawProtocolFees
 
 Withdraws accumulated protocol fees
@@ -417,6 +496,29 @@ function _updatePriceTimestamp(bool isValid) internal;
 |Name|Type|Description|
 |----|----|-----------|
 |`isValid`|`bool`|Whether the current price fetch was valid|
+
+
+### getPriceProtectionStatus
+
+Returns the current price protection status
+
+*Useful for monitoring and debugging price protection*
+
+
+```solidity
+function getPriceProtectionStatus()
+    external
+    view
+    returns (uint256 lastValidPrice, uint256 lastUpdateBlock, uint256 maxDeviation, uint256 minBlocks);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`lastValidPrice`|`uint256`|Last valid EUR/USD price used|
+|`lastUpdateBlock`|`uint256`|Block number of last price update|
+|`maxDeviation`|`uint256`|Maximum allowed price deviation in basis points|
+|`minBlocks`|`uint256`|Minimum blocks required between updates|
 
 
 ### pause
@@ -504,5 +606,15 @@ Emitted when parameters are changed
 
 ```solidity
 event ParametersUpdated(string indexed parameterType, uint256 mintFee, uint256 redemptionFee);
+```
+
+### PriceDeviationDetected
+Emitted when price deviation protection is triggered
+
+*Helps monitor potential flash loan attacks*
+
+
+```solidity
+event PriceDeviationDetected(uint256 currentPrice, uint256 lastValidPrice, uint256 deviationBps, uint256 blockNumber);
 ```
 

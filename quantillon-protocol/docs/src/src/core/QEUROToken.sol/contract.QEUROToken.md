@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -136,6 +136,28 @@ Precision for decimal calculations (18 decimals)
 
 ```solidity
 uint256 public constant PRECISION = 1e18;
+```
+
+
+### MAX_BATCH_SIZE
+Maximum batch size for mint operations to prevent DoS
+
+*Prevents out-of-gas attacks through large arrays*
+
+
+```solidity
+uint256 public constant MAX_BATCH_SIZE = 100;
+```
+
+
+### MAX_COMPLIANCE_BATCH_SIZE
+Maximum batch size for compliance operations to prevent DoS
+
+*Prevents out-of-gas attacks through large blacklist/whitelist arrays*
+
+
+```solidity
+uint256 public constant MAX_COMPLIANCE_BATCH_SIZE = 50;
 ```
 
 

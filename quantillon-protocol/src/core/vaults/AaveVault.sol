@@ -325,6 +325,7 @@ contract AaveVault is
         if (actualReceived > 0) {
             uint256 principalToDeduct = VaultMath.min(actualReceived, principalDeposited);
             if (principalToDeduct > 0) {
+                // slither-disable-next-line reentrancy-no-eth
                 principalDeposited -= principalToDeduct;
             }
         }

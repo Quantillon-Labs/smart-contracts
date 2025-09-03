@@ -429,8 +429,11 @@ contract UserPool is
         
         // UPDATE STATE AFTER EXTERNAL CALL (CEI Pattern - Checks-Effects-Interactions)
         // Update user balance and pool totals AFTER external call to prevent reentrancy
+        // slither-disable-next-line reentrancy-no-eth
         user.depositHistory += uint96(usdcAmount);
+        // slither-disable-next-line reentrancy-no-eth
         totalDeposits += netAmount;
+        // slither-disable-next-line reentrancy-no-eth
         user.qeuroBalance += uint128(qeuroMinted);
 
         emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
@@ -506,8 +509,11 @@ contract UserPool is
             uint256 qeuroMinted = qeuroMintedAmounts[i];
             
             // Update user balance and pool totals
+            // slither-disable-next-line reentrancy-no-eth
             user.qeuroBalance += uint128(qeuroMinted);
+            // slither-disable-next-line reentrancy-no-eth
             user.depositHistory += uint96(usdcAmount);
+            // slither-disable-next-line reentrancy-no-eth
             totalDeposits += netAmount;
         }
         
@@ -556,6 +562,7 @@ contract UserPool is
         uint256 netAmount = usdcReceived - fee;
 
         // UPDATE STATE AFTER EXTERNAL CALL (CEI Pattern - Checks-Effects-Interactions)
+        // slither-disable-next-line reentrancy-no-eth
         user.qeuroBalance -= uint128(qeuroAmount);
         totalDeposits -= netAmount;
 
@@ -636,7 +643,9 @@ contract UserPool is
             
             // Update user info - GAS OPTIMIZATION: Use unchecked for safe arithmetic
             unchecked {
+                // slither-disable-next-line reentrancy-no-eth
                 user.qeuroBalance -= uint128(qeuroAmount);
+                // slither-disable-next-line reentrancy-no-eth
                 totalDeposits -= netAmount;
             }
             

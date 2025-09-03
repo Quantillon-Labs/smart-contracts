@@ -395,13 +395,17 @@ contract UserPool is
 
         // Transfer USDC from user FIRST
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
-        
-        // Update state BEFORE external calls
         UserInfo storage user = userInfo[msg.sender];
         if (!hasDeposited[msg.sender]) {
             hasDeposited[msg.sender] = true;
             totalUsers++;
         }
+        
+        // Update state BEFORE external calls
+        // UPDATE STATE BEFORE EXTERNAL CALLS (CEI Pattern - Checks-Effects-Interactions)
+        // Update user balance and pool totals BEFORE external call to prevent reentrancy
+        user.depositHistory += uint96(usdcAmount);
+        totalDeposits += netAmount;
         
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
@@ -409,20 +413,15 @@ contract UserPool is
         // Approve vault to spend USDC
         usdc.safeIncreaseAllowance(address(vault), netAmount);
         
-        // Mint QEURO through vault
+        // EXTERNAL CALL - vault.mintQEURO() (INTERACTIONS)
         vault.mintQEURO(netAmount, minQeuroOut);
         
         // Calculate actual minted amount
         uint256 qeuroAfter = qeuro.balanceOf(address(this));
         qeuroMinted = qeuroAfter - qeuroBefore;
         
-        // Update user balance and pool totals
+        // Update user balance AFTER external call (safe to do now)
         user.qeuroBalance += uint128(qeuroMinted);
-        user.depositHistory += uint96(usdcAmount);
-        totalDeposits += netAmount;
-
-        // Transfer QEURO to user as final step
-        IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
         emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
     }

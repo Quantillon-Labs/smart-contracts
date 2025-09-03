@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -363,7 +363,7 @@ function setMaxAaveExposure(uint256 _maxExposure) external;
 
 
 ```solidity
-function emergencyWithdrawFromAave() external returns (uint256 amountWithdrawn);
+function emergencyWithdrawFromAave() external nonReentrant returns (uint256 amountWithdrawn);
 ```
 
 ### getRiskMetrics
@@ -419,7 +419,7 @@ function unpause() external;
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 
 ### recoverETH

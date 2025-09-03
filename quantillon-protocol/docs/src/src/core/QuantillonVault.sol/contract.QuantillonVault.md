@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -452,23 +452,22 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 
 ### recoverToken
 
-Recovers tokens accidentally sent to the vault
+Recovers tokens accidentally sent to the vault to treasury only
 
 *Protections:
-- Cannot recover USDC collateral
-- Cannot recover QEURO
+- Cannot recover own vault tokens
+- Tokens are sent to treasury address only
 - Only third-party tokens can be recovered*
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Token contract address|
-|`to`|`address`|Recipient|
 |`amount`|`uint256`|Amount to recover|
 
 

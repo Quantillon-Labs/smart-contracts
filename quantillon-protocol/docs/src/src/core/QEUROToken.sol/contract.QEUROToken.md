@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -946,33 +946,23 @@ function _update(address from, address to, uint256 amount) internal override whe
 
 ### recoverToken
 
-Recovers tokens accidentally sent to the contract
-
-*Securities:
-- Only admin can recover
-- Cannot recover own QEURO tokens
-- Recipient cannot be zero address
-- Uses SafeERC20 for secure transfers
-Use cases:
-- A user accidentally sends USDC to the QEURO contract
-- Admin can recover them and return them*
+Recover tokens accidentally sent to the contract to treasury only
 
 *Security considerations:
 - Only DEFAULT_ADMIN_ROLE can recover
 - Prevents recovery of own QEURO tokens
-- Validates input parameters
+- Tokens are sent to treasury address only
 - Uses SafeERC20 for secure transfers*
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`token`|`address`|Address of the token contract to recover|
-|`to`|`address`|Address to send recovered tokens to|
+|`token`|`address`|Token address to recover|
 |`amount`|`uint256`|Amount to recover|
 
 

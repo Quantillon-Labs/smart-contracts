@@ -1,5 +1,5 @@
 # ErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/libraries/ErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/libraries/ErrorLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -357,6 +357,18 @@ error CannotRecoverUSDC();
 
 ```solidity
 error CannotRecoverAToken();
+```
+
+### CannotRecoverOwnToken
+
+```solidity
+error CannotRecoverOwnToken();
+```
+
+### CannotRecoverCriticalToken
+
+```solidity
+error CannotRecoverCriticalToken(string tokenName);
 ```
 
 ### CannotSendToZero

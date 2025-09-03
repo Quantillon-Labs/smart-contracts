@@ -1,12 +1,12 @@
 # TreasuryRecoveryLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/libraries/TreasuryRecoveryLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/libraries/TreasuryRecoveryLibrary.sol)
 
 **Author:**
 Quantillon Protocol Team
 
-Library for secure ETH recovery to treasury addresses
+Library for secure token and ETH recovery to treasury addresses
 
-*This library factorizes the recoverETH functionality used across all contracts
+*This library factorizes the recoverToken and recoverETH functionality used across all contracts
 to save gas, reduce bytecode, and ensure consistent security implementation*
 
 **Note:**
@@ -14,7 +14,33 @@ team@quantillon.money
 
 
 ## Functions
-### recoverETHToTreasury
+### recoverToken
+
+Recover tokens accidentally sent to the contract to treasury only
+
+*SECURITY: Prevents recovery of own tokens and sends only to treasury*
+
+*Gas optimization: Uses library function to avoid code duplication*
+
+*Security: Prevents recovery of own tokens and ensures treasury-only recovery*
+
+*Error handling: Uses custom errors for gas efficiency*
+
+
+```solidity
+function recoverToken(address token, uint256 amount, address contractAddress, address treasury) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`token`|`address`|Token address to recover|
+|`amount`|`uint256`|Amount to recover|
+|`contractAddress`|`address`|Address of the calling contract (for own token check)|
+|`treasury`|`address`|Treasury address to send recovered tokens to|
+
+
+### recoverETH
 
 Recover ETH to treasury address only
 
@@ -28,7 +54,7 @@ Recover ETH to treasury address only
 
 
 ```solidity
-function recoverETHToTreasury(address treasury, address payable to) external;
+function recoverETH(address treasury, address payable to) external;
 ```
 **Parameters**
 

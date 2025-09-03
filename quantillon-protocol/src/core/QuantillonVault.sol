@@ -352,14 +352,14 @@ contract QuantillonVault is
             "Vault: Insufficient USDC reserves"
         );
 
-
-        qeuro.burn(msg.sender, qeuroAmount);
-
-
+        // UPDATE STATE BEFORE EXTERNAL CALL (CEI Pattern)
         unchecked {
             totalUsdcHeld -= usdcToReturn;
             totalMinted -= qeuroAmount;
         }
+
+        // EXTERNAL CALL - qeuro.burn() (INTERACTIONS)
+        qeuro.burn(msg.sender, qeuroAmount);
 
 
         usdc.safeTransfer(msg.sender, netUsdcToReturn);

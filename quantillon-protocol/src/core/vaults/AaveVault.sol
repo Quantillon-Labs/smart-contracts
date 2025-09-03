@@ -231,14 +231,16 @@ contract AaveVault is
         
         uint256 balanceBefore = aUSDC.balanceOf(address(this));
         
+        // UPDATE STATE BEFORE EXTERNAL CALL (CEI Pattern)
+        principalDeposited += amount;
+        
+        // EXTERNAL CALL - aavePool.supply() (INTERACTIONS)
         usdc.safeTransferFrom(msg.sender, address(this), amount);
         usdc.safeIncreaseAllowance(address(aavePool), amount);
         aavePool.supply(address(usdc), amount, address(this), 0);
         
         uint256 balanceAfter = aUSDC.balanceOf(address(this));
         aTokensReceived = balanceAfter - balanceBefore;
-        
-        principalDeposited += amount;
         
         // SECURITY: Validate that principalDeposited doesn't exceed reasonable bounds
         if (principalDeposited > maxAaveExposure) {
@@ -275,7 +277,7 @@ contract AaveVault is
         
         uint256 usdcBefore = usdc.balanceOf(address(this));
         
-        // Perform withdrawal and validate return value
+        // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
         try aavePool.withdraw(address(usdc), withdrawAmount, address(this)) 
             returns (uint256 withdrawn) 
         {
@@ -297,6 +299,7 @@ contract AaveVault is
                 ValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 500);
             }
             
+            // UPDATE STATE AFTER EXTERNAL CALL (safe to do now)
             // Only update accounting with verified amount
             uint256 principalWithdrawn = VaultMath.min(actualReceived, principalDeposited);
             principalDeposited -= principalWithdrawn;
@@ -349,6 +352,7 @@ contract AaveVault is
         uint256 usdcBefore = usdc.balanceOf(address(this));
         
 
+        // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
         uint256 actualYieldReceived = 0; // Initialize to prevent uninitialized variable warning
         try aavePool.withdraw(address(usdc), availableYield, address(this)) 
             returns (uint256 withdrawn) 
@@ -369,7 +373,7 @@ contract AaveVault is
             revert("Aave yield harvest failed");
         }
         
-
+        // UPDATE STATE AFTER EXTERNAL CALL (safe to do now)
         totalYieldHarvested += actualYieldReceived;
         totalFeesCollected += protocolFee;
         lastHarvestTime = block.timestamp;
@@ -540,7 +544,7 @@ contract AaveVault is
             
             uint256 usdcBefore = usdc.balanceOf(address(this));
             
-
+            // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
             uint256 actualReceived = 0; // Initialize to prevent uninitialized variable warning
             try aavePool.withdraw(address(usdc), type(uint256).max, address(this)) 
                 returns (uint256 withdrawn) 
@@ -559,7 +563,7 @@ contract AaveVault is
                 revert("Emergency Aave withdrawal failed");
             }
             
-
+            // UPDATE STATE AFTER EXTERNAL CALL (safe to do now)
             amountWithdrawn = actualReceived;
             uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, principalDeposited);
             principalDeposited -= principalWithdrawn;

@@ -284,13 +284,13 @@ contract ChainlinkOracle is
     function _updatePrices() internal {
         // Fetch EUR/USD price data directly from Chainlink
         // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
-        (uint80 _eurUsdRoundId, int256 eurUsdRawPrice, uint256 _eurUsdStartedAt, uint256 eurUsdUpdatedAt, uint80 _eurUsdAnsweredInRound) = eurUsdPriceFeed.latestRoundData();
-        // Note: _eurUsdRoundId, _eurUsdStartedAt, and _eurUsdAnsweredInRound are intentionally unused for price updates
+        // slither-disable-next-line unused-return
+        (, int256 eurUsdRawPrice, , uint256 eurUsdUpdatedAt, ) = eurUsdPriceFeed.latestRoundData();
         
         // Fetch USDC/USD price data directly from Chainlink
         // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
-        (uint80 _usdcUsdRoundId, int256 usdcUsdRawPrice, uint256 _usdcUsdStartedAt, uint256 usdcUsdUpdatedAt, uint80 _usdcUsdAnsweredInRound) = usdcUsdPriceFeed.latestRoundData();
-        // Note: _usdcUsdRoundId, _usdcUsdStartedAt, and _usdcUsdAnsweredInRound are intentionally unused for price updates
+        // slither-disable-next-line unused-return
+        (, int256 usdcUsdRawPrice, , uint256 usdcUsdUpdatedAt, ) = usdcUsdPriceFeed.latestRoundData();
         
         // Validate EUR/USD price
         bool eurUsdValid = true;
@@ -403,29 +403,29 @@ contract ChainlinkOracle is
         ) 
     {
         // Check EUR/USD price freshness directly
+        // slither-disable-next-line unused-return
         try eurUsdPriceFeed.latestRoundData() returns (
-            uint80 _eurUsdRoundId,
-            int256 _eurUsdPrice,
-            uint256 _eurUsdStartedAt,
+            uint80,
+            int256,
+            uint256,
             uint256 updatedAt,
-            uint80 _eurUsdAnsweredInRound
+            uint80
         ) {
             eurUsdFresh = _validateTimestamp(updatedAt);
-            // Note: _eurUsdRoundId, _eurUsdPrice, _eurUsdStartedAt, and _eurUsdAnsweredInRound are intentionally unused for health checks
         } catch {
             eurUsdFresh = false;
         }
         
         // Check USDC/USD price freshness directly
+        // slither-disable-next-line unused-return
         try usdcUsdPriceFeed.latestRoundData() returns (
-            uint80 _usdcUsdRoundId,
-            int256 _usdcUsdPrice,
-            uint256 _usdcUsdStartedAt,
+            uint80,
+            int256,
+            uint256,
             uint256 updatedAt,
-            uint80 _usdcUsdAnsweredInRound
+            uint80 
         ) {
             usdcUsdFresh = _validateTimestamp(updatedAt);
-            // Note: _usdcUsdRoundId, _usdcUsdPrice, _usdcUsdStartedAt, and _usdcUsdAnsweredInRound are intentionally unused for health checks
         } catch {
             usdcUsdFresh = false;
         }
@@ -464,14 +464,14 @@ contract ChainlinkOracle is
         if (circuitBreakerTriggered || paused()) {
             currentPrice = lastValidEurUsdPrice;
         } else {
+            // slither-disable-next-line unused-return
             try eurUsdPriceFeed.latestRoundData() returns (
-                uint80 _roundId,
+                uint80,
                 int256 rawPrice,
-                uint256 _startedAt,
+                uint256,
                 uint256 updatedAt,
-                uint80 _answeredInRound
+                uint80
             ) {
-                // Note: _roundId, _startedAt, and _answeredInRound are intentionally unused for price details
                 if (_validateTimestamp(updatedAt) && rawPrice > 0) {
                     uint8 feedDecimals = eurUsdPriceFeed.decimals();
                     currentPrice = _scalePrice(rawPrice, feedDecimals);
@@ -503,15 +503,15 @@ contract ChainlinkOracle is
         lastUpdate = lastPriceUpdateTime;
         
         // Staleness check
+        // slither-disable-next-line unused-return
         try eurUsdPriceFeed.latestRoundData() returns (
-            uint80 _roundId,
-            int256 _price,
-            uint256 _startedAt,
+            uint80,
+            int256,
+            uint256,
             uint256 updatedAt,
-            uint80 _answeredInRound
+            uint80
         ) {
             isStale = !_validateTimestamp(updatedAt);
-            // Note: _roundId, _price, _startedAt, and _answeredInRound are intentionally unused for staleness checks
         } catch {
             isStale = true;
         }
@@ -594,32 +594,32 @@ contract ChainlinkOracle is
         ) 
     {
         // Test EUR/USD feed
+        // slither-disable-next-line unused-return
         try eurUsdPriceFeed.latestRoundData() returns (
             uint80 roundId,
-            int256 _price,
-            uint256 _startedAt,
-            uint256 _updatedAt,
-            uint80 _answeredInRound
+            int256,
+            uint256,
+            uint256,
+            uint80
         ) {
             eurUsdConnected = true;
             eurUsdLatestRound = roundId;
-            // Note: _price, _startedAt, _updatedAt, and _answeredInRound are intentionally unused for connectivity checks
         } catch {
             eurUsdConnected = false;
             eurUsdLatestRound = 0;
         }
 
         // Test USDC/USD feed
+        // slither-disable-next-line unused-return
         try usdcUsdPriceFeed.latestRoundData() returns (
             uint80 roundId,
-            int256 _price,
-            uint256 _startedAt,
-            uint256 _updatedAt,
-            uint80 _answeredInRound
+            int256,
+            uint256,
+            uint256,
+            uint80
         ) {
             usdcUsdConnected = true;
             usdcUsdLatestRound = roundId;
-            // Note: _price, _startedAt, _updatedAt, and _answeredInRound are intentionally unused for connectivity checks
         } catch {
             usdcUsdConnected = false;
             usdcUsdLatestRound = 0;
@@ -732,8 +732,8 @@ contract ChainlinkOracle is
 
         // Fetch data from Chainlink
         // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
-        (uint80 _roundId, int256 rawPrice, uint256 _startedAt, uint256 updatedAt, uint80 _answeredInRound) = eurUsdPriceFeed.latestRoundData();
-        // Note: _roundId, _startedAt, and _answeredInRound are intentionally unused for price fetching
+        // slither-disable-next-line unused-return
+        (, int256 rawPrice, , uint256 updatedAt, ) = eurUsdPriceFeed.latestRoundData();
         
         // Data freshness check with timestamp validation
         if (!_validateTimestamp(updatedAt)) {
@@ -781,8 +781,8 @@ contract ChainlinkOracle is
     function getUsdcUsdPrice() external view returns (uint256 price, bool isValid) {
         // Fetch from Chainlink
         // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
-        (uint80 _roundId, int256 rawPrice, uint256 _startedAt, uint256 updatedAt, uint80 _answeredInRound) = usdcUsdPriceFeed.latestRoundData();
-        // Note: _roundId, _startedAt, and _answeredInRound are intentionally unused for price fetching
+        // slither-disable-next-line unused-return
+        (, int256 rawPrice, , uint256 updatedAt, ) = usdcUsdPriceFeed.latestRoundData();
         
         // Freshness check with timestamp validation
         if (!_validateTimestamp(updatedAt) || rawPrice <= 0) {

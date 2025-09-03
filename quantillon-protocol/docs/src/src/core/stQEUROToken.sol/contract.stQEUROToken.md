@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -246,6 +246,39 @@ Maximum time between exchange rate updates (in seconds)
 
 ```solidity
 uint256 public maxUpdateFrequency;
+```
+
+
+### VIRTUAL_SHARES
+Virtual shares to prevent exchange rate manipulation
+
+*Prevents donation attacks by maintaining minimum share value*
+
+
+```solidity
+uint256 private constant VIRTUAL_SHARES = 1e8;
+```
+
+
+### VIRTUAL_ASSETS
+Virtual assets to prevent exchange rate manipulation
+
+*Prevents donation attacks by maintaining minimum asset value*
+
+
+```solidity
+uint256 private constant VIRTUAL_ASSETS = 1e8;
+```
+
+
+### MAX_BATCH_SIZE
+Maximum batch size for staking operations to prevent DoS
+
+*Prevents out-of-gas attacks through large arrays*
+
+
+```solidity
+uint256 public constant MAX_BATCH_SIZE = 100;
 ```
 
 
@@ -598,6 +631,29 @@ Recover ETH to treasury address only
 ```solidity
 function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
+
+### getVirtualProtectionStatus
+
+Returns the current virtual protection status
+
+*Useful for monitoring and debugging virtual protection*
+
+
+```solidity
+function getVirtualProtectionStatus()
+    external
+    view
+    returns (uint256 virtualShares, uint256 virtualAssets, uint256 effectiveSupply, uint256 effectiveAssets);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`virtualShares`|`uint256`|Current virtual shares amount|
+|`virtualAssets`|`uint256`|Current virtual assets amount|
+|`effectiveSupply`|`uint256`|Effective supply including virtual shares|
+|`effectiveAssets`|`uint256`|Effective assets including virtual assets|
+
 
 ## Events
 ### QEUROStaked

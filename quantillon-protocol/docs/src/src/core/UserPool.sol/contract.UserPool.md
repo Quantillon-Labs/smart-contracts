@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -53,7 +53,9 @@ Manages QEURO user deposits, staking, and yield distribution
 - Emergency pause mechanism for crisis situations
 - Upgradeable architecture for future improvements
 - Secure deposit and withdrawal management
-- Staking cooldown mechanisms*
+- Staking cooldown mechanisms
+- Batch size limits to prevent DoS attacks
+- Gas optimization through storage read caching*
 
 *Integration points:
 - QEURO token for minting and burning
@@ -369,6 +371,28 @@ uint256 public constant BLOCKS_PER_DAY = 7200;
 
 ```solidity
 uint256 public constant MAX_REWARD_PERIOD = 365 days;
+```
+
+
+### MAX_BATCH_SIZE
+Maximum batch size for deposit operations to prevent DoS
+
+*Prevents out-of-gas attacks through large arrays*
+
+
+```solidity
+uint256 public constant MAX_BATCH_SIZE = 100;
+```
+
+
+### MAX_REWARD_BATCH_SIZE
+Maximum batch size for reward claim operations to prevent DoS
+
+*Prevents out-of-gas attacks through large user arrays*
+
+
+```solidity
+uint256 public constant MAX_REWARD_BATCH_SIZE = 50;
 ```
 
 

@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 # Run Slither analysis with checklist output for detailed findings
 echo "🚀 Running Slither analysis..."
-slither . --config-file slither.config.json --checklist --checklist-limit 10 > slither-temp-output.txt 2>&1
+slither . --config-file slither.config.json --exclude-dependencies --checklist --checklist-limit 10 > slither-temp-output.txt 2>&1
 SLITHER_EXIT_CODE=$?
 
 # Check exit code

@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -474,18 +474,17 @@ function _authorizeUpgrade(address newImplementation) internal override onlyRole
 
 ### recoverToken
 
-Recovers tokens accidentally sent to the contract
+Recovers tokens accidentally sent to the contract to treasury only
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Address of the token to recover|
-|`to`|`address`|Recipient address|
 |`amount`|`uint256`|Amount to recover|
 
 

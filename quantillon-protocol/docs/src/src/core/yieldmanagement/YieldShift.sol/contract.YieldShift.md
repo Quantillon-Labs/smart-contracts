@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fc7270ac08cee183372c8ec5c5113dda66dad52e/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -360,7 +360,7 @@ Internal function to add yield (bypasses authorization for internal calls)
 
 
 ```solidity
-function _addYieldInternal(uint256 yieldAmount, bytes32 source) internal;
+function _addYieldInternal(uint256 yieldAmount, bytes32 source) internal nonReentrant;
 ```
 **Parameters**
 
@@ -680,7 +680,7 @@ function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize,
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 
 ### recoverETH

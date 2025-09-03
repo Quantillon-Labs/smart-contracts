@@ -284,13 +284,13 @@ contract ChainlinkOracle is
     function _updatePrices() internal {
         // Fetch EUR/USD price data directly from Chainlink
         // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
-        (uint80 eurUsdRoundId, int256 eurUsdRawPrice, uint256 eurUsdStartedAt, uint256 eurUsdUpdatedAt, uint80 eurUsdAnsweredInRound) = eurUsdPriceFeed.latestRoundData();
-        // Note: eurUsdRoundId, eurUsdStartedAt, and eurUsdAnsweredInRound are intentionally unused for price updates
+        (uint80 _eurUsdRoundId, int256 eurUsdRawPrice, uint256 _eurUsdStartedAt, uint256 eurUsdUpdatedAt, uint80 _eurUsdAnsweredInRound) = eurUsdPriceFeed.latestRoundData();
+        // Note: _eurUsdRoundId, _eurUsdStartedAt, and _eurUsdAnsweredInRound are intentionally unused for price updates
         
         // Fetch USDC/USD price data directly from Chainlink
         // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
-        (uint80 usdcUsdRoundId, int256 usdcUsdRawPrice, uint256 usdcUsdStartedAt, uint256 usdcUsdUpdatedAt, uint80 usdcUsdAnsweredInRound) = usdcUsdPriceFeed.latestRoundData();
-        // Note: usdcUsdRoundId, usdcUsdStartedAt, and usdcUsdAnsweredInRound are intentionally unused for price updates
+        (uint80 _usdcUsdRoundId, int256 usdcUsdRawPrice, uint256 _usdcUsdStartedAt, uint256 usdcUsdUpdatedAt, uint80 _usdcUsdAnsweredInRound) = usdcUsdPriceFeed.latestRoundData();
+        // Note: _usdcUsdRoundId, _usdcUsdStartedAt, and _usdcUsdAnsweredInRound are intentionally unused for price updates
         
         // Validate EUR/USD price
         bool eurUsdValid = true;
@@ -404,28 +404,28 @@ contract ChainlinkOracle is
     {
         // Check EUR/USD price freshness directly
         try eurUsdPriceFeed.latestRoundData() returns (
-            uint80 eurUsdRoundId,
-            int256 eurUsdPrice,
-            uint256 eurUsdStartedAt,
+            uint80 _eurUsdRoundId,
+            int256 _eurUsdPrice,
+            uint256 _eurUsdStartedAt,
             uint256 updatedAt,
-            uint80 eurUsdAnsweredInRound
+            uint80 _eurUsdAnsweredInRound
         ) {
             eurUsdFresh = _validateTimestamp(updatedAt);
-            // Note: eurUsdRoundId, eurUsdPrice, eurUsdStartedAt, and eurUsdAnsweredInRound are intentionally unused for health checks
+            // Note: _eurUsdRoundId, _eurUsdPrice, _eurUsdStartedAt, and _eurUsdAnsweredInRound are intentionally unused for health checks
         } catch {
             eurUsdFresh = false;
         }
         
         // Check USDC/USD price freshness directly
         try usdcUsdPriceFeed.latestRoundData() returns (
-            uint80 usdcUsdRoundId,
-            int256 usdcUsdPrice,
-            uint256 usdcUsdStartedAt,
+            uint80 _usdcUsdRoundId,
+            int256 _usdcUsdPrice,
+            uint256 _usdcUsdStartedAt,
             uint256 updatedAt,
-            uint80 usdcUsdAnsweredInRound
+            uint80 _usdcUsdAnsweredInRound
         ) {
             usdcUsdFresh = _validateTimestamp(updatedAt);
-            // Note: usdcUsdRoundId, usdcUsdPrice, usdcUsdStartedAt, and usdcUsdAnsweredInRound are intentionally unused for health checks
+            // Note: _usdcUsdRoundId, _usdcUsdPrice, _usdcUsdStartedAt, and _usdcUsdAnsweredInRound are intentionally unused for health checks
         } catch {
             usdcUsdFresh = false;
         }
@@ -465,13 +465,13 @@ contract ChainlinkOracle is
             currentPrice = lastValidEurUsdPrice;
         } else {
             try eurUsdPriceFeed.latestRoundData() returns (
-                uint80 roundId,
+                uint80 _roundId,
                 int256 rawPrice,
-                uint256 startedAt,
+                uint256 _startedAt,
                 uint256 updatedAt,
-                uint80 answeredInRound
+                uint80 _answeredInRound
             ) {
-                // Note: roundId, startedAt, and answeredInRound are intentionally unused for price details
+                // Note: _roundId, _startedAt, and _answeredInRound are intentionally unused for price details
                 if (_validateTimestamp(updatedAt) && rawPrice > 0) {
                     uint8 feedDecimals = eurUsdPriceFeed.decimals();
                     currentPrice = _scalePrice(rawPrice, feedDecimals);
@@ -504,14 +504,14 @@ contract ChainlinkOracle is
         
         // Staleness check
         try eurUsdPriceFeed.latestRoundData() returns (
-            uint80 roundId,
-            int256 price,
-            uint256 startedAt,
+            uint80 _roundId,
+            int256 _price,
+            uint256 _startedAt,
             uint256 updatedAt,
-            uint80 answeredInRound
+            uint80 _answeredInRound
         ) {
             isStale = !_validateTimestamp(updatedAt);
-            // Note: roundId, price, startedAt, and answeredInRound are intentionally unused for staleness checks
+            // Note: _roundId, _price, _startedAt, and _answeredInRound are intentionally unused for staleness checks
         } catch {
             isStale = true;
         }
@@ -596,14 +596,14 @@ contract ChainlinkOracle is
         // Test EUR/USD feed
         try eurUsdPriceFeed.latestRoundData() returns (
             uint80 roundId,
-            int256 price,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
+            int256 _price,
+            uint256 _startedAt,
+            uint256 _updatedAt,
+            uint80 _answeredInRound
         ) {
             eurUsdConnected = true;
             eurUsdLatestRound = roundId;
-            // Note: price, startedAt, updatedAt, and answeredInRound are intentionally unused for connectivity checks
+            // Note: _price, _startedAt, _updatedAt, and _answeredInRound are intentionally unused for connectivity checks
         } catch {
             eurUsdConnected = false;
             eurUsdLatestRound = 0;
@@ -612,14 +612,14 @@ contract ChainlinkOracle is
         // Test USDC/USD feed
         try usdcUsdPriceFeed.latestRoundData() returns (
             uint80 roundId,
-            int256 price,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
+            int256 _price,
+            uint256 _startedAt,
+            uint256 _updatedAt,
+            uint80 _answeredInRound
         ) {
             usdcUsdConnected = true;
             usdcUsdLatestRound = roundId;
-            // Note: price, startedAt, updatedAt, and answeredInRound are intentionally unused for connectivity checks
+            // Note: _price, _startedAt, _updatedAt, and _answeredInRound are intentionally unused for connectivity checks
         } catch {
             usdcUsdConnected = false;
             usdcUsdLatestRound = 0;
@@ -732,8 +732,8 @@ contract ChainlinkOracle is
 
         // Fetch data from Chainlink
         // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
-        (uint80 roundId, int256 rawPrice, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = eurUsdPriceFeed.latestRoundData();
-        // Note: roundId, startedAt, and answeredInRound are intentionally unused for price fetching
+        (uint80 _roundId, int256 rawPrice, uint256 _startedAt, uint256 updatedAt, uint80 _answeredInRound) = eurUsdPriceFeed.latestRoundData();
+        // Note: _roundId, _startedAt, and _answeredInRound are intentionally unused for price fetching
         
         // Data freshness check with timestamp validation
         if (!_validateTimestamp(updatedAt)) {
@@ -781,8 +781,8 @@ contract ChainlinkOracle is
     function getUsdcUsdPrice() external view returns (uint256 price, bool isValid) {
         // Fetch from Chainlink
         // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
-        (uint80 roundId, int256 rawPrice, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = usdcUsdPriceFeed.latestRoundData();
-        // Note: roundId, startedAt, and answeredInRound are intentionally unused for price fetching
+        (uint80 _roundId, int256 rawPrice, uint256 _startedAt, uint256 updatedAt, uint80 _answeredInRound) = usdcUsdPriceFeed.latestRoundData();
+        // Note: _roundId, _startedAt, and _answeredInRound are intentionally unused for price fetching
         
         // Freshness check with timestamp validation
         if (!_validateTimestamp(updatedAt) || rawPrice <= 0) {

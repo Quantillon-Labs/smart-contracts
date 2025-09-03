@@ -351,6 +351,9 @@ contract HedgerPool is
         require(positionSize <= MAX_POSITION_SIZE, "Position size exceeds maximum");
         require(eurUsdPrice <= MAX_ENTRY_PRICE, "Entry price exceeds maximum");
         require(leverage <= MAX_LEVERAGE, "Leverage exceeds maximum");
+        
+        // SECURITY: Validate timestamp to prevent overflow in uint32 (max ~136 years from 1970)
+        require(block.timestamp <= type(uint32).max, "Timestamp overflow");
 
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
 
@@ -360,8 +363,8 @@ contract HedgerPool is
         position.hedger = msg.sender;
         position.positionSize = uint96(positionSize);      // Safe cast after validation
         position.margin = uint96(netMargin);               // Safe cast after validation
-        position.entryTime = uint32(block.timestamp % type(uint32).max);  // Safe timestamp cast
-        position.lastUpdateTime = uint32(block.timestamp % type(uint32).max); // Safe timestamp cast
+        position.entryTime = uint32(block.timestamp);  // Safe timestamp cast - uint32 max is ~136 years
+        position.lastUpdateTime = uint32(block.timestamp); // Safe timestamp cast - uint32 max is ~136 years
         position.leverage = uint16(leverage);              // Safe cast after validation
         position.entryPrice = uint96(eurUsdPrice);         // Safe cast after validation
         position.unrealizedPnL = 0;
@@ -708,7 +711,8 @@ contract HedgerPool is
         if (totalRewards > 0) {
             hedgerInfo.pendingRewards = 0;
             // SECURITY: Safe timestamp cast to prevent overflow
-            hedgerInfo.lastRewardClaim = uint64(block.timestamp % type(uint64).max);
+            require(block.timestamp <= type(uint64).max, "Timestamp overflow");
+            hedgerInfo.lastRewardClaim = uint64(block.timestamp);
             
             if (yieldShiftRewards > 0) {
                 uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);

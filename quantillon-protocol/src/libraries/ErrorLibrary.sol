@@ -83,6 +83,8 @@ library ErrorLibrary {
     // Recovery Errors
     error CannotRecoverUSDC();
     error CannotRecoverAToken();
+    error CannotRecoverOwnToken();
+    error CannotRecoverCriticalToken(string tokenName);
     error CannotSendToZero();
     error NoETHToRecover();
     error NoTokensToRecover();

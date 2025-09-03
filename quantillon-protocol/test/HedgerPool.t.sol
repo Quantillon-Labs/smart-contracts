@@ -1153,8 +1153,8 @@ contract HedgerPoolTestSuite is Test {
     // =============================================================================
 
     /**
-     * @notice Test recovering ERC20 tokens
-     * @dev Verifies that admin can recover accidentally sent tokens
+     * @notice Test recovering ERC20 tokens to treasury
+     * @dev Verifies that admin can recover accidentally sent tokens to treasury
      */
     function test_Recovery_RecoverToken() public {
         // Deploy a mock ERC20 token
@@ -1164,14 +1164,14 @@ contract HedgerPoolTestSuite is Test {
         // Mint tokens to the hedger pool contract
         mockToken.mint(address(hedgerPool), recoveryAmount);
         
-        uint256 initialBalance = mockToken.balanceOf(admin);
+        uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
         
         // Admin recovers tokens
         vm.prank(admin);
-        hedgerPool.recoverToken(address(mockToken), admin, recoveryAmount);
+        hedgerPool.recoverToken(address(mockToken), recoveryAmount);
         
-        uint256 finalBalance = mockToken.balanceOf(admin);
-        assertEq(finalBalance, initialBalance + recoveryAmount);
+        // Verify tokens were sent to treasury (admin)
+        assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + recoveryAmount);
     }
 
     /**
@@ -1183,29 +1183,53 @@ contract HedgerPoolTestSuite is Test {
         
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.recoverToken(address(mockToken), hedger1, 1000e18);
+        hedgerPool.recoverToken(address(mockToken), 1000e18);
     }
 
     /**
-     * @notice Test recovering USDC tokens (should revert)
-     * @dev Verifies that USDC tokens cannot be recovered
+     * @notice Test recovering own hedger pool tokens should revert
+     * @dev Verifies that hedger pool's own tokens cannot be recovered
      */
-    function test_Recovery_RecoverUSDCToken_Revert() public {
+    function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverUSDC.selector);
-        hedgerPool.recoverToken(mockUSDC, admin, 1000e18);
+        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        hedgerPool.recoverToken(address(hedgerPool), 1000e18);
     }
 
     /**
-     * @notice Test recovering tokens to zero address (should revert)
-     * @dev Verifies that tokens cannot be recovered to zero address
+     * @notice Test recovering USDC tokens should succeed
+     * @dev Verifies that USDC tokens can now be recovered to treasury
      */
-    function test_Recovery_RecoverTokenToZeroAddress_Revert() public {
-        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+    function test_Recovery_RecoverUSDCToken_Success() public {
+        // Create a mock USDC token for testing
+        MockERC20 mockUSDCToken = new MockERC20("Mock USDC", "mUSDC");
+        mockUSDCToken.mint(address(hedgerPool), 1000e18);
+        
+        uint256 initialTreasuryBalance = mockUSDCToken.balanceOf(admin); // admin is treasury
         
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        hedgerPool.recoverToken(address(mockToken), address(0), 1000e18);
+        hedgerPool.recoverToken(address(mockUSDCToken), 1000e18);
+        
+        // Verify USDC was sent to treasury
+        assertEq(mockUSDCToken.balanceOf(admin), initialTreasuryBalance + 1000e18);
+    }
+
+    /**
+     * @notice Test recovering tokens to treasury should succeed
+     * @dev Verifies that tokens are automatically sent to treasury
+     */
+    function test_Recovery_RecoverTokenToTreasury_Success() public {
+        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+        uint256 amount = 1000e18;
+        mockToken.mint(address(hedgerPool), amount);
+        
+        uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
+        
+        vm.prank(admin);
+        hedgerPool.recoverToken(address(mockToken), amount);
+        
+        // Verify tokens were sent to treasury
+        assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + amount);
     }
 
     /**

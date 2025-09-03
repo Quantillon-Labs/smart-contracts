@@ -995,42 +995,55 @@ contract AaveVaultTestSuite is Test {
     }
     
     /**
-     * @notice Test recovering tokens
-     * @dev Verifies token recovery functionality
+     * @notice Test recovering external tokens to treasury
+     * @dev Verifies that admin can recover accidentally sent tokens to treasury
      */
     function test_Emergency_RecoverToken() public {
-        // Create a mock token
-        MockUSDC mockToken = new MockUSDC();
-        mockToken.mint(address(aaveVault), 1000 * 1e6);
+        // Create a mock ERC20 token
+        MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
+        mockToken.mint(address(aaveVault), 1000e18);
         
-        uint256 initialBalance = mockToken.balanceOf(recipient);
+        uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
         
-        // Recover token
         vm.prank(admin);
-        aaveVault.recoverToken(address(mockToken), recipient, 1000 * 1e6);
+        aaveVault.recoverToken(address(mockToken), 500e18);
         
-        // Check that token was recovered
-        assertEq(mockToken.balanceOf(recipient), initialBalance + 1000 * 1e6);
+        // Verify tokens were sent to treasury (admin)
+        assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + 500e18);
     }
     
     /**
-     * @notice Test recovering USDC should revert
-     * @dev Verifies USDC protection
+     * @notice Test recovering USDC should succeed
+     * @dev Verifies USDC can now be recovered to treasury
      */
-    function test_Emergency_RecoverUsdc_Revert() public {
+    function test_Emergency_RecoverUsdc_Success() public {
+        // Give some USDC to the contract for testing
+        usdc.mint(address(aaveVault), 1000 * 1e6);
+        
+        uint256 initialTreasuryBalance = usdc.balanceOf(admin); // admin is treasury
+        
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverUSDC.selector);
-        aaveVault.recoverToken(address(usdc), recipient, 1000 * 1e6);
+        aaveVault.recoverToken(address(usdc), 1000 * 1e6);
+        
+        // Verify USDC was sent to treasury
+        assertEq(usdc.balanceOf(admin), initialTreasuryBalance + 1000 * 1e6);
     }
     
     /**
-     * @notice Test recovering aUSDC should revert
-     * @dev Verifies aUSDC protection
+     * @notice Test recovering aUSDC should succeed
+     * @dev Verifies aUSDC can now be recovered to treasury
      */
-    function test_Emergency_RecoverAUsdc_Revert() public {
+    function test_Emergency_RecoverAUsdc_Success() public {
+        // Give some aUSDC to the contract for testing
+        aUSDC.mint(address(aaveVault), 1000 * 1e6);
+        
+        uint256 initialTreasuryBalance = aUSDC.balanceOf(admin); // admin is treasury
+        
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverAToken.selector);
-        aaveVault.recoverToken(address(aUSDC), recipient, 1000 * 1e6);
+        aaveVault.recoverToken(address(aUSDC), 1000 * 1e6);
+        
+        // Verify aUSDC was sent to treasury
+        assertEq(aUSDC.balanceOf(admin), initialTreasuryBalance + 1000 * 1e6);
     }
 
     // =============================================================================
@@ -1161,5 +1174,61 @@ contract AaveVaultTestSuite is Test {
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
         aaveVault.recoverETH(payable(admin));
+    }
+}
+
+// =============================================================================
+// MOCK CONTRACTS
+// =============================================================================
+
+/**
+ * @title MockERC20
+ * @notice Mock ERC20 token for testing
+ */
+contract MockERC20 {
+    string public name;
+    string public symbol;
+    uint8 public decimals;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
+        decimals = 18;
+    }
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+        totalSupply += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(balanceOf[from] >= amount, "Insufficient balance");
+        require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        allowance[from][msg.sender] -= amount;
+        emit Transfer(from, to, amount);
+        return true;
     }
 }

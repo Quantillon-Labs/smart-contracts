@@ -1142,39 +1142,22 @@ contract QEUROToken is
     // =============================================================================
 
     /**
-     * @notice Recovers tokens accidentally sent to the contract
-     * 
-     * @param token Address of the token contract to recover
-     * @param to Address to send recovered tokens to
+     * @notice Recover tokens accidentally sent to the contract to treasury only
+     * @param token Token address to recover
      * @param amount Amount to recover
-     * 
-     * @dev Securities:
-     *      - Only admin can recover
-     *      - Cannot recover own QEURO tokens
-     *      - Recipient cannot be zero address
-     *      - Uses SafeERC20 for secure transfers
-     *      
-     * Use cases: 
-     *      - A user accidentally sends USDC to the QEURO contract
-     *      - Admin can recover them and return them
      * 
      * @dev Security considerations:
      *      - Only DEFAULT_ADMIN_ROLE can recover
      *      - Prevents recovery of own QEURO tokens
-     *      - Validates input parameters
+     *      - Tokens are sent to treasury address only
      *      - Uses SafeERC20 for secure transfers
      */
     function recoverToken(
         address token,
-        address to,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Prevents recovery of own QEURO tokens (security)
-        if (token == address(this)) revert ErrorLibrary.CannotRecoverQEURO();
-        AccessControlLibrary.validateAddress(to);
-        
-        // Transfer of external token using SafeERC20
-        IERC20(token).safeTransfer(to, amount);
+        // Use the shared library for secure token recovery to treasury
+        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
     /**
@@ -1184,7 +1167,7 @@ contract QEUROToken is
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury, to);
         
         // Emit event for tracking
         emit ETHRecovered(to, address(this).balance);

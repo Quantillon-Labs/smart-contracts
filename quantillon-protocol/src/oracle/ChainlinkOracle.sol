@@ -642,18 +642,16 @@ contract ChainlinkOracle is
     // =============================================================================
 
     /**
-     * @notice Recovers tokens accidentally sent to the contract
+     * @notice Recovers tokens accidentally sent to the contract to treasury only
      * @param token Address of the token to recover
-     * @param to Recipient address
      * @param amount Amount to recover
      */
     function recoverToken(
         address token,
-        address to,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "Oracle: Cannot send to zero address");
-        SafeERC20.safeTransfer(IERC20(token), to, amount);
+        // Use the shared library for secure token recovery to treasury
+        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
     /**
@@ -669,7 +667,7 @@ contract ChainlinkOracle is
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury, to);
         
         // Emit event for tracking
         emit ETHRecovered(to, address(this).balance);

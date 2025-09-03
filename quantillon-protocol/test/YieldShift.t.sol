@@ -1318,59 +1318,78 @@ contract YieldShiftTestSuite is Test {
     // =============================================================================
 
     /**
-     * @notice Test recovering ERC20 tokens
-     * @dev Verifies that admin can recover accidentally sent tokens
+     * @notice Test recovering external tokens to treasury
+     * @dev Verifies that admin can recover accidentally sent tokens to treasury
      */
     function test_Recovery_RecoverToken() public {
-        // Deploy a mock ERC20 token
-        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
-        uint256 recoveryAmount = 1000e18;
+        // Create a mock ERC20 token
+        MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
+        mockToken.mint(address(yieldShift), 1000e18);
         
-        // Mint tokens to the yield shift contract
-        mockToken.mint(address(yieldShift), recoveryAmount);
+        uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
         
-        uint256 initialBalance = mockToken.balanceOf(admin);
-        
-        // Admin recovers tokens
         vm.prank(admin);
-        yieldShift.recoverToken(address(mockToken), admin, recoveryAmount);
+        yieldShift.recoverToken(address(mockToken), 500e18);
         
-        uint256 finalBalance = mockToken.balanceOf(admin);
-        assertEq(finalBalance, initialBalance + recoveryAmount);
+        // Verify tokens were sent to treasury (admin)
+        assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + 500e18);
     }
-
+    
     /**
-     * @notice Test recovering ERC20 tokens by non-admin (should revert)
+     * @notice Test recovering tokens by non-admin should revert
      * @dev Verifies that only admin can recover tokens
      */
     function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
-        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+        MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
         
         vm.prank(user);
         vm.expectRevert();
-        yieldShift.recoverToken(address(mockToken), user, 1000e18);
+        yieldShift.recoverToken(address(mockToken), 1000e18);
     }
-
+    
     /**
-     * @notice Test recovering USDC tokens (should revert)
-     * @dev Verifies that USDC tokens cannot be recovered
+     * @notice Test recovering own yield shift tokens should revert
+     * @dev Verifies that yield shift's own tokens cannot be recovered
      */
-    function test_Recovery_RecoverUSDCToken_Revert() public {
+    function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverUSDC.selector);
-        yieldShift.recoverToken(address(usdc), admin, 1000e18);
+        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        yieldShift.recoverToken(address(yieldShift), 1000e18);
     }
 
     /**
-     * @notice Test recovering tokens to zero address (should revert)
-     * @dev Verifies that tokens cannot be recovered to zero address
+     * @notice Test recovering USDC tokens should succeed
+     * @dev Verifies that USDC tokens can now be recovered to treasury
      */
-    function test_Recovery_RecoverTokenToZeroAddress_Revert() public {
-        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+    function test_Recovery_RecoverUSDCToken_Success() public {
+        // Give some USDC to the contract for testing
+        usdc.mint(address(yieldShift), 1000e18);
+        
+        uint256 initialTreasuryBalance = usdc.balanceOf(admin); // admin is treasury
         
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        yieldShift.recoverToken(address(mockToken), address(0), 1000e18);
+        yieldShift.recoverToken(address(usdc), 1000e18);
+        
+        // Verify USDC was sent to treasury
+        assertEq(usdc.balanceOf(admin), initialTreasuryBalance + 1000e18);
+    }
+
+    /**
+     * @notice Test recovering tokens to treasury should succeed
+     * @dev Verifies that tokens are automatically sent to treasury
+     */
+    function test_Recovery_RecoverTokenToTreasury_Success() public {
+        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+        uint256 amount = 1000e18;
+        mockToken.mint(address(yieldShift), amount);
+        
+        uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
+        
+        vm.prank(admin);
+        yieldShift.recoverToken(address(mockToken), amount);
+        
+        // Verify tokens were sent to treasury
+        assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + amount);
     }
 
     /**

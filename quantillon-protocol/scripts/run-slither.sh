@@ -25,8 +25,8 @@ pip install -r requirements.txt
 
 # Run Slither analysis with checklist output for detailed findings
 echo "🚀 Running Slither analysis..."
-slither . --config-file slither.config.json --exclude-dependencies --checklist --checklist-limit 10 > slither-temp-output.txt 2>&1
-SLITHER_EXIT_CODE=$?
+slither . --config-file slither.config.json --exclude-dependencies --checklist 2>&1 | tee slither-temp-output.txt
+SLITHER_EXIT_CODE=${PIPESTATUS[0]}
 
 # Check exit code
 if [ $SLITHER_EXIT_CODE -eq 0 ]; then
@@ -37,6 +37,90 @@ fi
 
 # Generate beautiful human-readable report
 echo "📝 Generating beautiful human-readable report..."
+
+# Function to extract issues by detector type
+extract_issues_by_detector() {
+    local detector_name="$1"
+    local priority="$2"
+    local priority_icon="$3"
+    
+    echo "🔍 DETECTOR: $detector_name" >> slither-report.txt
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> slither-report.txt
+    
+    # Extract issues for this specific detector using bash
+    echo "   📍 ## $detector_name" >> slither-report.txt
+    
+    # Find the section for this detector
+    local section_start=$(grep -n "## $detector_name" slither-temp-output.txt | head -1 | cut -d: -f1)
+    if [ -z "$section_start" ]; then
+        echo "         ✅ No issues found for this detector" >> slither-report.txt
+        return
+    fi
+    
+    # Find the next section or end of file
+    local section_end=$(grep -n "^## " slither-temp-output.txt | grep -A 1 "^$section_start:" | tail -1 | cut -d: -f1)
+    if [ -z "$section_end" ]; then
+        section_end=$(wc -l < slither-temp-output.txt)
+    fi
+    
+    # Extract all IDs in this section
+    local ids=$(sed -n "${section_start},${section_end}p" slither-temp-output.txt | grep -E "^[[:space:]]*- \[ \] ID-[0-9]+" | sed 's/.*ID-\([0-9]*\).*/\1/')
+    
+    if [ -n "$ids" ]; then
+        local issue_count=0
+        
+        # Process each ID
+        for id in $ids; do
+            echo "      └─  - [ ] ID-$id" >> slither-report.txt
+            issue_count=$((issue_count + 1))
+            
+            # Find the start line for this ID
+            local id_start=$(grep -n "ID-$id" slither-temp-output.txt | head -1 | cut -d: -f1)
+            if [ -n "$id_start" ]; then
+                # Find the next ID or section boundary
+                local id_end=$(grep -n -E "^[[:space:]]*- \[ \] ID-[0-9]+|^## " slither-temp-output.txt | grep -A 1 "^$id_start:" | tail -1 | cut -d: -f1)
+                if [ -z "$id_end" ]; then
+                    id_end=$((id_start + 20))
+                fi
+                
+                # Extract the lines between this ID and the next
+                sed -n "${id_start},${id_end}p" slither-temp-output.txt | while IFS= read -r line; do
+                    # Skip the ID line itself
+                    if [[ "$line" =~ ID-$id ]]; then
+                        continue
+                    fi
+                    
+                    # Stop if we hit another ID or section
+                    if [[ "$line" =~ ^[[:space:]]*-[[:space:]]*\[[[:space:]]*\][[:space:]]*ID-[0-9]+ ]] || [[ "$line" =~ ^## ]]; then
+                        break
+                    fi
+                    
+                    # Capture file location
+                    if [[ "$line" =~ ^[[:space:]]*src/ ]]; then
+                        echo "         📍 File: $line" >> slither-report.txt
+                    # Capture description lines (skip empty lines and file locations)
+                    elif [[ -n "$line" ]] && [[ ! "$line" =~ ^[[:space:]]*$ ]]; then
+                        echo "         📝 $line" >> slither-report.txt
+                    fi
+                done
+            fi
+        done
+        
+        echo "   📊 Total Issues: $issue_count" >> slither-report.txt
+    else
+        echo "         ✅ No issues found for this detector" >> slither-report.txt
+    fi
+    
+    echo "" >> slither-report.txt
+}
+
+# Function to count issues by detector
+count_issues_by_detector() {
+    local detector_name="$1"
+    # Look for the summary line that shows the count, e.g., "- [reentrancy-no-eth](#reentrancy-no-eth) (5 results) (Medium)"
+    local count=$(grep -E "\\[${detector_name}\\]\\(#${detector_name}\\) \\(([0-9]+) results\\)" slither-temp-output.txt | sed -E 's/.*\(([0-9]+) results\).*/\1/' | head -1)
+    echo "${count:-0}"
+}
 
 # Create the beautiful report
 cat > slither-report.txt << EOF
@@ -50,21 +134,44 @@ Configuration: slither.config.json
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
 
-        # Add issue counts with proper error handling
-        if [ -f "slither-temp-output.txt" ]; then
-            echo "🔍 Debug: Found slither-temp-output.txt, analyzing issues..."
-            HIGH_ISSUES=$(grep -c "sends eth to arbitrary user\|uninitialized state variables\|dangerous strict equality\|reentrancy" slither-temp-output.txt 2>/dev/null || echo "0")
-            MEDIUM_ISSUES=$(grep -c "never initialized\|unused-return\|reentrancy-no-eth" slither-temp-output.txt 2>/dev/null || echo "0")
-            LOW_ISSUES=$(grep -c "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" slither-temp-output.txt 2>/dev/null || echo "0")
-            INFO_ISSUES=$(grep -c "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" slither-temp-output.txt 2>/dev/null || echo "0")
-            echo "🔍 Debug: HIGH_ISSUES=$HIGH_ISSUES, MEDIUM_ISSUES=$MEDIUM_ISSUES, LOW_ISSUES=$LOW_ISSUES, INFO_ISSUES=$INFO_ISSUES"
-        else
-            echo "🔍 Debug: slither-temp-output.txt not found!"
-            HIGH_ISSUES=0
-            MEDIUM_ISSUES=0
-            LOW_ISSUES=0
-            INFO_ISSUES=0
-        fi
+# Count issues by priority level (using proper detector mapping)
+if [ -f "slither-temp-output.txt" ]; then
+    echo "🔍 Analyzing Slither output for issue counts..."
+    
+    # High priority detectors (these don't exist in current output, but keeping for future)
+    HIGH_ISSUES=0
+    
+    # Medium priority detectors (based on actual Slither output)
+    MEDIUM_ISSUES=$((
+        $(count_issues_by_detector "reentrancy-no-eth") +
+        $(count_issues_by_detector "unused-return")
+    ))
+    
+    # Low priority detectors (based on actual Slither output)
+    LOW_ISSUES=$((
+        $(count_issues_by_detector "shadowing-local") +
+        $(count_issues_by_detector "missing-zero-check") +
+        $(count_issues_by_detector "calls-loop") +
+        $(count_issues_by_detector "reentrancy-benign") +
+        $(count_issues_by_detector "timestamp")
+    ))
+    
+    # Informational detectors (based on actual Slither output)
+    INFO_ISSUES=$((
+        $(count_issues_by_detector "cyclomatic-complexity") +
+        $(count_issues_by_detector "low-level-calls") +
+        $(count_issues_by_detector "costly-loop") +
+        $(count_issues_by_detector "constable-states")
+    ))
+    
+    echo "🔍 Counted: HIGH=$HIGH_ISSUES, MEDIUM=$MEDIUM_ISSUES, LOW=$LOW_ISSUES, INFO=$INFO_ISSUES"
+else
+    echo "🔍 Debug: slither-temp-output.txt not found!"
+    HIGH_ISSUES=0
+    MEDIUM_ISSUES=0
+    LOW_ISSUES=0
+    INFO_ISSUES=0
+fi
 
 cat >> slither-report.txt << EOF
 🔴 High Priority Issues: $HIGH_ISSUES
@@ -76,28 +183,12 @@ cat >> slither-report.txt << EOF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
 
-# Extract and format high priority issues
+# Extract high priority issues by detector
 if [ -f "slither-temp-output.txt" ]; then
-            grep -A 5 -B 2 "sends eth to arbitrary user\|uninitialized state variables\|dangerous strict equality\|reentrancy" slither-temp-output.txt | while IFS= read -r line; do
-        if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
-            echo "🚨 ISSUE: $line" >> slither-report.txt
-            echo "   Priority: HIGH" >> slither-report.txt
-        elif [[ $line =~ "Reference:" ]]; then
-            echo "   🔗 Documentation: $line" >> slither-report.txt
-        elif [[ $line =~ "src/core/" ]]; then
-            echo "   📍 Location: $line" >> slither-report.txt
-        elif [[ $line =~ "Dangerous calls:" ]]; then
-            echo "   ⚠️  $line" >> slither-report.txt
-        elif [[ $line =~ "State variables written after the call" ]]; then
-            echo "   🔄 $line" >> slither-report.txt
-        elif [[ $line =~ "External calls:" ]]; then
-            echo "   📞 $line" >> slither-report.txt
-        elif [[ $line =~ "^- " ]]; then
-            echo "      └─ $line" >> slither-report.txt
-        elif [[ -n "$line" && ! $line =~ "━━━" && ! $line =~ "═══" ]]; then
-            echo "   ℹ️  $line" >> slither-report.txt
-        fi
-    done
+    extract_issues_by_detector "reentrancy-eth" "HIGH" "🚨"
+    extract_issues_by_detector "arbitrary-send" "HIGH" "🚨"
+    extract_issues_by_detector "uninitialized-state" "HIGH" "🚨"
+    extract_issues_by_detector "dangerous-strict-equalities" "HIGH" "🚨"
 fi
 
 cat >> slither-report.txt << 'EOF'
@@ -106,28 +197,12 @@ cat >> slither-report.txt << 'EOF'
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
 
-# Extract and format medium priority issues
+# Extract medium priority issues by detector
 if [ -f "slither-temp-output.txt" ]; then
-            grep -A 5 -B 2 "never initialized\|unused-return\|reentrancy-no-eth" slither-temp-output.txt | while IFS= read -r line; do
-        if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
-            echo "⚠️  ISSUE: $line" >> slither-report.txt
-            echo "   Priority: MEDIUM" >> slither-report.txt
-        elif [[ $line =~ "Reference:" ]]; then
-            echo "   🔗 Documentation: $line" >> slither-report.txt
-        elif [[ $line =~ "src/core/" ]]; then
-            echo "   📍 Location: $line" >> slither-report.txt
-        elif [[ $line =~ "Dangerous calls:" ]]; then
-            echo "   ⚠️  $line" >> slither-report.txt
-        elif [[ $line =~ "State variables written after the call" ]]; then
-            echo "   🔄 $line" >> slither-report.txt
-        elif [[ $line =~ "External calls:" ]]; then
-            echo "   📞 $line" >> slither-report.txt
-        elif [[ $line =~ "^- " ]]; then
-            echo "      └─ $line" >> slither-report.txt
-        elif [[ -n "$line" && ! $line =~ "━━━" && ! $line =~ "═══" ]]; then
-            echo "   ℹ️  $line" >> slither-report.txt
-        fi
-    done
+    extract_issues_by_detector "reentrancy-no-eth" "MEDIUM" "⚠️"
+    extract_issues_by_detector "unused-return" "MEDIUM" "⚠️"
+    extract_issues_by_detector "incorrect-equality" "MEDIUM" "⚠️"
+    extract_issues_by_detector "uninitialized-local" "MEDIUM" "⚠️"
 fi
 
 cat >> slither-report.txt << 'EOF'
@@ -136,45 +211,33 @@ cat >> slither-report.txt << 'EOF'
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
 
-# Add complete breakdown by detector type
+# Extract low priority issues by detector
 if [ -f "slither-temp-output.txt" ]; then
-    echo "📊 COMPLETE ISSUE BREAKDOWN BY DETECTOR TYPE:" >> slither-report.txt
-    echo "" >> slither-report.txt
-    
-    # Extract all detector types and their counts
-    grep -E "## [a-zA-Z-]+" slither-temp-output.txt | while IFS= read -r line; do
-        if [[ $line =~ "## ([a-zA-Z-]+)" ]]; then
-            detector="${BASH_REMATCH[1]}"
-            count=$(grep -c "## $detector" slither-temp-output.txt 2>/dev/null || echo "0")
-            echo "   • [$detector](#$detector) ($count results)" >> slither-report.txt
-        fi
-    done
-    
-    echo "" >> slither-report.txt
+    extract_issues_by_detector "shadowing-local" "LOW" "💡"
+    extract_issues_by_detector "missing-zero-check" "LOW" "💡"
+    extract_issues_by_detector "calls-loop" "LOW" "💡"
+    extract_issues_by_detector "reentrancy-benign" "LOW" "💡"
+    extract_issues_by_detector "reentrancy-events" "LOW" "💡"
+    extract_issues_by_detector "timestamp" "LOW" "💡"
+    extract_issues_by_detector "costly-loop" "LOW" "💡"
+    extract_issues_by_detector "weak-prng" "LOW" "💡"
 fi
 
-# Extract and format low priority issues (SHOW ALL)
+cat >> slither-report.txt << 'EOF'
+
+ℹ️  INFORMATIONAL FINDINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
+
+# Extract informational issues by detector
 if [ -f "slither-temp-output.txt" ]; then
-    grep -A 3 -B 1 "shadowing-local\|missing-zero-check\|calls-loop\|reentrancy-benign\|reentrancy-events\|timestamp\|costly-loop" slither-temp-output.txt | while IFS= read -r line; do
-        if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
-            echo "💡 ISSUE: $line" >> slither-report.txt
-            echo "   Priority: LOW" >> slither-report.txt
-        elif [[ $line =~ "Reference:" ]]; then
-            echo "   🔗 Documentation: $line" >> slither-report.txt
-        elif [[ $line =~ "src/core/" ]]; then
-            echo "   📍 Location: $line" >> slither-report.txt
-        elif [[ $line =~ "Dangerous calls:" ]]; then
-            echo "   ⚠️  $line" >> slither-report.txt
-        elif [[ $line =~ "State variables written after the call" ]]; then
-            echo "   🔄 $line" >> slither-report.txt
-        elif [[ $line =~ "External calls:" ]]; then
-            echo "   📞 $line" >> slither-report.txt
-        elif [[ $line =~ "^- " ]]; then
-            echo "      └─ $line" >> slither-report.txt
-        elif [[ -n "$line" && ! $line =~ "━━━" && ! $line =~ "═══" ]]; then
-            echo "   ℹ️  $line" >> slither-report.txt
-        fi
-    done
+    extract_issues_by_detector "cyclomatic-complexity" "INFO" "ℹ️"
+    extract_issues_by_detector "missing-inheritance" "INFO" "ℹ️"
+    extract_issues_by_detector "unused-state" "INFO" "ℹ️"
+    extract_issues_by_detector "constable-states" "INFO" "ℹ️"
+    extract_issues_by_detector "external-function" "INFO" "ℹ️"
+    extract_issues_by_detector "low-level-calls" "INFO" "ℹ️"
+    extract_issues_by_detector "naming-convention" "INFO" "ℹ️"
 fi
 
 # Add comprehensive issue listing by detector type
@@ -235,36 +298,6 @@ fi
 
 cat >> slither-report.txt << 'EOF'
 
-ℹ️  INFORMATIONAL FINDINGS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EOF
-
-# Extract and format informational issues (SHOW ALL)
-if [ -f "slither-temp-output.txt" ]; then
-    grep -A 3 -B 1 "cyclomatic-complexity\|missing-inheritance\|unused-state\|constable-states" slither-temp-output.txt | while IFS= read -r line; do
-        if [[ $line =~ ^[A-Z][a-zA-Z0-9]*\. ]]; then
-            echo "ℹ️  ISSUE: $line" >> slither-report.txt
-            echo "   Priority: INFORMATIONAL" >> slither-report.txt
-        elif [[ $line =~ "Reference:" ]]; then
-            echo "   🔗 Documentation: $line" >> slither-report.txt
-        elif [[ $line =~ "src/core/" ]]; then
-            echo "   📍 Location: $line" >> slither-report.txt
-        elif [[ $line =~ "Dangerous calls:" ]]; then
-            echo "   ⚠️  $line" >> slither-report.txt
-        elif [[ $line =~ "State variables written after the call" ]]; then
-            echo "   🔄 $line" >> slither-report.txt
-        elif [[ $line =~ "External calls:" ]]; then
-            echo "   📞 $line" >> slither-report.txt
-        elif [[ $line =~ "^- " ]]; then
-            echo "      └─ $line" >> slither-report.txt
-        elif [[ -n "$line" && ! $line =~ "━━━" && ! $line =~ "═══" ]]; then
-            echo "   ℹ️  $line" >> slither-report.txt
-        fi
-    done
-fi
-
-cat >> slither-report.txt << 'EOF'
-
 🎯 ACTION PLAN & RECOMMENDATIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚨 IMMEDIATE ACTIONS REQUIRED:
@@ -281,9 +314,9 @@ cat >> slither-report.txt << 'EOF'
 ⚠️  NEXT DEVELOPMENT CYCLE:
 EOF
 
-if [ "$MEDIUM_ISSUES" != "0" ]; then
+if [ "$MEDIUM_ISSUES" -gt 0 ]; then
     echo "   • Address $MEDIUM_ISSUES medium-priority issues" >> slither-report.txt
-    echo "   • Fix unused return values and incorrect equality comparisons" >> slither-report.txt
+    echo "   • Fix unused return values and reentrancy vulnerabilities" >> slither-report.txt
     echo "   • Implement proper reentrancy guards" >> slither-report.txt
 fi
 
@@ -292,7 +325,7 @@ cat >> slither-report.txt << 'EOF'
 💡 IMPROVEMENT OPPORTUNITIES:
 EOF
 
-if [ "$LOW_ISSUES" != "0" ]; then
+if [ "$LOW_ISSUES" -gt 0 ]; then
     echo "   • Consider $LOW_ISSUES low-priority items for future optimizations" >> slither-report.txt
     echo "   • Address timestamp usage and shadowing issues" >> slither-report.txt
     echo "   • Optimize loops and external calls" >> slither-report.txt
@@ -310,7 +343,7 @@ cat >> slither-report.txt << 'EOF'
 🔒 SECURITY STATUS:
 EOF
 
-if [ "$HIGH_ISSUES" = "0" ]; then
+if [ "$HIGH_ISSUES" -eq 0 ]; then
     echo "   ✅ No critical vulnerabilities found!" >> slither-report.txt
 elif [ "$HIGH_ISSUES" -lt 5 ]; then
     echo "   🟡 Low critical vulnerability count - good progress!" >> slither-report.txt
@@ -368,11 +401,11 @@ echo "🎯 QUICK ACTION SUMMARY"
 echo "═══════════════════════════════════════════════════════════════════"
 echo ""
 echo "🚨 IMMEDIATE ACTIONS:"
-if [ "$HIGH_ISSUES" != "0" ]; then
+if [ "$HIGH_ISSUES" -gt 0 ]; then
     echo "   • Fix $HIGH_ISSUES high-priority issues (reentrancy, arbitrary ETH)"
 fi
-if [ "$MEDIUM_ISSUES" != "0" ]; then
-    echo "   • Address $MEDIUM_ISSUES medium-priority issues (unused returns, equality)"
+if [ "$MEDIUM_ISSUES" -gt 0 ]; then
+    echo "   • Address $MEDIUM_ISSUES medium-priority issues (reentrancy-no-eth, unused-return)"
 fi
 echo ""
 echo "💡 NEXT STEPS:"
@@ -382,7 +415,7 @@ echo "   • Consider automated fixes where possible"
 echo "   • Run 'make slither' after each fix to verify resolution"
 echo ""
 echo "🔒 SECURITY STATUS:"
-if [ "$HIGH_ISSUES" = "0" ]; then
+if [ "$HIGH_ISSUES" -eq 0 ]; then
     echo "   ✅ No critical vulnerabilities found!"
 elif [ "$HIGH_ISSUES" -lt 5 ]; then
     echo "   🟡 Low critical vulnerability count - good progress!"

@@ -1286,7 +1286,7 @@ contract QTITokenTestSuite is Test {
         
         // Admin recovers ETH to treasury
         vm.prank(admin);
-        qtiToken.recoverETH(payable(treasury));
+        qtiToken.recoverETH();
         
         uint256 finalBalance = treasury.balance;
         assertEq(finalBalance, initialBalance + recoveryAmount);
@@ -1301,20 +1301,10 @@ contract QTITokenTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        qtiToken.recoverETH(payable(admin));
+        qtiToken.recoverETH();
     }
 
-    /**
-     * @notice Test recovering ETH to non-treasury address should revert
-     * @dev Verifies that ETH can only be recovered to treasury address
-     */
-    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
-        vm.deal(address(qtiToken), 1 ether);
-        
-        vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        qtiToken.recoverETH(payable(user1)); // user1 is not treasury
-    }
+
 
     /**
      * @notice Test recovering ETH when contract has no ETH (should revert)
@@ -1323,7 +1313,7 @@ contract QTITokenTestSuite is Test {
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
-        qtiToken.recoverETH(payable(treasury));
+        qtiToken.recoverETH();
     }
 
     /**

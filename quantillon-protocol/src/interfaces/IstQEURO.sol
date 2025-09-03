@@ -147,7 +147,7 @@ interface IstQEURO {
     /**
      * @notice Recover accidentally sent ETH
      */
-    function recoverETH(address payable to) external;
+    function recoverETH() external;
 
     // View functions for token metadata
     function name() external view returns (string memory);

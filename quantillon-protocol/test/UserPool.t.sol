@@ -1384,7 +1384,7 @@ contract UserPoolTestSuite is Test {
         
         // Admin recovers ETH to treasury (admin)
         vm.prank(admin);
-        userPool.recoverETH(payable(admin));
+        userPool.recoverETH();
         
         uint256 finalBalance = admin.balance;
         assertEq(finalBalance, initialBalance + recoveryAmount);
@@ -1399,20 +1399,10 @@ contract UserPoolTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        userPool.recoverETH(payable(admin));
+        userPool.recoverETH();
     }
 
-    /**
-     * @notice Test recovering ETH to non-treasury address should revert
-     * @dev Verifies that ETH can only be recovered to treasury address
-     */
-    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
-        vm.deal(address(userPool), 1 ether);
-        
-        vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        userPool.recoverETH(payable(user1)); // user1 is not treasury
-    }
+
 
     /**
      * @notice Test recovering ETH when contract has no ETH (should revert)
@@ -1421,7 +1411,7 @@ contract UserPoolTestSuite is Test {
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
-        userPool.recoverETH(payable(admin));
+        userPool.recoverETH();
     }
 }
 

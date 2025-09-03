@@ -1136,7 +1136,7 @@ contract AaveVaultTestSuite is Test {
         
         // Admin recovers ETH to treasury (admin)
         vm.prank(admin);
-        aaveVault.recoverETH(payable(admin));
+        aaveVault.recoverETH();
         
         uint256 finalBalance = admin.balance;
         assertEq(finalBalance, initialBalance + recoveryAmount);
@@ -1151,20 +1151,10 @@ contract AaveVaultTestSuite is Test {
         
         vm.prank(vaultManager);
         vm.expectRevert();
-        aaveVault.recoverETH(payable(admin));
+        aaveVault.recoverETH();
     }
 
-    /**
-     * @notice Test recovering ETH to non-treasury address should revert
-     * @dev Verifies that ETH can only be recovered to treasury address
-     */
-    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
-        vm.deal(address(aaveVault), 1 ether);
-        
-        vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        aaveVault.recoverETH(payable(vaultManager)); // vaultManager is not treasury
-    }
+
 
     /**
      * @notice Test recovering ETH when contract has no ETH (should revert)
@@ -1173,7 +1163,7 @@ contract AaveVaultTestSuite is Test {
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
-        aaveVault.recoverETH(payable(admin));
+        aaveVault.recoverETH();
     }
 }
 

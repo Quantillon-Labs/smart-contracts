@@ -1034,23 +1034,12 @@ contract stQEUROTokenTestSuite is Test {
         vm.deal(address(stQEURO), 1 ether);
         
         vm.prank(admin);
-        stQEURO.recoverETH(payable(treasury)); // Must be treasury address
+        stQEURO.recoverETH(); // Must be treasury address
         
         // Should not revert (mock call will succeed)
     }
     
-    /**
-     * @notice Test recovering ETH to non-treasury address should revert
-     * @dev Verifies that ETH can only be recovered to treasury address
-     */
-    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
-        // Fund the contract with some ETH
-        vm.deal(address(stQEURO), 1 ether);
-        
-        vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        stQEURO.recoverETH(payable(address(0x456))); // Not treasury
-    }
+
     
     /**
      * @notice Test recovering ETH by non-admin should revert
@@ -1062,7 +1051,7 @@ contract stQEUROTokenTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        stQEURO.recoverETH(payable(treasury));
+        stQEURO.recoverETH();
     }
 
     // =============================================================================

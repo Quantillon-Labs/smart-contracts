@@ -311,30 +311,8 @@ contract YieldShift is
         emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), block.timestamp);
     }
 
-    /**
-     * @notice Internal function to add yield (bypasses authorization for internal calls)
-     * @param yieldAmount Amount of yield to add
-     * @param source Source identifier
-     */
-    function _addYieldInternal(uint256 yieldAmount, bytes32 source) internal nonReentrant {
-        ValidationLibrary.validatePositiveAmount(yieldAmount);
-        
-        yieldSources[source] += yieldAmount;
-        totalYieldGenerated += yieldAmount;
-        
-        uint256 userAllocation = yieldAmount.mulDiv(currentYieldShift, 10000);
-        uint256 hedgerAllocation = yieldAmount - userAllocation;
-        
-        userYieldPool += userAllocation;
-        hedgerYieldPool += hedgerAllocation;
-        
-        if (userAllocation > 0) {
-            usdc.safeTransfer(address(stQEURO), userAllocation);
-            stQEURO.distributeYield(userAllocation);
-        }
-        
-        emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), block.timestamp);
-    }
+
+
 
     function claimUserYield(address user) 
         external 
@@ -835,9 +813,9 @@ contract YieldShift is
         TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
-    function recoverETH(address payable to) external {
+    function recoverETH() external {
         AccessControlLibrary.onlyAdmin(this);
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury);
     }
 }

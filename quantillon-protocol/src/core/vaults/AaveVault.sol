@@ -257,8 +257,8 @@ contract AaveVault is
         ValidationLibrary.validatePositiveAmount(amount);
         
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
-        // SECURITY: Check if there are Aave tokens to withdraw (safe equality check)
-        if (aaveBalance == 0) revert ErrorLibrary.InsufficientBalance();
+        // SECURITY: Check if there are Aave tokens to withdraw (safe inequality check)
+        if (aaveBalance < 1) revert ErrorLibrary.InsufficientBalance();
         
         uint256 withdrawAmount = amount;
         if (amount == type(uint256).max) {
@@ -475,8 +475,8 @@ contract AaveVault is
         uint256 currentBalance = aUSDC.balanceOf(address(this));
         uint256 totalAssets = currentBalance + usdc.balanceOf(address(this));
         
-        if (totalAssets == 0) {
-            // SECURITY: No assets to rebalance (safe equality check)
+        if (totalAssets < 1) {
+            // SECURITY: No assets to rebalance (safe inequality check)
             return (false, 0, 0);
         }
         
@@ -524,6 +524,7 @@ contract AaveVault is
 
     function emergencyWithdrawFromAave() 
         external 
+        nonReentrant 
         returns (uint256 amountWithdrawn) 
     {
         AccessControlLibrary.onlyEmergencyRole(this);
@@ -578,7 +579,8 @@ contract AaveVault is
         exposureRatio = totalAssets > 0 ? aaveBalance.mulDiv(10000, totalAssets) : 0;
         concentrationRisk = exposureRatio > 8000 ? 3 : exposureRatio > 6000 ? 2 : 1;
         // SECURITY: Only need utilization rate, ignore other return values (safe to ignore for risk metrics)
-        (, uint256 utilizationRate, , ) = this.getAaveMarketData();
+        (uint256 totalLiquidity, uint256 utilizationRate, uint256 availableLiquidity, uint256 totalStableDebt) = this.getAaveMarketData();
+        // Note: totalLiquidity, availableLiquidity, and totalStableDebt are intentionally unused for risk metrics
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
     }
 

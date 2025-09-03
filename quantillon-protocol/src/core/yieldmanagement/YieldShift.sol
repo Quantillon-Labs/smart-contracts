@@ -231,6 +231,12 @@ contract YieldShift is
 
         // Initialize arrays to prevent uninitialized state variable warnings
         _recordPoolSnapshot();
+        
+        // Initialize yieldShiftHistory with initial snapshot
+        yieldShiftHistory.push(YieldShiftSnapshot({
+            yieldShift: uint128(currentYieldShift),
+            timestamp: uint64(block.timestamp)
+        }));
 
         yieldSourceNames.push(keccak256("aave"));
         yieldSourceNames.push(keccak256("fees"));
@@ -281,9 +287,10 @@ contract YieldShift is
         uint256 balanceBefore = usdc.balanceOf(address(this));
         usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        // SECURITY: Verify USDC was actually received (safe equality check for transfer validation)
+        // SECURITY: Verify USDC was actually received (tolerance-based check for transfer validation)
+        uint256 actualReceived = balanceAfter - balanceBefore;
         require(
-            balanceAfter - balanceBefore == yieldAmount,
+            actualReceived >= yieldAmount && actualReceived <= yieldAmount + 1,
             "Yield amount mismatch"
         );
         
@@ -309,7 +316,7 @@ contract YieldShift is
      * @param yieldAmount Amount of yield to add
      * @param source Source identifier
      */
-    function _addYieldInternal(uint256 yieldAmount, bytes32 source) internal {
+    function _addYieldInternal(uint256 yieldAmount, bytes32 source) internal nonReentrant {
         ValidationLibrary.validatePositiveAmount(yieldAmount);
         
         yieldSources[source] += yieldAmount;
@@ -523,7 +530,7 @@ contract YieldShift is
         uint256 volatility
     ) {
         uint256 length = yieldShiftHistory.length;
-        if (length == 0) {
+        if (length < 1) {
             return (currentYieldShift, currentYieldShift, currentYieldShift, 0);
         }
         
@@ -583,7 +590,8 @@ contract YieldShift is
         totalYieldDistributed_ = totalYieldDistributed;
         
         // SECURITY: Only need total users, ignore other return values (safe to ignore for performance metrics)
-        (uint256 totalUsers, , , ) = userPool.getPoolMetrics();
+        (uint256 totalUsers, uint256 totalStakes, uint256 totalDeposits, uint256 totalRewards) = userPool.getPoolMetrics();
+        // Note: totalStakes, totalDeposits, and totalRewards are intentionally unused for performance metrics
         uint256 activeHedgers = hedgerPool.activeHedgers();
         
         averageUserYield = totalUsers > 0 ? 

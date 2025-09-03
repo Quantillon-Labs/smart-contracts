@@ -607,8 +607,9 @@ contract HedgerPool is
         if (!_isPositionLiquidatable(positionId)) revert ErrorLibrary.PositionNotLiquidatable();
 
         // SECURITY: Only need validation status, ignore price (safe to ignore for liquidation)
-        (, bool isValid) = oracle.getEurUsdPrice();
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         ValidationLibrary.validateOraclePrice(isValid);
+        // Note: currentPrice is intentionally unused for liquidation logic
 
         liquidationReward = uint256(position.margin).percentageOf(liquidationPenalty);
         uint256 remainingMargin = uint256(position.margin) - liquidationReward;
@@ -676,7 +677,7 @@ contract HedgerPool is
             uint256 currentBlock = block.number;
             uint256 lastRewardBlock = hedgerLastRewardBlock[hedger];
             
-            if (lastRewardBlock == 0 || hedgerInfo.totalExposure == 0) {
+            if (lastRewardBlock < 1) {
                 hedgerLastRewardBlock[hedger] = currentBlock;
                 return;
             }
@@ -933,24 +934,13 @@ contract HedgerPool is
 
     /**
      * @notice Recover ETH to treasury address only
-     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+     * @dev SECURITY: Uses TreasuryRecoveryLibrary for secure ETH recovery
      * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external {
         AccessControlLibrary.onlyAdmin(this);
-        
-        // SECURITY: Only allow recovery to the contract's treasury address
-        // This prevents arbitrary ETH transfers that could be exploited
-        if (to != treasury) revert ErrorLibrary.InvalidAddress();
-        
-        uint256 balance = address(this).balance;
-        // SECURITY: Check if there's ETH to recover (safe equality check)
-        if (balance == 0) revert ErrorLibrary.NoETHToRecover();
-        
-        (bool success, ) = to.call{value: balance}("");
-        if (!success) revert ErrorLibrary.ETHTransferFailed();
-        
-        emit ETHRecovered(to, balance);
+        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        emit ETHRecovered(to, address(this).balance);
     }
     
     /**

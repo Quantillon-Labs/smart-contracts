@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "./SecureUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -69,6 +70,7 @@ contract QTIToken is
     ERC20Upgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
+    ReentrancyGuardUpgradeable,
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
@@ -804,7 +806,7 @@ contract QTIToken is
      * @notice Execute a successful proposal
      * @param proposalId Proposal ID
      */
-    function executeProposal(uint256 proposalId) external {
+    function executeProposal(uint256 proposalId) external nonReentrant {
         Proposal storage proposal = proposals[proposalId];
         if (block.timestamp < proposal.endTime) revert ErrorLibrary.VotingNotEnded();
         if (proposal.executed) revert ErrorLibrary.ProposalAlreadyExecuted();
@@ -812,10 +814,12 @@ contract QTIToken is
         if (proposal.forVotes <= proposal.againstVotes) revert ErrorLibrary.ProposalFailed();
         if (proposal.forVotes + proposal.againstVotes < quorumVotes) revert ErrorLibrary.QuorumNotMet();
 
+        // SECURITY FIX: Mark as executed before external call to prevent reentrancy
         proposal.executed = true;
 
         // Execute the proposal data
         if (proposal.data.length > 0) {
+            // SECURITY FIX: External call after state update (CEI pattern)
             (bool success, ) = address(this).call(proposal.data);
             if (!success) revert ErrorLibrary.ProposalExecutionFailed();
         }

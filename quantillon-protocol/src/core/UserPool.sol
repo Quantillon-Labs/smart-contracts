@@ -784,6 +784,8 @@ contract UserPool is
         // GAS OPTIMIZATION: Cache timestamp to avoid repeated block.timestamp calls
         uint64 currentTimestamp = uint64(block.timestamp);
         
+        // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
+        // First pass: calculate rewards and update state
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
             _updatePendingRewards(user);
@@ -793,9 +795,18 @@ contract UserPool is
             rewardAmounts[i] = rewardAmount;
             
             if (rewardAmount > 0) {
+                // EFFECTS: Update state before external calls
                 userInfo_.pendingRewards = 0;
-                
-                // Mint reward tokens (could be QEURO or QTI)
+            }
+        }
+        
+        // Second pass: external interactions (minting)
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            uint256 rewardAmount = rewardAmounts[i];
+            
+            if (rewardAmount > 0) {
+                // INTERACTIONS: External calls after state updates
                 qeuro.mint(user, rewardAmount);
                 
                 emit StakingRewardsClaimed(user, rewardAmount, currentTimestamp);
@@ -837,8 +848,8 @@ contract UserPool is
             uint256 currentBlock = block.number;
             uint256 lastRewardBlock = userLastRewardBlock[user];
             
-            if (lastRewardBlock == 0) {
-                // SECURITY: First time claiming, set initial block (safe equality check)
+            if (lastRewardBlock < 1) {
+                // SECURITY: First time claiming, set initial block (safe inequality check)
                 userLastRewardBlock[user] = currentBlock;
                 return;
             }
@@ -906,8 +917,8 @@ contract UserPool is
         uint256 currentBlock = block.number;
         uint256 lastRewardBlock = userLastRewardBlock[user];
         
-        if (lastRewardBlock == 0) {
-            // SECURITY: First time claiming, return existing rewards (safe equality check)
+        if (lastRewardBlock < 1) {
+            // SECURITY: First time claiming, return existing rewards (safe inequality check)
             return userdata.pendingRewards;
         }
         

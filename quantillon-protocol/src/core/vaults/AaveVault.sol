@@ -628,18 +628,15 @@ contract AaveVault is
         _unpause();
     }
 
-    function recoverToken(address token, address to, uint256 amount) external {
+    function recoverToken(address token, uint256 amount) external {
         AccessControlLibrary.onlyAdmin(this);
-        if (token == address(usdc)) revert ErrorLibrary.CannotRecoverUSDC();
-        if (token == address(aUSDC)) revert ErrorLibrary.CannotRecoverAToken();
-        AccessControlLibrary.validateAddress(to);
-        
-        IERC20(token).safeTransfer(to, amount);
+        // Use the shared library for secure token recovery to treasury
+        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
     function recoverETH(address payable to) external {
         AccessControlLibrary.onlyAdmin(this);
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury, to);
     }
 }

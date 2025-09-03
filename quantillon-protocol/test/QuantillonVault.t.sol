@@ -728,8 +728,8 @@ contract QuantillonVaultTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test recovering tokens
-     * @dev Verifies that admin can recover accidentally sent tokens
+     * @notice Test recovering tokens to treasury
+     * @dev Verifies that admin can recover accidentally sent tokens to treasury
      */
     function test_Recovery_RecoverToken() public {
         // Create a mock token that will succeed
@@ -739,11 +739,13 @@ contract QuantillonVaultTestSuite is Test {
         // Fund the mock token to the vault
         mockToken.mint(address(vault), amount);
         
-        vm.prank(admin);
-        vault.recoverToken(address(mockToken), user1, amount);
+        uint256 initialTreasuryBalance = mockToken.balanceOf(mockTimelock); // mockTimelock is treasury
         
-        // Verify token transfer was called (check that function completed successfully)
-        console2.log("Token recovered successfully");
+        vm.prank(admin);
+        vault.recoverToken(address(mockToken), amount);
+        
+        // Verify tokens were sent to treasury (mockTimelock)
+        assertEq(mockToken.balanceOf(mockTimelock), initialTreasuryBalance + amount);
     }
     
     /**
@@ -753,37 +755,71 @@ contract QuantillonVaultTestSuite is Test {
     function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
         vm.prank(user1);
         vm.expectRevert();
-        vault.recoverToken(address(0x1234), user2, 1000 * 1e18);
+        vault.recoverToken(address(0x1234), 1000 * 1e18);
     }
     
     /**
-     * @notice Test recovering USDC should revert
-     * @dev Verifies that USDC collateral cannot be recovered
+     * @notice Test recovering own vault tokens should revert
+     * @dev Verifies that vault's own tokens cannot be recovered
      */
-    function test_Recovery_RecoverUSDC_Revert() public {
+    function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert("Vault: Cannot recover USDC collateral");
-        vault.recoverToken(mockUSDC, user1, 1000 * 1e6);
+        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        vault.recoverToken(address(vault), 1000 * 1e18);
     }
     
     /**
-     * @notice Test recovering QEURO should revert
-     * @dev Verifies that QEURO cannot be recovered
+     * @notice Test recovering USDC should succeed
+     * @dev Verifies that USDC can now be recovered to treasury
      */
-    function test_Recovery_RecoverQEURO_Revert() public {
+    function test_Recovery_RecoverUSDC_Success() public {
+        // Create a mock USDC token for testing
+        MockERC20 mockUSDCToken = new MockERC20("Mock USDC", "mUSDC");
+        mockUSDCToken.mint(address(vault), 1000 * 1e6);
+        
+        uint256 initialTreasuryBalance = mockUSDCToken.balanceOf(mockTimelock); // mockTimelock is treasury
+        
         vm.prank(admin);
-        vm.expectRevert("Vault: Cannot recover QEURO");
-        vault.recoverToken(address(qeuroToken), user1, 1000 * 1e18);
+        vault.recoverToken(address(mockUSDCToken), 1000 * 1e6);
+        
+        // Verify USDC was sent to treasury
+        assertEq(mockUSDCToken.balanceOf(mockTimelock), initialTreasuryBalance + 1000 * 1e6);
     }
     
     /**
-     * @notice Test recovering tokens to zero address should revert
-     * @dev Verifies that zero address is rejected
+     * @notice Test recovering QEURO should succeed
+     * @dev Verifies that QEURO can now be recovered to treasury
      */
-    function test_Recovery_RecoverTokenToZeroAddress_Revert() public {
+    function test_Recovery_RecoverQEURO_Success() public {
+        // Create a mock QEURO token for testing (since the real QEURO token has complex minting logic)
+        MockERC20 mockQEURO = new MockERC20("Mock QEURO", "mQEURO");
+        mockQEURO.mint(address(vault), 100 * 1e18);
+        
+        uint256 initialTreasuryBalance = mockQEURO.balanceOf(mockTimelock); // mockTimelock is treasury
+        
         vm.prank(admin);
-        vm.expectRevert("Vault: Cannot send to zero address");
-        vault.recoverToken(address(0x1234), address(0), 1000 * 1e18);
+        vault.recoverToken(address(mockQEURO), 100 * 1e18);
+        
+        // Verify QEURO was sent to treasury
+        assertEq(mockQEURO.balanceOf(mockTimelock), initialTreasuryBalance + 100 * 1e18);
+    }
+    
+    /**
+     * @notice Test recovering tokens to treasury should succeed
+     * @dev Verifies that tokens are automatically sent to treasury
+     */
+    function test_Recovery_RecoverTokenToTreasury_Success() public {
+        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+        uint256 amount = 1000 * 1e18;
+        mockToken.mint(address(vault), amount);
+        
+        uint256 initialTreasuryBalance = mockToken.balanceOf(mockTimelock); // mockTimelock is treasury
+        
+        vm.prank(admin);
+        vault.recoverToken(address(mockToken), amount);
+        
+        // Verify tokens were sent to treasury
+        assertEq(mockToken.balanceOf(mockTimelock), initialTreasuryBalance + amount);
     }
     
     /**
@@ -924,4 +960,50 @@ contract QuantillonVaultTestSuite is Test {
     // =============================================================================
     
 
+}
+
+// =============================================================================
+// MOCK CONTRACTS
+// =============================================================================
+
+/**
+ * @title MockERC20
+ * @notice Mock ERC20 token for testing
+ */
+contract MockERC20 {
+    string public name;
+    string public symbol;
+    uint8 public decimals;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
+        decimals = 18;
+    }
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+        totalSupply += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
 }

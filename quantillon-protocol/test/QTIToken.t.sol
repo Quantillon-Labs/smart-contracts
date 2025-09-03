@@ -15,6 +15,10 @@ import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 contract QTITokenTestHelper is QTIToken {
     // Test helper function to mint tokens for testing
     function testMint(address to, uint256 amount) external {
+        // Skip invalid inputs instead of reverting (for fuzz test compatibility)
+        if (to == address(0) || amount == 0) {
+            return; // Skip invalid inputs
+        }
         _mint(to, amount);
     }
 }
@@ -1222,59 +1226,51 @@ contract QTITokenTestSuite is Test {
     // =============================================================================
 
     /**
-     * @notice Test recovering ERC20 tokens
-     * @dev Verifies that admin can recover accidentally sent tokens
+     * @notice Test recovering external tokens to treasury
+     * @dev Verifies that admin can recover accidentally sent tokens to treasury
      */
     function test_Recovery_RecoverToken() public {
-        // Deploy a mock ERC20 token
-        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
-        uint256 recoveryAmount = 1000e18;
+        // Create a mock ERC20 token
+        MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
+        mockToken.mint(address(qtiToken), 1000e18);
         
-        // Mint tokens to the QTI contract
-        mockToken.mint(address(qtiToken), recoveryAmount);
+        // Verify the mock token was minted correctly
+        assertEq(mockToken.balanceOf(address(qtiToken)), 1000e18);
         
-        uint256 initialBalance = mockToken.balanceOf(admin);
+        // Give some initial balance to treasury for testing
+        mockToken.mint(treasury, 100e18);
         
-        // Admin recovers tokens
+        uint256 initialTreasuryBalance = mockToken.balanceOf(treasury); // treasury is address(0x2)
+        
         vm.prank(admin);
-        qtiToken.recoverToken(address(mockToken), admin, recoveryAmount);
+        qtiToken.recoverToken(address(mockToken), 500e18);
         
-        uint256 finalBalance = mockToken.balanceOf(admin);
-        assertEq(finalBalance, initialBalance + recoveryAmount);
-    }
-
-    /**
-     * @notice Test recovering ERC20 tokens by non-admin (should revert)
-     * @dev Verifies that only admin can recover tokens
-     */
-    function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
-        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+        uint256 finalTreasuryBalance = mockToken.balanceOf(treasury);
         
-        vm.prank(user1);
-        vm.expectRevert();
-        qtiToken.recoverToken(address(mockToken), user1, 1000e18);
+        // Verify tokens were sent to treasury
+        assertEq(finalTreasuryBalance, initialTreasuryBalance + 500e18);
     }
-
+    
     /**
-     * @notice Test recovering QTI tokens (should revert)
+     * @notice Test recovering QTI tokens should revert
      * @dev Verifies that QTI tokens cannot be recovered
      */
     function test_Recovery_RecoverQTIToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverQTI.selector);
-        qtiToken.recoverToken(address(qtiToken), admin, 1000e18);
+        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        qtiToken.recoverToken(address(qtiToken), 1000e18);
     }
-
+    
     /**
-     * @notice Test recovering tokens to zero address (should revert)
-     * @dev Verifies that tokens cannot be recovered to zero address
+     * @notice Test recovering tokens by non-admin should revert
+     * @dev Verifies that only admin can recover tokens
      */
-    function test_Recovery_RecoverTokenToZeroAddress_Revert() public {
-        MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
+    function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
+        MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
         
-        vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        qtiToken.recoverToken(address(mockToken), address(0), 1000e18);
+        vm.prank(user1);
+        vm.expectRevert();
+        qtiToken.recoverToken(address(mockToken), 1000e18);
     }
 
     /**

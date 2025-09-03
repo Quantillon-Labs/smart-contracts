@@ -568,38 +568,49 @@ contract ChainlinkOracleTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test token recovery
-     * @dev Verifies ERC20 token recovery functionality
+     * @notice Test recovering external tokens to treasury
+     * @dev Verifies that admin can recover accidentally sent tokens to treasury
      */
     function test_Recovery_RecoverToken() public {
-        // Create a mock token
-        MockToken mockToken = new MockToken();
-        uint256 amount = 1000 * 1e18;
+        // Create a mock ERC20 token
+        MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
+        mockToken.mint(address(oracle), 1000e18);
         
-        // Mint tokens to the oracle contract
-        mockToken.mint(address(oracle), amount);
-        assertEq(mockToken.balanceOf(address(oracle)), amount);
+        uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
         
-        // Recover tokens
         vm.prank(admin);
-        oracle.recoverToken(address(mockToken), recipient, amount);
+        oracle.recoverToken(address(mockToken), 500e18);
         
-        assertEq(mockToken.balanceOf(recipient), amount);
-        assertEq(mockToken.balanceOf(address(oracle)), 0);
+        // Verify tokens were sent to treasury (admin)
+        assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + 500e18);
     }
     
     /**
-     * @notice Test token recovery to zero address should revert
-     * @dev Verifies parameter validation
+     * @notice Test recovering own oracle tokens should revert
+     * @dev Verifies that oracle's own tokens cannot be recovered
      */
-    function test_Recovery_RecoverTokenToZeroAddress_Revert() public {
+    function test_Recovery_RecoverOwnToken_Revert() public {
+        vm.prank(admin);
+        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        oracle.recoverToken(address(oracle), 1000e18);
+    }
+    
+    /**
+     * @notice Test token recovery to treasury should succeed
+     * @dev Verifies tokens are automatically sent to treasury
+     */
+    function test_Recovery_RecoverTokenToTreasury_Success() public {
         MockToken mockToken = new MockToken();
         uint256 amount = 1000 * 1e18;
         mockToken.mint(address(oracle), amount);
         
+        uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
+        
         vm.prank(admin);
-        vm.expectRevert("Oracle: Cannot send to zero address");
-        oracle.recoverToken(address(mockToken), address(0), amount);
+        oracle.recoverToken(address(mockToken), amount);
+        
+        // Verify tokens were sent to treasury
+        assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + amount);
     }
     
     /**
@@ -937,6 +948,58 @@ contract MockToken {
     
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
+        return true;
+    }
+}
+
+/**
+ * @title MockERC20
+ * @notice Mock ERC20 token for testing
+ */
+contract MockERC20 {
+    string public name;
+    string public symbol;
+    uint8 public decimals;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
+        decimals = 18;
+    }
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+        totalSupply += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(balanceOf[from] >= amount, "Insufficient balance");
+        require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        allowance[from][msg.sender] -= amount;
+        emit Transfer(from, to, amount);
         return true;
     }
 }

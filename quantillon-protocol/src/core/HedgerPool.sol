@@ -16,6 +16,7 @@ import "../libraries/AccessControlLibrary.sol";
 import "../libraries/ValidationLibrary.sol";
 import "../libraries/VaultLibrary.sol";
 import "./SecureUpgradeable.sol";
+import "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
  * @title HedgerPool
@@ -924,12 +925,10 @@ contract HedgerPool is
         return hasPendingLiquidation[hedger][positionId];
     }
 
-    function recoverToken(address token, address to, uint256 amount) external {
+    function recoverToken(address token, uint256 amount) external {
         AccessControlLibrary.onlyAdmin(this);
-        if (token == address(usdc)) revert ErrorLibrary.CannotRecoverUSDC();
-        AccessControlLibrary.validateAddress(to);
-        
-        IERC20(token).safeTransfer(to, amount);
+        // Use the shared library for secure token recovery to treasury
+        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
     /**

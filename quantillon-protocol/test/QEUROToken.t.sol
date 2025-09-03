@@ -1103,20 +1103,21 @@ contract QEUROTokenTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test recovering external tokens
-     * @dev Verifies that admin can recover accidentally sent tokens
+     * @notice Test recovering external tokens to treasury
+     * @dev Verifies that admin can recover accidentally sent tokens to treasury
      */
     function test_Recovery_RecoverToken() public {
         // Create a mock ERC20 token
         MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
         mockToken.mint(address(qeuroToken), 1000);
         
-        uint256 initialBalance = mockToken.balanceOf(user1);
+        uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
         
         vm.prank(admin);
-        qeuroToken.recoverToken(address(mockToken), user1, 500);
+        qeuroToken.recoverToken(address(mockToken), 500);
         
-        assertEq(mockToken.balanceOf(user1), initialBalance + 500);
+        // Verify tokens were sent to treasury (admin)
+        assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + 500);
     }
     
     /**
@@ -1125,8 +1126,8 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Recovery_RecoverQEURO_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverQEURO.selector);
-        qeuroToken.recoverToken(address(qeuroToken), user1, 1000);
+        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        qeuroToken.recoverToken(address(qeuroToken), 1000);
     }
     
     /**
@@ -1138,7 +1139,7 @@ contract QEUROTokenTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        qeuroToken.recoverToken(address(mockToken), user2, 1000);
+        qeuroToken.recoverToken(address(mockToken), 1000);
     }
     
     /**

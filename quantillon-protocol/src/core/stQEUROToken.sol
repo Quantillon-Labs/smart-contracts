@@ -739,14 +739,11 @@ contract stQEUROToken is
     // =============================================================================
 
     /**
-     * @notice Recover accidentally sent tokens
+     * @notice Recover accidentally sent tokens to treasury only
      */
-    function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(token != address(qeuro), "stQEURO: Cannot recover QEURO");
-        require(token != address(this), "stQEURO: Cannot recover stQEURO");
-        require(to != address(0), "stQEURO: Cannot send to zero address");
-        
-        IERC20(token).safeTransfer(to, amount);
+    function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Use the shared library for secure token recovery to treasury
+        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
     /**
@@ -756,7 +753,7 @@ contract stQEUROToken is
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury, to);
         
         // Emit event for tracking
         emit ETHRecovered(to, address(this).balance);

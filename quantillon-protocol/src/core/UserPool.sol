@@ -1143,17 +1143,13 @@ contract UserPool is
     // =============================================================================
 
     /**
-     * @notice Recover accidentally sent tokens
+     * @notice Recover accidentally sent tokens to treasury only
      * @param token Token address to recover
-     * @param to Recipient address
      * @param amount Amount to recover
      */
-    function recoverToken(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(token != address(qeuro), "UserPool: Cannot recover QEURO");
-        require(token != address(usdc), "UserPool: Cannot recover USDC");
-        require(to != address(0), "UserPool: Cannot send to zero address");
-        
-        IERC20(token).safeTransfer(to, amount);
+    function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // Use the shared library for secure token recovery to treasury
+        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
     /**
@@ -1163,7 +1159,7 @@ contract UserPool is
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury, to);
         
         // Emit event for tracking
         emit ETHRecovered(to, address(this).balance);

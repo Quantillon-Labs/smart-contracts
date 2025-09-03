@@ -550,27 +550,22 @@ contract QuantillonVault is
 
 
     /**
-     * @notice Recovers tokens accidentally sent to the vault
+     * @notice Recovers tokens accidentally sent to the vault to treasury only
      * 
      * @param token Token contract address
-     * @param to Recipient
      * @param amount Amount to recover
      * 
      * @dev Protections:
-     *      - Cannot recover USDC collateral
-     *      - Cannot recover QEURO
+     *      - Cannot recover own vault tokens
+     *      - Tokens are sent to treasury address only
      *      - Only third-party tokens can be recovered
      */
     function recoverToken(
         address token,
-        address to,
         uint256 amount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(token != address(usdc), "Vault: Cannot recover USDC collateral");
-        require(token != address(qeuro), "Vault: Cannot recover QEURO");
-        require(to != address(0), "Vault: Cannot send to zero address");
-        
-        IERC20(token).safeTransfer(to, amount);
+        // Use the shared library for secure token recovery to treasury
+        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
     /**
@@ -586,7 +581,7 @@ contract QuantillonVault is
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETHToTreasury(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury, to);
     }
 
     // =============================================================================

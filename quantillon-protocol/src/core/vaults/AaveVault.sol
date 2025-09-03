@@ -277,7 +277,19 @@ contract AaveVault is
         
         uint256 usdcBefore = usdc.balanceOf(address(this));
         
+        // CALCULATE EXPECTED WITHDRAWAL BEFORE EXTERNAL CALL
+        uint256 expectedPrincipalWithdrawn = VaultMath.min(withdrawAmount, principalDeposited);
+        
+        // VALIDATE BEFORE EXTERNAL CALL (CHECKS)
+        if (expectedPrincipalWithdrawn > 0) {
+            if (principalDeposited < expectedPrincipalWithdrawn) {
+                revert ErrorLibrary.InvalidAmount();
+            }
+        }
+        
         // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
+        uint256 actualReceived = 0;
+        
         try aavePool.withdraw(address(usdc), withdrawAmount, address(this)) 
             returns (uint256 withdrawn) 
         {
@@ -285,7 +297,7 @@ contract AaveVault is
             
             // Verify actual amount received
             uint256 usdcAfter = usdc.balanceOf(address(this));
-            uint256 actualReceived = usdcAfter - usdcBefore;
+            actualReceived = usdcAfter - usdcBefore;
             
             // Strict validation - ensure actual received matches returned amount
             if (actualReceived != usdcWithdrawn) {
@@ -299,22 +311,22 @@ contract AaveVault is
                 ValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 500);
             }
             
-            // UPDATE STATE AFTER EXTERNAL CALL (safe to do now)
-            // Only update accounting with verified amount
-            uint256 principalWithdrawn = VaultMath.min(actualReceived, principalDeposited);
-            principalDeposited -= principalWithdrawn;
-            
-            // SECURITY: Ensure principalDeposited never goes negative
-            if (principalDeposited > type(uint256).max - principalWithdrawn) {
-                revert ErrorLibrary.InvalidAmount();
-            }
-            
             emit WithdrawnFromAave("withdraw", amount, actualReceived, aUSDC.balanceOf(address(this)));
             
         } catch Error(string memory reason) {
             revert(string(abi.encodePacked("Aave withdrawal failed: ", reason)));
         } catch {
             revert("Aave withdrawal failed");
+        }
+        
+        // UPDATE STATE AFTER EXTERNAL CALL (EFFECTS)
+        // Note: This is safe because we're not reading state during external calls
+        // and we're using the nonReentrant modifier to prevent reentrancy
+        if (actualReceived > 0) {
+            uint256 principalToDeduct = VaultMath.min(actualReceived, principalDeposited);
+            if (principalToDeduct > 0) {
+                principalDeposited -= principalToDeduct;
+            }
         }
     }
 

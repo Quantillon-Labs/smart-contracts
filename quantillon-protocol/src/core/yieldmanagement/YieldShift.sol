@@ -194,7 +194,7 @@ contract YieldShift is
         address _hedgerPool,
         address _aaveVault,
         address _stQEURO,
-        address timelock,
+        address _timelock,
         address _treasury
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
@@ -208,7 +208,7 @@ contract YieldShift is
         __ReentrancyGuard_init();
         __AccessControl_init();
         __Pausable_init();
-        __SecureUpgradeable_init(timelock);
+        __SecureUpgradeable_init(_timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);

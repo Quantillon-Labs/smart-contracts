@@ -96,12 +96,17 @@ interface IstQEURO {
 
     /**
      * @notice Get staking statistics
+     * @return totalStQEUROSupply Total stQEURO supply
+     * @return totalQEUROUnderlying Total QEURO underlying
+     * @return currentExchangeRate Current exchange rate
+     * @return _totalYieldEarned Total yield earned
+     * @return apy Annual percentage yield
      */
     function getStakingStats() external view returns (
         uint256 totalStQEUROSupply,
         uint256 totalQEUROUnderlying,
         uint256 currentExchangeRate,
-        uint256 totalYieldEarned,
+        uint256 _totalYieldEarned,
         uint256 apy
     );
 

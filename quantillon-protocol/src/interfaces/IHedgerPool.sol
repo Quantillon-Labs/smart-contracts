@@ -50,13 +50,22 @@ interface IHedgerPool {
     
     function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external;
     function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external;
+    /**
+     * @notice Get hedging configuration parameters
+     * @return _minMarginRatio Minimum margin ratio
+     * @return _liquidationThreshold Liquidation threshold
+     * @return _maxLeverage Maximum leverage
+     * @return _liquidationPenalty Liquidation penalty
+     * @return _entryFee Entry fee
+     * @return _exitFee Exit fee
+     */
     function getHedgingConfig() external view returns (
-        uint256 minMarginRatio,
-        uint256 liquidationThreshold,
-        uint256 maxLeverage,
-        uint256 liquidationPenalty,
-        uint256 entryFee,
-        uint256 exitFee
+        uint256 _minMarginRatio,
+        uint256 _liquidationThreshold,
+        uint256 _maxLeverage,
+        uint256 _liquidationPenalty,
+        uint256 _entryFee,
+        uint256 _exitFee
     );
     
     // Emergency functions
@@ -100,10 +109,19 @@ interface IHedgerPool {
         int256 unrealizedPnL,
         bool isActive
     );
+    /**
+     * @notice Get hedger information
+     * @return positionIds Array of position IDs
+     * @return _totalMargin Total margin
+     * @return _totalExposure Total exposure
+     * @return pendingRewards Pending rewards
+     * @return lastRewardClaim Last reward claim time
+     * @return isActive Whether hedger is active
+     */
     function hedgers(address) external view returns (
         uint256[] memory positionIds,
-        uint256 totalMargin,
-        uint256 totalExposure,
+        uint256 _totalMargin,
+        uint256 _totalExposure,
         uint256 pendingRewards,
         uint256 lastRewardClaim,
         bool isActive

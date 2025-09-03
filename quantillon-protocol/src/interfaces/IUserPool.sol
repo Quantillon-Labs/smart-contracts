@@ -184,22 +184,22 @@ interface IUserPool {
 
     /**
      * @notice Pool configuration snapshot
-     * @return stakingAPY Staking APY (bps)
-     * @return depositAPY Deposit APY (bps)
-     * @return minStakeAmount Minimum stake amount
-     * @return unstakingCooldown Unstaking cooldown seconds
-     * @return depositFee Deposit fee (bps)
-     * @return withdrawalFee Withdrawal fee (bps)
-     * @return performanceFee Performance fee (bps)
+     * @return _stakingAPY Staking APY (bps)
+     * @return _depositAPY Deposit APY (bps)
+     * @return _minStakeAmount Minimum stake amount
+     * @return _unstakingCooldown Unstaking cooldown seconds
+     * @return _depositFee Deposit fee (bps)
+     * @return _withdrawalFee Withdrawal fee (bps)
+     * @return _performanceFee Performance fee (bps)
      */
     function getPoolConfig() external view returns (
-        uint256 stakingAPY,
-        uint256 depositAPY,
-        uint256 minStakeAmount,
-        uint256 unstakingCooldown,
-        uint256 depositFee,
-        uint256 withdrawalFee,
-        uint256 performanceFee
+        uint256 _stakingAPY,
+        uint256 _depositAPY,
+        uint256 _minStakeAmount,
+        uint256 _unstakingCooldown,
+        uint256 _depositFee,
+        uint256 _withdrawalFee,
+        uint256 _performanceFee
     );
 
     /**

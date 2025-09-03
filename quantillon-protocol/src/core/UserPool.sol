@@ -328,7 +328,7 @@ contract UserPool is
         address _usdc,
         address _vault,
         address _yieldShift,
-        address timelock,
+        address _timelock,
         address _treasury
     ) public initializer {
         require(admin != address(0), "UserPool: Admin cannot be zero");
@@ -341,7 +341,7 @@ contract UserPool is
         __ReentrancyGuard_init();
         __AccessControl_init();
         __Pausable_init();
-        __SecureUpgradeable_init(timelock);
+        __SecureUpgradeable_init(_timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
@@ -467,7 +467,8 @@ contract UserPool is
         address vaultAddress = address(vault);
         uint256 depositFee_ = depositFee;
         
-        // Process each deposit
+        // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
+        // First pass: Calculate amounts and perform external calls
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 minQeuroOut = minQeuroOuts[i];
@@ -489,12 +490,25 @@ contract UserPool is
             uint256 qeuroAfter = qeuro.balanceOf(address(this));
             uint256 qeuroMinted = qeuroAfter - qeuroBefore;
             qeuroMintedAmounts[i] = qeuroMinted;
+        }
+        
+        // Second pass: Update state variables (EFFECTS)
+        for (uint256 i = 0; i < usdcAmounts.length; i++) {
+            uint256 usdcAmount = usdcAmounts[i];
+            uint256 netAmount = usdcAmount - usdcAmount.percentageOf(depositFee_);
+            uint256 qeuroMinted = qeuroMintedAmounts[i];
             
             // Update user balance and pool totals
             user.qeuroBalance += uint128(qeuroMinted);
             user.depositHistory += uint96(usdcAmount);
             totalDeposits += netAmount;
-
+        }
+        
+        // Third pass: External interactions (INTERACTIONS)
+        for (uint256 i = 0; i < usdcAmounts.length; i++) {
+            uint256 usdcAmount = usdcAmounts[i];
+            uint256 qeuroMinted = qeuroMintedAmounts[i];
+            
             // Transfer QEURO to user
             IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
@@ -522,7 +536,8 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         require(user.qeuroBalance >= qeuroAmount, "UserPool: Insufficient balance");
 
-        // SECURITY FIX: Use safeTransferFrom for reliable QEURO transfers
+        // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
+        // First: Perform external calls and get results
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
         
         // Redeem USDC through vault
@@ -533,13 +548,11 @@ contract UserPool is
         uint256 fee = usdcReceived.percentageOf(withdrawalFee);
         uint256 netAmount = usdcReceived - fee;
 
-        // Update user info
+        // Second: Update state variables (EFFECTS)
         user.qeuroBalance -= uint128(qeuroAmount);
-        
-        // Update pool totals
         totalDeposits -= netAmount;
 
-        // Transfer USDC to user
+        // Third: External interactions (INTERACTIONS)
         usdc.safeTransfer(msg.sender, netAmount);
 
         emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, block.timestamp);
@@ -587,7 +600,8 @@ contract UserPool is
         address vaultAddress = address(vault);
         uint256 withdrawalFee_ = withdrawalFee;
         
-        // Process each withdrawal
+        // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
+        // First pass: Calculate amounts and perform external calls
         for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 minUsdcOut = minUsdcOuts[i];
@@ -606,13 +620,31 @@ contract UserPool is
             uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
             uint256 netAmount = usdcReceived - fee;
             usdcReceivedAmounts[i] = netAmount;
-
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
+        }
+        
+        // Second pass: Update state variables (EFFECTS)
+        for (uint256 i = 0; i < length;) {
+            uint256 qeuroAmount = qeuroAmounts[i];
+            uint256 netAmount = usdcReceivedAmounts[i];
+            
             // Update user info - GAS OPTIMIZATION: Use unchecked for safe arithmetic
             unchecked {
                 user.qeuroBalance -= uint128(qeuroAmount);
                 totalDeposits -= netAmount;
             }
-
+            
+            // GAS OPTIMIZATION: Use unchecked increment
+            unchecked { ++i; }
+        }
+        
+        // Third pass: External interactions (INTERACTIONS)
+        for (uint256 i = 0; i < length;) {
+            uint256 qeuroAmount = qeuroAmounts[i];
+            uint256 netAmount = usdcReceivedAmounts[i];
+            
             // Transfer USDC to user
             usdc.safeTransfer(msg.sender, netAmount);
 
@@ -1169,10 +1201,9 @@ contract UserPool is
      * @param to Treasury address (must match the contract's treasury)
      */
     function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // SECURITY FIX: Emit event before external call to prevent reentrancy
+        emit ETHRecovered(to, address(this).balance);
         // Use the shared library for secure ETH recovery
         TreasuryRecoveryLibrary.recoverETH(treasury, to);
-        
-        // Emit event for tracking
-        emit ETHRecovered(to, address(this).balance);
     }
 }

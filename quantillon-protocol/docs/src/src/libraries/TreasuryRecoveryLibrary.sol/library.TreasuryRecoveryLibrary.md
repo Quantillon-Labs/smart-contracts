@@ -1,5 +1,5 @@
 # TreasuryRecoveryLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/libraries/TreasuryRecoveryLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/libraries/TreasuryRecoveryLibrary.sol)
 
 **Author:**
 Quantillon Protocol Team
@@ -54,14 +54,13 @@ Recover ETH to treasury address only
 
 
 ```solidity
-function recoverETH(address treasury, address payable to) external;
+function recoverETH(address treasury) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`treasury`|`address`|The contract's treasury address|
-|`to`|`address payable`|Recipient address (must match treasury)|
 
 
 ### validateTreasury

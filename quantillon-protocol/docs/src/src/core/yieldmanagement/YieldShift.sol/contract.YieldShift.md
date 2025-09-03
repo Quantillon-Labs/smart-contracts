@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -335,7 +335,7 @@ function initialize(
     address _hedgerPool,
     address _aaveVault,
     address _stQEURO,
-    address timelock,
+    address _timelock,
     address _treasury
 ) public initializer;
 ```
@@ -353,22 +353,6 @@ function updateYieldDistribution() external nonReentrant whenNotPaused;
 ```solidity
 function addYield(uint256 yieldAmount, bytes32 source) external nonReentrant;
 ```
-
-### _addYieldInternal
-
-Internal function to add yield (bypasses authorization for internal calls)
-
-
-```solidity
-function _addYieldInternal(uint256 yieldAmount, bytes32 source) internal nonReentrant;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Amount of yield to add|
-|`source`|`bytes32`|Source identifier|
-
 
 ### claimUserYield
 
@@ -687,7 +671,7 @@ function recoverToken(address token, uint256 amount) external;
 
 
 ```solidity
-function recoverETH(address payable to) external;
+function recoverETH() external;
 ```
 
 ## Events

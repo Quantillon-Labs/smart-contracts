@@ -1,5 +1,5 @@
 # IstQEURO
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/interfaces/IstQEURO.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/interfaces/IstQEURO.sol)
 
 **Author:**
 Quantillon Labs
@@ -234,10 +234,20 @@ function getStakingStats()
         uint256 totalStQEUROSupply,
         uint256 totalQEUROUnderlying,
         uint256 currentExchangeRate,
-        uint256 totalYieldEarned,
+        uint256 _totalYieldEarned,
         uint256 apy
     );
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalStQEUROSupply`|`uint256`|Total stQEURO supply|
+|`totalQEUROUnderlying`|`uint256`|Total QEURO underlying|
+|`currentExchangeRate`|`uint256`|Current exchange rate|
+|`_totalYieldEarned`|`uint256`|Total yield earned|
+|`apy`|`uint256`|Annual percentage yield|
+
 
 ### updateYieldParameters
 
@@ -299,7 +309,7 @@ Recover accidentally sent ETH
 
 
 ```solidity
-function recoverETH(address payable to) external;
+function recoverETH() external;
 ```
 
 ### name

@@ -1,5 +1,5 @@
 # IQTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/interfaces/IQTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/interfaces/IQTIToken.sol)
 
 **Author:**
 Quantillon Labs
@@ -406,22 +406,22 @@ function getGovernanceInfo()
     external
     view
     returns (
-        uint256 totalLocked,
-        uint256 totalVotingPower,
-        uint256 proposalThreshold,
-        uint256 quorumVotes,
-        uint256 currentDecentralizationLevel
+        uint256 _totalLocked,
+        uint256 _totalVotingPower,
+        uint256 _proposalThreshold,
+        uint256 _quorumVotes,
+        uint256 _currentDecentralizationLevel
     );
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`totalLocked`|`uint256`|Total locked QTI|
-|`totalVotingPower`|`uint256`|Total voting power|
-|`proposalThreshold`|`uint256`|Proposal threshold|
-|`quorumVotes`|`uint256`|Quorum requirement|
-|`currentDecentralizationLevel`|`uint256`|Current decentralization level|
+|`_totalLocked`|`uint256`|Total locked QTI|
+|`_totalVotingPower`|`uint256`|Total voting power|
+|`_proposalThreshold`|`uint256`|Proposal threshold|
+|`_quorumVotes`|`uint256`|Quorum requirement|
+|`_currentDecentralizationLevel`|`uint256`|Current decentralization level|
 
 
 ### name
@@ -730,6 +730,6 @@ function recoverToken(address token, address to, uint256 amount) external;
 
 
 ```solidity
-function recoverETH(address payable to) external;
+function recoverETH() external;
 ```
 

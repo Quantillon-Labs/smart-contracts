@@ -1,5 +1,5 @@
 # IUserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/interfaces/IUserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/interfaces/IUserPool.sol)
 
 **Author:**
 Quantillon Labs
@@ -391,26 +391,26 @@ function getPoolConfig()
     external
     view
     returns (
-        uint256 stakingAPY,
-        uint256 depositAPY,
-        uint256 minStakeAmount,
-        uint256 unstakingCooldown,
-        uint256 depositFee,
-        uint256 withdrawalFee,
-        uint256 performanceFee
+        uint256 _stakingAPY,
+        uint256 _depositAPY,
+        uint256 _minStakeAmount,
+        uint256 _unstakingCooldown,
+        uint256 _depositFee,
+        uint256 _withdrawalFee,
+        uint256 _performanceFee
     );
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`stakingAPY`|`uint256`|Staking APY (bps)|
-|`depositAPY`|`uint256`|Deposit APY (bps)|
-|`minStakeAmount`|`uint256`|Minimum stake amount|
-|`unstakingCooldown`|`uint256`|Unstaking cooldown seconds|
-|`depositFee`|`uint256`|Deposit fee (bps)|
-|`withdrawalFee`|`uint256`|Withdrawal fee (bps)|
-|`performanceFee`|`uint256`|Performance fee (bps)|
+|`_stakingAPY`|`uint256`|Staking APY (bps)|
+|`_depositAPY`|`uint256`|Deposit APY (bps)|
+|`_minStakeAmount`|`uint256`|Minimum stake amount|
+|`_unstakingCooldown`|`uint256`|Unstaking cooldown seconds|
+|`_depositFee`|`uint256`|Deposit fee (bps)|
+|`_withdrawalFee`|`uint256`|Withdrawal fee (bps)|
+|`_performanceFee`|`uint256`|Performance fee (bps)|
 
 
 ### isPoolActive
@@ -675,6 +675,6 @@ function recoverToken(address token, address to, uint256 amount) external;
 
 
 ```solidity
-function recoverETH(address payable to) external;
+function recoverETH() external;
 ```
 

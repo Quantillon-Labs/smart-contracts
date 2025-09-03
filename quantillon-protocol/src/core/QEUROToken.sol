@@ -117,6 +117,15 @@ contract QEUROToken is
     /// @dev Value: 10^18
     uint256 public constant PRECISION = 1e18;
 
+    // SECURITY: Maximum batch sizes to prevent DoS attacks
+    /// @notice Maximum batch size for mint operations to prevent DoS
+    /// @dev Prevents out-of-gas attacks through large arrays
+    uint256 public constant MAX_BATCH_SIZE = 100;
+    
+    /// @notice Maximum batch size for compliance operations to prevent DoS
+    /// @dev Prevents out-of-gas attacks through large blacklist/whitelist arrays
+    uint256 public constant MAX_COMPLIANCE_BATCH_SIZE = 50;
+
     // =============================================================================
     // STATE VARIABLES - Dynamic configuration
     // =============================================================================
@@ -363,7 +372,9 @@ contract QEUROToken is
         if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
         
         // Whitelist check (if enabled)
-        if (whitelistEnabled && !isWhitelisted[to]) {
+        // GAS OPTIMIZATION: Cache storage read
+        bool whitelistEnabled_ = whitelistEnabled;
+        if (whitelistEnabled_ && !isWhitelisted[to]) {
             revert ErrorLibrary.NotWhitelisted();
         }
 
@@ -397,6 +408,7 @@ contract QEUROToken is
         flashLoanProtection
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         uint256 totalAmount = 0;
         
@@ -486,6 +498,7 @@ contract QEUROToken is
         flashLoanProtection
     {
         if (froms.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (froms.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         uint256 totalAmount = 0;
         
@@ -749,6 +762,7 @@ contract QEUROToken is
         onlyRole(COMPLIANCE_ROLE)
     {
         if (accounts.length != reasons.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
@@ -769,6 +783,8 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
             if (!isBlacklisted[account]) revert ErrorLibrary.NotBlacklisted();
@@ -787,6 +803,8 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
             AccessControlLibrary.validateAddress(account);
@@ -806,6 +824,8 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
             if (!isWhitelisted[account]) revert ErrorLibrary.NotWhitelisted();
@@ -1054,6 +1074,7 @@ contract QEUROToken is
         returns (bool)
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
 
         uint256 length = recipients.length;

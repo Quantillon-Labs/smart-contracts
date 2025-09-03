@@ -415,6 +415,104 @@ contract QEUROTokenTestSuite is Test {
         assertFalse(qeuroToken.isBlacklisted(user1));
         assertFalse(qeuroToken.isBlacklisted(user2));
     }
+
+    // =============================================================================
+    // BATCH SIZE LIMIT TESTS
+    // =============================================================================
+
+    function test_BatchMint_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (100)
+        address[] memory recipients = new address[](101);
+        uint256[] memory amounts = new uint256[](101);
+        
+        for (uint256 i = 0; i < 101; i++) {
+            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(vault);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        qeuroToken.batchMint(recipients, amounts);
+    }
+
+    function test_BatchBurn_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (100)
+        address[] memory froms = new address[](101);
+        uint256[] memory amounts = new uint256[](101);
+        
+        for (uint256 i = 0; i < 101; i++) {
+            froms[i] = address(uint160(i + 1000)); // Generate unique addresses
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(vault);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        qeuroToken.batchBurn(froms, amounts);
+    }
+
+    function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (100)
+        address[] memory recipients = new address[](101);
+        uint256[] memory amounts = new uint256[](101);
+        
+        for (uint256 i = 0; i < 101; i++) {
+            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(user1);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        qeuroToken.batchTransfer(recipients, amounts);
+    }
+
+    function test_BatchCompliance_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_COMPLIANCE_BATCH_SIZE (50)
+        address[] memory accounts = new address[](51);
+        
+        for (uint256 i = 0; i < 51; i++) {
+            accounts[i] = address(uint160(i + 1000)); // Generate unique addresses
+        }
+
+        vm.prank(compliance);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        qeuroToken.batchWhitelistAddresses(accounts);
+    }
+
+    function test_BatchCompliance_MaxBatchSize_Success() public {
+        // Test with exactly MAX_BATCH_SIZE (100)
+        address[] memory recipients = new address[](100);
+        uint256[] memory amounts = new uint256[](100);
+        
+        for (uint256 i = 0; i < 100; i++) {
+            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(vault);
+        qeuroToken.batchMint(recipients, amounts);
+
+        // Verify all recipients received tokens
+        for (uint256 i = 0; i < 100; i++) {
+            assertEq(qeuroToken.balanceOf(recipients[i]), 1e18);
+        }
+    }
+
+    function test_BatchCompliance_MaxComplianceBatchSize_Success() public {
+        // Test with exactly MAX_COMPLIANCE_BATCH_SIZE (50)
+        address[] memory accounts = new address[](50);
+        
+        for (uint256 i = 0; i < 50; i++) {
+            accounts[i] = address(uint160(i + 1000)); // Generate unique addresses
+        }
+
+        vm.prank(compliance);
+        qeuroToken.batchWhitelistAddresses(accounts);
+
+        // Verify all accounts are whitelisted
+        for (uint256 i = 0; i < 50; i++) {
+            assertTrue(qeuroToken.isWhitelisted(accounts[i]));
+        }
+    }
     
     /**
      * @notice Test burning by non-vault address should revert

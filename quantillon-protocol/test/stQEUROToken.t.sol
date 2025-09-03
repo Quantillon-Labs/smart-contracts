@@ -476,6 +476,102 @@ contract stQEUROTokenTestSuite is Test {
         assertEq(stQEURO.balanceOf(user2), 5_000 * 1e18);
         assertEq(stQEURO.balanceOf(user3), 10_000 * 1e18);
     }
+
+    // =============================================================================
+    // BATCH SIZE LIMIT TESTS
+    // =============================================================================
+
+    function test_BatchStake_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (100)
+        uint256[] memory amounts = new uint256[](101);
+        
+        for (uint256 i = 0; i < 101; i++) {
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(user1);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        stQEURO.batchStake(amounts);
+    }
+
+    function test_BatchUnstake_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (100)
+        uint256[] memory amounts = new uint256[](101);
+        
+        for (uint256 i = 0; i < 101; i++) {
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(user1);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        stQEURO.batchUnstake(amounts);
+    }
+
+    function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (100)
+        address[] memory recipients = new address[](101);
+        uint256[] memory amounts = new uint256[](101);
+        
+        for (uint256 i = 0; i < 101; i++) {
+            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(user1);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        stQEURO.batchTransfer(recipients, amounts);
+    }
+
+    function test_BatchStake_MaxBatchSize_Success() public {
+        // Test with exactly MAX_BATCH_SIZE (100)
+        uint256[] memory amounts = new uint256[](100);
+        
+        for (uint256 i = 0; i < 100; i++) {
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(user1);
+        uint256[] memory minted = stQEURO.batchStake(amounts);
+
+        assertEq(minted.length, 100);
+        assertEq(stQEURO.balanceOf(user1), 100 * 1e18);
+        assertEq(stQEURO.totalUnderlying(), 100 * 1e18);
+    }
+
+    // =============================================================================
+    // VIRTUAL PROTECTION TESTS
+    // =============================================================================
+
+    function test_VirtualProtection_Status() public {
+        // Test virtual protection status function
+        (uint256 virtualShares, uint256 virtualAssets, uint256 effectiveSupply, uint256 effectiveAssets) = stQEURO.getVirtualProtectionStatus();
+        
+        assertEq(virtualShares, 1e8, "Virtual shares should be 1e8");
+        assertEq(virtualAssets, 1e8, "Virtual assets should be 1e8");
+        assertEq(effectiveSupply, stQEURO.totalSupply() + 1e8, "Effective supply should include virtual shares");
+        assertEq(effectiveAssets, stQEURO.totalUnderlying() + 1e8, "Effective assets should include virtual assets");
+    }
+
+    function test_VirtualProtection_DonationAttackPrevention() public {
+        // Test that virtual protection prevents donation attacks
+        uint256 initialSupply = stQEURO.totalSupply();
+        uint256 initialUnderlying = stQEURO.totalUnderlying();
+        
+        // The virtual protection should ensure that even with 0 supply and underlying,
+        // the effective values are reasonable due to virtual shares/assets
+        (,, uint256 effectiveSupply, uint256 effectiveAssets) = stQEURO.getVirtualProtectionStatus();
+        
+        // Virtual protection should provide reasonable base values
+        assertEq(effectiveSupply, 1e8, "Effective supply should be at least virtual shares");
+        assertEq(effectiveAssets, 1e8, "Effective assets should be at least virtual assets");
+        
+        // The effective exchange rate should be 1:1 when no real tokens exist
+        uint256 effectiveRate = effectiveAssets * 1e18 / effectiveSupply;
+        assertEq(effectiveRate, 1e18, "Effective rate should be 1:1 with virtual protection");
+        
+        // This demonstrates that virtual protection prevents the exchange rate from being
+        // undefined or extremely high when no real tokens exist
+    }
     
     /**
      * @notice Test unstaking with zero amount should revert

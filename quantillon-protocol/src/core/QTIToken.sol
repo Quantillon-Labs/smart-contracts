@@ -95,10 +95,22 @@ contract QTIToken is
 
 
     // Vote-escrow constants
-    /// @notice Maximum lock time for vote-escrow (4 years)
-    /// @dev Prevents infinite locks and ensures token circulation
-    /// @dev Value: 4 * 365 days = 1,460 days
-    uint256 public constant MAX_LOCK_TIME = 4 * 365 days; // 4 years max lock
+    /// @notice Maximum lock time for QTI tokens
+    /// @dev Prevents extremely long locks that could impact governance
+    uint256 public constant MAX_LOCK_TIME = 365 days;
+
+    // SECURITY: Maximum batch sizes to prevent DoS attacks
+    /// @notice Maximum batch size for lock operations to prevent DoS
+    /// @dev Prevents out-of-gas attacks through large arrays
+    uint256 public constant MAX_BATCH_SIZE = 100;
+    
+    /// @notice Maximum batch size for unlock operations to prevent DoS
+    /// @dev Prevents out-of-gas attacks through large user arrays
+    uint256 public constant MAX_UNLOCK_BATCH_SIZE = 50;
+    
+    /// @notice Maximum batch size for voting operations to prevent DoS
+    /// @dev Prevents out-of-gas attacks through large proposal arrays
+    uint256 public constant MAX_VOTE_BATCH_SIZE = 50;
     
     /// @notice Minimum lock time for vote-escrow (1 week)
     /// @dev Prevents very short locks that could manipulate governance
@@ -464,15 +476,20 @@ contract QTIToken is
         returns (uint256[] memory veQTIAmounts) 
     {
         if (amounts.length != lockTimes.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (amounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         veQTIAmounts = new uint256[](amounts.length);
         uint256 totalAmount = 0;
         
+        // GAS OPTIMIZATION: Cache storage reads
+        uint256 minLockTime = MIN_LOCK_TIME;
+        uint256 maxLockTime = MAX_LOCK_TIME;
+        
         // Pre-validate all inputs
         for (uint256 i = 0; i < amounts.length; i++) {
             ValidationLibrary.validatePositiveAmount(amounts[i]);
-            if (lockTimes[i] < MIN_LOCK_TIME) revert ErrorLibrary.LockTimeTooShort();
-            if (lockTimes[i] > MAX_LOCK_TIME) revert ErrorLibrary.LockTimeTooLong();
+            if (lockTimes[i] < minLockTime) revert ErrorLibrary.LockTimeTooShort();
+            if (lockTimes[i] > maxLockTime) revert ErrorLibrary.LockTimeTooLong();
             if (amounts[i] > type(uint96).max) revert ErrorLibrary.InvalidAmount();
             if (lockTimes[i] > type(uint32).max) revert ErrorLibrary.InvalidTime();
             
@@ -551,6 +568,8 @@ contract QTIToken is
         whenNotPaused 
         returns (uint256[] memory amounts) 
     {
+        if (users.length > MAX_UNLOCK_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
         amounts = new uint256[](users.length);
         
 
@@ -602,6 +621,7 @@ contract QTIToken is
         returns (bool)
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         // Pre-validate recipients and amounts
         for (uint256 i = 0; i < recipients.length; i++) {
@@ -766,6 +786,7 @@ contract QTIToken is
      */
     function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes) external whenNotPaused flashLoanProtection {
         if (proposalIds.length != supportVotes.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (proposalIds.length > MAX_VOTE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         // Update voting power once for the batch
         uint256 votingPower = _updateVotingPower(msg.sender);

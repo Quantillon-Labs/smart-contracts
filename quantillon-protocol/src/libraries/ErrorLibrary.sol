@@ -98,6 +98,7 @@ library ErrorLibrary {
     error ArrayLengthMismatch();
     error IndexOutOfBounds();
     error EmptyArray();
+    error BatchSizeTooLarge();
     
     // Pool Errors
     error PoolNotHealthy();

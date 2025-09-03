@@ -172,6 +172,20 @@ contract stQEUROToken is
     /// @dev Example: 1 day = 86400 seconds
     uint256 public maxUpdateFrequency;
 
+    // SECURITY: Virtual shares and assets to prevent inflation attacks
+    /// @notice Virtual shares to prevent exchange rate manipulation
+    /// @dev Prevents donation attacks by maintaining minimum share value
+    uint256 private constant VIRTUAL_SHARES = 1e8;
+    
+    /// @notice Virtual assets to prevent exchange rate manipulation
+    /// @dev Prevents donation attacks by maintaining minimum asset value
+    uint256 private constant VIRTUAL_ASSETS = 1e8;
+    
+    // SECURITY: Maximum batch sizes to prevent DoS attacks
+    /// @notice Maximum batch size for staking operations to prevent DoS
+    /// @dev Prevents out-of-gas attacks through large arrays
+    uint256 public constant MAX_BATCH_SIZE = 100;
+
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
     // =============================================================================
@@ -306,7 +320,9 @@ contract stQEUROToken is
         _updateExchangeRate();
 
         // Calculate stQEURO amount based on current exchange rate
-        stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate);
+        // GAS OPTIMIZATION: Cache storage read
+        uint256 exchangeRate_ = exchangeRate;
+        stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate_);
 
         // Transfer QEURO from user
 
@@ -336,7 +352,9 @@ contract stQEUROToken is
         _updateExchangeRate();
 
         // Calculate QEURO amount based on current exchange rate
-        qeuroAmount = stQEUROAmount.mulDiv(exchangeRate, 1e18);
+        // GAS OPTIMIZATION: Cache storage read
+        uint256 exchangeRate_ = exchangeRate;
+        qeuroAmount = stQEUROAmount.mulDiv(exchangeRate_, 1e18);
 
         // Ensure we have enough QEURO
         require(totalUnderlying >= qeuroAmount, "stQEURO: Insufficient underlying");
@@ -363,6 +381,8 @@ contract stQEUROToken is
         whenNotPaused 
         returns (uint256[] memory stQEUROAmounts) 
     {
+        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
         stQEUROAmounts = new uint256[](qeuroAmounts.length);
         uint256 totalQeuroAmount = 0;
         
@@ -413,6 +433,8 @@ contract stQEUROToken is
         whenNotPaused 
         returns (uint256[] memory qeuroAmounts) 
     {
+        if (stQEUROAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
         qeuroAmounts = new uint256[](stQEUROAmounts.length);
         uint256 totalStQEUROAmount = 0;
         uint256 totalQeuroAmount = 0;
@@ -429,8 +451,9 @@ contract stQEUROToken is
         _updateExchangeRate();
 
         // Calculate total QEURO to return and validate
+        uint256 exchangeRate_ = exchangeRate; // GAS OPTIMIZATION: Cache storage read
         for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
-            uint256 qeuroAmount = stQEUROAmounts[i].mulDiv(exchangeRate, 1e18);
+            uint256 qeuroAmount = stQEUROAmounts[i].mulDiv(exchangeRate_, 1e18);
             qeuroAmounts[i] = qeuroAmount;
             totalQeuroAmount += qeuroAmount;
         }
@@ -470,6 +493,7 @@ contract stQEUROToken is
         returns (bool)
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
 
         uint256 length = recipients.length;
@@ -751,5 +775,27 @@ contract stQEUROToken is
         emit ETHRecovered(treasury, address(this).balance);
         // Use the shared library for secure ETH recovery
         TreasuryRecoveryLibrary.recoverETH(treasury);
+    }
+    
+    /**
+     * @notice Returns the current virtual protection status
+     * @return virtualShares Current virtual shares amount
+     * @return virtualAssets Current virtual assets amount
+     * @return effectiveSupply Effective supply including virtual shares
+     * @return effectiveAssets Effective assets including virtual assets
+     * @dev Useful for monitoring and debugging virtual protection
+     */
+    function getVirtualProtectionStatus() external view returns (
+        uint256 virtualShares,
+        uint256 virtualAssets,
+        uint256 effectiveSupply,
+        uint256 effectiveAssets
+    ) {
+        virtualShares = VIRTUAL_SHARES;
+        virtualAssets = VIRTUAL_ASSETS;
+        effectiveSupply = totalSupply() + VIRTUAL_SHARES;
+        effectiveAssets = totalUnderlying + VIRTUAL_ASSETS;
+        
+        return (virtualShares, virtualAssets, effectiveSupply, effectiveAssets);
     }
 }

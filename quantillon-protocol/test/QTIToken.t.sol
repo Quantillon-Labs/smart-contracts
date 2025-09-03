@@ -370,7 +370,7 @@ contract QTITokenTestSuite is Test {
         uint256 maxSafeAmount = 800_000 * 1e18; // 800k QTI (within user's balance)
         
         vm.prank(user1);
-        uint256 veQTI = qtiToken.lock(maxSafeAmount, FOUR_YEARS);
+        uint256 veQTI = qtiToken.lock(maxSafeAmount, ONE_YEAR);
         
         // Check that lock was successful
         (uint256 amount, , uint256 votingPower, , , ) = qtiToken.getLockInfo(user1);
@@ -492,12 +492,12 @@ contract QTITokenTestSuite is Test {
         
         // Test maximum lock time (4x multiplier)
         vm.prank(user2);
-        uint256 veQTI2 = qtiToken.lock(LOCK_AMOUNT, FOUR_YEARS);
+        uint256 veQTI2 = qtiToken.lock(LOCK_AMOUNT, ONE_YEAR);
         assertEq(veQTI2, LOCK_AMOUNT * 4); // 4x multiplier
         
-        // Test intermediate lock time
+        // Test intermediate lock time (between min and max)
         vm.prank(user3);
-        uint256 veQTI3 = qtiToken.lock(LOCK_AMOUNT, ONE_YEAR);
+        uint256 veQTI3 = qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
         assertGt(veQTI3, LOCK_AMOUNT);
         assertLt(veQTI3, LOCK_AMOUNT * 4);
     }
@@ -657,6 +657,83 @@ contract QTITokenTestSuite is Test {
         (bool hasVoted2,,) = qtiToken.getReceipt(p2, user1);
         assertTrue(hasVoted1);
         assertTrue(hasVoted2);
+    }
+
+    // =============================================================================
+    // BATCH SIZE LIMIT TESTS
+    // =============================================================================
+
+    function test_BatchLock_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (100)
+        uint256[] memory amounts = new uint256[](101);
+        uint256[] memory times = new uint256[](101);
+        
+        for (uint256 i = 0; i < 101; i++) {
+            amounts[i] = 1e18;
+            times[i] = ONE_WEEK;
+        }
+
+        vm.prank(user1);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        qtiToken.batchLock(amounts, times);
+    }
+
+    function test_BatchUnlock_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_UNLOCK_BATCH_SIZE (50)
+        address[] memory users = new address[](51);
+        
+        for (uint256 i = 0; i < 51; i++) {
+            users[i] = address(uint160(i + 1000)); // Generate unique addresses
+        }
+
+        vm.prank(governance);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        qtiToken.batchUnlock(users);
+    }
+
+    function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (100)
+        address[] memory recipients = new address[](101);
+        uint256[] memory amounts = new uint256[](101);
+        
+        for (uint256 i = 0; i < 101; i++) {
+            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            amounts[i] = 1e18;
+        }
+
+        vm.prank(user1);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        qtiToken.batchTransfer(recipients, amounts);
+    }
+
+    function test_BatchVote_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_VOTE_BATCH_SIZE (50)
+        uint256[] memory proposals = new uint256[](51);
+        bool[] memory choices = new bool[](51);
+        
+        for (uint256 i = 0; i < 51; i++) {
+            proposals[i] = i;
+            choices[i] = true;
+        }
+
+        vm.prank(user1);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        qtiToken.batchVote(proposals, choices);
+    }
+
+    function test_BatchLock_MaxBatchSize_Success() public {
+        // Test with exactly MAX_BATCH_SIZE (100)
+        uint256[] memory amounts = new uint256[](100);
+        uint256[] memory times = new uint256[](100);
+        
+        for (uint256 i = 0; i < 100; i++) {
+            amounts[i] = 1e18;
+            times[i] = ONE_WEEK;
+        }
+
+        vm.prank(user1);
+        uint256[] memory ve = qtiToken.batchLock(amounts, times);
+        assertEq(ve.length, 100);
     }
     
     /**

@@ -69,6 +69,8 @@ import "../libraries/TreasuryRecoveryLibrary.sol";
  *      - Upgradeable architecture for future improvements
  *      - Secure deposit and withdrawal management
  *      - Staking cooldown mechanisms
+ *      - Batch size limits to prevent DoS attacks
+ *      - Gas optimization through storage read caching
  * 
  * @dev Integration points:
  *      - QEURO token for minting and burning
@@ -238,6 +240,15 @@ contract UserPool is
     uint256 public constant BLOCKS_PER_DAY = 7200; // Assuming 12 second blocks
     uint256 public constant MAX_REWARD_PERIOD = 365 days; // Maximum reward period
 
+    // SECURITY: Maximum batch sizes to prevent DoS attacks
+    /// @notice Maximum batch size for deposit operations to prevent DoS
+    /// @dev Prevents out-of-gas attacks through large arrays
+    uint256 public constant MAX_BATCH_SIZE = 100;
+    
+    /// @notice Maximum batch size for reward claim operations to prevent DoS
+    /// @dev Prevents out-of-gas attacks through large user arrays
+    uint256 public constant MAX_REWARD_BATCH_SIZE = 50;
+
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
     // =============================================================================
@@ -390,7 +401,9 @@ contract UserPool is
         require(usdcAmount > 0, "UserPool: Amount must be positive");
 
         // Calculate deposit fee
-        uint256 fee = usdcAmount.percentageOf(depositFee);
+        // GAS OPTIMIZATION: Cache storage read
+        uint256 depositFee_ = depositFee;
+        uint256 fee = usdcAmount.percentageOf(depositFee_);
         uint256 netAmount = usdcAmount - fee;
 
         // Transfer USDC from user FIRST
@@ -442,6 +455,7 @@ contract UserPool is
         returns (uint256[] memory qeuroMintedAmounts)
     {
         if (usdcAmounts.length != minQeuroOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (usdcAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         qeuroMintedAmounts = new uint256[](usdcAmounts.length);
         uint256 totalUsdcAmount = 0;
@@ -538,7 +552,9 @@ contract UserPool is
         usdcReceived = usdc.balanceOf(address(this));
 
         // Calculate withdrawal fee
-        uint256 fee = usdcReceived.percentageOf(withdrawalFee);
+        // GAS OPTIMIZATION: Cache storage read
+        uint256 withdrawalFee_ = withdrawalFee;
+        uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
         uint256 netAmount = usdcReceived - fee;
 
 
@@ -566,6 +582,7 @@ contract UserPool is
         returns (uint256[] memory usdcReceivedAmounts)
     {
         if (qeuroAmounts.length != minUsdcOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         usdcReceivedAmounts = new uint256[](qeuroAmounts.length);
         UserInfo storage user = userInfo[msg.sender];
@@ -654,7 +671,9 @@ contract UserPool is
      * @param qeuroAmount Amount of QEURO to stake (18 decimals)
      */
     function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused {
-        require(qeuroAmount >= minStakeAmount, "UserPool: Amount below minimum");
+        // GAS OPTIMIZATION: Cache storage read
+        uint256 minStakeAmount_ = minStakeAmount;
+        require(qeuroAmount >= minStakeAmount_, "UserPool: Amount below minimum");
         
         UserInfo storage user = userInfo[msg.sender];
         
@@ -681,6 +700,8 @@ contract UserPool is
      * @param qeuroAmounts Array of QEURO amounts to stake (18 decimals)
      */
     function batchStake(uint256[] calldata qeuroAmounts) external nonReentrant whenNotPaused {
+        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
         UserInfo storage user = userInfo[msg.sender];
         uint256 totalQeuroAmount = 0;
         
@@ -797,6 +818,8 @@ contract UserPool is
         onlyRole(GOVERNANCE_ROLE)
         returns (uint256[] memory rewardAmounts) 
     {
+        if (users.length > MAX_REWARD_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
         rewardAmounts = new uint256[](users.length);
         
         uint64 currentTimestamp = uint64(block.timestamp);

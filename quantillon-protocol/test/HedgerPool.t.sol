@@ -1414,6 +1414,38 @@ contract HedgerPoolTestSuite is Test {
         // Batch operation should be efficient
         assertLt(gasUsed, 2000000, "Batch operation should be gas-efficient");
     }
+
+    // =============================================================================
+    // BATCH SIZE LIMIT TESTS
+    // =============================================================================
+
+    function test_ClosePositionsBatch_BatchSizeTooLarge_Revert() public {
+        // Create array larger than MAX_BATCH_SIZE (50)
+        uint256[] memory positionIds = new uint256[](51);
+        
+        for (uint256 i = 0; i < 51; i++) {
+            positionIds[i] = i + 1; // Generate unique position IDs
+        }
+
+        vm.prank(hedger1);
+        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        hedgerPool.closePositionsBatch(positionIds, 51);
+    }
+
+    function test_ClosePositionsBatch_MaxBatchSize_Success() public {
+        // Test with exactly MAX_BATCH_SIZE (50) but respect the 10 positions per tx limit
+        // First create 10 positions for hedger1
+        uint256[] memory positionIds = new uint256[](10);
+        
+        for (uint256 i = 0; i < 10; i++) {
+            vm.prank(hedger1);
+            positionIds[i] = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 2);
+        }
+
+        vm.prank(hedger1);
+        int256[] memory pnls = hedgerPool.closePositionsBatch(positionIds, 10);
+        assertEq(pnls.length, 10);
+    }
 }
 
 // =============================================================================

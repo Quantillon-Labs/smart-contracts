@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -406,7 +406,7 @@ function initialize(
     address _usdc,
     address _oracle,
     address _yieldShift,
-    address timelock,
+    address _timelock,
     address _treasury
 ) public initializer;
 ```
@@ -703,14 +703,8 @@ Recover ETH to treasury address only
 
 
 ```solidity
-function recoverETH(address payable to) external;
+function recoverETH() external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`to`|`address payable`|Treasury address (must match the contract's treasury)|
-
 
 ### updateTreasury
 

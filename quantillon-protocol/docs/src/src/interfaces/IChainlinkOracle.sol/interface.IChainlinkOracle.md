@@ -1,5 +1,5 @@
 # IChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/interfaces/IChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/interfaces/IChainlinkOracle.sol)
 
 **Author:**
 Quantillon Labs
@@ -271,12 +271,6 @@ Recovers ETH sent to the oracle contract by mistake
 
 
 ```solidity
-function recoverETH(address payable to) external;
+function recoverETH() external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`to`|`address payable`|Recipient address|
-
 

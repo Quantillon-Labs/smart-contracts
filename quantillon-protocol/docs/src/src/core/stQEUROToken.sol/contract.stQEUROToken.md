@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -283,7 +283,7 @@ function initialize(
     address _yieldShift,
     address _usdc,
     address _treasury,
-    address timelock
+    address _timelock
 ) public initializer;
 ```
 
@@ -596,14 +596,8 @@ Recover ETH to treasury address only
 
 
 ```solidity
-function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`to`|`address payable`|Treasury address (must match the contract's treasury)|
-
 
 ## Events
 ### QEUROStaked

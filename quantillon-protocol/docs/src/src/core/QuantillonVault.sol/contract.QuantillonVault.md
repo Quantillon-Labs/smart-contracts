@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -180,15 +180,6 @@ uint256 public totalMinted;
 ```
 
 
-### lastValidEurUsdPrice
-Variable to store the last valid EUR/USD price (emergency state)
-
-
-```solidity
-uint256 private lastValidEurUsdPrice;
-```
-
-
 ### lastPriceUpdateTime
 Variable to store the timestamp of the last valid price update
 
@@ -234,7 +225,7 @@ Initializes the vault with contracts and parameters
 
 
 ```solidity
-function initialize(address admin, address _qeuro, address _usdc, address _oracle, address timelock)
+function initialize(address admin, address _qeuro, address _usdc, address _oracle, address _timelock)
     public
     initializer;
 ```
@@ -246,7 +237,7 @@ function initialize(address admin, address _qeuro, address _usdc, address _oracl
 |`_qeuro`|`address`|Address of the QEURO token contract|
 |`_usdc`|`address`|Address of the USDC token contract|
 |`_oracle`|`address`|Address of the Oracle contract|
-|`timelock`|`address`||
+|`_timelock`|`address`||
 
 
 ### mintQEURO
@@ -485,14 +476,8 @@ Recover ETH to treasury address only
 
 
 ```solidity
-function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`to`|`address payable`|Treasury address (must match the contract's treasury)|
-
 
 ## Events
 ### QEUROminted

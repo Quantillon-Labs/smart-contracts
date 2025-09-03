@@ -1,5 +1,5 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d412a0619acefb191468f4973a48348275c68bd9/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e5c3f7e74d800a0a930892672bba2f0c381c0a8d/src/interfaces/IHedgerPool.sol)
 
 
 ## Functions
@@ -146,20 +146,33 @@ function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee)
 
 ### getHedgingConfig
 
+Get hedging configuration parameters
+
 
 ```solidity
 function getHedgingConfig()
     external
     view
     returns (
-        uint256 minMarginRatio,
-        uint256 liquidationThreshold,
-        uint256 maxLeverage,
-        uint256 liquidationPenalty,
-        uint256 entryFee,
-        uint256 exitFee
+        uint256 _minMarginRatio,
+        uint256 _liquidationThreshold,
+        uint256 _maxLeverage,
+        uint256 _liquidationPenalty,
+        uint256 _entryFee,
+        uint256 _exitFee
     );
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_minMarginRatio`|`uint256`|Minimum margin ratio|
+|`_liquidationThreshold`|`uint256`|Liquidation threshold|
+|`_maxLeverage`|`uint256`|Maximum leverage|
+|`_liquidationPenalty`|`uint256`|Liquidation penalty|
+|`_entryFee`|`uint256`|Entry fee|
+|`_exitFee`|`uint256`|Exit fee|
+
 
 ### emergencyClosePosition
 
@@ -200,7 +213,7 @@ function recoverToken(address token, address to, uint256 amount) external;
 
 
 ```solidity
-function recoverETH(address payable to) external;
+function recoverETH() external;
 ```
 
 ### usdc
@@ -358,6 +371,8 @@ function positions(uint256)
 
 ### hedgers
 
+Get hedger information
+
 
 ```solidity
 function hedgers(address)
@@ -365,13 +380,24 @@ function hedgers(address)
     view
     returns (
         uint256[] memory positionIds,
-        uint256 totalMargin,
-        uint256 totalExposure,
+        uint256 _totalMargin,
+        uint256 _totalExposure,
         uint256 pendingRewards,
         uint256 lastRewardClaim,
         bool isActive
     );
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionIds`|`uint256[]`|Array of position IDs|
+|`_totalMargin`|`uint256`|Total margin|
+|`_totalExposure`|`uint256`|Total exposure|
+|`pendingRewards`|`uint256`|Pending rewards|
+|`lastRewardClaim`|`uint256`|Last reward claim time|
+|`isActive`|`bool`|Whether hedger is active|
+
 
 ### hedgerPositions
 

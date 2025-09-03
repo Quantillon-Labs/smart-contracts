@@ -257,5 +257,5 @@ interface IYieldShift {
 
     // Recovery functions
     function recoverToken(address token, address to, uint256 amount) external;
-    function recoverETH(address payable to) external;
+    function recoverETH() external;
 } 

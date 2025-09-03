@@ -831,7 +831,7 @@ contract QuantillonVaultTestSuite is Test {
         vm.deal(address(vault), 1 ether);
         
         vm.prank(admin);
-        vault.recoverETH(payable(mockTimelock)); // Must be treasury address
+        vault.recoverETH(); // Must be treasury address
         
         // Verify ETH was transferred
         assertEq(mockTimelock.balance, 1 ether);
@@ -846,20 +846,10 @@ contract QuantillonVaultTestSuite is Test {
         
         vm.prank(user1);
         vm.expectRevert();
-        vault.recoverETH(payable(admin));
+        vault.recoverETH();
     }
     
-    /**
-     * @notice Test recovering ETH to non-treasury address should revert
-     * @dev Verifies that ETH can only be recovered to treasury address
-     */
-    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
-        vm.deal(address(vault), 1 ether);
-        
-        vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        vault.recoverETH(payable(user1)); // user1 is not treasury
-    }
+
     
     /**
      * @notice Test recovering ETH when no ETH available should revert
@@ -868,7 +858,7 @@ contract QuantillonVaultTestSuite is Test {
     function test_Recovery_RecoverETHNoETHAvailable_Revert() public {
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
-        vault.recoverETH(payable(mockTimelock));
+        vault.recoverETH();
     }
     
     // =============================================================================

@@ -626,23 +626,13 @@ contract ChainlinkOracleTestSuite is Test {
         
         // Recover ETH to treasury (admin)
         vm.prank(admin);
-        oracle.recoverETH(payable(admin));
+        oracle.recoverETH();
         
         assertEq(admin.balance, ethAmount);
         assertEq(address(oracle).balance, 0);
     }
     
-    /**
-     * @notice Test ETH recovery to non-treasury address should revert
-     * @dev Verifies that ETH can only be recovered to treasury address
-     */
-    function test_Recovery_RecoverETHToNonTreasury_Revert() public {
-        vm.deal(address(oracle), 1 ether);
-        
-        vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
-        oracle.recoverETH(payable(recipient)); // recipient is not treasury
-    }
+
     
     /**
      * @notice Test ETH recovery with no balance should revert
@@ -651,7 +641,7 @@ contract ChainlinkOracleTestSuite is Test {
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
         vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
-        oracle.recoverETH(payable(admin));
+        oracle.recoverETH();
     }
 
     // =============================================================================

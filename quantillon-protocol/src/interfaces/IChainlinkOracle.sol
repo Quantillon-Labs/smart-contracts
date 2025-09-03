@@ -149,7 +149,6 @@ interface IChainlinkOracle {
 
     /**
      * @notice Recovers ETH sent to the oracle contract by mistake
-     * @param to Recipient address
      */
-    function recoverETH(address payable to) external;
+    function recoverETH() external;
 }

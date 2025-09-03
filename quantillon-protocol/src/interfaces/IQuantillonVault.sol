@@ -99,9 +99,8 @@ interface IQuantillonVault {
 
     /**
      * @notice Recovers ETH sent by mistake
-     * @param to Recipient
      */
-    function recoverETH(address payable to) external;
+    function recoverETH() external;
 
     // AccessControl functions
     function hasRole(bytes32 role, address account) external view returns (bool);

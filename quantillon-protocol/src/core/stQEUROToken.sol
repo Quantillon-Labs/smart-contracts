@@ -309,7 +309,7 @@ contract stQEUROToken is
         stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate);
 
         // Transfer QEURO from user
-        // SECURITY FIX: Use safeTransferFrom for reliable QEURO transfers
+
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
 
         // Update totals - Use checked arithmetic for critical state
@@ -347,8 +347,6 @@ contract stQEUROToken is
         // Update totals - Use checked arithmetic for critical state
         totalUnderlying = totalUnderlying - qeuroAmount;
 
-        // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
-        // safeTransfer() will revert on failure, preventing silent failures
         IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroAmount);
 
         emit QEUROUnstaked(msg.sender, stQEUROAmount, qeuroAmount);
@@ -385,7 +383,7 @@ contract stQEUROToken is
         // Update totals once
         totalUnderlying = totalUnderlying + totalQeuroAmount;
 
-        // GAS OPTIMIZATION: Cache msg.sender and exchange rate to avoid repeated storage reads
+
         address staker = msg.sender;
         uint256 exchangeRate_ = exchangeRate;
         
@@ -440,7 +438,7 @@ contract stQEUROToken is
         // Ensure we have enough QEURO
         require(totalUnderlying >= totalQeuroAmount, "stQEURO: Insufficient underlying");
 
-        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
+
         address unstaker = msg.sender;
         
         // Process each unstake
@@ -473,7 +471,7 @@ contract stQEUROToken is
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
         
-        // GAS OPTIMIZATION: Cache array length and msg.sender to avoid repeated access
+
         uint256 length = recipients.length;
         address sender = msg.sender;
         
@@ -482,7 +480,6 @@ contract stQEUROToken is
             require(recipients[i] != address(0), "stQEURO: Cannot transfer to zero address");
             require(amounts[i] > 0, "stQEURO: Amount must be positive");
             
-            // GAS OPTIMIZATION: Use unchecked increment
             unchecked { ++i; }
         }
         
@@ -490,7 +487,6 @@ contract stQEUROToken is
         for (uint256 i = 0; i < length;) {
             _transfer(sender, recipients[i], amounts[i]);
             
-            // GAS OPTIMIZATION: Use unchecked increment
             unchecked { ++i; }
         }
         
@@ -728,7 +724,7 @@ contract stQEUROToken is
             _burn(user, stQEUROBalance);
             totalUnderlying = totalUnderlying - qeuroAmount;
             
-            // SECURITY FIX: Use safeTransfer for reliable QEURO transfers
+    
             // safeTransfer() will revert on failure, preventing silent failures
             IERC20(address(qeuro)).safeTransfer(user, qeuroAmount);
         }
@@ -749,12 +745,11 @@ contract stQEUROToken is
     /**
      * @notice Recover ETH to treasury address only
      * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
-     * @param to Treasury address (must match the contract's treasury)
      */
-    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // SECURITY FIX: Emit event before external call to prevent reentrancy
-        emit ETHRecovered(to, address(this).balance);
+    function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
+
+        emit ETHRecovered(treasury, address(this).balance);
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury);
     }
 }

@@ -348,9 +348,8 @@ contract AaveVault is
         
         uint256 usdcBefore = usdc.balanceOf(address(this));
         
-        // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
-        // First: Perform external call and get result
-        uint256 actualYieldReceived;
+
+        uint256 actualYieldReceived = 0; // Initialize to prevent uninitialized variable warning
         try aavePool.withdraw(address(usdc), availableYield, address(this)) 
             returns (uint256 withdrawn) 
         {
@@ -370,12 +369,12 @@ contract AaveVault is
             revert("Aave yield harvest failed");
         }
         
-        // Second: Update state variables (EFFECTS)
+
         totalYieldHarvested += actualYieldReceived;
         totalFeesCollected += protocolFee;
         lastHarvestTime = block.timestamp;
         
-        // Third: Perform external interactions (INTERACTIONS)
+
         if (netYield > 0) {
             usdc.safeIncreaseAllowance(address(yieldShift), netYield);
             yieldShift.addYield(netYield, bytes32("aave"));
@@ -536,13 +535,12 @@ contract AaveVault is
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
         
         if (aaveBalance > 0) {
-            // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
-            // First: Set emergency mode
+
             emergencyMode = true;
             
             uint256 usdcBefore = usdc.balanceOf(address(this));
             
-            // Second: Perform external call and get result
+
             uint256 actualReceived = 0; // Initialize to prevent uninitialized variable warning
             try aavePool.withdraw(address(usdc), type(uint256).max, address(this)) 
                 returns (uint256 withdrawn) 
@@ -561,7 +559,7 @@ contract AaveVault is
                 revert("Emergency Aave withdrawal failed");
             }
             
-            // Third: Update state variables (EFFECTS)
+
             amountWithdrawn = actualReceived;
             uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, principalDeposited);
             principalDeposited -= principalWithdrawn;
@@ -571,7 +569,7 @@ contract AaveVault is
                 revert ErrorLibrary.InvalidAmount();
             }
             
-            // Fourth: Emit events
+
             emit EmergencyWithdrawal("Emergency exit from Aave", amountWithdrawn, block.timestamp);
             emit EmergencyModeToggled("Emergency withdrawal executed", true);
         }
@@ -586,7 +584,7 @@ contract AaveVault is
         uint256 totalAssets = aaveBalance + usdc.balanceOf(address(this));
         exposureRatio = totalAssets > 0 ? aaveBalance.mulDiv(10000, totalAssets) : 0;
         concentrationRisk = exposureRatio > 8000 ? 3 : exposureRatio > 6000 ? 2 : 1;
-        // SECURITY: Only need utilization rate, ignore other return values (safe to ignore for risk metrics)
+
         (uint256 totalLiquidity, uint256 utilizationRate, uint256 availableLiquidity, uint256 totalStableDebt) = this.getAaveMarketData();
         // Note: totalLiquidity, availableLiquidity, and totalStableDebt are intentionally unused for risk metrics
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
@@ -644,9 +642,9 @@ contract AaveVault is
         TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
-    function recoverETH(address payable to) external {
+    function recoverETH() external {
         AccessControlLibrary.onlyAdmin(this);
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury);
     }
 }

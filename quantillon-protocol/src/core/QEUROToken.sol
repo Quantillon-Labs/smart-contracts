@@ -421,7 +421,6 @@ contract QEUROToken is
         // Rate limiting for the whole batch
         _checkAndUpdateMintRateLimit(totalAmount);
 
-        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
         address minter = msg.sender;
         
         // Perform mints
@@ -506,7 +505,6 @@ contract QEUROToken is
         // Rate limiting for the whole batch
         _checkAndUpdateBurnRateLimit(totalAmount);
 
-        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
         address burner = msg.sender;
         
         // Perform burns
@@ -538,7 +536,6 @@ contract QEUROToken is
         // Reset rate limit if reset period has passed (using block numbers)
         uint256 blocksSinceReset = block.number - rateLimitInfo.lastRateLimitReset;
         
-        // SECURITY FIX: Bounds check to prevent block manipulation
         // Caps blocks elapsed at 7200 blocks maximum (~24 hours) to prevent excessive manipulation
         if (blocksSinceReset > 7200) {
             blocksSinceReset = 7200; // Cap at 7200 blocks maximum (~24 hours)
@@ -580,7 +577,6 @@ contract QEUROToken is
         // Reset rate limit if reset period has passed (using block numbers)
         uint256 blocksSinceReset = block.number - rateLimitInfo.lastRateLimitReset;
         
-        // SECURITY FIX: Bounds check to prevent block manipulation
         // Caps blocks elapsed at 7200 blocks maximum (~24 hours) to prevent excessive manipulation
         if (blocksSinceReset > 7200) {
             blocksSinceReset = 7200; // Cap at 7200 blocks maximum (~24 hours)
@@ -1059,7 +1055,7 @@ contract QEUROToken is
     {
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
         
-        // GAS OPTIMIZATION: Cache array length and msg.sender to avoid repeated access
+
         uint256 length = recipients.length;
         address sender = msg.sender;
         
@@ -1076,7 +1072,6 @@ contract QEUROToken is
             if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
             if (whitelistEnabled && !isWhitelisted[to]) revert ErrorLibrary.NotWhitelisted();
             
-            // GAS OPTIMIZATION: Use unchecked increment
             unchecked { ++i; }
         }
         
@@ -1084,7 +1079,6 @@ contract QEUROToken is
         for (uint256 i = 0; i < length;) {
             _transfer(sender, recipients[i], amounts[i]);
             
-            // GAS OPTIMIZATION: Use unchecked increment
             unchecked { ++i; }
         }
         
@@ -1163,13 +1157,12 @@ contract QEUROToken is
     /**
      * @notice Recover ETH to treasury address only
      * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
-     * @param to Treasury address (must match the contract's treasury)
      */
-    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // SECURITY FIX: Emit event before external call to prevent reentrancy
-        emit ETHRecovered(to, address(this).balance);
+    function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
+
+        emit ETHRecovered(treasury, address(this).balance);
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury);
     }
 
     // =============================================================================

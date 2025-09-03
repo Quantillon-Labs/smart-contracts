@@ -352,17 +352,16 @@ contract QuantillonVault is
             "Vault: Insufficient USDC reserves"
         );
 
-        // SECURITY FIX: Implement Checks-Effects-Interactions (CEI) pattern
-        // First: Perform external call (INTERACTIONS)
+
         qeuro.burn(msg.sender, qeuroAmount);
 
-        // Second: Update state variables (EFFECTS)
+
         unchecked {
             totalUsdcHeld -= usdcToReturn;
             totalMinted -= qeuroAmount;
         }
 
-        // Third: External interactions (INTERACTIONS)
+
         usdc.safeTransfer(msg.sender, netUsdcToReturn);
 
         emit QEURORedeemed(msg.sender, qeuroAmount, netUsdcToReturn);
@@ -397,7 +396,6 @@ contract QuantillonVault is
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (isValid && totalMinted > 0) {
-            // Note: Cannot update timestamp in view function
             totalDebtValue = totalMinted.mulDiv(eurUsdPrice, 1e18);
         } else {
             totalDebtValue = 0;
@@ -418,7 +416,6 @@ contract QuantillonVault is
     {
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return (0, 0);
-        // Note: Cannot update timestamp in view function
 
         fee = usdcAmount.mulDiv(mintFee, 1e18);
         uint256 netAmount = usdcAmount - fee;
@@ -439,7 +436,6 @@ contract QuantillonVault is
     {
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return (0, 0);
-        // Note: Cannot update timestamp in view function
 
         uint256 grossUsdcAmount = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
         fee = grossUsdcAmount.mulDiv(redemptionFee, 1e18);
@@ -572,7 +568,6 @@ contract QuantillonVault is
     /**
      * @notice Recover ETH to treasury address only
      * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
-     * @param to Treasury address (must match the contract's treasury)
      * 
      * @dev Security considerations:
      *      - Only DEFAULT_ADMIN_ROLE can recover
@@ -580,9 +575,9 @@ contract QuantillonVault is
      *      - Validates balance before attempting transfer
      *      - Uses call() for reliable ETH transfers to any contract
      */
-    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury);
     }
 
     // =============================================================================
@@ -593,8 +588,6 @@ contract QuantillonVault is
 
 
 
-    /// @notice Variable to store the last valid EUR/USD price (emergency state)
-    uint256 private lastValidEurUsdPrice;
     /// @notice Variable to store the timestamp of the last valid price update
     uint256 private lastPriceUpdateTime;
 }

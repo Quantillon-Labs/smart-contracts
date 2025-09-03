@@ -324,16 +324,16 @@ contract QTIToken is
     function initialize(
         address admin,
         address _treasury,
-        address timelock
+        address _timelock
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(_treasury);
-        AccessControlLibrary.validateAddress(timelock);
+        AccessControlLibrary.validateAddress(_timelock);
 
         __ERC20_init("Quantillon Token", "QTI");
         __AccessControl_init();
         __Pausable_init();
-        __SecureUpgradeable_init(timelock);
+        __SecureUpgradeable_init(_timelock);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
@@ -486,7 +486,7 @@ contract QTIToken is
         uint256 totalNewVotingPower = 0;
         uint256 totalNewAmount = uint256(lockInfo.amount);
         
-        // GAS OPTIMIZATION: Cache timestamp and lock info to avoid repeated storage reads
+
         // SECURITY: Using block.timestamp for unlock time calculation (acceptable for time-based logic)
         uint256 currentTimestamp = block.timestamp;
         uint256 lockInfoUnlockTime = lockInfo.unlockTime;
@@ -553,7 +553,7 @@ contract QTIToken is
     {
         amounts = new uint256[](users.length);
         
-        // GAS OPTIMIZATION: Cache timestamp and array length to avoid repeated calls
+
         // SECURITY: Using block.timestamp for lock expiration check (acceptable for time-based logic)
         uint256 currentTimestamp = block.timestamp;
         uint256 length = users.length;
@@ -586,7 +586,6 @@ contract QTIToken is
             emit TokensUnlocked(user, amount, oldVotingPower);
             emit VotingPowerUpdated(user, oldVotingPower, 0);
             
-            // GAS OPTIMIZATION: Use unchecked increment
             unchecked { ++i; }
         }
     }
@@ -610,7 +609,7 @@ contract QTIToken is
             if (amounts[i] == 0) revert ErrorLibrary.InvalidAmount();
         }
         
-        // GAS OPTIMIZATION: Cache msg.sender to avoid repeated storage reads
+
         address sender = msg.sender;
         
         // Perform transfers using OpenZeppelin's transfer mechanism
@@ -772,7 +771,7 @@ contract QTIToken is
         uint256 votingPower = _updateVotingPower(msg.sender);
         if (votingPower == 0) revert ErrorLibrary.NoVotingPower();
         
-        // GAS OPTIMIZATION: Cache timestamp and msg.sender to avoid repeated calls
+
         uint256 currentTimestamp = block.timestamp;
         address sender = msg.sender;
         
@@ -814,12 +813,12 @@ contract QTIToken is
         if (proposal.forVotes <= proposal.againstVotes) revert ErrorLibrary.ProposalFailed();
         if (proposal.forVotes + proposal.againstVotes < quorumVotes) revert ErrorLibrary.QuorumNotMet();
 
-        // SECURITY FIX: Mark as executed before external call to prevent reentrancy
+
         proposal.executed = true;
 
         // Execute the proposal data
         if (proposal.data.length > 0) {
-            // SECURITY FIX: External call after state update (CEI pattern)
+
             (bool success, ) = address(this).call(proposal.data);
             if (!success) revert ErrorLibrary.ProposalExecutionFailed();
         }
@@ -967,7 +966,7 @@ contract QTIToken is
     function updateDecentralizationLevel() external onlyRole(GOVERNANCE_ROLE) {
         uint256 timeElapsed = block.timestamp - decentralizationStartTime;
         
-        // SECURITY FIX: Bounds check to prevent timestamp manipulation
+
         if (timeElapsed > MAX_TIME_ELAPSED) {
             timeElapsed = MAX_TIME_ELAPSED;
         }
@@ -1073,13 +1072,12 @@ contract QTIToken is
     /**
      * @notice Recover accidentally sent ETH to treasury address only
      * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
-     * @param to Treasury address (must match the contract's treasury)
      */
-    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // SECURITY FIX: Emit event before external call to prevent reentrancy
-        emit ETHRecovered(to, address(this).balance);
+    function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
+
+        emit ETHRecovered(treasury, address(this).balance);
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury);
     }
 
     // =============================================================================

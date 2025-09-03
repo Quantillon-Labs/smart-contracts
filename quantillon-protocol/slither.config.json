@@ -1,13 +1,29 @@
 {
-  "filter_paths": "lib,test,out,cache",
+  "filter_paths": [
+    "^lib/.*",
+    "^node_modules/.*",
+    "^out/.*",
+    "^cache/.*",
+    "^test/.*"
+  ],
   "exclude_informational": false,
   "exclude_low": false,
   "exclude_medium": false,
   "exclude_high": false,
+
   "detectors_to_exclude": [
     "naming-convention",
-    "external-function"
+    "external-function"       // keep if it’s noisy; remove to re-enable
   ],
+
+  "solc_version": "0.8.24",
+  "solc_args": "--optimize --via-ir",
+  "solc_remaps": [
+    "forge-std/=lib/forge-std/src/",
+    "openzeppelin/=lib/openzeppelin-contracts/",
+    "ozu/=lib/openzeppelin-contracts-upgradeable/"
+  ],
+
   "json": "slither-report.json",
   "sarif": "slither-report.sarif"
 }

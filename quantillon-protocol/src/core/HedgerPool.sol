@@ -416,11 +416,11 @@ contract HedgerPool is
         
         pnls = new int256[](positionIds.length);
         
-        // GAS OPTIMIZATION: Cache oracle price outside loop to avoid multiple external calls
+
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         ValidationLibrary.validateOraclePrice(isValid);
         
-        // GAS OPTIMIZATION: Cache hedger info outside loop
+
         HedgerInfo storage hedger = hedgers[msg.sender];
         
         for (uint i = 0; i < positionIds.length; i++) {
@@ -440,7 +440,7 @@ contract HedgerPool is
         uint256 currentPrice, 
         HedgerInfo storage hedger
     ) internal returns (int256 pnl) {
-        // GAS OPTIMIZATION: Cache position data to avoid multiple storage reads
+
         HedgePosition storage position = positions[positionId];
         uint128 positionMargin = position.margin;
         uint128 positionSize = position.positionSize;
@@ -682,7 +682,7 @@ contract HedgerPool is
                 return;
             }
             
-            // GAS OPTIMIZATION: Use unchecked for safe arithmetic
+    
             unchecked {
                 uint256 blocksElapsed = currentBlock - lastRewardBlock;
                 uint256 timeElapsed = blocksElapsed * 12;
@@ -935,13 +935,12 @@ contract HedgerPool is
     /**
      * @notice Recover ETH to treasury address only
      * @dev SECURITY: Uses TreasuryRecoveryLibrary for secure ETH recovery
-     * @param to Treasury address (must match the contract's treasury)
      */
-    function recoverETH(address payable to) external {
+    function recoverETH() external {
         AccessControlLibrary.onlyAdmin(this);
-        // SECURITY FIX: Emit event before external call to prevent reentrancy
-        emit ETHRecovered(to, address(this).balance);
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+
+        emit ETHRecovered(treasury, address(this).balance);
+        TreasuryRecoveryLibrary.recoverETH(treasury);
     }
     
     /**

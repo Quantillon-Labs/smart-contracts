@@ -369,11 +369,9 @@ contract ChainlinkOracle is
         if (decimals == 18) {
             return price;
         } else if (decimals < 18) {
-            // SECURITY FIX: Use proper rounding instead of truncation
             // Multiply by 10^(18-decimals) to scale up
             return price * (10 ** (18 - decimals));
         } else {
-            // SECURITY FIX: Use proper rounding instead of truncation
             // Divide by 10^(decimals-18) to scale down with rounding
             uint256 divisor = 10 ** (decimals - 18);
             uint256 halfDivisor = divisor / 2;
@@ -665,7 +663,6 @@ contract ChainlinkOracle is
     /**
      * @notice Recover ETH to treasury address only
      * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
-     * @param to Treasury address (must match the contract's treasury)
      * 
      * @dev Security considerations:
      *      - Only DEFAULT_ADMIN_ROLE can recover
@@ -673,11 +670,11 @@ contract ChainlinkOracle is
      *      - Validates balance before attempting transfer
      *      - Uses call() for reliable ETH transfers to any contract
      */
-    function recoverETH(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // SECURITY FIX: Emit event before external call to prevent reentrancy
-        emit ETHRecovered(to, address(this).balance);
+    function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
+
+        emit ETHRecovered(treasury, address(this).balance);
         // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury, to);
+        TreasuryRecoveryLibrary.recoverETH(treasury);
     }
 
     // =============================================================================
@@ -759,7 +756,7 @@ contract ChainlinkOracle is
         if (isValid && lastValidEurUsdPrice > 0) {
             uint256 base = lastValidEurUsdPrice;
             uint256 diff = price > base ? price - base : base - price;
-            // SECURITY FIX: Use proper rounding for deviation calculation
+    
             uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
             if (deviationBps > MAX_PRICE_DEVIATION) {
                 isValid = false;
@@ -797,7 +794,7 @@ contract ChainlinkOracle is
         price = _scalePrice(rawPrice, feedDecimals);
 
         // USDC must stay within tolerance around $1.00
-        // SECURITY FIX: Use proper rounding for tolerance calculation
+
         uint256 tolerance = _divRound(1e18 * usdcToleranceBps, BASIS_POINTS);
         uint256 minPrice = 1e18 - tolerance;  // e.g., 0.98e18
         uint256 maxPrice = 1e18 + tolerance;  // e.g., 1.02e18

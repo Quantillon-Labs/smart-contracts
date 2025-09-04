@@ -330,7 +330,7 @@ contract QEUROToken is
         rateLimitInfo = RateLimitInfo(0, 0, uint64(block.number));
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
-        // slither-disable-next-line missing-zero-check
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
     }
 
@@ -1242,7 +1242,7 @@ contract QEUROToken is
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AccessControlLibrary.validateAddress(_treasury);
-        // slither-disable-next-line missing-zero-check
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

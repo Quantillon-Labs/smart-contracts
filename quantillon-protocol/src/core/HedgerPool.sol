@@ -360,7 +360,7 @@ contract HedgerPool is
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
-        // slither-disable-next-line missing-zero-check
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
 
         minMarginRatio = 1000;
@@ -1183,7 +1183,7 @@ contract HedgerPool is
     function updateTreasury(address _treasury) external {
         AccessControlLibrary.onlyGovernance(this);
         AccessControlLibrary.validateAddress(_treasury);
-        // slither-disable-next-line missing-zero-check
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

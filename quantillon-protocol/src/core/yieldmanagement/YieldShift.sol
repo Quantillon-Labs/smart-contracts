@@ -237,7 +237,7 @@ contract YieldShift is
         hedgerPool = IHedgerPool(_hedgerPool);
         aaveVault = IAaveVault(_aaveVault);
         stQEURO = IstQEURO(_stQEURO);
-        // slither-disable-next-line missing-zero-check
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
 
         baseYieldShift = 5000;

@@ -1,5 +1,5 @@
 # ErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/8586bf0c799c78a35c463b66cf8c6beb85e48666/src/libraries/ErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/ErrorLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -13,7 +13,7 @@ Custom errors for Quantillon Protocol
 - Supports governance, vault, yield, and liquidation operations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Errors
@@ -69,6 +69,12 @@ error InvalidAddress();
 
 ```solidity
 error ZeroAddress();
+```
+
+### InvalidTreasuryAddress
+
+```solidity
+error InvalidTreasuryAddress();
 ```
 
 ### InvalidAmount

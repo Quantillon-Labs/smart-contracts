@@ -1,5 +1,5 @@
 # ValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/8586bf0c799c78a35c463b66cf8c6beb85e48666/src/libraries/ValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/ValidationLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -13,7 +13,7 @@ Validation functions for Quantillon Protocol
 - Array and position validation utilities*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -316,5 +316,22 @@ function validateOraclePrice(bool isValid) internal pure;
 |Name|Type|Description|
 |----|----|-----------|
 |`isValid`|`bool`|Whether the oracle price is valid and recent|
+
+
+### validateTreasuryAddress
+
+Validates treasury address is not zero address
+
+*Prevents setting treasury to zero address which could cause loss of funds*
+
+
+```solidity
+function validateTreasuryAddress(address treasury) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`treasury`|`address`|The treasury address to validate|
 
 

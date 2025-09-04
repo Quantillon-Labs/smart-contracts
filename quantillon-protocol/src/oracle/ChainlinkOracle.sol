@@ -27,6 +27,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 // Treasury recovery library for secure ETH recovery
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/TimeProviderLibrary.sol";
+import "../libraries/ValidationLibrary.sol";
 
 /**
  * @title ChainlinkOracle
@@ -216,6 +217,7 @@ contract ChainlinkOracle is
         // Initialize price feed interfaces
         eurUsdPriceFeed = AggregatorV3Interface(_eurUsdPriceFeed);
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdPriceFeed);
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
 
         // Default price bounds configuration

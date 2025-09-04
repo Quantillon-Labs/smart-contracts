@@ -1,12 +1,12 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/interfaces/IHedgerPool.sol)
 
 
 ## Functions
 ### enterHedgePosition
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ```solidity

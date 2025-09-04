@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -65,7 +65,7 @@ Manages QEURO user deposits, staking, and yield distribution
 - Vault math library for calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -155,6 +155,17 @@ Treasury address for ETH recovery
 
 ```solidity
 address public treasury;
+```
+
+
+### timeProvider
+TimeProvider contract for centralized time management
+
+*Used to replace direct block.timestamp usage for testability and consistency*
+
+
+```solidity
+TimeProvider public immutable timeProvider;
 ```
 
 
@@ -401,9 +412,7 @@ uint256 public constant MAX_REWARD_BATCH_SIZE = 50;
 
 Modifier to protect against flash loan attacks
 
-*Checks that the contract's USDC balance doesn't decrease during execution*
-
-*This prevents flash loans that would drain USDC from the contract*
+*Uses the FlashLoanProtectionLibrary to check USDC balance consistency*
 
 
 ```solidity
@@ -414,7 +423,7 @@ modifier flashLoanProtection();
 
 
 ```solidity
-constructor();
+constructor(TimeProvider _timeProvider);
 ```
 
 ### initialize
@@ -689,13 +698,14 @@ Uses block-based calculations to prevent timestamp manipulation.*
 
 
 ```solidity
-function _updatePendingRewards(address user) internal;
+function _updatePendingRewards(address user, uint256 currentTime) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`user`|`address`|Address of the user to update|
+|`currentTime`|`uint256`||
 
 
 ### getUserDeposits

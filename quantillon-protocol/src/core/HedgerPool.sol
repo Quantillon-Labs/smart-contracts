@@ -124,18 +124,14 @@ contract HedgerPool is
     uint256 public liquidationPenalty;
     uint256 public constant MAX_POSITIONS_PER_HEDGER = 50;
     
-    // SECURITY: Maximum values for packed struct fields to prevent overflow
-    uint256 public constant MAX_POSITION_SIZE = type(uint96).max;      // ~79B USD
-    uint256 public constant MAX_MARGIN = type(uint96).max;             // ~79B USDC
-    uint256 public constant MAX_ENTRY_PRICE = type(uint96).max;        // ~79B (scaled price)
-    uint256 public constant MAX_LEVERAGE = type(uint16).max;           // 65535x
-    uint256 public constant MAX_TOTAL_MARGIN = type(uint128).max;      // ~340B USDC
-    uint256 public constant MAX_TOTAL_EXPOSURE = type(uint128).max;    // ~340B USD
-    uint256 public constant MAX_PENDING_REWARDS = type(uint128).max;   // ~340B tokens
-
-    // SECURITY: Maximum batch sizes to prevent DoS attacks
-    /// @notice Maximum batch size for position operations to prevent DoS
-    /// @dev Prevents out-of-gas attacks through large arrays
+    uint96 public constant MAX_UINT96_VALUE = type(uint96).max;
+    uint256 public constant MAX_POSITION_SIZE = MAX_UINT96_VALUE;
+    uint256 public constant MAX_MARGIN = MAX_UINT96_VALUE;
+    uint256 public constant MAX_ENTRY_PRICE = MAX_UINT96_VALUE;
+    uint256 public constant MAX_LEVERAGE = type(uint16).max;
+    uint256 public constant MAX_TOTAL_MARGIN = type(uint128).max;
+    uint256 public constant MAX_TOTAL_EXPOSURE = type(uint128).max;
+    uint256 public constant MAX_PENDING_REWARDS = type(uint128).max;
     uint256 public constant MAX_BATCH_SIZE = 50;
 
     mapping(address => uint256) public activePositionCount;
@@ -152,31 +148,25 @@ contract HedgerPool is
     uint256 public eurInterestRate;
     uint256 public usdInterestRate;
 
-    /// @dev OPTIMIZED: Packed struct for gas efficiency
-    /// @dev SECURITY: All values are validated before casting to prevent overflow
     struct HedgePosition {
-        address hedger;                     // Address of position owner (20 bytes)
-        uint96 positionSize;               // Position size in USD (12 bytes, max ~79B USD)
-        uint96 margin;                     // Margin amount in USDC (12 bytes, max ~79B USDC)
-        uint96 entryPrice;                 // Entry price (12 bytes, scaled appropriately)
-        uint32 entryTime;                  // Entry timestamp (4 bytes, until year 2106)
-        uint32 lastUpdateTime;             // Last update timestamp (4 bytes, until year 2106)
-        uint16 leverage;                   // Leverage multiplier (2 bytes, max 65535x)
-        bool isActive;                     // Position status (1 byte)
-        int128 unrealizedPnL;              // Unrealized P&L (16 bytes, max ~170B USD)
-        // Total: 20+12+12+12+4+4+2+1+16 = 83 bytes (3 slots vs 9 slots = 67% gas savings)
+        address hedger;
+        uint96 positionSize;
+        uint96 margin;
+        uint96 entryPrice;
+        uint32 entryTime;
+        uint32 lastUpdateTime;
+        uint16 leverage;
+        bool isActive;
+        int128 unrealizedPnL;
     }
 
-    /// @dev OPTIMIZED: Packed struct for gas efficiency
-    /// @dev SECURITY: All values are validated before casting to prevent overflow
     struct HedgerInfo {
-        uint256[] positionIds;              // Dynamic array (separate storage)
-        uint128 totalMargin;                // Total margin across positions (16 bytes, max ~340B USDC)
-        uint128 totalExposure;              // Total exposure across positions (16 bytes, max ~340B USD)
-        uint128 pendingRewards;             // Pending rewards (16 bytes, max ~340B tokens)
-        uint64 lastRewardClaim;             // Last reward claim timestamp (8 bytes, until year 2554)
-        bool isActive;                      // Hedger status (1 byte)
-        // Total: 32+16+16+16+8+1 = 89 bytes (3 slots vs 6 slots = 50% gas savings)
+        uint256[] positionIds;
+        uint128 totalMargin;
+        uint128 totalExposure;
+        uint128 pendingRewards;
+        uint64 lastRewardClaim;
+        bool isActive;
     }
 
     mapping(uint256 => HedgePosition) public positions;
@@ -257,15 +247,6 @@ contract HedgerPool is
     event ETHRecovered(address indexed to, uint256 indexed amount);
     event TreasuryUpdated(address indexed treasury);
     
-    event MaxValuesUpdated(
-        uint256 maxPositionSize,
-        uint256 maxMargin,
-        uint256 maxEntryPrice,
-        uint256 maxLeverage,
-        uint256 maxTotalMargin,
-        uint256 maxTotalExposure,
-        uint256 maxPendingRewards
-    );
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -355,14 +336,11 @@ contract HedgerPool is
         uint256 marginRatio = netMargin.mulDiv(10000, positionSize);
         ValidationLibrary.validateMarginRatio(marginRatio, minMarginRatio);
 
-        // SECURITY: Validate values before casting to prevent overflow
-        require(netMargin <= MAX_MARGIN, "Margin exceeds maximum");
-        require(positionSize <= MAX_POSITION_SIZE, "Position size exceeds maximum");
-        require(eurUsdPrice <= MAX_ENTRY_PRICE, "Entry price exceeds maximum");
-        require(leverage <= MAX_LEVERAGE, "Leverage exceeds maximum");
-        
-        // SECURITY: Validate timestamp to prevent overflow in uint32 (max ~136 years from 1970)
-        require(timeProvider.currentTime() <= type(uint32).max, "Timestamp overflow");
+        if (netMargin > MAX_MARGIN) revert ErrorLibrary.MarginExceedsMaximum();
+        if (positionSize > MAX_POSITION_SIZE) revert ErrorLibrary.PositionSizeExceedsMaximum();
+        if (eurUsdPrice > MAX_ENTRY_PRICE) revert ErrorLibrary.EntryPriceExceedsMaximum();
+        if (leverage > MAX_LEVERAGE) revert ErrorLibrary.LeverageExceedsMaximum();
+        if (timeProvider.currentTime() > type(uint32).max) revert ErrorLibrary.TimestampOverflow();
 
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
 
@@ -370,12 +348,12 @@ contract HedgerPool is
         
         HedgePosition storage position = positions[positionId];
         position.hedger = msg.sender;
-        position.positionSize = uint96(positionSize);      // Safe cast after validation
-        position.margin = uint96(netMargin);               // Safe cast after validation
-        position.entryTime = uint32(timeProvider.currentTime());  // Safe timestamp cast - uint32 max is ~136 years
-        position.lastUpdateTime = uint32(timeProvider.currentTime()); // Safe timestamp cast - uint32 max is ~136 years
-        position.leverage = uint16(leverage);              // Safe cast after validation
-        position.entryPrice = uint96(eurUsdPrice);         // Safe cast after validation
+        position.positionSize = uint96(positionSize);
+        position.margin = uint96(netMargin);
+        position.entryTime = uint32(timeProvider.currentTime());
+        position.lastUpdateTime = uint32(timeProvider.currentTime());
+        position.leverage = uint16(leverage);
+        position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
 
@@ -389,12 +367,11 @@ contract HedgerPool is
         hedger.positionIds.push(positionId);
         positionIndex[msg.sender][positionId] = hedger.positionIds.length - 1;
         
-        // SECURITY: Validate totals before casting to prevent overflow
-        require(hedger.totalMargin + netMargin <= MAX_TOTAL_MARGIN, "Total margin exceeds maximum");
-        require(hedger.totalExposure + positionSize <= MAX_TOTAL_EXPOSURE, "Total exposure exceeds maximum");
+        if (hedger.totalMargin + netMargin > MAX_TOTAL_MARGIN) revert ErrorLibrary.TotalMarginExceedsMaximum();
+        if (hedger.totalExposure + positionSize > MAX_TOTAL_EXPOSURE) revert ErrorLibrary.TotalExposureExceedsMaximum();
         
-        hedger.totalMargin += uint128(netMargin);      // Safe cast after validation
-        hedger.totalExposure += uint128(positionSize); // Safe cast after validation
+        hedger.totalMargin += uint128(netMargin);
+        hedger.totalExposure += uint128(positionSize);
         
         // Add to hedgerPositions[hedger] array with O(1) indexing
         hedgerPositions[msg.sender].push(positionId);
@@ -454,7 +431,7 @@ contract HedgerPool is
             usdc.safeTransfer(msg.sender, netPayout);
         }
 
-        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, currentTime);
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, timeProvider.currentTime());
     }
 
     function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPositions) 
@@ -464,8 +441,8 @@ contract HedgerPool is
         returns (int256[] memory pnls) 
     {
         if (positionIds.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
-        require(positionIds.length <= maxPositions, "Too many positions");
-        require(maxPositions <= 10, "Max 10 positions per tx");
+        if (positionIds.length > maxPositions) revert ErrorLibrary.TooManyPositionsPerTx();
+        if (maxPositions > 10) revert ErrorLibrary.MaxPositionsPerTx();
         
         // Cache timestamp to avoid external calls in loop
         uint256 currentTime = timeProvider.currentTime();
@@ -547,7 +524,7 @@ contract HedgerPool is
             usdc.safeTransfer(msg.sender, netPayout);
         }
 
-        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, currentTime);
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, timeProvider.currentTime());
     }
     
     /**
@@ -605,7 +582,7 @@ contract HedgerPool is
     }
 
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {
-        require(hedgerHasPosition[hedger][positionId], "Position not found");
+        if (!hedgerHasPosition[hedger][positionId]) revert ErrorLibrary.PositionNotFound();
         
         // O(1) removal from hedgers[hedger].positionIds array
         uint256 index = positionIndex[hedger][positionId];
@@ -660,12 +637,11 @@ contract HedgerPool is
 
         usdc.safeTransferFrom(msg.sender, address(this), amount);
 
-        // SECURITY: Validate values before casting to prevent overflow
-        require(uint256(position.margin) + netAmount <= MAX_MARGIN, "New margin exceeds maximum");
-        require(hedgers[msg.sender].totalMargin + netAmount <= MAX_TOTAL_MARGIN, "Total margin exceeds maximum");
+        if (uint256(position.margin) + netAmount > MAX_MARGIN) revert ErrorLibrary.NewMarginExceedsMaximum();
+        if (hedgers[msg.sender].totalMargin + netAmount > MAX_TOTAL_MARGIN) revert ErrorLibrary.TotalMarginExceedsMaximum();
         
-        position.margin += uint96(netAmount);      // Safe cast after validation
-        hedgers[msg.sender].totalMargin += uint128(netAmount); // Safe cast after validation
+        position.margin += uint96(netAmount);
+        hedgers[msg.sender].totalMargin += uint128(netAmount);
         totalMargin += netAmount;
 
         uint256 newMarginRatio = uint256(position.margin).mulDiv(10000, uint256(position.positionSize));
@@ -688,11 +664,9 @@ contract HedgerPool is
         uint256 newMarginRatio = newMargin.mulDiv(10000, uint256(position.positionSize));
         ValidationLibrary.validateMarginRatio(newMarginRatio, minMarginRatio);
 
-        // SECURITY: Validate new margin before casting to prevent overflow
-        require(newMargin <= MAX_MARGIN, "New margin exceeds maximum");
+        if (newMargin > MAX_MARGIN) revert ErrorLibrary.NewMarginExceedsMaximum();
         
-        position.margin = uint96(newMargin);      // Safe cast after validation
-
+        position.margin = uint96(newMargin);
         hedgers[msg.sender].totalMargin -= uint128(amount);
         totalMargin -= amount;
 
@@ -740,7 +714,6 @@ contract HedgerPool is
 
         if (!_isPositionLiquidatable(positionId)) revert ErrorLibrary.PositionNotLiquidatable();
 
-        // SECURITY: Only need validation status, ignore price (safe to ignore for liquidation)
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         ValidationLibrary.validateOraclePrice(isValid);
         // Note: currentPrice is intentionally unused for liquidation logic
@@ -749,7 +722,6 @@ contract HedgerPool is
         uint256 remainingMargin = uint256(position.margin) - liquidationReward;
 
         HedgerInfo storage hedgerInfo = hedgers[hedger];
-        // SECURITY: Safe subtraction (no overflow possible as we're reducing values)
         hedgerInfo.totalMargin -= uint128(position.margin);
         hedgerInfo.totalExposure -= uint128(position.positionSize);
 
@@ -792,7 +764,6 @@ contract HedgerPool is
         
         if (totalRewards > 0) {
             hedgerInfo.pendingRewards = 0;
-            // SECURITY: Safe timestamp cast to prevent overflow
             require(timeProvider.currentTime() <= type(uint64).max, "Timestamp overflow");
             hedgerInfo.lastRewardClaim = uint64(timeProvider.currentTime());
             
@@ -838,9 +809,8 @@ contract HedgerPool is
                 uint256 newPendingRewards = uint256(hedgerInfo.pendingRewards) + reward;
                 if (newPendingRewards < uint256(hedgerInfo.pendingRewards)) revert ErrorLibrary.RewardOverflow();
                 
-                // SECURITY: Validate before casting to prevent overflow
                 require(newPendingRewards <= MAX_PENDING_REWARDS, "Pending rewards exceed maximum");
-                hedgerInfo.pendingRewards = uint128(newPendingRewards); // Safe cast after validation
+                hedgerInfo.pendingRewards = uint128(newPendingRewards);
                 
                 hedgerLastRewardBlock[hedger] = currentBlock;
             }
@@ -985,7 +955,6 @@ contract HedgerPool is
         ValidationLibrary.validatePositionActive(position.isActive);
 
         HedgerInfo storage hedgerInfo = hedgers[hedger];
-        // SECURITY: Safe subtraction (no overflow possible as we're reducing values)
         hedgerInfo.totalMargin -= uint128(position.margin);
         hedgerInfo.totalExposure -= uint128(position.positionSize);
 
@@ -1128,51 +1097,5 @@ contract HedgerPool is
         emit TreasuryUpdated(_treasury);
     }
     
-    /**
-     * @notice Update maximum values for packed struct fields
-     * @dev SECURITY: Only governance can update these critical security parameters
-     * @dev Note: These are currently constants, so this function is a placeholder
-     *      for future governance control over these parameters
-     * @param _maxPositionSize New maximum position size
-     * @param _maxMargin New maximum margin
-     * @param _maxEntryPrice New maximum entry price
-     * @param _maxLeverage New maximum leverage
-     * @param _maxTotalMargin New maximum total margin
-     * @param _maxTotalExposure New maximum total exposure
-     * @param _maxPendingRewards New maximum pending rewards
-     */
-    function updateMaxValues(
-        uint256 _maxPositionSize,
-        uint256 _maxMargin,
-        uint256 _maxEntryPrice,
-        uint256 _maxLeverage,
-        uint256 _maxTotalMargin,
-        uint256 _maxTotalExposure,
-        uint256 _maxPendingRewards
-    ) external {
-        AccessControlLibrary.onlyGovernance(this);
-        
-        // TODO: Convert constants to state variables for governance control
-        // For now, this function validates parameters but doesn't update them
-        // as they are currently implemented as constants
-        
-        require(_maxPositionSize <= type(uint96).max, "Position size exceeds uint96 max");
-        require(_maxMargin <= type(uint96).max, "Margin exceeds uint96 max");
-        require(_maxEntryPrice <= type(uint96).max, "Entry price exceeds uint96 max");
-        require(_maxLeverage <= type(uint16).max, "Leverage exceeds uint16 max");
-        require(_maxTotalMargin <= type(uint128).max, "Total margin exceeds uint128 max");
-        require(_maxTotalExposure <= type(uint128).max, "Total exposure exceeds uint128 max");
-        require(_maxPendingRewards <= type(uint128).max, "Pending rewards exceeds uint128 max");
-        
-        emit MaxValuesUpdated(
-            _maxPositionSize,
-            _maxMargin,
-            _maxEntryPrice,
-            _maxLeverage,
-            _maxTotalMargin,
-            _maxTotalExposure,
-            _maxPendingRewards
-        );
-    }
 
 }

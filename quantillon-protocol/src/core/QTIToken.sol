@@ -101,7 +101,6 @@ contract QTIToken is
     /// @dev Prevents extremely long locks that could impact governance
     uint256 public constant MAX_LOCK_TIME = 365 days;
 
-    // SECURITY: Maximum batch sizes to prevent DoS attacks
     /// @notice Maximum batch size for lock operations to prevent DoS
     /// @dev Prevents out-of-gas attacks through large arrays
     uint256 public constant MAX_BATCH_SIZE = 100;
@@ -153,7 +152,6 @@ contract QTIToken is
         uint32 unlockTime;        // Timestamp when lock expires - 4 bytes
         uint32 lastClaimTime;     // Last claim time (for future use) - 4 bytes
         uint32 lockTime;          // Original lock duration - 4 bytes
-        // Total: 12 + 12 + 12 + 4 + 4 + 4 = 48 bytes (fits in 2 slots vs 6 slots)
     }
     
     /// @notice Governance proposal structure
@@ -419,7 +417,7 @@ contract QTIToken is
         uint256 newVotingPower = amount * multiplier / 1e18;
         if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
         
-        // Safe addition for amount
+
         uint256 newAmount = uint256(lockInfo.amount) + amount;
         if (newAmount > type(uint96).max) revert ErrorLibrary.InvalidAmount();
         

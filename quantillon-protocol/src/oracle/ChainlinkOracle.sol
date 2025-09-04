@@ -290,12 +290,10 @@ contract ChainlinkOracle is
      */
     function _updatePrices() internal {
         // Fetch EUR/USD price data directly from Chainlink
-        // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
         // slither-disable-next-line unused-return
         (, int256 eurUsdRawPrice, , uint256 eurUsdUpdatedAt, ) = eurUsdPriceFeed.latestRoundData();
         
         // Fetch USDC/USD price data directly from Chainlink
-        // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
         // slither-disable-next-line unused-return
         (, int256 usdcUsdRawPrice, , uint256 usdcUsdUpdatedAt, ) = usdcUsdPriceFeed.latestRoundData();
         
@@ -738,7 +736,6 @@ contract ChainlinkOracle is
         }
 
         // Fetch data from Chainlink
-        // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
         // slither-disable-next-line unused-return
         (, int256 rawPrice, , uint256 updatedAt, ) = eurUsdPriceFeed.latestRoundData();
         
@@ -787,7 +784,6 @@ contract ChainlinkOracle is
      */
     function getUsdcUsdPrice() external view returns (uint256 price, bool isValid) {
         // Fetch from Chainlink
-        // SECURITY: Only need price and timestamp, ignore other return values (roundId, answer, answeredInRound)
         // slither-disable-next-line unused-return
         (, int256 rawPrice, , uint256 updatedAt, ) = usdcUsdPriceFeed.latestRoundData();
         

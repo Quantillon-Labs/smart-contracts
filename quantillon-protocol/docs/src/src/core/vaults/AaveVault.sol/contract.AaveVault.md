@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -67,7 +67,7 @@ Aave integration vault for yield generation through USDC lending
 - Rewards controller for additional incentives*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -253,6 +253,70 @@ function deployToAave(uint256 amount) external nonReentrant whenNotPaused return
 
 ```solidity
 function withdrawFromAave(uint256 amount) external nonReentrant returns (uint256 usdcWithdrawn);
+```
+
+### _validateAndCalculateWithdrawAmount
+
+*Validates and calculates the actual withdrawal amount*
+
+
+```solidity
+function _validateAndCalculateWithdrawAmount(uint256 amount, uint256 aaveBalance)
+    internal
+    pure
+    returns (uint256 withdrawAmount);
+```
+
+### _validateWithdrawalConstraints
+
+*Validates withdrawal constraints (emergency mode, minimum balance)*
+
+
+```solidity
+function _validateWithdrawalConstraints(uint256 withdrawAmount, uint256 aaveBalance) internal view;
+```
+
+### _validateExpectedWithdrawal
+
+*Validates expected withdrawal amounts before external call*
+
+
+```solidity
+function _validateExpectedWithdrawal(uint256 withdrawAmount) internal view;
+```
+
+### _executeAaveWithdrawal
+
+*Executes the Aave withdrawal with proper error handling*
+
+
+```solidity
+function _executeAaveWithdrawal(uint256 originalAmount, uint256 withdrawAmount, uint256 usdcBefore)
+    internal
+    returns (uint256 usdcWithdrawn);
+```
+
+### _validateWithdrawalResult
+
+*Validates the withdrawal result and slippage*
+
+
+```solidity
+function _validateWithdrawalResult(
+    uint256 originalAmount,
+    uint256 withdrawAmount,
+    uint256 usdcBefore,
+    uint256 usdcWithdrawn
+) internal view;
+```
+
+### _updatePrincipalAfterWithdrawal
+
+*Updates principal deposited after successful withdrawal*
+
+
+```solidity
+function _updatePrincipalAfterWithdrawal(uint256 actualReceived) internal;
 ```
 
 ### claimAaveRewards

@@ -1,5 +1,5 @@
 # ErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/libraries/ErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/libraries/ErrorLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -13,7 +13,7 @@ Custom errors for Quantillon Protocol
 - Supports governance, vault, yield, and liquidation operations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Errors
@@ -63,6 +63,12 @@ error NotAdmin();
 
 ```solidity
 error InvalidAddress();
+```
+
+### ZeroAddress
+
+```solidity
+error ZeroAddress();
 ```
 
 ### InvalidAmount
@@ -939,5 +945,65 @@ error InvalidExecutionHash();
 
 ```solidity
 error ExecutionTimeNotReached();
+```
+
+### MarginExceedsMaximum
+
+```solidity
+error MarginExceedsMaximum();
+```
+
+### PositionSizeExceedsMaximum
+
+```solidity
+error PositionSizeExceedsMaximum();
+```
+
+### EntryPriceExceedsMaximum
+
+```solidity
+error EntryPriceExceedsMaximum();
+```
+
+### LeverageExceedsMaximum
+
+```solidity
+error LeverageExceedsMaximum();
+```
+
+### TimestampOverflow
+
+```solidity
+error TimestampOverflow();
+```
+
+### TotalMarginExceedsMaximum
+
+```solidity
+error TotalMarginExceedsMaximum();
+```
+
+### TotalExposureExceedsMaximum
+
+```solidity
+error TotalExposureExceedsMaximum();
+```
+
+### TooManyPositionsPerTx
+
+```solidity
+error TooManyPositionsPerTx();
+```
+
+### MaxPositionsPerTx
+
+```solidity
+error MaxPositionsPerTx();
+```
+
+### NewMarginExceedsMaximum
+
+```solidity
+error NewMarginExceedsMaximum();
 ```
 

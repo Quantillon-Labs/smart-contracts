@@ -1,5 +1,5 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/46b18a17495388ad54b171836fd31a58ac76ca7b/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -408,7 +408,9 @@ function initialize(address admin, address _treasury, address _timelock) public 
 
 ### lock
 
-Lock QTI tokens for voting power
+Locks QTI tokens for a specified duration to earn voting power (veQTI)
+
+*Longer lock periods generate more voting power via time-weighted calculations*
 
 
 ```solidity
@@ -418,14 +420,14 @@ function lock(uint256 amount, uint256 lockTime) external whenNotPaused flashLoan
 
 |Name|Type|Description|
 |----|----|-----------|
-|`amount`|`uint256`|Amount of QTI to lock|
-|`lockTime`|`uint256`|Duration to lock (must be >= MIN_LOCK_TIME)|
+|`amount`|`uint256`|The amount of QTI tokens to lock|
+|`lockTime`|`uint256`|The duration to lock tokens (in seconds)|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`veQTI`|`uint256`|Voting power calculated for the locked amount|
+|`veQTI`|`uint256`|The amount of voting power (veQTI) earned from this lock|
 
 
 ### unlock
@@ -743,6 +745,21 @@ function executeProposal(uint256 proposalId) external nonReentrant;
 |`proposalId`|`uint256`|Proposal ID|
 
 
+### _verifyCallResult
+
+*Verifies call result and reverts with appropriate error*
+
+
+```solidity
+function _verifyCallResult(bool success) private pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`success`|`bool`|Whether the call was successful|
+
+
 ### getProposalExecutionInfo
 
 Get execution information for a scheduled proposal
@@ -963,12 +980,26 @@ function _updateVotingPower(address user) internal returns (uint256 newVotingPow
 
 ### decimals
 
+Returns the number of decimals for the QTI token
+
+*Always returns 18 for standard ERC20 compatibility*
+
 
 ```solidity
 function decimals() public pure override returns (uint8);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint8`|The number of decimals (18)|
+
 
 ### pause
+
+Pauses all token operations including transfers and governance
+
+*Emergency function to halt all contract operations when needed*
 
 
 ```solidity
@@ -976,6 +1007,10 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 ```
 
 ### unpause
+
+Unpauses all token operations
+
+*Resumes normal contract operations after emergency is resolved*
 
 
 ```solidity

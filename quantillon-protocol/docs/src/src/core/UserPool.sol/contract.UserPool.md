@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/46b18a17495388ad54b171836fd31a58ac76ca7b/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -561,10 +561,9 @@ function batchWithdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUs
 
 ### stake
 
-Stake QEURO tokens to earn enhanced yield
+Stakes QEURO tokens to earn enhanced staking rewards
 
-*This function allows users to stake their QEURO tokens.
-It updates their pending rewards and adds to their staked amount.*
+*Updates pending rewards before staking and requires minimum stake amount*
 
 
 ```solidity
@@ -574,15 +573,14 @@ function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to stake (18 decimals)|
+|`qeuroAmount`|`uint256`|The amount of QEURO tokens to stake (18 decimals)|
 
 
 ### batchStake
 
-Batch stake QEURO tokens for multiple amounts
+Stakes multiple amounts of QEURO tokens in a single transaction
 
-*This function allows users to make multiple stakes in one transaction.
-Each stake must meet minimum requirements and updates rewards.*
+*More gas-efficient than multiple individual stake calls. Each stake must meet minimum requirements.*
 
 
 ```solidity
@@ -597,10 +595,9 @@ function batchStake(uint256[] calldata qeuroAmounts) external nonReentrant whenN
 
 ### requestUnstake
 
-Request to unstake QEURO tokens (starts cooldown)
+Requests to unstake QEURO tokens (starts unstaking cooldown period)
 
-*This function allows users to request to unstake their QEURO.
-It sets a cooldown period before they can complete the unstaking.*
+*Begins the unstaking process with a cooldown period before tokens can be withdrawn*
 
 
 ```solidity
@@ -610,7 +607,7 @@ function requestUnstake(uint256 qeuroAmount) external nonReentrant;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to unstake (18 decimals)|
+|`qeuroAmount`|`uint256`|The amount of staked QEURO tokens to unstake (18 decimals)|
 
 
 ### unstake

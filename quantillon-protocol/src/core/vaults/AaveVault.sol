@@ -442,6 +442,11 @@ contract AaveVault is
         yieldHarvested = actualYieldReceived;
     }
 
+    /**
+     * @notice Returns the total available yield from Aave lending
+     * @dev Calculates yield based on current aToken balance vs principal deposited
+     * @return The amount of yield available for distribution
+     */
     function getAvailableYield() public view returns (uint256) {
         uint256 currentBalance = aUSDC.balanceOf(address(this));
         
@@ -452,6 +457,13 @@ contract AaveVault is
         return currentBalance - principalDeposited;
     }
 
+    /**
+     * @notice Returns the breakdown of yield distribution between users and protocol
+     * @dev Shows how yield is allocated according to current distribution parameters
+     * @return protocolYield Amount of yield allocated to protocol fees
+     * @return userYield Amount of yield allocated to users
+     * @return hedgerYield Amount of yield allocated to hedgers
+     */
     function getYieldDistribution() external view returns (
         uint256 protocolYield,
         uint256 userYield,
@@ -466,19 +478,42 @@ contract AaveVault is
         hedgerYield = netYield - userYield;
     }
 
+    /**
+     * @notice Returns the current balance of aTokens held by this vault
+     * @dev Represents the total amount deposited in Aave plus accrued interest
+     * @return The current aToken balance
+     */
     function getAaveBalance() external view returns (uint256) {
         return aUSDC.balanceOf(address(this));
     }
 
+    /**
+     * @notice Returns the total interest accrued from Aave lending
+     * @dev Calculates interest as current balance minus principal deposited
+     * @return The amount of interest accrued
+     */
     function getAccruedInterest() external view returns (uint256) {
         return getAvailableYield();
     }
 
+    /**
+     * @notice Returns the current APY offered by Aave for the deposited asset
+     * @dev Fetches the supply rate from Aave's reserve data
+     * @return The current APY in basis points
+     */
     function getAaveAPY() external view returns (uint256) {
         ReserveData memory reserveData = aavePool.getReserveData(address(usdc));
         return uint256(reserveData.currentLiquidityRate) / 1e23;
     }
 
+    /**
+     * @notice Returns detailed information about the Aave position
+     * @dev Provides comprehensive data about the vault's Aave lending position
+     * @return principalDeposited_ Total amount originally deposited
+     * @return currentBalance Current aToken balance including interest
+     * @return aTokenBalance Current aToken balance
+     * @return lastUpdateTime Timestamp of last position update
+     */
     function getAavePositionDetails() external view returns (
         uint256 principalDeposited_,
         uint256 currentBalance,
@@ -491,6 +526,14 @@ contract AaveVault is
         lastUpdateTime = lastHarvestTime;
     }
 
+    /**
+     * @notice Returns current Aave market data for the deposited asset
+     * @dev Fetches real-time market information from Aave protocol
+     * @return supplyRate Current supply rate for the asset
+     * @return utilizationRate Current utilization rate of the reserve
+     * @return totalSupply Total supply of the underlying asset
+     * @return availableLiquidity Available liquidity in the reserve
+     */
     function getAaveMarketData() external view returns (
         uint256 supplyRate,
         uint256 utilizationRate,
@@ -507,6 +550,13 @@ contract AaveVault is
         }
     }
 
+    /**
+     * @notice Performs health checks on the Aave position
+     * @dev Validates that the Aave position is healthy and functioning properly
+     * @return isHealthy True if position is healthy, false if issues detected
+     * @return pauseStatus Current pause status of the contract
+     * @return lastUpdate Timestamp of last health check update
+     */
     function checkAaveHealth() external view returns (
         bool isHealthy,
         bool pauseStatus,
@@ -555,6 +605,12 @@ contract AaveVault is
         }
     }
 
+    /**
+     * @notice Calculates the optimal allocation of funds to Aave
+     * @dev Determines best allocation strategy based on current market conditions
+     * @return optimalAllocation Recommended amount to allocate to Aave
+     * @return expectedYield Expected yield from the recommended allocation
+     */
     function calculateOptimalAllocation() external view returns (
         uint256 optimalAllocation,
         uint256 expectedYield
@@ -572,6 +628,11 @@ contract AaveVault is
         expectedYield = aaveAPY;
     }
 
+    /**
+     * @notice Sets the maximum exposure limit for Aave deposits
+     * @dev Governance function to control risk by limiting Aave exposure
+     * @param _maxExposure Maximum amount that can be deposited to Aave
+     */
     function setMaxAaveExposure(uint256 _maxExposure) external {
         AccessControlLibrary.onlyGovernance(this);
         ValidationLibrary.validatePositiveAmount(_maxExposure);
@@ -625,6 +686,13 @@ contract AaveVault is
         }
     }
 
+    /**
+     * @notice Returns comprehensive risk metrics for the Aave position
+     * @dev Provides detailed risk analysis including concentration and volatility metrics
+     * @return exposureRatio Percentage of total assets exposed to Aave
+     * @return concentrationRisk Risk level due to concentration in Aave (1-3 scale)
+     * @return liquidityRisk Risk level based on Aave liquidity conditions (1-3 scale)
+     */
     function getRiskMetrics() external view returns (
         uint256 exposureRatio,
         uint256 concentrationRisk,
@@ -654,6 +722,15 @@ contract AaveVault is
         rebalanceThreshold = newRebalanceThreshold;
     }
 
+    /**
+     * @notice Returns the current Aave integration configuration
+     * @dev Provides access to all configuration parameters for Aave integration
+     * @return aavePool_ Address of the Aave pool contract
+     * @return aUSDC_ Address of the aUSDC token contract
+     * @return harvestThreshold_ Minimum yield threshold for harvesting
+     * @return yieldFee_ Fee percentage charged on yield
+     * @return maxExposure_ Maximum allowed exposure to Aave
+     */
     function getAaveConfig() external view returns (
         address aavePool_,
         address aUSDC_,
@@ -670,28 +747,52 @@ contract AaveVault is
         );
     }
 
+    /**
+     * @notice Toggles emergency mode for the Aave vault
+     * @dev Emergency function to enable/disable emergency mode during critical situations
+     * @param enabled Whether to enable or disable emergency mode
+     * @param reason Human-readable reason for the change
+     */
     function toggleEmergencyMode(bool enabled, string calldata reason) external {
         AccessControlLibrary.onlyEmergencyRole(this);
         emergencyMode = enabled;
         emit EmergencyModeToggled(reason, enabled);
     }
 
+    /**
+     * @notice Pauses all Aave vault operations
+     * @dev Emergency function to halt all vault operations when needed
+     */
     function pause() external {
         AccessControlLibrary.onlyEmergencyRole(this);
         _pause();
     }
 
+    /**
+     * @notice Unpauses Aave vault operations
+     * @dev Resumes normal vault operations after emergency is resolved
+     */
     function unpause() external {
         AccessControlLibrary.onlyEmergencyRole(this);
         _unpause();
     }
 
+    /**
+     * @notice Recovers accidentally sent ERC20 tokens from the vault
+     * @dev Emergency function to recover tokens that are not part of normal operations
+     * @param token The token address to recover
+     * @param amount The amount of tokens to recover
+     */
     function recoverToken(address token, uint256 amount) external {
         AccessControlLibrary.onlyAdmin(this);
         // Use the shared library for secure token recovery to treasury
         TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
+    /**
+     * @notice Recovers accidentally sent ETH from the vault
+     * @dev Emergency function to recover ETH that shouldn't be in the vault
+     */
     function recoverETH() external {
         AccessControlLibrary.onlyAdmin(this);
         // Use the shared library for secure ETH recovery

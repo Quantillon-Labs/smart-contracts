@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/46b18a17495388ad54b171836fd31a58ac76ca7b/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -595,12 +595,26 @@ function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE);
 
 ### decimals
 
+Returns the number of decimals used by the token
+
+*Always returns 18 to match QEURO token standard*
+
 
 ```solidity
 function decimals() public pure override returns (uint8);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint8`|The number of decimals (18)|
+
 
 ### pause
+
+Pauses all token transfers and minting/burning operations
+
+*Can only be called by addresses with EMERGENCY_ROLE during emergencies*
 
 
 ```solidity
@@ -608,6 +622,10 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 ```
 
 ### unpause
+
+Unpauses all token transfers and minting/burning operations
+
+*Can only be called by addresses with EMERGENCY_ROLE to resume normal operations*
 
 
 ```solidity

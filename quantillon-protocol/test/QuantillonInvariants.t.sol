@@ -88,6 +88,10 @@ contract QuantillonInvariants is Test {
     // SETUP
     // =============================================================================
     
+    /**
+     * @notice Sets up the invariant testing environment
+     * @dev Initializes all protocol contracts for comprehensive invariant testing
+     */
     function setUp() public {
         // Deploy only essential contracts for invariant testing
         _deployEssentialContracts();

@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/46b18a17495388ad54b171836fd31a58ac76ca7b/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -418,6 +418,8 @@ function batchBurn(address[] calldata froms, uint256[] calldata amounts)
 
 Checks and updates mint rate limit
 
+Checks and updates the mint rate limit for the caller
+
 *Internal function to enforce rate limiting*
 
 *Security considerations:
@@ -426,6 +428,8 @@ Checks and updates mint rate limit
 - Updates the current hour minted amount
 - Throws an error if rate limit is exceeded
 - Includes bounds checking to prevent block manipulation*
+
+*Implements sliding window rate limiting using block numbers*
 
 
 ```solidity
@@ -442,6 +446,8 @@ function _checkAndUpdateMintRateLimit(uint256 amount) internal;
 
 Checks and updates burn rate limit
 
+Checks and updates the burn rate limit for the caller
+
 *Internal function to enforce rate limiting*
 
 *Security considerations:
@@ -450,6 +456,8 @@ Checks and updates burn rate limit
 - Updates the current hour burned amount
 - Throws an error if rate limit is exceeded
 - Includes bounds checking to prevent block manipulation*
+
+*Implements sliding window rate limiting using block numbers*
 
 
 ```solidity
@@ -762,6 +770,8 @@ function validatePricePrecision(uint256 price, uint8 feedDecimals) external view
 
 Pauses all token operations (emergency only)
 
+Pauses all token operations except emergency functions
+
 *When paused:
 - No transfers possible
 - No mint/burn possible
@@ -775,6 +785,8 @@ Used in case of:
 - Only PAUSER_ROLE can pause
 - Pauses all token operations
 - Prevents any state changes*
+
+*Only callable by addresses with PAUSER_ROLE*
 
 
 ```solidity

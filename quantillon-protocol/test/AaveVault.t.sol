@@ -352,6 +352,10 @@ contract AaveVaultTestSuite is Test {
     // SETUP AND TEARDOWN
     // =============================================================================
     
+    /**
+     * @notice Sets up the AaveVault test environment
+     * @dev Deploys all necessary contracts and initializes the Aave vault for testing
+     */
     function setUp() public {
         // Deploy mock contracts
         usdc = new MockUSDC();

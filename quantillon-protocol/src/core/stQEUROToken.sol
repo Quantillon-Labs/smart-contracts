@@ -723,6 +723,11 @@ contract stQEUROToken is
     // OVERRIDE FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Returns the number of decimals used by the token
+     * @dev Always returns 18 to match QEURO token standard
+     * @return The number of decimals (18)
+     */
     function decimals() public pure override returns (uint8) {
         return 18;
     }
@@ -733,10 +738,18 @@ contract stQEUROToken is
     // EMERGENCY FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Pauses all token transfers and minting/burning operations
+     * @dev Can only be called by addresses with EMERGENCY_ROLE during emergencies
+     */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
     }
 
+    /**
+     * @notice Unpauses all token transfers and minting/burning operations
+     * @dev Can only be called by addresses with EMERGENCY_ROLE to resume normal operations
+     */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
     }

@@ -1,0 +1,122 @@
+# HedgerPoolValidationLibrary
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/46b18a17495388ad54b171836fd31a58ac76ca7b/src/libraries/HedgerPoolValidationLibrary.sol)
+
+Validation functions for HedgerPool to reduce contract size
+
+
+## Functions
+### validatePositionParams
+
+Validates all position parameters against maximum limits
+
+*Ensures all position parameters are within acceptable bounds*
+
+
+```solidity
+function validatePositionParams(
+    uint256 netMargin,
+    uint256 positionSize,
+    uint256 eurUsdPrice,
+    uint256 leverage,
+    uint256 maxMargin,
+    uint256 maxPositionSize,
+    uint256 maxEntryPrice,
+    uint256 maxLeverage
+) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`netMargin`|`uint256`|The net margin amount after fees|
+|`positionSize`|`uint256`|The size of the position|
+|`eurUsdPrice`|`uint256`|The EUR/USD entry price|
+|`leverage`|`uint256`|The leverage multiplier|
+|`maxMargin`|`uint256`|Maximum allowed margin|
+|`maxPositionSize`|`uint256`|Maximum allowed position size|
+|`maxEntryPrice`|`uint256`|Maximum allowed entry price|
+|`maxLeverage`|`uint256`|Maximum allowed leverage|
+
+
+### validateTotals
+
+Validates total margin and exposure limits
+
+*Ensures combined totals don't exceed system-wide limits*
+
+
+```solidity
+function validateTotals(
+    uint256 currentMargin,
+    uint256 currentExposure,
+    uint256 additionalMargin,
+    uint256 additionalExposure,
+    uint256 maxTotalMargin,
+    uint256 maxTotalExposure
+) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`currentMargin`|`uint256`|Current total margin|
+|`currentExposure`|`uint256`|Current total exposure|
+|`additionalMargin`|`uint256`|Additional margin being added|
+|`additionalExposure`|`uint256`|Additional exposure being added|
+|`maxTotalMargin`|`uint256`|Maximum allowed total margin|
+|`maxTotalExposure`|`uint256`|Maximum allowed total exposure|
+
+
+### validateTimestamp
+
+Validates timestamp fits in uint32 for storage optimization
+
+*Prevents timestamp overflow when casting to uint32*
+
+
+```solidity
+function validateTimestamp(uint256 timestamp) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`timestamp`|`uint256`|The timestamp to validate|
+
+
+### validateNewMargin
+
+Validates new margin amount against maximum limit
+
+*Ensures margin additions don't exceed individual position limits*
+
+
+```solidity
+function validateNewMargin(uint256 newMargin, uint256 maxMargin) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newMargin`|`uint256`|The new total margin amount|
+|`maxMargin`|`uint256`|Maximum allowed margin per position|
+
+
+### validatePendingRewards
+
+Validates pending rewards against maximum accumulation limit
+
+*Prevents excessive reward accumulation that could cause overflow*
+
+
+```solidity
+function validatePendingRewards(uint256 newRewards, uint256 maxRewards) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newRewards`|`uint256`|The new total pending rewards amount|
+|`maxRewards`|`uint256`|Maximum allowed pending rewards|
+
+

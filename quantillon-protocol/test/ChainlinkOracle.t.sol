@@ -43,10 +43,24 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         shouldReturnInvalidPrice = _shouldReturnInvalidPrice;
     }
 
+    /**
+     * @notice Sets the updated timestamp for the mock price feed
+     * @dev Test helper function to control price feed timestamps
+     * @param _updatedAt The timestamp to set as the last update time
+     */
     function setUpdatedAt(uint256 _updatedAt) external {
         updatedAt = _updatedAt;
     }
 
+    /**
+     * @notice Returns the latest round data for the mock price feed
+     * @dev Mock implementation of Chainlink's latestRoundData function for testing
+     * @return _roundId The round ID
+     * @return _answer The price answer
+     * @return _startedAt The timestamp when the round started
+     * @return _updatedAt The timestamp when the round was last updated
+     * @return _answeredInRound The round ID in which the answer was computed
+     */
     function latestRoundData() external view returns (
         uint80 _roundId,
         int256 _answer,
@@ -145,6 +159,10 @@ contract ChainlinkOracleTestSuite is Test {
     // SETUP AND TEARDOWN
     // =============================================================================
     
+    /**
+     * @notice Sets up the Chainlink oracle test environment
+     * @dev Deploys oracle contracts and mock price feeds for testing
+     */
     function setUp() public {
         // Deploy mock price feeds
         mockEurUsdFeed = new MockAggregatorV3(8); // 8 decimals

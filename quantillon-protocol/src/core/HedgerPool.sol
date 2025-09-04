@@ -587,6 +587,12 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Removes a position from internal tracking arrays
+     * @dev Performs O(1) removal by swapping with last element
+     * @param hedger The address of the hedger who owns the position
+     * @param positionId The ID of the position to remove
+     */
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {
         if (!hedgerHasPosition[hedger][positionId]) revert ErrorLibrary.PositionNotFound();
         
@@ -802,6 +808,11 @@ contract HedgerPool is
         }
     }
 
+    /**
+     * @notice Updates pending rewards for a hedger based on their exposure
+     * @dev Calculates rewards using interest rate differential and time-weighted exposure
+     * @param hedger The address of the hedger to update rewards for
+     */
     function _updateHedgerRewards(address hedger) internal {
         HedgerInfo storage hedgerInfo = hedgers[hedger];
         
@@ -892,6 +903,12 @@ contract HedgerPool is
         return _isPositionLiquidatable(positionId);
     }
 
+    /**
+     * @notice Checks if a position is eligible for liquidation
+     * @dev Position is liquidatable if margin ratio falls below liquidation threshold
+     * @param positionId The ID of the position to check
+     * @return bool True if position can be liquidated, false otherwise
+     */
     function _isPositionLiquidatable(uint256 positionId) internal view returns (bool) {
         HedgePosition storage position = positions[positionId];
         if (!position.isActive) return false;
@@ -926,6 +943,11 @@ contract HedgerPool is
         }
     }
 
+    /**
+     * @notice Returns the total exposure across all active hedge positions
+     * @dev Used for monitoring overall risk and system health
+     * @return uint256 The total exposure amount in USD equivalent
+     */
     function getTotalHedgeExposure() external view returns (uint256) {
         return totalExposure;
     }
@@ -948,6 +970,12 @@ contract HedgerPool is
         liquidationPenalty = newLiquidationPenalty;
     }
 
+    /**
+     * @notice Updates the EUR and USD interest rates used for reward calculations
+     * @dev Only callable by governance. Rates are in basis points (e.g., 500 = 5%)
+     * @param newEurRate The new EUR interest rate in basis points
+     * @param newUsdRate The new USD interest rate in basis points
+     */
     function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external {
         AccessControlLibrary.onlyGovernance(this);
         if (newEurRate > 2000 || newUsdRate > 2000) revert ErrorLibrary.ConfigValueTooHigh();
@@ -971,6 +999,12 @@ contract HedgerPool is
         marginFee = _marginFee;
     }
 
+    /**
+     * @notice Emergency closure of a hedge position by authorized emergency role
+     * @dev Bypasses normal closure process for emergency situations
+     * @param hedger The hedger who owns the position
+     * @param positionId The ID of the position to close
+     */
     function emergencyClosePosition(address hedger, uint256 positionId) external {
         AccessControlLibrary.onlyEmergencyRole(this);
         
@@ -993,11 +1027,19 @@ contract HedgerPool is
         activePositionCount[hedger]--;
     }
 
+    /**
+     * @notice Pauses all hedging operations in emergency situations
+     * @dev Can only be called by addresses with EMERGENCY_ROLE
+     */
     function pause() external {
         AccessControlLibrary.onlyEmergencyRole(this);
         _pause();
     }
 
+    /**
+     * @notice Unpauses hedging operations after emergency is resolved
+     * @dev Can only be called by addresses with EMERGENCY_ROLE
+     */
     function unpause() external {
         AccessControlLibrary.onlyEmergencyRole(this);
         _unpause();
@@ -1011,6 +1053,16 @@ contract HedgerPool is
         return hasPendingLiquidation[hedger][positionId];
     }
 
+    /**
+     * @notice Returns the current hedging configuration parameters
+     * @dev Provides access to all key configuration values for hedging operations
+     * @return minMarginRatio_ Minimum margin ratio requirement
+     * @return liquidationThreshold_ Threshold for position liquidation
+     * @return maxLeverage_ Maximum allowed leverage
+     * @return liquidationPenalty_ Penalty for liquidated positions
+     * @return entryFee_ Fee for entering positions
+     * @return exitFee_ Fee for exiting positions
+     */
     function getHedgingConfig() external view returns (
         uint256 minMarginRatio_,
         uint256 liquidationThreshold_,
@@ -1060,6 +1112,11 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Checks if hedging operations are currently active
+     * @dev Returns false if contract is paused or in emergency mode
+     * @return True if hedging is active, false otherwise
+     */
     function isHedgingActive() external view returns (bool) {
         return !paused();
     }
@@ -1077,6 +1134,12 @@ contract HedgerPool is
         }
     }
 
+    /**
+     * @notice Cancels a pending liquidation commitment
+     * @dev Allows hedgers to cancel their liquidation commitment before execution
+     * @param hedger The hedger address
+     * @param positionId The position ID to cancel liquidation for
+     */
     function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external {
         AccessControlLibrary.onlyLiquidatorRole(this);
         bytes32 commitment = keccak256(abi.encodePacked(hedger, positionId, salt, msg.sender));
@@ -1091,6 +1154,12 @@ contract HedgerPool is
         return hasPendingLiquidation[hedger][positionId];
     }
 
+    /**
+     * @notice Recovers accidentally sent ERC20 tokens from the contract
+     * @dev Emergency function to recover tokens that are not part of normal operations
+     * @param token The token address to recover
+     * @param amount The amount of tokens to recover
+     */
     function recoverToken(address token, uint256 amount) external {
         AccessControlLibrary.onlyAdmin(this);
         // Use the shared library for secure token recovery to treasury

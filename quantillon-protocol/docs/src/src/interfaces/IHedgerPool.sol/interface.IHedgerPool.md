@@ -1,47 +1,110 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/46b18a17495388ad54b171836fd31a58ac76ca7b/src/interfaces/IHedgerPool.sol)
 
+Interface for the Quantillon HedgerPool contract
 
-## Functions
-### enterHedgePosition
+*Provides EUR/USD hedging functionality with leverage and margin management*
 
 **Note:**
 security-contact: team@quantillon.money
 
 
+## Functions
+### enterHedgePosition
+
+Opens a new hedge position with specified USDC amount and leverage
+
+
 ```solidity
 function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external returns (uint256 positionId);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|The amount of USDC to use for the position|
+|`leverage`|`uint256`|The leverage multiplier for the position (e.g., 5 for 5x leverage)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The unique ID of the created position|
+
 
 ### exitHedgePosition
+
+Closes an existing hedge position
 
 
 ```solidity
 function exitHedgePosition(uint256 positionId) external returns (int256 pnl);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The ID of the position to close|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pnl`|`int256`|The profit or loss from the position (positive for profit, negative for loss)|
+
 
 ### addMargin
+
+Adds additional margin to an existing position
 
 
 ```solidity
 function addMargin(uint256 positionId, uint256 amount) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The ID of the position to add margin to|
+|`amount`|`uint256`|The amount of USDC to add as margin|
+
 
 ### removeMargin
+
+Removes margin from an existing position
 
 
 ```solidity
 function removeMargin(uint256 positionId, uint256 amount) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The ID of the position to remove margin from|
+|`amount`|`uint256`|The amount of USDC margin to remove|
+
 
 ### commitLiquidation
+
+Commits to liquidating a position (first step of two-phase liquidation)
 
 
 ```solidity
 function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|The address of the hedger whose position will be liquidated|
+|`positionId`|`uint256`|The ID of the position to liquidate|
+|`salt`|`bytes32`|A random value to prevent front-running|
+
 
 ### liquidateHedger
+
+Executes the liquidation of a position (second step of two-phase liquidation)
 
 
 ```solidity
@@ -49,13 +112,42 @@ function liquidateHedger(address hedger, uint256 positionId, bytes32 salt)
     external
     returns (uint256 liquidationReward);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|The address of the hedger whose position is being liquidated|
+|`positionId`|`uint256`|The ID of the position to liquidate|
+|`salt`|`bytes32`|The same salt value used in the commitment|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`liquidationReward`|`uint256`|The reward paid to the liquidator|
+
 
 ### hasPendingLiquidationCommitment
+
+Checks if there's a pending liquidation commitment for a position
 
 
 ```solidity
 function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|The address of the hedger|
+|`positionId`|`uint256`|The ID of the position|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if there's a pending liquidation commitment|
+
 
 ### clearExpiredLiquidationCommitment
 

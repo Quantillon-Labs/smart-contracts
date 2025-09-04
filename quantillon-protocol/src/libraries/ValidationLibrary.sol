@@ -30,16 +30,8 @@ library ValidationLibrary {
         if (fee > maxFee) revert ErrorLibrary.FeeTooHigh();
     }
     
-    function validateRate(uint256 rate, uint256 maxRate) internal pure {
-        if (rate > maxRate) revert ErrorLibrary.InvalidRate();
-    }
-    
     function validateThreshold(uint256 threshold, uint256 maxThreshold) internal pure {
         if (threshold > maxThreshold) revert ErrorLibrary.InvalidThreshold();
-    }
-    
-    function validateRatio(uint256 ratio, uint256 maxRatio) internal pure {
-        if (ratio > maxRatio) revert ErrorLibrary.InvalidRatio();
     }
     
     function validatePositiveAmount(uint256 amount) internal pure {
@@ -59,21 +51,8 @@ library ValidationLibrary {
         if (ratio > maxRatio) revert ErrorLibrary.TargetRatioTooHigh();
     }
     
-    function validateHoldingPeriod(uint256 depositTime, uint256 minPeriod) internal view {
-        uint256 timeElapsed = block.timestamp - depositTime;
-        if (timeElapsed < minPeriod) revert ErrorLibrary.HoldingPeriodNotMet();
-    }
-    
     function validateLiquidationCooldown(uint256 lastAttempt, uint256 cooldown) internal view {
         if (block.number < lastAttempt + cooldown) revert ErrorLibrary.LiquidationCooldown();
-    }
-    
-    function validateBalance(uint256 balance, uint256 required) internal pure {
-        if (balance < required) revert ErrorLibrary.InsufficientBalance();
-    }
-    
-    function validateExposure(uint256 current, uint256 max) internal pure {
-        if (current > max) revert ErrorLibrary.AboveLimit();
     }
     
     function validateSlippage(uint256 received, uint256 expected, uint256 tolerance) internal pure {
@@ -96,35 +75,15 @@ library ValidationLibrary {
         if (count >= max) revert ErrorLibrary.TooManyPositions();
     }
     
-    function validateCommitment(bool exists) internal pure {
-        if (!exists) revert ErrorLibrary.NoValidCommitment();
-    }
-    
     function validateCommitmentNotExists(bool exists) internal pure {
         if (exists) revert ErrorLibrary.CommitmentAlreadyExists();
     }
     
+    function validateCommitment(bool exists) internal pure {
+        if (!exists) revert ErrorLibrary.NoValidCommitment();
+    }
+    
     function validateOraclePrice(bool isValid) internal pure {
         if (!isValid) revert ErrorLibrary.InvalidOraclePrice();
-    }
-    
-    function validateAaveHealth(bool isHealthy) internal pure {
-        if (!isHealthy) revert ErrorLibrary.AavePoolNotHealthy();
-    }
-    
-    function validateTimeElapsed(uint256 elapsed, uint256 max) internal pure {
-        if (elapsed > max) revert ErrorLibrary.TimeElapsedTooHigh();
-    }
-    
-    function validateArrayLength(uint256 length, uint256 expected) internal pure {
-        if (length != expected) revert ErrorLibrary.ArrayLengthMismatch();
-    }
-    
-    function validateArrayNotEmpty(uint256 length) internal pure {
-        if (length == 0) revert ErrorLibrary.EmptyArray();
-    }
-    
-    function validateIndex(uint256 index, uint256 length) internal pure {
-        if (index >= length) revert ErrorLibrary.IndexOutOfBounds();
     }
 }

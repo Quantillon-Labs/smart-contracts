@@ -183,4 +183,13 @@ library ValidationLibrary {
     function validateOraclePrice(bool isValid) internal pure {
         if (!isValid) revert ErrorLibrary.InvalidOraclePrice();
     }
+    
+    /**
+     * @notice Validates treasury address is not zero address
+     * @dev Prevents setting treasury to zero address which could cause loss of funds
+     * @param treasury The treasury address to validate
+     */
+    function validateTreasuryAddress(address treasury) internal pure {
+        if (treasury == address(0)) revert ErrorLibrary.InvalidTreasuryAddress();
+    }
 }

@@ -199,7 +199,7 @@ contract AaveVault is
         aavePool = IPool(aaveProvider.getPool());
         rewardsController = IRewardsController(_rewardsController);
         yieldShift = IYieldShift(_yieldShift);
-        // slither-disable-next-line missing-zero-check
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
 
         ReserveData memory reserveData = aavePool.getReserveData(address(usdc));
@@ -250,6 +250,7 @@ contract AaveVault is
         emit DeployedToAave("deploy", amount, aTokensReceived, balanceAfter);
     }
 
+    // slither-disable-next-line reentrancy-no-eth
     function withdrawFromAave(uint256 amount) 
         external 
         nonReentrant 
@@ -266,9 +267,17 @@ contract AaveVault is
         uint256 usdcBefore = usdc.balanceOf(address(this));
         _validateExpectedWithdrawal(withdrawAmount);
         
+        // CALCULATE EXPECTED STATE CHANGES BEFORE EXTERNAL CALL
+        uint256 expectedPrincipalToDeduct = VaultMath.min(withdrawAmount, principalDeposited);
+        
+        // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
         usdcWithdrawn = _executeAaveWithdrawal(amount, withdrawAmount, usdcBefore);
         
-        _updatePrincipalAfterWithdrawal(usdcWithdrawn);
+        // UPDATE STATE AFTER EXTERNAL CALL (EFFECTS)
+        // slither-disable-next-line reentrancy-no-eth
+        if (expectedPrincipalToDeduct > 0) {
+            principalDeposited -= expectedPrincipalToDeduct;
+        }
     }
     
     /**
@@ -360,18 +369,7 @@ contract AaveVault is
         }
     }
     
-    /**
-     * @dev Updates principal deposited after successful withdrawal
-     */
-    function _updatePrincipalAfterWithdrawal(uint256 actualReceived) internal {
-        if (actualReceived > 0) {
-            uint256 principalToDeduct = VaultMath.min(actualReceived, principalDeposited);
-            if (principalToDeduct > 0) {
-                // slither-disable-next-line reentrancy-no-eth
-                principalDeposited -= principalToDeduct;
-            }
-        }
-    }
+
 
     function claimAaveRewards() 
         external 
@@ -404,11 +402,6 @@ contract AaveVault is
         uint256 protocolFee = availableYield.mulDiv(yieldFee, 10000);
         uint256 netYield = availableYield - protocolFee;
         
-        lastHarvestTime = block.timestamp;
-        // Use conservative estimates for state updates before external call
-        totalYieldHarvested += availableYield;
-        totalFeesCollected += protocolFee;
-        
         uint256 usdcBefore = usdc.balanceOf(address(this));
 
         uint256 actualYieldReceived = 0; // Initialize to prevent uninitialized variable warning
@@ -431,7 +424,11 @@ contract AaveVault is
             revert("Aave yield harvest failed");
         }
         
-
+        // UPDATE STATE AFTER EXTERNAL CALL (EFFECTS)
+        totalYieldHarvested += actualYieldReceived;
+        totalFeesCollected += protocolFee;
+        lastHarvestTime = block.timestamp;
+        
         if (netYield > 0) {
             usdc.safeIncreaseAllowance(address(yieldShift), netYield);
             yieldShift.addYield(netYield, bytes32("aave"));

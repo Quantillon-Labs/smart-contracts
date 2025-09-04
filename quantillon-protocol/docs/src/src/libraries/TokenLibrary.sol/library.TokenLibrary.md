@@ -1,5 +1,5 @@
 # TokenLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/8586bf0c799c78a35c463b66cf8c6beb85e48666/src/libraries/TokenLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/TokenLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -11,7 +11,7 @@ Library for essential token operations to reduce contract bytecode size
 - Used by QEURO token for secure minting and burning operations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions

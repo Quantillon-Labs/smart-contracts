@@ -17,6 +17,7 @@ import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IYieldShift.sol";
 import "../libraries/VaultMath.sol";
 import "../libraries/ErrorLibrary.sol";
+import "../libraries/ValidationLibrary.sol";
 import "./SecureUpgradeable.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/FlashLoanProtectionLibrary.sol";
@@ -297,6 +298,7 @@ contract stQEUROToken is
         qeuro = IQEUROToken(_qeuro);
         yieldShift = IYieldShift(_yieldShift);
         usdc = IERC20(_usdc);
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
 
         // Initialize exchange rate at 1:1

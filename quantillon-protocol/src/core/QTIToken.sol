@@ -359,16 +359,14 @@ contract QTIToken is
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
 
-        // slither-disable-next-line missing-zero-check
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
         
         // Initial governance parameters
         proposalThreshold = 100_000 * 1e18; // 100k QTI to propose
         minVotingPeriod = 3 days;
         maxVotingPeriod = 14 days;
-        quorumVotes = 1_000_000 * 1e18; // 1M QTI quorum
-        
-
+        quorumVotes = 1_000_000 * 1e18; // 1M QTI quorum     
         
         decentralizationStartTime = timeProvider.currentTime();
         decentralizationDuration = 2 * 365 days; // 2 years to full decentralization
@@ -1070,7 +1068,7 @@ contract QTIToken is
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
         AccessControlLibrary.validateAddress(_treasury);
-        // slither-disable-next-line missing-zero-check
+        ValidationLibrary.validateTreasuryAddress(_treasury);
         treasury = _treasury;
     }
 

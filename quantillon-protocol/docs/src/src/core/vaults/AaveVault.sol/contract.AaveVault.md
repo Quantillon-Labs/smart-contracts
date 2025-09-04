@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/8586bf0c799c78a35c463b66cf8c6beb85e48666/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -67,7 +67,7 @@ Aave integration vault for yield generation through USDC lending
 - Rewards controller for additional incentives*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -308,15 +308,6 @@ function _validateWithdrawalResult(
     uint256 usdcBefore,
     uint256 usdcWithdrawn
 ) internal view;
-```
-
-### _updatePrincipalAfterWithdrawal
-
-*Updates principal deposited after successful withdrawal*
-
-
-```solidity
-function _updatePrincipalAfterWithdrawal(uint256 actualReceived) internal;
 ```
 
 ### claimAaveRewards

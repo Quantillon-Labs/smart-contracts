@@ -560,7 +560,8 @@ contract HedgerPool is
         uint256 positionId, 
         uint256 currentPrice, 
         HedgerInfo storage hedger,
-        uint256 exitFee_
+        uint256 exitFee_,
+        uint256 currentTime
     ) internal returns (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted) {
 
         HedgePosition storage position = positions[positionId];

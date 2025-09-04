@@ -19,8 +19,9 @@ import "../libraries/ErrorLibrary.sol";
 import "../libraries/AccessControlLibrary.sol";
 import "../libraries/ValidationLibrary.sol";
 import "../libraries/TokenLibrary.sol";
-import "../libraries/FlashLoanProtection.sol";
+
 import "../libraries/TreasuryRecoveryLibrary.sol";
+import "../libraries/FlashLoanProtectionLibrary.sol";
 
 /**
  * @title QTIToken
@@ -315,14 +316,13 @@ contract QTIToken is
 
     /**
      * @notice Modifier to protect against flash loan attacks
-     * @dev Checks that the contract's QTI balance doesn't decrease during execution
-     * @dev This prevents flash loans that would drain QTI from the contract
+     * @dev Uses the FlashLoanProtectionLibrary to check QTI balance consistency
      */
     modifier flashLoanProtection() {
         uint256 balanceBefore = balanceOf(address(this));
         _;
         uint256 balanceAfter = balanceOf(address(this));
-        require(balanceAfter >= balanceBefore, "Flash loan detected: QTI balance decreased");
+        FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0);
     }
 
     // =============================================================================
@@ -351,6 +351,7 @@ contract QTIToken is
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
 
+        // slither-disable-next-line missing-zero-check
         treasury = _treasury;
         
         // Initial governance parameters
@@ -973,6 +974,7 @@ contract QTIToken is
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
         AccessControlLibrary.validateAddress(_treasury);
+        // slither-disable-next-line missing-zero-check
         treasury = _treasury;
     }
 

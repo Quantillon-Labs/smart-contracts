@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {UserPool} from "../src/core/UserPool.sol";
-import {TimeProvider} from "../src/libraries/TimeProvider.sol";
+import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";

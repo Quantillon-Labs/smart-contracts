@@ -1,16 +1,14 @@
-# Quantillon Protocol
+# Smart Contracts - Quantillon Protocol
 
 <div align="center">
-  <img src="https://github.com/Quantillon-Labs/gitbook/raw/main/.gitbook/assets/banner.png" alt="Quantillon Protocol Banner" width="100%">
+  <img src="quantillon-protocol/docs/banner.png" alt="Quantillon Protocol Banner" width="100%">
 </div>
-
-# Quantillon Protocol Repository
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-orange.svg)](https://getfoundry.sh/)
 
-> **Repository for Quantillon Protocol - Euro-pegged stablecoin ecosystem with dual-pool architecture**
+> **Smart Contracts Repository for Quantillon Protocol - Euro-pegged stablecoin ecosystem with dual-pool architecture**
 
 ## 📁 Repository Structure
 
@@ -20,11 +18,16 @@ This repository contains the complete smart contract implementation for the Quan
 smart-contracts/
 ├── quantillon-protocol/          # Main project directory
 │   ├── src/                     # Smart contract source code
-│   ├── test/                    # Test files
-│   ├── script/                  # Deployment and management scripts
-│   ├── docs/                    # Generated documentation
-│   ├── foundry.toml            # Foundry configuration
-│   └── README.md               # Detailed project documentation
+│   │   ├── core/               # Core protocol contracts
+│   │   ├── interfaces/         # Contract interfaces
+│   │   ├── libraries/          # Utility libraries
+│   │   └── oracle/             # Oracle integration
+│   ├── test/                   # Comprehensive test suite
+│   ├── scripts/                # Build and deployment scripts
+│   ├── docs/                   # Generated documentation
+│   ├── lib/                    # External dependencies
+│   ├── foundry.toml           # Foundry configuration
+│   └── README.md              # Detailed project documentation
 └── README.md                   # This file
 ```
 
@@ -34,25 +37,25 @@ smart-contracts/
 **[📁 quantillon-protocol/](./quantillon-protocol/)** - Complete smart contract implementation
 
 ### Key Directories
-- **[📄 Source Code](./quantillon-protocol/src/)** - All smart contracts
+- **[📄 Source Code](./quantillon-protocol/src/)** - All smart contracts and libraries
 - **[🧪 Tests](./quantillon-protocol/test/)** - Comprehensive test suite
 - **[📚 Documentation](./quantillon-protocol/docs/)** - Generated documentation
-- **[🔧 Scripts](./quantillon-protocol/script/)** - Deployment and management scripts
+- **[🔧 Scripts](./quantillon-protocol/scripts/)** - Build and deployment scripts
 
 ## 🎯 What is Quantillon Protocol?
 
-Quantillon Protocol is a comprehensive DeFi ecosystem built around **QEURO**, a Euro-pegged stablecoin. Based on the documented contract specifications:
+Quantillon Protocol is a comprehensive DeFi ecosystem built around **QEURO**, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability.
 
-### Core Components (as documented in contracts):
+### Core Components
 
-- **QEUROToken**: Euro-pegged stablecoin with 18 decimals, configurable supply cap (default: 100,000,000 QEURO), rate limiting (10,000,000 QEURO per hour), and compliance features
-- **QTIToken**: Governance token with vote-escrow mechanics, fixed supply of 100,000,000 QTI, lock periods (7 days to 4 years), and up to 4x voting power multiplier
-- **QuantillonVault**: Main vault for overcollateralized QEURO minting against USDC collateral
+- **QEUROToken**: Euro-pegged stablecoin with configurable supply cap and rate limiting
+- **QTIToken**: Governance token with vote-escrow mechanics and voting power multipliers
+- **QuantillonVault**: Main vault for overcollateralized QEURO minting
 - **UserPool**: User deposit and staking management with yield distribution
-- **HedgerPool**: EUR/USD hedging operations with margin management and liquidation systems
-- **stQEUROToken**: Yield-bearing wrapper token with automatic yield accrual mechanism
+- **HedgerPool**: EUR/USD hedging operations with margin management
+- **stQEUROToken**: Yield-bearing wrapper token with automatic yield accrual
 
-### Documented Features:
+### Key Features
 - **Dual-pool architecture** separating user deposits from hedging operations
 - **Role-based access control** for all critical operations
 - **Emergency pause mechanisms** for crisis situations
@@ -143,9 +146,9 @@ forge script script/deploy/DeployProtocol.s.sol --rpc-url http://localhost:8545 
 
 ## 🔒 Security
 
-- **Security Contact**: `team@quantillon.money` (as documented in contracts)
-- **Audit Status**: See main project README for current status
-- **Security Features**: Role-based access control, reentrancy protection, emergency pause mechanisms (as documented in contracts)
+- **Security Contact**: `team@quantillon.money`
+- **Security Features**: Role-based access control, reentrancy protection, emergency pause mechanisms
+- **Security Analysis**: Integrated Slither analysis with `make slither`
 
 For detailed security information, see the [main project README](./quantillon-protocol/README.md#security).
 

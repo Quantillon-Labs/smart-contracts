@@ -20,7 +20,7 @@ import "../libraries/ErrorLibrary.sol";
 import "./SecureUpgradeable.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/FlashLoanProtectionLibrary.sol";
-import "../libraries/TimeProvider.sol";
+import "../libraries/TimeProviderLibrary.sol";
 
 /**
  * @title UserPool

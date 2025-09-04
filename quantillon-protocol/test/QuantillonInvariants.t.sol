@@ -3,7 +3,7 @@ pragma solidity 0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
-import {TimeProvider} from "../src/libraries/TimeProvider.sol";
+import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {UserPool} from "../src/core/UserPool.sol";

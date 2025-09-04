@@ -26,7 +26,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Treasury recovery library for secure ETH recovery
 import "../libraries/TreasuryRecoveryLibrary.sol";
-import "../libraries/TimeProvider.sol";
+import "../libraries/TimeProviderLibrary.sol";
 
 /**
  * @title ChainlinkOracle

@@ -22,7 +22,7 @@ import "../libraries/TokenLibrary.sol";
 
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/FlashLoanProtectionLibrary.sol";
-import "../libraries/TimeProvider.sol";
+import "../libraries/TimeProviderLibrary.sol";
 
 /**
  * @title QTIToken

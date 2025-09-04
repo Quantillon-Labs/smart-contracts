@@ -17,7 +17,7 @@ import "../../libraries/ErrorLibrary.sol";
 import "../../libraries/AccessControlLibrary.sol";
 import "../../libraries/ValidationLibrary.sol";
 import "../../libraries/TreasuryRecoveryLibrary.sol";
-import "../../libraries/TimeProvider.sol";
+import "../../libraries/TimeProviderLibrary.sol";
 import "../SecureUpgradeable.sol";
 
 /**

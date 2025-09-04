@@ -1,6 +1,6 @@
 # Scripts Documentation
 
-This directory contains utility scripts for building documentation and running security analysis for the Quantillon Protocol.
+This directory contains utility scripts for building documentation and running security analysis for the Quantillon Protocol smart contracts.
 
 ## 📚 Documentation Generation
 
@@ -37,9 +37,9 @@ make docs
 
 ## 🔍 Security Analysis
 
-### `run-slither.sh` - Enhanced Slither Security Scanner (Beautiful Formatting)
+### `run-slither.sh` - Enhanced Slither Security Scanner
 
-**Purpose**: Runs Slither analysis with enhanced visual formatting, emojis, and improved readability.
+**Purpose**: Runs comprehensive security analysis on all smart contracts using Slither with integrated human-readable output.
 
 **Features**:
 - **🎨 Beautiful Visual Design**: Enhanced section separators and formatting
@@ -51,18 +51,7 @@ make docs
 - **📊 Comprehensive Analysis**: Security findings with actionable recommendations
 - **🔄 Automated Workflow**: Python environment management and dependency installation
 
-**Purpose**: Runs comprehensive security analysis on all smart contracts using Slither with integrated human-readable output.
-
-**Features**:
-- Automated Python virtual environment management
-- Dependency installation and updates
-- Comprehensive security scanning with custom configuration
-- **Integrated human-readable parser** (no separate script needed)
-- Security findings summary with actionable recommendations
-- Integration with Foundry workflow
-- Detailed security reports in multiple formats
-
-ep the enhanced o**Usage**:
+**Usage**:
 ```bash
 # Direct execution
 ./scripts/run-slither.sh
@@ -268,8 +257,6 @@ ls -la scripts/
 **Last Updated**: December 2024  
 **Status**: ✅ Active and Integrated  
 **Coverage**: Documentation + Security Analysis
-
-This directory contains scripts to build the Quantillon Protocol documentation with correct GitHub source links.
 
 ## Problem
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
-import "../src/libraries/TimeProvider.sol";
+import "../src/libraries/TimeProviderLibrary.sol";
 import "../src/libraries/ErrorLibrary.sol";
 
 contract TimeProviderTest is Test {

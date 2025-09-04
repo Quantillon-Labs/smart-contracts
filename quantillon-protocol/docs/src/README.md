@@ -10,7 +10,7 @@
 
 Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability.
 
-### 🎯 Key Features (as documented in contracts)
+### 🎯 Key Features
 
 - **Euro-Pegged Stablecoin**: QEURO maintains 1:1 peg with Euro through sophisticated mechanisms
 - **Dual-Pool Architecture**: Separates user deposits from hedging operations for optimal risk management
@@ -23,10 +23,10 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 
 ### Core Contracts
 
-| Contract | Purpose | Key Features (as documented) |
+| Contract | Purpose | Key Features |
 |----------|---------|--------------|
-| **QEUROToken** | Euro-pegged stablecoin | Mint/burn controls, rate limiting (10M QEURO/hour), compliance features, 18 decimals |
-| **QTIToken** | Governance token | Vote-escrow mechanics, 100M fixed supply, 7 days-4 years lock periods, 4x max voting power |
+| **QEUROToken** | Euro-pegged stablecoin | Mint/burn controls, rate limiting, compliance features, 18 decimals |
+| **QTIToken** | Governance token | Vote-escrow mechanics, fixed supply, lock periods, voting power multipliers |
 | **QuantillonVault** | Main vault | Overcollateralized minting, liquidation system, fee management |
 | **UserPool** | User deposits | Staking rewards, yield distribution, deposit/withdrawal management |
 | **HedgerPool** | Hedging operations | EUR/USD positions, margin management, liquidation system |
@@ -189,22 +189,22 @@ forge script script/deploy/DeployProtocol.s.sol --rpc-url $BASE_RPC_URL --broadc
 forge verify-contract <CONTRACT_ADDRESS> src/core/QEUROToken.sol:QEUROToken --chain-id 8453 --etherscan-api-key $BASESCAN_API_KEY
 ```
 
-## 📊 Protocol Parameters (as documented in contracts)
+## 📊 Protocol Parameters
 
 ### QEURO Token
-- **Decimals**: 18 (as documented in QEUROToken.sol)
-- **Max Supply**: 100,000,000 QEURO (DEFAULT_MAX_SUPPLY constant)
-- **Rate Limit**: 10,000,000 QEURO per hour (MAX_RATE_LIMIT constant)
-- **Precision**: 1e18 (PRECISION constant)
+- **Decimals**: 18
+- **Max Supply**: Configurable (default: 100,000,000 QEURO)
+- **Rate Limit**: Configurable minting rate limits
+- **Precision**: 1e18
 
 ### QTI Governance Token
-- **Total Supply**: 100,000,000 QTI (TOTAL_SUPPLY_CAP constant)
-- **Max Lock Time**: 4 years (MAX_LOCK_TIME constant)
-- **Min Lock Time**: 7 days (MIN_LOCK_TIME constant)
-- **Max Voting Power**: 4x multiplier (MAX_VE_QTI_MULTIPLIER constant)
-- **Week Duration**: 7 days (WEEK constant)
+- **Total Supply**: 100,000,000 QTI
+- **Max Lock Time**: 4 years
+- **Min Lock Time**: 7 days
+- **Max Voting Power**: 4x multiplier
+- **Week Duration**: 7 days
 
-### Fee Structure (as documented in contract initializations)
+### Fee Structure
 - **QEUROToken**: Rate limiting and compliance features
 - **QuantillonVault**: Protocol fee and mint fee (configurable)
 - **UserPool**: Deposit fee, withdrawal fee, performance fee (configurable)
@@ -215,7 +215,7 @@ forge verify-contract <CONTRACT_ADDRESS> src/core/QEUROToken.sol:QEUROToken --ch
 
 ## 🔒 Security
 
-### Security Features (as documented in contracts)
+### Security Features
 
 - **Role-Based Access Control**: Granular permissions for all critical operations
 - **Reentrancy Protection**: All external calls protected against reentrancy attacks
@@ -225,12 +225,20 @@ forge verify-contract <CONTRACT_ADDRESS> src/core/QEUROToken.sol:QEUROToken --ch
 - **Upgradeable Architecture**: UUPS pattern for future improvements
 
 ### Security Contact
+update all README files to 
+For security issues, please contact: `team@quantillon.money`
 
-For security issues, please contact: `team@quantillon.money` (as documented in all contracts)
+### Security Analysis
 
-### Audit Status
+```bash
+# Run Slither security analysis
+make slither
 
-*Note: Audit status information is not documented in the contracts and should be verified through official channels*
+# Or run directly
+./scripts/run-slither.sh
+```
+
+## 🤝 Contributing
 
 ### Development Workflow
 
@@ -246,7 +254,6 @@ For security issues, please contact: `team@quantillon.money` (as documented in a
 - Add comprehensive tests for new features
 - Update documentation for any changes
 - Ensure all tests pass before submitting PR
-
 
 ## 🌐 Links
 

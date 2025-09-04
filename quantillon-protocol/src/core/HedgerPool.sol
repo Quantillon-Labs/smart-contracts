@@ -17,7 +17,7 @@ import "../libraries/ValidationLibrary.sol";
 import "./SecureUpgradeable.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/FlashLoanProtectionLibrary.sol";
-import "../libraries/TimeProvider.sol";
+import "../libraries/TimeProviderLibrary.sol";
 import "../libraries/HedgerPoolValidationLibrary.sol";
 
 /**

@@ -35,7 +35,7 @@
     - [ErrorLibrary](src/libraries/ErrorLibrary.sol/library.ErrorLibrary.md)
     - [FlashLoanProtectionLibrary](src/libraries/FlashLoanProtectionLibrary.sol/library.FlashLoanProtectionLibrary.md)
     - [HedgerPoolValidationLibrary](src/libraries/HedgerPoolValidationLibrary.sol/library.HedgerPoolValidationLibrary.md)
-    - [TimeProvider](src/libraries/TimeProvider.sol/contract.TimeProvider.md)
+    - [TimeProvider](src/libraries/TimeProviderLibrary.sol/contract.TimeProvider.md)
     - [TokenLibrary](src/libraries/TokenLibrary.sol/library.TokenLibrary.md)
     - [TreasuryRecoveryLibrary](src/libraries/TreasuryRecoveryLibrary.sol/library.TreasuryRecoveryLibrary.md)
     - [ValidationLibrary](src/libraries/ValidationLibrary.sol/library.ValidationLibrary.md)

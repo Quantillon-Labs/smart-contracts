@@ -437,14 +437,9 @@ contract UserPool is
         uint256 qeuroAfter = qeuro.balanceOf(address(this));
         qeuroMinted = qeuroAfter - qeuroBefore;
         
-        // Adjust user balance if actual differs from estimate
-        if (qeuroMinted != minQeuroOut) {
-            if (qeuroMinted > minQeuroOut) {
-                user.qeuroBalance += uint128(qeuroMinted - minQeuroOut);
-            } else {
-                user.qeuroBalance -= uint128(minQeuroOut - qeuroMinted);
-            }
-        }
+        // Note: user.qeuroBalance already updated with minQeuroOut before external call
+        // This ensures reentrancy protection. The user receives the actual minted amount,
+        // but internal balance tracking uses the conservative minQeuroOut estimate.
 
         emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
     }
@@ -549,14 +544,9 @@ contract UserPool is
             totalActualMinted += actualMinted;
         }
         
-        // Adjust user balance if actual minted differs from estimate
-        if (totalActualMinted != totalQeuroToMint) {
-            if (totalActualMinted > totalQeuroToMint) {
-                user.qeuroBalance += uint128(totalActualMinted - totalQeuroToMint);
-            } else {
-                user.qeuroBalance -= uint128(totalQeuroToMint - totalActualMinted);
-            }
-        }
+        // Note: user.qeuroBalance already updated with totalQeuroToMint (sum of minQeuroOuts) before external calls
+        // This ensures reentrancy protection. Users receive actual minted amounts,
+        // but internal balance tracking uses conservative estimates.
         
         // INTERACTIONS: Final transfers and events
         for (uint256 i = 0; i < usdcAmounts.length; i++) {

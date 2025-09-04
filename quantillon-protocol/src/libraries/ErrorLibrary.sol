@@ -229,4 +229,6 @@ library ErrorLibrary {
     error TooManyPositionsPerTx();
     error MaxPositionsPerTx();
     error NewMarginExceedsMaximum();
+    error PendingRewardsExceedMaximum();
+    error FlashLoanAttackDetected();
 }

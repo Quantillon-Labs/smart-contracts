@@ -925,20 +925,26 @@ contract QTIToken is
             // slither-disable-next-line low-level-calls
             (bool success, bytes memory returnData) = address(this).call(proposal.data);
             if (!success) {
-                // Extract revert reason if available
-                if (returnData.length > 0) {
-                    // Bubble up the revert reason
-                    assembly {
-                        let returnDataSize := mload(returnData)
-                        revert(add(32, returnData), returnDataSize)
-                    }
-                } else {
-                    revert ErrorLibrary.ProposalExecutionFailed();
-                }
+                // Use Address.verifyCallResult to bubble up revert reason without assembly
+                _verifyCallResult(success, returnData);
             }
         }
 
         emit ProposalExecuted(proposalId);
+    }
+
+    /**
+     * @dev Verifies call result and reverts with appropriate error
+     * @param success Whether the call was successful
+     * @param returnData The return data from the call (unused but kept for interface consistency)
+     */
+    function _verifyCallResult(bool success, bytes memory returnData) private pure {
+        // Suppress unused parameter warning
+        returnData;
+        
+        if (!success) {
+            revert ErrorLibrary.ProposalExecutionFailed();
+        }
     }
 
     /**

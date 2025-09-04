@@ -843,9 +843,20 @@ contract QTIToken is
 
         // Execute the proposal data
         if (proposal.data.length > 0) {
-
-            (bool success, ) = address(this).call(proposal.data);
-            if (!success) revert ErrorLibrary.ProposalExecutionFailed();
+            // slither-disable-next-line low-level-calls
+            (bool success, bytes memory returnData) = address(this).call(proposal.data);
+            if (!success) {
+                // Extract revert reason if available
+                if (returnData.length > 0) {
+                    // Bubble up the revert reason
+                    assembly {
+                        let returnDataSize := mload(returnData)
+                        revert(add(32, returnData), returnDataSize)
+                    }
+                } else {
+                    revert ErrorLibrary.ProposalExecutionFailed();
+                }
+            }
         }
 
         emit ProposalExecuted(proposalId);

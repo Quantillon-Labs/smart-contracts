@@ -16,7 +16,6 @@ import "../../libraries/VaultMath.sol";
 import "../../libraries/ErrorLibrary.sol";
 import "../../libraries/AccessControlLibrary.sol";
 import "../../libraries/ValidationLibrary.sol";
-import "../../libraries/VaultLibrary.sol";
 import "../../libraries/TreasuryRecoveryLibrary.sol";
 import "../SecureUpgradeable.sol";
 
@@ -103,7 +102,6 @@ contract YieldShift is
     using VaultMath for uint256;
     using AccessControlLibrary for AccessControlUpgradeable;
     using ValidationLibrary for uint256;
-    using VaultLibrary for address;
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");

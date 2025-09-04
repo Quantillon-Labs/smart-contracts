@@ -73,29 +73,4 @@ library TreasuryRecoveryLibrary {
         // Note: Individual contracts should emit their own events for better tracking
     }
     
-    /**
-     * @notice Validate treasury address
-     * @dev Ensures treasury address is not zero address
-     * @param treasury Address to validate
-     */
-    function validateTreasury(address treasury) external pure {
-        if (treasury == address(0)) revert ErrorLibrary.InvalidAddress();
-    }
-    
-    /**
-     * @notice Update treasury address with validation
-     * @dev Only callable by governance/admin roles
-     * @param currentTreasury Current treasury address
-     * @param newTreasury New treasury address
-     * @return Updated treasury address
-     */
-    function updateTreasury(
-        address currentTreasury,
-        address newTreasury
-    ) external pure returns (address) {
-        if (newTreasury == address(0)) revert ErrorLibrary.InvalidAddress();
-        if (newTreasury == currentTreasury) revert ErrorLibrary.NoChangeDetected();
-        
-        return newTreasury;
-    }
 }

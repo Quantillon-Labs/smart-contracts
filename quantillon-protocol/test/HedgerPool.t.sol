@@ -325,7 +325,7 @@ contract HedgerPoolTestSuite is Test {
         assertEq(positionId, 1);
         
         // Check position details
-        (address hedger, uint256 positionSize, uint256 margin, uint256 entryPrice, , , uint256 leverage, bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, uint96 positionSize, uint96 margin, uint96 entryPrice, , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
         assertEq(hedger, hedger1);
         // Position size is calculated dynamically based on net margin and leverage
         uint256 netMarginCalculated = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
@@ -483,7 +483,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.addMargin(positionId, additionalMargin);
         
         // Check position margin was updated
-        (address hedger, , uint256 margin, , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, , uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
         uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
         uint256 netAdditionalMargin = additionalMargin * (10000 - hedgerPool.marginFee()) / 10000;
         assertEq(margin, netMargin + netAdditionalMargin);
@@ -533,7 +533,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.removeMargin(positionId, marginToRemove);
         
         // Check position margin was updated
-        (address hedger, , uint256 margin, , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, , uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
         uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
         assertEq(margin, netMargin - marginToRemove);
         assertTrue(isActive);
@@ -1430,6 +1430,10 @@ contract HedgerPoolTestSuite is Test {
     // BATCH SIZE LIMIT TESTS
     // =============================================================================
 
+    /**
+     * @notice Tests that closing positions in batch reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for position closure operations
+     */
     function test_ClosePositionsBatch_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (50)
         uint256[] memory positionIds = new uint256[](51);
@@ -1443,6 +1447,10 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.closePositionsBatch(positionIds, 51);
     }
 
+    /**
+     * @notice Tests successful batch closure of positions at maximum batch size
+     * @dev Validates that positions can be closed in batch up to the maximum allowed size
+     */
     function test_ClosePositionsBatch_MaxBatchSize_Success() public {
         // Test with exactly MAX_BATCH_SIZE (50) but respect the 10 positions per tx limit
         // First create 10 positions for hedger1

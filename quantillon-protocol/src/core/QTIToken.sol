@@ -382,10 +382,11 @@ contract QTIToken is
     // =============================================================================
 
     /**
-     * @notice Lock QTI tokens for voting power
-     * @param amount Amount of QTI to lock
-     * @param lockTime Duration to lock (must be >= MIN_LOCK_TIME)
-     * @return veQTI Voting power calculated for the locked amount
+     * @notice Locks QTI tokens for a specified duration to earn voting power (veQTI)
+     * @dev Longer lock periods generate more voting power via time-weighted calculations
+     * @param amount The amount of QTI tokens to lock
+     * @param lockTime The duration to lock tokens (in seconds)
+     * @return veQTI The amount of voting power (veQTI) earned from this lock
      */
     function lock(uint256 amount, uint256 lockTime) external whenNotPaused flashLoanProtection returns (uint256 veQTI) {
         ValidationLibrary.validatePositiveAmount(amount);
@@ -923,10 +924,10 @@ contract QTIToken is
         // Execute the proposal data
         if (proposal.data.length > 0) {
             // slither-disable-next-line low-level-calls
-            (bool success, bytes memory returnData) = address(this).call(proposal.data);
+            (bool success, ) = address(this).call(proposal.data);
             if (!success) {
                 // Use Address.verifyCallResult to bubble up revert reason without assembly
-                _verifyCallResult(success, returnData);
+                _verifyCallResult(success);
             }
         }
 
@@ -936,14 +937,10 @@ contract QTIToken is
     /**
      * @dev Verifies call result and reverts with appropriate error
      * @param success Whether the call was successful
-     * @param returnData The return data from the call (unused but kept for interface consistency)
      */
-    function _verifyCallResult(bool success, bytes memory returnData) private pure {
-        // Suppress unused parameter warning
-        returnData;
-        
+    function _verifyCallResult(bool success) private pure {
         if (!success) {
-            revert ErrorLibrary.ProposalExecutionFailed();
+            revert ErrorLibrary.ProposalFailed();
         }
     }
 
@@ -1159,6 +1156,11 @@ contract QTIToken is
     // OVERRIDE FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Returns the number of decimals for the QTI token
+     * @dev Always returns 18 for standard ERC20 compatibility
+     * @return The number of decimals (18)
+     */
     function decimals() public pure override returns (uint8) {
         return 18;
     }
@@ -1169,10 +1171,18 @@ contract QTIToken is
     // EMERGENCY FUNCTIONS
     // =============================================================================
 
+    /**
+     * @notice Pauses all token operations including transfers and governance
+     * @dev Emergency function to halt all contract operations when needed
+     */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
     }
 
+    /**
+     * @notice Unpauses all token operations
+     * @dev Resumes normal contract operations after emergency is resolved
+     */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
     }

@@ -3,21 +3,71 @@ pragma solidity 0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/**
+ * @title IHedgerPool
+ * @notice Interface for the Quantillon HedgerPool contract
+ * @dev Provides EUR/USD hedging functionality with leverage and margin management
+ * @custom:security-contact team@quantillon.money
+ */
 interface IHedgerPool {
-    /**
-     * @custom:security-contact team@quantillon.money
-     */
     // Core hedging functions
+    
+    /**
+     * @notice Opens a new hedge position with specified USDC amount and leverage
+     * @param usdcAmount The amount of USDC to use for the position
+     * @param leverage The leverage multiplier for the position (e.g., 5 for 5x leverage)
+     * @return positionId The unique ID of the created position
+     */
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external returns (uint256 positionId);
+    
+    /**
+     * @notice Closes an existing hedge position
+     * @param positionId The ID of the position to close
+     * @return pnl The profit or loss from the position (positive for profit, negative for loss)
+     */
     function exitHedgePosition(uint256 positionId) external returns (int256 pnl);
     
     // Margin management
+    
+    /**
+     * @notice Adds additional margin to an existing position
+     * @param positionId The ID of the position to add margin to
+     * @param amount The amount of USDC to add as margin
+     */
     function addMargin(uint256 positionId, uint256 amount) external;
+    
+    /**
+     * @notice Removes margin from an existing position
+     * @param positionId The ID of the position to remove margin from
+     * @param amount The amount of USDC margin to remove
+     */
     function removeMargin(uint256 positionId, uint256 amount) external;
     
     // Liquidation system
+    
+    /**
+     * @notice Commits to liquidating a position (first step of two-phase liquidation)
+     * @param hedger The address of the hedger whose position will be liquidated
+     * @param positionId The ID of the position to liquidate
+     * @param salt A random value to prevent front-running
+     */
     function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
+    
+    /**
+     * @notice Executes the liquidation of a position (second step of two-phase liquidation)
+     * @param hedger The address of the hedger whose position is being liquidated
+     * @param positionId The ID of the position to liquidate
+     * @param salt The same salt value used in the commitment
+     * @return liquidationReward The reward paid to the liquidator
+     */
     function liquidateHedger(address hedger, uint256 positionId, bytes32 salt) external returns (uint256 liquidationReward);
+    
+    /**
+     * @notice Checks if there's a pending liquidation commitment for a position
+     * @param hedger The address of the hedger
+     * @param positionId The ID of the position
+     * @return bool True if there's a pending liquidation commitment
+     */
     function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
     function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
     function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;

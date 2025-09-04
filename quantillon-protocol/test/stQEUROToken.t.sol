@@ -431,6 +431,10 @@ contract stQEUROTokenTestSuite is Test {
     // BATCH FUNCTION TESTS
     // =============================================================================
 
+    /**
+     * @notice Tests successful batch staking of multiple amounts
+     * @dev Validates that batch staking works correctly with multiple valid amounts
+     */
     function test_BatchStake_Success() public {
         uint256[] memory amounts = new uint256[](3);
         amounts[0] = 10_000 * 1e18;
@@ -445,6 +449,10 @@ contract stQEUROTokenTestSuite is Test {
         assertEq(stQEURO.totalUnderlying(), 60_000 * 1e18);
     }
 
+    /**
+     * @notice Tests successful batch unstaking of multiple amounts
+     * @dev Validates that batch unstaking works correctly with multiple valid amounts
+     */
     function test_BatchUnstake_Success() public {
         // Stake first
         vm.prank(user1);
@@ -462,6 +470,10 @@ contract stQEUROTokenTestSuite is Test {
         assertEq(stQEURO.totalUnderlying(), 30_000 * 1e18);
     }
 
+    /**
+     * @notice Tests successful batch transfer of tokens to multiple recipients
+     * @dev Validates that batch transfers work correctly with multiple valid transfers
+     */
     function test_BatchTransfer_Success() public {
         // Stake then transfer out
         vm.prank(user1);
@@ -486,6 +498,10 @@ contract stQEUROTokenTestSuite is Test {
     // BATCH SIZE LIMIT TESTS
     // =============================================================================
 
+    /**
+     * @notice Tests that batch staking reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for staking operations
+     */
     function test_BatchStake_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
         uint256[] memory amounts = new uint256[](101);
@@ -499,6 +515,10 @@ contract stQEUROTokenTestSuite is Test {
         stQEURO.batchStake(amounts);
     }
 
+    /**
+     * @notice Tests that batch unstaking reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for unstaking operations
+     */
     function test_BatchUnstake_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
         uint256[] memory amounts = new uint256[](101);
@@ -512,6 +532,10 @@ contract stQEUROTokenTestSuite is Test {
         stQEURO.batchUnstake(amounts);
     }
 
+    /**
+     * @notice Tests that batch transfer reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for transfer operations
+     */
     function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
         address[] memory recipients = new address[](101);
@@ -527,6 +551,10 @@ contract stQEUROTokenTestSuite is Test {
         stQEURO.batchTransfer(recipients, amounts);
     }
 
+    /**
+     * @notice Tests successful batch staking at maximum batch size
+     * @dev Validates that staking works correctly at the maximum allowed batch size
+     */
     function test_BatchStake_MaxBatchSize_Success() public {
         // Test with exactly MAX_BATCH_SIZE (100)
         uint256[] memory amounts = new uint256[](100);
@@ -547,6 +575,10 @@ contract stQEUROTokenTestSuite is Test {
     // VIRTUAL PROTECTION TESTS
     // =============================================================================
 
+    /**
+     * @notice Tests the virtual protection status functionality
+     * @dev Validates that virtual protection status is correctly tracked and reported
+     */
     function test_VirtualProtection_Status() public {
         // Test virtual protection status function
         (uint256 virtualShares, uint256 virtualAssets, uint256 effectiveSupply, uint256 effectiveAssets) = stQEURO.getVirtualProtectionStatus();
@@ -557,6 +589,10 @@ contract stQEUROTokenTestSuite is Test {
         assertEq(effectiveAssets, stQEURO.totalUnderlying() + 1e8, "Effective assets should include virtual assets");
     }
 
+    /**
+     * @notice Tests that virtual protection prevents donation attacks
+     * @dev Validates that the virtual protection mechanism prevents malicious donation attacks
+     */
     function test_VirtualProtection_DonationAttackPrevention() public {
         // Test that virtual protection prevents donation attacks
         uint256 initialSupply = stQEURO.totalSupply();

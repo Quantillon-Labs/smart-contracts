@@ -18,6 +18,10 @@ contract QEUROTokenBasicTest is Test {
     address public vault = address(0x2);
     address public user1 = address(0x3);
     
+    /**
+     * @notice Sets up the test environment with QEURO token deployment and initialization
+     * @dev Deploys implementation, creates proxy, and initializes with test parameters
+     */
     function setUp() public {
         // Deploy implementation
         implementation = new QEUROToken();

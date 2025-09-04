@@ -1,5 +1,5 @@
 # TimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/TimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/46b18a17495388ad54b171836fd31a58ac76ca7b/src/core/TimelockUpgradeable.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -170,10 +170,20 @@ modifier onlyEmergencyUpgrader();
 
 ### initialize
 
+Initializes the timelock contract with admin privileges
+
+*Sets up access control roles and pausability. Can only be called once.*
+
 
 ```solidity
 function initialize(address admin) public initializer;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`admin`|`address`|The address that will receive admin and upgrade proposer roles|
+
 
 ### proposeUpgrade
 

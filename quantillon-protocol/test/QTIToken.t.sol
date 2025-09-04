@@ -590,6 +590,10 @@ contract QTITokenTestSuite is Test {
     // BATCH FUNCTION TESTS
     // =============================================================================
 
+    /**
+     * @notice Tests successful batch locking of QTI tokens
+     * @dev Validates that multiple QTI lock operations can be performed in a single transaction
+     */
     function test_BatchLock_Success() public {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 100_000 * 1e18;
@@ -607,6 +611,10 @@ contract QTITokenTestSuite is Test {
         assertGt(votingPower, 0);
     }
 
+    /**
+     * @notice Tests successful batch unlocking by admin
+     * @dev Validates that admin can unlock multiple positions in a single transaction
+     */
     function test_BatchUnlock_Admin_Success() public {
         // two users lock
         vm.prank(user1);
@@ -627,6 +635,10 @@ contract QTITokenTestSuite is Test {
         assertEq(unlocked[1], LOCK_AMOUNT);
     }
 
+    /**
+     * @notice Tests successful batch transfer of QTI tokens
+     * @dev Validates that multiple QTI transfers can be performed in a single transaction
+     */
     function test_BatchTransfer_Success() public {
         address[] memory recipients = new address[](2);
         recipients[0] = user2;
@@ -643,6 +655,10 @@ contract QTITokenTestSuite is Test {
         assertEq(qtiToken.balanceOf(user3), INITIAL_MINT_AMOUNT + amounts[1]);
     }
 
+    /**
+     * @notice Tests successful batch voting on governance proposals
+     * @dev Validates that multiple governance votes can be cast in a single transaction
+     */
     function test_BatchVote_Success() public {
         vm.prank(user1);
         qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
@@ -671,6 +687,10 @@ contract QTITokenTestSuite is Test {
     // BATCH SIZE LIMIT TESTS
     // =============================================================================
 
+    /**
+     * @notice Tests that batch locking reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for lock operations
+     */
     function test_BatchLock_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
         uint256[] memory amounts = new uint256[](101);
@@ -686,6 +706,10 @@ contract QTITokenTestSuite is Test {
         qtiToken.batchLock(amounts, times);
     }
 
+    /**
+     * @notice Tests that batch unlocking reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for unlock operations
+     */
     function test_BatchUnlock_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_UNLOCK_BATCH_SIZE (50)
         address[] memory users = new address[](51);
@@ -699,6 +723,10 @@ contract QTITokenTestSuite is Test {
         qtiToken.batchUnlock(users);
     }
 
+    /**
+     * @notice Tests that batch transfer reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for transfer operations
+     */
     function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
         address[] memory recipients = new address[](101);
@@ -714,6 +742,10 @@ contract QTITokenTestSuite is Test {
         qtiToken.batchTransfer(recipients, amounts);
     }
 
+    /**
+     * @notice Tests that batch voting reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for voting operations
+     */
     function test_BatchVote_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_VOTE_BATCH_SIZE (50)
         uint256[] memory proposals = new uint256[](51);
@@ -729,6 +761,10 @@ contract QTITokenTestSuite is Test {
         qtiToken.batchVote(proposals, choices);
     }
 
+    /**
+     * @notice Tests successful batch locking at maximum batch size
+     * @dev Validates that locking works correctly at the maximum allowed batch size
+     */
     function test_BatchLock_MaxBatchSize_Success() public {
         // Test with exactly MAX_BATCH_SIZE (100)
         uint256[] memory amounts = new uint256[](100);

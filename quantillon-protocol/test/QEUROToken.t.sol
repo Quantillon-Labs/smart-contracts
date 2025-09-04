@@ -314,6 +314,10 @@ contract QEUROTokenTestSuite is Test {
     // BATCH FUNCTION TESTS
     // =============================================================================
 
+    /**
+     * @notice Tests successful batch minting of QEURO tokens
+     * @dev Validates that multiple mint operations can be performed in a single transaction
+     */
     function test_BatchMint_Success() public {
         address[] memory recipients = new address[](2);
         recipients[0] = user1;
@@ -330,6 +334,10 @@ contract QEUROTokenTestSuite is Test {
         assertEq(qeuroToken.totalSupply(), amounts[0] + amounts[1]);
     }
 
+    /**
+     * @notice Tests that batch minting reverts when array lengths don't match
+     * @dev Validates that recipient and amount arrays must have matching lengths
+     */
     function test_BatchMint_ArrayLengthMismatch_Revert() public {
         address[] memory recipients = new address[](2);
         recipients[0] = user1;
@@ -342,6 +350,10 @@ contract QEUROTokenTestSuite is Test {
         qeuroToken.batchMint(recipients, amounts);
     }
 
+    /**
+     * @notice Tests successful batch burning of QEURO tokens
+     * @dev Validates that multiple burn operations can be performed in a single transaction
+     */
     function test_BatchBurn_Success() public {
         // Mint first
         vm.prank(vault);
@@ -363,6 +375,10 @@ contract QEUROTokenTestSuite is Test {
         assertEq(qeuroToken.balanceOf(user2), 200 * 1e18);
     }
 
+    /**
+     * @notice Tests successful batch transfer of QEURO tokens
+     * @dev Validates that multiple transfer operations can be performed in a single transaction
+     */
     function test_BatchTransfer_Success() public {
         // Mint to user1
         vm.prank(vault);
@@ -383,6 +399,10 @@ contract QEUROTokenTestSuite is Test {
         assertEq(qeuroToken.balanceOf(user3), 150 * 1e18);
     }
 
+    /**
+     * @notice Tests batch compliance operations with whitelist and blacklist
+     * @dev Validates that batch compliance checks work correctly with access controls
+     */
     function test_BatchCompliance_WhitelistAndBlacklist() public {
         // Batch whitelist
         address[] memory accounts = new address[](2);
@@ -420,6 +440,10 @@ contract QEUROTokenTestSuite is Test {
     // BATCH SIZE LIMIT TESTS
     // =============================================================================
 
+    /**
+     * @notice Tests that batch minting reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for mint operations
+     */
     function test_BatchMint_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
         address[] memory recipients = new address[](101);
@@ -435,6 +459,10 @@ contract QEUROTokenTestSuite is Test {
         qeuroToken.batchMint(recipients, amounts);
     }
 
+    /**
+     * @notice Tests that batch burning reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for burn operations
+     */
     function test_BatchBurn_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
         address[] memory froms = new address[](101);
@@ -450,6 +478,10 @@ contract QEUROTokenTestSuite is Test {
         qeuroToken.batchBurn(froms, amounts);
     }
 
+    /**
+     * @notice Tests that batch transfer reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for transfer operations
+     */
     function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
         address[] memory recipients = new address[](101);
@@ -465,6 +497,10 @@ contract QEUROTokenTestSuite is Test {
         qeuroToken.batchTransfer(recipients, amounts);
     }
 
+    /**
+     * @notice Tests that batch compliance reverts when batch size exceeds limit
+     * @dev Validates that the batch size limit is enforced for compliance operations
+     */
     function test_BatchCompliance_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_COMPLIANCE_BATCH_SIZE (50)
         address[] memory accounts = new address[](51);
@@ -478,6 +514,10 @@ contract QEUROTokenTestSuite is Test {
         qeuroToken.batchWhitelistAddresses(accounts);
     }
 
+    /**
+     * @notice Tests successful batch compliance at maximum batch size
+     * @dev Validates that compliance operations work correctly at the maximum allowed batch size
+     */
     function test_BatchCompliance_MaxBatchSize_Success() public {
         // Test with exactly MAX_BATCH_SIZE (100)
         address[] memory recipients = new address[](100);
@@ -497,6 +537,10 @@ contract QEUROTokenTestSuite is Test {
         }
     }
 
+    /**
+     * @notice Tests successful batch compliance at maximum compliance batch size
+     * @dev Validates that compliance operations work correctly at the maximum allowed compliance batch size
+     */
     function test_BatchCompliance_MaxComplianceBatchSize_Success() public {
         // Test with exactly MAX_COMPLIANCE_BATCH_SIZE (50)
         address[] memory accounts = new address[](50);

@@ -126,6 +126,11 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     
     // ============ Initialization ============
     
+    /**
+     * @notice Initializes the timelock contract with admin privileges
+     * @dev Sets up access control roles and pausability. Can only be called once.
+     * @param admin The address that will receive admin and upgrade proposer roles
+     */
     function initialize(address admin) public initializer {
         __AccessControl_init();
         __Pausable_init();

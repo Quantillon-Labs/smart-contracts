@@ -94,6 +94,10 @@ contract QuantillonVaultTestSuite is Test {
     // SETUP
     // =============================================================================
     
+    /**
+     * @notice Sets up the QuantillonVault test environment
+     * @dev Deploys and initializes the vault and all dependent contracts for testing
+     */
     function setUp() public {
         // Deploy QEURO token
         QEUROToken implementation = new QEUROToken();

@@ -37,6 +37,10 @@ contract TimeProviderTest is Test {
     
     // ==================== SETUP ====================
     
+    /**
+     * @notice Sets up the TimeProvider test environment
+     * @dev Deploys TimeProvider proxy and initializes with test parameters
+     */
     function setUp() public {
         // Deploy TimeProvider directly (for testing purposes)
         timeProvider = new TimeProvider();
@@ -52,6 +56,10 @@ contract TimeProviderTest is Test {
     
     // ==================== BASIC FUNCTIONALITY TESTS ====================
     
+    /**
+     * @notice Tests the initial state of the TimeProvider contract
+     * @dev Validates that all initial values are set correctly after deployment
+     */
     function test_InitialState() public {
         // Check initial values
         assertEq(timeProvider.timeOffset(), 0);
@@ -69,6 +77,10 @@ contract TimeProviderTest is Test {
         assertTrue(timeProvider.hasRole(timeProvider.UPGRADER_ROLE(), admin));
     }
     
+    /**
+     * @notice Tests current time functionality without any offset applied
+     * @dev Validates that currentTime returns block.timestamp when no offset is set
+     */
     function test_CurrentTimeWithoutOffset() public {
         // Without any offset, current time should equal block timestamp
         assertEq(timeProvider.currentTime(), block.timestamp);
@@ -78,6 +90,10 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.currentTime(), block.timestamp);
     }
     
+    /**
+     * @notice Tests time utility functions like isFuture and isPast
+     * @dev Validates that time comparison functions work correctly
+     */
     function test_TimeUtilityFunctions() public {
         uint256 currentTime = timeProvider.currentTime();
         
@@ -97,6 +113,10 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.timeDiff(currentTime, currentTime), 0);
     }
     
+    /**
+     * @notice Tests the getTimeInfo function that returns comprehensive time data
+     * @dev Validates that all time-related information is returned correctly
+     */
     function test_GetTimeInfo() public {
         (
             uint256 currentProviderTime,
@@ -113,6 +133,10 @@ contract TimeProviderTest is Test {
     
     // ==================== GOVERNANCE TESTS ====================
     
+    /**
+     * @notice Tests setting a positive time offset
+     * @dev Validates that positive time offsets are applied correctly
+     */
     function test_SetTimeOffset_Positive() public {
         vm.prank(governance);
         vm.expectEmit(true, false, false, true);
@@ -125,6 +149,10 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.adjustmentCounter(), 1);
     }
     
+    /**
+     * @notice Tests setting a negative time offset
+     * @dev Validates that negative time offsets are applied correctly
+     */
     function test_SetTimeOffset_Negative() public {
         vm.prank(governance);
         vm.expectEmit(true, false, false, true);
@@ -137,6 +165,10 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.adjustmentCounter(), 1);
     }
     
+    /**
+     * @notice Tests setting time offset at maximum allowed bounds
+     * @dev Validates that maximum positive and negative offsets work correctly
+     */
     function test_SetTimeOffset_MaxBounds() public {
         vm.startPrank(governance);
         
@@ -153,6 +185,10 @@ contract TimeProviderTest is Test {
         vm.stopPrank();
     }
     
+    /**
+     * @notice Tests that setting time offset beyond maximum bounds reverts
+     * @dev Validates that offset limits are enforced properly
+     */
     function test_SetTimeOffset_ExceedsMaximum() public {
         vm.startPrank(governance);
         
@@ -167,6 +203,10 @@ contract TimeProviderTest is Test {
         vm.stopPrank();
     }
     
+    /**
+     * @notice Tests that unauthorized users cannot set time offset
+     * @dev Validates that only authorized roles can modify time offset
+     */
     function test_SetTimeOffset_UnauthorizedAccess() public {
         vm.expectRevert();
         vm.prank(user);
@@ -177,6 +217,10 @@ contract TimeProviderTest is Test {
         timeProvider.setTimeOffset(-1000, "Attack attempt");
     }
     
+    /**
+     * @notice Tests the advance time functionality
+     * @dev Validates that time can be advanced by a specified amount
+     */
     function test_AdvanceTime() public {
         vm.prank(governance);
         
@@ -190,6 +234,10 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.adjustmentCounter(), 1);
     }
     
+    /**
+     * @notice Tests advancing time when starting from a negative offset
+     * @dev Validates that time advancement works correctly with negative base offsets
+     */
     function test_AdvanceTime_FromNegativeOffset() public {
         vm.startPrank(governance);
         
@@ -204,12 +252,20 @@ contract TimeProviderTest is Test {
         vm.stopPrank();
     }
     
+    /**
+     * @notice Tests that advancing time by zero amount reverts
+     * @dev Validates that zero time advancement is rejected
+     */
     function test_AdvanceTime_ZeroAmount() public {
         vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         vm.prank(governance);
         timeProvider.advanceTime(0, "Zero advancement");
     }
     
+    /**
+     * @notice Tests the reset time functionality
+     * @dev Validates that time can be reset to normal (no offset)
+     */
     function test_ResetTime() public {
         vm.startPrank(governance);
         
@@ -232,6 +288,10 @@ contract TimeProviderTest is Test {
     
     // ==================== EMERGENCY MODE TESTS ====================
     
+    /**
+     * @notice Tests setting emergency mode on and off
+     * @dev Validates that emergency mode can be toggled and affects operations
+     */
     function test_SetEmergencyMode() public {
         vm.prank(emergency);
         
@@ -243,6 +303,10 @@ contract TimeProviderTest is Test {
         assertTrue(timeProvider.emergencyMode());
     }
     
+    /**
+     * @notice Tests that emergency mode resets the time offset
+     * @dev Validates that enabling emergency mode automatically resets offset to zero
+     */
     function test_EmergencyMode_ResetsOffset() public {
         vm.startPrank(governance);
         timeProvider.setTimeOffset(5000, "Initial offset");
@@ -258,6 +322,10 @@ contract TimeProviderTest is Test {
         assertTrue(timeProvider.emergencyMode());
     }
     
+    /**
+     * @notice Tests that emergency mode blocks governance operations
+     * @dev Validates that governance functions are disabled during emergency mode
+     */
     function test_EmergencyMode_BlocksGovernanceOperations() public {
         vm.prank(emergency);
         timeProvider.setEmergencyMode(true);
@@ -276,6 +344,10 @@ contract TimeProviderTest is Test {
         vm.stopPrank();
     }
     
+    /**
+     * @notice Tests the emergency reset time functionality
+     * @dev Validates that emergency role can reset time even during emergency mode
+     */
     function test_EmergencyResetTime() public {
         vm.startPrank(governance);
         timeProvider.setTimeOffset(8000, "Initial offset");
@@ -292,6 +364,10 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.currentTime(), block.timestamp);
     }
     
+    /**
+     * @notice Tests that unauthorized users cannot control emergency mode
+     * @dev Validates that only emergency role can enable/disable emergency mode
+     */
     function test_EmergencyMode_UnauthorizedAccess() public {
         vm.expectRevert();
         vm.prank(user);
@@ -304,6 +380,10 @@ contract TimeProviderTest is Test {
     
     // ==================== EDGE CASE TESTS ====================
     
+    /**
+     * @notice Tests protection against underflow with negative offsets
+     * @dev Validates that negative offsets don't cause underflow issues
+     */
     function test_NegativeOffset_UnderflowProtection() public {
         vm.prank(governance);
         timeProvider.setTimeOffset(-int256(block.timestamp + 1000), "Large negative offset");
@@ -312,6 +392,10 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.currentTime(), 0);
     }
     
+    /**
+     * @notice Tests multiple consecutive time offset changes
+     * @dev Validates that multiple offset changes work correctly and are tracked
+     */
     function test_MultipleOffsetChanges() public {
         vm.startPrank(governance);
         
@@ -333,6 +417,10 @@ contract TimeProviderTest is Test {
         vm.stopPrank();
     }
     
+    /**
+     * @notice Tests concurrent time and block advancement scenarios
+     * @dev Validates that time provider works correctly as blocks advance
+     */
     function test_ConcurrentTimeAndBlockAdvancement() public {
         uint256 initialBlock = block.timestamp;
         
@@ -349,6 +437,10 @@ contract TimeProviderTest is Test {
     
     // ==================== SECURITY TESTS ====================
     
+    /**
+     * @notice Tests access control for all defined roles
+     * @dev Validates that all roles have appropriate permissions and restrictions
+     */
     function test_AccessControl_AllRoles() public {
         // Test DEFAULT_ADMIN_ROLE
         assertTrue(timeProvider.hasRole(timeProvider.DEFAULT_ADMIN_ROLE(), admin));
@@ -367,6 +459,10 @@ contract TimeProviderTest is Test {
         assertFalse(timeProvider.hasRole(timeProvider.UPGRADER_ROLE(), user));
     }
     
+    /**
+     * @notice Tests role management functionality
+     * @dev Validates that roles can be granted and revoked correctly
+     */
     function test_RoleManagement() public {
         vm.startPrank(admin);
         
@@ -383,18 +479,31 @@ contract TimeProviderTest is Test {
     
     // ==================== UPGRADE TESTS ====================
     
+    /**
+     * @notice Tests upgrade authorization functionality
+     * @dev Validates that only authorized roles can upgrade the contract
+     */
     function test_UpgradeAuthorization() public {
         // Only UPGRADER_ROLE should be able to authorize upgrades
         // This is tested implicitly through the OpenZeppelin upgrade mechanism
         assertTrue(timeProvider.hasRole(timeProvider.UPGRADER_ROLE(), admin));
     }
     
+    /**
+     * @notice Tests the version function
+     * @dev Validates that the contract version is returned correctly
+     */
     function test_Version() public {
         assertEq(timeProvider.version(), "1.0.0");
     }
     
     // ==================== FUZZ TESTS ====================
     
+    /**
+     * @notice Fuzz tests time offset setting with random values
+     * @dev Validates that time offset behaves correctly with various input values
+     * @param offset Random time offset value for testing
+     */
     function testFuzz_SetTimeOffset(int128 offset) public {
         vm.assume(offset >= -int128(uint128(MAX_TIME_OFFSET)));
         vm.assume(offset <= int128(uint128(MAX_TIME_OFFSET)));
@@ -416,6 +525,11 @@ contract TimeProviderTest is Test {
         }
     }
     
+    /**
+     * @notice Fuzz tests time advancement with random values
+     * @dev Validates that time advancement behaves correctly with various input values
+     * @param advancement Random advancement amount for testing
+     */
     function testFuzz_AdvanceTime(uint128 advancement) public {
         vm.assume(advancement > 0);
         vm.assume(advancement <= MAX_TIME_OFFSET);
@@ -427,6 +541,12 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.currentTime(), block.timestamp + advancement);
     }
     
+    /**
+     * @notice Fuzz tests time comparison functions with random timestamps
+     * @dev Validates that isFuture and isPast work correctly with various timestamps
+     * @param futureTime Random future timestamp for testing
+     * @param pastTime Random past timestamp for testing
+     */
     function testFuzz_TimeComparisons(uint128 futureTime, uint128 pastTime) public {
         uint256 currentTime = timeProvider.currentTime();
         
@@ -443,6 +563,10 @@ contract TimeProviderTest is Test {
     
     // ==================== INTEGRATION TESTS ====================
     
+    /**
+     * @notice Tests realistic usage scenarios for the time provider
+     * @dev Validates that the time provider works correctly in real-world usage patterns
+     */
     function test_RealisticUsageScenario() public {
         // Simulate a realistic scenario for testing protocol time-dependent features
         
@@ -476,6 +600,10 @@ contract TimeProviderTest is Test {
         assertEq(timeProvider.currentTime(), block.timestamp + 12 hours);
     }
     
+    /**
+     * @notice Stress tests the time provider with multiple rapid operations
+     * @dev Validates that the time provider handles multiple operations correctly
+     */
     function test_StressTest_MultipleOperations() public {
         vm.startPrank(governance);
         

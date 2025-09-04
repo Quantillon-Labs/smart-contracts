@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/46b18a17495388ad54b171836fd31a58ac76ca7b/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -335,40 +335,96 @@ function harvestAaveYield() external nonReentrant returns (uint256 yieldHarveste
 
 ### getAvailableYield
 
+Returns the total available yield from Aave lending
+
+*Calculates yield based on current aToken balance vs principal deposited*
+
 
 ```solidity
 function getAvailableYield() public view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|The amount of yield available for distribution|
+
 
 ### getYieldDistribution
+
+Returns the breakdown of yield distribution between users and protocol
+
+*Shows how yield is allocated according to current distribution parameters*
 
 
 ```solidity
 function getYieldDistribution() external view returns (uint256 protocolYield, uint256 userYield, uint256 hedgerYield);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`protocolYield`|`uint256`|Amount of yield allocated to protocol fees|
+|`userYield`|`uint256`|Amount of yield allocated to users|
+|`hedgerYield`|`uint256`|Amount of yield allocated to hedgers|
+
 
 ### getAaveBalance
+
+Returns the current balance of aTokens held by this vault
+
+*Represents the total amount deposited in Aave plus accrued interest*
 
 
 ```solidity
 function getAaveBalance() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|The current aToken balance|
+
 
 ### getAccruedInterest
+
+Returns the total interest accrued from Aave lending
+
+*Calculates interest as current balance minus principal deposited*
 
 
 ```solidity
 function getAccruedInterest() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|The amount of interest accrued|
+
 
 ### getAaveAPY
+
+Returns the current APY offered by Aave for the deposited asset
+
+*Fetches the supply rate from Aave's reserve data*
 
 
 ```solidity
 function getAaveAPY() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|The current APY in basis points|
+
 
 ### getAavePositionDetails
+
+Returns detailed information about the Aave position
+
+*Provides comprehensive data about the vault's Aave lending position*
 
 
 ```solidity
@@ -377,8 +433,21 @@ function getAavePositionDetails()
     view
     returns (uint256 principalDeposited_, uint256 currentBalance, uint256 aTokenBalance, uint256 lastUpdateTime);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`principalDeposited_`|`uint256`|Total amount originally deposited|
+|`currentBalance`|`uint256`|Current aToken balance including interest|
+|`aTokenBalance`|`uint256`|Current aToken balance|
+|`lastUpdateTime`|`uint256`|Timestamp of last position update|
+
 
 ### getAaveMarketData
+
+Returns current Aave market data for the deposited asset
+
+*Fetches real-time market information from Aave protocol*
 
 
 ```solidity
@@ -387,13 +456,34 @@ function getAaveMarketData()
     view
     returns (uint256 supplyRate, uint256 utilizationRate, uint256 totalSupply, uint256 availableLiquidity);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`supplyRate`|`uint256`|Current supply rate for the asset|
+|`utilizationRate`|`uint256`|Current utilization rate of the reserve|
+|`totalSupply`|`uint256`|Total supply of the underlying asset|
+|`availableLiquidity`|`uint256`|Available liquidity in the reserve|
+
 
 ### checkAaveHealth
+
+Performs health checks on the Aave position
+
+*Validates that the Aave position is healthy and functioning properly*
 
 
 ```solidity
 function checkAaveHealth() external view returns (bool isHealthy, bool pauseStatus, uint256 lastUpdate);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`isHealthy`|`bool`|True if position is healthy, false if issues detected|
+|`pauseStatus`|`bool`|Current pause status of the contract|
+|`lastUpdate`|`uint256`|Timestamp of last health check update|
+
 
 ### _isAaveHealthy
 
@@ -411,17 +501,38 @@ function autoRebalance() external returns (bool rebalanced, uint256 newAllocatio
 
 ### calculateOptimalAllocation
 
+Calculates the optimal allocation of funds to Aave
+
+*Determines best allocation strategy based on current market conditions*
+
 
 ```solidity
 function calculateOptimalAllocation() external view returns (uint256 optimalAllocation, uint256 expectedYield);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`optimalAllocation`|`uint256`|Recommended amount to allocate to Aave|
+|`expectedYield`|`uint256`|Expected yield from the recommended allocation|
+
 
 ### setMaxAaveExposure
+
+Sets the maximum exposure limit for Aave deposits
+
+*Governance function to control risk by limiting Aave exposure*
 
 
 ```solidity
 function setMaxAaveExposure(uint256 _maxExposure) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_maxExposure`|`uint256`|Maximum amount that can be deposited to Aave|
+
 
 ### emergencyWithdrawFromAave
 
@@ -432,6 +543,10 @@ function emergencyWithdrawFromAave() external nonReentrant returns (uint256 amou
 
 ### getRiskMetrics
 
+Returns comprehensive risk metrics for the Aave position
+
+*Provides detailed risk analysis including concentration and volatility metrics*
+
 
 ```solidity
 function getRiskMetrics()
@@ -439,6 +554,14 @@ function getRiskMetrics()
     view
     returns (uint256 exposureRatio, uint256 concentrationRisk, uint256 liquidityRisk);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`exposureRatio`|`uint256`|Percentage of total assets exposed to Aave|
+|`concentrationRisk`|`uint256`|Risk level due to concentration in Aave (1-3 scale)|
+|`liquidityRisk`|`uint256`|Risk level based on Aave liquidity conditions (1-3 scale)|
+
 
 ### updateAaveParameters
 
@@ -450,6 +573,10 @@ function updateAaveParameters(uint256 newHarvestThreshold, uint256 newYieldFee, 
 
 ### getAaveConfig
 
+Returns the current Aave integration configuration
+
+*Provides access to all configuration parameters for Aave integration*
+
 
 ```solidity
 function getAaveConfig()
@@ -457,15 +584,40 @@ function getAaveConfig()
     view
     returns (address aavePool_, address aUSDC_, uint256 harvestThreshold_, uint256 yieldFee_, uint256 maxExposure_);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`aavePool_`|`address`|Address of the Aave pool contract|
+|`aUSDC_`|`address`|Address of the aUSDC token contract|
+|`harvestThreshold_`|`uint256`|Minimum yield threshold for harvesting|
+|`yieldFee_`|`uint256`|Fee percentage charged on yield|
+|`maxExposure_`|`uint256`|Maximum allowed exposure to Aave|
+
 
 ### toggleEmergencyMode
+
+Toggles emergency mode for the Aave vault
+
+*Emergency function to enable/disable emergency mode during critical situations*
 
 
 ```solidity
 function toggleEmergencyMode(bool enabled, string calldata reason) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|Whether to enable or disable emergency mode|
+|`reason`|`string`|Human-readable reason for the change|
+
 
 ### pause
+
+Pauses all Aave vault operations
+
+*Emergency function to halt all vault operations when needed*
 
 
 ```solidity
@@ -474,6 +626,10 @@ function pause() external;
 
 ### unpause
 
+Unpauses Aave vault operations
+
+*Resumes normal vault operations after emergency is resolved*
+
 
 ```solidity
 function unpause() external;
@@ -481,12 +637,27 @@ function unpause() external;
 
 ### recoverToken
 
+Recovers accidentally sent ERC20 tokens from the vault
+
+*Emergency function to recover tokens that are not part of normal operations*
+
 
 ```solidity
 function recoverToken(address token, uint256 amount) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`token`|`address`|The token address to recover|
+|`amount`|`uint256`|The amount of tokens to recover|
+
 
 ### recoverETH
+
+Recovers accidentally sent ETH from the vault
+
+*Emergency function to recover ETH that shouldn't be in the vault*
 
 
 ```solidity

@@ -721,10 +721,9 @@ contract UserPool is
     // =============================================================================
 
     /**
-     * @notice Stake QEURO tokens to earn enhanced yield
-     * @dev This function allows users to stake their QEURO tokens.
-     *      It updates their pending rewards and adds to their staked amount.
-     * @param qeuroAmount Amount of QEURO to stake (18 decimals)
+     * @notice Stakes QEURO tokens to earn enhanced staking rewards
+     * @dev Updates pending rewards before staking and requires minimum stake amount
+     * @param qeuroAmount The amount of QEURO tokens to stake (18 decimals)
      */
     function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused {
         // GAS OPTIMIZATION: Cache storage read
@@ -753,9 +752,8 @@ contract UserPool is
     }
 
     /**
-     * @notice Batch stake QEURO tokens for multiple amounts
-     * @dev This function allows users to make multiple stakes in one transaction.
-     *      Each stake must meet minimum requirements and updates rewards.
+     * @notice Stakes multiple amounts of QEURO tokens in a single transaction
+     * @dev More gas-efficient than multiple individual stake calls. Each stake must meet minimum requirements.
      * @param qeuroAmounts Array of QEURO amounts to stake (18 decimals)
      */
     function batchStake(uint256[] calldata qeuroAmounts) external nonReentrant whenNotPaused {
@@ -799,10 +797,9 @@ contract UserPool is
     }
 
     /**
-     * @notice Request to unstake QEURO tokens (starts cooldown)
-     * @dev This function allows users to request to unstake their QEURO.
-     *      It sets a cooldown period before they can complete the unstaking.
-     * @param qeuroAmount Amount of QEURO to unstake (18 decimals)
+     * @notice Requests to unstake QEURO tokens (starts unstaking cooldown period)
+     * @dev Begins the unstaking process with a cooldown period before tokens can be withdrawn
+     * @param qeuroAmount The amount of staked QEURO tokens to unstake (18 decimals)
      */
     function requestUnstake(uint256 qeuroAmount) external nonReentrant {
         // Cache timestamp to avoid external calls

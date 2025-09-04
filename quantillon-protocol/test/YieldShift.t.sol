@@ -202,6 +202,10 @@ contract YieldShiftTestSuite is Test {
     // SETUP AND TEARDOWN
     // =============================================================================
     
+    /**
+     * @notice Sets up the YieldShift test environment
+     * @dev Deploys mock contracts and initializes the yield shift system for testing
+     */
     function setUp() public {
         // Deploy mock contracts
         usdc = new MockUSDC();

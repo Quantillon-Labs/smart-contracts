@@ -547,6 +547,11 @@ contract QEUROToken is
      * 
 
      */
+    /**
+     * @notice Checks and updates the mint rate limit for the caller
+     * @dev Implements sliding window rate limiting using block numbers
+     * @param amount The amount to be minted, used to check against rate limits
+     */
     function _checkAndUpdateMintRateLimit(uint256 amount) internal {
         // Reset rate limit if reset period has passed (using block numbers)
         uint256 blocksSinceReset = block.number - rateLimitInfo.lastRateLimitReset;
@@ -587,6 +592,11 @@ contract QEUROToken is
      *      - Includes bounds checking to prevent block manipulation
      * 
 
+     */
+    /**
+     * @notice Checks and updates the burn rate limit for the caller
+     * @dev Implements sliding window rate limiting using block numbers
+     * @param amount The amount to be burned, used to check against rate limits
      */
     function _checkAndUpdateBurnRateLimit(uint256 amount) internal {
         // Reset rate limit if reset period has passed (using block numbers)
@@ -944,6 +954,10 @@ contract QEUROToken is
      *      - Only PAUSER_ROLE can pause
      *      - Pauses all token operations
      *      - Prevents any state changes
+     */
+    /**
+     * @notice Pauses all token operations except emergency functions
+     * @dev Only callable by addresses with PAUSER_ROLE
      */
     function pause() external onlyRole(PAUSER_ROLE) {
         _pause();

@@ -557,6 +557,8 @@ contract AaveVault is
             // EFFECTS: Update state BEFORE external calls (CEI Pattern)
             emergencyMode = true;
             uint256 originalPrincipal = principalDeposited;
+            // In emergency, reset principal to 0 before external call (conservative approach)
+            principalDeposited = 0;
             
             uint256 usdcBefore = usdc.balanceOf(address(this));
             
@@ -579,15 +581,8 @@ contract AaveVault is
                 revert("Emergency Aave withdrawal failed");
             }
             
-            // Update state with actual withdrawal amount
+            // Set return value
             amountWithdrawn = actualReceived;
-            uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, originalPrincipal);
-            principalDeposited -= principalWithdrawn;
-            
-            // SECURITY: Ensure principalDeposited never goes negative
-            if (principalDeposited > type(uint256).max - principalWithdrawn) {
-                revert ErrorLibrary.InvalidAmount();
-            }
             
 
             emit EmergencyWithdrawal("Emergency exit from Aave", amountWithdrawn, block.timestamp);

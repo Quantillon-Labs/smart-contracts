@@ -417,9 +417,11 @@ contract UserPool is
             totalUsers++;
         }
         
-        // Update state variables BEFORE external call (CEI Pattern)
+        // EFFECTS: Update state variables BEFORE external call (CEI Pattern)
         user.depositHistory += uint96(usdcAmount);
         totalDeposits += netAmount;
+        // Use minQeuroOut as conservative estimate for user balance
+        user.qeuroBalance += uint128(minQeuroOut);
         
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
@@ -435,8 +437,14 @@ contract UserPool is
         uint256 qeuroAfter = qeuro.balanceOf(address(this));
         qeuroMinted = qeuroAfter - qeuroBefore;
         
-        // Update user balance with actual minted amount
-        user.qeuroBalance += uint128(qeuroMinted);
+        // Adjust user balance if actual differs from estimate
+        if (qeuroMinted != minQeuroOut) {
+            if (qeuroMinted > minQeuroOut) {
+                user.qeuroBalance += uint128(qeuroMinted - minQeuroOut);
+            } else {
+                user.qeuroBalance -= uint128(minQeuroOut - qeuroMinted);
+            }
+        }
 
         emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
     }
@@ -500,7 +508,27 @@ contract UserPool is
         // Single approval for all vault operations
         usdc.safeIncreaseAllowance(vaultAddress, totalNetAmount);
         
-        // INTERACTIONS: Process all external calls FIRST
+        // EFFECTS: Update user and pool state BEFORE external calls (CEI Pattern)
+        uint256 totalQeuroToMint = 0;
+        for (uint256 i = 0; i < usdcAmounts.length; i++) {
+            uint256 usdcAmount = usdcAmounts[i];
+            uint256 netAmount = netAmounts[i];
+            uint256 minQeuroOut = minQeuroOuts[i];
+            
+            // Use minQeuroOut as conservative estimate for user balance update
+            qeuroMintedAmounts[i] = minQeuroOut;
+            totalQeuroToMint += minQeuroOut;
+            
+            // Update user state before external calls
+            user.depositHistory += uint96(usdcAmount);
+            totalDeposits += netAmount;
+        }
+        
+        // Update user balance with conservative estimate
+        user.qeuroBalance += uint128(totalQeuroToMint);
+        
+        // INTERACTIONS: Process all external calls
+        uint256 totalActualMinted = 0;
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 netAmount = netAmounts[i];
             uint256 minQeuroOut = minQeuroOuts[i];
@@ -516,20 +544,18 @@ contract UserPool is
             // Calculate actual minted amount for this operation
             // slither-disable-next-line calls-loop
             uint256 balanceAfterMint = qeuro.balanceOf(address(this));
-            uint256 qeuroMinted = balanceAfterMint - balanceBeforeMint;
-            qeuroMintedAmounts[i] = qeuroMinted;
+            uint256 actualMinted = balanceAfterMint - balanceBeforeMint;
+            qeuroMintedAmounts[i] = actualMinted;
+            totalActualMinted += actualMinted;
         }
         
-        // EFFECTS: Update state variables after all external calls complete
-        for (uint256 i = 0; i < usdcAmounts.length; i++) {
-            uint256 usdcAmount = usdcAmounts[i];
-            uint256 netAmount = netAmounts[i];
-            uint256 qeuroMinted = qeuroMintedAmounts[i];
-            
-            // Update user balance and pool totals
-            user.qeuroBalance += uint128(qeuroMinted);
-            user.depositHistory += uint96(usdcAmount);
-            totalDeposits += netAmount;
+        // Adjust user balance if actual minted differs from estimate
+        if (totalActualMinted != totalQeuroToMint) {
+            if (totalActualMinted > totalQeuroToMint) {
+                user.qeuroBalance += uint128(totalActualMinted - totalQeuroToMint);
+            } else {
+                user.qeuroBalance -= uint128(totalQeuroToMint - totalActualMinted);
+            }
         }
         
         // INTERACTIONS: Final transfers and events

@@ -17,6 +17,7 @@ import "../libraries/ValidationLibrary.sol";
 import "../libraries/VaultLibrary.sol";
 import "./SecureUpgradeable.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
+import "../libraries/FlashLoanProtectionLibrary.sol";
 
 /**
  * @title HedgerPool
@@ -269,14 +270,13 @@ contract HedgerPool is
 
     /**
      * @notice Modifier to protect against flash loan attacks
-     * @dev Checks that the contract's USDC balance doesn't decrease during execution
-     * @dev This prevents flash loans that would drain USDC from the contract
+     * @dev Uses the FlashLoanProtectionLibrary to check USDC balance consistency
      */
     modifier flashLoanProtection() {
         uint256 balanceBefore = usdc.balanceOf(address(this));
         _;
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        require(balanceAfter >= balanceBefore, "Flash loan detected: USDC balance decreased");
+        FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0);
     }
 
     constructor() {
@@ -309,6 +309,7 @@ contract HedgerPool is
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
+        // slither-disable-next-line missing-zero-check
         treasury = _treasury;
 
         minMarginRatio = 1000;
@@ -959,7 +960,7 @@ contract HedgerPool is
      * @return maxPositionSize Maximum allowed position size
      * @return maxMargin Maximum allowed margin
      * @return maxEntryPrice Maximum allowed entry price
-     * @return maxLeverage Maximum allowed leverage
+     * @return maxLeverageValue Maximum allowed leverage
      * @return maxTotalMargin Maximum allowed total margin
      * @return maxTotalExposure Maximum allowed total exposure
      * @return maxPendingRewards Maximum allowed pending rewards
@@ -969,7 +970,7 @@ contract HedgerPool is
         uint256 maxPositionSize,
         uint256 maxMargin,
         uint256 maxEntryPrice,
-        uint256 maxLeverage,
+        uint256 maxLeverageValue,
         uint256 maxTotalMargin,
         uint256 maxTotalExposure,
         uint256 maxPendingRewards
@@ -1041,6 +1042,7 @@ contract HedgerPool is
     function updateTreasury(address _treasury) external {
         AccessControlLibrary.onlyGovernance(this);
         AccessControlLibrary.validateAddress(_treasury);
+        // slither-disable-next-line missing-zero-check
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

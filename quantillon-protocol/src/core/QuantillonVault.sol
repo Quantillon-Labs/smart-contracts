@@ -18,6 +18,7 @@ import "../interfaces/IQEUROToken.sol";
 import "../interfaces/IChainlinkOracle.sol";
 import "../libraries/VaultMath.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
+import "../libraries/FlashLoanProtectionLibrary.sol";
 
 /**
  * @title QuantillonVault
@@ -217,14 +218,13 @@ contract QuantillonVault is
 
     /**
      * @notice Modifier to protect against flash loan attacks
-     * @dev Checks that the contract's USDC balance doesn't decrease during execution
-     * @dev This prevents flash loans that would drain USDC from the contract
+     * @dev Uses the FlashLoanProtectionLibrary to check USDC balance consistency
      */
     modifier flashLoanProtection() {
         uint256 balanceBefore = usdc.balanceOf(address(this));
         _;
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        require(balanceAfter >= balanceBefore, "Flash loan detected: USDC balance decreased");
+        FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0);
     }
 
     // =============================================================================

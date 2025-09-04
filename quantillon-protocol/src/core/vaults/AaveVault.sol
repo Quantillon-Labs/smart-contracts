@@ -199,6 +199,7 @@ contract AaveVault is
         aavePool = IPool(aaveProvider.getPool());
         rewardsController = IRewardsController(_rewardsController);
         yieldShift = IYieldShift(_yieldShift);
+        // slither-disable-next-line missing-zero-check
         treasury = _treasury;
 
         ReserveData memory reserveData = aavePool.getReserveData(address(usdc));

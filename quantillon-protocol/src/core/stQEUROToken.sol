@@ -19,6 +19,7 @@ import "../libraries/VaultMath.sol";
 import "../libraries/ErrorLibrary.sol";
 import "./SecureUpgradeable.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
+import "../libraries/FlashLoanProtectionLibrary.sol";
 
 /**
  * @title stQEUROToken

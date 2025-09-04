@@ -260,69 +260,111 @@ contract AaveVault is
         ValidationLibrary.validatePositiveAmount(amount);
         
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
-        // SECURITY: Check if there are Aave tokens to withdraw (safe inequality check)
+        uint256 withdrawAmount = _validateAndCalculateWithdrawAmount(amount, aaveBalance);
+        
+        _validateWithdrawalConstraints(withdrawAmount, aaveBalance);
+        
+        uint256 usdcBefore = usdc.balanceOf(address(this));
+        _validateExpectedWithdrawal(withdrawAmount);
+        
+        usdcWithdrawn = _executeAaveWithdrawal(amount, withdrawAmount, usdcBefore);
+        
+        _updatePrincipalAfterWithdrawal(usdcWithdrawn);
+    }
+    
+    /**
+     * @dev Validates and calculates the actual withdrawal amount
+     */
+    function _validateAndCalculateWithdrawAmount(
+        uint256 amount, 
+        uint256 aaveBalance
+    ) internal pure returns (uint256 withdrawAmount) {
         if (aaveBalance < 1) revert ErrorLibrary.InsufficientBalance();
         
-        uint256 withdrawAmount = amount;
+        withdrawAmount = amount;
         if (amount == type(uint256).max) {
             withdrawAmount = aaveBalance;
         }
         
         if (withdrawAmount > aaveBalance) revert ErrorLibrary.InsufficientBalance();
-        
+    }
+    
+    /**
+     * @dev Validates withdrawal constraints (emergency mode, minimum balance)
+     */
+    function _validateWithdrawalConstraints(uint256 withdrawAmount, uint256 aaveBalance) internal view {
         if (!emergencyMode) {
             uint256 remainingBalance = aaveBalance - withdrawAmount;
             uint256 minBalance = principalDeposited.mulDiv(rebalanceThreshold, 10000);
             if (remainingBalance < minBalance) revert ErrorLibrary.WouldBreachMinimum();
         }
-        
-        uint256 usdcBefore = usdc.balanceOf(address(this));
-        
-        // CALCULATE EXPECTED WITHDRAWAL BEFORE EXTERNAL CALL
+    }
+    
+    /**
+     * @dev Validates expected withdrawal amounts before external call
+     */
+    function _validateExpectedWithdrawal(uint256 withdrawAmount) internal view {
         uint256 expectedPrincipalWithdrawn = VaultMath.min(withdrawAmount, principalDeposited);
         
-        // VALIDATE BEFORE EXTERNAL CALL (CHECKS)
         if (expectedPrincipalWithdrawn > 0) {
             if (principalDeposited < expectedPrincipalWithdrawn) {
                 revert ErrorLibrary.InvalidAmount();
             }
         }
-        
-        // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
-        uint256 actualReceived = 0;
-        
+    }
+    
+    /**
+     * @dev Executes the Aave withdrawal with proper error handling
+     */
+    function _executeAaveWithdrawal(
+        uint256 originalAmount,
+        uint256 withdrawAmount,
+        uint256 usdcBefore
+    ) internal returns (uint256 usdcWithdrawn) {
         try aavePool.withdraw(address(usdc), withdrawAmount, address(this)) 
             returns (uint256 withdrawn) 
         {
             usdcWithdrawn = withdrawn;
+            _validateWithdrawalResult(originalAmount, withdrawAmount, usdcBefore, usdcWithdrawn);
             
-            // Verify actual amount received
-            uint256 usdcAfter = usdc.balanceOf(address(this));
-            actualReceived = usdcAfter - usdcBefore;
-            
-            // Strict validation - ensure actual received matches returned amount
-            if (actualReceived != usdcWithdrawn) {
-                revert ErrorLibrary.ExcessiveSlippage();
-            }
-            
-            // Validate slippage tolerance
-            if (amount != type(uint256).max) {
-                ValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 100);
-            } else {
-                ValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 500);
-            }
-            
-            emit WithdrawnFromAave("withdraw", amount, actualReceived, aUSDC.balanceOf(address(this)));
+            emit WithdrawnFromAave("withdraw", originalAmount, usdcWithdrawn, aUSDC.balanceOf(address(this)));
             
         } catch Error(string memory reason) {
             revert(string(abi.encodePacked("Aave withdrawal failed: ", reason)));
         } catch {
             revert("Aave withdrawal failed");
         }
+    }
+    
+    /**
+     * @dev Validates the withdrawal result and slippage
+     */
+    function _validateWithdrawalResult(
+        uint256 originalAmount,
+        uint256 withdrawAmount,
+        uint256 usdcBefore,
+        uint256 usdcWithdrawn
+    ) internal view {
+        uint256 usdcAfter = usdc.balanceOf(address(this));
+        uint256 actualReceived = usdcAfter - usdcBefore;
         
-        // UPDATE STATE AFTER EXTERNAL CALL (EFFECTS)
-        // Note: This is safe because we're not reading state during external calls
-        // and we're using the nonReentrant modifier to prevent reentrancy
+        // Strict validation - ensure actual received matches returned amount
+        if (actualReceived != usdcWithdrawn) {
+            revert ErrorLibrary.ExcessiveSlippage();
+        }
+        
+        // Validate slippage tolerance
+        if (originalAmount != type(uint256).max) {
+            ValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 100);
+        } else {
+            ValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 500);
+        }
+    }
+    
+    /**
+     * @dev Updates principal deposited after successful withdrawal
+     */
+    function _updatePrincipalAfterWithdrawal(uint256 actualReceived) internal {
         if (actualReceived > 0) {
             uint256 principalToDeduct = VaultMath.min(actualReceived, principalDeposited);
             if (principalToDeduct > 0) {

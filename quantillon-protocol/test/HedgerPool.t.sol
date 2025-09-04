@@ -424,7 +424,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Check that position was closed
-        (address hedger, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, , , , , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check P&L (can be negative due to fees and price movement)
@@ -589,7 +589,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 liquidationReward = hedgerPool.liquidateHedger(hedger1, positionId, bytes32(0));
         
         // Check that position was liquidated
-        (address hedger, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, , , , , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check liquidation reward
@@ -685,7 +685,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Get position info
-        (address hedger, uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 entryTime, , uint256 leverage, bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 entryTime, , int128 unrealizedPnL, uint256 leverage, bool isActive) = hedgerPool.positions(positionId);
         
         assertEq(hedger, hedger1);
         uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
@@ -838,7 +838,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.emergencyClosePosition(hedger1, positionId);
         
         // Check that position was closed
-        (address hedger, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, , , , , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
     }
     

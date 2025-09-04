@@ -409,7 +409,7 @@ contract UserPool is
         uint256 fee = usdcAmount.percentageOf(depositFee_);
         uint256 netAmount = usdcAmount - fee;
 
-        // Transfer USDC from user FIRST
+        // CHECKS & EFFECTS: Transfer USDC and update state before external calls
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
         UserInfo storage user = userInfo[msg.sender];
         if (!hasDeposited[msg.sender]) {
@@ -417,9 +417,14 @@ contract UserPool is
             totalUsers++;
         }
         
+        // Update state variables BEFORE external call (CEI Pattern)
+        user.depositHistory += uint96(usdcAmount);
+        totalDeposits += netAmount;
+        
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
         
+        // INTERACTIONS: External calls last
         // Approve vault to spend USDC
         usdc.safeIncreaseAllowance(address(vault), netAmount);
         
@@ -430,13 +435,7 @@ contract UserPool is
         uint256 qeuroAfter = qeuro.balanceOf(address(this));
         qeuroMinted = qeuroAfter - qeuroBefore;
         
-        // UPDATE STATE AFTER EXTERNAL CALL (CEI Pattern - Checks-Effects-Interactions)
-        // Update user balance and pool totals AFTER external call to prevent reentrancy
-        // slither-disable-next-line reentrancy-no-eth
-        user.depositHistory += uint96(usdcAmount);
-        // slither-disable-next-line reentrancy-no-eth
-        totalDeposits += netAmount;
-        // slither-disable-next-line reentrancy-no-eth
+        // Update user balance with actual minted amount
         user.qeuroBalance += uint128(qeuroMinted);
 
         emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
@@ -501,7 +500,7 @@ contract UserPool is
         // Single approval for all vault operations
         usdc.safeIncreaseAllowance(vaultAddress, totalNetAmount);
         
-        // Process individual minting operations
+        // INTERACTIONS: Process all external calls FIRST
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 netAmount = netAmounts[i];
             uint256 minQeuroOut = minQeuroOuts[i];
@@ -521,21 +520,19 @@ contract UserPool is
             qeuroMintedAmounts[i] = qeuroMinted;
         }
         
-        // UPDATE STATE AFTER ALL EXTERNAL CALLS (CEI Pattern - Checks-Effects-Interactions)
+        // EFFECTS: Update state variables after all external calls complete
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
-            uint256 netAmount = usdcAmount - usdcAmount.percentageOf(depositFee_);
+            uint256 netAmount = netAmounts[i];
             uint256 qeuroMinted = qeuroMintedAmounts[i];
             
             // Update user balance and pool totals
-            // slither-disable-next-line reentrancy-no-eth
             user.qeuroBalance += uint128(qeuroMinted);
-            // slither-disable-next-line reentrancy-no-eth
             user.depositHistory += uint96(usdcAmount);
-            // slither-disable-next-line reentrancy-no-eth
             totalDeposits += netAmount;
         }
         
+        // INTERACTIONS: Final transfers and events
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 qeuroMinted = qeuroMintedAmounts[i];
@@ -567,12 +564,21 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         require(user.qeuroBalance >= qeuroAmount, "UserPool: Insufficient balance");
 
+        // EFFECTS: Update state variables BEFORE external calls (CEI Pattern)
+        user.qeuroBalance -= uint128(qeuroAmount);
 
+        // INTERACTIONS: External calls
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
+        
+        // Store balance before redemption
+        uint256 usdcBefore = usdc.balanceOf(address(this));
         
         // Redeem USDC through vault
         vault.redeemQEURO(qeuroAmount, minUsdcOut);
-        usdcReceived = usdc.balanceOf(address(this));
+        
+        // Calculate actual received amount
+        uint256 usdcAfter = usdc.balanceOf(address(this));
+        usdcReceived = usdcAfter - usdcBefore;
 
         // Calculate withdrawal fee
         // GAS OPTIMIZATION: Cache storage read
@@ -580,9 +586,7 @@ contract UserPool is
         uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
         uint256 netAmount = usdcReceived - fee;
 
-        // UPDATE STATE AFTER EXTERNAL CALL (CEI Pattern - Checks-Effects-Interactions)
-        // slither-disable-next-line reentrancy-no-eth
-        user.qeuroBalance -= uint128(qeuroAmount);
+        // Update totalDeposits with actual net amount
         totalDeposits -= netAmount;
 
         // Transfer USDC to user
@@ -626,16 +630,15 @@ contract UserPool is
         
         require(user.qeuroBalance >= totalQeuroAmount, "UserPool: Insufficient balance");
         
-        // Transfer total QEURO from user FIRST
+        // EFFECTS: Update user balance BEFORE external calls (CEI Pattern)
+        user.qeuroBalance -= uint128(totalQeuroAmount);
+        
+        // INTERACTIONS: External calls
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
-        // Process all external calls FIRST (INTERACTIONS)
-        address vaultAddress = address(vault);
         uint256 withdrawalFee_ = withdrawalFee;
         
-        // Get initial USDC balance once before all operations
-        uint256 usdcBalanceBefore = usdc.balanceOf(address(this));
-        
+        // Process all vault redemptions
         for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 minUsdcOut = minUsdcOuts[i];
@@ -661,23 +664,14 @@ contract UserPool is
             unchecked { ++i; }
         }
         
-        // UPDATE STATE AFTER ALL EXTERNAL CALLS (CEI Pattern - Checks-Effects-Interactions)
+        // Update totalDeposits with actual net amounts
         for (uint256 i = 0; i < length;) {
-            uint256 qeuroAmount = qeuroAmounts[i];
             uint256 netAmount = usdcReceivedAmounts[i];
-            
-            // Update user info - GAS OPTIMIZATION: Use unchecked for safe arithmetic
-            unchecked {
-                // slither-disable-next-line reentrancy-no-eth
-                user.qeuroBalance -= uint128(qeuroAmount);
-                // slither-disable-next-line reentrancy-no-eth
-                totalDeposits -= netAmount;
-            }
-            
+            totalDeposits -= netAmount;
             unchecked { ++i; }
         }
         
-
+        // Final transfers and events
         for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 netAmount = usdcReceivedAmounts[i];

@@ -322,7 +322,10 @@ contract QTIToken is
         uint256 balanceBefore = balanceOf(address(this));
         _;
         uint256 balanceAfter = balanceOf(address(this));
-        FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0);
+        require(
+            FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0),
+            "Flash loan attack detected"
+        );
     }
 
     // =============================================================================

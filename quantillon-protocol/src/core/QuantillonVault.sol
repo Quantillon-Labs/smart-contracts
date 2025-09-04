@@ -224,7 +224,10 @@ contract QuantillonVault is
         uint256 balanceBefore = usdc.balanceOf(address(this));
         _;
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0);
+        require(
+            FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0),
+            "Flash loan attack detected"
+        );
     }
 
     // =============================================================================

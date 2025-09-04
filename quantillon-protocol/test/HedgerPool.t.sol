@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
+import {TimeProvider} from "../src/libraries/TimeProvider.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
@@ -110,7 +111,9 @@ contract HedgerPoolTestSuite is Test {
      */
     function setUp() public {
         // Deploy implementation
-        implementation = new HedgerPool();
+        TimeProvider timeProvider = new TimeProvider();
+        timeProvider.initialize(admin, admin, admin);
+        implementation = new HedgerPool(timeProvider);
         
         // Deploy proxy with initialization
         bytes memory initData = abi.encodeWithSelector(
@@ -226,7 +229,9 @@ contract HedgerPoolTestSuite is Test {
      * @dev Verifies that initialization fails with invalid parameters
      */
     function test_Initialization_ZeroAddresses_Revert() public {
-        HedgerPool newImplementation = new HedgerPool();
+        TimeProvider timeProvider2 = new TimeProvider();
+        timeProvider2.initialize(admin, admin, admin);
+        HedgerPool newImplementation = new HedgerPool(timeProvider2);
         
         // Test with zero admin
         bytes memory initData1 = abi.encodeWithSelector(
@@ -243,7 +248,9 @@ contract HedgerPoolTestSuite is Test {
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero USDC
-        HedgerPool newImplementation2 = new HedgerPool();
+        TimeProvider timeProvider3 = new TimeProvider();
+        timeProvider3.initialize(admin, admin, admin);
+        HedgerPool newImplementation2 = new HedgerPool(timeProvider3);
         bytes memory initData2 = abi.encodeWithSelector(
             HedgerPool.initialize.selector,
             admin,
@@ -258,7 +265,9 @@ contract HedgerPoolTestSuite is Test {
         new ERC1967Proxy(address(newImplementation2), initData2);
         
         // Test with zero oracle
-        HedgerPool newImplementation3 = new HedgerPool();
+        TimeProvider timeProvider4 = new TimeProvider();
+        timeProvider4.initialize(admin, admin, admin);
+        HedgerPool newImplementation3 = new HedgerPool(timeProvider4);
         bytes memory initData3 = abi.encodeWithSelector(
             HedgerPool.initialize.selector,
             admin,
@@ -273,7 +282,9 @@ contract HedgerPoolTestSuite is Test {
         new ERC1967Proxy(address(newImplementation3), initData3);
         
         // Test with zero YieldShift
-        HedgerPool newImplementation4 = new HedgerPool();
+        TimeProvider timeProvider5 = new TimeProvider();
+        timeProvider5.initialize(admin, admin, admin);
+        HedgerPool newImplementation4 = new HedgerPool(timeProvider5);
         bytes memory initData4 = abi.encodeWithSelector(
             HedgerPool.initialize.selector,
             admin,

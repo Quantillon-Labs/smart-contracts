@@ -22,6 +22,7 @@ import "../libraries/TokenLibrary.sol";
 
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/FlashLoanProtectionLibrary.sol";
+import "../libraries/TimeProvider.sol";
 
 /**
  * @title QTIToken
@@ -246,6 +247,10 @@ contract QTIToken is
     /// @notice Whether a proposal has been scheduled for execution
     mapping(uint256 => bool) public proposalScheduled;
 
+    /// @notice TimeProvider contract for centralized time management
+    /// @dev Used to replace direct block.timestamp usage for testability and consistency
+    TimeProvider public immutable timeProvider;
+
     // =============================================================================
     // EVENTS
     // =============================================================================
@@ -332,7 +337,9 @@ contract QTIToken is
     // INITIALIZER
     // =============================================================================
 
-    constructor() {
+    constructor(TimeProvider _timeProvider) {
+        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
+        timeProvider = _timeProvider;
         _disableInitializers();
     }
 
@@ -365,7 +372,7 @@ contract QTIToken is
         
 
         
-        decentralizationStartTime = block.timestamp;
+        decentralizationStartTime = timeProvider.currentTime();
         decentralizationDuration = 2 * 365 days; // 2 years to full decentralization
         currentDecentralizationLevel = 0; // Start with 0% decentralization
     }
@@ -396,13 +403,13 @@ contract QTIToken is
         uint256 oldVotingPower = lockInfo.votingPower;
         
         // Calculate new unlock time with overflow check
-        // SECURITY: Using block.timestamp for unlock time calculation (acceptable for time-based logic)
-        uint256 newUnlockTime = block.timestamp + lockTime;
+        // Time-based logic using TimeProvider for consistent and testable timing
+        uint256 newUnlockTime = timeProvider.currentTime() + lockTime;
         if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
         
         // If already locked, extend the lock time
-        // SECURITY: Using block.timestamp for lock expiration check (acceptable for time-based logic)
-        if (lockInfo.unlockTime > block.timestamp) {
+        // Time-based logic using TimeProvider for consistent and testable timing
+        if (lockInfo.unlockTime > timeProvider.currentTime()) {
             newUnlockTime = lockInfo.unlockTime + lockTime;
             if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
         }
@@ -442,8 +449,8 @@ contract QTIToken is
      */
     function unlock() external whenNotPaused returns (uint256 amount) {
         LockInfo storage lockInfo = locks[msg.sender];
-        // SECURITY: Using block.timestamp for lock expiration check (acceptable for time-based logic)
-        if (lockInfo.unlockTime > block.timestamp) revert ErrorLibrary.LockNotExpired();
+        // Time-based logic using TimeProvider for consistent and testable timing
+        if (lockInfo.unlockTime > timeProvider.currentTime()) revert ErrorLibrary.LockNotExpired();
         if (lockInfo.amount == 0) revert ErrorLibrary.NothingToUnlock();
 
 
@@ -538,7 +545,7 @@ contract QTIToken is
         uint256[] memory veQTIAmounts,
         LockInfo storage lockInfo
     ) internal returns (uint256 totalNewVotingPower, uint256 totalNewAmount) {
-        uint256 currentTimestamp = block.timestamp;
+        uint256 currentTimestamp = timeProvider.currentTime();
         uint256 lockInfoUnlockTime = lockInfo.unlockTime;
         totalNewAmount = uint256(lockInfo.amount);
         
@@ -643,8 +650,8 @@ contract QTIToken is
         
         amounts = new uint256[](users.length);
         
-        // SECURITY: Using block.timestamp for lock expiration check (acceptable for time-based logic)
-        uint256 currentTimestamp = block.timestamp;
+        // Time-based logic using TimeProvider for consistent and testable timing
+        uint256 currentTimestamp = timeProvider.currentTime();
         uint256 length = users.length;
         
         // Accumulate totals to update once outside the loop
@@ -727,7 +734,7 @@ contract QTIToken is
         LockInfo storage lockInfo = locks[user];
         
         // If no lock or lock has expired, return 0
-        if (lockInfo.unlockTime <= block.timestamp || lockInfo.amount == 0) {
+        if (lockInfo.unlockTime <= timeProvider.currentTime() || lockInfo.amount == 0) {
             return 0;
         }
         
@@ -738,7 +745,7 @@ contract QTIToken is
         
         // Calculate remaining time - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
-            uint256 remainingTime = lockInfo.unlockTime - block.timestamp;
+            uint256 remainingTime = lockInfo.unlockTime - timeProvider.currentTime();
             uint256 originalLockTime = lockInfo.lockTime;
             
             // Voting power decreases linearly to zero
@@ -814,8 +821,8 @@ contract QTIToken is
         
         Proposal storage proposal = proposals[proposalId];
         proposal.proposer = msg.sender;
-        proposal.startTime = block.timestamp;
-        proposal.endTime = block.timestamp + votingPeriod;
+        proposal.startTime = timeProvider.currentTime();
+        proposal.endTime = timeProvider.currentTime() + votingPeriod;
         proposal.description = description;
         proposal.data = data;
 
@@ -834,8 +841,8 @@ contract QTIToken is
      */
     function vote(uint256 proposalId, bool support) external whenNotPaused {
         Proposal storage proposal = proposals[proposalId];
-        if (block.timestamp < proposal.startTime) revert ErrorLibrary.VotingNotStarted();
-        if (block.timestamp >= proposal.endTime) revert ErrorLibrary.VotingEnded();
+        if (timeProvider.currentTime() < proposal.startTime) revert ErrorLibrary.VotingNotStarted();
+        if (timeProvider.currentTime() >= proposal.endTime) revert ErrorLibrary.VotingEnded();
         if (proposal.receipts[msg.sender].hasVoted) revert ErrorLibrary.AlreadyVoted();
 
         // Update voting power to current time before voting
@@ -871,7 +878,7 @@ contract QTIToken is
         if (votingPower == 0) revert ErrorLibrary.NoVotingPower();
         
 
-        uint256 currentTimestamp = block.timestamp;
+        uint256 currentTimestamp = timeProvider.currentTime();
         address sender = msg.sender;
         
         // Process each vote
@@ -906,7 +913,7 @@ contract QTIToken is
      */
     function executeProposal(uint256 proposalId) external nonReentrant {
         Proposal storage proposal = proposals[proposalId];
-        if (block.timestamp < proposal.endTime) revert ErrorLibrary.VotingNotEnded();
+        if (timeProvider.currentTime() < proposal.endTime) revert ErrorLibrary.VotingNotEnded();
         if (proposal.executed) revert ErrorLibrary.ProposalAlreadyExecuted();
         if (proposal.canceled) revert ErrorLibrary.ProposalCanceled();
         if (proposal.forVotes <= proposal.againstVotes) revert ErrorLibrary.ProposalFailed();
@@ -950,7 +957,7 @@ contract QTIToken is
     ) {
         scheduled = proposalScheduled[proposalId];
         executionTime = proposalExecutionTime[proposalId];
-        canExecute = scheduled && block.timestamp >= executionTime;
+        canExecute = scheduled && timeProvider.currentTime() >= executionTime;
     }
 
     /**
@@ -1075,7 +1082,7 @@ contract QTIToken is
 
      */
     function updateDecentralizationLevel() external onlyRole(GOVERNANCE_ROLE) {
-        uint256 timeElapsed = block.timestamp - decentralizationStartTime;
+        uint256 timeElapsed = timeProvider.currentTime() - decentralizationStartTime;
         
 
         if (timeElapsed > MAX_TIME_ELAPSED) {
@@ -1115,12 +1122,12 @@ contract QTIToken is
         LockInfo storage lockInfo = locks[user];
         
         // If no lock or lock has expired, voting power is 0
-        if (lockInfo.unlockTime <= block.timestamp || lockInfo.amount == 0) {
+        if (lockInfo.unlockTime <= timeProvider.currentTime() || lockInfo.amount == 0) {
             newVotingPower = 0;
         } else {
             // Calculate current voting power with linear decay - OPTIMIZED: Use unchecked for safe arithmetic
             unchecked {
-                uint256 remainingTime = lockInfo.unlockTime - block.timestamp;
+                uint256 remainingTime = lockInfo.unlockTime - timeProvider.currentTime();
                 uint256 originalLockTime = lockInfo.lockTime;
                 
                 if (remainingTime >= originalLockTime) {

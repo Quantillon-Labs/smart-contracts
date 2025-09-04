@@ -26,6 +26,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Treasury recovery library for secure ETH recovery
 import "../libraries/TreasuryRecoveryLibrary.sol";
+import "../libraries/TimeProvider.sol";
 
 /**
  * @title ChainlinkOracle
@@ -164,8 +165,14 @@ contract ChainlinkOracle is
     // INITIALIZER - Initial contract configuration
     // =============================================================================
 
+    /// @notice TimeProvider contract for centralized time management
+    /// @dev Used to replace direct block.timestamp usage for testability and consistency
+    TimeProvider public immutable timeProvider;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(TimeProvider _timeProvider) {
+        if (address(_timeProvider) == address(0)) revert("Zero address");
+        timeProvider = _timeProvider;
         _disableInitializers();
     }
 
@@ -266,12 +273,12 @@ contract ChainlinkOracle is
      */
     function _validateTimestamp(uint256 reportedTime) internal view returns (bool) {
         // Reject if reported time is in the future
-        if (reportedTime > block.timestamp) return false;
+        if (reportedTime > timeProvider.currentTime()) return false;
         
         // Check if the timestamp is too old (beyond normal staleness + drift)
         // Use safe arithmetic to prevent underflow
         uint256 maxAllowedAge = MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT;
-        if (block.timestamp > reportedTime + maxAllowedAge) return false;
+        if (timeProvider.currentTime() > reportedTime + maxAllowedAge) return false;
         
         return true;
     }
@@ -347,11 +354,11 @@ contract ChainlinkOracle is
 
         // Update internal values
         lastValidEurUsdPrice = eurUsdPrice;
-        lastPriceUpdateTime = block.timestamp;
+        lastPriceUpdateTime = timeProvider.currentTime();
         lastPriceUpdateBlock = block.number;
 
         // Emit update event
-        emit PriceUpdated(eurUsdPrice, usdcUsdPrice, block.timestamp);
+        emit PriceUpdated(eurUsdPrice, usdcUsdPrice, timeProvider.currentTime());
     }
 
     /**

@@ -20,6 +20,7 @@ import "../libraries/ErrorLibrary.sol";
 import "./SecureUpgradeable.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/FlashLoanProtectionLibrary.sol";
+import "../libraries/TimeProvider.sol";
 
 /**
  * @title stQEUROToken
@@ -135,6 +136,10 @@ contract stQEUROToken is
     /// @dev Receives yield fees for protocol sustainability
     /// @dev Should be a secure multisig or DAO treasury
     address public treasury;
+
+    /// @notice TimeProvider contract for centralized time management
+    /// @dev Used to replace direct block.timestamp usage for testability and consistency
+    TimeProvider public immutable timeProvider;
     
     // Yield and exchange rate variables
     /// @notice Exchange rate between QEURO and stQEURO (18 decimals)
@@ -259,7 +264,9 @@ contract stQEUROToken is
     // =============================================================================
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(TimeProvider _timeProvider) {
+        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
+        timeProvider = _timeProvider;
         // Disables initialization on the implementation for security
         _disableInitializers();
     }
@@ -296,7 +303,7 @@ contract stQEUROToken is
 
         // Initialize exchange rate at 1:1
         exchangeRate = 1e18;
-        lastUpdateTime = block.timestamp;
+        lastUpdateTime = timeProvider.currentTime();
         
         // Initial parameters
         yieldFee = 1000; // 10% fee on yield
@@ -545,12 +552,12 @@ contract stQEUROToken is
         // Update exchange rate based on yield
         uint256 oldRate = exchangeRate;
         exchangeRate = exchangeRate + (netYield.mulDiv(1e18, totalSupply()));
-        lastUpdateTime = block.timestamp;
+        lastUpdateTime = timeProvider.currentTime();
 
         // Update totals - Use checked arithmetic for critical state
         totalYieldEarned = totalYieldEarned + netYield;
 
-        emit ExchangeRateUpdated(oldRate, exchangeRate, block.timestamp);
+        emit ExchangeRateUpdated(oldRate, exchangeRate, timeProvider.currentTime());
         emit YieldDistributed(netYield, exchangeRate);
     }
 
@@ -643,7 +650,7 @@ contract stQEUROToken is
         if (newRate != exchangeRate) {
             uint256 oldRate = exchangeRate;
             exchangeRate = newRate;
-            lastUpdateTime = block.timestamp;
+            lastUpdateTime = timeProvider.currentTime();
             
             emit ExchangeRateUpdated(oldRate, newRate, block.timestamp);
         }
@@ -662,7 +669,7 @@ contract stQEUROToken is
         uint256 pendingYield = yieldShift.getUserPendingYield(address(this));
         
         if (pendingYield >= minYieldThreshold || 
-            block.timestamp >= lastUpdateTime + maxUpdateFrequency) {
+            timeProvider.currentTime() >= lastUpdateTime + maxUpdateFrequency) {
             
             // Add bounds checking
             uint256 totalValue = totalUnderlying + pendingYield;
@@ -799,4 +806,5 @@ contract stQEUROToken is
         
         return (virtualShares, virtualAssets, effectiveSupply, effectiveAssets);
     }
+
 }

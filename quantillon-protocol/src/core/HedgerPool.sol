@@ -17,6 +17,7 @@ import "../libraries/ValidationLibrary.sol";
 import "./SecureUpgradeable.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/FlashLoanProtectionLibrary.sol";
+import "../libraries/TimeProvider.sol";
 
 /**
  * @title HedgerPool
@@ -112,6 +113,10 @@ contract HedgerPool is
     IChainlinkOracle public oracle;
     IYieldShift public yieldShift;
     address public treasury;
+
+    /// @notice TimeProvider contract for centralized time management
+    /// @dev Used to replace direct block.timestamp usage for testability and consistency
+    TimeProvider public immutable timeProvider;
 
     uint256 public minMarginRatio;
     uint256 public liquidationThreshold;
@@ -280,7 +285,9 @@ contract HedgerPool is
         );
     }
 
-    constructor() {
+    constructor(TimeProvider _timeProvider) {
+        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
+        timeProvider = _timeProvider;
         _disableInitializers();
     }
 
@@ -355,7 +362,7 @@ contract HedgerPool is
         require(leverage <= MAX_LEVERAGE, "Leverage exceeds maximum");
         
         // SECURITY: Validate timestamp to prevent overflow in uint32 (max ~136 years from 1970)
-        require(block.timestamp <= type(uint32).max, "Timestamp overflow");
+        require(timeProvider.currentTime() <= type(uint32).max, "Timestamp overflow");
 
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
 
@@ -365,8 +372,8 @@ contract HedgerPool is
         position.hedger = msg.sender;
         position.positionSize = uint96(positionSize);      // Safe cast after validation
         position.margin = uint96(netMargin);               // Safe cast after validation
-        position.entryTime = uint32(block.timestamp);  // Safe timestamp cast - uint32 max is ~136 years
-        position.lastUpdateTime = uint32(block.timestamp); // Safe timestamp cast - uint32 max is ~136 years
+        position.entryTime = uint32(timeProvider.currentTime());  // Safe timestamp cast - uint32 max is ~136 years
+        position.lastUpdateTime = uint32(timeProvider.currentTime()); // Safe timestamp cast - uint32 max is ~136 years
         position.leverage = uint16(leverage);              // Safe cast after validation
         position.entryPrice = uint96(eurUsdPrice);         // Safe cast after validation
         position.unrealizedPnL = 0;
@@ -447,7 +454,7 @@ contract HedgerPool is
             usdc.safeTransfer(msg.sender, netPayout);
         }
 
-        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, block.timestamp);
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, timeProvider.currentTime());
     }
 
     function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPositions) 
@@ -536,7 +543,7 @@ contract HedgerPool is
             usdc.safeTransfer(msg.sender, netPayout);
         }
 
-        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, block.timestamp);
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, timeProvider.currentTime());
     }
     
     /**
@@ -589,7 +596,7 @@ contract HedgerPool is
             usdc.safeTransfer(msg.sender, netPayout);
         }
 
-        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, block.timestamp);
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, timeProvider.currentTime());
     }
 
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {
@@ -781,8 +788,8 @@ contract HedgerPool is
         if (totalRewards > 0) {
             hedgerInfo.pendingRewards = 0;
             // SECURITY: Safe timestamp cast to prevent overflow
-            require(block.timestamp <= type(uint64).max, "Timestamp overflow");
-            hedgerInfo.lastRewardClaim = uint64(block.timestamp);
+            require(timeProvider.currentTime() <= type(uint64).max, "Timestamp overflow");
+            hedgerInfo.lastRewardClaim = uint64(timeProvider.currentTime());
             
             if (yieldShiftRewards > 0) {
                 uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);
@@ -1162,4 +1169,5 @@ contract HedgerPool is
             _maxPendingRewards
         );
     }
+
 }

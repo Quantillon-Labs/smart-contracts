@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import "../libraries/TimeProvider.sol";
 
 /**
  * @title TimelockUpgradeable
@@ -61,6 +62,10 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     
     /// @notice Whether emergency mode is active
     bool public emergencyMode;
+
+    /// @notice TimeProvider contract for centralized time management
+    /// @dev Used to replace direct block.timestamp usage for testability and consistency
+    TimeProvider public immutable timeProvider;
     
     // ============ Structs ============
     
@@ -154,7 +159,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         uint256 delay = customDelay >= UPGRADE_DELAY ? customDelay : UPGRADE_DELAY;
         require(delay <= MAX_UPGRADE_DELAY, "TimelockUpgradeable: Delay too long");
         
-        uint256 proposedAt = block.timestamp;
+        uint256 proposedAt = timeProvider.currentTime();
         uint256 executableAt = proposedAt + delay;
         
         pendingUpgrades[newImplementation] = PendingUpgrade({
@@ -204,7 +209,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     function executeUpgrade(address implementation) external onlyRole(UPGRADE_EXECUTOR_ROLE) {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
         require(upgrade.implementation != address(0), "TimelockUpgradeable: No pending upgrade");
-        require(block.timestamp >= upgrade.executableAt, "TimelockUpgradeable: Timelock not expired");
+        require(timeProvider.currentTime() >= upgrade.executableAt, "TimelockUpgradeable: Timelock not expired");
         require(
             upgradeApprovalCount[implementation] >= MIN_MULTISIG_APPROVALS,
             "TimelockUpgradeable: Insufficient approvals"
@@ -216,7 +221,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         // Clear all approvals for this implementation
         _clearUpgradeApprovals(implementation);
         
-        emit UpgradeExecuted(implementation, msg.sender, block.timestamp);
+        emit UpgradeExecuted(implementation, msg.sender, timeProvider.currentTime());
     }
     
     /**
@@ -256,15 +261,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         
         pendingUpgrades[newImplementation] = PendingUpgrade({
             implementation: newImplementation,
-            proposedAt: block.timestamp,
-            executableAt: block.timestamp, // Immediate execution
+            proposedAt: timeProvider.currentTime(),
+            executableAt: timeProvider.currentTime(), // Immediate execution
             description: description,
             isEmergency: true,
             proposer: msg.sender
         });
         
-        emit UpgradeProposed(newImplementation, block.timestamp, block.timestamp, description, msg.sender);
-        emit UpgradeExecuted(newImplementation, msg.sender, block.timestamp);
+        emit UpgradeProposed(newImplementation, timeProvider.currentTime(), timeProvider.currentTime(), description, msg.sender);
+        emit UpgradeExecuted(newImplementation, msg.sender, timeProvider.currentTime());
     }
     
     // ============ Multi-sig Management ============
@@ -334,7 +339,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         if (upgrade.implementation == address(0)) return false;
         
         return (
-            block.timestamp >= upgrade.executableAt &&
+            timeProvider.currentTime() >= upgrade.executableAt &&
             upgradeApprovalCount[implementation] >= MIN_MULTISIG_APPROVALS
         );
     }
@@ -406,5 +411,13 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
+    }
+
+    // ============ Constructor ============
+
+    constructor(TimeProvider _timeProvider) {
+        if (address(_timeProvider) == address(0)) revert("Zero address");
+        timeProvider = _timeProvider;
+        _disableInitializers();
     }
 }

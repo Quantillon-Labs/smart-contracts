@@ -17,6 +17,7 @@ import "../../libraries/ErrorLibrary.sol";
 import "../../libraries/AccessControlLibrary.sol";
 import "../../libraries/ValidationLibrary.sol";
 import "../../libraries/TreasuryRecoveryLibrary.sol";
+import "../../libraries/TimeProvider.sol";
 import "../SecureUpgradeable.sol";
 
 /**
@@ -113,6 +114,10 @@ contract YieldShift is
     IAaveVault public aaveVault;
     IstQEURO public stQEURO;
 
+    /// @notice TimeProvider contract for centralized time management
+    /// @dev Used to replace direct block.timestamp usage for testability and consistency
+    TimeProvider public immutable timeProvider;
+
     uint256 public baseYieldShift;
     uint256 public maxYieldShift;
     uint256 public adjustmentSpeed;
@@ -195,7 +200,9 @@ contract YieldShift is
     event YieldSourceAuthorized(address indexed source, bytes32 indexed yieldType);
     event YieldSourceRevoked(address indexed source);
 
-    constructor() {
+    constructor(TimeProvider _timeProvider) {
+        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
+        timeProvider = _timeProvider;
         _disableInitializers();
     }
 
@@ -240,7 +247,7 @@ contract YieldShift is
         adjustmentSpeed = 100;
         targetPoolRatio = 10000;
         currentYieldShift = baseYieldShift;
-        lastUpdateTime = block.timestamp;
+        lastUpdateTime = timeProvider.currentTime();
 
         // Initialize arrays to prevent uninitialized state variable warnings
         _recordPoolSnapshot();
@@ -248,7 +255,7 @@ contract YieldShift is
         // Initialize yieldShiftHistory with initial snapshot
         yieldShiftHistory.push(YieldShiftSnapshot({
             yieldShift: uint128(currentYieldShift),
-            timestamp: uint64(block.timestamp)
+            timestamp: uint64(timeProvider.currentTime())
         }));
 
         yieldSourceNames.push(keccak256("aave"));
@@ -276,7 +283,7 @@ contract YieldShift is
         uint256 newYieldShift = _applyGradualAdjustment(optimalShift);
         
         currentYieldShift = newYieldShift;
-        lastUpdateTime = block.timestamp;
+        lastUpdateTime = timeProvider.currentTime();
         
         // Record snapshot using eligible pool sizes to prevent future manipulation
         _recordPoolSnapshotWithEligibleSizes(eligibleUserPoolSize, eligibleHedgerPoolSize);
@@ -285,7 +292,7 @@ contract YieldShift is
             newYieldShift,
             _calculateUserAllocation(),
             _calculateHedgerAllocation(),
-            block.timestamp
+            timeProvider.currentTime()
         );
     }
 
@@ -327,7 +334,7 @@ contract YieldShift is
             stQEURO.distributeYield(userAllocation);
         }
         
-        emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), block.timestamp);
+        emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), timeProvider.currentTime());
     }
 
 
@@ -346,20 +353,20 @@ contract YieldShift is
         
         if (yieldAmount > 0) {
             // Check holding period
-            if (block.timestamp < lastDepositTime[user] + MIN_HOLDING_PERIOD) {
+            if (timeProvider.currentTime() < lastDepositTime[user] + MIN_HOLDING_PERIOD) {
                 revert ErrorLibrary.HoldingPeriodNotMet();
             }
             
             if (userYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
             
             userPendingYield[user] = 0;
-            userLastClaim[user] = block.timestamp;
+            userLastClaim[user] = timeProvider.currentTime();
             userYieldPool -= yieldAmount;
             totalYieldDistributed += yieldAmount;
             
             usdc.safeTransfer(user, yieldAmount);
             
-            emit UserYieldClaimed(user, yieldAmount, block.timestamp);
+            emit UserYieldClaimed(user, yieldAmount, timeProvider.currentTime());
         }
     }
 
@@ -378,13 +385,13 @@ contract YieldShift is
             if (hedgerYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
             
             hedgerPendingYield[hedger] = 0;
-            hedgerLastClaim[hedger] = block.timestamp;
+            hedgerLastClaim[hedger] = timeProvider.currentTime();
             hedgerYieldPool -= yieldAmount;
             totalYieldDistributed += yieldAmount;
             
             usdc.safeTransfer(hedger, yieldAmount);
             
-            emit HedgerYieldClaimed(hedger, yieldAmount, block.timestamp);
+            emit HedgerYieldClaimed(hedger, yieldAmount, timeProvider.currentTime());
         }
     }
 
@@ -510,7 +517,7 @@ contract YieldShift is
         uint256 baseDiscount = 8000; // 80%
         
         // Adjust based on time since last major deposit activity
-        uint256 timeSinceLastUpdate = block.timestamp - lastUpdateTime;
+        uint256 timeSinceLastUpdate = timeProvider.currentTime() - lastUpdateTime;
         
         if (timeSinceLastUpdate < MIN_HOLDING_PERIOD) {
             // Recent activity - apply stricter discount
@@ -542,7 +549,7 @@ contract YieldShift is
         if (msg.sender != address(userPool) && msg.sender != address(hedgerPool)) {
             revert ErrorLibrary.NotAuthorized();
         }
-        lastDepositTime[user] = block.timestamp;
+        lastDepositTime[user] = timeProvider.currentTime();
     }
 
     function getCurrentYieldShift() external view returns (uint256) {
@@ -629,7 +636,7 @@ contract YieldShift is
         minHoldingPeriod = MIN_HOLDING_PERIOD;
         baseDiscount = 8000; // Current hardcoded base discount
         currentDiscount = _calculateHoldingPeriodDiscount();
-        timeSinceLastUpdate = block.timestamp - lastUpdateTime;
+        timeSinceLastUpdate = timeProvider.currentTime() - lastUpdateTime;
         
         return (minHoldingPeriod, baseDiscount, currentDiscount, timeSinceLastUpdate);
     }
@@ -645,8 +652,8 @@ contract YieldShift is
             return (currentYieldShift, currentYieldShift, currentYieldShift, 0);
         }
         
-        uint256 cutoffTime = block.timestamp > period ? 
-            block.timestamp - period : 0;
+        uint256 cutoffTime = timeProvider.currentTime() > period ? 
+            timeProvider.currentTime() - period : 0;
         
         uint256[] memory validShifts = new uint256[](length);
         uint256 validCount = 0;
@@ -840,7 +847,7 @@ contract YieldShift is
     }
 
     function checkAndUpdateYieldDistribution() external {
-        uint256 timeSinceUpdate = block.timestamp - lastUpdateTime;
+        uint256 timeSinceUpdate = timeProvider.currentTime() - lastUpdateTime;
         
         if (timeSinceUpdate > MAX_TIME_ELAPSED) {
             timeSinceUpdate = MAX_TIME_ELAPSED;
@@ -875,8 +882,8 @@ contract YieldShift is
             return 0;
         }
         
-        uint256 cutoffTime = block.timestamp > period ? 
-            block.timestamp - period : 0;
+        uint256 cutoffTime = timeProvider.currentTime() > period ? 
+            timeProvider.currentTime() - period : 0;
         
         uint256 totalWeightedValue = 0;
         uint256 totalWeight = 0;
@@ -946,7 +953,7 @@ contract YieldShift is
         }
         
         poolHistory.push(PoolSnapshot({
-            timestamp: uint64(block.timestamp),
+            timestamp: uint64(timeProvider.currentTime()),
             userPoolSize: isUserPool ? uint128(poolSize) : 0,
             hedgerPoolSize: isUserPool ? 0 : uint128(poolSize)
         }));
@@ -993,4 +1000,5 @@ contract YieldShift is
             _maxTimeFactor
         );
     }
+
 }

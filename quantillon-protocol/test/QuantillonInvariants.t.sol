@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
+import {TimeProvider} from "../src/libraries/TimeProvider.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {UserPool} from "../src/core/UserPool.sol";
@@ -96,7 +97,9 @@ contract QuantillonInvariants is Test {
     function _deployEssentialContracts() internal {
         // Deploy only the most essential contracts for basic invariant testing
         // Deploy QTIToken
-        QTIToken qtiImplementation = new QTIToken();
+        TimeProvider timeProvider = new TimeProvider();
+        timeProvider.initialize(admin, admin, admin);
+        QTIToken qtiImplementation = new QTIToken(timeProvider);
         bytes memory qtiInitData = abi.encodeWithSelector(
             QTIToken.initialize.selector,
             admin,

@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
+import {TimeProvider} from "../src/libraries/TimeProvider.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
@@ -210,7 +211,9 @@ contract YieldShiftTestSuite is Test {
         stQEURO = new MockStQEURO();
         
         // Deploy implementation
-        implementation = new YieldShift();
+        TimeProvider timeProvider = new TimeProvider();
+        timeProvider.initialize(admin, admin, admin);
+        implementation = new YieldShift(timeProvider);
         
         // Deploy proxy
         bytes memory initData = abi.encodeWithSelector(
@@ -317,7 +320,9 @@ contract YieldShiftTestSuite is Test {
      * @dev Verifies zero address validation
      */
     function test_Initialization_ZeroAdmin_Revert() public {
-        YieldShift newImplementation = new YieldShift();
+        TimeProvider timeProvider3 = new TimeProvider();
+        timeProvider3.initialize(admin, admin, admin);
+        YieldShift newImplementation = new YieldShift(timeProvider3);
         
         bytes memory initData = abi.encodeWithSelector(
             YieldShift.initialize.selector,
@@ -340,7 +345,9 @@ contract YieldShiftTestSuite is Test {
      * @dev Verifies zero address validation
      */
     function test_Initialization_ZeroUsdc_Revert() public {
-        YieldShift newImplementation = new YieldShift();
+        TimeProvider timeProvider3 = new TimeProvider();
+        timeProvider3.initialize(admin, admin, admin);
+        YieldShift newImplementation = new YieldShift(timeProvider3);
         
         bytes memory initData = abi.encodeWithSelector(
             YieldShift.initialize.selector,

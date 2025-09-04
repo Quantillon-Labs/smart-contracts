@@ -363,8 +363,11 @@ contract AaveVault is
         uint256 protocolFee = availableYield.mulDiv(yieldFee, 10000);
         uint256 netYield = availableYield - protocolFee;
         
-        // EFFECTS: Update harvest time BEFORE external call (CEI Pattern)
+        // EFFECTS: Update state BEFORE external call (CEI Pattern)
         lastHarvestTime = block.timestamp;
+        // Use conservative estimates for state updates before external call
+        totalYieldHarvested += availableYield;
+        totalFeesCollected += protocolFee;
         
         uint256 usdcBefore = usdc.balanceOf(address(this));
 
@@ -388,10 +391,6 @@ contract AaveVault is
         } catch {
             revert("Aave yield harvest failed");
         }
-        
-        // Update state with actual amounts received
-        totalYieldHarvested += actualYieldReceived;
-        totalFeesCollected += protocolFee;
         
 
         if (netYield > 0) {

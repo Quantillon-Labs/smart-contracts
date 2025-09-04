@@ -462,7 +462,6 @@ contract HedgerPool is
         
         pnls = new int256[](positionIds.length);
         
-
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         ValidationLibrary.validateOraclePrice(isValid);
         
@@ -470,9 +469,25 @@ contract HedgerPool is
         uint256 exitFee_ = exitFee;
         HedgerInfo storage hedger = hedgers[msg.sender];
         
+        // Accumulate totals for batch update
+        uint256 totalMarginToDeduct = 0;
+        uint256 totalExposureToDeduct = 0;
+        
         for (uint i = 0; i < positionIds.length; i++) {
-            pnls[i] = _closeSinglePosition(positionIds[i], currentPrice, hedger, exitFee_);
+            (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted) = _closeSinglePositionBatch(
+                positionIds[i], 
+                currentPrice, 
+                hedger, 
+                exitFee_
+            );
+            pnls[i] = pnl;
+            totalMarginToDeduct += marginDeducted;
+            totalExposureToDeduct += exposureDeducted;
         }
+        
+        // Update global totals once outside the loop
+        totalMargin -= totalMarginToDeduct;
+        totalExposure -= totalExposureToDeduct;
     }
 
     /**
@@ -510,6 +525,59 @@ contract HedgerPool is
 
         totalMargin -= positionMargin;
         totalExposure -= positionSize;
+
+        // Update position state
+        position.isActive = false;
+        _removePositionFromArrays(msg.sender, positionId);
+        
+        activePositionCount[msg.sender]--;
+
+        if (netPayout > 0) {
+            usdc.safeTransfer(msg.sender, netPayout);
+        }
+
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, block.timestamp);
+    }
+    
+    /**
+     * @notice Close a single hedge position for batch operations (doesn't update global totals)
+     * @param positionId The ID of the position to close
+     * @param currentPrice The current EUR/USD price
+     * @param hedger The hedger info storage reference
+     * @param exitFee_ The exit fee percentage
+     * @return pnl The profit/loss for the position
+     * @return marginDeducted The margin amount that should be deducted from global totals
+     * @return exposureDeducted The exposure amount that should be deducted from global totals
+     */
+    function _closeSinglePositionBatch(
+        uint256 positionId, 
+        uint256 currentPrice, 
+        HedgerInfo storage hedger,
+        uint256 exitFee_
+    ) internal returns (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted) {
+
+        HedgePosition storage position = positions[positionId];
+        uint128 positionMargin = position.margin;
+        uint128 positionSize = position.positionSize;
+        address positionHedger = position.hedger;
+        bool positionIsActive = position.isActive;
+        
+        ValidationLibrary.validatePositionOwner(positionHedger, msg.sender);
+        ValidationLibrary.validatePositionActive(positionIsActive);
+
+        pnl = _calculatePnL(position, currentPrice);
+
+        uint256 grossPayout = uint256(int256(uint256(positionMargin)) + pnl);
+        uint256 exitFeeAmount = grossPayout.percentageOf(exitFee_);
+        uint256 netPayout = grossPayout - exitFeeAmount;
+
+        // Update hedger totals
+        hedger.totalMargin -= positionMargin;
+        hedger.totalExposure -= positionSize;
+
+        // Return values for global total updates (done outside loop)
+        marginDeducted = positionMargin;
+        exposureDeducted = positionSize;
 
         // Update position state
         position.isActive = false;

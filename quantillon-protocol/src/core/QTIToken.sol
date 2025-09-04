@@ -479,17 +479,45 @@ contract QTIToken is
         flashLoanProtection
         returns (uint256[] memory veQTIAmounts) 
     {
-        if (amounts.length != lockTimes.length) revert ErrorLibrary.ArrayLengthMismatch();
-        if (amounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        _validateBatchLockInputs(amounts, lockTimes);
+        
+        uint256 totalAmount = _validateAndCalculateTotalAmount(amounts, lockTimes);
+        if (balanceOf(msg.sender) < totalAmount) revert ErrorLibrary.InsufficientBalance();
         
         veQTIAmounts = new uint256[](amounts.length);
-        uint256 totalAmount = 0;
+        LockInfo storage lockInfo = locks[msg.sender];
+        uint256 oldVotingPower = lockInfo.votingPower;
         
-        // GAS OPTIMIZATION: Cache storage reads
+        (uint256 totalNewVotingPower, uint256 totalNewAmount) = _processBatchLocks(
+            amounts, 
+            lockTimes, 
+            veQTIAmounts, 
+            lockInfo
+        );
+        
+        _updateGlobalTotalsAndTransfer(totalAmount, oldVotingPower, totalNewVotingPower);
+        
+        emit VotingPowerUpdated(msg.sender, oldVotingPower, totalNewVotingPower);
+    }
+    
+    /**
+     * @dev Validates basic batch lock inputs
+     */
+    function _validateBatchLockInputs(uint256[] calldata amounts, uint256[] calldata lockTimes) internal pure {
+        if (amounts.length != lockTimes.length) revert ErrorLibrary.ArrayLengthMismatch();
+        if (amounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+    }
+    
+    /**
+     * @dev Validates all amounts and lock times, returns total amount
+     */
+    function _validateAndCalculateTotalAmount(
+        uint256[] calldata amounts, 
+        uint256[] calldata lockTimes
+    ) internal pure returns (uint256 totalAmount) {
         uint256 minLockTime = MIN_LOCK_TIME;
         uint256 maxLockTime = MAX_LOCK_TIME;
         
-        // Pre-validate all inputs
         for (uint256 i = 0; i < amounts.length; i++) {
             ValidationLibrary.validatePositiveAmount(amounts[i]);
             if (lockTimes[i] < minLockTime) revert ErrorLibrary.LockTimeTooShort();
@@ -499,66 +527,105 @@ contract QTIToken is
             
             totalAmount += amounts[i];
         }
-        
-        if (balanceOf(msg.sender) < totalAmount) revert ErrorLibrary.InsufficientBalance();
-        
-        LockInfo storage lockInfo = locks[msg.sender];
-        uint256 oldVotingPower = lockInfo.votingPower;
-        uint256 totalNewVotingPower = 0;
-        uint256 totalNewAmount = uint256(lockInfo.amount);
-        
-
-        // SECURITY: Using block.timestamp for unlock time calculation (acceptable for time-based logic)
+    }
+    
+    /**
+     * @dev Processes all locks and calculates totals
+     */
+    function _processBatchLocks(
+        uint256[] calldata amounts,
+        uint256[] calldata lockTimes,
+        uint256[] memory veQTIAmounts,
+        LockInfo storage lockInfo
+    ) internal returns (uint256 totalNewVotingPower, uint256 totalNewAmount) {
         uint256 currentTimestamp = block.timestamp;
         uint256 lockInfoUnlockTime = lockInfo.unlockTime;
+        totalNewAmount = uint256(lockInfo.amount);
         
-        // Process each lock
-        for (uint256 i = 0; i < amounts.length; i++) {
-            uint256 amount = amounts[i];
-            uint256 lockTime = lockTimes[i];
-            
-            // Calculate new unlock time with overflow check
-            uint256 newUnlockTime = currentTimestamp + lockTime;
-            if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
-            
-            // If already locked, extend the lock time
-            if (lockInfoUnlockTime > currentTimestamp) {
-                newUnlockTime = lockInfoUnlockTime + lockTime;
-                if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
-            }
-            
-            // Calculate voting power with overflow check
-            uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
-            uint256 newVotingPower = amount * multiplier / 1e18;
-            if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+        // Initialize with current lock values to handle empty array case
+        uint256 finalUnlockTime = lockInfoUnlockTime;
+        uint256 finalLockTime = lockInfo.lockTime;
+        
+        for (uint256 i = 0; i < amounts.length;) {
+            uint256 newUnlockTime = _calculateUnlockTime(currentTimestamp, lockTimes[i], lockInfoUnlockTime);
+            uint256 newVotingPower = _calculateVotingPower(amounts[i], lockTimes[i]);
             
             veQTIAmounts[i] = newVotingPower;
             totalNewVotingPower += newVotingPower;
-            totalNewAmount += amount;
+            totalNewAmount += amounts[i];
             
-            // Update lock info for the last iteration
-            if (i == amounts.length - 1) {
-                if (totalNewAmount > type(uint96).max) revert ErrorLibrary.InvalidAmount();
-                if (totalNewVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
-                
-                lockInfo.amount = uint96(totalNewAmount);
-                lockInfo.unlockTime = uint32(newUnlockTime);
-                lockInfo.initialVotingPower = uint96(totalNewVotingPower);
-                lockInfo.lockTime = uint32(lockTime); // Use the last lock time
-                lockInfo.votingPower = uint96(totalNewVotingPower);
-            }
+            // Store final values for last iteration
+            finalUnlockTime = newUnlockTime;
+            finalLockTime = lockTimes[i];
             
-            emit TokensLocked(msg.sender, amount, newUnlockTime, newVotingPower);
+            emit TokensLocked(msg.sender, amounts[i], newUnlockTime, newVotingPower);
+            
+            unchecked { ++i; }
         }
         
-        // Update global totals once
+        // Update lock info after the loop
+        _updateLockInfo(lockInfo, totalNewAmount, finalUnlockTime, totalNewVotingPower, finalLockTime);
+    }
+    
+    /**
+     * @dev Calculates unlock time with proper validation
+     */
+    function _calculateUnlockTime(
+        uint256 currentTimestamp,
+        uint256 lockTime,
+        uint256 existingUnlockTime
+    ) internal pure returns (uint256 newUnlockTime) {
+        newUnlockTime = currentTimestamp + lockTime;
+        if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
+        
+        // If already locked, extend the lock time
+        if (existingUnlockTime > currentTimestamp) {
+            newUnlockTime = existingUnlockTime + lockTime;
+            if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
+        }
+    }
+    
+    /**
+     * @dev Calculates voting power with overflow protection
+     */
+    function _calculateVotingPower(uint256 amount, uint256 lockTime) internal view returns (uint256) {
+        uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
+        uint256 newVotingPower = amount * multiplier / 1e18;
+        if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+        return newVotingPower;
+    }
+    
+    /**
+     * @dev Updates lock info with overflow checks
+     */
+    function _updateLockInfo(
+        LockInfo storage lockInfo,
+        uint256 totalNewAmount,
+        uint256 newUnlockTime,
+        uint256 totalNewVotingPower,
+        uint256 lockTime
+    ) internal {
+        if (totalNewAmount > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+        if (totalNewVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+        
+        lockInfo.amount = uint96(totalNewAmount);
+        lockInfo.unlockTime = uint32(newUnlockTime);
+        lockInfo.initialVotingPower = uint96(totalNewVotingPower);
+        lockInfo.lockTime = uint32(lockTime);
+        lockInfo.votingPower = uint96(totalNewVotingPower);
+    }
+    
+    /**
+     * @dev Updates global totals and transfers tokens
+     */
+    function _updateGlobalTotalsAndTransfer(
+        uint256 totalAmount,
+        uint256 oldVotingPower,
+        uint256 totalNewVotingPower
+    ) internal {
         totalLocked = totalLocked + totalAmount;
         totalVotingPower = totalVotingPower - oldVotingPower + totalNewVotingPower;
-        
-        // Transfer tokens to this contract once
         _transfer(msg.sender, address(this), totalAmount);
-        
-        emit VotingPowerUpdated(msg.sender, oldVotingPower, totalNewVotingPower);
     }
 
     /**
@@ -576,10 +643,13 @@ contract QTIToken is
         
         amounts = new uint256[](users.length);
         
-
         // SECURITY: Using block.timestamp for lock expiration check (acceptable for time-based logic)
         uint256 currentTimestamp = block.timestamp;
         uint256 length = users.length;
+        
+        // Accumulate totals to update once outside the loop
+        uint256 totalAmountToUnlock = 0;
+        uint256 totalVotingPowerToRemove = 0;
         
         for (uint256 i = 0; i < length;) {
             address user = users[i];
@@ -592,16 +662,14 @@ contract QTIToken is
             uint256 oldVotingPower = lockInfo.votingPower;
             amounts[i] = amount;
             
+            // Accumulate for batch update
+            totalAmountToUnlock += amount;
+            totalVotingPowerToRemove += oldVotingPower;
+            
             // Clear lock info
             lockInfo.amount = 0;
             lockInfo.unlockTime = 0;
             lockInfo.votingPower = 0;
-            
-            // Update global totals - GAS OPTIMIZATION: Use unchecked for safe arithmetic
-            unchecked {
-                totalLocked = totalLocked - amount;
-                totalVotingPower = totalVotingPower - oldVotingPower;
-            }
             
             // Transfer tokens back to user
             _transfer(address(this), user, amount);
@@ -610,6 +678,12 @@ contract QTIToken is
             emit VotingPowerUpdated(user, oldVotingPower, 0);
             
             unchecked { ++i; }
+        }
+        
+        // Update global totals once outside the loop - GAS OPTIMIZATION: Single update
+        unchecked {
+            totalLocked = totalLocked - totalAmountToUnlock;
+            totalVotingPower = totalVotingPower - totalVotingPowerToRemove;
         }
     }
 

@@ -505,6 +505,8 @@ contract UserPool is
         
         // EFFECTS: Update user and pool state BEFORE external calls (CEI Pattern)
         uint256 totalQeuroToMint = 0;
+        uint256 totalUserDeposits = 0;
+        
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 netAmount = netAmounts[i];
@@ -514,10 +516,14 @@ contract UserPool is
             qeuroMintedAmounts[i] = minQeuroOut;
             totalQeuroToMint += minQeuroOut;
             
-            // Update user state before external calls
-            user.depositHistory += uint96(usdcAmount);
-            totalDeposits += netAmount;
+            // Accumulate user deposits for batch update
+            totalUserDeposits += usdcAmount;
         }
+        
+        // Update user state once (single update outside loop)
+        user.depositHistory += uint96(totalUserDeposits);
+        // Update pool totals once (single update outside loop)  
+        totalDeposits += totalNetAmount;
         
         // Update user balance with conservative estimate
         user.qeuroBalance += uint128(totalQeuroToMint);
@@ -770,17 +776,16 @@ contract UserPool is
         
         uint64 currentTimestamp = uint64(block.timestamp);
         
-        // Process each stake
+        // Update user staking info with total amount (single update)
+        user.stakedAmount += uint128(totalQeuroAmount);
+        user.lastStakeTime = currentTimestamp;
+        
+        // Update pool totals once (single update outside loop)
+        totalStakes += totalQeuroAmount;
+        
+        // Process each stake for events
         for (uint256 i = 0; i < qeuroAmounts.length; i++) {
             uint256 qeuroAmount = qeuroAmounts[i];
-            
-            // Update user staking info
-            user.stakedAmount += uint128(qeuroAmount);
-            user.lastStakeTime = currentTimestamp;
-            
-            // Update pool totals
-            totalStakes += qeuroAmount;
-
             emit QEUROStaked(msg.sender, qeuroAmount, currentTimestamp);
         }
     }

@@ -26,6 +26,7 @@ library ErrorLibrary {
     
     // Validation Errors
     error InvalidAddress();
+    error ZeroAddress();
     error InvalidAmount();
     error InvalidParameter();
     error InvalidLeverage();

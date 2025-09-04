@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
+import {TimeProvider} from "../src/libraries/TimeProvider.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
@@ -13,6 +14,8 @@ import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
  * @dev This contract is only used for testing and should not be deployed to production
  */
 contract QTITokenTestHelper is QTIToken {
+    constructor(TimeProvider _timeProvider) QTIToken(_timeProvider) {}
+    
     // Test helper function to mint tokens for testing
     function testMint(address to, uint256 amount) external {
         // Skip invalid inputs instead of reverting (for fuzz test compatibility)
@@ -57,6 +60,7 @@ contract QTITokenTestSuite is Test {
     
     QTITokenTestHelper public implementation;
     QTITokenTestHelper public qtiToken;
+    TimeProvider public timeProvider;
     
     // Test addresses
     address public admin = address(0x1);
@@ -100,8 +104,12 @@ contract QTITokenTestSuite is Test {
      * @dev Deploys a new QTIToken contract using proxy pattern and initializes it
      */
     function setUp() public {
-        // Deploy implementation
-        implementation = new QTITokenTestHelper();
+        // Deploy TimeProvider first
+        timeProvider = new TimeProvider();
+        timeProvider.initialize(admin, governance, admin); // Use admin for emergency role
+        
+        // Deploy implementation with TimeProvider
+        implementation = new QTITokenTestHelper(timeProvider);
         
         // Create mock timelock address
         address mockTimelock = address(0x123);
@@ -172,7 +180,7 @@ contract QTITokenTestSuite is Test {
      * @dev Verifies that initialization fails with invalid parameters
      */
     function test_Initialization_ZeroAddresses_Revert() public {
-        QTITokenTestHelper newImplementation = new QTITokenTestHelper();
+        QTITokenTestHelper newImplementation = new QTITokenTestHelper(timeProvider);
         
         // Test with zero admin
         bytes memory initData1 = abi.encodeWithSelector(
@@ -186,7 +194,7 @@ contract QTITokenTestSuite is Test {
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero treasury
-        QTITokenTestHelper newImplementation2 = new QTITokenTestHelper();
+        QTITokenTestHelper newImplementation2 = new QTITokenTestHelper(timeProvider);
         bytes memory initData2 = abi.encodeWithSelector(
             QTIToken.initialize.selector,
             admin,

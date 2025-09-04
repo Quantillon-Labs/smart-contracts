@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {UserPool} from "../src/core/UserPool.sol";
+import {TimeProvider} from "../src/libraries/TimeProvider.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
@@ -77,7 +78,9 @@ contract UserPoolTestSuite is Test {
      */
     function setUp() public {
         // Deploy implementation
-        implementation = new UserPool();
+        TimeProvider timeProvider = new TimeProvider();
+        timeProvider.initialize(admin, admin, admin);
+        implementation = new UserPool(timeProvider);
         
         // Deploy proxy with initialization
         bytes memory initData = abi.encodeWithSelector(
@@ -265,7 +268,9 @@ contract UserPoolTestSuite is Test {
      */
     function test_Initialization_ZeroAddresses_Revert() public {
         // Create implementation once to reuse
-        UserPool implementation = new UserPool();
+        TimeProvider timeProvider2 = new TimeProvider();
+        timeProvider2.initialize(admin, admin, admin);
+        UserPool implementation = new UserPool(timeProvider2);
         
         // Test with zero admin
         bytes memory initData1 = abi.encodeWithSelector(

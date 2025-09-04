@@ -20,6 +20,7 @@ import "../libraries/ErrorLibrary.sol";
 import "./SecureUpgradeable.sol";
 import "../libraries/TreasuryRecoveryLibrary.sol";
 import "../libraries/FlashLoanProtectionLibrary.sol";
+import "../libraries/TimeProvider.sol";
 
 /**
  * @title UserPool
@@ -136,6 +137,10 @@ contract UserPool is
     /// @notice Treasury address for ETH recovery
     /// @dev SECURITY: Only this address can receive ETH from recoverETH function
     address public treasury;
+
+    /// @notice TimeProvider contract for centralized time management
+    /// @dev Used to replace direct block.timestamp usage for testability and consistency
+    TimeProvider public immutable timeProvider;
 
     // Pool configuration parameters
     /// @notice Staking APY in basis points
@@ -332,7 +337,9 @@ contract UserPool is
     // INITIALIZER
     // =============================================================================
 
-    constructor() {
+    constructor(TimeProvider _timeProvider) {
+        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
+        timeProvider = _timeProvider;
         _disableInitializers();
     }
 
@@ -379,7 +386,7 @@ contract UserPool is
         
         // Initialize yield tracking variables to prevent uninitialized state variable warnings
         accumulatedYieldPerShare = 0;
-        lastYieldDistribution = block.timestamp;
+        lastYieldDistribution = timeProvider.currentTime();
         totalYieldDistributed = 0;
     }
 
@@ -441,7 +448,7 @@ contract UserPool is
         // This ensures reentrancy protection. The user receives the actual minted amount,
         // but internal balance tracking uses the conservative minQeuroOut estimate.
 
-        emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
+        emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, timeProvider.currentTime());
     }
 
     /**
@@ -562,7 +569,7 @@ contract UserPool is
             // Transfer QEURO to user
             IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
-            emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, block.timestamp);
+            emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, timeProvider.currentTime());
         }
     }
 
@@ -615,7 +622,7 @@ contract UserPool is
         // Transfer USDC to user
         usdc.safeTransfer(msg.sender, netAmount);
 
-        emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, block.timestamp);
+        emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, timeProvider.currentTime());
     }
 
     /**
@@ -708,7 +715,7 @@ contract UserPool is
             // Transfer USDC to user
             usdc.safeTransfer(msg.sender, netAmount);
 
-            emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, block.timestamp);
+            emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, timeProvider.currentTime());
             
             unchecked { ++i; }
         }
@@ -739,12 +746,12 @@ contract UserPool is
         
         // Update user staking info
         user.stakedAmount += uint128(qeuroAmount);
-        user.lastStakeTime = uint64(block.timestamp);
+        user.lastStakeTime = uint64(timeProvider.currentTime());
         
         // Update pool totals
         totalStakes += qeuroAmount;
 
-        emit QEUROStaked(msg.sender, qeuroAmount, block.timestamp);
+        emit QEUROStaked(msg.sender, qeuroAmount, timeProvider.currentTime());
     }
 
     /**
@@ -774,7 +781,7 @@ contract UserPool is
         // Transfer total QEURO from user FIRST
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
-        uint64 currentTimestamp = uint64(block.timestamp);
+        uint64 currentTimestamp = uint64(timeProvider.currentTime());
         
         // Update user staking info with total amount (single update)
         user.stakedAmount += uint128(totalQeuroAmount);
@@ -804,7 +811,7 @@ contract UserPool is
         _updatePendingRewards(msg.sender);
         
         // Set unstaking request
-        user.unstakeRequestTime = uint64(block.timestamp);
+        user.unstakeRequestTime = uint64(timeProvider.currentTime());
         user.unstakeAmount = uint128(qeuroAmount);
     }
 
@@ -817,7 +824,7 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         require(user.unstakeAmount > 0, "UserPool: No unstaking request");
         require(
-            block.timestamp >= user.unstakeRequestTime + unstakingCooldown,
+            timeProvider.currentTime() >= user.unstakeRequestTime + unstakingCooldown,
             "UserPool: Cooldown period not finished"
         );
 
@@ -833,7 +840,7 @@ contract UserPool is
         
         IERC20(address(qeuro)).safeTransfer(msg.sender, amount);
 
-        emit QEUROUnstaked(msg.sender, amount, block.timestamp);
+        emit QEUROUnstaked(msg.sender, amount, timeProvider.currentTime());
     }
 
     /**
@@ -854,7 +861,7 @@ contract UserPool is
             // Mint reward tokens (could be QEURO or QTI)
             qeuro.mint(msg.sender, rewardAmount);
             
-            emit StakingRewardsClaimed(msg.sender, rewardAmount, block.timestamp);
+            emit StakingRewardsClaimed(msg.sender, rewardAmount, timeProvider.currentTime());
         }
     }
 
@@ -875,7 +882,7 @@ contract UserPool is
         
         rewardAmounts = new uint256[](users.length);
         
-        uint64 currentTimestamp = uint64(block.timestamp);
+        uint64 currentTimestamp = uint64(timeProvider.currentTime());
         
         // Store users with non-zero rewards to minimize external calls
         address[] memory usersToMint = new address[](users.length);
@@ -926,7 +933,7 @@ contract UserPool is
         
         // Yield distribution moved to stQEURO contract
         // This function kept for backward compatibility but does nothing
-        emit YieldDistributed(yieldAmount, 0, block.timestamp);
+        emit YieldDistributed(yieldAmount, 0, timeProvider.currentTime());
     }
 
     /**
@@ -972,7 +979,7 @@ contract UserPool is
                 .mulDiv(accumulatedYieldPerShare, 1e18);
             
             userdata.pendingRewards += uint128(stakingReward + yieldReward);
-            userdata.lastStakeTime = uint64(block.timestamp);
+            userdata.lastStakeTime = uint64(timeProvider.currentTime());
             
             // Update last reward block
             userLastRewardBlock[user] = currentBlock;

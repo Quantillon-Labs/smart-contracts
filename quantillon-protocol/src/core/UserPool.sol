@@ -469,6 +469,9 @@ contract UserPool is
         if (usdcAmounts.length != minQeuroOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
         if (usdcAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
+        // Cache timestamp to avoid external calls in loop
+        uint256 currentTime = timeProvider.currentTime();
+        
         qeuroMintedAmounts = new uint256[](usdcAmounts.length);
         uint256 totalUsdcAmount = 0;
         
@@ -569,7 +572,7 @@ contract UserPool is
             // Transfer QEURO to user
             IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
-            emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, timeProvider.currentTime());
+            emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, currentTime);
         }
     }
 
@@ -641,6 +644,9 @@ contract UserPool is
     {
         if (qeuroAmounts.length != minUsdcOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
         if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        
+        // Cache timestamp to avoid external calls in loop
+        uint256 currentTime = timeProvider.currentTime();
         
         usdcReceivedAmounts = new uint256[](qeuroAmounts.length);
         UserInfo storage user = userInfo[msg.sender];
@@ -715,7 +721,7 @@ contract UserPool is
             // Transfer USDC to user
             usdc.safeTransfer(msg.sender, netAmount);
 
-            emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, timeProvider.currentTime());
+            emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, currentTime);
             
             unchecked { ++i; }
         }
@@ -949,6 +955,8 @@ contract UserPool is
         UserInfo storage userdata = userInfo[user];
         
         if (userdata.stakedAmount > 0) {
+            // Cache timestamp to avoid external calls in potential loops
+            uint256 currentTime = timeProvider.currentTime();
     
             uint256 currentBlock = block.number;
             uint256 lastRewardBlock = userLastRewardBlock[user];
@@ -979,7 +987,7 @@ contract UserPool is
                 .mulDiv(accumulatedYieldPerShare, 1e18);
             
             userdata.pendingRewards += uint128(stakingReward + yieldReward);
-            userdata.lastStakeTime = uint64(timeProvider.currentTime());
+            userdata.lastStakeTime = uint64(currentTime);
             
             // Update last reward block
             userLastRewardBlock[user] = currentBlock;

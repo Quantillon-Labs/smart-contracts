@@ -363,10 +363,12 @@ contract AaveVault is
         uint256 protocolFee = availableYield.mulDiv(yieldFee, 10000);
         uint256 netYield = availableYield - protocolFee;
         
-        uint256 usdcBefore = usdc.balanceOf(address(this));
+        // EFFECTS: Update harvest time BEFORE external call (CEI Pattern)
+        lastHarvestTime = block.timestamp;
         
+        uint256 usdcBefore = usdc.balanceOf(address(this));
 
-        // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
+        // INTERACTIONS: External call
         uint256 actualYieldReceived = 0; // Initialize to prevent uninitialized variable warning
         try aavePool.withdraw(address(usdc), availableYield, address(this)) 
             returns (uint256 withdrawn) 
@@ -387,10 +389,9 @@ contract AaveVault is
             revert("Aave yield harvest failed");
         }
         
-        // UPDATE STATE AFTER EXTERNAL CALL (safe to do now)
+        // Update state with actual amounts received
         totalYieldHarvested += actualYieldReceived;
         totalFeesCollected += protocolFee;
-        lastHarvestTime = block.timestamp;
         
 
         if (netYield > 0) {
@@ -553,12 +554,13 @@ contract AaveVault is
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
         
         if (aaveBalance > 0) {
-
+            // EFFECTS: Update state BEFORE external calls (CEI Pattern)
             emergencyMode = true;
+            uint256 originalPrincipal = principalDeposited;
             
             uint256 usdcBefore = usdc.balanceOf(address(this));
             
-            // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
+            // INTERACTIONS: External call
             uint256 actualReceived = 0; // Initialize to prevent uninitialized variable warning
             try aavePool.withdraw(address(usdc), type(uint256).max, address(this)) 
                 returns (uint256 withdrawn) 
@@ -577,9 +579,9 @@ contract AaveVault is
                 revert("Emergency Aave withdrawal failed");
             }
             
-            // UPDATE STATE AFTER EXTERNAL CALL (safe to do now)
+            // Update state with actual withdrawal amount
             amountWithdrawn = actualReceived;
-            uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, principalDeposited);
+            uint256 principalWithdrawn = VaultMath.min(amountWithdrawn, originalPrincipal);
             principalDeposited -= principalWithdrawn;
             
             // SECURITY: Ensure principalDeposited never goes negative

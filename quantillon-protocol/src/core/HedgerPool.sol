@@ -454,7 +454,7 @@ contract HedgerPool is
             usdc.safeTransfer(msg.sender, netPayout);
         }
 
-        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, timeProvider.currentTime());
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, currentTime);
     }
 
     function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPositions) 
@@ -466,6 +466,9 @@ contract HedgerPool is
         if (positionIds.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         require(positionIds.length <= maxPositions, "Too many positions");
         require(maxPositions <= 10, "Max 10 positions per tx");
+        
+        // Cache timestamp to avoid external calls in loop
+        uint256 currentTime = timeProvider.currentTime();
         
         pnls = new int256[](positionIds.length);
         
@@ -485,7 +488,8 @@ contract HedgerPool is
                 positionIds[i], 
                 currentPrice, 
                 hedger, 
-                exitFee_
+                exitFee_,
+                currentTime
             );
             pnls[i] = pnl;
             totalMarginToDeduct += marginDeducted;
@@ -543,7 +547,7 @@ contract HedgerPool is
             usdc.safeTransfer(msg.sender, netPayout);
         }
 
-        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, timeProvider.currentTime());
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, currentTime);
     }
     
     /**
@@ -597,7 +601,7 @@ contract HedgerPool is
             usdc.safeTransfer(msg.sender, netPayout);
         }
 
-        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, timeProvider.currentTime());
+        emit HedgePositionClosed(msg.sender, positionId, currentPrice, pnl, currentTime);
     }
 
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {

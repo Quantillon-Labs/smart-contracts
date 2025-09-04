@@ -951,12 +951,10 @@ contract UserPool is
      * 
 
      */
-    function _updatePendingRewards(address user) internal {
+    function _updatePendingRewards(address user, uint256 currentTime) internal {
         UserInfo storage userdata = userInfo[user];
         
         if (userdata.stakedAmount > 0) {
-            // Cache timestamp to avoid external calls in potential loops
-            uint256 currentTime = timeProvider.currentTime();
     
             uint256 currentBlock = block.number;
             uint256 lastRewardBlock = userLastRewardBlock[user];

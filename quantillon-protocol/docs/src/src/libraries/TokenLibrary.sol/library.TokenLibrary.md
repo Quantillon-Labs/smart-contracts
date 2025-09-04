@@ -1,42 +1,25 @@
 # TokenLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/libraries/TokenLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/libraries/TokenLibrary.sol)
 
 **Author:**
 Quantillon Labs
 
-Library for common token operations to reduce contract bytecode size
+Library for essential token operations to reduce contract bytecode size
 
-*Main characteristics:
-- Token transfer, mint, and burn validation functions
-- Permit and delegation parameter validation
-- Governance proposal and voting parameter validation
-- Reduces duplication across QEURO, QTI, and stQEURO token contracts*
+*This library provides core token validation functions:
+- Mint and burn parameter validation with supply cap checks
+- Used by QEURO token for secure minting and burning operations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
-### validateTransfer
-
-Validates token transfer parameters
-
-
-```solidity
-function validateTransfer(address from, address to, uint256 amount) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`from`|`address`|Address to transfer from|
-|`to`|`address`|Address to transfer to|
-|`amount`|`uint256`|Amount to transfer|
-
-
 ### validateMint
 
 Validates mint parameters
+
+*Ensures minting doesn't exceed maximum supply and validates parameters*
 
 
 ```solidity
@@ -56,6 +39,8 @@ function validateMint(address to, uint256 amount, uint256 totalSupply, uint256 m
 
 Validates burn parameters
 
+*Ensures sufficient balance and validates parameters for burning*
+
 
 ```solidity
 function validateBurn(address from, uint256 amount, uint256 balance) internal pure;
@@ -67,75 +52,5 @@ function validateBurn(address from, uint256 amount, uint256 balance) internal pu
 |`from`|`address`|Address to burn from|
 |`amount`|`uint256`|Amount to burn|
 |`balance`|`uint256`|Current balance|
-
-
-### validatePermit
-
-Validates permit parameters
-
-
-```solidity
-function validatePermit(address owner, address spender, uint256 value, uint256 deadline) internal view;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`owner`|`address`|Token owner|
-|`spender`|`address`|Spender address|
-|`value`|`uint256`|Permit value|
-|`deadline`|`uint256`|Permit deadline|
-
-
-### validateDelegation
-
-Validates delegation parameters
-
-
-```solidity
-function validateDelegation(address delegator, address delegatee) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`delegator`|`address`|Delegator address|
-|`delegatee`|`address`|Delegatee address|
-
-
-### validateVote
-
-Validates voting parameters
-
-
-```solidity
-function validateVote(uint256 proposalId, bool support) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`proposalId`|`uint256`|Proposal ID|
-|`support`|`bool`|Support value|
-
-
-### validateProposal
-
-Validates proposal parameters
-
-
-```solidity
-function validateProposal(string memory description, uint256 votingPeriod, uint256 minPeriod, uint256 maxPeriod)
-    internal
-    pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`description`|`string`|Proposal description|
-|`votingPeriod`|`uint256`|Voting period|
-|`minPeriod`|`uint256`|Minimum voting period|
-|`maxPeriod`|`uint256`|Maximum voting period|
 
 

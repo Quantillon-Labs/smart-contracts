@@ -1,5 +1,5 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -46,7 +46,7 @@ Governance token for Quantillon Protocol with vote-escrow mechanics
 - Governance power: Based on locked amount and duration*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -369,14 +369,23 @@ mapping(uint256 => bool) public proposalScheduled;
 ```
 
 
+### timeProvider
+TimeProvider contract for centralized time management
+
+*Used to replace direct block.timestamp usage for testability and consistency*
+
+
+```solidity
+TimeProvider public immutable timeProvider;
+```
+
+
 ## Functions
 ### flashLoanProtection
 
 Modifier to protect against flash loan attacks
 
-*Checks that the contract's QTI balance doesn't decrease during execution*
-
-*This prevents flash loans that would drain QTI from the contract*
+*Uses the FlashLoanProtectionLibrary to check QTI balance consistency*
 
 
 ```solidity
@@ -387,7 +396,7 @@ modifier flashLoanProtection();
 
 
 ```solidity
-constructor();
+constructor(TimeProvider _timeProvider);
 ```
 
 ### initialize
@@ -459,6 +468,87 @@ function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes)
 |----|----|-----------|
 |`veQTIAmounts`|`uint256[]`|Array of voting power calculated for each locked amount|
 
+
+### _validateBatchLockInputs
+
+*Validates basic batch lock inputs*
+
+
+```solidity
+function _validateBatchLockInputs(uint256[] calldata amounts, uint256[] calldata lockTimes) internal pure;
+```
+
+### _validateAndCalculateTotalAmount
+
+*Validates all amounts and lock times, returns total amount*
+
+
+```solidity
+function _validateAndCalculateTotalAmount(uint256[] calldata amounts, uint256[] calldata lockTimes)
+    internal
+    pure
+    returns (uint256 totalAmount);
+```
+
+### _processBatchLocks
+
+*Processes all locks and calculates totals*
+
+
+```solidity
+function _processBatchLocks(
+    uint256[] calldata amounts,
+    uint256[] calldata lockTimes,
+    uint256[] memory veQTIAmounts,
+    LockInfo storage lockInfo
+) internal returns (uint256 totalNewVotingPower, uint256 totalNewAmount);
+```
+
+### _calculateUnlockTime
+
+*Calculates unlock time with proper validation*
+
+
+```solidity
+function _calculateUnlockTime(uint256 currentTimestamp, uint256 lockTime, uint256 existingUnlockTime)
+    internal
+    pure
+    returns (uint256 newUnlockTime);
+```
+
+### _calculateVotingPower
+
+*Calculates voting power with overflow protection*
+
+
+```solidity
+function _calculateVotingPower(uint256 amount, uint256 lockTime) internal view returns (uint256);
+```
+
+### _updateLockInfo
+
+*Updates lock info with overflow checks*
+
+
+```solidity
+function _updateLockInfo(
+    LockInfo storage lockInfo,
+    uint256 totalNewAmount,
+    uint256 newUnlockTime,
+    uint256 totalNewVotingPower,
+    uint256 lockTime
+) internal;
+```
+
+### _updateGlobalTotalsAndTransfer
+
+*Updates global totals and transfers tokens*
+
+
+```solidity
+function _updateGlobalTotalsAndTransfer(uint256 totalAmount, uint256 oldVotingPower, uint256 totalNewVotingPower)
+    internal;
+```
 
 ### batchUnlock
 

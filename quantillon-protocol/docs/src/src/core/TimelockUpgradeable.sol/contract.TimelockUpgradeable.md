@@ -1,5 +1,5 @@
 # TimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/TimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/TimelockUpgradeable.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -12,7 +12,7 @@ Secure upgrade mechanism with timelock and multi-sig requirements
 *Replaces unrestricted upgrade capability with governance-controlled upgrades*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -139,6 +139,17 @@ Whether emergency mode is active
 
 ```solidity
 bool public emergencyMode;
+```
+
+
+### timeProvider
+TimeProvider contract for centralized time management
+
+*Used to replace direct block.timestamp usage for testability and consistency*
+
+
+```solidity
+TimeProvider public immutable timeProvider;
 ```
 
 
@@ -445,6 +456,13 @@ Unpause the timelock contract
 
 ```solidity
 function unpause() external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+
+### constructor
+
+
+```solidity
+constructor(TimeProvider _timeProvider);
 ```
 
 ## Events

@@ -217,4 +217,16 @@ library ErrorLibrary {
     error ProposalNotScheduled();
     error InvalidExecutionHash();
     error ExecutionTimeNotReached();
+    
+    // HedgerPool Specific Errors
+    error MarginExceedsMaximum();
+    error PositionSizeExceedsMaximum();
+    error EntryPriceExceedsMaximum();
+    error LeverageExceedsMaximum();
+    error TimestampOverflow();
+    error TotalMarginExceedsMaximum();
+    error TotalExposureExceedsMaximum();
+    error TooManyPositionsPerTx();
+    error MaxPositionsPerTx();
+    error NewMarginExceedsMaximum();
 }

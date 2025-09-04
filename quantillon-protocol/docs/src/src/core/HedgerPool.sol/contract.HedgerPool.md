@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -77,7 +77,7 @@ EUR/USD hedging pool for managing currency risk and providing yield
 - Position tracking and management systems*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -130,6 +130,17 @@ address public treasury;
 ```
 
 
+### timeProvider
+TimeProvider contract for centralized time management
+
+*Used to replace direct block.timestamp usage for testability and consistency*
+
+
+```solidity
+TimeProvider public immutable timeProvider;
+```
+
+
 ### minMarginRatio
 
 ```solidity
@@ -165,24 +176,31 @@ uint256 public constant MAX_POSITIONS_PER_HEDGER = 50;
 ```
 
 
+### MAX_UINT96_VALUE
+
+```solidity
+uint96 public constant MAX_UINT96_VALUE = type(uint96).max;
+```
+
+
 ### MAX_POSITION_SIZE
 
 ```solidity
-uint256 public constant MAX_POSITION_SIZE = type(uint96).max;
+uint256 public constant MAX_POSITION_SIZE = MAX_UINT96_VALUE;
 ```
 
 
 ### MAX_MARGIN
 
 ```solidity
-uint256 public constant MAX_MARGIN = type(uint96).max;
+uint256 public constant MAX_MARGIN = MAX_UINT96_VALUE;
 ```
 
 
 ### MAX_ENTRY_PRICE
 
 ```solidity
-uint256 public constant MAX_ENTRY_PRICE = type(uint96).max;
+uint256 public constant MAX_ENTRY_PRICE = MAX_UINT96_VALUE;
 ```
 
 
@@ -215,10 +233,6 @@ uint256 public constant MAX_PENDING_REWARDS = type(uint128).max;
 
 
 ### MAX_BATCH_SIZE
-Maximum batch size for position operations to prevent DoS
-
-*Prevents out-of-gas attacks through large arrays*
-
 
 ```solidity
 uint256 public constant MAX_BATCH_SIZE = 50;
@@ -444,9 +458,7 @@ mapping(address => mapping(uint256 => bool)) public hasPendingLiquidation;
 
 Modifier to protect against flash loan attacks
 
-*Checks that the contract's USDC balance doesn't decrease during execution*
-
-*This prevents flash loans that would drain USDC from the contract*
+*Uses the FlashLoanProtectionLibrary to check USDC balance consistency*
 
 
 ```solidity
@@ -457,7 +469,7 @@ modifier flashLoanProtection();
 
 
 ```solidity
-constructor();
+constructor(TimeProvider _timeProvider);
 ```
 
 ### initialize
@@ -533,6 +545,39 @@ function _closeSinglePosition(uint256 positionId, uint256 currentPrice, HedgerIn
 |Name|Type|Description|
 |----|----|-----------|
 |`pnl`|`int256`|The profit/loss for the position|
+
+
+### _closeSinglePositionBatch
+
+Close a single hedge position for batch operations (doesn't update global totals)
+
+
+```solidity
+function _closeSinglePositionBatch(
+    uint256 positionId,
+    uint256 currentPrice,
+    HedgerInfo storage hedger,
+    uint256 exitFee_,
+    uint256 currentTime
+) internal returns (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The ID of the position to close|
+|`currentPrice`|`uint256`|The current EUR/USD price|
+|`hedger`|`HedgerInfo`|The hedger info storage reference|
+|`exitFee_`|`uint256`|The exit fee percentage|
+|`currentTime`|`uint256`||
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pnl`|`int256`|The profit/loss for the position|
+|`marginDeducted`|`uint256`|The margin amount that should be deducted from global totals|
+|`exposureDeducted`|`uint256`|The exposure amount that should be deducted from global totals|
 
 
 ### _removePositionFromArrays
@@ -728,7 +773,7 @@ function getMaxValues()
         uint256 maxPositionSize,
         uint256 maxMargin,
         uint256 maxEntryPrice,
-        uint256 maxLeverage,
+        uint256 maxLeverageValue,
         uint256 maxTotalMargin,
         uint256 maxTotalExposure,
         uint256 maxPendingRewards
@@ -741,7 +786,7 @@ function getMaxValues()
 |`maxPositionSize`|`uint256`|Maximum allowed position size|
 |`maxMargin`|`uint256`|Maximum allowed margin|
 |`maxEntryPrice`|`uint256`|Maximum allowed entry price|
-|`maxLeverage`|`uint256`|Maximum allowed leverage|
+|`maxLeverageValue`|`uint256`|Maximum allowed leverage|
 |`maxTotalMargin`|`uint256`|Maximum allowed total margin|
 |`maxTotalExposure`|`uint256`|Maximum allowed total exposure|
 |`maxPendingRewards`|`uint256`|Maximum allowed pending rewards|
@@ -821,40 +866,6 @@ function updateTreasury(address _treasury) external;
 |`_treasury`|`address`|New treasury address|
 
 
-### updateMaxValues
-
-Update maximum values for packed struct fields
-
-*SECURITY: Only governance can update these critical security parameters*
-
-*Note: These are currently constants, so this function is a placeholder
-for future governance control over these parameters*
-
-
-```solidity
-function updateMaxValues(
-    uint256 _maxPositionSize,
-    uint256 _maxMargin,
-    uint256 _maxEntryPrice,
-    uint256 _maxLeverage,
-    uint256 _maxTotalMargin,
-    uint256 _maxTotalExposure,
-    uint256 _maxPendingRewards
-) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_maxPositionSize`|`uint256`|New maximum position size|
-|`_maxMargin`|`uint256`|New maximum margin|
-|`_maxEntryPrice`|`uint256`|New maximum entry price|
-|`_maxLeverage`|`uint256`|New maximum leverage|
-|`_maxTotalMargin`|`uint256`|New maximum total margin|
-|`_maxTotalExposure`|`uint256`|New maximum total exposure|
-|`_maxPendingRewards`|`uint256`|New maximum pending rewards|
-
-
 ## Events
 ### HedgePositionOpened
 
@@ -921,26 +932,8 @@ event ETHRecovered(address indexed to, uint256 indexed amount);
 event TreasuryUpdated(address indexed treasury);
 ```
 
-### MaxValuesUpdated
-
-```solidity
-event MaxValuesUpdated(
-    uint256 maxPositionSize,
-    uint256 maxMargin,
-    uint256 maxEntryPrice,
-    uint256 maxLeverage,
-    uint256 maxTotalMargin,
-    uint256 maxTotalExposure,
-    uint256 maxPendingRewards
-);
-```
-
 ## Structs
 ### HedgePosition
-*OPTIMIZED: Packed struct for gas efficiency*
-
-*SECURITY: All values are validated before casting to prevent overflow*
-
 
 ```solidity
 struct HedgePosition {
@@ -957,10 +950,6 @@ struct HedgePosition {
 ```
 
 ### HedgerInfo
-*OPTIMIZED: Packed struct for gas efficiency*
-
-*SECURITY: All values are validated before casting to prevent overflow*
-
 
 ```solidity
 struct HedgerInfo {

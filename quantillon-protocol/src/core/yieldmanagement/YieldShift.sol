@@ -152,10 +152,9 @@ contract YieldShift is
     
     /// @dev OPTIMIZED: Packed struct for gas efficiency in historical arrays
     struct PoolSnapshot {
-        uint128 userPoolSize;               // User pool size (16 bytes, max ~340B)
-        uint128 hedgerPoolSize;             // Hedger pool size (16 bytes, max ~340B)
+        uint128 userPoolSize;
+        uint128 hedgerPoolSize;
         uint64 timestamp;                   // Timestamp (8 bytes, until year 2554)
-        // Total: 16+16+8 = 40 bytes (2 slots vs 3 slots = 33% gas savings)
     }
     
     PoolSnapshot[] public userPoolHistory;
@@ -164,9 +163,8 @@ contract YieldShift is
 
     /// @dev OPTIMIZED: Packed struct for gas efficiency in yield shift tracking
     struct YieldShiftSnapshot {
-        uint128 yieldShift;                 // Yield shift percentage (16 bytes, max ~340B)
+        uint128 yieldShift;
         uint64 timestamp;                   // Timestamp (8 bytes, until year 2554)
-        // Total: 16+8 = 24 bytes (1 slot vs 2 slots = 50% gas savings)
     }
     YieldShiftSnapshot[] public yieldShiftHistory;
 
@@ -268,7 +266,6 @@ contract YieldShift is
     }
 
     function updateYieldDistribution() external nonReentrant whenNotPaused {
-        // SECURITY: Use eligible pool metrics to prevent flash deposit manipulation
         uint256 avgUserPoolSize = getTimeWeightedAverage(userPoolHistory, TWAP_PERIOD, true);
         uint256 avgHedgerPoolSize = getTimeWeightedAverage(hedgerPoolHistory, TWAP_PERIOD, false);
         
@@ -313,7 +310,6 @@ contract YieldShift is
         uint256 balanceBefore = usdc.balanceOf(address(this));
         usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        // SECURITY: Verify USDC was actually received (tolerance-based check for transfer validation)
         uint256 actualReceived = balanceAfter - balanceBefore;
         require(
             actualReceived >= yieldAmount && actualReceived <= yieldAmount + 1,
@@ -480,7 +476,6 @@ contract YieldShift is
         // In a full implementation, this would iterate through individual user deposits
         // and only count those meeting the holding period requirement
         
-        // SECURITY: Apply a holding period discount to prevent flash deposit manipulation
         // This is a simplified approach - in production, you'd want to track individual deposits
         uint256 holdingPeriodDiscount = _calculateHoldingPeriodDiscount();
         eligibleSize = totalUserPoolSize.mulDiv(holdingPeriodDiscount, 10000);
@@ -707,7 +702,6 @@ contract YieldShift is
     ) {
         totalYieldDistributed_ = totalYieldDistributed;
         
-        // SECURITY: Only need total users, ignore other return values (safe to ignore for performance metrics)
         (uint256 totalUsers, uint256 totalStakes, uint256 totalDeposits, uint256 totalRewards) = userPool.getPoolMetrics();
         // Note: totalStakes, totalDeposits, and totalRewards are intentionally unused for performance metrics
         uint256 activeHedgers = hedgerPool.activeHedgers();
@@ -922,7 +916,6 @@ contract YieldShift is
     }
 
     function _recordPoolSnapshot() internal {
-        // SECURITY: Use eligible pool sizes by default to prevent manipulation
         (uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize,) = _getEligiblePoolMetrics();
         
         _addToPoolHistory(userPoolHistory, eligibleUserPoolSize, true);

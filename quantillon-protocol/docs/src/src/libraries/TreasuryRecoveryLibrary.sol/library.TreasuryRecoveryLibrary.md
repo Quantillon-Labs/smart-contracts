@@ -1,5 +1,5 @@
 # TreasuryRecoveryLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/libraries/TreasuryRecoveryLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/libraries/TreasuryRecoveryLibrary.sol)
 
 **Author:**
 Quantillon Protocol Team
@@ -10,7 +10,7 @@ Library for secure token and ETH recovery to treasury addresses
 to save gas, reduce bytecode, and ensure consistent security implementation*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -61,46 +61,5 @@ function recoverETH(address treasury) external;
 |Name|Type|Description|
 |----|----|-----------|
 |`treasury`|`address`|The contract's treasury address|
-
-
-### validateTreasury
-
-Validate treasury address
-
-*Ensures treasury address is not zero address*
-
-
-```solidity
-function validateTreasury(address treasury) external pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`treasury`|`address`|Address to validate|
-
-
-### updateTreasury
-
-Update treasury address with validation
-
-*Only callable by governance/admin roles*
-
-
-```solidity
-function updateTreasury(address currentTreasury, address newTreasury) external pure returns (address);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`currentTreasury`|`address`|Current treasury address|
-|`newTreasury`|`address`|New treasury address|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`address`|Updated treasury address|
 
 

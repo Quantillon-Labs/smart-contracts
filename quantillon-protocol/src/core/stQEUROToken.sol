@@ -178,7 +178,6 @@ contract stQEUROToken is
     /// @dev Example: 1 day = 86400 seconds
     uint256 public maxUpdateFrequency;
 
-    // SECURITY: Virtual shares and assets to prevent inflation attacks
     /// @notice Virtual shares to prevent exchange rate manipulation
     /// @dev Prevents donation attacks by maintaining minimum share value
     uint256 private constant VIRTUAL_SHARES = 1e8;
@@ -187,7 +186,6 @@ contract stQEUROToken is
     /// @dev Prevents donation attacks by maintaining minimum asset value
     uint256 private constant VIRTUAL_ASSETS = 1e8;
     
-    // SECURITY: Maximum batch sizes to prevent DoS attacks
     /// @notice Maximum batch size for staking operations to prevent DoS
     /// @dev Prevents out-of-gas attacks through large arrays
     uint256 public constant MAX_BATCH_SIZE = 100;

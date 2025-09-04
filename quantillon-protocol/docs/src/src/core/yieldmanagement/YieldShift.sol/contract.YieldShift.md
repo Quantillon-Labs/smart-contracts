@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -75,7 +75,7 @@ Dynamic yield distribution system balancing rewards between users and hedgers
 - USDC for yield payments and transfers*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -132,6 +132,17 @@ IAaveVault public aaveVault;
 
 ```solidity
 IstQEURO public stQEURO;
+```
+
+
+### timeProvider
+TimeProvider contract for centralized time management
+
+*Used to replace direct block.timestamp usage for testability and consistency*
+
+
+```solidity
+TimeProvider public immutable timeProvider;
 ```
 
 
@@ -329,7 +340,7 @@ YieldShiftSnapshot[] public yieldShiftHistory;
 
 
 ```solidity
-constructor();
+constructor(TimeProvider _timeProvider);
 ```
 
 ### initialize

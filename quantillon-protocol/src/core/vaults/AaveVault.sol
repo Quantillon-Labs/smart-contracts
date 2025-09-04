@@ -243,7 +243,6 @@ contract AaveVault is
         uint256 balanceAfter = aUSDC.balanceOf(address(this));
         aTokensReceived = balanceAfter - balanceBefore;
         
-        // SECURITY: Validate that principalDeposited doesn't exceed reasonable bounds
         if (principalDeposited > maxAaveExposure) {
             revert ErrorLibrary.WouldExceedLimit();
         }
@@ -405,7 +404,6 @@ contract AaveVault is
         uint256 protocolFee = availableYield.mulDiv(yieldFee, 10000);
         uint256 netYield = availableYield - protocolFee;
         
-        // EFFECTS: Update state BEFORE external call (CEI Pattern)
         lastHarvestTime = block.timestamp;
         // Use conservative estimates for state updates before external call
         totalYieldHarvested += availableYield;
@@ -413,7 +411,6 @@ contract AaveVault is
         
         uint256 usdcBefore = usdc.balanceOf(address(this));
 
-        // INTERACTIONS: External call
         uint256 actualYieldReceived = 0; // Initialize to prevent uninitialized variable warning
         try aavePool.withdraw(address(usdc), availableYield, address(this)) 
             returns (uint256 withdrawn) 
@@ -539,7 +536,6 @@ contract AaveVault is
         uint256 totalAssets = currentBalance + usdc.balanceOf(address(this));
         
         if (totalAssets < 1) {
-            // SECURITY: No assets to rebalance (safe inequality check)
             return (false, 0, 0);
         }
         
@@ -595,7 +591,6 @@ contract AaveVault is
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
         
         if (aaveBalance > 0) {
-            // EFFECTS: Update state BEFORE external calls (CEI Pattern)
             emergencyMode = true;
             uint256 originalPrincipal = principalDeposited;
             // In emergency, reset principal to 0 before external call (conservative approach)
@@ -603,7 +598,6 @@ contract AaveVault is
             
             uint256 usdcBefore = usdc.balanceOf(address(this));
             
-            // INTERACTIONS: External call
             uint256 actualReceived = 0; // Initialize to prevent uninitialized variable warning
             try aavePool.withdraw(address(usdc), type(uint256).max, address(this)) 
                 returns (uint256 withdrawn) 

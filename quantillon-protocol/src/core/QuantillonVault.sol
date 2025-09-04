@@ -88,7 +88,7 @@ contract QuantillonVault is
     PausableUpgradeable,          // Emergency pause
     SecureUpgradeable             // Secure upgrade pattern
 {
-    using SafeERC20 for IERC20;   // Safe transfers
+    using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
 
     // =============================================================================
@@ -325,7 +325,6 @@ contract QuantillonVault is
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
         
-        // SECURITY: Check price deviation to prevent flash loan manipulation
         if (lastValidEurUsdPrice > 0 && block.number > lastPriceUpdateBlock + MIN_BLOCKS_BETWEEN_UPDATES) {
             uint256 priceDiff = eurUsdPrice > lastValidEurUsdPrice ? 
                 eurUsdPrice - lastValidEurUsdPrice : lastValidEurUsdPrice - eurUsdPrice;
@@ -394,7 +393,6 @@ contract QuantillonVault is
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
         
-        // SECURITY: Check price deviation to prevent flash loan manipulation
         if (lastValidEurUsdPrice > 0 && block.number > lastPriceUpdateBlock + MIN_BLOCKS_BETWEEN_UPDATES) {
             uint256 priceDiff = eurUsdPrice > lastValidEurUsdPrice ? 
                 eurUsdPrice - lastValidEurUsdPrice : lastValidEurUsdPrice - eurUsdPrice;
@@ -573,7 +571,6 @@ contract QuantillonVault is
         require(_maxPriceDeviation <= 1000, "Vault: Max deviation cannot exceed 10%");
         require(_minBlocksBetweenUpdates <= 100, "Vault: Min blocks cannot exceed 100");
         
-        // TODO: Convert constants to state variables for governance control
         // For now, this function validates parameters but doesn't update them
         // as they are currently implemented as constants
         

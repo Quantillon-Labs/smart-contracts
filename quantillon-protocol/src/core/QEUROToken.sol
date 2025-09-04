@@ -118,7 +118,6 @@ contract QEUROToken is
     /// @dev Value: 10^18
     uint256 public constant PRECISION = 1e18;
 
-    // SECURITY: Maximum batch sizes to prevent DoS attacks
     /// @notice Maximum batch size for mint operations to prevent DoS
     /// @dev Prevents out-of-gas attacks through large arrays
     uint256 public constant MAX_BATCH_SIZE = 100;
@@ -148,7 +147,6 @@ contract QEUROToken is
         uint96 currentHourMinted;  // Current minted amount in the current hour (12 bytes)
         uint96 currentHourBurned;  // Current burned amount in the current hour (12 bytes)
         uint64 lastRateLimitReset; // Block number of the last rate limit reset (8 bytes)
-        // Total: 12 + 12 + 8 = 32 bytes (fits in 1 slot vs 3 slots)
     }
     
     RateLimitInfo public rateLimitInfo;

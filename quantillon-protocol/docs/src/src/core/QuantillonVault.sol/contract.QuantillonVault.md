@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -64,7 +64,7 @@ Main vault managing QEURO minting against USDC collateral
 - Vault math library for precise calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -250,9 +250,7 @@ uint256 private lastPriceUpdateTime;
 
 Modifier to protect against flash loan attacks
 
-*Checks that the contract's USDC balance doesn't decrease during execution*
-
-*This prevents flash loans that would drain USDC from the contract*
+*Uses the FlashLoanProtectionLibrary to check USDC balance consistency*
 
 
 ```solidity
@@ -262,7 +260,7 @@ modifier flashLoanProtection();
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity

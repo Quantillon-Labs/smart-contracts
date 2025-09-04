@@ -211,7 +211,6 @@ contract UserPool is
         uint96 depositHistory;              // Total historical deposits in USDC (6 decimals, max ~79B USDC)
         uint64 lastStakeTime;               // Timestamp of last staking action (until year 2554)
         uint64 unstakeRequestTime;          // Timestamp when unstaking was requested (until year 2554)
-        // Total: 16+16+16+16+12+8+8 = 92 bytes (3 slots vs 7 slots = 57% gas savings)
     }
     
     // Storage mappings
@@ -246,7 +245,6 @@ contract UserPool is
     uint256 public constant BLOCKS_PER_DAY = 7200; // Assuming 12 second blocks
     uint256 public constant MAX_REWARD_PERIOD = 365 days; // Maximum reward period
 
-    // SECURITY: Maximum batch sizes to prevent DoS attacks
     /// @notice Maximum batch size for deposit operations to prevent DoS
     /// @dev Prevents out-of-gas attacks through large arrays
     uint256 public constant MAX_BATCH_SIZE = 100;
@@ -424,7 +422,6 @@ contract UserPool is
             totalUsers++;
         }
         
-        // EFFECTS: Update state variables BEFORE external call (CEI Pattern)
         user.depositHistory += uint96(usdcAmount);
         totalDeposits += netAmount;
         // Use minQeuroOut as conservative estimate for user balance
@@ -433,7 +430,6 @@ contract UserPool is
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
         
-        // INTERACTIONS: External calls last
         // Approve vault to spend USDC
         usdc.safeIncreaseAllowance(address(vault), netAmount);
         
@@ -513,7 +509,6 @@ contract UserPool is
         // Single approval for all vault operations
         usdc.safeIncreaseAllowance(vaultAddress, totalNetAmount);
         
-        // EFFECTS: Update user and pool state BEFORE external calls (CEI Pattern)
         uint256 totalQeuroToMint = 0;
         uint256 totalUserDeposits = 0;
         
@@ -538,7 +533,6 @@ contract UserPool is
         // Update user balance with conservative estimate
         user.qeuroBalance += uint128(totalQeuroToMint);
         
-        // INTERACTIONS: Process all external calls
         uint256 totalActualMinted = 0;
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 netAmount = netAmounts[i];
@@ -564,7 +558,6 @@ contract UserPool is
         // This ensures reentrancy protection. Users receive actual minted amounts,
         // but internal balance tracking uses conservative estimates.
         
-        // INTERACTIONS: Final transfers and events
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 qeuroMinted = qeuroMintedAmounts[i];
@@ -596,7 +589,6 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         require(user.qeuroBalance >= qeuroAmount, "UserPool: Insufficient balance");
 
-        // EFFECTS: Update state variables BEFORE external calls (CEI Pattern)
         user.qeuroBalance -= uint128(qeuroAmount);
         
         // Calculate conservative estimate for totalDeposits update
@@ -605,7 +597,6 @@ contract UserPool is
         uint256 estimatedNetAmount = minUsdcOut - estimatedFee;
         totalDeposits -= estimatedNetAmount;
 
-        // INTERACTIONS: External calls
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
         
         // Store balance before redemption
@@ -666,7 +657,6 @@ contract UserPool is
         
         require(user.qeuroBalance >= totalQeuroAmount, "UserPool: Insufficient balance");
         
-        // EFFECTS: Update user balance BEFORE external calls (CEI Pattern)
         user.qeuroBalance -= uint128(totalQeuroAmount);
         
         // Calculate conservative estimate for totalDeposits using minimum expected amounts
@@ -681,7 +671,6 @@ contract UserPool is
         }
         totalDeposits -= totalEstimatedNetAmount;
         
-        // INTERACTIONS: External calls
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
         // Process all vault redemptions
@@ -742,10 +731,13 @@ contract UserPool is
         uint256 minStakeAmount_ = minStakeAmount;
         require(qeuroAmount >= minStakeAmount_, "UserPool: Amount below minimum");
         
+        // Cache timestamp to avoid external calls
+        uint256 currentTime = timeProvider.currentTime();
+        
         UserInfo storage user = userInfo[msg.sender];
         
         // Update pending rewards before staking
-        _updatePendingRewards(msg.sender);
+        _updatePendingRewards(msg.sender, currentTime);
         
 
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
@@ -769,6 +761,9 @@ contract UserPool is
     function batchStake(uint256[] calldata qeuroAmounts) external nonReentrant whenNotPaused {
         if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
+        // Cache timestamp to avoid external calls
+        uint256 currentTime = timeProvider.currentTime();
+        
         UserInfo storage user = userInfo[msg.sender];
         uint256 totalQeuroAmount = 0;
         
@@ -782,12 +777,12 @@ contract UserPool is
         }
         
         // Update pending rewards before staking (once for the batch)
-        _updatePendingRewards(msg.sender);
+        _updatePendingRewards(msg.sender, currentTime);
         
         // Transfer total QEURO from user FIRST
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
-        uint64 currentTimestamp = uint64(timeProvider.currentTime());
+        uint64 currentTimestamp = uint64(currentTime);
         
         // Update user staking info with total amount (single update)
         user.stakedAmount += uint128(totalQeuroAmount);
@@ -810,14 +805,17 @@ contract UserPool is
      * @param qeuroAmount Amount of QEURO to unstake (18 decimals)
      */
     function requestUnstake(uint256 qeuroAmount) external nonReentrant {
+        // Cache timestamp to avoid external calls
+        uint256 currentTime = timeProvider.currentTime();
+        
         UserInfo storage user = userInfo[msg.sender];
         require(user.stakedAmount >= qeuroAmount, "UserPool: Insufficient staked amount");
         
         // Update pending rewards
-        _updatePendingRewards(msg.sender);
+        _updatePendingRewards(msg.sender, currentTime);
         
         // Set unstaking request
-        user.unstakeRequestTime = uint64(timeProvider.currentTime());
+        user.unstakeRequestTime = uint64(currentTime);
         user.unstakeAmount = uint128(qeuroAmount);
     }
 
@@ -856,7 +854,9 @@ contract UserPool is
      * @return rewardAmount Amount of QEURO rewards claimed (18 decimals)
      */
     function claimStakingRewards() external nonReentrant returns (uint256 rewardAmount) {
-        _updatePendingRewards(msg.sender);
+        // Cache timestamp to avoid external calls
+        uint256 currentTime = timeProvider.currentTime();
+        _updatePendingRewards(msg.sender, currentTime);
         
         UserInfo storage user = userInfo[msg.sender];
         rewardAmount = user.pendingRewards;
@@ -888,7 +888,9 @@ contract UserPool is
         
         rewardAmounts = new uint256[](users.length);
         
-        uint64 currentTimestamp = uint64(timeProvider.currentTime());
+        // Cache timestamp to avoid external calls in loop
+        uint256 currentTime = timeProvider.currentTime();
+        uint64 currentTimestamp = uint64(currentTime);
         
         // Store users with non-zero rewards to minimize external calls
         address[] memory usersToMint = new address[](users.length);
@@ -897,14 +899,13 @@ contract UserPool is
 
         for (uint256 i = 0; i < users.length; i++) {
             address user = users[i];
-            _updatePendingRewards(user);
+            _updatePendingRewards(user, currentTime);
             
             UserInfo storage userInfo_ = userInfo[user];
             uint256 rewardAmount = userInfo_.pendingRewards;
             rewardAmounts[i] = rewardAmount;
             
             if (rewardAmount > 0) {
-                // EFFECTS: Update state before external calls
                 userInfo_.pendingRewards = 0;
                 
                 // Store for batched minting
@@ -914,7 +915,6 @@ contract UserPool is
             }
         }
         
-        // INTERACTIONS: Single batch external call instead of loop
         for (uint256 i = 0; i < mintCount; i++) {
             address user = usersToMint[i];
             uint256 rewardAmount = amountsToMint[i];
@@ -1029,7 +1029,6 @@ contract UserPool is
         uint256 lastRewardBlock = userLastRewardBlock[user];
         
         if (lastRewardBlock < 1) {
-            // SECURITY: First time claiming, return existing rewards (safe inequality check)
             return userdata.pendingRewards;
         }
         

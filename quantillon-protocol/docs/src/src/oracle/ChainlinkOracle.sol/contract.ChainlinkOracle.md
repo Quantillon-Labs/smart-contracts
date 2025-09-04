@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3822e8b8c39dab806b39c3963ee691f29eecba69/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d7c48fdd1629827b7afa681d6fa8df870ef46184/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -17,7 +17,7 @@ EUR/USD and USDC/USD price manager for Quantillon Protocol
 - Data freshness checks*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -207,15 +207,26 @@ uint256 public usdcToleranceBps;
 ```
 
 
+### timeProvider
+TimeProvider contract for centralized time management
+
+*Used to replace direct block.timestamp usage for testability and consistency*
+
+
+```solidity
+TimeProvider public immutable timeProvider;
+```
+
+
 ## Functions
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
-constructor();
+constructor(TimeProvider _timeProvider);
 ```
 
 ### initialize

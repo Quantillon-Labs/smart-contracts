@@ -582,6 +582,12 @@ contract UserPool is
 
         // EFFECTS: Update state variables BEFORE external calls (CEI Pattern)
         user.qeuroBalance -= uint128(qeuroAmount);
+        
+        // Calculate conservative estimate for totalDeposits update
+        uint256 withdrawalFee_ = withdrawalFee;
+        uint256 estimatedFee = minUsdcOut.percentageOf(withdrawalFee_);
+        uint256 estimatedNetAmount = minUsdcOut - estimatedFee;
+        totalDeposits -= estimatedNetAmount;
 
         // INTERACTIONS: External calls
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
@@ -596,14 +602,9 @@ contract UserPool is
         uint256 usdcAfter = usdc.balanceOf(address(this));
         usdcReceived = usdcAfter - usdcBefore;
 
-        // Calculate withdrawal fee
-        // GAS OPTIMIZATION: Cache storage read
-        uint256 withdrawalFee_ = withdrawalFee;
+        // Calculate actual withdrawal fee and net amount
         uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
         uint256 netAmount = usdcReceived - fee;
-
-        // Update totalDeposits with actual net amount
-        totalDeposits -= netAmount;
 
         // Transfer USDC to user
         usdc.safeTransfer(msg.sender, netAmount);
@@ -649,10 +650,20 @@ contract UserPool is
         // EFFECTS: Update user balance BEFORE external calls (CEI Pattern)
         user.qeuroBalance -= uint128(totalQeuroAmount);
         
+        // Calculate conservative estimate for totalDeposits using minimum expected amounts
+        uint256 totalEstimatedNetAmount = 0;
+        uint256 withdrawalFee_ = withdrawalFee;
+        for (uint256 i = 0; i < length;) {
+            uint256 minUsdcOut = minUsdcOuts[i];
+            uint256 estimatedFee = minUsdcOut.percentageOf(withdrawalFee_);
+            uint256 estimatedNetAmount = minUsdcOut - estimatedFee;
+            totalEstimatedNetAmount += estimatedNetAmount;
+            unchecked { ++i; }
+        }
+        totalDeposits -= totalEstimatedNetAmount;
+        
         // INTERACTIONS: External calls
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
-        
-        uint256 withdrawalFee_ = withdrawalFee;
         
         // Process all vault redemptions
         for (uint256 i = 0; i < length;) {
@@ -680,12 +691,8 @@ contract UserPool is
             unchecked { ++i; }
         }
         
-        // Update totalDeposits with actual net amounts
-        for (uint256 i = 0; i < length;) {
-            uint256 netAmount = usdcReceivedAmounts[i];
-            totalDeposits -= netAmount;
-            unchecked { ++i; }
-        }
+        // Note: totalDeposits already updated before external calls using conservative estimates
+        // Users receive actual net amounts, internal tracking uses conservative values for reentrancy protection
         
         // Final transfers and events
         for (uint256 i = 0; i < length;) {

@@ -1,5 +1,5 @@
 # TimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/TimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/TimelockUpgradeable.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -12,7 +12,7 @@ Secure upgrade mechanism with timelock and multi-sig requirements
 *Replaces unrestricted upgrade capability with governance-controlled upgrades*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables

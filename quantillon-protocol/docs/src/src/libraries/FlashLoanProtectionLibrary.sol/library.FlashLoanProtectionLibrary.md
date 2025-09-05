@@ -1,5 +1,5 @@
 # FlashLoanProtectionLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/FlashLoanProtectionLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/libraries/FlashLoanProtectionLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -20,7 +20,7 @@ by monitoring balance changes during function execution.*
 - Validation that balances don't decrease unexpectedly*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions

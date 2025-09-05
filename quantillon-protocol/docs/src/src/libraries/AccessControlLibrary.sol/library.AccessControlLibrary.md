@@ -1,5 +1,5 @@
 # AccessControlLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/AccessControlLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/libraries/AccessControlLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -13,7 +13,7 @@ Access control functions for Quantillon Protocol
 - Provides standardized error handling for access control*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -22,6 +22,21 @@ team@quantillon.money
 Ensures the caller has governance role
 
 *Reverts with NotGovernance if caller lacks GOVERNANCE_ROLE*
+
+**Notes:**
+- security: Validates caller has GOVERNANCE_ROLE before allowing access
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: Throws NotGovernance if caller lacks required role
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -39,6 +54,21 @@ function onlyGovernance(AccessControlUpgradeable accessControl) internal view;
 Ensures the caller has vault manager role
 
 *Reverts with NotVaultManager if caller lacks VAULT_MANAGER_ROLE*
+
+**Notes:**
+- security: Validates caller has VAULT_MANAGER_ROLE before allowing access
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: Throws NotVaultManager if caller lacks required role
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -124,6 +154,21 @@ function onlyAdmin(AccessControlUpgradeable accessControl) internal view;
 Validates that an address is not the zero address
 
 *Reverts with InvalidAddress if address is zero*
+
+**Notes:**
+- security: Prevents zero address usage which could cause loss of funds
+
+- validation: Validates addr != address(0)
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws InvalidAddress if address is zero
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity

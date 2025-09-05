@@ -1,5 +1,5 @@
 # TimeProvider
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/TimeProviderLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/libraries/TimeProviderLibrary.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, UUPSUpgradeable
@@ -120,7 +120,7 @@ modifier validTimeOffset(int256 offset);
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity

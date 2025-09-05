@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -33,7 +33,7 @@ Euro-pegged stablecoin token for the Quantillon protocol
 - Peg: 1:1 with Euro (managed by vault operations)*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -266,7 +266,7 @@ modifier flashLoanProtection();
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -416,20 +416,22 @@ function batchBurn(address[] calldata froms, uint256[] calldata amounts)
 
 ### _checkAndUpdateMintRateLimit
 
-Checks and updates mint rate limit
-
 Checks and updates the mint rate limit for the caller
 
-*Internal function to enforce rate limiting*
+*Implements sliding window rate limiting using block numbers to prevent abuse*
 
-*Security considerations:
-- Resets rate limit if reset period has passed (~300 blocks)
-- Checks if the new amount would exceed the rate limit
-- Updates the current hour minted amount
-- Throws an error if rate limit is exceeded
-- Includes bounds checking to prevent block manipulation*
+**Notes:**
+- security: Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
 
-*Implements sliding window rate limiting using block numbers*
+- validation: Validates amount against current rate limit caps
+
+- state-changes: Updates rateLimitInfo.currentHourMinted and lastRateLimitReset
+
+- errors: Throws RateLimitExceeded if amount would exceed current rate limit
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -439,25 +441,27 @@ function _checkAndUpdateMintRateLimit(uint256 amount) internal;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`amount`|`uint256`|Amount being minted|
+|`amount`|`uint256`|The amount to be minted (18 decimals), used to check against rate limits|
 
 
 ### _checkAndUpdateBurnRateLimit
 
-Checks and updates burn rate limit
-
 Checks and updates the burn rate limit for the caller
 
-*Internal function to enforce rate limiting*
+*Implements sliding window rate limiting using block numbers to prevent abuse*
 
-*Security considerations:
-- Resets rate limit if reset period has passed (~300 blocks)
-- Checks if the new amount would exceed the rate limit
-- Updates the current hour burned amount
-- Throws an error if rate limit is exceeded
-- Includes bounds checking to prevent block manipulation*
+**Notes:**
+- security: Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
 
-*Implements sliding window rate limiting using block numbers*
+- validation: Validates amount against current rate limit caps
+
+- state-changes: Updates rateLimitInfo.currentHourBurned and lastRateLimitReset
+
+- errors: Throws RateLimitExceeded if amount would exceed current rate limit
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -467,7 +471,7 @@ function _checkAndUpdateBurnRateLimit(uint256 amount) internal;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`amount`|`uint256`|Amount being burned|
+|`amount`|`uint256`|The amount to be burned (18 decimals), used to check against rate limits|
 
 
 ### updateRateLimits
@@ -907,18 +911,38 @@ function getSupplyUtilization() external view returns (uint256);
 |`<none>`|`uint256`|Percentage in basis points (0-10000, where 10000 = 100%)|
 
 
-### batchTransfer
+### getRemainingMintCapacity
 
 Calculates remaining space for minting new tokens
-
-Gets current rate limit status
-
-Batch transfer QEURO tokens to multiple addresses
 
 *Security considerations:
 - Calculates remaining capacity by subtracting currentSupply from maxSupply
 - Handles case where currentSupply >= maxSupply
 - Returns 0 if no more minting is possible*
+
+**Notes:**
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- reentrancy: Not applicable - view function
+
+- access: Public - no access restrictions
+
+
+```solidity
+function getRemainingMintCapacity() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Number of tokens that can still be minted (18 decimals)|
+
+
+### getRateLimitStatus
+
+Gets current rate limit status
 
 *Security considerations:
 - Returns current hour amounts if within the hour
@@ -926,8 +950,60 @@ Batch transfer QEURO tokens to multiple addresses
 - Returns current limits and next reset time
 - Includes bounds checking to prevent timestamp manipulation*
 
+**Notes:**
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- reentrancy: Not applicable - view function
+
+- access: Public - no access restrictions
+
+
+```solidity
+function getRateLimitStatus()
+    external
+    view
+    returns (
+        uint256 mintedThisHour,
+        uint256 burnedThisHour,
+        uint256 mintLimit,
+        uint256 burnLimit,
+        uint256 nextResetTime
+    );
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`mintedThisHour`|`uint256`|Amount minted in current hour (18 decimals)|
+|`burnedThisHour`|`uint256`|Amount burned in current hour (18 decimals)|
+|`mintLimit`|`uint256`|Current mint rate limit (18 decimals)|
+|`burnLimit`|`uint256`|Current burn rate limit (18 decimals)|
+|`nextResetTime`|`uint256`|Block number when rate limits reset|
+
+
+### batchTransfer
+
+Batch transfer QEURO tokens to multiple addresses
+
 *Performs multiple transfers from msg.sender to recipients.
 Uses OpenZeppelin's transfer mechanism with compliance checks.*
+
+**Notes:**
+- security: Validates all recipients and amounts, enforces blacklist/whitelist checks
+
+- validation: Validates array lengths match, amounts > 0, recipients != address(0)
+
+- state-changes: Updates balances for all recipients and sender
+
+- events: Emits Transfer events for each successful transfer
+
+- errors: Throws ArrayLengthMismatch, BatchSizeTooLarge, InvalidAddress, InvalidAmount, BlacklistedAddress, NotWhitelisted
+
+- reentrancy: Protected by whenNotPaused modifier
+
+- access: Public - requires sufficient balance and compliance checks
 
 
 ```solidity
@@ -947,7 +1023,7 @@ function batchTransfer(address[] calldata recipients, uint256[] calldata amounts
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|Number of tokens that can still be minted|
+|`<none>`|`bool`|success Always returns true if all transfers succeed|
 
 
 ### _update

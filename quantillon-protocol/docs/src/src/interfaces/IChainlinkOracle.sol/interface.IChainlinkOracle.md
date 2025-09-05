@@ -1,5 +1,5 @@
 # IChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/interfaces/IChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/interfaces/IChainlinkOracle.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Interface for the Quantillon Chainlink-based oracle
 *Exposes read methods for prices and health, plus admin/emergency controls*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -33,6 +33,23 @@ function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPri
 ### getEurUsdPrice
 
 Gets the current EUR/USD price with validation
+
+**Notes:**
+- security: Validates timestamp freshness, circuit breaker status, price bounds
+
+- validation: Checks price > 0, timestamp < 1 hour old, within min/max bounds
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - returns fallback price if invalid
+
+- reentrancy: Not applicable - view function
+
+- access: Public - no access restrictions
+
+- oracle: Requires fresh Chainlink EUR/USD price feed data
 
 
 ```solidity

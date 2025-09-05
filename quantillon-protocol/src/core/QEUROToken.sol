@@ -535,23 +535,15 @@ contract QEUROToken is
     // =============================================================================
 
     /**
-     * @notice Checks and updates mint rate limit
-     * @param amount Amount being minted
-     * @dev Internal function to enforce rate limiting
-     * 
-     * @dev Security considerations:
-     *      - Resets rate limit if reset period has passed (~300 blocks)
-     *      - Checks if the new amount would exceed the rate limit
-     *      - Updates the current hour minted amount
-     *      - Throws an error if rate limit is exceeded
-     *      - Includes bounds checking to prevent block manipulation
-     * 
-
-     */
-    /**
      * @notice Checks and updates the mint rate limit for the caller
-     * @dev Implements sliding window rate limiting using block numbers
-     * @param amount The amount to be minted, used to check against rate limits
+     * @dev Implements sliding window rate limiting using block numbers to prevent abuse
+     * @param amount The amount to be minted (18 decimals), used to check against rate limits
+     * @custom:security Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
+     * @custom:validation Validates amount against current rate limit caps
+     * @custom:state-changes Updates rateLimitInfo.currentHourMinted and lastRateLimitReset
+     * @custom:errors Throws RateLimitExceeded if amount would exceed current rate limit
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _checkAndUpdateMintRateLimit(uint256 amount) internal {
         // Reset rate limit if reset period has passed (using block numbers)
@@ -581,23 +573,15 @@ contract QEUROToken is
     }
 
     /**
-     * @notice Checks and updates burn rate limit
-     * @param amount Amount being burned
-     * @dev Internal function to enforce rate limiting
-     * 
-     * @dev Security considerations:
-     *      - Resets rate limit if reset period has passed (~300 blocks)
-     *      - Checks if the new amount would exceed the rate limit
-     *      - Updates the current hour burned amount
-     *      - Throws an error if rate limit is exceeded
-     *      - Includes bounds checking to prevent block manipulation
-     * 
-
-     */
-    /**
      * @notice Checks and updates the burn rate limit for the caller
-     * @dev Implements sliding window rate limiting using block numbers
-     * @param amount The amount to be burned, used to check against rate limits
+     * @dev Implements sliding window rate limiting using block numbers to prevent abuse
+     * @param amount The amount to be burned (18 decimals), used to check against rate limits
+     * @custom:security Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
+     * @custom:validation Validates amount against current rate limit caps
+     * @custom:state-changes Updates rateLimitInfo.currentHourBurned and lastRateLimitReset
+     * @custom:errors Throws RateLimitExceeded if amount would exceed current rate limit
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _checkAndUpdateBurnRateLimit(uint256 amount) internal {
         // Reset rate limit if reset period has passed (using block numbers)
@@ -1049,41 +1033,79 @@ contract QEUROToken is
 
     /**
      * @notice Calculates remaining space for minting new tokens
-     * @return Number of tokens that can still be minted
-     * 
+     * @return Number of tokens that can still be minted (18 decimals)
      * @dev Security considerations:
      *      - Calculates remaining capacity by subtracting currentSupply from maxSupply
      *      - Handles case where currentSupply >= maxSupply
      *      - Returns 0 if no more minting is possible
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no access restrictions
      */
+    function getRemainingMintCapacity() external view returns (uint256) {
+        uint256 currentSupply = totalSupply();
+        if (currentSupply >= maxSupply) {
+            return 0;
+        }
+        return maxSupply - currentSupply;
+    }
 
 
     /**
      * @notice Gets current rate limit status
-     * @return mintedThisHour Amount minted in current hour
-     * @return burnedThisHour Amount burned in current hour
-     * @return mintLimit Current mint rate limit
-     * @return burnLimit Current burn rate limit
-     * @return nextResetTime Timestamp when rate limits reset
-     * 
-
-     * 
+     * @return mintedThisHour Amount minted in current hour (18 decimals)
+     * @return burnedThisHour Amount burned in current hour (18 decimals)
+     * @return mintLimit Current mint rate limit (18 decimals)
+     * @return burnLimit Current burn rate limit (18 decimals)
+     * @return nextResetTime Block number when rate limits reset
      * @dev Security considerations:
      *      - Returns current hour amounts if within the hour
      *      - Returns zeros if an hour has passed
      *      - Returns current limits and next reset time
      *      - Includes bounds checking to prevent timestamp manipulation
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no access restrictions
      */
+    function getRateLimitStatus() external view returns (
+        uint256 mintedThisHour,
+        uint256 burnedThisHour,
+        uint256 mintLimit,
+        uint256 burnLimit,
+        uint256 nextResetTime
+    ) {
+        uint256 blocksSinceReset = block.number - rateLimitInfo.lastRateLimitReset;
+        
+        if (blocksSinceReset >= RATE_LIMIT_RESET_PERIOD) {
+            mintedThisHour = 0;
+            burnedThisHour = 0;
+        } else {
+            mintedThisHour = rateLimitInfo.currentHourMinted;
+            burnedThisHour = rateLimitInfo.currentHourBurned;
+        }
+        
+        mintLimit = rateLimitCaps.mint;
+        burnLimit = rateLimitCaps.burn;
+        nextResetTime = rateLimitInfo.lastRateLimitReset + RATE_LIMIT_RESET_PERIOD;
+    }
 
 
     /**
      * @notice Batch transfer QEURO tokens to multiple addresses
-     * 
      * @param recipients Array of recipient addresses
      * @param amounts Array of amounts to transfer (18 decimals)
-     *
+     * @return success Always returns true if all transfers succeed
      * @dev Performs multiple transfers from msg.sender to recipients.
      *      Uses OpenZeppelin's transfer mechanism with compliance checks.
+     * @custom:security Validates all recipients and amounts, enforces blacklist/whitelist checks
+     * @custom:validation Validates array lengths match, amounts > 0, recipients != address(0)
+     * @custom:state-changes Updates balances for all recipients and sender
+     * @custom:events Emits Transfer events for each successful transfer
+     * @custom:errors Throws ArrayLengthMismatch, BatchSizeTooLarge, InvalidAddress, InvalidAmount, BlacklistedAddress, NotWhitelisted
+     * @custom:reentrancy Protected by whenNotPaused modifier
+     * @custom:access Public - requires sufficient balance and compliance checks
      */
     function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
         external

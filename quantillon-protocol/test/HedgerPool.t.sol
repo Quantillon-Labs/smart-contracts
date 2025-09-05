@@ -108,6 +108,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Set up test environment before each test
      * @dev Deploys a new HedgerPool contract using proxy pattern and initializes it
+     * @custom:security Uses proxy pattern for upgradeable contract testing
+     * @custom:validation No input validation required - setup function
+     * @custom:state-changes Deploys new contracts and initializes state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors thrown - setup function
+     * @custom:reentrancy Not applicable - setup function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for setup
      */
     function setUp() public {
         // Deploy TimeProvider through proxy
@@ -355,8 +363,16 @@ contract HedgerPoolTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test successful position opening
-     * @dev Verifies that hedgers can open positions with proper margin
+     * @notice Test successful hedge position opening
+     * @dev Verifies that hedgers can open positions with valid parameters
+     * @custom:security Validates position opening mechanics and margin requirements
+     * @custom:validation Checks USDC transfer, position creation, and margin calculations
+     * @custom:state-changes Creates new position, updates hedger totals, increments position counters
+     * @custom:events Emits HedgePositionOpened event with correct parameters
+     * @custom:errors No errors thrown - successful position opening test
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for position opening test
      */
     function test_Position_OpenPositionSuccess() public {
         vm.prank(hedger1);

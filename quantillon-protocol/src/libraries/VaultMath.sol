@@ -30,6 +30,13 @@ library VaultMath {
      * @param c Divisor
      * @return result a * b / c with proper rounding
      * @dev Used by percentageOf for fee calculations
+     * @custom:security Prevents division by zero and multiplication overflow
+     * @custom:validation Validates c != 0, checks for multiplication overflow
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws "Division by zero" if c is 0, "Multiplication overflow" if overflow
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
      */
     function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result) {
         require(c != 0, "VaultMath: Division by zero");
@@ -52,6 +59,13 @@ library VaultMath {
      * @param percentage Percentage in basis points (e.g., 500 = 5%)
      * @return Calculated percentage value
      * @dev Used for fee calculations across all contracts
+     * @custom:security Prevents percentage overflow and division by zero
+     * @custom:validation Validates percentage <= MAX_PERCENTAGE
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws "Percentage too high" if percentage > MAX_PERCENTAGE
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
      */
     function percentageOf(uint256 value, uint256 percentage) internal pure returns (uint256) {
         require(percentage <= MAX_PERCENTAGE, "VaultMath: Percentage too high");

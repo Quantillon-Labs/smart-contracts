@@ -77,6 +77,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Set up test environment before each test
      * @dev Deploys a new QEUROToken contract using proxy pattern and initializes it
+     * @custom:security Uses proxy pattern for upgradeable contract testing
+     * @custom:validation No input validation required - setup function
+     * @custom:state-changes Deploys new contracts and initializes state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors thrown - setup function
+     * @custom:reentrancy Not applicable - setup function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for setup
      */
     function setUp() public {
         // Deploy implementation
@@ -111,8 +119,16 @@ contract QEUROTokenTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test successful contract initialization
-     * @dev Verifies proper initialization with valid parameters
+     * @notice Test contract initialization with valid parameters
+     * @dev Verifies that the QEUROToken contract initializes correctly with proper roles and state
+     * @custom:security Validates role assignments and initial state setup
+     * @custom:validation Checks admin, vault, and treasury addresses are set correctly
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted - view function
+     * @custom:errors No errors thrown - view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for initialization test
      */
     function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         // Check token details
@@ -180,8 +196,16 @@ contract QEUROTokenTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test successful minting by vault
-     * @dev Verifies that the vault can mint tokens to users
+     * @notice Test successful token minting by vault
+     * @dev Verifies that the vault can mint tokens to users successfully
+     * @custom:security Validates vault role permissions and minting mechanics
+     * @custom:validation Checks vault has MINTER_ROLE and can mint to valid addresses
+     * @custom:state-changes Mints tokens to user1, updates total supply and balances
+     * @custom:events Emits TokensMinted event with correct parameters
+     * @custom:errors No errors thrown - successful mint test
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for minting test
      */
     function test_Mint_Success() public {
         vm.prank(vault);

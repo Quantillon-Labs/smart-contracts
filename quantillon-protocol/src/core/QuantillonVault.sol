@@ -602,6 +602,14 @@ contract QuantillonVault is
     /**
      * @notice Updates the last valid price timestamp when a valid price is fetched
      * @param isValid Whether the current price fetch was valid
+     * @dev Internal function to track price update timing for monitoring
+     * @custom:security Updates timestamp only for valid price fetches
+     * @custom:validation No input validation required
+     * @custom:state-changes Updates lastPriceUpdateTime if price is valid
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _updatePriceTimestamp(bool isValid) internal {
         if (isValid) {

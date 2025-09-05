@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -17,7 +17,7 @@ EUR/USD and USDC/USD price manager for Quantillon Protocol
 - Data freshness checks*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -222,7 +222,7 @@ TimeProvider public immutable timeProvider;
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -561,6 +561,23 @@ Retrieves the current EUR/USD price with full validation
 5. Check min/max bounds
 6. Return valid price or fallback*
 
+**Notes:**
+- security: Validates timestamp freshness, circuit breaker status, price bounds
+
+- validation: Checks price > 0, timestamp < 1 hour old, within min/max bounds
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - returns fallback price if invalid
+
+- reentrancy: Not applicable - view function
+
+- access: Public - no access restrictions
+
+- oracle: Requires fresh Chainlink EUR/USD price feed data
+
 
 ```solidity
 function getEurUsdPrice() external view returns (uint256 price, bool isValid);
@@ -579,6 +596,23 @@ Retrieves the USDC/USD price with validation
 
 *USDC is expected to maintain parity with USD.
 A large deviation indicates a systemic issue.*
+
+**Notes:**
+- security: Validates timestamp freshness, USDC tolerance bounds
+
+- validation: Checks price > 0, timestamp < 1 hour old, within USDC tolerance
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - returns $1.00 fallback if invalid
+
+- reentrancy: Not applicable - view function
+
+- access: Public - no access restrictions
+
+- oracle: Requires fresh Chainlink USDC/USD price feed data
 
 
 ```solidity

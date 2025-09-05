@@ -457,6 +457,7 @@ contract UserPool is
      * @param minQeuroOuts Array of minimum QEURO amounts to receive (18 decimals)
      * @return qeuroMintedAmounts Array of QEURO amounts minted (18 decimals)
      */
+     // slither-disable-next-line calls-loop
     function batchDeposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts)
         external
         nonReentrant
@@ -485,6 +486,7 @@ contract UserPool is
         _updateUserAndPoolState(usdcAmounts, minQeuroOuts, totalNetAmount);
         
         // Process vault operations AFTER state updates
+        // slither-disable-next-line calls-loop
         _processVaultMinting(netAmounts, minQeuroOuts, qeuroMintedAmounts);
         
         // Transfer QEURO to users and emit events
@@ -493,8 +495,15 @@ contract UserPool is
 
     /**
      * @notice Internal function to validate amounts and transfer USDC
-     * @param usdcAmounts Array of USDC amounts to validate and transfer
-     * @return totalUsdcAmount Total USDC amount transferred
+     * @param usdcAmounts Array of USDC amounts to validate and transfer (6 decimals)
+     * @return totalUsdcAmount Total USDC amount transferred (6 decimals)
+     * @dev Validates all amounts are positive and transfers total USDC from user
+     * @custom:security Validates all amounts > 0 before transfer
+     * @custom:validation Validates each amount in array is positive
+     * @custom:state-changes Transfers USDC from msg.sender to contract
+     * @custom:errors Throws if any amount is 0
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _validateAndTransferUsdc(uint256[] calldata usdcAmounts) internal returns (uint256 totalUsdcAmount) {
         // Pre-validate amounts and calculate total
@@ -509,6 +518,12 @@ contract UserPool is
 
     /**
      * @notice Internal function to initialize user if needed
+     * @dev Initializes user tracking if they haven't deposited before
+     * @custom:security Updates hasDeposited mapping and totalUsers counter
+     * @custom:validation No input validation required
+     * @custom:state-changes Updates hasDeposited[msg.sender] and totalUsers
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _initializeUserIfNeeded() internal {
         if (!hasDeposited[msg.sender]) {
@@ -519,9 +534,15 @@ contract UserPool is
 
     /**
      * @notice Internal function to calculate net amounts after fees
-     * @param usdcAmounts Array of USDC amounts
-     * @return netAmounts Array of net amounts after fees
-     * @return totalNetAmount Total net amount
+     * @param usdcAmounts Array of USDC amounts (6 decimals)
+     * @return netAmounts Array of net amounts after fees (6 decimals)
+     * @return totalNetAmount Total net amount (6 decimals)
+     * @dev Calculates net amounts by subtracting deposit fees from each USDC amount
+     * @custom:security Uses cached depositFee to prevent reentrancy
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
      */
     function _calculateNetAmounts(uint256[] calldata usdcAmounts) 
         internal 
@@ -542,11 +563,18 @@ contract UserPool is
 
     /**
      * @notice Internal function to process vault minting operations
-     * @param netAmounts Array of net amounts to mint
-     * @param minQeuroOuts Array of minimum QEURO outputs
-     * @param qeuroMintedAmounts Array to store minted amounts
+     * @param netAmounts Array of net amounts to mint (6 decimals)
+     * @param minQeuroOuts Array of minimum QEURO outputs (18 decimals)
+     * @param qeuroMintedAmounts Array to store minted amounts (18 decimals)
+     * @dev Processes vault minting operations with external calls to vault.mintQEURO
+     * @custom:security Uses single approval for all vault operations to minimize external calls
+     * @custom:validation No input validation required - parameters pre-validated
+     * @custom:state-changes Updates qeuroMintedAmounts array with minted amounts
+     * @custom:events No events emitted - handled by calling function
+     * @custom:errors Throws if vault.mintQEURO fails
+     * @custom:reentrancy Protected by nonReentrant modifier on calling function
+     * @custom:access Internal function - no access restrictions
      */
-    // slither-disable-next-line calls-loop
     function _processVaultMinting(
         uint256[] memory netAmounts,
         uint256[] calldata minQeuroOuts,
@@ -564,23 +592,32 @@ contract UserPool is
         // Process vault minting operations
         // Note: External calls in loop are necessary as vault doesn't support batch minting
         // Batch size is limited to MAX_BATCH_SIZE to prevent gas limit issues
+        // slither-disable-start calls-loop
         for (uint256 i = 0; i < netAmounts.length; i++) {
             uint256 netAmount = netAmounts[i];
             uint256 minQeuroOut = minQeuroOuts[i];
             
             // Mint QEURO through vault - external call is necessary
-            vault.mintQEURO(netAmount, minQeuroOut); // slither-disable-line calls-loop
+            vault.mintQEURO(netAmount, minQeuroOut);
             
             // Use the minimum expected amount as the actual minted amount
             qeuroMintedAmounts[i] = minQeuroOut;
         }
+        // slither-disable-end calls-loop
     }
 
     /**
      * @notice Internal function to update user and pool state
-     * @param usdcAmounts Array of USDC amounts
-     * @param minQeuroOuts Array of minimum QEURO outputs
-     * @param totalNetAmount Total net amount
+     * @param usdcAmounts Array of USDC amounts (6 decimals)
+     * @param minQeuroOuts Array of minimum QEURO outputs (18 decimals)
+     * @param totalNetAmount Total net amount (6 decimals)
+     * @dev Updates user and pool state before external calls for reentrancy protection
+     * @custom:security Updates state before external calls (CEI pattern)
+     * @custom:validation No input validation required - parameters pre-validated
+     * @custom:state-changes Updates user.depositHistory, user.qeuroBalance, totalDeposits
+     * @custom:events No events emitted - handled by calling function
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _updateUserAndPoolState(
         uint256[] calldata usdcAmounts,
@@ -608,9 +645,17 @@ contract UserPool is
 
     /**
      * @notice Internal function to transfer QEURO and emit events
-     * @param usdcAmounts Array of USDC amounts
-     * @param qeuroMintedAmounts Array of minted QEURO amounts
+     * @param usdcAmounts Array of USDC amounts (6 decimals)
+     * @param qeuroMintedAmounts Array of minted QEURO amounts (18 decimals)
      * @param currentTime Current timestamp
+     * @dev Transfers QEURO to users and emits UserDeposit events
+     * @custom:security Uses SafeERC20 for secure token transfers
+     * @custom:validation No input validation required - parameters pre-validated
+     * @custom:state-changes Transfers QEURO tokens to msg.sender
+     * @custom:events Emits UserDeposit event for each transfer
+     * @custom:errors Throws if QEURO transfer fails
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _transferQeuroAndEmitEvents(
         uint256[] calldata usdcAmounts,
@@ -636,6 +681,7 @@ contract UserPool is
      * @param minUsdcOut Minimum amount of USDC to receive (6 decimals)
      * @return usdcReceived Amount of USDC received (6 decimals)
      */
+     // slither-disable-start calls-loop
     function withdraw(uint256 qeuroAmount, uint256 minUsdcOut) 
         external 
         nonReentrant 
@@ -677,6 +723,7 @@ contract UserPool is
 
         emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, timeProvider.currentTime());
     }
+    // slither-disable-end calls-loop
 
     /**
      * @notice Batch withdraw USDC by burning QEURO for multiple amounts
@@ -686,7 +733,7 @@ contract UserPool is
      * @param minUsdcOuts Array of minimum USDC amounts to receive (6 decimals)
      * @return usdcReceivedAmounts Array of USDC amounts received (6 decimals)
      */
-    // slither-disable-next-line calls-loop
+     // slither-disable-start calls-loop
     function batchWithdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
         external
         nonReentrant
@@ -739,12 +786,13 @@ contract UserPool is
         // Process all vault redemptions
         // Note: External calls in loop are necessary as vault doesn't support batch redemption
         // Batch size is limited to MAX_BATCH_SIZE to prevent gas limit issues
+        // slither-disable-start calls-loop
         for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 minUsdcOut = minUsdcOuts[i];
             
             // Redeem USDC through vault - external call is necessary
-            vault.redeemQEURO(qeuroAmount, minUsdcOut); // slither-disable-line calls-loop
+            vault.redeemQEURO(qeuroAmount, minUsdcOut); 
             
             // Use the minimum expected amount as the received amount
             // This avoids additional balance checks and external calls
@@ -757,7 +805,7 @@ contract UserPool is
             
             unchecked { ++i; }
         }
-        
+        // slither-disable-end calls-loop
         // Verify total received amount is reasonable (optional safety check)
         uint256 finalUsdcBalance = usdc.balanceOf(address(this));
         uint256 actualTotalReceived = finalUsdcBalance - initialUsdcBalance;
@@ -795,6 +843,7 @@ contract UserPool is
             unchecked { ++i; }
         }
     }
+    // slither-disable-end calls-loop
 
     // =============================================================================
     // STAKING FUNCTIONS
@@ -1033,11 +1082,17 @@ contract UserPool is
     /**
      * @notice Update pending rewards for a user
      * @param user Address of the user to update
+     * @param currentTime Current timestamp for reward calculations
      * @dev This internal function calculates and updates the pending rewards
      *      for a given user based on their staked amount and the current APY.
      *      Uses block-based calculations to prevent timestamp manipulation.
-     * 
-
+     * @custom:security Uses block-based calculations to prevent timestamp manipulation
+     * @custom:validation Validates user has staked amount > 0
+     * @custom:state-changes Updates user.pendingRewards, user.lastStakeTime, userLastRewardBlock
+     * @custom:events No events emitted - handled by calling function
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _updatePendingRewards(address user, uint256 currentTime) internal {
         UserInfo storage userdata = userInfo[user];

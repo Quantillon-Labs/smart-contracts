@@ -379,6 +379,21 @@ contract HedgerPool is
         nextPositionId = 1;
     }
 
+    /**
+     * @notice Opens a new hedge position with specified USDC margin and leverage
+     * @param usdcAmount Amount of USDC to deposit as margin (6 decimals)
+     * @param leverage Leverage multiplier for the position (1-10x)
+     * @return positionId Unique identifier for the new position
+     * @dev Creates a leveraged EUR/USD hedge position with margin requirements
+     * @custom:security Validates oracle price freshness, enforces margin ratios and leverage limits
+     * @custom:validation Validates usdcAmount > 0, leverage <= maxLeverage, position count limits
+     * @custom:state-changes Creates new HedgePosition, updates hedger totals, increments position counters
+     * @custom:events Emits HedgePositionOpened with position details
+     * @custom:errors Throws InvalidAmount, InvalidLeverage, InvalidOraclePrice, RateLimitExceeded
+     * @custom:reentrancy Protected by secureNonReentrant modifier
+     * @custom:access Public - requires sufficient USDC balance and approval
+     * @custom:oracle Requires fresh EUR/USD price from Chainlink oracle
+     */
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) 
         external 
         secureNonReentrant
@@ -456,6 +471,20 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Closes a hedge position and calculates profit/loss
+     * @param positionId Unique identifier of the position to close
+     * @return pnl Profit or loss from the position (positive = profit, negative = loss)
+     * @dev Closes position, calculates PnL based on current EUR/USD price, applies exit fees
+     * @custom:security Validates position ownership and active status, enforces oracle price freshness
+     * @custom:validation Validates position exists, is active, and owned by caller
+     * @custom:state-changes Closes position, updates hedger totals, decrements position counters
+     * @custom:events Emits HedgePositionClosed with PnL and exit details
+     * @custom:errors Throws InvalidPosition, PositionNotActive, InvalidOraclePrice
+     * @custom:reentrancy Protected by secureNonReentrant modifier
+     * @custom:access Public - requires position ownership
+     * @custom:oracle Requires fresh EUR/USD price from Chainlink oracle
+     */
     function exitHedgePosition(uint256 positionId) 
         external 
         secureNonReentrant
@@ -497,6 +526,21 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Closes multiple hedge positions in a single transaction
+     * @param positionIds Array of position IDs to close
+     * @param maxPositions Maximum number of positions allowed per transaction
+     * @return pnls Array of profit/loss for each closed position
+     * @dev Batch closes positions for gas efficiency, applies same validations as single close
+     * @custom:security Validates batch size limits and position ownership for each position
+     * @custom:validation Validates positionIds.length <= maxPositions, maxPositions <= 10
+     * @custom:state-changes Closes all positions, updates hedger totals, decrements position counters
+     * @custom:events Emits HedgePositionClosed for each closed position
+     * @custom:errors Throws BatchSizeTooLarge, TooManyPositionsPerTx, MaxPositionsPerTx
+     * @custom:reentrancy Protected by secureOperation modifier
+     * @custom:access Public - requires position ownership for all positions
+     * @custom:oracle Requires fresh EUR/USD price from Chainlink oracle
+     */
     function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPositions) 
         external 
         secureOperation
@@ -540,6 +584,25 @@ contract HedgerPool is
         totalExposure -= totalExposureToDeduct;
     }
 
+    /**
+     * @notice Internal function to close a single position in batch operation
+     * @param positionId ID of the position to close
+     * @param currentPrice Current EUR/USD price for PnL calculation
+     * @param hedger HedgerInfo storage reference for the position owner
+     * @param exitFee_ Cached exit fee percentage
+     * @param currentTime Current timestamp for events
+     * @return pnl Profit or loss from the position
+     * @return marginDeducted Amount of margin to deduct from hedger totals
+     * @return exposureDeducted Amount of exposure to deduct from hedger totals
+     * @dev Internal helper for batch position closing with gas optimization
+     * @custom:security Validates position ownership and active status
+     * @custom:validation Validates position exists and is active
+     * @custom:state-changes Closes position, updates hedger totals, emits events
+     * @custom:events Emits HedgePositionClosed event
+     * @custom:errors Throws InvalidPosition, PositionNotActive
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
+     */
     function _closeSinglePositionBatch(
         uint256 positionId, 
         uint256 currentPrice, 
@@ -905,10 +968,17 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Checks if a position is eligible for liquidation
-     * @dev Position is liquidatable if margin ratio falls below liquidation threshold
+     * @notice Check if a position is eligible for liquidation
      * @param positionId The ID of the position to check
-     * @return bool True if position can be liquidated, false otherwise
+     * @return True if position can be liquidated, false otherwise
+     * @dev Position is liquidatable if margin ratio falls below liquidation threshold
+     * @custom:security Validates position is active and oracle price is valid
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
      */
     function _isPositionLiquidatable(uint256 positionId) internal view returns (bool) {
         HedgePosition storage position = positions[positionId];
@@ -926,6 +996,20 @@ contract HedgerPool is
         return marginRatio < liquidationThreshold;
     }
 
+    /**
+     * @notice Calculate profit/loss for a hedge position
+     * @param position Storage reference to the hedge position
+     * @param currentPrice Current EUR/USD price for calculation
+     * @return pnl Profit or loss (positive = profit, negative = loss)
+     * @dev Calculates PnL based on price difference between entry and current price
+     * @custom:security Uses safe arithmetic to prevent overflow
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     */
     function _calculatePnL(HedgePosition storage position, uint256 currentPrice) 
         internal 
         view 

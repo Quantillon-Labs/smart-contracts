@@ -216,6 +216,20 @@ contract AaveVault is
         lastHarvestTime = block.timestamp;
     }
 
+    /**
+     * @notice Deploy USDC to Aave V3 pool to earn yield
+     * @param amount USDC amount to supply (6 decimals)
+     * @return aTokensReceived Amount of aUSDC received (6 decimals)
+     * @dev Supplies USDC to Aave protocol and receives aUSDC tokens representing the deposit
+     * @custom:security Validates oracle price freshness, enforces exposure limits and health checks
+     * @custom:validation Validates amount > 0, checks max exposure limits, verifies Aave pool health
+     * @custom:state-changes Updates principalDeposited, transfers USDC from caller, receives aUSDC
+     * @custom:events Emits DeployedToAave with operation details
+     * @custom:errors Throws WouldExceedLimit if exceeds maxAaveExposure, AavePoolNotHealthy if pool unhealthy
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to VAULT_MANAGER_ROLE
+     * @custom:oracle Requires fresh EUR/USD price for health validation
+     */
     function deployToAave(uint256 amount) 
         external 
         nonReentrant 
@@ -251,6 +265,20 @@ contract AaveVault is
         emit DeployedToAave("deploy", amount, aTokensReceived, balanceAfter);
     }
 
+    /**
+     * @notice Withdraw USDC from Aave V3 pool
+     * @param amount Amount of aUSDC to withdraw (6 decimals, use type(uint256).max for all)
+     * @return usdcWithdrawn Amount of USDC actually withdrawn (6 decimals)
+     * @dev Withdraws USDC from Aave protocol, validates slippage and updates principal tracking
+     * @custom:security Validates withdrawal constraints, enforces minimum balance requirements
+     * @custom:validation Validates amount > 0, checks sufficient aUSDC balance, validates slippage
+     * @custom:state-changes Updates principalDeposited, withdraws aUSDC, receives USDC
+     * @custom:events Emits WithdrawnFromAave with withdrawal details
+     * @custom:errors Throws InsufficientBalance if not enough aUSDC, WouldBreachMinimum if below threshold
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to VAULT_MANAGER_ROLE
+     * @custom:oracle No oracle dependency for withdrawals
+     */
     function withdrawFromAave(uint256 amount) 
         external 
         nonReentrant 
@@ -276,7 +304,18 @@ contract AaveVault is
     }
     
     /**
-     * @dev Validates and calculates the actual withdrawal amount
+     * @notice Validates and calculates the actual withdrawal amount
+     * @param amount Requested withdrawal amount (6 decimals)
+     * @param aaveBalance Current aUSDC balance (6 decimals)
+     * @return withdrawAmount Actual amount to withdraw (6 decimals)
+     * @dev Internal function to validate withdrawal parameters and calculate actual amount
+     * @custom:security Validates sufficient balance and handles max withdrawal requests
+     * @custom:validation Validates aaveBalance > 0, amount <= aaveBalance
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws InsufficientBalance if balance too low
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
      */
     function _validateAndCalculateWithdrawAmount(
         uint256 amount, 
@@ -293,7 +332,17 @@ contract AaveVault is
     }
     
     /**
-     * @dev Validates withdrawal constraints (emergency mode, minimum balance)
+     * @notice Validates withdrawal constraints (emergency mode, minimum balance)
+     * @param withdrawAmount Amount to withdraw (6 decimals)
+     * @param aaveBalance Current aUSDC balance (6 decimals)
+     * @dev Internal function to validate withdrawal constraints and minimum balance requirements
+     * @custom:security Enforces minimum balance requirements unless in emergency mode
+     * @custom:validation Validates remaining balance >= minimum threshold
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors Throws WouldBreachMinimum if below minimum balance threshold
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
      */
     function _validateWithdrawalConstraints(uint256 withdrawAmount, uint256 aaveBalance) internal view {
         if (!emergencyMode) {
@@ -366,6 +415,19 @@ contract AaveVault is
     
 
 
+    /**
+     * @notice Claim Aave rewards (if any)
+     * @return rewardsClaimed Claimed reward amount (18 decimals)
+     * @dev Claims any available Aave protocol rewards for the vault's aUSDC position
+     * @custom:security No additional security checks required - Aave handles reward validation
+     * @custom:validation No input validation required - view function checks pending rewards
+     * @custom:state-changes Claims rewards to vault address, updates reward tracking
+     * @custom:events Emits AaveRewardsClaimed with reward details
+     * @custom:errors No errors thrown - safe to call even with no rewards
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to VAULT_MANAGER_ROLE
+     * @custom:oracle No oracle dependency for reward claims
+     */
     function claimAaveRewards() 
         external 
         nonReentrant 
@@ -384,6 +446,19 @@ contract AaveVault is
         }
     }
 
+    /**
+     * @notice Harvest Aave yield and distribute via YieldShift
+     * @return yieldHarvested Amount harvested (6 decimals)
+     * @dev Harvests available yield from Aave lending, charges protocol fees, distributes net yield
+     * @custom:security Uses CEI pattern, validates slippage, enforces harvest threshold
+     * @custom:validation Validates available yield >= harvestThreshold before harvesting
+     * @custom:state-changes Updates lastHarvestTime, totalFeesCollected, totalYieldHarvested
+     * @custom:events Emits AaveYieldHarvested with harvest details
+     * @custom:errors Throws BelowThreshold if yield < harvestThreshold, ExcessiveSlippage if slippage too high
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to VAULT_MANAGER_ROLE
+     * @custom:oracle No oracle dependency for yield harvesting
+     */
     function harvestAaveYield() 
         external 
         nonReentrant 

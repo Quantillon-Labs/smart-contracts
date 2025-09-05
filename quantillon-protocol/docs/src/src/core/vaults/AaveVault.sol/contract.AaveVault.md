@@ -1,5 +1,5 @@
 # AaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/vaults/AaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/vaults/AaveVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -67,7 +67,7 @@ Aave integration vault for yield generation through USDC lending
 - Rewards controller for additional incentives*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -243,21 +243,104 @@ function initialize(
 
 ### deployToAave
 
+Deploy USDC to Aave V3 pool to earn yield
+
+*Supplies USDC to Aave protocol and receives aUSDC tokens representing the deposit*
+
+**Notes:**
+- security: Validates oracle price freshness, enforces exposure limits and health checks
+
+- validation: Validates amount > 0, checks max exposure limits, verifies Aave pool health
+
+- state-changes: Updates principalDeposited, transfers USDC from caller, receives aUSDC
+
+- events: Emits DeployedToAave with operation details
+
+- errors: Throws WouldExceedLimit if exceeds maxAaveExposure, AavePoolNotHealthy if pool unhealthy
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to VAULT_MANAGER_ROLE
+
+- oracle: Requires fresh EUR/USD price for health validation
+
 
 ```solidity
 function deployToAave(uint256 amount) external nonReentrant whenNotPaused returns (uint256 aTokensReceived);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|USDC amount to supply (6 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`aTokensReceived`|`uint256`|Amount of aUSDC received (6 decimals)|
+
 
 ### withdrawFromAave
+
+Withdraw USDC from Aave V3 pool
+
+*Withdraws USDC from Aave protocol, validates slippage and updates principal tracking*
+
+**Notes:**
+- security: Validates withdrawal constraints, enforces minimum balance requirements
+
+- validation: Validates amount > 0, checks sufficient aUSDC balance, validates slippage
+
+- state-changes: Updates principalDeposited, withdraws aUSDC, receives USDC
+
+- events: Emits WithdrawnFromAave with withdrawal details
+
+- errors: Throws InsufficientBalance if not enough aUSDC, WouldBreachMinimum if below threshold
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to VAULT_MANAGER_ROLE
+
+- oracle: No oracle dependency for withdrawals
 
 
 ```solidity
 function withdrawFromAave(uint256 amount) external nonReentrant returns (uint256 usdcWithdrawn);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Amount of aUSDC to withdraw (6 decimals, use type(uint256).max for all)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcWithdrawn`|`uint256`|Amount of USDC actually withdrawn (6 decimals)|
+
 
 ### _validateAndCalculateWithdrawAmount
 
-*Validates and calculates the actual withdrawal amount*
+Validates and calculates the actual withdrawal amount
+
+*Internal function to validate withdrawal parameters and calculate actual amount*
+
+**Notes:**
+- security: Validates sufficient balance and handles max withdrawal requests
+
+- validation: Validates aaveBalance > 0, amount <= aaveBalance
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws InsufficientBalance if balance too low
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -266,15 +349,52 @@ function _validateAndCalculateWithdrawAmount(uint256 amount, uint256 aaveBalance
     pure
     returns (uint256 withdrawAmount);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Requested withdrawal amount (6 decimals)|
+|`aaveBalance`|`uint256`|Current aUSDC balance (6 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`withdrawAmount`|`uint256`|Actual amount to withdraw (6 decimals)|
+
 
 ### _validateWithdrawalConstraints
 
-*Validates withdrawal constraints (emergency mode, minimum balance)*
+Validates withdrawal constraints (emergency mode, minimum balance)
+
+*Internal function to validate withdrawal constraints and minimum balance requirements*
+
+**Notes:**
+- security: Enforces minimum balance requirements unless in emergency mode
+
+- validation: Validates remaining balance >= minimum threshold
+
+- state-changes: No state changes - view function
+
+- events: No events emitted
+
+- errors: Throws WouldBreachMinimum if below minimum balance threshold
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
 function _validateWithdrawalConstraints(uint256 withdrawAmount, uint256 aaveBalance) internal view;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`withdrawAmount`|`uint256`|Amount to withdraw (6 decimals)|
+|`aaveBalance`|`uint256`|Current aUSDC balance (6 decimals)|
+
 
 ### _validateExpectedWithdrawal
 
@@ -312,17 +432,71 @@ function _validateWithdrawalResult(
 
 ### claimAaveRewards
 
+Claim Aave rewards (if any)
+
+*Claims any available Aave protocol rewards for the vault's aUSDC position*
+
+**Notes:**
+- security: No additional security checks required - Aave handles reward validation
+
+- validation: No input validation required - view function checks pending rewards
+
+- state-changes: Claims rewards to vault address, updates reward tracking
+
+- events: Emits AaveRewardsClaimed with reward details
+
+- errors: No errors thrown - safe to call even with no rewards
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to VAULT_MANAGER_ROLE
+
+- oracle: No oracle dependency for reward claims
+
 
 ```solidity
 function claimAaveRewards() external nonReentrant returns (uint256 rewardsClaimed);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`rewardsClaimed`|`uint256`|Claimed reward amount (18 decimals)|
+
 
 ### harvestAaveYield
+
+Harvest Aave yield and distribute via YieldShift
+
+*Harvests available yield from Aave lending, charges protocol fees, distributes net yield*
+
+**Notes:**
+- security: Uses CEI pattern, validates slippage, enforces harvest threshold
+
+- validation: Validates available yield >= harvestThreshold before harvesting
+
+- state-changes: Updates lastHarvestTime, totalFeesCollected, totalYieldHarvested
+
+- events: Emits AaveYieldHarvested with harvest details
+
+- errors: Throws BelowThreshold if yield < harvestThreshold, ExcessiveSlippage if slippage too high
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to VAULT_MANAGER_ROLE
+
+- oracle: No oracle dependency for yield harvesting
 
 
 ```solidity
 function harvestAaveYield() external nonReentrant returns (uint256 yieldHarvested);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`yieldHarvested`|`uint256`|Amount harvested (6 decimals)|
+
 
 ### getAvailableYield
 

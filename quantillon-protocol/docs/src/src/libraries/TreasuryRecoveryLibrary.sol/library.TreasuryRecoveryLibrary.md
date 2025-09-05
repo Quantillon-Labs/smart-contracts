@@ -1,5 +1,5 @@
 # TreasuryRecoveryLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/TreasuryRecoveryLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/libraries/TreasuryRecoveryLibrary.sol)
 
 **Author:**
 Quantillon Protocol Team
@@ -10,7 +10,7 @@ Library for secure token and ETH recovery to treasury addresses
 to save gas, reduce bytecode, and ensure consistent security implementation*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions

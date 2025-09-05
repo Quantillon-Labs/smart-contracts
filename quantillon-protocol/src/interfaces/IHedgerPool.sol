@@ -30,6 +30,7 @@ interface IHedgerPool {
     
     /**
      * @notice Closes an existing hedge position
+     * @dev Closes a hedge position and calculates PnL based on current EUR/USD price
      * @param positionId The ID of the position to close
      * @return pnl The profit or loss from the position (positive for profit, negative for loss)
       * @custom:security Validates input parameters and enforces security checks
@@ -47,6 +48,7 @@ interface IHedgerPool {
     
     /**
      * @notice Adds additional margin to an existing position
+     * @dev Adds USDC margin to an existing hedge position to improve margin ratio
      * @param positionId The ID of the position to add margin to
      * @param amount The amount of USDC to add as margin
       * @custom:security Validates input parameters and enforces security checks
@@ -62,6 +64,7 @@ interface IHedgerPool {
     
     /**
      * @notice Removes margin from an existing position
+     * @dev Removes USDC margin from an existing hedge position, subject to minimum margin requirements
      * @param positionId The ID of the position to remove margin from
      * @param amount The amount of USDC margin to remove
       * @custom:security Validates input parameters and enforces security checks
@@ -79,6 +82,7 @@ interface IHedgerPool {
     
     /**
      * @notice Commits to liquidating a position (first step of two-phase liquidation)
+     * @dev Commits to liquidating an undercollateralized position using a two-phase commit-reveal scheme
      * @param hedger The address of the hedger whose position will be liquidated
      * @param positionId The ID of the position to liquidate
      * @param salt A random value to prevent front-running

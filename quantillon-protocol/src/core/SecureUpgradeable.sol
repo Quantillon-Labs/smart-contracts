@@ -46,6 +46,11 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     // ============ Initialization ============
     
+    /**
+     * @notice Initializes the SecureUpgradeable contract
+     * @dev Sets up the secure upgrade system with timelock protection
+     * @param _timelock Address of the timelock contract
+     */
     function __SecureUpgradeable_init(address _timelock) internal onlyInitializing {
         __UUPSUpgradeable_init();
         __AccessControl_init();
@@ -61,6 +66,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Set the timelock contract
+     * @dev Configures the timelock contract for secure upgrade management
      * @param _timelock Address of the timelock contract
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -79,6 +85,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Toggle secure upgrades
+     * @dev Enables or disables the secure upgrade mechanism
      * @param enabled Whether to enable secure upgrades
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -96,9 +103,18 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Propose an upgrade through the timelock
+     * @dev Initiates a secure upgrade proposal with timelock delay and multi-sig requirements
      * @param newImplementation Address of the new implementation
      * @param description Description of the upgrade
      * @param customDelay Optional custom delay
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function proposeUpgrade(
         address newImplementation,
@@ -113,6 +129,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Execute an upgrade through the timelock
+     * @dev Executes a previously proposed upgrade after timelock delay
      * @param newImplementation Address of the new implementation
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -130,8 +147,17 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Emergency upgrade (bypasses timelock, requires emergency mode)
+     * @dev Allows emergency upgrades when secure upgrades are disabled or timelock is unavailable
      * @param newImplementation Address of the new implementation
      * @param description Description of the emergency upgrade
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function emergencyUpgrade(
         address newImplementation,
@@ -149,6 +175,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Authorize upgrade (overrides UUPSUpgradeable)
+     * @dev Internal function that determines upgrade authorization based on secure upgrade settings
      * @param newImplementation Address of the new implementation
      */
     function _authorizeUpgrade(address newImplementation) internal override {
@@ -167,6 +194,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Check if an upgrade is pending
+     * @dev Checks if there is a pending upgrade for the specified implementation
      * @param implementation Address of the implementation
      * @return isPending Whether the upgrade is pending
       * @custom:security Validates input parameters and enforces security checks
@@ -187,6 +215,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Get pending upgrade details
+     * @dev Returns detailed information about a pending upgrade
      * @param implementation Address of the implementation
      * @return upgrade Pending upgrade details
       * @custom:security Validates input parameters and enforces security checks
@@ -215,6 +244,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Check if an upgrade can be executed
+     * @dev Checks if a pending upgrade has passed the timelock delay and can be executed
      * @param implementation Address of the implementation
      * @return canExecute Whether the upgrade can be executed
       * @custom:security Validates input parameters and enforces security checks
@@ -233,6 +263,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Get upgrade security status
+     * @dev Returns the current security configuration for upgrades
      * @return timelockAddress Address of the timelock contract
      * @return secureUpgradesEnabled_ Whether secure upgrades are enabled
      * @return hasTimelock Whether timelock is set
@@ -261,14 +292,15 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Disable secure upgrades in emergency
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Disables secure upgrades for emergency situations
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function emergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
         secureUpgradesEnabled = false;
@@ -277,14 +309,15 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /**
      * @notice Enable secure upgrades after emergency
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Re-enables secure upgrades after emergency situations
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function enableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(address(timelock) != address(0), "SecureUpgradeable: Timelock must be set");

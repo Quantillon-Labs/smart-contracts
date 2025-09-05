@@ -29,6 +29,7 @@ library AccessControlLibrary {
      * @custom:errors Throws NotGovernance if caller lacks required role
      * @custom:reentrancy Not applicable - view function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function onlyGovernance(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("GOVERNANCE_ROLE"), msg.sender)) {
@@ -47,6 +48,7 @@ library AccessControlLibrary {
      * @custom:errors Throws NotVaultManager if caller lacks required role
      * @custom:reentrancy Not applicable - view function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function onlyVaultManager(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("VAULT_MANAGER_ROLE"), msg.sender)) {
@@ -58,6 +60,14 @@ library AccessControlLibrary {
      * @notice Ensures the caller has emergency role
      * @dev Reverts with NotEmergencyRole if caller lacks EMERGENCY_ROLE
      * @param accessControl The access control contract to check roles against
+     * @custom:security Validates caller has EMERGENCY_ROLE before allowing access
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors Throws NotEmergencyRole if caller lacks required role
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function onlyEmergencyRole(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("EMERGENCY_ROLE"), msg.sender)) {
@@ -69,6 +79,14 @@ library AccessControlLibrary {
      * @notice Ensures the caller has liquidator role
      * @dev Reverts with NotLiquidatorRole if caller lacks LIQUIDATOR_ROLE
      * @param accessControl The access control contract to check roles against
+     * @custom:security Validates caller has LIQUIDATOR_ROLE before allowing access
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors Throws NotLiquidatorRole if caller lacks required role
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function onlyLiquidatorRole(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("LIQUIDATOR_ROLE"), msg.sender)) {
@@ -80,6 +98,14 @@ library AccessControlLibrary {
      * @notice Ensures the caller has yield manager role
      * @dev Reverts with NotYieldManager if caller lacks YIELD_MANAGER_ROLE
      * @param accessControl The access control contract to check roles against
+     * @custom:security Validates caller has YIELD_MANAGER_ROLE before allowing access
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors Throws NotYieldManager if caller lacks required role
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function onlyYieldManager(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("YIELD_MANAGER_ROLE"), msg.sender)) {
@@ -91,6 +117,14 @@ library AccessControlLibrary {
      * @notice Ensures the caller has admin role
      * @dev Reverts with NotAdmin if caller lacks DEFAULT_ADMIN_ROLE
      * @param accessControl The access control contract to check roles against
+     * @custom:security Validates caller has DEFAULT_ADMIN_ROLE before allowing access
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors Throws NotAdmin if caller lacks required role
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function onlyAdmin(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(accessControl.DEFAULT_ADMIN_ROLE(), msg.sender)) {
@@ -120,6 +154,14 @@ library AccessControlLibrary {
      * @notice Validates that an amount is not zero
      * @dev Reverts with InvalidAmount if amount is zero
      * @param amount The amount to validate
+     * @custom:security Prevents zero amount operations which could cause unexpected behavior
+     * @custom:validation Validates amount > 0
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws InvalidAmount if amount is zero
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validateAmount(uint256 amount) internal pure {
         if (amount == 0) {
@@ -131,6 +173,14 @@ library AccessControlLibrary {
      * @notice Validates that an amount is positive (> 0)
      * @dev Reverts with InvalidAmount if amount is zero or negative
      * @param amount The amount to validate
+     * @custom:security Prevents zero or negative amount operations which could cause unexpected behavior
+     * @custom:validation Validates amount > 0
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws InvalidAmount if amount is zero or negative
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validatePositiveAmount(uint256 amount) internal pure {
         if (amount <= 0) {

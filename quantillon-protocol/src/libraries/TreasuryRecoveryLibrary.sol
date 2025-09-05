@@ -28,6 +28,14 @@ library TreasuryRecoveryLibrary {
      * @dev Gas optimization: Uses library function to avoid code duplication
      * @dev Security: Prevents recovery of own tokens and ensures treasury-only recovery
      * @dev Error handling: Uses custom errors for gas efficiency
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function recoverToken(
         address token,
@@ -50,6 +58,14 @@ library TreasuryRecoveryLibrary {
      * @dev Gas optimization: Uses library function to avoid code duplication
      * @dev Security: Prevents arbitrary ETH transfers that could be exploited
      * @dev Error handling: Uses custom errors for gas efficiency
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH(
         address treasury

@@ -32,6 +32,14 @@ library FlashLoanProtectionLibrary {
      * @dev This function validates that balances don't decrease beyond acceptable limits.
      *      Currently used by all contract modifiers to prevent flash loan attacks.
      *      A maxDecrease of 0 means no decrease is allowed (strict protection).
+     * @custom:security Prevents flash loan attacks by validating balance changes
+     * @custom:validation Validates balance changes are within acceptable limits
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No custom errors thrown
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validateBalanceChange(
         uint256 balanceBefore,

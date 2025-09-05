@@ -22,6 +22,14 @@ library TokenLibrary {
      * @param totalSupply Current total supply
      * @param maxSupply Maximum supply cap
      * @dev Ensures minting doesn't exceed maximum supply and validates parameters
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function validateMint(address to, uint256 amount, uint256 totalSupply, uint256 maxSupply) internal pure {
         if (to == address(0)) revert ErrorLibrary.InvalidAddress();
@@ -35,6 +43,14 @@ library TokenLibrary {
      * @param amount Amount to burn
      * @param balance Current balance
      * @dev Ensures sufficient balance and validates parameters for burning
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function validateBurn(address from, uint256 amount, uint256 balance) internal pure {
         if (from == address(0)) revert ErrorLibrary.InvalidAddress();

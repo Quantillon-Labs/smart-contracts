@@ -19,6 +19,14 @@ library HedgerPoolValidationLibrary {
      * @param maxPositionSize Maximum allowed position size
      * @param maxEntryPrice Maximum allowed entry price
      * @param maxLeverage Maximum allowed leverage
+     * @custom:security Validates all position parameters against maximum limits
+     * @custom:validation Validates all position parameters against maximum limits
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws various errors if parameters exceed limits
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validatePositionParams(
         uint256 netMargin,
@@ -45,6 +53,14 @@ library HedgerPoolValidationLibrary {
      * @param additionalExposure Additional exposure being added
      * @param maxTotalMargin Maximum allowed total margin
      * @param maxTotalExposure Maximum allowed total exposure
+     * @custom:security Validates total margin and exposure limits
+     * @custom:validation Validates total margin and exposure limits
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws various errors if totals exceed limits
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validateTotals(
         uint256 currentMargin,
@@ -62,6 +78,14 @@ library HedgerPoolValidationLibrary {
      * @notice Validates timestamp fits in uint32 for storage optimization
      * @dev Prevents timestamp overflow when casting to uint32
      * @param timestamp The timestamp to validate
+     * @custom:security Validates timestamp fits in uint32 for storage optimization
+     * @custom:validation Validates timestamp fits in uint32 for storage optimization
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws TimestampOverflow if timestamp exceeds uint32 max
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validateTimestamp(uint256 timestamp) internal pure {
         if (timestamp > type(uint32).max) revert ErrorLibrary.TimestampOverflow();
@@ -72,6 +96,14 @@ library HedgerPoolValidationLibrary {
      * @dev Ensures margin additions don't exceed individual position limits
      * @param newMargin The new total margin amount
      * @param maxMargin Maximum allowed margin per position
+     * @custom:security Validates new margin amount against maximum limit
+     * @custom:validation Validates new margin amount against maximum limit
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws NewMarginExceedsMaximum if margin exceeds limit
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validateNewMargin(uint256 newMargin, uint256 maxMargin) internal pure {
         if (newMargin > maxMargin) revert ErrorLibrary.NewMarginExceedsMaximum();
@@ -82,6 +114,14 @@ library HedgerPoolValidationLibrary {
      * @dev Prevents excessive reward accumulation that could cause overflow
      * @param newRewards The new total pending rewards amount
      * @param maxRewards Maximum allowed pending rewards
+     * @custom:security Validates pending rewards against maximum accumulation limit
+     * @custom:validation Validates pending rewards against maximum accumulation limit
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws PendingRewardsExceedMaximum if rewards exceed limit
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validatePendingRewards(uint256 newRewards, uint256 maxRewards) internal pure {
         if (newRewards > maxRewards) revert ErrorLibrary.PendingRewardsExceedMaximum();

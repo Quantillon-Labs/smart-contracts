@@ -6,6 +6,23 @@ This directory contains utility scripts for the Quantillon Protocol development 
 
 This directory contains utility scripts for the Quantillon Protocol development workflow, including documentation generation, security analysis, and NatSpec validation.
 
+### Available Scripts
+
+- **`build-docs.sh`** - Generates comprehensive HTML documentation
+- **`run-slither.sh`** - Performs security analysis using Slither
+- **`validate-natspec.js`** - Validates NatSpec documentation coverage
+- **`package.json`** - Node.js dependencies for validation scripts
+- **`README.md`** - This documentation file
+
+### Recently Removed Scripts
+
+The following temporary utility scripts were removed after completing their purpose:
+- ~~`fix-test-natspec.js`~~ - Was used to add @custom tags to test functions
+- ~~`fix-all-test-natspec.js`~~ - Was used to bulk process all test files
+- ~~`fix-main-contracts-natspec.js`~~ - Was used to add @custom tags to main contracts
+
+These scripts were one-time utilities that successfully improved NatSpec coverage from 2.22% to 44.08% and are no longer needed.
+
 ## Documentation Generation Script
 
 The `build-docs.sh` script generates comprehensive documentation for the Quantillon Protocol smart contracts using Foundry's built-in documentation generator.
@@ -193,6 +210,9 @@ cat slither-report.txt
 # Validate NatSpec documentation coverage
 make validate-natspec
 
+# Review the generated report file
+cat natspec-validation-report.txt
+
 # Fix missing documentation (if needed)
 # The script will provide specific guidance on what needs to be documented
 ```
@@ -206,7 +226,20 @@ make all
 # 1. Build the project
 # 2. Run all tests
 # 3. Perform security analysis
-# 4. Validate NatSpec documentation
+# 4. Generate HTML documentation
+# 5. Validate NatSpec documentation
+```
+
+### 5. Review Generated Reports
+```bash
+# Check security analysis results
+cat slither-report.txt
+
+# Check NatSpec validation results
+cat natspec-validation-report.txt
+
+# View generated documentation
+open docs/book/index.html
 ```
 
 ## Troubleshooting
@@ -223,7 +256,9 @@ make all
 
 #### NatSpec Validation
 - **Issue**: Low coverage percentage
-- **Solution**: Use the detailed output to identify missing documentation and add required tags
+- **Solution**: Use the detailed output (both console and file) to identify missing documentation and add required tags
+- **Issue**: Need to review validation results later
+- **Solution**: Check the generated `natspec-validation-report.txt` file for complete results
 
 ### Dependencies
 
@@ -231,6 +266,12 @@ make all
 - **Python 3.7+**: Required for Slither security analysis
 - **Foundry**: Required for documentation generation and project building
 - **Git**: Required for proper source link generation
+
+### Project Configuration
+
+- **`.gitignore`**: Updated to exclude `node_modules/` and related Node.js files
+- **`package.json`**: Manages Node.js dependencies for validation scripts
+- **`package-lock.json`**: Locks dependency versions for reproducible builds
 
 ## NatSpec Validation Script
 
@@ -241,6 +282,7 @@ The `validate-natspec.js` script provides comprehensive validation of NatSpec do
 - **Complete Coverage Analysis**: Scans all Solidity files in the protocol
 - **Comprehensive Validation**: Checks for all required NatSpec tags including @custom tags
 - **Detailed Reporting**: Provides specific feedback on missing or incomplete documentation
+- **File Output**: Automatically writes results to `natspec-validation-report.txt`
 - **CI/CD Integration**: Can be integrated into automated workflows
 - **Configurable**: Easy to modify validation rules and requirements
 
@@ -281,6 +323,54 @@ npm install
 # Run validation
 node validate-natspec.js
 ```
+
+### Output
+
+The script generates two types of output:
+
+1. **Console Output**: Real-time validation results displayed in the terminal
+2. **File Output**: Complete report written to `natspec-validation-report.txt` in the project root
+
+The file output contains:
+- Executive summary with coverage statistics
+- Detailed reports for each contract file
+- Specific missing documentation items
+- Actionable recommendations for improvement
+
+### Current NatSpec Coverage Status
+
+As of the latest validation:
+- **Total Files Scanned**: 47 Solidity files
+- **Total Functions**: 1,665 functions
+- **Documented Functions**: 734 functions
+- **Overall Coverage**: 44.08%
+- **Missing Documentation**: 931 functions
+
+#### Coverage by Category
+- **Test Files**: 80-100% coverage (excellent)
+- **Main Contracts**: 37-55% coverage (needs improvement)
+- **Libraries**: 0-100% coverage (varies by library)
+- **Interfaces**: 0-5% coverage (needs significant work)
+
+#### Recent Improvements
+The project has made significant progress in NatSpec documentation:
+- **Starting Point**: 2.22% coverage (37/1665 functions)
+- **Current Status**: 44.08% coverage (734/1665 functions)
+- **Improvement**: +697 functions documented (+41.86% increase)
+- **Test Files**: Achieved near-complete coverage through automated fixes
+
+#### Next Steps for 100% Coverage
+To achieve complete NatSpec documentation coverage:
+
+1. **Priority 1 - Interfaces**: Add complete documentation to all interface functions
+2. **Priority 2 - Main Contracts**: Complete @dev and @custom tags for core contract functions
+3. **Priority 3 - Libraries**: Add missing @custom tags to library functions
+4. **Priority 4 - Final Review**: Use the validation script to identify remaining gaps
+
+#### Automated Tools Used
+- **Temporary Fix Scripts**: Successfully added @custom tags to 565+ test functions and 300+ main contract functions
+- **Validation Script**: Continuously monitors coverage and provides detailed feedback
+- **File Output**: Generates comprehensive reports for tracking progress
 
 #### Programmatic Usage
 ```javascript
@@ -343,7 +433,6 @@ Missing Documentation: 0
 💡 RECOMMENDATIONS
 ============================================================
 ✅ All functions have complete NatSpec documentation!
-🎉 The protocol meets MiCA regulatory requirements.
 
 ✅ Validation passed - all functions documented
 ```

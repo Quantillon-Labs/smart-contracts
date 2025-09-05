@@ -200,6 +200,7 @@ contract AaveVault is
         rewardsController = IRewardsController(_rewardsController);
         yieldShift = IYieldShift(_yieldShift);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         treasury = _treasury;
 
         ReserveData memory reserveData = aavePool.getReserveData(address(usdc));
@@ -250,7 +251,6 @@ contract AaveVault is
         emit DeployedToAave("deploy", amount, aTokensReceived, balanceAfter);
     }
 
-    // slither-disable-next-line reentrancy-no-eth
     function withdrawFromAave(uint256 amount) 
         external 
         nonReentrant 
@@ -267,17 +267,12 @@ contract AaveVault is
         uint256 usdcBefore = usdc.balanceOf(address(this));
         _validateExpectedWithdrawal(withdrawAmount);
         
-        // CALCULATE EXPECTED STATE CHANGES BEFORE EXTERNAL CALL
+        
         uint256 expectedPrincipalToDeduct = VaultMath.min(withdrawAmount, principalDeposited);
-        
-        // EXTERNAL CALL - aavePool.withdraw() (INTERACTIONS)
-        usdcWithdrawn = _executeAaveWithdrawal(amount, withdrawAmount, usdcBefore);
-        
-        // UPDATE STATE AFTER EXTERNAL CALL (EFFECTS)
-        // slither-disable-next-line reentrancy-no-eth
         if (expectedPrincipalToDeduct > 0) {
             principalDeposited -= expectedPrincipalToDeduct;
         }
+        usdcWithdrawn = _executeAaveWithdrawal(amount, withdrawAmount, usdcBefore);        
     }
     
     /**
@@ -404,6 +399,11 @@ contract AaveVault is
         
         uint256 usdcBefore = usdc.balanceOf(address(this));
 
+        // UPDATE STATE BEFORE EXTERNAL CALL (EFFECTS) - Reentrancy protection
+        lastHarvestTime = block.timestamp;
+        totalFeesCollected += protocolFee;
+        totalYieldHarvested += availableYield; // Use expected yield for reentrancy protection
+
         uint256 actualYieldReceived = 0; // Initialize to prevent uninitialized variable warning
         try aavePool.withdraw(address(usdc), availableYield, address(this)) 
             returns (uint256 withdrawn) 
@@ -424,10 +424,8 @@ contract AaveVault is
             revert("Aave yield harvest failed");
         }
         
-        // UPDATE STATE AFTER EXTERNAL CALL (EFFECTS)
-        totalYieldHarvested += actualYieldReceived;
-        totalFeesCollected += protocolFee;
-        lastHarvestTime = block.timestamp;
+        // Note: totalYieldHarvested already updated with availableYield before external call
+        // This provides reentrancy protection. Any slippage is handled by validation above.
         
         if (netYield > 0) {
             usdc.safeIncreaseAllowance(address(yieldShift), netYield);

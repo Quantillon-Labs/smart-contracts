@@ -361,6 +361,7 @@ contract HedgerPool is
         oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         treasury = _treasury;
 
         minMarginRatio = 1000;
@@ -1184,6 +1185,7 @@ contract HedgerPool is
         AccessControlLibrary.onlyGovernance(this);
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

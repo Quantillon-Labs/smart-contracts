@@ -238,6 +238,7 @@ contract YieldShift is
         aaveVault = IAaveVault(_aaveVault);
         stQEURO = IstQEURO(_stQEURO);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         treasury = _treasury;
 
         baseYieldShift = 5000;

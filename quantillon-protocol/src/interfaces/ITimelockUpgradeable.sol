@@ -302,6 +302,7 @@ interface ITimelockUpgradeable {
     /**
      * @notice Checks if an address is a multi-sig signer
      * @dev Returns true if the address is authorized as a multi-sig signer
+     * @param signer The address to check
      * @return True if the address is a multi-sig signer
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -312,7 +313,7 @@ interface ITimelockUpgradeable {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function multisigSigners(address) external view returns (bool);
+    function multisigSigners(address signer) external view returns (bool);
     
     /**
      * @notice Returns the total number of multi-sig signers
@@ -332,6 +333,8 @@ interface ITimelockUpgradeable {
     /**
      * @notice Checks if a signer has approved an upgrade
      * @dev Returns true if the signer has approved the specific upgrade
+     * @param signer The address of the signer
+     * @param newImplementation The address of the new implementation
      * @return True if the signer has approved the upgrade
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -342,11 +345,12 @@ interface ITimelockUpgradeable {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function upgradeApprovals(address, address) external view returns (bool);
+    function upgradeApprovals(address signer, address newImplementation) external view returns (bool);
     
     /**
      * @notice Returns the number of approvals for an upgrade
      * @dev Returns the count of approvals for a specific upgrade
+     * @param newImplementation The address of the new implementation
      * @return Number of approvals for the upgrade
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -357,7 +361,7 @@ interface ITimelockUpgradeable {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function upgradeApprovalCount(address) external view returns (uint256);
+    function upgradeApprovalCount(address newImplementation) external view returns (uint256);
     
     /**
      * @notice Returns whether emergency mode is enabled

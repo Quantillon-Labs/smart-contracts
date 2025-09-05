@@ -20,11 +20,40 @@ contract MockUSDC {
     string public symbol = "USDC";
     uint8 public decimals = 6;
     
+    /**
+     * @notice Mints tokens to an address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and totalSupply
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
     
+    /**
+     * @notice Transfers tokens to another address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events No events emitted
+     * @custom:errors Throws "Insufficient balance" if balance is too low
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -32,6 +61,22 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Transfers tokens from one address to another
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events No events emitted
+     * @custom:errors Throws "Insufficient balance" or "Insufficient allowance" if conditions not met
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
@@ -41,6 +86,21 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Approves a spender to transfer tokens
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return True if approval is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
@@ -59,15 +119,57 @@ contract MockAUSDC {
     string public symbol = "aUSDC";
     uint8 public decimals = 6;
     
-    // Function to directly modify balance for testing
+    /**
+     * @notice Sets the balance for an account
+     * @dev Mock function for testing purposes
+     * @param account The account to set balance for
+     * @param amount The amount to set as balance
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function setBalance(address account, uint256 amount) external {
         balanceOf[account] = amount;
     }
     
+    /**
+     * @notice Mints tokens to an address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
     }
     
+    /**
+     * @notice Transfers tokens to another address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events No events emitted
+     * @custom:errors Throws "Insufficient balance" if balance is too low
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -75,6 +177,22 @@ contract MockAUSDC {
         return true;
     }
     
+    /**
+     * @notice Transfers tokens from one address to another
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events No events emitted
+     * @custom:errors Throws "Insufficient balance" or "Insufficient allowance" if conditions not met
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
@@ -84,6 +202,21 @@ contract MockAUSDC {
         return true;
     }
     
+    /**
+     * @notice Approves a spender to transfer tokens
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return True if approval is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
@@ -120,11 +253,41 @@ contract MockAavePool {
         uint128 isolationModeTotalDebt;
     }
     
+    /**
+     * @notice Constructor for MockAavePool
+     * @dev Mock function for testing purposes
+     * @param _usdc The USDC token address
+     * @param _aUSDC The aUSDC token address
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Initializes usdc and aUSDC contracts
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     constructor(address _usdc, address _aUSDC) {
         usdc = MockUSDC(_usdc);
         aUSDC = MockAUSDC(_aUSDC);
     }
     
+    /**
+     * @notice Supplies assets to the pool
+     * @dev Mock function for testing purposes
+     * @param asset The asset to supply
+     * @param amount The amount to supply
+     * @param onBehalfOf The address to supply on behalf of
+     * @param referralCode The referral code
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Transfers USDC and mints aUSDC
+     * @custom:events No events emitted
+     * @custom:errors Throws "Invalid asset" or "Amount must be positive" if conditions not met
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external {
         require(asset == address(usdc), "Invalid asset");
         require(amount > 0, "Amount must be positive");
@@ -136,6 +299,22 @@ contract MockAavePool {
         aUSDC.mint(onBehalfOf, amount);
     }
     
+    /**
+     * @notice Withdraws assets from the pool
+     * @dev Mock function for testing purposes
+     * @param asset The asset to withdraw
+     * @param amount The amount to withdraw
+     * @param to The address to withdraw to
+     * @return The amount withdrawn
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Burns aUSDC and transfers USDC
+     * @custom:events No events emitted
+     * @custom:errors Throws "Invalid asset" or "Amount must be positive" if conditions not met
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function withdraw(address asset, uint256 amount, address to) external returns (uint256) {
         require(asset == address(usdc), "Invalid asset");
         require(amount > 0, "Amount must be positive");
@@ -165,6 +344,20 @@ contract MockAavePool {
         return totalToTransfer;
     }
     
+    /**
+     * @notice Gets reserve data for an asset
+     * @dev Mock function for testing purposes
+     * @param asset The asset to get reserve data for
+     * @return The reserve data
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors Throws "Invalid asset" if asset is not USDC
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function getReserveData(address asset) external view returns (ReserveData memory) {
         require(asset == address(usdc), "Invalid asset");
         return ReserveData({
@@ -186,6 +379,25 @@ contract MockAavePool {
         });
     }
     
+    /**
+     * @notice Gets user account data
+     * @dev Mock function for testing purposes
+     * @param user The user address to get account data for
+     * @return totalCollateralBase The total collateral in base currency
+     * @return totalDebtBase The total debt in base currency
+     * @return availableBorrowsBase The available borrows in base currency
+     * @return currentLiquidationThreshold The current liquidation threshold
+     * @return ltv The loan-to-value ratio
+     * @return healthFactor The health factor
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function getUserAccountData(address user) external view returns (
         uint256 totalCollateralBase,
         uint256 totalDebtBase,
@@ -205,10 +417,36 @@ contract MockAavePool {
         );
     }
     
+    /**
+     * @notice Sets the liquidity rate
+     * @dev Mock function for testing purposes
+     * @param newRate The new liquidity rate
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates currentLiquidityRate
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function setLiquidityRate(uint256 newRate) external {
         currentLiquidityRate = newRate;
     }
     
+    /**
+     * @notice Sets the available liquidity
+     * @dev Mock function for testing purposes
+     * @param newLiquidity The new available liquidity
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates availableLiquidity
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function setAvailableLiquidity(uint256 newLiquidity) external {
         availableLiquidity = newLiquidity;
     }
@@ -221,14 +459,53 @@ contract MockAavePool {
 contract MockPoolAddressesProvider {
     address public poolAddress;
     
+    /**
+     * @notice Constructor for MockPoolAddressesProvider
+     * @dev Mock function for testing purposes
+     * @param _poolAddress The pool address to set
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Initializes poolAddress
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     constructor(address _poolAddress) {
         poolAddress = _poolAddress;
     }
     
+    /**
+     * @notice Gets the pool address
+     * @dev Mock function for testing purposes
+     * @return The pool address
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function getPool() external view returns (address) {
         return poolAddress;
     }
     
+    /**
+     * @notice Gets the price oracle address
+     * @dev Mock function for testing purposes
+     * @return The price oracle address
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function getPriceOracle() external pure returns (address) {
         return address(0x1);
     }
@@ -241,6 +518,22 @@ contract MockPoolAddressesProvider {
 contract MockRewardsController {
     mapping(address => uint256) public pendingRewards;
     
+    /**
+     * @notice Claims rewards for assets
+     * @dev Mock function for testing purposes
+     * @param assets The assets to claim rewards for
+     * @param amount The amount to claim
+     * @param to The address to send rewards to
+     * @return The total amount claimed
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates pendingRewards mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function claimRewards(
         address[] calldata assets,
         uint256 amount,
@@ -257,6 +550,21 @@ contract MockRewardsController {
         return totalClaimed;
     }
     
+    /**
+     * @notice Gets user rewards for assets
+     * @dev Mock function for testing purposes
+     * @param assets The assets to get rewards for
+     * @param user The user address
+     * @return The rewards for each asset
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function getUserRewards(
         address[] calldata assets,
         address user
@@ -268,6 +576,20 @@ contract MockRewardsController {
         return rewards;
     }
     
+    /**
+     * @notice Sets pending rewards for an asset
+     * @dev Mock function for testing purposes
+     * @param asset The asset to set rewards for
+     * @param amount The amount of rewards to set
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates pendingRewards mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function setPendingRewards(address asset, uint256 amount) external {
         pendingRewards[asset] = amount;
     }
@@ -280,14 +602,54 @@ contract MockRewardsController {
 contract MockYieldShift {
     uint256 public currentYieldShift = 5000; // 50%
     
+    /**
+     * @notice Adds yield to the system
+     * @dev Mock function for testing purposes
+     * @param amount The amount of yield to add
+     * @param source The source of the yield
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - mock implementation
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function addYield(uint256 amount, bytes32 source) external {
         // Mock implementation
     }
     
+    /**
+     * @notice Gets the current yield shift
+     * @dev Mock function for testing purposes
+     * @return The current yield shift
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function getCurrentYieldShift() external view returns (uint256) {
         return currentYieldShift;
     }
     
+    /**
+     * @notice Sets the current yield shift
+     * @dev Mock function for testing purposes
+     * @param newShift The new yield shift to set
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates currentYieldShift
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function setCurrentYieldShift(uint256 newShift) external {
         currentYieldShift = newShift;
     }
@@ -1510,18 +1872,61 @@ contract MockERC20 {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
+    /**
+     * @notice Constructor for MockERC20 token
+     * @dev Mock function for testing purposes
+     * @param _name The name of the token
+     * @param _symbol The symbol of the token
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Initializes token name, symbol, and decimals
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     constructor(string memory _name, string memory _symbol) {
         name = _name;
         symbol = _symbol;
         decimals = 18;
     }
 
+    /**
+     * @notice Mints tokens to an address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and totalSupply
+     * @custom:events Emits Transfer event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
         emit Transfer(address(0), to, amount);
     }
 
+    /**
+     * @notice Transfers tokens to another address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events Emits Transfer event
+     * @custom:errors Throws "Insufficient balance" if balance is too low
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -1530,12 +1935,43 @@ contract MockERC20 {
         return true;
     }
 
+    /**
+     * @notice Approves a spender to transfer tokens
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return True if approval is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events Emits Approval event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
         return true;
     }
 
+    /**
+     * @notice Transfers tokens from one address to another
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events Emits Transfer event
+     * @custom:errors Throws "Insufficient balance" or "Insufficient allowance" if conditions not met
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");

@@ -905,6 +905,7 @@ interface IUserPool {
     /**
      * @notice Returns the last reward block for a user
      * @dev Last block when user rewards were calculated
+     * @param user The user address
      * @return Last reward block number
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -915,11 +916,12 @@ interface IUserPool {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function userLastRewardBlock(address) external view returns (uint256);
+    function userLastRewardBlock(address user) external view returns (uint256);
     
     /**
      * @notice Checks if a user has deposited
      * @dev Returns true if the user has ever deposited
+     * @param user The user address
      * @return True if user has deposited
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -930,11 +932,12 @@ interface IUserPool {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function hasDeposited(address) external view returns (bool);
+    function hasDeposited(address user) external view returns (bool);
     
     /**
      * @notice Returns detailed user information
      * @dev Returns comprehensive user data including balances and staking info
+     * @param user The user address
      * @return qeuroBalance QEURO balance from deposits
      * @return stakedAmount QEURO amount staked
      * @return pendingRewards Pending staking rewards
@@ -951,7 +954,7 @@ interface IUserPool {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function userInfo(address) external view returns (
+    function userInfo(address user) external view returns (
         uint256 qeuroBalance,
         uint256 stakedAmount,
         uint256 pendingRewards,

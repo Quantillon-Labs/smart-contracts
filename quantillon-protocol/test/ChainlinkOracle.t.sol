@@ -25,20 +25,72 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     bool public shouldReturnInvalidPrice;
     uint80 public roundId = 1;
 
+    /**
+     * @notice Constructor for MockPriceFeed
+     * @dev Mock function for testing purposes
+     * @param _decimals The number of decimals for the price feed
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Initializes decimals and updatedAt timestamp
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     constructor(uint8 _decimals) {
         decimals_ = _decimals;
         updatedAt = block.timestamp;
     }
 
+    /**
+     * @notice Sets the price for the mock price feed
+     * @dev Mock function for testing purposes
+     * @param _price The price to set
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates price and increments roundId
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function setPrice(int256 _price) external {
         price = _price;
         roundId++;
     }
 
+    /**
+     * @notice Sets whether the mock price feed should revert
+     * @dev Mock function for testing purposes
+     * @param _shouldRevert Whether the price feed should revert
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates shouldRevert flag
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function setShouldRevert(bool _shouldRevert) external {
         shouldRevert = _shouldRevert;
     }
 
+    /**
+     * @notice Sets whether the mock price feed should return invalid price
+     * @dev Mock function for testing purposes
+     * @param _shouldReturnInvalidPrice Whether the price feed should return invalid price
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates shouldReturnInvalidPrice flag
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function setShouldReturnInvalidPrice(bool _shouldReturnInvalidPrice) external {
         shouldReturnInvalidPrice = _shouldReturnInvalidPrice;
     }
@@ -95,6 +147,24 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         return (roundId, price, 0, updatedAt, roundId);
     }
 
+    /**
+     * @notice Gets round data for the mock price feed
+     * @dev Mock function for testing purposes
+     * @param _id The round ID to get data for
+     * @return _roundId The round ID
+     * @return _answer The price answer
+     * @return _startedAt The timestamp when the round started
+     * @return _updatedAt The timestamp when the round was updated
+     * @return _answeredInRound The round ID when the answer was provided
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors Throws "MockAggregator: Simulated failure" if shouldRevert is true
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function getRoundData(uint80 _id) 
         external 
         view 
@@ -117,14 +187,53 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         return (_roundId, price, 0, _updatedAt, _roundId);
     }
 
+    /**
+     * @notice Gets the number of decimals for the mock price feed
+     * @dev Mock function for testing purposes
+     * @return The number of decimals
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function decimals() external view returns (uint8) {
         return decimals_;
     }
 
+    /**
+     * @notice Gets the description of the mock price feed
+     * @dev Mock function for testing purposes
+     * @return The description string
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function description() external pure returns (string memory) {
         return "Mock Price Feed";
     }
 
+    /**
+     * @notice Gets the version of the mock price feed
+     * @dev Mock function for testing purposes
+     * @return The version number
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function version() external pure returns (uint256) {
         return 1;
     }
@@ -1330,10 +1439,39 @@ contract MockToken {
     string public symbol = "MOCK";
     uint8 public decimals = 18;
     
+    /**
+     * @notice Mints tokens to an address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
     }
     
+    /**
+     * @notice Transfers tokens to another address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events No events emitted
+     * @custom:errors Throws "Insufficient balance" if sender has insufficient balance
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -1341,6 +1479,22 @@ contract MockToken {
         return true;
     }
     
+    /**
+     * @notice Transfers tokens from one address to another
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events No events emitted
+     * @custom:errors Throws "Insufficient balance" or "Insufficient allowance" if conditions not met
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
@@ -1350,6 +1504,21 @@ contract MockToken {
         return true;
     }
     
+    /**
+     * @notice Approves a spender to transfer tokens
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return True if approval is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
@@ -1371,18 +1540,61 @@ contract MockERC20 {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
+    /**
+     * @notice Constructor for MockERC20 token
+     * @dev Mock function for testing purposes
+     * @param _name The name of the token
+     * @param _symbol The symbol of the token
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Initializes token name, symbol, and decimals
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     constructor(string memory _name, string memory _symbol) {
         name = _name;
         symbol = _symbol;
         decimals = 18;
     }
 
+    /**
+     * @notice Mints tokens to an address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and totalSupply
+     * @custom:events Emits Transfer event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
         emit Transfer(address(0), to, amount);
     }
 
+    /**
+     * @notice Transfers tokens to another address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events Emits Transfer event
+     * @custom:errors Throws "Insufficient balance" if balance is too low
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -1391,12 +1603,43 @@ contract MockERC20 {
         return true;
     }
 
+    /**
+     * @notice Approves a spender to transfer tokens
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return True if approval is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events Emits Approval event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
         return true;
     }
 
+    /**
+     * @notice Transfers tokens from one address to another
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer is successful
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events Emits Transfer event
+     * @custom:errors Throws "Insufficient balance" or "Insufficient allowance" if conditions not met
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");

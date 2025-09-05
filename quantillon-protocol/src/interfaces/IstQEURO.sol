@@ -17,6 +17,14 @@ interface IstQEURO {
      * @param _usdc USDC token address
      * @param _treasury Treasury address
      * @param timelock Timelock contract address
+     * @custom:security Validates all addresses are not zero and initializes roles
+     * @custom:validation Validates admin is not address(0), all contract addresses are valid
+     * @custom:state-changes Initializes roles, sets contract addresses, enables staking
+     * @custom:events Emits role assignment and initialization events
+     * @custom:errors Throws InvalidAddress if any address is zero
+     * @custom:reentrancy Protected by onlyInitializing modifier
+     * @custom:access Internal function - only callable during initialization
+     * @custom:oracle No oracle dependencies
      */
     function initialize(
         address admin,
@@ -340,6 +348,14 @@ interface IstQEURO {
      * @notice Returns the name of the token
      * @dev Returns the token name for display purposes
      * @return The token name
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query token name
+     * @custom:oracle No oracle dependencies
      */
     function name() external view returns (string memory);
     
@@ -347,6 +363,14 @@ interface IstQEURO {
      * @notice Returns the symbol of the token
      * @dev Returns the token symbol for display purposes
      * @return The token symbol
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query token symbol
+     * @custom:oracle No oracle dependencies
      */
     function symbol() external view returns (string memory);
     
@@ -354,6 +378,14 @@ interface IstQEURO {
      * @notice Returns the decimals of the token
      * @dev Returns the number of decimals used for token amounts
      * @return The number of decimals
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query token decimals
+     * @custom:oracle No oracle dependencies
      */
     function decimals() external view returns (uint8);
     
@@ -361,6 +393,14 @@ interface IstQEURO {
      * @notice Returns the total supply of the token
      * @dev Returns the total amount of tokens in existence
      * @return The total supply
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query total supply
+     * @custom:oracle No oracle dependencies
      */
     function totalSupply() external view returns (uint256);
     
@@ -369,6 +409,14 @@ interface IstQEURO {
      * @dev Returns the token balance of the specified account
      * @param account The account to check
      * @return The balance of the account
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query account balance
+     * @custom:oracle No oracle dependencies
      */
     function balanceOf(address account) external view returns (uint256);
 
@@ -379,6 +427,14 @@ interface IstQEURO {
      * @param to The recipient address
      * @param amount The amount to transfer
      * @return True if the transfer succeeded
+     * @custom:security Validates recipient is not address(0) and caller has sufficient balance
+     * @custom:validation Validates to != address(0) and amount <= balanceOf(msg.sender)
+     * @custom:state-changes Updates balances of sender and recipient
+     * @custom:events Emits Transfer event
+     * @custom:errors Throws InsufficientBalance if amount > balance
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Public - any token holder can transfer
+     * @custom:oracle No oracle dependencies
      */
     function transfer(address to, uint256 amount) external returns (bool);
     
@@ -388,6 +444,14 @@ interface IstQEURO {
      * @param owner The owner address
      * @param spender The spender address
      * @return The allowance amount
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query allowance
+     * @custom:oracle No oracle dependencies
      */
     function allowance(address owner, address spender) external view returns (uint256);
     
@@ -397,6 +461,14 @@ interface IstQEURO {
      * @param spender The spender address
      * @param amount The amount to approve
      * @return True if the approval succeeded
+     * @custom:security Validates spender is not address(0)
+     * @custom:validation Validates spender != address(0)
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events Emits Approval event
+     * @custom:errors No errors thrown - safe function
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Public - any token holder can approve
+     * @custom:oracle No oracle dependencies
      */
     function approve(address spender, uint256 amount) external returns (bool);
     
@@ -407,6 +479,14 @@ interface IstQEURO {
      * @param to The recipient address
      * @param amount The amount to transfer
      * @return True if the transfer succeeded
+     * @custom:security Validates recipient is not address(0) and sufficient allowance
+     * @custom:validation Validates to != address(0) and amount <= allowance(from, msg.sender)
+     * @custom:state-changes Updates balances and allowance
+     * @custom:events Emits Transfer event
+     * @custom:errors Throws InsufficientAllowance if amount > allowance
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Public - any approved spender can transfer
+     * @custom:oracle No oracle dependencies
      */
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
 
@@ -417,6 +497,14 @@ interface IstQEURO {
      * @param role The role to check
      * @param account The account to check
      * @return True if the account has the role
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check roles
+     * @custom:oracle No oracle dependencies
      */
     function hasRole(bytes32 role, address account) external view returns (bool);
     
@@ -425,6 +513,14 @@ interface IstQEURO {
      * @dev Returns the role that is the admin of the given role
      * @param role The role to check
      * @return The admin role
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query role admin
+     * @custom:oracle No oracle dependencies
      */
     function getRoleAdmin(bytes32 role) external view returns (bytes32);
     
@@ -433,6 +529,14 @@ interface IstQEURO {
      * @dev Grants the specified role to the account
      * @param role The role to grant
      * @param account The account to grant the role to
+     * @custom:security Validates caller has admin role for the specified role
+     * @custom:validation Validates account is not address(0)
+     * @custom:state-changes Grants role to account
+     * @custom:events Emits RoleGranted event
+     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks admin role
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to role admin
+     * @custom:oracle No oracle dependencies
      */
     function grantRole(bytes32 role, address account) external;
     
@@ -441,6 +545,14 @@ interface IstQEURO {
      * @dev Revokes the specified role from the account
      * @param role The role to revoke
      * @param account The account to revoke the role from
+     * @custom:security Validates caller has admin role for the specified role
+     * @custom:validation Validates account is not address(0)
+     * @custom:state-changes Revokes role from account
+     * @custom:events Emits RoleRevoked event
+     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks admin role
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to role admin
+     * @custom:oracle No oracle dependencies
      */
     function revokeRole(bytes32 role, address account) external;
     
@@ -449,6 +561,14 @@ interface IstQEURO {
      * @dev Renounces the specified role from the caller
      * @param role The role to renounce
      * @param callerConfirmation The caller confirmation
+     * @custom:security Validates caller is renouncing their own role
+     * @custom:validation Validates callerConfirmation == msg.sender
+     * @custom:state-changes Removes role from caller
+     * @custom:events Emits RoleRenounced event
+     * @custom:errors Throws AccessControlInvalidCaller if callerConfirmation != msg.sender
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Public - anyone can renounce their own roles
+     * @custom:oracle No oracle dependencies
      */
     function renounceRole(bytes32 role, address callerConfirmation) external;
 
@@ -457,6 +577,14 @@ interface IstQEURO {
      * @notice Returns the paused state
      * @dev Returns true if the contract is paused
      * @return True if paused
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check pause status
+     * @custom:oracle No oracle dependencies
      */
     function paused() external view returns (bool);
 
@@ -465,6 +593,14 @@ interface IstQEURO {
      * @notice Upgrades the implementation
      * @dev Upgrades the contract to a new implementation
      * @param newImplementation The new implementation address
+     * @custom:security Validates caller has UPGRADER_ROLE
+     * @custom:validation Validates newImplementation is not address(0)
+     * @custom:state-changes Updates implementation address
+     * @custom:events Emits Upgraded event
+     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks UPGRADER_ROLE
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to UPGRADER_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function upgradeTo(address newImplementation) external;
     
@@ -473,6 +609,14 @@ interface IstQEURO {
      * @dev Upgrades the contract and calls a function on the new implementation
      * @param newImplementation The new implementation address
      * @param data The function call data
+     * @custom:security Validates caller has UPGRADER_ROLE
+     * @custom:validation Validates newImplementation is not address(0)
+     * @custom:state-changes Updates implementation address and calls initialization
+     * @custom:events Emits Upgraded event
+     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks UPGRADER_ROLE
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to UPGRADER_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
 
@@ -481,6 +625,14 @@ interface IstQEURO {
      * @notice Returns the governance role
      * @dev Returns the role identifier for governance functions
      * @return The governance role
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query role identifier
+     * @custom:oracle No oracle dependencies
      */
     function GOVERNANCE_ROLE() external view returns (bytes32);
     
@@ -488,6 +640,14 @@ interface IstQEURO {
      * @notice Returns the yield manager role
      * @dev Returns the role identifier for yield management functions
      * @return The yield manager role
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query role identifier
+     * @custom:oracle No oracle dependencies
      */
     function YIELD_MANAGER_ROLE() external view returns (bytes32);
     
@@ -495,6 +655,14 @@ interface IstQEURO {
      * @notice Returns the emergency role
      * @dev Returns the role identifier for emergency functions
      * @return The emergency role
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query role identifier
+     * @custom:oracle No oracle dependencies
      */
     function EMERGENCY_ROLE() external view returns (bytes32);
     
@@ -502,6 +670,14 @@ interface IstQEURO {
      * @notice Returns the upgrader role
      * @dev Returns the role identifier for upgrade functions
      * @return The upgrader role
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query role identifier
+     * @custom:oracle No oracle dependencies
      */
     function UPGRADER_ROLE() external view returns (bytes32);
 
@@ -510,6 +686,14 @@ interface IstQEURO {
      * @notice Returns the QEURO token address
      * @dev Returns the address of the underlying QEURO token
      * @return The QEURO token address
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query token address
+     * @custom:oracle No oracle dependencies
      */
     function qeuro() external view returns (address);
     
@@ -517,6 +701,14 @@ interface IstQEURO {
      * @notice Returns the YieldShift contract address
      * @dev Returns the address of the YieldShift contract
      * @return The YieldShift contract address
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query contract address
+     * @custom:oracle No oracle dependencies
      */
     function yieldShift() external view returns (address);
     
@@ -524,6 +716,14 @@ interface IstQEURO {
      * @notice Returns the USDC token address
      * @dev Returns the address of the USDC token
      * @return The USDC token address
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query token address
+     * @custom:oracle No oracle dependencies
      */
     function usdc() external view returns (address);
     
@@ -531,6 +731,14 @@ interface IstQEURO {
      * @notice Returns the treasury address
      * @dev Returns the address of the treasury contract
      * @return The treasury address
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query treasury address
+     * @custom:oracle No oracle dependencies
      */
     function treasury() external view returns (address);
     
@@ -538,6 +746,14 @@ interface IstQEURO {
      * @notice Returns the current exchange rate
      * @dev Returns the current exchange rate between QEURO and stQEURO
      * @return The current exchange rate
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query exchange rate
+     * @custom:oracle No oracle dependencies
      */
     function exchangeRate() external view returns (uint256);
     
@@ -545,6 +761,14 @@ interface IstQEURO {
      * @notice Returns the last update time
      * @dev Returns the timestamp of the last exchange rate update
      * @return The last update time
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query last update time
+     * @custom:oracle No oracle dependencies
      */
     function lastUpdateTime() external view returns (uint256);
     
@@ -552,6 +776,14 @@ interface IstQEURO {
      * @notice Returns the total underlying QEURO
      * @dev Returns the total amount of QEURO underlying all stQEURO
      * @return The total underlying QEURO
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query total underlying
+     * @custom:oracle No oracle dependencies
      */
     function totalUnderlying() external view returns (uint256);
     
@@ -559,6 +791,14 @@ interface IstQEURO {
      * @notice Returns the total yield earned
      * @dev Returns the total amount of yield earned by all stQEURO holders
      * @return The total yield earned
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query total yield earned
+     * @custom:oracle No oracle dependencies
      */
     function totalYieldEarned() external view returns (uint256);
     
@@ -566,6 +806,14 @@ interface IstQEURO {
      * @notice Returns the yield fee percentage
      * @dev Returns the percentage of yield that goes to the treasury
      * @return The yield fee percentage
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query yield fee
+     * @custom:oracle No oracle dependencies
      */
     function yieldFee() external view returns (uint256);
     
@@ -573,6 +821,14 @@ interface IstQEURO {
      * @notice Returns the minimum yield threshold
      * @dev Returns the minimum yield amount required for distribution
      * @return The minimum yield threshold
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query minimum yield threshold
+     * @custom:oracle No oracle dependencies
      */
     function minYieldThreshold() external view returns (uint256);
     
@@ -580,6 +836,14 @@ interface IstQEURO {
      * @notice Returns the maximum update frequency
      * @dev Returns the maximum frequency for exchange rate updates
      * @return The maximum update frequency
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query maximum update frequency
+     * @custom:oracle No oracle dependencies
      */
     function maxUpdateFrequency() external view returns (uint256);
 }

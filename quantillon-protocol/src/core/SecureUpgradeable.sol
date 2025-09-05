@@ -50,6 +50,14 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @notice Initializes the SecureUpgradeable contract
      * @dev Sets up the secure upgrade system with timelock protection
      * @param _timelock Address of the timelock contract
+     * @custom:security Validates timelock address and initializes secure upgrade system
+     * @custom:validation Validates _timelock is not address(0)
+     * @custom:state-changes Initializes timelock, enables secure upgrades, sets up access control
+     * @custom:events Emits TimelockSet and SecureUpgradesToggled events
+     * @custom:errors Throws "SecureUpgradeable: Invalid timelock" if _timelock is address(0)
+     * @custom:reentrancy Protected by onlyInitializing modifier
+     * @custom:access Internal function - only callable during initialization
+     * @custom:oracle No oracle dependencies
      */
     function __SecureUpgradeable_init(address _timelock) internal onlyInitializing {
         __UUPSUpgradeable_init();

@@ -11,6 +11,8 @@ This directory contains utility scripts for the Quantillon Protocol development 
 - **`build-docs.sh`** - Generates comprehensive HTML documentation
 - **`run-slither.sh`** - Performs security analysis using Slither
 - **`validate-natspec.js`** - Validates NatSpec documentation coverage
+- **`analyze-gas.sh`** - Comprehensive gas optimization analysis
+- **`benchmark-gas.sh`** - Gas benchmarking for specific functions
 - **`package.json`** - Node.js dependencies for validation scripts
 - **`README.md`** - This documentation file
 
@@ -273,6 +275,124 @@ open docs/book/index.html
 - **`package.json`**: Manages Node.js dependencies for validation scripts
 - **`package-lock.json`**: Locks dependency versions for reproducible builds
 
+## Gas Analysis Scripts
+
+The Quantillon Protocol includes comprehensive gas analysis tools to help optimize contract efficiency and reduce transaction costs.
+
+### Main Gas Analysis Script
+
+The `analyze-gas.sh` script provides comprehensive gas optimization analysis using multiple tools and techniques.
+
+#### Features
+
+- **Multi-Tool Analysis**: Integrates Foundry, Slither, and custom analysis
+- **Comprehensive Reporting**: Generates detailed human-readable text reports with recommendations
+- **State Variable Optimization**: Detects opportunities for `immutable` and `constant` variables
+- **Function Visibility Analysis**: Identifies functions that should be `external`
+- **Unused Code Detection**: Finds dead code and unused state variables
+- **Loop Optimization**: Detects expensive operations in loops
+- **Storage Layout Analysis**: Analyzes variable ordering and packing
+- **Contract Size Analysis**: Monitors contract sizes and identifies large contracts
+- **Function Gas Usage**: Detailed gas usage analysis per function
+- **Optimization Recommendations**: Provides actionable optimization suggestions
+
+#### Usage
+
+```bash
+# Run comprehensive gas analysis
+./analyze-gas.sh
+
+# Or from the project root
+make gas-analysis
+```
+
+#### Output
+
+The script generates:
+- **Single Comprehensive Report**: `gas-analysis-YYYYMMDD_HHMMSS.txt`
+- **All Analysis Results**: Complete analysis in one human-readable text file
+- **Optimization Recommendations**: Actionable suggestions included in the report
+
+### Gas Benchmarking Script
+
+The `benchmark-gas.sh` script allows benchmarking specific functions and comparing gas usage.
+
+#### Features
+
+- **Targeted Benchmarking**: Benchmark specific functions, contracts, or tests
+- **Flexible Options**: Command-line options for different analysis types
+- **Verbose Output**: Optional detailed output for debugging
+- **Results Export**: Save results to files for further analysis
+
+#### Usage
+
+```bash
+# Benchmark specific function
+./benchmark-gas.sh -f mint -c QEUROToken
+
+# Benchmark specific test
+./benchmark-gas.sh -t testDeposit
+
+# Benchmark entire contract
+./benchmark-gas.sh -c UserPool
+
+# Save results to file
+./benchmark-gas.sh -c AaveVault -o results.txt
+
+# Verbose output
+./benchmark-gas.sh -v -f stake
+```
+
+#### Options
+
+- `-f, --function FUNCTION`: Benchmark specific function
+- `-c, --contract CONTRACT`: Benchmark specific contract
+- `-t, --test TEST_NAME`: Run specific test
+- `-o, --output FILE`: Output file for results
+- `-v, --verbose`: Verbose output
+- `-h, --help`: Show help
+
+### Configuration
+
+The gas analysis script uses built-in configuration and generates a single comprehensive text report. The script automatically:
+
+- Uses Foundry for contract building and gas reporting
+- Integrates with Slither for advanced analysis (if available)
+- Generates timestamped reports in the current directory
+- Provides comprehensive optimization recommendations
+
+### Integration with Makefile
+
+Gas analysis is integrated into the main development workflow:
+
+```bash
+# Run gas analysis
+make gas-analysis
+
+# Run all checks (includes gas analysis)
+make all
+
+# CI/CD pipeline (includes gas analysis)
+make ci
+```
+
+### Best Practices
+
+1. **Regular Analysis**: Run gas analysis regularly during development
+2. **Before Deployment**: Always run gas analysis before mainnet deployment
+3. **Optimization Focus**: Focus on high-impact optimizations first
+4. **Testing**: Always test optimizations thoroughly
+5. **Documentation**: Document optimization decisions
+
+### Common Optimizations
+
+- Use `immutable` for constructor-set variables
+- Use `constant` for compile-time constants
+- Pack structs efficiently
+- Use `external` instead of `public` when possible
+- Avoid expensive operations in loops
+- Use events instead of storage for non-critical data
+
 ## NatSpec Validation Script
 
 The `validate-natspec.js` script provides comprehensive validation of NatSpec documentation across all Solidity contracts in the protocol.
@@ -309,13 +429,13 @@ The script validates that all public and external functions have:
 ### Usage
 
 #### Using Make (Recommended)
-```bash
+   ```bash
 # From the project root
 make validate-natspec
-```
+   ```
 
 #### Direct Execution
-```bash
+   ```bash
 # Install dependencies
 cd scripts
 npm install
@@ -496,7 +616,7 @@ The script is integrated into the project's Makefile and can be included in CI/C
 #### Pre-commit Hooks
 Can be used as a pre-commit hook to ensure documentation standards:
 
-```bash
+   ```bash
 #!/bin/sh
 # .git/hooks/pre-commit
 make validate-natspec

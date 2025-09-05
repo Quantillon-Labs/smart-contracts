@@ -649,18 +649,17 @@ contract UserPool is
         // Process vault minting operations
         // Note: External calls in loop are necessary as vault doesn't support batch minting
         // Batch size is limited to MAX_BATCH_SIZE to prevent gas limit issues
-        // slither-disable-start calls-loop
         for (uint256 i = 0; i < netAmounts.length; i++) {
             uint256 netAmount = netAmounts[i];
             uint256 minQeuroOut = minQeuroOuts[i];
             
             // Mint QEURO through vault - external call is necessary
+            // slither-disable-next-line calls-loop
             vault.mintQEURO(netAmount, minQeuroOut);
             
             // Use the minimum expected amount as the actual minted amount
             qeuroMintedAmounts[i] = minQeuroOut;
         }
-        // slither-disable-end calls-loop
     }
 
     /**
@@ -749,7 +748,6 @@ contract UserPool is
      * @custom:access Public access
      * @custom:oracle No oracle dependencies
      */
-     // slither-disable-start calls-loop
     function withdraw(uint256 qeuroAmount, uint256 minUsdcOut) 
         external 
         nonReentrant 
@@ -791,7 +789,6 @@ contract UserPool is
 
         emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, timeProvider.currentTime());
     }
-    // slither-disable-end calls-loop
 
     /**
      * @notice Batch withdraw USDC by burning QEURO for multiple amounts
@@ -809,7 +806,7 @@ contract UserPool is
      * @custom:access Public access
      * @custom:oracle No oracle dependencies
      */
-     // slither-disable-start calls-loop
+    // slither-disable-next-line calls-loop
     function batchWithdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
         external
         nonReentrant
@@ -862,7 +859,7 @@ contract UserPool is
         // Process all vault redemptions
         // Note: External calls in loop are necessary as vault doesn't support batch redemption
         // Batch size is limited to MAX_BATCH_SIZE to prevent gas limit issues
-        // slither-disable-start calls-loop
+        // slither-disable-next-line calls-loop
         for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 minUsdcOut = minUsdcOuts[i];
@@ -881,7 +878,6 @@ contract UserPool is
             
             unchecked { ++i; }
         }
-        // slither-disable-end calls-loop
         // Verify total received amount is reasonable (optional safety check)
         uint256 finalUsdcBalance = usdc.balanceOf(address(this));
         uint256 actualTotalReceived = finalUsdcBalance - initialUsdcBalance;
@@ -919,7 +915,6 @@ contract UserPool is
             unchecked { ++i; }
         }
     }
-    // slither-disable-end calls-loop
 
     // =============================================================================
     // STAKING FUNCTIONS

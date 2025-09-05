@@ -11,6 +11,7 @@ pragma solidity 0.8.24;
 interface IQuantillonVault {
     /**
      * @notice Initializes the vault
+     * @dev Sets up the vault with initial configuration and assigns roles to admin
      * @param admin Admin address receiving roles
      * @param _qeuro QEURO token address
      * @param _usdc USDC token address
@@ -28,6 +29,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Mints QEURO by swapping USDC
+     * @dev Converts USDC to QEURO using current oracle price with slippage protection
      * @param usdcAmount Amount of USDC to swap
      * @param minQeuroOut Minimum QEURO expected (slippage protection)
       * @custom:security Validates input parameters and enforces security checks
@@ -58,6 +60,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Retrieves the vault's global metrics
+     * @dev Provides comprehensive vault statistics for monitoring and analysis
      * @return totalUsdcHeld_ Total USDC held in the vault
      * @return totalMinted_ Total QEURO minted
      * @return totalDebtValue Total debt value in USD
@@ -78,6 +81,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Computes QEURO mint amount for a USDC swap
+     * @dev Uses current oracle price to calculate QEURO equivalent without executing swap
      * @param usdcAmount USDC to swap
      * @return qeuroAmount Expected QEURO to mint (after fees)
      * @return fee Protocol fee
@@ -94,6 +98,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Computes USDC redemption amount for a QEURO swap
+     * @dev Uses current oracle price to calculate USDC equivalent without executing swap
      * @param qeuroAmount QEURO to swap
      * @return usdcAmount USDC returned after fees
      * @return fee Protocol fee
@@ -110,6 +115,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Updates vault parameters
+     * @dev Allows governance to update fee parameters for minting and redemption
      * @param _mintFee New minting fee
      * @param _redemptionFee New redemption fee
       * @custom:security Validates input parameters and enforces security checks
@@ -125,6 +131,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Updates the oracle address
+     * @dev Allows governance to update the price oracle used for conversions
      * @param _oracle New oracle address
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -139,6 +146,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Withdraws accumulated protocol fees
+     * @dev Allows governance to withdraw accumulated fees to specified address
      * @param to Recipient address
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -153,6 +161,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Pauses the vault
+     * @dev Emergency function to pause all vault operations
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -166,6 +175,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Unpauses the vault
+     * @dev Resumes all vault operations after emergency pause
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -179,6 +189,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Recovers ERC20 tokens sent by mistake
+     * @dev Allows governance to recover accidentally sent ERC20 tokens
      * @param token Token address
      * @param to Recipient
      * @param amount Amount to transfer
@@ -195,6 +206,7 @@ interface IQuantillonVault {
 
     /**
      * @notice Recovers ETH sent by mistake
+     * @dev Allows governance to recover accidentally sent ETH
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -207,31 +219,140 @@ interface IQuantillonVault {
     function recoverETH() external;
 
     // AccessControl functions
+    /**
+     * @notice Checks if an account has a specific role
+     * @dev Returns true if the account has been granted the role
+     * @param role The role to check
+     * @param account The account to check
+     * @return True if the account has the role
+     */
     function hasRole(bytes32 role, address account) external view returns (bool);
+    
+    /**
+     * @notice Gets the admin role for a given role
+     * @dev Returns the role that is the admin of the given role
+     * @param role The role to get admin for
+     * @return The admin role
+     */
     function getRoleAdmin(bytes32 role) external view returns (bytes32);
+    
+    /**
+     * @notice Grants a role to an account
+     * @dev Can only be called by an account with the admin role
+     * @param role The role to grant
+     * @param account The account to grant the role to
+     */
     function grantRole(bytes32 role, address account) external;
+    
+    /**
+     * @notice Revokes a role from an account
+     * @dev Can only be called by an account with the admin role
+     * @param role The role to revoke
+     * @param account The account to revoke the role from
+     */
     function revokeRole(bytes32 role, address account) external;
+    
+    /**
+     * @notice Renounces a role from the caller
+     * @dev The caller gives up their own role
+     * @param role The role to renounce
+     * @param callerConfirmation Confirmation that the caller is renouncing their own role
+     */
     function renounceRole(bytes32 role, address callerConfirmation) external;
 
     // Pausable functions
+    /**
+     * @notice Checks if the contract is paused
+     * @dev Returns true if the contract is currently paused
+     * @return True if paused, false otherwise
+     */
     function paused() external view returns (bool);
 
     // UUPS functions
+    /**
+     * @notice Upgrades the contract to a new implementation
+     * @dev Can only be called by accounts with UPGRADER_ROLE
+     * @param newImplementation Address of the new implementation contract
+     */
     function upgradeTo(address newImplementation) external;
+    
+    /**
+     * @notice Upgrades the contract to a new implementation and calls a function
+     * @dev Can only be called by accounts with UPGRADER_ROLE
+     * @param newImplementation Address of the new implementation contract
+     * @param data Encoded function call data
+     */
     function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
 
     // Constants
+    /**
+     * @notice Returns the governance role identifier
+     * @dev Role that can update vault parameters and governance functions
+     * @return The governance role bytes32 identifier
+     */
     function GOVERNANCE_ROLE() external view returns (bytes32);
 
+    /**
+     * @notice Returns the emergency role identifier
+     * @dev Role that can pause the vault and perform emergency operations
+     * @return The emergency role bytes32 identifier
+     */
     function EMERGENCY_ROLE() external view returns (bytes32);
+    
+    /**
+     * @notice Returns the upgrader role identifier
+     * @dev Role that can upgrade the contract implementation
+     * @return The upgrader role bytes32 identifier
+     */
     function UPGRADER_ROLE() external view returns (bytes32);
 
     // State variables
+    /**
+     * @notice Returns the QEURO token address
+     * @dev The euro-pegged stablecoin token managed by this vault
+     * @return Address of the QEURO token contract
+     */
     function qeuro() external view returns (address);
+    
+    /**
+     * @notice Returns the USDC token address
+     * @dev The collateral token used for minting QEURO
+     * @return Address of the USDC token contract
+     */
     function usdc() external view returns (address);
+    
+    /**
+     * @notice Returns the oracle contract address
+     * @dev The price oracle used for EUR/USD conversions
+     * @return Address of the oracle contract
+     */
     function oracle() external view returns (address);
+    
+    /**
+     * @notice Returns the current minting fee
+     * @dev Fee charged when minting QEURO with USDC (in basis points)
+     * @return The minting fee in basis points
+     */
     function mintFee() external view returns (uint256);
+    
+    /**
+     * @notice Returns the current redemption fee
+     * @dev Fee charged when redeeming QEURO for USDC (in basis points)
+     * @return The redemption fee in basis points
+     */
     function redemptionFee() external view returns (uint256);
+    
+    /**
+     * @notice Returns the total USDC held in the vault
+     * @dev Total amount of USDC collateral backing QEURO
+     * @return Total USDC amount (6 decimals)
+     */
     function totalUsdcHeld() external view returns (uint256);
+    
+    /**
+     * @notice Returns the total QEURO minted
+     * @dev Total amount of QEURO tokens in circulation
+     * @return Total QEURO amount (18 decimals)
+     */
     function totalMinted() external view returns (uint256);
 }

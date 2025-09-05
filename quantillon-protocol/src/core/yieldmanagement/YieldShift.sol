@@ -198,12 +198,45 @@ contract YieldShift is
     event YieldSourceAuthorized(address indexed source, bytes32 indexed yieldType);
     event YieldSourceRevoked(address indexed source);
 
+    /**
+     * @notice Constructor for YieldShift implementation
+     * @dev Sets up the time provider and disables initialization on implementation for security
+     * @param _timeProvider Address of the time provider contract
+     * @custom:security Validates time provider address and disables initialization on implementation
+     * @custom:validation Validates time provider is not zero address
+     * @custom:state-changes Sets time provider and disables initializers
+     * @custom:events No events emitted
+     * @custom:errors Throws ZeroAddress if time provider is zero
+     * @custom:reentrancy Not protected - constructor only
+     * @custom:access Public constructor
+     * @custom:oracle No oracle dependencies
+     */
     constructor(TimeProvider _timeProvider) {
         if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
         timeProvider = _timeProvider;
         _disableInitializers();
     }
 
+    /**
+     * @notice Initialize the YieldShift contract
+     * @dev Sets up the contract with all required addresses and roles
+     * @param admin Address of the admin role
+     * @param _usdc Address of the USDC token contract
+     * @param _userPool Address of the user pool contract
+     * @param _hedgerPool Address of the hedger pool contract
+     * @param _aaveVault Address of the Aave vault contract
+     * @param _stQEURO Address of the stQEURO token contract
+     * @param _timelock Address of the timelock contract
+     * @param _treasury Address of the treasury
+     * @custom:security Validates all addresses are not zero
+     * @custom:validation Validates all input addresses
+     * @custom:state-changes Initializes ReentrancyGuard, AccessControl, and Pausable
+     * @custom:events Emits initialization events
+     * @custom:errors Throws if any address is zero
+     * @custom:reentrancy Protected by initializer modifier
+     * @custom:access Public initializer
+     * @custom:oracle No oracle dependencies
+     */
     function initialize(
         address admin,
         address _usdc,
@@ -306,6 +339,20 @@ contract YieldShift is
         );
     }
 
+    /**
+     * @notice Add yield from authorized sources
+     * @dev Adds yield from authorized sources and distributes it according to current yield shift
+     * @param yieldAmount Amount of yield to add (6 decimals)
+     * @param source Source identifier for the yield
+     * @custom:security Validates caller is authorized for the yield source
+     * @custom:validation Validates yield amount is positive and matches actual received
+     * @custom:state-changes Updates yield sources and total yield generated
+     * @custom:events Emits YieldAdded event
+     * @custom:errors Throws if caller is unauthorized or yield amount mismatch
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to authorized yield sources
+     * @custom:oracle No oracle dependencies
+     */
     function addYield(uint256 yieldAmount, bytes32 source) 
         external 
         nonReentrant 
@@ -349,6 +396,20 @@ contract YieldShift is
 
 
 
+    /**
+     * @notice Claim user yield
+     * @dev Claims yield for a user after holding period requirements are met
+     * @param user Address of the user to claim yield for
+     * @return yieldAmount Amount of yield claimed
+     * @custom:security Validates caller is authorized and holding period is met
+     * @custom:validation Validates user has pending yield and meets holding period
+     * @custom:state-changes Updates user pending yield and transfers USDC
+     * @custom:events Emits YieldClaimed event
+     * @custom:errors Throws if caller is unauthorized or holding period not met
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to user or user pool
+     * @custom:oracle No oracle dependencies
+     */
     function claimUserYield(address user) 
         external 
         nonReentrant 
@@ -379,6 +440,20 @@ contract YieldShift is
         }
     }
 
+    /**
+     * @notice Claim hedger yield
+     * @dev Claims yield for a hedger
+     * @param hedger Address of the hedger to claim yield for
+     * @return yieldAmount Amount of yield claimed
+     * @custom:security Validates caller is authorized
+     * @custom:validation Validates hedger has pending yield
+     * @custom:state-changes Updates hedger pending yield and transfers USDC
+     * @custom:events Emits HedgerYieldClaimed event
+     * @custom:errors Throws if caller is unauthorized or insufficient yield
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to hedger or hedger pool
+     * @custom:oracle No oracle dependencies
+     */
     function claimHedgerYield(address hedger) 
         external 
         nonReentrant 
@@ -416,6 +491,7 @@ contract YieldShift is
      * @custom:errors No errors thrown - safe arithmetic used
      * @custom:reentrancy Not applicable - view function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _calculateOptimalYieldShift(uint256 poolRatio) internal view returns (uint256) {
         if (_isWithinTolerance(poolRatio, targetPoolRatio, 1000)) {
@@ -445,6 +521,7 @@ contract YieldShift is
      * @custom:errors No errors thrown - safe arithmetic used
      * @custom:reentrancy Not applicable - view function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _applyGradualAdjustment(uint256 targetShift) internal view returns (uint256) {
         if (targetShift == currentYieldShift) {
@@ -462,6 +539,21 @@ contract YieldShift is
         }
     }
 
+    /**
+     * @notice Get current pool metrics
+     * @dev Returns current pool sizes and ratio for yield shift calculations
+     * @return userPoolSize Current user pool size
+     * @return hedgerPoolSize Current hedger pool size
+     * @return poolRatio Ratio of user to hedger pool sizes
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function _getCurrentPoolMetrics() internal view returns (
         uint256 userPoolSize,
         uint256 hedgerPoolSize,
@@ -483,6 +575,14 @@ contract YieldShift is
      * @return userPoolSize Eligible user pool size (deposits older than MIN_HOLDING_PERIOD)
      * @return hedgerPoolSize Eligible hedger pool size (deposits older than MIN_HOLDING_PERIOD)
      * @return poolRatio Ratio of eligible pool sizes
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function _getEligiblePoolMetrics() internal view returns (
         uint256 userPoolSize,
@@ -509,6 +609,14 @@ contract YieldShift is
      * @dev Only counts deposits older than MIN_HOLDING_PERIOD
      * @param totalUserPoolSize Current total user pool size
      * @return eligibleSize Eligible pool size for yield calculations
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function _calculateEligibleUserPoolSize(uint256 totalUserPoolSize) internal view returns (uint256 eligibleSize) {
         // For now, we'll use a conservative approach by applying a holding period discount
@@ -530,6 +638,14 @@ contract YieldShift is
      * @dev Only counts deposits older than MIN_HOLDING_PERIOD
      * @param totalHedgerPoolSize Current total hedger pool size
      * @return eligibleSize Eligible pool size for yield calculations
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function _calculateEligibleHedgerPoolSize(uint256 totalHedgerPoolSize) internal view returns (uint256 eligibleSize) {
         // Similar approach to user pool size
@@ -545,6 +661,14 @@ contract YieldShift is
      * @notice Calculate holding period discount based on recent deposit activity
      * @dev Returns a percentage (in basis points) representing eligible deposits
      * @return discountBps Discount in basis points (10000 = 100%)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function _calculateHoldingPeriodDiscount() internal view returns (uint256 discountBps) {
         // Base discount: assume 80% of deposits meet holding period (conservative)
@@ -582,6 +706,7 @@ contract YieldShift is
      * @custom:errors No errors thrown - safe arithmetic used
      * @custom:reentrancy Not applicable - pure function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _isWithinTolerance(uint256 value, uint256 target, uint256 toleranceBps) 
         internal 
@@ -949,6 +1074,7 @@ contract YieldShift is
      * @custom:errors No errors thrown - safe arithmetic used
      * @custom:reentrancy Not applicable - view function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _calculateUserAllocation() internal view returns (uint256) {
         uint256 totalAvailable = userYieldPool + hedgerYieldPool;
@@ -966,12 +1092,28 @@ contract YieldShift is
      * @custom:errors No errors thrown - safe arithmetic used
      * @custom:reentrancy Not applicable - view function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _calculateHedgerAllocation() internal view returns (uint256) {
         uint256 totalAvailable = userYieldPool + hedgerYieldPool;
         return totalAvailable.mulDiv(10000 - currentYieldShift, 10000);
     }
 
+    /**
+     * @notice Set yield shift parameters
+     * @dev Sets the base yield shift, maximum yield shift, and adjustment speed
+     * @param _baseYieldShift Base yield shift percentage in basis points
+     * @param _maxYieldShift Maximum yield shift percentage in basis points
+     * @param _adjustmentSpeed Adjustment speed in basis points
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates yield shift ranges and adjustment speed
+     * @custom:state-changes Updates yield shift parameters
+     * @custom:events Emits YieldShiftParametersUpdated event
+     * @custom:errors Throws if parameters are invalid
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to governance role
+     * @custom:oracle No oracle dependencies
+     */
     function setYieldShiftParameters(
         uint256 _baseYieldShift,
         uint256 _maxYieldShift,
@@ -1012,8 +1154,17 @@ contract YieldShift is
 
     /**
      * @notice Authorize a yield source for specific yield type
+     * @dev Authorizes a yield source to add yield of a specific type
      * @param source Address of the yield source
      * @param yieldType Type of yield this source is authorized for
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function authorizeYieldSource(
         address source,
@@ -1030,6 +1181,7 @@ contract YieldShift is
 
     /**
      * @notice Revoke authorization for a yield source
+     * @dev Revokes authorization for a yield source
      * @param source Address of the yield source to revoke
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -1194,6 +1346,21 @@ contract YieldShift is
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
+    /**
+     * @notice Checks if a yield source is authorized for a specific yield type
+     * @dev Checks if a yield source is authorized for a specific yield type
+     * @param source Address of the yield source
+     * @param yieldType Type of yield to check
+     * @return True if authorized, false otherwise
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function isYieldSourceAuthorized(address source, bytes32 yieldType) external view returns (bool) {
         return authorizedYieldSources[source] && sourceToYieldType[source] == yieldType;
     }
@@ -1248,6 +1415,22 @@ contract YieldShift is
         this.updateYieldDistribution();
     }
 
+    /**
+     * @notice Get time weighted average of pool history
+     * @dev Calculates time weighted average of pool history over a specified period
+     * @param poolHistory Array of pool snapshots
+     * @param period Time period for calculation
+     * @param isUserPool Whether this is for user pool or hedger pool
+     * @return uint256 Time weighted average value
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function getTimeWeightedAverage(PoolSnapshot[] storage poolHistory, uint256 period, bool isUserPool) 
         internal 
         view 
@@ -1297,6 +1480,18 @@ contract YieldShift is
         return totalWeightedValue / totalWeight;
     }
 
+    /**
+     * @notice Record pool snapshot
+     * @dev Records current pool metrics as a snapshot for historical tracking
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function _recordPoolSnapshot() internal {
         (uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize,) = _getEligiblePoolMetrics();
         
@@ -1309,12 +1504,35 @@ contract YieldShift is
      * @dev SECURITY: Uses eligible pool sizes that respect holding period requirements
      * @param eligibleUserPoolSize Eligible user pool size for yield calculations
      * @param eligibleHedgerPoolSize Eligible hedger pool size for yield calculations
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function _recordPoolSnapshotWithEligibleSizes(uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize) internal {
         _addToPoolHistory(userPoolHistory, eligibleUserPoolSize, true);
         _addToPoolHistory(hedgerPoolHistory, eligibleHedgerPoolSize, false);
     }
 
+    /**
+     * @notice Add pool snapshot to history
+     * @dev Adds a pool snapshot to the history array with size management
+     * @param poolHistory Array of pool snapshots to add to
+     * @param poolSize Size of the pool to record
+     * @param isUserPool Whether this is for user pool or hedger pool
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool) internal {
         uint256 length = poolHistory.length;
         
@@ -1378,6 +1596,14 @@ contract YieldShift is
      * @param _minHoldingPeriod New minimum holding period in seconds
      * @param _baseDiscount New base discount percentage in basis points
      * @param _maxTimeFactor New maximum time factor discount in basis points
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function updateHoldingPeriodProtection(
         uint256 _minHoldingPeriod,

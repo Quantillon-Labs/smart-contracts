@@ -130,14 +130,14 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @notice Initializes the timelock contract with admin privileges
      * @dev Sets up access control roles and pausability. Can only be called once.
      * @param admin The address that will receive admin and upgrade proposer roles
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to initializer modifier
+     * @custom:oracle No oracle dependencies
      */
     function initialize(address admin) public initializer {
         __AccessControl_init();
@@ -160,6 +160,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @param newImplementation Address of the new implementation
      * @param description Description of the upgrade
      * @param customDelay Optional custom delay (must be >= UPGRADE_DELAY)
+     * @dev Proposes an upgrade with timelock delay and multi-sig approval requirements
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to UPGRADE_PROPOSER_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function proposeUpgrade(
         address newImplementation,
@@ -190,14 +199,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Approve a pending upgrade (multi-sig signer only)
      * @param implementation Address of the implementation to approve
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Allows multi-sig signers to approve pending upgrades
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to multi-sig signers
+     * @custom:oracle No oracle dependencies
      */
     function approveUpgrade(address implementation) external onlyMultisigSigner {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
@@ -213,14 +223,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Revoke approval for a pending upgrade
      * @param implementation Address of the implementation to revoke approval for
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Allows multi-sig signers to revoke their approval for pending upgrades
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to multi-sig signers
+     * @custom:oracle No oracle dependencies
      */
     function revokeUpgradeApproval(address implementation) external onlyMultisigSigner {
         require(upgradeApprovals[msg.sender][implementation], "TimelockUpgradeable: Not approved");
@@ -234,14 +245,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Execute an upgrade after timelock and multi-sig approval
      * @param implementation Address of the implementation to execute
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Executes an upgrade after timelock delay and sufficient multi-sig approvals
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to UPGRADE_EXECUTOR_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function executeUpgrade(address implementation) external onlyRole(UPGRADE_EXECUTOR_ROLE) {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
@@ -264,14 +276,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Cancel a pending upgrade (only proposer or admin)
      * @param implementation Address of the implementation to cancel
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Allows proposer or admin to cancel pending upgrades
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to proposer or admin
+     * @custom:oracle No oracle dependencies
      */
     function cancelUpgrade(address implementation) external {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
@@ -291,6 +304,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @notice Emergency upgrade (bypasses timelock, requires emergency mode)
      * @param newImplementation Address of the new implementation
      * @param description Description of the emergency upgrade
+     * @dev Performs emergency upgrade bypassing timelock and multi-sig requirements
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to emergency upgrader role
+     * @custom:oracle No oracle dependencies
      */
     function emergencyUpgrade(
         address newImplementation,
@@ -322,14 +344,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Add a multi-sig signer
      * @param signer Address of the signer to add
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Adds a new multi-sig signer to the timelock system
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to MULTISIG_MANAGER_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function addMultisigSigner(address signer) external onlyRole(MULTISIG_MANAGER_ROLE) {
         require(signer != address(0), "TimelockUpgradeable: Invalid signer");
@@ -345,14 +368,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Remove a multi-sig signer
      * @param signer Address of the signer to remove
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Removes a multi-sig signer from the timelock system
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to MULTISIG_MANAGER_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function removeMultisigSigner(address signer) external onlyRole(MULTISIG_MANAGER_ROLE) {
         require(multisigSigners[signer], "TimelockUpgradeable: Not signer");
@@ -373,14 +397,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @notice Toggle emergency mode
      * @param enabled Whether to enable emergency mode
      * @param reason Reason for the emergency mode change
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Toggles emergency mode for emergency upgrades
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to EMERGENCY_UPGRADER_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function toggleEmergencyMode(bool enabled, string calldata reason) external onlyRole(EMERGENCY_UPGRADER_ROLE) {
         emergencyMode = enabled;
@@ -393,14 +418,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @notice Get pending upgrade details
      * @param implementation Address of the implementation
      * @return upgrade Pending upgrade details
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Returns pending upgrade details for a given implementation
+     * @custom:security No security checks needed
+     * @custom:validation No validation needed
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function getPendingUpgrade(address implementation) external view returns (PendingUpgrade memory upgrade) {
         return pendingUpgrades[implementation];
@@ -410,14 +436,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @notice Check if an upgrade can be executed
      * @param implementation Address of the implementation
      * @return canExecute Whether the upgrade can be executed
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Checks if an upgrade can be executed based on timelock and approval requirements
+     * @custom:security No security checks needed
+     * @custom:validation No validation needed
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function canExecuteUpgrade(address implementation) external view returns (bool canExecute) {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
@@ -434,14 +461,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @param signer Address of the signer
      * @param implementation Address of the implementation
      * @return approved Whether the signer has approved the upgrade
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Returns whether a signer has approved a specific upgrade
+     * @custom:security No security checks needed
+     * @custom:validation No validation needed
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function hasUpgradeApproval(address signer, address implementation) external view returns (bool approved) {
         return upgradeApprovals[signer][implementation];
@@ -450,14 +478,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Get all multi-sig signers
      * @return signers Array of signer addresses
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Returns array of all multi-sig signer addresses
+     * @custom:security No security checks needed
+     * @custom:validation No validation needed
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function getMultisigSigners() external view returns (address[] memory signers) {
         signers = new address[](multisigSignerCount);
@@ -473,6 +502,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Clear all approvals for an implementation
      * @param implementation Address of the implementation
+     * @dev Clears all approvals for a specific implementation
+     * @custom:security No security checks needed
+     * @custom:validation No validation needed
+     * @custom:state-changes Updates contract state variables
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _clearUpgradeApprovals(address implementation) internal {
         // In a production environment, you'd iterate through all signers
@@ -483,6 +521,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Clear all approvals from a specific signer
      * @param signer Address of the signer
+     * @dev Clears all approvals from a specific signer
+     * @custom:security No security checks needed
+     * @custom:validation No validation needed
+     * @custom:state-changes Updates contract state variables
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _clearSignerApprovals(address signer) internal {
         // In a production environment, you'd iterate through all pending upgrades
@@ -492,6 +539,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /**
      * @notice Add a multisig signer (internal)
      * @param signer Address of the signer
+     * @dev Adds a multisig signer internally
+     * @custom:security No security checks needed
+     * @custom:validation No validation needed
+     * @custom:state-changes Updates contract state variables
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _addMultisigSigner(address signer) internal {
         multisigSigners[signer] = true;
@@ -502,14 +558,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     
     /**
      * @notice Pause the timelock contract
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Pauses the timelock contract
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
@@ -517,14 +574,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     
     /**
      * @notice Unpause the timelock contract
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Unpauses the timelock contract
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
@@ -532,6 +590,19 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
 
     // ============ Constructor ============
 
+    /**
+     * @notice Constructor for TimelockUpgradeable contract
+     * @param _timeProvider TimeProvider contract for centralized time management
+     * @dev Sets up the time provider and disables initializers for security
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Disables initializers
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
+     */
     constructor(TimeProvider _timeProvider) {
         if (address(_timeProvider) == address(0)) revert("Zero address");
         timeProvider = _timeProvider;

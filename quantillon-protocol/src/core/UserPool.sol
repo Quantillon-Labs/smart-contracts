@@ -336,12 +336,44 @@ contract UserPool is
     // INITIALIZER
     // =============================================================================
 
+    /**
+     * @notice Constructor for UserPool contract
+     * @param _timeProvider TimeProvider contract for centralized time management
+     * @dev Sets up the time provider and disables initializers for security
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Disables initializers
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
+     */
     constructor(TimeProvider _timeProvider) {
         if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
         timeProvider = _timeProvider;
         _disableInitializers();
     }
 
+    /**
+     * @notice Initializes the UserPool contract
+     * @param admin Address that receives admin and governance roles
+     * @param _qeuro Address of the QEURO token contract
+     * @param _usdc Address of the USDC token contract
+     * @param _vault Address of the QuantillonVault contract
+     * @param _yieldShift Address of the YieldShift contract
+     * @param _timelock Address of the timelock contract
+     * @param _treasury Address of the treasury contract
+     * @dev Initializes the UserPool with all required contracts and default parameters
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Initializes all contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to initializer modifier
+     * @custom:oracle No oracle dependencies
+     */
     function initialize(
         address admin,
         address _qeuro,
@@ -401,6 +433,14 @@ contract UserPool is
      * @param usdcAmount Amount of USDC to deposit (6 decimals)
      * @param minQeuroOut Minimum amount of QEURO to receive (18 decimals)
      * @return qeuroMinted Amount of QEURO minted (18 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
      */
     function deposit(uint256 usdcAmount, uint256 minQeuroOut) 
         external 
@@ -456,6 +496,14 @@ contract UserPool is
      * @param usdcAmounts Array of USDC amounts to deposit (6 decimals)
      * @param minQeuroOuts Array of minimum QEURO amounts to receive (18 decimals)
      * @return qeuroMintedAmounts Array of QEURO amounts minted (18 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
      */
      // slither-disable-next-line calls-loop
     function batchDeposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts)
@@ -501,9 +549,11 @@ contract UserPool is
      * @custom:security Validates all amounts > 0 before transfer
      * @custom:validation Validates each amount in array is positive
      * @custom:state-changes Transfers USDC from msg.sender to contract
+     * @custom:events No events emitted - handled by calling function
      * @custom:errors Throws if any amount is 0
      * @custom:reentrancy Not protected - internal function only
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _validateAndTransferUsdc(uint256[] calldata usdcAmounts) internal returns (uint256 totalUsdcAmount) {
         // Pre-validate amounts and calculate total
@@ -522,8 +572,11 @@ contract UserPool is
      * @custom:security Updates hasDeposited mapping and totalUsers counter
      * @custom:validation No input validation required
      * @custom:state-changes Updates hasDeposited[msg.sender] and totalUsers
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
      * @custom:reentrancy Not protected - internal function only
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _initializeUserIfNeeded() internal {
         if (!hasDeposited[msg.sender]) {
@@ -541,8 +594,11 @@ contract UserPool is
      * @custom:security Uses cached depositFee to prevent reentrancy
      * @custom:validation No input validation required - view function
      * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
      * @custom:reentrancy Not applicable - view function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _calculateNetAmounts(uint256[] calldata usdcAmounts) 
         internal 
@@ -574,6 +630,7 @@ contract UserPool is
      * @custom:errors Throws if vault.mintQEURO fails
      * @custom:reentrancy Protected by nonReentrant modifier on calling function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _processVaultMinting(
         uint256[] memory netAmounts,
@@ -616,8 +673,10 @@ contract UserPool is
      * @custom:validation No input validation required - parameters pre-validated
      * @custom:state-changes Updates user.depositHistory, user.qeuroBalance, totalDeposits
      * @custom:events No events emitted - handled by calling function
+     * @custom:errors No errors thrown
      * @custom:reentrancy Not protected - internal function only
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _updateUserAndPoolState(
         uint256[] calldata usdcAmounts,
@@ -656,6 +715,7 @@ contract UserPool is
      * @custom:errors Throws if QEURO transfer fails
      * @custom:reentrancy Not protected - internal function only
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _transferQeuroAndEmitEvents(
         uint256[] calldata usdcAmounts,
@@ -680,6 +740,14 @@ contract UserPool is
      * @param qeuroAmount Amount of QEURO to burn (18 decimals)
      * @param minUsdcOut Minimum amount of USDC to receive (6 decimals)
      * @return usdcReceived Amount of USDC received (6 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
      */
      // slither-disable-start calls-loop
     function withdraw(uint256 qeuroAmount, uint256 minUsdcOut) 
@@ -732,6 +800,14 @@ contract UserPool is
      * @param qeuroAmounts Array of QEURO amounts to burn (18 decimals)
      * @param minUsdcOuts Array of minimum USDC amounts to receive (6 decimals)
      * @return usdcReceivedAmounts Array of USDC amounts received (6 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
      */
      // slither-disable-start calls-loop
     function batchWithdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
@@ -853,14 +929,14 @@ contract UserPool is
      * @notice Stakes QEURO tokens to earn enhanced staking rewards
      * @dev Updates pending rewards before staking and requires minimum stake amount
      * @param qeuroAmount The amount of QEURO tokens to stake (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
      */
     function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused {
         // GAS OPTIMIZATION: Cache storage read
@@ -892,14 +968,14 @@ contract UserPool is
      * @notice Stakes multiple amounts of QEURO tokens in a single transaction
      * @dev More gas-efficient than multiple individual stake calls. Each stake must meet minimum requirements.
      * @param qeuroAmounts Array of QEURO amounts to stake (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
      */
     function batchStake(uint256[] calldata qeuroAmounts) external nonReentrant whenNotPaused {
         if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
@@ -945,14 +1021,14 @@ contract UserPool is
      * @notice Requests to unstake QEURO tokens (starts unstaking cooldown period)
      * @dev Begins the unstaking process with a cooldown period before tokens can be withdrawn
      * @param qeuroAmount The amount of staked QEURO tokens to unstake (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
      */
     function requestUnstake(uint256 qeuroAmount) external nonReentrant {
         // Cache timestamp to avoid external calls
@@ -973,14 +1049,14 @@ contract UserPool is
      * @notice Complete unstaking after cooldown period
      * @dev This function allows users to complete their unstaking request
      *      after the cooldown period has passed.
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
      */
     function unstake() external nonReentrant whenNotPaused {
         UserInfo storage user = userInfo[msg.sender];
@@ -1010,14 +1086,14 @@ contract UserPool is
      * @dev This function allows users to claim their pending staking rewards.
      *      It calculates and transfers the rewards based on their staked amount.
      * @return rewardAmount Amount of QEURO rewards claimed (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function claimStakingRewards() external nonReentrant returns (uint256 rewardAmount) {
         // Cache timestamp to avoid external calls
@@ -1043,6 +1119,14 @@ contract UserPool is
      *      Useful for protocol-wide reward distributions or automated reward processing.
      * @param users Array of user addresses to claim rewards for
      * @return rewardAmounts Array of reward amounts claimed for each user (18 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function batchRewardClaim(address[] calldata users) 
         external 
@@ -1110,14 +1194,14 @@ contract UserPool is
      * @notice Distribute yield to stakers (called by YieldShift contract)
      * @dev This function is deprecated - yield now goes to stQEURO
      * @param yieldAmount Amount of yield to distribute (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function distributeYield(uint256 yieldAmount) external {
         require(msg.sender == address(yieldShift), "UserPool: Only YieldShift can call");
@@ -1141,6 +1225,7 @@ contract UserPool is
      * @custom:errors No errors thrown - safe arithmetic used
      * @custom:reentrancy Not protected - internal function only
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _updatePendingRewards(address user, uint256 currentTime) internal {
         UserInfo storage userdata = userInfo[user];
@@ -1189,16 +1274,17 @@ contract UserPool is
 
     /**
      * @notice Get the total deposits of a specific user
+     * @dev Returns the cumulative deposit history for a user in USDC equivalent
      * @param user Address of the user to query
      * @return uint256 Total deposits of the user in USDC equivalent (6 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getUserDeposits(address user) external view returns (uint256) {
         return userInfo[user].depositHistory;
@@ -1206,16 +1292,17 @@ contract UserPool is
 
     /**
      * @notice Get the current staked amount of a specific user
+     * @dev Returns the current amount of QEURO staked by a user
      * @param user Address of the user to query
      * @return uint256 Current staked amount of the user in QEURO (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getUserStakes(address user) external view returns (uint256) {
         return userInfo[user].stakedAmount;
@@ -1223,16 +1310,18 @@ contract UserPool is
 
     /**
      * @notice Get the total pending rewards for a specific user
+     * @dev Calculates and returns the total pending rewards for a user including
+     *      both staking rewards and yield-based rewards
      * @param user Address of the user to query
      * @return uint256 Total pending rewards of the user in QEURO (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getUserPendingRewards(address user) external view returns (uint256) {
         UserInfo storage userdata = userInfo[user];
@@ -1267,20 +1356,21 @@ contract UserPool is
 
     /**
      * @notice Get detailed information about a user's pool status
+     * @dev Returns comprehensive user information including balances, stakes, and rewards
      * @param user Address of the user to query
      * @return qeuroBalance QEURO balance of the user (18 decimals)
      * @return stakedAmount Current staked amount of the user (18 decimals)
      * @return pendingRewards Total pending rewards of the user (18 decimals)
      * @return depositHistory Total historical deposits of the user (6 decimals)
      * @return lastStakeTime Timestamp of the user's last staking action
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getUserInfo(address user) external view returns (
         uint256 qeuroBalance,
@@ -1301,15 +1391,16 @@ contract UserPool is
 
     /**
      * @notice Get the total deposits across all users in the pool
+     * @dev Returns the cumulative total of all USDC deposits made to the pool
      * @return uint256 Total USDC equivalent deposits (6 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getTotalDeposits() external view returns (uint256) {
         return totalDeposits;
@@ -1317,15 +1408,16 @@ contract UserPool is
 
     /**
      * @notice Get the total QEURO staked across all users
+     * @dev Returns the total amount of QEURO currently staked in the pool
      * @return uint256 Total QEURO staked (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getTotalStakes() external view returns (uint256) {
         return totalStakes;
@@ -1333,18 +1425,19 @@ contract UserPool is
 
     /**
      * @notice Get various metrics about the user pool
+     * @dev Returns comprehensive pool statistics including user count, averages, and ratios
      * @return totalUsers_ Number of unique users
      * @return averageDeposit Average deposit amount per user (6 decimals)
      * @return stakingRatio Ratio of total staked QEURO to total deposits (basis points)
      * @return poolTVL Total value locked in the pool (6 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getPoolMetrics() external view returns (
         uint256 totalUsers_,
@@ -1360,15 +1453,16 @@ contract UserPool is
 
     /**
      * @notice Get the current Staking APY
+     * @dev Returns the current annual percentage yield for staking QEURO
      * @return uint256 Staking APY in basis points
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getStakingAPY() external view returns (uint256) {
         return stakingAPY;
@@ -1376,15 +1470,16 @@ contract UserPool is
 
     /**
      * @notice Get the current Deposit APY
+     * @dev Returns the current annual percentage yield for depositing USDC
      * @return uint256 Deposit APY in basis points
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getDepositAPY() external view returns (uint256) {
         return depositAPY;
@@ -1392,9 +1487,18 @@ contract UserPool is
 
     /**
      * @notice Calculate projected rewards for a given QEURO amount and duration
+     * @dev Calculates the expected rewards for staking a specific amount for a given duration
      * @param qeuroAmount Amount of QEURO to calculate rewards for (18 decimals)
      * @param duration Duration in seconds
      * @return uint256 Calculated rewards (18 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function calculateProjectedRewards(uint256 qeuroAmount, uint256 duration) 
         external 
@@ -1414,6 +1518,14 @@ contract UserPool is
      * @param newStakingAPY New Staking APY in basis points
      * @param newMinStakeAmount New Minimum stake amount (18 decimals)
      * @param newUnstakingCooldown New unstaking cooldown period (seconds)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function updateStakingParameters(
         uint256 newStakingAPY,
@@ -1439,6 +1551,14 @@ contract UserPool is
      * @param _depositFee New deposit fee in basis points
      * @param _withdrawalFee New withdrawal fee in basis points
      * @param _performanceFee New performance fee in basis points
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function setPoolFees(
         uint256 _depositFee,
@@ -1463,14 +1583,14 @@ contract UserPool is
      * @dev This function is intended for emergency situations where a user's
      *      staked QEURO needs to be forcibly unstaked.
      * @param user Address of the user to unstake
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function emergencyUnstake(address user) external onlyRole(EMERGENCY_ROLE) {
         UserInfo storage userdata = userInfo[user];
@@ -1488,14 +1608,14 @@ contract UserPool is
      * @notice Pause the user pool (restricted to emergency roles)
      * @dev This function is used to pause critical operations in case of
      *      a protocol-wide emergency or vulnerability.
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
@@ -1505,14 +1625,14 @@ contract UserPool is
      * @notice Unpause the user pool (restricted to emergency roles)
      * @dev This function is used to re-enable critical operations after
      *      an emergency pause.
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
@@ -1520,19 +1640,20 @@ contract UserPool is
 
     /**
      * @notice Get the current configuration parameters of the user pool
+     * @dev Returns all current pool configuration parameters including fees and limits
      * @return minStakeAmount_ Current minimum stake amount (18 decimals)
      * @return unstakingCooldown_ Current unstaking cooldown period (seconds)
      * @return depositFee_ Current deposit fee (basis points)
      * @return withdrawalFee_ Current withdrawal fee (basis points)
      * @return performanceFee_ Current performance fee (basis points)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function getPoolConfig() external view returns (
         uint256 minStakeAmount_,
@@ -1546,15 +1667,16 @@ contract UserPool is
 
     /**
      * @notice Check if the user pool is currently active (not paused)
+     * @dev Returns the current pause status of the pool
      * @return bool True if the pool is active, false otherwise
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function isPoolActive() external view returns (bool) {
         return !paused();
@@ -1568,16 +1690,17 @@ contract UserPool is
 
     /**
      * @notice Recover accidentally sent tokens to treasury only
+     * @dev Recovers accidentally sent ERC20 tokens to the treasury address
      * @param token Token address to recover
      * @param amount Amount to recover
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure token recovery to treasury
@@ -1587,14 +1710,14 @@ contract UserPool is
     /**
      * @notice Recover ETH to treasury address only
      * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
 

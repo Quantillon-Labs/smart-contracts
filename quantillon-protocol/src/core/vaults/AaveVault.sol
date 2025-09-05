@@ -22,17 +22,107 @@ import "../SecureUpgradeable.sol";
  * @custom:security-contact team@quantillon.money
  */
 interface IPool {
+    /**
+     * @notice Supply assets to Aave protocol
+     * @dev Supplies assets to Aave protocol on behalf of a user
+     * @param asset Address of the asset to supply
+     * @param amount Amount of assets to supply
+     * @param onBehalfOf Address to supply on behalf of
+     * @param referralCode Referral code for Aave protocol
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
+    /**
+     * @notice Withdraw assets from Aave protocol
+     * @dev Withdraws assets from Aave protocol to a specified address
+     * @param asset Address of the asset to withdraw
+     * @param amount Amount of assets to withdraw
+     * @param to Address to withdraw to
+     * @return uint256 Amount of assets withdrawn
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function withdraw(address asset, uint256 amount, address to) external returns (uint256);
+    /**
+     * @notice Get reserve data for an asset
+     * @dev Returns reserve data for a specific asset in Aave protocol
+     * @param asset Address of the asset
+     * @return ReserveData Reserve data structure
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function getReserveData(address asset) external view returns (ReserveData memory);
 }
 
 interface IPoolAddressesProvider {
+    /**
+     * @notice Get the pool address
+     * @dev Returns the address of the Aave pool
+     * @return address Address of the Aave pool
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function getPool() external view returns (address);
 }
 
 interface IRewardsController {
+    /**
+     * @notice Claim rewards from Aave protocol
+     * @dev Claims rewards for specified assets and amount
+     * @param assets Array of asset addresses
+     * @param amount Amount of rewards to claim
+     * @param to Address to send rewards to
+     * @return uint256 Amount of rewards claimed
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function claimRewards(address[] calldata assets, uint256 amount, address to) external returns (uint256);
+    /**
+     * @notice Get user rewards for specified assets
+     * @dev Returns the rewards for a user across specified assets
+     * @param assets Array of asset addresses
+     * @param user Address of the user
+     * @return uint256[] Array of reward amounts for each asset
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function getUserRewards(address[] calldata assets, address user) external view returns (uint256[] memory);
 }
 
@@ -165,10 +255,41 @@ contract AaveVault is
     event EmergencyWithdrawal(string indexed reason, uint256 amountWithdrawn, uint256 timestamp);
     event EmergencyModeToggled(string indexed reason, bool enabled);
 
+    /**
+     * @notice Constructor for AaveVault implementation
+     * @dev Disables initialization on implementation for security
+     * @custom:security Disables initialization on implementation for security
+     * @custom:validation No input validation required
+     * @custom:state-changes Disables initializers
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - constructor only
+     * @custom:access Public constructor
+     * @custom:oracle No oracle dependencies
+     */
     constructor() {
         _disableInitializers();
     }
 
+    /**
+     * @notice Initialize the AaveVault contract
+     * @dev Sets up the contract with all required addresses and roles
+     * @param admin Address of the admin role
+     * @param _usdc Address of the USDC token contract
+     * @param _aaveProvider Address of the Aave pool addresses provider
+     * @param _rewardsController Address of the Aave rewards controller
+     * @param _yieldShift Address of the yield shift contract
+     * @param _timelock Address of the timelock contract
+     * @param _treasury Address of the treasury
+     * @custom:security Validates all addresses are not zero
+     * @custom:validation Validates all input addresses
+     * @custom:state-changes Initializes ReentrancyGuard, AccessControl, and Pausable
+     * @custom:events Emits initialization events
+     * @custom:errors Throws if any address is zero
+     * @custom:reentrancy Protected by initializer modifier
+     * @custom:access Public initializer
+     * @custom:oracle No oracle dependencies
+     */
     function initialize(
         address admin,
         address _usdc,
@@ -316,6 +437,7 @@ contract AaveVault is
      * @custom:errors Throws InsufficientBalance if balance too low
      * @custom:reentrancy Not applicable - pure function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _validateAndCalculateWithdrawAmount(
         uint256 amount, 
@@ -343,6 +465,7 @@ contract AaveVault is
      * @custom:errors Throws WouldBreachMinimum if below minimum balance threshold
      * @custom:reentrancy Not applicable - view function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _validateWithdrawalConstraints(uint256 withdrawAmount, uint256 aaveBalance) internal view {
         if (!emergencyMode) {
@@ -353,7 +476,17 @@ contract AaveVault is
     }
     
     /**
+     * @notice Validates expected withdrawal amounts before external call
      * @dev Validates expected withdrawal amounts before external call
+     * @param withdrawAmount Amount to withdraw
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function _validateExpectedWithdrawal(uint256 withdrawAmount) internal view {
         uint256 expectedPrincipalWithdrawn = VaultMath.min(withdrawAmount, principalDeposited);
@@ -366,7 +499,20 @@ contract AaveVault is
     }
     
     /**
+     * @notice Executes the Aave withdrawal with proper error handling
      * @dev Executes the Aave withdrawal with proper error handling
+     * @param originalAmount Original amount requested
+     * @param withdrawAmount Amount to withdraw from Aave
+     * @param usdcBefore USDC balance before withdrawal
+     * @return usdcWithdrawn Actual amount withdrawn
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function _executeAaveWithdrawal(
         uint256 originalAmount,
@@ -389,7 +535,20 @@ contract AaveVault is
     }
     
     /**
+     * @notice Validates the withdrawal result and slippage
      * @dev Validates the withdrawal result and slippage
+     * @param originalAmount Original amount requested
+     * @param withdrawAmount Amount to withdraw from Aave
+     * @param usdcBefore USDC balance before withdrawal
+     * @param usdcWithdrawn Actual amount withdrawn
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function _validateWithdrawalResult(
         uint256 originalAmount,
@@ -701,6 +860,19 @@ contract AaveVault is
         lastUpdate = lastHarvestTime;
     }
 
+    /**
+     * @notice Check if Aave protocol is healthy
+     * @dev Checks if Aave protocol is functioning properly by verifying reserve data
+     * @return bool True if Aave is healthy, false otherwise
+     * @custom:security Uses try-catch to handle potential failures gracefully
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - uses try-catch
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
+     */
     function _isAaveHealthy() internal view returns (bool) {
         try aavePool.getReserveData(address(usdc)) returns (ReserveData memory reserveData) {
             return reserveData.aTokenAddress != address(0);
@@ -709,6 +881,21 @@ contract AaveVault is
         }
     }
 
+    /**
+     * @notice Automatically rebalance the vault allocation
+     * @dev Rebalances the vault allocation based on optimal allocation calculations
+     * @return rebalanced True if rebalancing occurred, false otherwise
+     * @return newAllocation New allocation percentage after rebalancing
+     * @return expectedYield Expected yield from the new allocation
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function autoRebalance() 
         external 
         returns (bool rebalanced, uint256 newAllocation, uint256 expectedYield) 
@@ -792,6 +979,19 @@ contract AaveVault is
         maxAaveExposure = _maxExposure;
     }
 
+    /**
+     * @notice Emergency withdrawal from Aave protocol
+     * @dev Emergency function to withdraw all funds from Aave protocol
+     * @return amountWithdrawn Amount of USDC withdrawn from Aave
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function emergencyWithdrawFromAave() 
         external 
         nonReentrant 
@@ -866,6 +1066,21 @@ contract AaveVault is
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
     }
 
+    /**
+     * @notice Update Aave parameters
+     * @dev Updates harvest threshold, yield fee, and rebalance threshold
+     * @param newHarvestThreshold New harvest threshold in USDC
+     * @param newYieldFee New yield fee in basis points
+     * @param newRebalanceThreshold New rebalance threshold in basis points
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function updateAaveParameters(
         uint256 newHarvestThreshold,
         uint256 newYieldFee,

@@ -11,6 +11,7 @@ pragma solidity 0.8.24;
 interface IChainlinkOracle {
     /**
      * @notice Initializes the oracle with admin and feed addresses
+     * @dev Sets up the oracle with initial configuration and assigns roles to admin
      * @param admin Address that receives admin and manager roles
      * @param _eurUsdPriceFeed Chainlink EUR/USD feed address
      * @param _usdcUsdPriceFeed Chainlink USDC/USD feed address
@@ -27,6 +28,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Gets the current EUR/USD price with validation
+     * @dev Retrieves and validates EUR/USD price from Chainlink feed with freshness checks
      * @return price EUR/USD price in 18 decimals
      * @return isValid True if fresh and within acceptable bounds
      * @custom:security Validates timestamp freshness, circuit breaker status, price bounds
@@ -42,6 +44,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Gets the current USDC/USD price with validation
+     * @dev Retrieves and validates USDC/USD price from Chainlink feed with tolerance checks
      * @return price USDC/USD price in 18 decimals (should be ~1e18)
      * @return isValid True if fresh and within tolerance
       * @custom:security Validates input parameters and enforces security checks
@@ -57,6 +60,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Returns overall oracle health signals
+     * @dev Checks the health status of both price feeds and overall oracle state
      * @return isHealthy True if both feeds are fresh, circuit breaker is off, and not paused
      * @return eurUsdFresh True if EUR/USD feed is fresh
      * @return usdcUsdFresh True if USDC/USD feed is fresh
@@ -73,6 +77,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Detailed information about the EUR/USD price
+     * @dev Provides comprehensive EUR/USD price information including validation status
      * @return currentPrice Current price (may be fallback)
      * @return lastValidPrice Last validated price stored
      * @return lastUpdate Timestamp of last successful update
@@ -97,6 +102,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Current configuration and circuit breaker state
+     * @dev Returns current oracle configuration parameters and circuit breaker status
      * @return minPrice Minimum accepted EUR/USD price
      * @return maxPrice Maximum accepted EUR/USD price
      * @return maxStaleness Maximum allowed staleness in seconds
@@ -121,6 +127,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Addresses and decimals of the underlying feeds
+     * @dev Returns the addresses and decimal precision of both Chainlink price feeds
      * @return eurUsdFeedAddress EUR/USD feed address
      * @return usdcUsdFeedAddress USDC/USD feed address
      * @return eurUsdDecimals EUR/USD feed decimals
@@ -143,6 +150,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Connectivity check for both feeds
+     * @dev Tests connectivity to both Chainlink price feeds and returns latest round information
      * @return eurUsdConnected True if EUR/USD feed responds
      * @return usdcUsdConnected True if USDC/USD feed responds
      * @return eurUsdLatestRound Latest round ID for EUR/USD
@@ -165,6 +173,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Updates EUR/USD min and max acceptable prices
+     * @dev Updates the price bounds for EUR/USD validation with security checks
      * @param _minPrice New minimum price (18 decimals)
      * @param _maxPrice New maximum price (18 decimals)
       * @custom:security Validates input parameters and enforces security checks
@@ -180,6 +189,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Updates the allowed USDC deviation from $1.00 in basis points
+     * @dev Updates the USDC price tolerance for validation with security checks
      * @param newToleranceBps New tolerance (e.g., 200 = 2%)
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -194,6 +204,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Updates Chainlink feed addresses
+     * @dev Updates the addresses of both Chainlink price feeds with validation
      * @param _eurUsdFeed New EUR/USD feed
      * @param _usdcUsdFeed New USDC/USD feed
       * @custom:security Validates input parameters and enforces security checks
@@ -209,6 +220,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Clears circuit breaker and attempts to resume live prices
+     * @dev Resets the circuit breaker state to allow normal price operations
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -222,6 +234,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Manually triggers circuit breaker to use fallback prices
+     * @dev Activates circuit breaker to switch to fallback price mode for safety
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -235,6 +248,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Pauses all oracle operations
+     * @dev Pauses the oracle contract to halt all price operations
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -248,6 +262,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Unpauses oracle operations
+     * @dev Resumes oracle operations after being paused
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -261,6 +276,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Recovers ERC20 tokens sent to the oracle contract by mistake
+     * @dev Allows recovery of ERC20 tokens accidentally sent to the oracle contract
      * @param token Token address to recover
      * @param to Recipient address
      * @param amount Amount to transfer
@@ -277,6 +293,7 @@ interface IChainlinkOracle {
 
     /**
      * @notice Recovers ETH sent to the oracle contract by mistake
+     * @dev Allows recovery of ETH accidentally sent to the oracle contract
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables

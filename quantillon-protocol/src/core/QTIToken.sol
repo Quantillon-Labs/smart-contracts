@@ -335,12 +335,40 @@ contract QTIToken is
     // INITIALIZER
     // =============================================================================
 
+    /**
+     * @notice Constructor for QTI token contract
+     * @dev Sets up the time provider and disables initializers for security
+     * @param _timeProvider TimeProvider contract for centralized time management
+     * @custom:security Validates time provider address and disables initializers
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Sets immutable time provider and disables initializers
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
+     */
     constructor(TimeProvider _timeProvider) {
         if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
         timeProvider = _timeProvider;
         _disableInitializers();
     }
 
+    /**
+     * @notice Initializes the QTI token contract
+     * @dev Sets up the governance token with initial configuration and assigns roles to admin
+     * @param admin Address that receives admin and governance roles
+     * @param _treasury Treasury address for protocol fees
+     * @param _timelock Timelock contract address for secure upgrades
+     * @custom:security Validates all input addresses and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Initializes all contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to initializer modifier
+     * @custom:oracle No oracle dependencies
+     */
     function initialize(
         address admin,
         address _treasury,
@@ -451,6 +479,7 @@ contract QTIToken is
 
     /**
      * @notice Unlock QTI tokens after lock period expires
+     * @dev Releases locked QTI tokens and removes voting power when lock period has expired
      * @return amount Amount of QTI unlocked
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -490,9 +519,18 @@ contract QTIToken is
 
     /**
      * @notice Batch lock QTI tokens for voting power for multiple amounts
+     * @dev Efficiently locks multiple amounts with different lock times in a single transaction
      * @param amounts Array of QTI amounts to lock
      * @param lockTimes Array of lock durations (must be >= MIN_LOCK_TIME)
      * @return veQTIAmounts Array of voting power calculated for each locked amount
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
      */
     function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes) 
         external 
@@ -522,7 +560,18 @@ contract QTIToken is
     }
     
     /**
-     * @dev Validates basic batch lock inputs
+     * @notice Validates basic batch lock inputs
+     * @dev Ensures array lengths match and batch size is within limits
+     * @param amounts Array of QTI amounts to lock
+     * @param lockTimes Array of lock durations
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _validateBatchLockInputs(uint256[] calldata amounts, uint256[] calldata lockTimes) internal pure {
         if (amounts.length != lockTimes.length) revert ErrorLibrary.ArrayLengthMismatch();
@@ -530,7 +579,19 @@ contract QTIToken is
     }
     
     /**
-     * @dev Validates all amounts and lock times, returns total amount
+     * @notice Validates all amounts and lock times, returns total amount
+     * @dev Ensures all amounts and lock times are valid and calculates total amount
+     * @param amounts Array of QTI amounts to lock
+     * @param lockTimes Array of lock durations
+     * @return totalAmount Total amount of QTI to be locked
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _validateAndCalculateTotalAmount(
         uint256[] calldata amounts, 
@@ -551,7 +612,22 @@ contract QTIToken is
     }
     
     /**
-     * @dev Processes all locks and calculates totals
+     * @notice Processes all locks and calculates totals
+     * @dev Processes batch lock operations and calculates total voting power and amounts
+     * @param amounts Array of QTI amounts to lock
+     * @param lockTimes Array of lock durations
+     * @param veQTIAmounts Array to store calculated voting power amounts
+     * @param lockInfo Storage reference to user's lock information
+     * @return totalNewVotingPower Total new voting power from all locks
+     * @return totalNewAmount Total new amount locked
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _processBatchLocks(
         uint256[] calldata amounts,
@@ -589,7 +665,20 @@ contract QTIToken is
     }
     
     /**
-     * @dev Calculates unlock time with proper validation
+     * @notice Calculates unlock time with proper validation
+     * @dev Calculates new unlock time based on current timestamp and lock duration
+     * @param currentTimestamp Current timestamp for calculation
+     * @param lockTime Duration to lock tokens
+     * @param existingUnlockTime Existing unlock time if already locked
+     * @return newUnlockTime Calculated unlock time
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _calculateUnlockTime(
         uint256 currentTimestamp,
@@ -607,7 +696,19 @@ contract QTIToken is
     }
     
     /**
-     * @dev Calculates voting power with overflow protection
+     * @notice Calculates voting power with overflow protection
+     * @dev Calculates voting power based on amount and lock time with overflow protection
+     * @param amount Amount of QTI tokens to lock
+     * @param lockTime Duration to lock tokens
+     * @return votingPower Calculated voting power
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _calculateVotingPower(uint256 amount, uint256 lockTime) internal view returns (uint256) {
         uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
@@ -617,7 +718,21 @@ contract QTIToken is
     }
     
     /**
-     * @dev Updates lock info with overflow checks
+     * @notice Updates lock info with overflow checks
+     * @dev Updates user's lock information with new amounts and times
+     * @param lockInfo Storage reference to user's lock information
+     * @param totalNewAmount Total new amount to lock
+     * @param newUnlockTime New unlock time
+     * @param totalNewVotingPower Total new voting power
+     * @param lockTime Lock duration
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _updateLockInfo(
         LockInfo storage lockInfo,
@@ -637,7 +752,19 @@ contract QTIToken is
     }
     
     /**
-     * @dev Updates global totals and transfers tokens
+     * @notice Updates global totals and transfers tokens
+     * @dev Updates global locked amounts and voting power, then transfers tokens
+     * @param totalAmount Total amount of tokens to lock
+     * @param oldVotingPower Previous voting power
+     * @param totalNewVotingPower New total voting power
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _updateGlobalTotalsAndTransfer(
         uint256 totalAmount,
@@ -651,8 +778,17 @@ contract QTIToken is
 
     /**
      * @notice Batch unlock QTI tokens for multiple users (admin function)
+     * @dev Efficiently unlocks tokens for multiple users in a single transaction
      * @param users Array of user addresses to unlock for
      * @return amounts Array of QTI amounts unlocked
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function batchUnlock(address[] calldata users) 
         external 
@@ -710,8 +846,18 @@ contract QTIToken is
 
     /**
      * @notice Batch transfer QTI tokens to multiple addresses
+     * @dev Efficiently transfers tokens to multiple recipients in a single transaction
      * @param recipients Array of recipient addresses
      * @param amounts Array of amounts to transfer
+     * @return success True if all transfers were successful
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
         external
@@ -741,6 +887,7 @@ contract QTIToken is
 
     /**
      * @notice Get voting power for an address with linear decay
+     * @dev Calculates current voting power with linear decay over time
      * @param user Address to get voting power for
      * @return votingPower Current voting power of the user (decays linearly over time)
       * @custom:security Validates input parameters and enforces security checks
@@ -782,6 +929,7 @@ contract QTIToken is
 
     /**
      * @notice Update voting power for the caller based on current time
+     * @dev Updates voting power based on current time and lock duration
      * @return newVotingPower Updated voting power
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -798,6 +946,7 @@ contract QTIToken is
 
     /**
      * @notice Get lock info for an address
+     * @dev Returns comprehensive lock information for a user
      * @param user Address to get lock info for
      * @return amount Locked QTI amount
      * @return unlockTime Timestamp when lock expires
@@ -839,10 +988,19 @@ contract QTIToken is
 
     /**
      * @notice Create a new governance proposal
+     * @dev Creates a new governance proposal with specified parameters and voting period
      * @param description Proposal description
      * @param votingPeriod Voting period in seconds
      * @param data Execution data (function calls)
      * @return proposalId Unique identifier for the created proposal
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle No oracle dependencies
      */
     function createProposal(
         string calldata description,
@@ -874,6 +1032,7 @@ contract QTIToken is
 
     /**
      * @notice Vote on a proposal
+     * @dev Allows users to vote on governance proposals with their voting power
      * @param proposalId Proposal ID
      * @param support True for yes, false for no
       * @custom:security Validates input parameters and enforces security checks
@@ -912,6 +1071,7 @@ contract QTIToken is
 
     /**
      * @notice Batch vote on multiple proposals
+     * @dev Efficiently votes on multiple proposals in a single transaction
      * @param proposalIds Array of proposal IDs to vote on
      * @param supportVotes Array of vote directions (true for yes, false for no)
       * @custom:security Validates input parameters and enforces security checks
@@ -963,6 +1123,7 @@ contract QTIToken is
 
     /**
      * @notice Execute a successful proposal
+     * @dev Executes a proposal that has passed voting and meets quorum requirements
      * @param proposalId Proposal ID
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -1009,6 +1170,7 @@ contract QTIToken is
 
     /**
      * @notice Get execution information for a scheduled proposal
+     * @dev Returns execution status and timing information for a proposal
      * @param proposalId Proposal ID
      * @return scheduled Whether the proposal is scheduled
      * @return executionTime When the proposal can be executed
@@ -1034,6 +1196,7 @@ contract QTIToken is
 
     /**
      * @notice Get the execution hash for a scheduled proposal
+     * @dev Returns the execution hash required to execute a scheduled proposal
      * @param proposalId Proposal ID
      * @return executionHash Hash required to execute the proposal
       * @custom:security Validates input parameters and enforces security checks
@@ -1051,6 +1214,7 @@ contract QTIToken is
 
     /**
      * @notice Cancel a proposal (only proposer or admin)
+     * @dev Allows proposer or admin to cancel a proposal before execution
      * @param proposalId Proposal ID
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -1075,6 +1239,7 @@ contract QTIToken is
 
     /**
      * @notice Get proposal details
+     * @dev Returns comprehensive proposal information including voting results
      * @param proposalId Proposal ID
      * @return proposer Address of the proposer
      * @return startTime Timestamp when voting starts
@@ -1118,6 +1283,7 @@ contract QTIToken is
 
     /**
      * @notice Get voting receipt for a user
+     * @dev Returns voting information for a specific user on a specific proposal
      * @param proposalId Proposal ID
      * @param voter Address of the voter
      * @return hasVoted Whether the user has voted
@@ -1149,9 +1315,18 @@ contract QTIToken is
 
     /**
      * @notice Update governance parameters
+     * @dev Updates governance parameters including proposal threshold, voting period, and quorum
      * @param _proposalThreshold New minimum QTI required to propose
      * @param _minVotingPeriod New minimum voting period
      * @param _quorumVotes New quorum required for proposals to pass
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
      */
     function updateGovernanceParameters(
         uint256 _proposalThreshold,
@@ -1169,6 +1344,7 @@ contract QTIToken is
 
     /**
      * @notice Update treasury address
+     * @dev Updates the treasury address for protocol fee collection
      * @param _treasury New treasury address
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -1224,8 +1400,17 @@ contract QTIToken is
 
     /**
      * @notice Calculate voting power multiplier based on lock time
+     * @dev Calculates linear multiplier from 1x to 4x based on lock duration
      * @param lockTime Duration of the lock
      * @return multiplier Voting power multiplier
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _calculateVotingPowerMultiplier(uint256 lockTime) internal pure returns (uint256) {
         // Linear multiplier from 1x to 4x based on lock time
@@ -1236,8 +1421,17 @@ contract QTIToken is
 
     /**
      * @notice Update voting power for a user based on current time
+     * @dev Updates voting power based on current time and lock duration with linear decay
      * @param user Address of the user to update
      * @return newVotingPower Updated voting power
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _updateVotingPower(address user) internal returns (uint256 newVotingPower) {
         LockInfo storage lockInfo = locks[user];
@@ -1337,6 +1531,7 @@ contract QTIToken is
 
     /**
      * @notice Recover accidentally sent tokens to treasury only
+     * @dev Recovers accidentally sent tokens to the treasury address
      * @param token Token address to recover
      * @param amount Amount to recover
       * @custom:security Validates input parameters and enforces security checks
@@ -1378,6 +1573,7 @@ contract QTIToken is
 
     /**
      * @notice Get current governance information
+     * @dev Returns comprehensive governance information including totals and parameters
      * @return totalLocked_ Total QTI tokens locked in vote-escrow
      * @return totalVotingPower_ Total voting power across all locked tokens
      * @return proposalThreshold_ Minimum QTI required to propose

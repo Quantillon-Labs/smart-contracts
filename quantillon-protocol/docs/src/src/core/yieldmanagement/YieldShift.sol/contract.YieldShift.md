@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -75,7 +75,7 @@ Dynamic yield distribution system balancing rewards between users and hedgers
 - USDC for yield payments and transfers*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -393,17 +393,79 @@ function claimHedgerYield(address hedger) external nonReentrant returns (uint256
 
 ### _calculateOptimalYieldShift
 
+Calculate optimal yield shift based on current pool ratio
+
+*Calculates optimal yield allocation to incentivize pool balance*
+
+**Notes:**
+- security: Uses tolerance checks to prevent excessive adjustments
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
+
 
 ```solidity
 function _calculateOptimalYieldShift(uint256 poolRatio) internal view returns (uint256);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`poolRatio`|`uint256`|Current ratio between user and hedger pools (basis points)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Optimal yield shift percentage (basis points)|
+
 
 ### _applyGradualAdjustment
+
+Apply gradual adjustment to yield shift to prevent sudden changes
+
+*Gradually adjusts yield shift based on adjustmentSpeed to prevent volatility*
+
+**Notes:**
+- security: Limits adjustment speed to prevent sudden changes
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
 function _applyGradualAdjustment(uint256 targetShift) internal view returns (uint256);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`targetShift`|`uint256`|Target yield shift percentage (basis points)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Adjusted yield shift percentage (basis points)|
+
 
 ### _getCurrentPoolMetrics
 
@@ -502,10 +564,43 @@ function _calculateHoldingPeriodDiscount() internal view returns (uint256 discou
 
 ### _isWithinTolerance
 
+Check if a value is within tolerance of a target value
+
+*Helper function for yield shift calculations*
+
+**Notes:**
+- security: Uses safe arithmetic to prevent overflow
+
+- validation: No input validation required - pure function
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
+
 
 ```solidity
 function _isWithinTolerance(uint256 value, uint256 target, uint256 toleranceBps) internal pure returns (bool);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`value`|`uint256`|The value to check|
+|`target`|`uint256`|The target value|
+|`toleranceBps`|`uint256`|Tolerance in basis points (e.g., 1000 = 10%)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True if value is within tolerance, false otherwise|
+
 
 ### updateLastDepositTime
 
@@ -772,17 +867,67 @@ function getYieldPerformanceMetrics()
 
 ### _calculateUserAllocation
 
+Calculate user allocation from current yield shift
+
+*Calculates how much yield should be allocated to users*
+
+**Notes:**
+- security: Uses safe arithmetic to prevent overflow
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
+
 
 ```solidity
 function _calculateUserAllocation() internal view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|User allocation amount based on current yield shift percentage|
+
 
 ### _calculateHedgerAllocation
+
+Calculate hedger allocation from current yield shift
+
+*Calculates how much yield should be allocated to hedgers*
+
+**Notes:**
+- security: Uses safe arithmetic to prevent overflow
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
 function _calculateHedgerAllocation() internal view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Hedger allocation amount based on current yield shift percentage|
+
 
 ### setYieldShiftParameters
 

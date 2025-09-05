@@ -22,6 +22,13 @@ library ValidationLibrary {
      * @dev Ensures leverage is within acceptable bounds (> 0 and <= max)
      * @param leverage The leverage multiplier to validate
      * @param maxLeverage The maximum allowed leverage
+     * @custom:security Prevents excessive leverage that could cause system instability
+     * @custom:validation Validates leverage > 0 and leverage <= maxLeverage
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws InvalidLeverage if leverage is 0, LeverageTooHigh if exceeds max
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
      */
     function validateLeverage(uint256 leverage, uint256 maxLeverage) internal pure {
         if (leverage == 0) revert ErrorLibrary.InvalidLeverage();
@@ -113,6 +120,13 @@ library ValidationLibrary {
      * @param received The actual amount received
      * @param expected The expected amount
      * @param tolerance The slippage tolerance in basis points
+     * @custom:security Prevents excessive slippage that could cause user losses
+     * @custom:validation Validates received >= expected * (10000 - tolerance) / 10000
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws ExcessiveSlippage if slippage exceeds tolerance
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
      */
     function validateSlippage(uint256 received, uint256 expected, uint256 tolerance) internal pure {
         if (received < expected * (10000 - tolerance) / 10000) revert ErrorLibrary.ExcessiveSlippage();

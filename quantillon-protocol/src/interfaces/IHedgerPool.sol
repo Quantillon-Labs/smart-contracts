@@ -14,9 +14,17 @@ interface IHedgerPool {
     
     /**
      * @notice Opens a new hedge position with specified USDC amount and leverage
-     * @param usdcAmount The amount of USDC to use for the position
+     * @param usdcAmount The amount of USDC to use for the position (6 decimals)
      * @param leverage The leverage multiplier for the position (e.g., 5 for 5x leverage)
      * @return positionId The unique ID of the created position
+     * @custom:security Validates oracle price freshness, enforces margin ratios and leverage limits
+     * @custom:validation Validates usdcAmount > 0, leverage <= maxLeverage, position count limits
+     * @custom:state-changes Creates new HedgePosition, updates hedger totals, increments position counters
+     * @custom:events Emits HedgePositionOpened with position details
+     * @custom:errors Throws InvalidAmount if amount is 0, LeverageTooHigh if exceeds max
+     * @custom:reentrancy Protected by secureNonReentrant modifier
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Requires fresh EUR/USD price for position entry
      */
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external returns (uint256 positionId);
     

@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -64,7 +64,7 @@ Main vault managing QEURO minting against USDC collateral
 - Vault math library for precise calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -260,7 +260,7 @@ modifier flashLoanProtection();
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -484,6 +484,23 @@ function withdrawProtocolFees(address to) external onlyRole(GOVERNANCE_ROLE);
 ### _updatePriceTimestamp
 
 Updates the last valid price timestamp when a valid price is fetched
+
+*Internal function to track price update timing for monitoring*
+
+**Notes:**
+- security: Updates timestamp only for valid price fetches
+
+- validation: No input validation required
+
+- state-changes: Updates lastPriceUpdateTime if price is valid
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
 
 
 ```solidity

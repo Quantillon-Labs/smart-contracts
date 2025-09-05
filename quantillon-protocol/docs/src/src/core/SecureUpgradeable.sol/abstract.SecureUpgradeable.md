@@ -1,5 +1,5 @@
 # SecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/SecureUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/SecureUpgradeable.sol)
 
 **Inherits:**
 UUPSUpgradeable, AccessControlUpgradeable
@@ -12,7 +12,7 @@ Secure base contract for upgradeable contracts with timelock protection
 *Replaces UUPSUpgradeable with timelock and multi-sig requirements*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables

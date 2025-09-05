@@ -1,18 +1,35 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/interfaces/IHedgerPool.sol)
 
 Interface for the Quantillon HedgerPool contract
 
 *Provides EUR/USD hedging functionality with leverage and margin management*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
 ### enterHedgePosition
 
 Opens a new hedge position with specified USDC amount and leverage
+
+**Notes:**
+- security: Validates oracle price freshness, enforces margin ratios and leverage limits
+
+- validation: Validates usdcAmount > 0, leverage <= maxLeverage, position count limits
+
+- state-changes: Creates new HedgePosition, updates hedger totals, increments position counters
+
+- events: Emits HedgePositionOpened with position details
+
+- errors: Throws InvalidAmount if amount is 0, LeverageTooHigh if exceeds max
+
+- reentrancy: Protected by secureNonReentrant modifier
+
+- access: Public - no access restrictions
+
+- oracle: Requires fresh EUR/USD price for position entry
 
 
 ```solidity
@@ -22,7 +39,7 @@ function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external retur
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcAmount`|`uint256`|The amount of USDC to use for the position|
+|`usdcAmount`|`uint256`|The amount of USDC to use for the position (6 decimals)|
 |`leverage`|`uint256`|The leverage multiplier for the position (e.g., 5 for 5x leverage)|
 
 **Returns**

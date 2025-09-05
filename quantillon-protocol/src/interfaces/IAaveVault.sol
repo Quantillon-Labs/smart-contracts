@@ -27,8 +27,16 @@ interface IAaveVault {
 
     /**
      * @notice Deploy USDC to Aave V3 pool to earn yield
-     * @param amount USDC amount to supply
-     * @return aTokensReceived Amount of aUSDC received
+     * @param amount USDC amount to supply (6 decimals)
+     * @return aTokensReceived Amount of aUSDC received (6 decimals)
+     * @custom:security Validates oracle price freshness, enforces exposure limits
+     * @custom:validation Validates amount > 0, checks max exposure limits
+     * @custom:state-changes Updates principalDeposited, transfers USDC, receives aUSDC
+     * @custom:events Emits DeployedToAave with operation details
+     * @custom:errors Throws WouldExceedLimit if exceeds maxAaveExposure
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to VAULT_MANAGER_ROLE
+     * @custom:oracle Requires fresh EUR/USD price for health validation
      */
     function deployToAave(uint256 amount) external returns (uint256 aTokensReceived);
 

@@ -21,6 +21,14 @@ interface IChainlinkOracle {
      * @notice Gets the current EUR/USD price with validation
      * @return price EUR/USD price in 18 decimals
      * @return isValid True if fresh and within acceptable bounds
+     * @custom:security Validates timestamp freshness, circuit breaker status, price bounds
+     * @custom:validation Checks price > 0, timestamp < 1 hour old, within min/max bounds
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - returns fallback price if invalid
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Requires fresh Chainlink EUR/USD price feed data
      */
     function getEurUsdPrice() external view returns (uint256 price, bool isValid);
 

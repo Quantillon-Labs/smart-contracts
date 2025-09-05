@@ -1,5 +1,5 @@
 # ValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/ValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/libraries/ValidationLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -13,7 +13,7 @@ Validation functions for Quantillon Protocol
 - Array and position validation utilities*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -22,6 +22,21 @@ team@quantillon.money
 Validates leverage parameters for trading positions
 
 *Ensures leverage is within acceptable bounds (> 0 and <= max)*
+
+**Notes:**
+- security: Prevents excessive leverage that could cause system instability
+
+- validation: Validates leverage > 0 and leverage <= maxLeverage
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws InvalidLeverage if leverage is 0, LeverageTooHigh if exceeds max
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -182,6 +197,21 @@ function validateLiquidationCooldown(uint256 lastAttempt, uint256 cooldown) inte
 Validates slippage protection for token swaps/trades
 
 *Ensures received amount is within acceptable tolerance of expected*
+
+**Notes:**
+- security: Prevents excessive slippage that could cause user losses
+
+- validation: Validates received >= expected * (10000 - tolerance) / 10000
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws ExcessiveSlippage if slippage exceeds tolerance
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity

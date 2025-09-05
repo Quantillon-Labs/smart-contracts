@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -77,7 +77,7 @@ EUR/USD hedging pool for managing currency risk and providing yield
 - Position tracking and management systems*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -550,6 +550,27 @@ function initialize(
 
 ### enterHedgePosition
 
+Opens a new hedge position with specified USDC margin and leverage
+
+*Creates a leveraged EUR/USD hedge position with margin requirements*
+
+**Notes:**
+- security: Validates oracle price freshness, enforces margin ratios and leverage limits
+
+- validation: Validates usdcAmount > 0, leverage <= maxLeverage, position count limits
+
+- state-changes: Creates new HedgePosition, updates hedger totals, increments position counters
+
+- events: Emits HedgePositionOpened with position details
+
+- errors: Throws InvalidAmount, InvalidLeverage, InvalidOraclePrice, RateLimitExceeded
+
+- reentrancy: Protected by secureNonReentrant modifier
+
+- access: Public - requires sufficient USDC balance and approval
+
+- oracle: Requires fresh EUR/USD price from Chainlink oracle
+
 
 ```solidity
 function enterHedgePosition(uint256 usdcAmount, uint256 leverage)
@@ -557,15 +578,82 @@ function enterHedgePosition(uint256 usdcAmount, uint256 leverage)
     secureNonReentrant
     returns (uint256 positionId);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to deposit as margin (6 decimals)|
+|`leverage`|`uint256`|Leverage multiplier for the position (1-10x)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Unique identifier for the new position|
+
 
 ### exitHedgePosition
+
+Closes a hedge position and calculates profit/loss
+
+*Closes position, calculates PnL based on current EUR/USD price, applies exit fees*
+
+**Notes:**
+- security: Validates position ownership and active status, enforces oracle price freshness
+
+- validation: Validates position exists, is active, and owned by caller
+
+- state-changes: Closes position, updates hedger totals, decrements position counters
+
+- events: Emits HedgePositionClosed with PnL and exit details
+
+- errors: Throws InvalidPosition, PositionNotActive, InvalidOraclePrice
+
+- reentrancy: Protected by secureNonReentrant modifier
+
+- access: Public - requires position ownership
+
+- oracle: Requires fresh EUR/USD price from Chainlink oracle
 
 
 ```solidity
 function exitHedgePosition(uint256 positionId) external secureNonReentrant returns (int256 pnl);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Unique identifier of the position to close|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pnl`|`int256`|Profit or loss from the position (positive = profit, negative = loss)|
+
 
 ### closePositionsBatch
+
+Closes multiple hedge positions in a single transaction
+
+*Batch closes positions for gas efficiency, applies same validations as single close*
+
+**Notes:**
+- security: Validates batch size limits and position ownership for each position
+
+- validation: Validates positionIds.length <= maxPositions, maxPositions <= 10
+
+- state-changes: Closes all positions, updates hedger totals, decrements position counters
+
+- events: Emits HedgePositionClosed for each closed position
+
+- errors: Throws BatchSizeTooLarge, TooManyPositionsPerTx, MaxPositionsPerTx
+
+- reentrancy: Protected by secureOperation modifier
+
+- access: Public - requires position ownership for all positions
+
+- oracle: Requires fresh EUR/USD price from Chainlink oracle
 
 
 ```solidity
@@ -574,8 +662,40 @@ function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPosition
     secureOperation
     returns (int256[] memory pnls);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionIds`|`uint256[]`|Array of position IDs to close|
+|`maxPositions`|`uint256`|Maximum number of positions allowed per transaction|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pnls`|`int256[]`|Array of profit/loss for each closed position|
+
 
 ### _closeSinglePositionBatch
+
+Internal function to close a single position in batch operation
+
+*Internal helper for batch position closing with gas optimization*
+
+**Notes:**
+- security: Validates position ownership and active status
+
+- validation: Validates position exists and is active
+
+- state-changes: Closes position, updates hedger totals, emits events
+
+- events: Emits HedgePositionClosed event
+
+- errors: Throws InvalidPosition, PositionNotActive
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -587,6 +707,24 @@ function _closeSinglePositionBatch(
     uint256 currentTime
 ) internal returns (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|ID of the position to close|
+|`currentPrice`|`uint256`|Current EUR/USD price for PnL calculation|
+|`hedger`|`HedgerInfo`|HedgerInfo storage reference for the position owner|
+|`exitFee_`|`uint256`|Cached exit fee percentage|
+|`currentTime`|`uint256`|Current timestamp for events|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pnl`|`int256`|Profit or loss from the position|
+|`marginDeducted`|`uint256`|Amount of margin to deduct from hedger totals|
+|`exposureDeducted`|`uint256`|Amount of exposure to deduct from hedger totals|
+
 
 ### _removePositionFromArrays
 
@@ -697,9 +835,24 @@ function isHedgerLiquidatable(address hedger, uint256 positionId) external view 
 
 ### _isPositionLiquidatable
 
-Checks if a position is eligible for liquidation
+Check if a position is eligible for liquidation
 
 *Position is liquidatable if margin ratio falls below liquidation threshold*
+
+**Notes:**
+- security: Validates position is active and oracle price is valid
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -715,15 +868,47 @@ function _isPositionLiquidatable(uint256 positionId) internal view returns (bool
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|bool True if position can be liquidated, false otherwise|
+|`<none>`|`bool`|True if position can be liquidated, false otherwise|
 
 
 ### _calculatePnL
+
+Calculate profit/loss for a hedge position
+
+*Calculates PnL based on price difference between entry and current price*
+
+**Notes:**
+- security: Uses safe arithmetic to prevent overflow
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
 function _calculatePnL(HedgePosition storage position, uint256 currentPrice) internal view returns (int256);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`position`|`HedgePosition`|Storage reference to the hedge position|
+|`currentPrice`|`uint256`|Current EUR/USD price for calculation|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`int256`|pnl Profit or loss (positive = profit, negative = loss)|
+
 
 ### getTotalHedgeExposure
 

@@ -1,5 +1,5 @@
 # VaultMath
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/libraries/VaultMath.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/libraries/VaultMath.sol)
 
 **Author:**
 Quantillon Labs
@@ -12,7 +12,7 @@ Mathematical operations library for Quantillon Protocol
 - Decimal scaling utilities for different token precisions*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -50,6 +50,21 @@ Multiply two numbers and divide by a third with rounding
 
 *Used by percentageOf for fee calculations*
 
+**Notes:**
+- security: Prevents division by zero and multiplication overflow
+
+- validation: Validates c != 0, checks for multiplication overflow
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws "Division by zero" if c is 0, "Multiplication overflow" if overflow
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
+
 
 ```solidity
 function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result);
@@ -74,6 +89,21 @@ function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 
 Calculate percentage of a value
 
 *Used for fee calculations across all contracts*
+
+**Notes:**
+- security: Prevents percentage overflow and division by zero
+
+- validation: Validates percentage <= MAX_PERCENTAGE
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws "Percentage too high" if percentage > MAX_PERCENTAGE
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
 
 
 ```solidity

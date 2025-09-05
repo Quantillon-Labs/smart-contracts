@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -61,7 +61,7 @@ Yield-bearing wrapper for QEURO tokens (yield accrual mechanism)
 - Vault math library for calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -310,7 +310,7 @@ modifier flashLoanProtection();
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -557,7 +557,24 @@ function getStakingStats()
 
 ### _updateExchangeRate
 
-Update exchange rate based on time elapsed
+Update exchange rate based on time elapsed and yield accrual
+
+*Internal function to update exchange rate when conditions are met*
+
+**Notes:**
+- security: Calculates new rate with bounds checking to prevent manipulation
+
+- validation: No input validation required
+
+- state-changes: Updates exchangeRate and lastUpdateTime if rate changes
+
+- events: Emits ExchangeRateUpdated if rate changes
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
 
 
 ```solidity
@@ -568,10 +585,33 @@ function _updateExchangeRate() internal;
 
 Calculate current exchange rate including accrued yield
 
+*Calculates exchange rate based on total underlying assets and pending yield*
+
+**Notes:**
+- security: Uses minimum supply threshold to prevent manipulation
+
+- validation: No input validation required
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
+
 
 ```solidity
 function _calculateCurrentExchangeRate() internal view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Current exchange rate (18 decimals) including pending yield|
+
 
 ### updateYieldParameters
 

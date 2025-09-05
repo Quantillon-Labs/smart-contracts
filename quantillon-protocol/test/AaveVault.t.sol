@@ -355,6 +355,14 @@ contract AaveVaultTestSuite is Test {
     /**
      * @notice Sets up the AaveVault test environment
      * @dev Deploys all necessary contracts and initializes the Aave vault for testing
+     * @custom:security Uses proxy pattern for upgradeable contract testing
+     * @custom:validation No input validation required - setup function
+     * @custom:state-changes Deploys new contracts and initializes state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors thrown - setup function
+     * @custom:reentrancy Not applicable - setup function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for setup
      */
     function setUp() public {
         // Deploy mock contracts

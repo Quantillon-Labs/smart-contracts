@@ -736,6 +736,15 @@ contract ChainlinkOracle is
      *      4. Convert to 18 decimals
      *      5. Check min/max bounds
      *      6. Return valid price or fallback
+     * 
+     * @custom:security Validates timestamp freshness, circuit breaker status, price bounds
+     * @custom:validation Checks price > 0, timestamp < 1 hour old, within min/max bounds
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - returns fallback price if invalid
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Requires fresh Chainlink EUR/USD price feed data
      */
     function getEurUsdPrice() external view returns (uint256 price, bool isValid) {
         // If circuit breaker is active or contract is paused, use the last valid price
@@ -783,6 +792,15 @@ contract ChainlinkOracle is
      * 
      * @dev USDC is expected to maintain parity with USD.
      *      A large deviation indicates a systemic issue.
+     * 
+     * @custom:security Validates timestamp freshness, USDC tolerance bounds
+     * @custom:validation Checks price > 0, timestamp < 1 hour old, within USDC tolerance
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - returns $1.00 fallback if invalid
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Requires fresh Chainlink USDC/USD price feed data
      */
     function getUsdcUsdPrice() external view returns (uint256 price, bool isValid) {
         // Fetch from Chainlink

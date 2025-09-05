@@ -47,6 +47,14 @@ contract MockAggregatorV3 is AggregatorV3Interface {
      * @notice Sets the updated timestamp for the mock price feed
      * @dev Test helper function to control price feed timestamps
      * @param _updatedAt The timestamp to set as the last update time
+     * @custom:security No security implications - test helper function
+     * @custom:validation No input validation required - test helper
+     * @custom:state-changes Updates the updatedAt timestamp for testing
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - simple state update
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency - mock function
      */
     function setUpdatedAt(uint256 _updatedAt) external {
         updatedAt = _updatedAt;
@@ -162,6 +170,14 @@ contract ChainlinkOracleTestSuite is Test {
     /**
      * @notice Sets up the Chainlink oracle test environment
      * @dev Deploys oracle contracts and mock price feeds for testing
+     * @custom:security Uses proxy pattern for upgradeable contract testing
+     * @custom:validation No input validation required - setup function
+     * @custom:state-changes Deploys new contracts and initializes state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors thrown - setup function
+     * @custom:reentrancy Not applicable - setup function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for setup
      */
     function setUp() public {
         // Deploy mock price feeds

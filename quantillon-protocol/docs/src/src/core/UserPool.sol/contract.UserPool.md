@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -65,7 +65,7 @@ Manages QEURO user deposits, staking, and yield distribution
 - Vault math library for calculations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -500,6 +500,214 @@ function batchDeposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeur
 |`qeuroMintedAmounts`|`uint256[]`|Array of QEURO amounts minted (18 decimals)|
 
 
+### _validateAndTransferUsdc
+
+Internal function to validate amounts and transfer USDC
+
+*Validates all amounts are positive and transfers total USDC from user*
+
+**Notes:**
+- security: Validates all amounts > 0 before transfer
+
+- validation: Validates each amount in array is positive
+
+- state-changes: Transfers USDC from msg.sender to contract
+
+- errors: Throws if any amount is 0
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
+
+
+```solidity
+function _validateAndTransferUsdc(uint256[] calldata usdcAmounts) internal returns (uint256 totalUsdcAmount);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmounts`|`uint256[]`|Array of USDC amounts to validate and transfer (6 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalUsdcAmount`|`uint256`|Total USDC amount transferred (6 decimals)|
+
+
+### _initializeUserIfNeeded
+
+Internal function to initialize user if needed
+
+*Initializes user tracking if they haven't deposited before*
+
+**Notes:**
+- security: Updates hasDeposited mapping and totalUsers counter
+
+- validation: No input validation required
+
+- state-changes: Updates hasDeposited[msg.sender] and totalUsers
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
+
+
+```solidity
+function _initializeUserIfNeeded() internal;
+```
+
+### _calculateNetAmounts
+
+Internal function to calculate net amounts after fees
+
+*Calculates net amounts by subtracting deposit fees from each USDC amount*
+
+**Notes:**
+- security: Uses cached depositFee to prevent reentrancy
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- reentrancy: Not applicable - view function
+
+- access: Internal function - no access restrictions
+
+
+```solidity
+function _calculateNetAmounts(uint256[] calldata usdcAmounts)
+    internal
+    view
+    returns (uint256[] memory netAmounts, uint256 totalNetAmount);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmounts`|`uint256[]`|Array of USDC amounts (6 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`netAmounts`|`uint256[]`|Array of net amounts after fees (6 decimals)|
+|`totalNetAmount`|`uint256`|Total net amount (6 decimals)|
+
+
+### _processVaultMinting
+
+Internal function to process vault minting operations
+
+*Processes vault minting operations with external calls to vault.mintQEURO*
+
+**Notes:**
+- security: Uses single approval for all vault operations to minimize external calls
+
+- validation: No input validation required - parameters pre-validated
+
+- state-changes: Updates qeuroMintedAmounts array with minted amounts
+
+- events: No events emitted - handled by calling function
+
+- errors: Throws if vault.mintQEURO fails
+
+- reentrancy: Protected by nonReentrant modifier on calling function
+
+- access: Internal function - no access restrictions
+
+
+```solidity
+function _processVaultMinting(
+    uint256[] memory netAmounts,
+    uint256[] calldata minQeuroOuts,
+    uint256[] memory qeuroMintedAmounts
+) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`netAmounts`|`uint256[]`|Array of net amounts to mint (6 decimals)|
+|`minQeuroOuts`|`uint256[]`|Array of minimum QEURO outputs (18 decimals)|
+|`qeuroMintedAmounts`|`uint256[]`|Array to store minted amounts (18 decimals)|
+
+
+### _updateUserAndPoolState
+
+Internal function to update user and pool state
+
+*Updates user and pool state before external calls for reentrancy protection*
+
+**Notes:**
+- security: Updates state before external calls (CEI pattern)
+
+- validation: No input validation required - parameters pre-validated
+
+- state-changes: Updates user.depositHistory, user.qeuroBalance, totalDeposits
+
+- events: No events emitted - handled by calling function
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
+
+
+```solidity
+function _updateUserAndPoolState(
+    uint256[] calldata usdcAmounts,
+    uint256[] calldata minQeuroOuts,
+    uint256 totalNetAmount
+) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmounts`|`uint256[]`|Array of USDC amounts (6 decimals)|
+|`minQeuroOuts`|`uint256[]`|Array of minimum QEURO outputs (18 decimals)|
+|`totalNetAmount`|`uint256`|Total net amount (6 decimals)|
+
+
+### _transferQeuroAndEmitEvents
+
+Internal function to transfer QEURO and emit events
+
+*Transfers QEURO to users and emits UserDeposit events*
+
+**Notes:**
+- security: Uses SafeERC20 for secure token transfers
+
+- validation: No input validation required - parameters pre-validated
+
+- state-changes: Transfers QEURO tokens to msg.sender
+
+- events: Emits UserDeposit event for each transfer
+
+- errors: Throws if QEURO transfer fails
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
+
+
+```solidity
+function _transferQeuroAndEmitEvents(
+    uint256[] calldata usdcAmounts,
+    uint256[] memory qeuroMintedAmounts,
+    uint256 currentTime
+) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmounts`|`uint256[]`|Array of USDC amounts (6 decimals)|
+|`qeuroMintedAmounts`|`uint256[]`|Array of minted QEURO amounts (18 decimals)|
+|`currentTime`|`uint256`|Current timestamp|
+
+
 ### withdraw
 
 Withdraw USDC by burning QEURO
@@ -693,6 +901,21 @@ Update pending rewards for a user
 for a given user based on their staked amount and the current APY.
 Uses block-based calculations to prevent timestamp manipulation.*
 
+**Notes:**
+- security: Uses block-based calculations to prevent timestamp manipulation
+
+- validation: Validates user has staked amount > 0
+
+- state-changes: Updates user.pendingRewards, user.lastStakeTime, userLastRewardBlock
+
+- events: No events emitted - handled by calling function
+
+- errors: No errors thrown - safe arithmetic used
+
+- reentrancy: Not protected - internal function only
+
+- access: Internal function - no access restrictions
+
 
 ```solidity
 function _updatePendingRewards(address user, uint256 currentTime) internal;
@@ -702,7 +925,7 @@ function _updatePendingRewards(address user, uint256 currentTime) internal;
 |Name|Type|Description|
 |----|----|-----------|
 |`user`|`address`|Address of the user to update|
-|`currentTime`|`uint256`||
+|`currentTime`|`uint256`|Current timestamp for reward calculations|
 
 
 ### getUserDeposits

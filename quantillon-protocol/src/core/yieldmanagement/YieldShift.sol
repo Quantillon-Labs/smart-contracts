@@ -396,6 +396,19 @@ contract YieldShift is
         }
     }
 
+    /**
+     * @notice Calculate optimal yield shift based on current pool ratio
+     * @param poolRatio Current ratio between user and hedger pools (basis points)
+     * @return Optimal yield shift percentage (basis points)
+     * @dev Calculates optimal yield allocation to incentivize pool balance
+     * @custom:security Uses tolerance checks to prevent excessive adjustments
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     */
     function _calculateOptimalYieldShift(uint256 poolRatio) internal view returns (uint256) {
         if (_isWithinTolerance(poolRatio, targetPoolRatio, 1000)) {
             return baseYieldShift;
@@ -412,6 +425,19 @@ contract YieldShift is
         }
     }
 
+    /**
+     * @notice Apply gradual adjustment to yield shift to prevent sudden changes
+     * @param targetShift Target yield shift percentage (basis points)
+     * @return Adjusted yield shift percentage (basis points)
+     * @dev Gradually adjusts yield shift based on adjustmentSpeed to prevent volatility
+     * @custom:security Limits adjustment speed to prevent sudden changes
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     */
     function _applyGradualAdjustment(uint256 targetShift) internal view returns (uint256) {
         if (targetShift == currentYieldShift) {
             return currentYieldShift;
@@ -534,6 +560,21 @@ contract YieldShift is
         }
     }
 
+    /**
+     * @notice Check if a value is within tolerance of a target value
+     * @param value The value to check
+     * @param target The target value
+     * @param toleranceBps Tolerance in basis points (e.g., 1000 = 10%)
+     * @return True if value is within tolerance, false otherwise
+     * @dev Helper function for yield shift calculations
+     * @custom:security Uses safe arithmetic to prevent overflow
+     * @custom:validation No input validation required - pure function
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     */
     function _isWithinTolerance(uint256 value, uint256 target, uint256 toleranceBps) 
         internal 
         pure 
@@ -793,11 +834,35 @@ contract YieldShift is
             totalYieldDistributed_.mulDiv(10000, totalYieldGenerated) : 0;
     }
 
+    /**
+     * @notice Calculate user allocation from current yield shift
+     * @return User allocation amount based on current yield shift percentage
+     * @dev Calculates how much yield should be allocated to users
+     * @custom:security Uses safe arithmetic to prevent overflow
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     */
     function _calculateUserAllocation() internal view returns (uint256) {
         uint256 totalAvailable = userYieldPool + hedgerYieldPool;
         return totalAvailable.mulDiv(currentYieldShift, 10000);
     }
 
+    /**
+     * @notice Calculate hedger allocation from current yield shift
+     * @return Hedger allocation amount based on current yield shift percentage
+     * @dev Calculates how much yield should be allocated to hedgers
+     * @custom:security Uses safe arithmetic to prevent overflow
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     */
     function _calculateHedgerAllocation() internal view returns (uint256) {
         uint256 totalAvailable = userYieldPool + hedgerYieldPool;
         return totalAvailable.mulDiv(10000 - currentYieldShift, 10000);

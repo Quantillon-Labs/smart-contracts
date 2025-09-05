@@ -643,7 +643,15 @@ contract stQEUROToken is
     // =============================================================================
 
     /**
-     * @notice Update exchange rate based on time elapsed
+     * @notice Update exchange rate based on time elapsed and yield accrual
+     * @dev Internal function to update exchange rate when conditions are met
+     * @custom:security Calculates new rate with bounds checking to prevent manipulation
+     * @custom:validation No input validation required
+     * @custom:state-changes Updates exchangeRate and lastUpdateTime if rate changes
+     * @custom:events Emits ExchangeRateUpdated if rate changes
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
      */
     function _updateExchangeRate() internal {
         uint256 newRate = _calculateCurrentExchangeRate();
@@ -658,6 +666,15 @@ contract stQEUROToken is
 
     /**
      * @notice Calculate current exchange rate including accrued yield
+     * @return Current exchange rate (18 decimals) including pending yield
+     * @dev Calculates exchange rate based on total underlying assets and pending yield
+     * @custom:security Uses minimum supply threshold to prevent manipulation
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
      */
     function _calculateCurrentExchangeRate() internal view returns (uint256) {
         uint256 supply = totalSupply();

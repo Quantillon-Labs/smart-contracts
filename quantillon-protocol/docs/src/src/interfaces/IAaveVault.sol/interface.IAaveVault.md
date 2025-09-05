@@ -1,5 +1,5 @@
 # IAaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7a38080e43ad67d1bf394347f3ca09d4cbbceb2e/src/interfaces/IAaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/interfaces/IAaveVault.sol)
 
 **Author:**
 Quantillon Labs
@@ -9,7 +9,7 @@ Interface for the AaveVault (Aave V3 USDC yield vault)
 *Mirrors the external/public API of `src/core/vaults/AaveVault.sol`*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -42,6 +42,23 @@ function initialize(
 
 Deploy USDC to Aave V3 pool to earn yield
 
+**Notes:**
+- security: Validates oracle price freshness, enforces exposure limits
+
+- validation: Validates amount > 0, checks max exposure limits
+
+- state-changes: Updates principalDeposited, transfers USDC, receives aUSDC
+
+- events: Emits DeployedToAave with operation details
+
+- errors: Throws WouldExceedLimit if exceeds maxAaveExposure
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to VAULT_MANAGER_ROLE
+
+- oracle: Requires fresh EUR/USD price for health validation
+
 
 ```solidity
 function deployToAave(uint256 amount) external returns (uint256 aTokensReceived);
@@ -50,13 +67,13 @@ function deployToAave(uint256 amount) external returns (uint256 aTokensReceived)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`amount`|`uint256`|USDC amount to supply|
+|`amount`|`uint256`|USDC amount to supply (6 decimals)|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`aTokensReceived`|`uint256`|Amount of aUSDC received|
+|`aTokensReceived`|`uint256`|Amount of aUSDC received (6 decimals)|
 
 
 ### withdrawFromAave

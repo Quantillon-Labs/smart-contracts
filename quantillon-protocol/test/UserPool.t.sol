@@ -75,6 +75,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Set up test environment before each test
      * @dev Deploys a new UserPool contract using proxy pattern and initializes it
+     * @custom:security Uses proxy pattern for upgradeable contract testing
+     * @custom:validation No input validation required - setup function
+     * @custom:state-changes Deploys new contracts and initializes state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors thrown - setup function
+     * @custom:reentrancy Not applicable - setup function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for setup
      */
     function setUp() public {
         // Deploy TimeProvider through proxy
@@ -380,8 +388,16 @@ contract UserPoolTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test successful USDC deposit
-     * @dev Verifies that users can deposit USDC to receive QEURO
+     * @notice Test successful USDC deposit and QEURO minting
+     * @dev Verifies that users can deposit USDC and receive QEURO tokens
+     * @custom:security Validates deposit mechanics and fee calculations
+     * @custom:validation Checks USDC transfer, QEURO minting, and fee deduction
+     * @custom:state-changes Updates user balances, total deposits, and mints QEURO
+     * @custom:events Emits UserDeposit event with correct parameters
+     * @custom:errors No errors thrown - successful deposit test
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for deposit test
      */
     function test_Deposit_DepositSuccess() public {
         // Setup mocks for deposit operation

@@ -1765,7 +1765,6 @@ contract MockYieldShift {
     /**
      * @notice Gets the pending yield for a user
      * @dev Mock function for testing purposes
-     * @param user The user address to get pending yield for
      * @return The pending yield amount
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
@@ -1776,7 +1775,7 @@ contract MockYieldShift {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function getUserPendingYield(address user) external view returns (uint256) {
+    function getUserPendingYield(address /* user */) external view returns (uint256) {
         return mockPendingYield;
     }
     

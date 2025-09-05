@@ -150,7 +150,6 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     /**
      * @notice Gets round data for the mock price feed
      * @dev Mock function for testing purposes
-     * @param _id The round ID to get data for
      * @return _roundId The round ID
      * @return _answer The price answer
      * @return _startedAt The timestamp when the round started
@@ -165,7 +164,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function getRoundData(uint80 _id) 
+    function getRoundData(uint80 /* _id */) 
         external 
         view 
         returns (

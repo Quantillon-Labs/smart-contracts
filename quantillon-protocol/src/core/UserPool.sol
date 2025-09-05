@@ -546,6 +546,7 @@ contract UserPool is
      * @param minQeuroOuts Array of minimum QEURO outputs
      * @param qeuroMintedAmounts Array to store minted amounts
      */
+    // slither-disable-next-line calls-loop
     function _processVaultMinting(
         uint256[] memory netAmounts,
         uint256[] calldata minQeuroOuts,
@@ -685,6 +686,7 @@ contract UserPool is
      * @param minUsdcOuts Array of minimum USDC amounts to receive (6 decimals)
      * @return usdcReceivedAmounts Array of USDC amounts received (6 decimals)
      */
+    // slither-disable-next-line calls-loop
     function batchWithdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
         external
         nonReentrant

@@ -172,9 +172,18 @@ contract ChainlinkOracleTestSuite is Test {
         mockEurUsdFeed.setPrice(110000000); // 1.10 USD (8 decimals)
         mockUsdcUsdFeed.setPrice(100000000); // 1.00 USD (8 decimals)
         
+        // Deploy TimeProvider through proxy
+        TimeProvider timeProviderImpl = new TimeProvider();
+        bytes memory timeProviderInitData = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy = new ERC1967Proxy(address(timeProviderImpl), timeProviderInitData);
+        TimeProvider timeProvider = TimeProvider(address(timeProviderProxy));
+        
         // Deploy implementation
-        TimeProvider timeProvider = new TimeProvider();
-        timeProvider.initialize(admin, admin, admin);
         implementation = new ChainlinkOracle(timeProvider);
         
         // Deploy proxy

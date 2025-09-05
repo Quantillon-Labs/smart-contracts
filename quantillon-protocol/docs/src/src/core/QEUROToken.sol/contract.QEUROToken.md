@@ -1,11 +1,11 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
-Quantillon Labs
+Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Euro-pegged stablecoin token for the Quantillon protocol
 
@@ -33,7 +33,7 @@ Euro-pegged stablecoin token for the Quantillon protocol
 - Peg: 1:1 with Euro (managed by vault operations)*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -265,8 +265,28 @@ modifier flashLoanProtection();
 
 ### constructor
 
-**Note:**
-oz-upgrades-unsafe-allow: constructor
+Constructor for QEURO token contract
+
+*Disables initializers for security*
+
+**Notes:**
+- Disables initializers for security
+
+- No validation needed
+
+- Disables initializers
+
+- No events emitted
+
+- No errors thrown
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- No oracle dependencies
+
+- constructor
 
 
 ```solidity
@@ -290,6 +310,23 @@ Initializes the QEURO token (called only once at deployment)
 - Sets up proper role hierarchy
 - Initializes all state variables*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Initializes all contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to initializer modifier
+
+- No oracle dependencies
+
 
 ```solidity
 function initialize(address admin, address vault, address _timelock, address _treasury) public initializer;
@@ -300,8 +337,8 @@ function initialize(address admin, address vault, address _timelock, address _tr
 |----|----|-----------|
 |`admin`|`address`|Address that will have the DEFAULT_ADMIN_ROLE|
 |`vault`|`address`|Address of the QuantillonVault (will get MINTER_ROLE and BURNER_ROLE)|
-|`_timelock`|`address`||
-|`_treasury`|`address`||
+|`_timelock`|`address`|Address of the timelock contract|
+|`_treasury`|`address`|Treasury address for protocol fees|
 
 
 ### mint
@@ -325,6 +362,23 @@ Usage example: vault.mint(user, 1000 * 1e18) for 1000 QEURO*
 - Supply cap verification
 - Secure minting using OpenZeppelin*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to MINTER_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) whenNotPaused;
@@ -344,6 +398,23 @@ Batch mint QEURO tokens to multiple addresses
 *Applies the same validations as single mint per item to avoid bypassing
 rate limits, blacklist/whitelist checks, and max supply constraints.
 Using external mint for each entry reuses all checks and events.*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to MINTER_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -379,6 +450,23 @@ Note: The vault must have an allowance or be authorized otherwise*
 - Rate limiting
 - Secure burning using OpenZeppelin*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to BURNER_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function burn(address from, uint256 amount) external onlyRole(BURNER_ROLE) whenNotPaused flashLoanProtection;
@@ -397,6 +485,23 @@ Batch burn QEURO tokens from multiple addresses
 
 *Applies the same validations as single burn per item to avoid bypassing
 rate limits and balance checks. Accumulates total for rate limiting.*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to BURNER_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -421,17 +526,21 @@ Checks and updates the mint rate limit for the caller
 *Implements sliding window rate limiting using block numbers to prevent abuse*
 
 **Notes:**
-- security: Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
+- Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
 
-- validation: Validates amount against current rate limit caps
+- Validates amount against current rate limit caps
 
-- state-changes: Updates rateLimitInfo.currentHourMinted and lastRateLimitReset
+- Updates rateLimitInfo.currentHourMinted and lastRateLimitReset
 
-- errors: Throws RateLimitExceeded if amount would exceed current rate limit
+- No events emitted
 
-- reentrancy: Not protected - internal function only
+- Throws RateLimitExceeded if amount would exceed current rate limit
 
-- access: Internal function - no access restrictions
+- Not protected - internal function only
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -451,17 +560,21 @@ Checks and updates the burn rate limit for the caller
 *Implements sliding window rate limiting using block numbers to prevent abuse*
 
 **Notes:**
-- security: Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
+- Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
 
-- validation: Validates amount against current rate limit caps
+- Validates amount against current rate limit caps
 
-- state-changes: Updates rateLimitInfo.currentHourBurned and lastRateLimitReset
+- Updates rateLimitInfo.currentHourBurned and lastRateLimitReset
 
-- errors: Throws RateLimitExceeded if amount would exceed current rate limit
+- No events emitted
 
-- reentrancy: Not protected - internal function only
+- Throws RateLimitExceeded if amount would exceed current rate limit
 
-- access: Internal function - no access restrictions
+- Not protected - internal function only
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -486,6 +599,23 @@ Updates rate limits for mint and burn operations
 - Ensures new limits are not too high
 - Updates rateLimitCaps (mint and burn) in a single storage slot
 - Emits RateLimitsUpdated event*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to DEFAULT_ADMIN_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -512,6 +642,23 @@ Blacklists an address
 - Updates isBlacklisted mapping
 - Emits AddressBlacklisted event*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function blacklistAddress(address account, string memory reason) external onlyRole(COMPLIANCE_ROLE);
@@ -535,6 +682,23 @@ Removes an address from blacklist
 - Prevents unblacklisting of non-blacklisted addresses
 - Updates isBlacklisted mapping
 - Emits AddressUnblacklisted event*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -560,6 +724,23 @@ Whitelists an address
 - Updates isWhitelisted mapping
 - Emits AddressWhitelisted event*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function whitelistAddress(address account) external onlyRole(COMPLIANCE_ROLE);
@@ -583,6 +764,23 @@ Removes an address from whitelist
 - Updates isWhitelisted mapping
 - Emits AddressUnwhitelisted event*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function unwhitelistAddress(address account) external onlyRole(COMPLIANCE_ROLE);
@@ -605,6 +803,23 @@ Toggles whitelist mode
 - Updates whitelistEnabled state
 - Emits WhitelistModeToggled event*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function toggleWhitelistMode(bool enabled) external onlyRole(COMPLIANCE_ROLE);
@@ -621,6 +836,23 @@ function toggleWhitelistMode(bool enabled) external onlyRole(COMPLIANCE_ROLE);
 Batch blacklist multiple addresses
 
 *Only callable by compliance role*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -642,6 +874,23 @@ Batch unblacklist multiple addresses
 
 *Only callable by compliance role*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function batchUnblacklistAddresses(address[] calldata accounts) external onlyRole(COMPLIANCE_ROLE);
@@ -659,6 +908,23 @@ Batch whitelist multiple addresses
 
 *Only callable by compliance role*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function batchWhitelistAddresses(address[] calldata accounts) external onlyRole(COMPLIANCE_ROLE);
@@ -675,6 +941,23 @@ function batchWhitelistAddresses(address[] calldata accounts) external onlyRole(
 Batch unwhitelist multiple addresses
 
 *Only callable by compliance role*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to COMPLIANCE_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -700,6 +983,23 @@ Updates minimum price precision for external feeds
 - Updates minPricePrecision
 - Emits MinPricePrecisionUpdated event*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to DEFAULT_ADMIN_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function updateMinPricePrecision(uint256 newPrecision) external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -722,6 +1022,23 @@ Normalizes a price value to 18 decimals
 - Prevents too many decimals
 - Prevents zero price
 - Handles normalization correctly*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -752,6 +1069,23 @@ Validates price precision from external feed
 - Handles normalization if feedDecimals is not 18
 - Returns true if price is above or equal to minPricePrecision*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- No errors thrown
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- No oracle dependencies
+
 
 ```solidity
 function validatePricePrecision(uint256 price, uint8 feedDecimals) external view returns (bool);
@@ -774,8 +1108,6 @@ function validatePricePrecision(uint256 price, uint8 feedDecimals) external view
 
 Pauses all token operations (emergency only)
 
-Pauses all token operations except emergency functions
-
 *When paused:
 - No transfers possible
 - No mint/burn possible
@@ -790,24 +1122,22 @@ Used in case of:
 - Pauses all token operations
 - Prevents any state changes*
 
-*Only callable by addresses with PAUSER_ROLE*
-
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to PAUSER_ROLE
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -827,21 +1157,21 @@ Used after resolving the issue that caused the pause*
 - Allows normal state changes*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to PAUSER_ROLE
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -852,27 +1182,29 @@ function unpause() external onlyRole(PAUSER_ROLE);
 
 Returns the number of decimals for the token (always 18)
 
+*Always returns 18 for DeFi compatibility*
+
 *Security considerations:
 - Always returns 18
 - No input validation
 - No state changes*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- No security checks needed
 
-- validation: Validates input parameters and business logic constraints
+- No validation needed
 
-- state-changes: Updates contract state variables
+- No state changes
 
-- events: Emits relevant events for state changes
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- No reentrancy protection needed
 
-- access: Restricted to authorized roles
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -889,27 +1221,29 @@ function decimals() public pure override returns (uint8);
 
 Checks if an address has the minter role
 
+*Checks if account has MINTER_ROLE*
+
 *Security considerations:
 - Checks if account has MINTER_ROLE
 - No input validation
 - No state changes*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- No security checks needed
 
-- validation: Validates input parameters and business logic constraints
+- No validation needed
 
-- state-changes: Updates contract state variables
+- No state changes
 
-- events: Emits relevant events for state changes
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- No reentrancy protection needed
 
-- access: Restricted to authorized roles
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -932,27 +1266,29 @@ function isMinter(address account) external view returns (bool);
 
 Checks if an address has the burner role
 
+*Checks if account has BURNER_ROLE*
+
 *Security considerations:
 - Checks if account has BURNER_ROLE
 - No input validation
 - No state changes*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- No security checks needed
 
-- validation: Validates input parameters and business logic constraints
+- No validation needed
 
-- state-changes: Updates contract state variables
+- No state changes
 
-- events: Emits relevant events for state changes
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- No reentrancy protection needed
 
-- access: Restricted to authorized roles
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -986,21 +1322,21 @@ Calculates the percentage of maximum supply utilization
 - Returns 0 if totalSupply is 0*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- No security checks needed
 
-- validation: Validates input parameters and business logic constraints
+- No validation needed
 
-- state-changes: Updates contract state variables
+- No state changes
 
-- events: Emits relevant events for state changes
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- No reentrancy protection needed
 
-- access: Restricted to authorized roles
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -1017,19 +1353,29 @@ function getSupplyUtilization() external view returns (uint256);
 
 Calculates remaining space for minting new tokens
 
+*Calculates remaining capacity by subtracting currentSupply from maxSupply*
+
 *Security considerations:
 - Calculates remaining capacity by subtracting currentSupply from maxSupply
 - Handles case where currentSupply >= maxSupply
 - Returns 0 if no more minting is possible*
 
 **Notes:**
-- validation: No input validation required - view function
+- No security checks needed
 
-- state-changes: No state changes - view function only
+- No input validation required - view function
 
-- reentrancy: Not applicable - view function
+- No state changes - view function only
 
-- access: Public - no access restrictions
+- No events emitted
+
+- No errors thrown
+
+- Not applicable - view function
+
+- Public - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -1046,6 +1392,8 @@ function getRemainingMintCapacity() external view returns (uint256);
 
 Gets current rate limit status
 
+*Returns current hour amounts if within the hour, zeros if an hour has passed*
+
 *Security considerations:
 - Returns current hour amounts if within the hour
 - Returns zeros if an hour has passed
@@ -1053,13 +1401,21 @@ Gets current rate limit status
 - Includes bounds checking to prevent timestamp manipulation*
 
 **Notes:**
-- validation: No input validation required - view function
+- No security checks needed
 
-- state-changes: No state changes - view function only
+- No input validation required - view function
 
-- reentrancy: Not applicable - view function
+- No state changes - view function only
 
-- access: Public - no access restrictions
+- No events emitted
+
+- No errors thrown
+
+- Not applicable - view function
+
+- Public - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -1093,19 +1449,21 @@ Batch transfer QEURO tokens to multiple addresses
 Uses OpenZeppelin's transfer mechanism with compliance checks.*
 
 **Notes:**
-- security: Validates all recipients and amounts, enforces blacklist/whitelist checks
+- Validates all recipients and amounts, enforces blacklist/whitelist checks
 
-- validation: Validates array lengths match, amounts > 0, recipients != address(0)
+- Validates array lengths match, amounts > 0, recipients != address(0)
 
-- state-changes: Updates balances for all recipients and sender
+- Updates balances for all recipients and sender
 
-- events: Emits Transfer events for each successful transfer
+- Emits Transfer events for each successful transfer
 
-- errors: Throws ArrayLengthMismatch, BatchSizeTooLarge, InvalidAddress, InvalidAmount, BlacklistedAddress, NotWhitelisted
+- Throws ArrayLengthMismatch, BatchSizeTooLarge, InvalidAddress, InvalidAmount, BlacklistedAddress, NotWhitelisted
 
-- reentrancy: Protected by whenNotPaused modifier
+- Protected by whenNotPaused modifier
 
-- access: Public - requires sufficient balance and compliance checks
+- Public - requires sufficient balance and compliance checks
+
+- No oracle dependencies
 
 
 ```solidity
@@ -1141,6 +1499,23 @@ Hook called before each token transfer
 - Prevents transfers if any checks fail
 - Calls super._update for standard ERC20 logic*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by whenNotPaused modifier
+
+- Internal function
+
+- No oracle dependencies
+
 
 ```solidity
 function _update(address from, address to, uint256 amount) internal override whenNotPaused;
@@ -1158,11 +1533,30 @@ function _update(address from, address to, uint256 amount) internal override whe
 
 Recover tokens accidentally sent to the contract to treasury only
 
+*Only DEFAULT_ADMIN_ROLE can recover tokens to treasury*
+
 *Security considerations:
 - Only DEFAULT_ADMIN_ROLE can recover
 - Prevents recovery of own QEURO tokens
 - Tokens are sent to treasury address only
 - Uses SafeERC20 for secure transfers*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to DEFAULT_ADMIN_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -1183,21 +1577,21 @@ Recover ETH to treasury address only
 *SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -1220,6 +1614,23 @@ Requires governance and must be used with caution*
 - Prevents setting cap to zero
 - Emits SupplyCapUpdated event*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to DEFAULT_ADMIN_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function updateMaxSupply(uint256 newMaxSupply) external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -1238,21 +1649,21 @@ Update treasury address
 *SECURITY: Only governance can update treasury address*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -1269,10 +1680,29 @@ function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE)
 
 Complete token information (for monitoring)
 
+*Returns current state of the token for monitoring purposes*
+
 *Security considerations:
 - Returns current state of the token
 - No input validation
 - No state changes*
+
+**Notes:**
+- No security checks needed
+
+- No validation needed
+
+- No state changes
+
+- No events emitted
+
+- No errors thrown
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -1310,22 +1740,24 @@ function getTokenInfo()
 
 Get current mint rate limit (per hour)
 
+*Returns current mint rate limit*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- No security checks needed
 
-- validation: Validates input parameters and business logic constraints
+- No validation needed
 
-- state-changes: Updates contract state variables
+- No state changes
 
-- events: Emits relevant events for state changes
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- No reentrancy protection needed
 
-- access: Restricted to authorized roles
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -1342,22 +1774,24 @@ function mintRateLimit() external view returns (uint256 limit);
 
 Get current burn rate limit (per hour)
 
+*Returns current burn rate limit*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- No security checks needed
 
-- validation: Validates input parameters and business logic constraints
+- No validation needed
 
-- state-changes: Updates contract state variables
+- No state changes
 
-- events: Emits relevant events for state changes
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- No errors thrown
 
-- reentrancy: Protected by reentrancy guard
+- No reentrancy protection needed
 
-- access: Restricted to authorized roles
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity

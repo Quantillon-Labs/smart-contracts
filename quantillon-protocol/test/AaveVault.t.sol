@@ -668,7 +668,7 @@ contract MockYieldShift {
  *      - Configuration management
  *      - Historical data tracking
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract AaveVaultTestSuite is Test {

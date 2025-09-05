@@ -11,7 +11,7 @@ import "./ErrorLibrary.sol";
  *      - Mint and burn parameter validation with supply cap checks
  *      - Used by QEURO token for secure minting and burning operations
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library TokenLibrary {

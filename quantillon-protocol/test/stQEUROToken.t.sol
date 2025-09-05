@@ -36,7 +36,7 @@ import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
  *      - Edge Cases and Security
  *      - Integration Tests
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract stQEUROTokenTestSuite is Test {

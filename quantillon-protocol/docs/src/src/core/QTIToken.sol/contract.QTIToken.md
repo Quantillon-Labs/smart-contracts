@@ -1,11 +1,11 @@
 # QTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/core/QTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/core/QTIToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
-Quantillon Labs
+Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Governance token for Quantillon Protocol with vote-escrow mechanics
 
@@ -46,7 +46,7 @@ Governance token for Quantillon Protocol with vote-escrow mechanics
 - Governance power: Based on locked amount and duration*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -394,17 +394,73 @@ modifier flashLoanProtection();
 
 ### constructor
 
+Constructor for QTI token contract
+
+*Sets up the time provider and disables initializers for security*
+
+**Notes:**
+- Validates time provider address and disables initializers
+
+- Validates input parameters and business logic constraints
+
+- Sets immutable time provider and disables initializers
+
+- No events emitted
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- No oracle dependencies
+
 
 ```solidity
 constructor(TimeProvider _timeProvider);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_timeProvider`|`TimeProvider`|TimeProvider contract for centralized time management|
+
 
 ### initialize
+
+Initializes the QTI token contract
+
+*Sets up the governance token with initial configuration and assigns roles to admin*
+
+**Notes:**
+- Validates all input addresses and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Initializes all contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to initializer modifier
+
+- No oracle dependencies
 
 
 ```solidity
 function initialize(address admin, address _treasury, address _timelock) public initializer;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`admin`|`address`|Address that receives admin and governance roles|
+|`_treasury`|`address`|Treasury address for protocol fees|
+|`_timelock`|`address`|Timelock contract address for secure upgrades|
+
 
 ### lock
 
@@ -413,21 +469,21 @@ Locks QTI tokens for a specified duration to earn voting power (veQTI)
 *Longer lock periods generate more voting power via time-weighted calculations*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -451,22 +507,24 @@ function lock(uint256 amount, uint256 lockTime) external whenNotPaused flashLoan
 
 Unlock QTI tokens after lock period expires
 
+*Releases locked QTI tokens and removes voting power when lock period has expired*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -482,6 +540,25 @@ function unlock() external whenNotPaused returns (uint256 amount);
 ### batchLock
 
 Batch lock QTI tokens for voting power for multiple amounts
+
+*Efficiently locks multiple amounts with different lock times in a single transaction*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -507,16 +584,61 @@ function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes)
 
 ### _validateBatchLockInputs
 
-*Validates basic batch lock inputs*
+Validates basic batch lock inputs
+
+*Ensures array lengths match and batch size is within limits*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
 function _validateBatchLockInputs(uint256[] calldata amounts, uint256[] calldata lockTimes) internal pure;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amounts`|`uint256[]`|Array of QTI amounts to lock|
+|`lockTimes`|`uint256[]`|Array of lock durations|
+
 
 ### _validateAndCalculateTotalAmount
 
-*Validates all amounts and lock times, returns total amount*
+Validates all amounts and lock times, returns total amount
+
+*Ensures all amounts and lock times are valid and calculates total amount*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
@@ -525,10 +647,42 @@ function _validateAndCalculateTotalAmount(uint256[] calldata amounts, uint256[] 
     pure
     returns (uint256 totalAmount);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amounts`|`uint256[]`|Array of QTI amounts to lock|
+|`lockTimes`|`uint256[]`|Array of lock durations|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalAmount`|`uint256`|Total amount of QTI to be locked|
+
 
 ### _processBatchLocks
 
-*Processes all locks and calculates totals*
+Processes all locks and calculates totals
+
+*Processes batch lock operations and calculates total voting power and amounts*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
@@ -539,10 +693,45 @@ function _processBatchLocks(
     LockInfo storage lockInfo
 ) internal returns (uint256 totalNewVotingPower, uint256 totalNewAmount);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amounts`|`uint256[]`|Array of QTI amounts to lock|
+|`lockTimes`|`uint256[]`|Array of lock durations|
+|`veQTIAmounts`|`uint256[]`|Array to store calculated voting power amounts|
+|`lockInfo`|`LockInfo`|Storage reference to user's lock information|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalNewVotingPower`|`uint256`|Total new voting power from all locks|
+|`totalNewAmount`|`uint256`|Total new amount locked|
+
 
 ### _calculateUnlockTime
 
-*Calculates unlock time with proper validation*
+Calculates unlock time with proper validation
+
+*Calculates new unlock time based on current timestamp and lock duration*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
@@ -551,19 +740,84 @@ function _calculateUnlockTime(uint256 currentTimestamp, uint256 lockTime, uint25
     pure
     returns (uint256 newUnlockTime);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`currentTimestamp`|`uint256`|Current timestamp for calculation|
+|`lockTime`|`uint256`|Duration to lock tokens|
+|`existingUnlockTime`|`uint256`|Existing unlock time if already locked|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newUnlockTime`|`uint256`|Calculated unlock time|
+
 
 ### _calculateVotingPower
 
-*Calculates voting power with overflow protection*
+Calculates voting power with overflow protection
+
+*Calculates voting power based on amount and lock time with overflow protection*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
 function _calculateVotingPower(uint256 amount, uint256 lockTime) internal view returns (uint256);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Amount of QTI tokens to lock|
+|`lockTime`|`uint256`|Duration to lock tokens|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|votingPower Calculated voting power|
+
 
 ### _updateLockInfo
 
-*Updates lock info with overflow checks*
+Updates lock info with overflow checks
+
+*Updates user's lock information with new amounts and times*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- No events emitted
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
@@ -575,20 +829,76 @@ function _updateLockInfo(
     uint256 lockTime
 ) internal;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`lockInfo`|`LockInfo`|Storage reference to user's lock information|
+|`totalNewAmount`|`uint256`|Total new amount to lock|
+|`newUnlockTime`|`uint256`|New unlock time|
+|`totalNewVotingPower`|`uint256`|Total new voting power|
+|`lockTime`|`uint256`|Lock duration|
+
 
 ### _updateGlobalTotalsAndTransfer
 
-*Updates global totals and transfers tokens*
+Updates global totals and transfers tokens
+
+*Updates global locked amounts and voting power, then transfers tokens*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
 function _updateGlobalTotalsAndTransfer(uint256 totalAmount, uint256 oldVotingPower, uint256 totalNewVotingPower)
     internal;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalAmount`|`uint256`|Total amount of tokens to lock|
+|`oldVotingPower`|`uint256`|Previous voting power|
+|`totalNewVotingPower`|`uint256`|New total voting power|
+
 
 ### batchUnlock
 
 Batch unlock QTI tokens for multiple users (admin function)
+
+*Efficiently unlocks tokens for multiple users in a single transaction*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -615,6 +925,25 @@ function batchUnlock(address[] calldata users)
 
 Batch transfer QTI tokens to multiple addresses
 
+*Efficiently transfers tokens to multiple recipients in a single transaction*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- No access restrictions
+
+- No oracle dependencies
+
 
 ```solidity
 function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
@@ -630,27 +959,35 @@ function batchTransfer(address[] calldata recipients, uint256[] calldata amounts
 |`recipients`|`address[]`|Array of recipient addresses|
 |`amounts`|`uint256[]`|Array of amounts to transfer|
 
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|success True if all transfers were successful|
+
 
 ### getVotingPower
 
 Get voting power for an address with linear decay
 
+*Calculates current voting power with linear decay over time*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -673,22 +1010,24 @@ function getVotingPower(address user) external view returns (uint256 votingPower
 
 Update voting power for the caller based on current time
 
+*Updates voting power based on current time and lock duration*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -705,22 +1044,24 @@ function updateVotingPower() external returns (uint256 newVotingPower);
 
 Get lock info for an address
 
+*Returns comprehensive lock information for a user*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -758,6 +1099,25 @@ function getLockInfo(address user)
 
 Create a new governance proposal
 
+*Creates a new governance proposal with specified parameters and voting period*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- No oracle dependencies
+
 
 ```solidity
 function createProposal(string calldata description, uint256 votingPeriod, bytes calldata data)
@@ -784,22 +1144,24 @@ function createProposal(string calldata description, uint256 votingPeriod, bytes
 
 Vote on a proposal
 
+*Allows users to vote on governance proposals with their voting power*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -817,22 +1179,24 @@ function vote(uint256 proposalId, bool support) external whenNotPaused;
 
 Batch vote on multiple proposals
 
+*Efficiently votes on multiple proposals in a single transaction*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -853,22 +1217,24 @@ function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes)
 
 Execute a successful proposal
 
+*Executes a proposal that has passed voting and meets quorum requirements*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -900,22 +1266,24 @@ function _verifyCallResult(bool success) private pure;
 
 Get execution information for a scheduled proposal
 
+*Returns execution status and timing information for a proposal*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -943,22 +1311,24 @@ function getProposalExecutionInfo(uint256 proposalId)
 
 Get the execution hash for a scheduled proposal
 
+*Returns the execution hash required to execute a scheduled proposal*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -981,22 +1351,24 @@ function getProposalExecutionHash(uint256 proposalId) external view returns (byt
 
 Cancel a proposal (only proposer or admin)
 
+*Allows proposer or admin to cancel a proposal before execution*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1013,22 +1385,24 @@ function cancelProposal(uint256 proposalId) external;
 
 Get proposal details
 
+*Returns comprehensive proposal information including voting results*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1070,22 +1444,24 @@ function getProposal(uint256 proposalId)
 
 Get voting receipt for a user
 
+*Returns voting information for a specific user on a specific proposal*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1114,6 +1490,25 @@ function getReceipt(uint256 proposalId, address voter)
 
 Update governance parameters
 
+*Updates governance parameters including proposal threshold, voting period, and quorum*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function updateGovernanceParameters(uint256 _proposalThreshold, uint256 _minVotingPeriod, uint256 _quorumVotes)
@@ -1133,22 +1528,24 @@ function updateGovernanceParameters(uint256 _proposalThreshold, uint256 _minVoti
 
 Update treasury address
 
+*Updates the treasury address for protocol fee collection*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1170,21 +1567,21 @@ to update the decentralization level based on the elapsed time.
 Includes bounds checking to prevent timestamp manipulation.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1194,6 +1591,25 @@ function updateDecentralizationLevel() external onlyRole(GOVERNANCE_ROLE);
 ### _calculateVotingPowerMultiplier
 
 Calculate voting power multiplier based on lock time
+
+*Calculates linear multiplier from 1x to 4x based on lock duration*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
@@ -1215,6 +1631,25 @@ function _calculateVotingPowerMultiplier(uint256 lockTime) internal pure returns
 ### _updateVotingPower
 
 Update voting power for a user based on current time
+
+*Updates voting power based on current time and lock duration with linear decay*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- No reentrancy protection needed
+
+- Internal function
+
+- No oracle dependencies
 
 
 ```solidity
@@ -1240,21 +1675,21 @@ Returns the number of decimals for the QTI token
 *Always returns 18 for standard ERC20 compatibility*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1274,21 +1709,21 @@ Pauses all token operations including transfers and governance
 *Emergency function to halt all contract operations when needed*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1302,21 +1737,21 @@ Unpauses all token operations
 *Resumes normal contract operations after emergency is resolved*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1327,22 +1762,24 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 
 Recover accidentally sent tokens to treasury only
 
+*Recovers accidentally sent tokens to the treasury address*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1363,21 +1800,21 @@ Recover accidentally sent ETH to treasury address only
 *SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1388,22 +1825,24 @@ function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Get current governance information
 
+*Returns comprehensive governance information including totals and parameters*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity

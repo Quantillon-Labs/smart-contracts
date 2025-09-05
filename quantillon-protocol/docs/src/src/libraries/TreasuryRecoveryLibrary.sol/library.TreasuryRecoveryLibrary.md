@@ -1,5 +1,5 @@
 # TreasuryRecoveryLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/libraries/TreasuryRecoveryLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/libraries/TreasuryRecoveryLibrary.sol)
 
 **Author:**
 Quantillon Protocol Team
@@ -10,7 +10,7 @@ Library for secure token and ETH recovery to treasury addresses
 to save gas, reduce bytecode, and ensure consistent security implementation*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -25,6 +25,23 @@ Recover tokens accidentally sent to the contract to treasury only
 *Security: Prevents recovery of own tokens and ensures treasury-only recovery*
 
 *Error handling: Uses custom errors for gas efficiency*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -51,6 +68,23 @@ Recover ETH to treasury address only
 *Security: Prevents arbitrary ETH transfers that could be exploited*
 
 *Error handling: Uses custom errors for gas efficiency*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity

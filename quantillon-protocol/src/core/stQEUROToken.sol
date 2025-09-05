@@ -78,7 +78,7 @@ import "../libraries/TimeProviderLibrary.sol";
  *      - Treasury for fee collection
  *      - Vault math library for calculations
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract stQEUROToken is 

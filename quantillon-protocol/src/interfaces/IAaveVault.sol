@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
  * @title IAaveVault
  * @notice Interface for the AaveVault (Aave V3 USDC yield vault)
  * @dev Mirrors the external/public API of `src/core/vaults/AaveVault.sol`
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IAaveVault {

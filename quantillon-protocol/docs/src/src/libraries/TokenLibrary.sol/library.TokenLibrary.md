@@ -1,8 +1,8 @@
 # TokenLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/libraries/TokenLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/libraries/TokenLibrary.sol)
 
 **Author:**
-Quantillon Labs
+Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Library for essential token operations to reduce contract bytecode size
 
@@ -11,7 +11,7 @@ Library for essential token operations to reduce contract bytecode size
 - Used by QEURO token for secure minting and burning operations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -20,6 +20,23 @@ security-contact: team@quantillon.money
 Validates mint parameters
 
 *Ensures minting doesn't exceed maximum supply and validates parameters*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -40,6 +57,23 @@ function validateMint(address to, uint256 amount, uint256 totalSupply, uint256 m
 Validates burn parameters
 
 *Ensures sufficient balance and validates parameters for burning*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity

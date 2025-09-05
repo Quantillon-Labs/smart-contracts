@@ -40,7 +40,7 @@ import "../libraries/ValidationLibrary.sol";
  *      - Fallbacks in case of oracle outage
  *      - Data freshness checks
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract ChainlinkOracle is 

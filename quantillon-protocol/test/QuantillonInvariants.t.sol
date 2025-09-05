@@ -33,7 +33,7 @@ import {VaultMath} from "../src/libraries/VaultMath.sol";
  * @dev Invariants are mathematical properties that must always hold true
  *      regardless of the state of the system or any operations performed.
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract QuantillonInvariants is Test {

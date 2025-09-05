@@ -17,7 +17,7 @@ import {VaultMath} from "../src/libraries/VaultMath.sol";
  *      - Utility functions
  *      - Integration tests
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract VaultMathTestSuite is Test {

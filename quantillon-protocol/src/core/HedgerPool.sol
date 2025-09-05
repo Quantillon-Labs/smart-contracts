@@ -91,7 +91,7 @@ import "../libraries/HedgerPoolValidationLibrary.sol";
  *      - Vault math library for precise calculations
  *      - Position tracking and management systems
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerPool is 

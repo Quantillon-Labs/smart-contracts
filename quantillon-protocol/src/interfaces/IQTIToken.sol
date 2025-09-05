@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 /**
  * @title IQTIToken
  * @notice Interface for the QTI governance token with vote-escrow mechanics
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IQTIToken {

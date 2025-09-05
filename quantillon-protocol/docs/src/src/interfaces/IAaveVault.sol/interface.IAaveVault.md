@@ -1,21 +1,40 @@
 # IAaveVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/interfaces/IAaveVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/interfaces/IAaveVault.sol)
 
 **Author:**
-Quantillon Labs
+Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Interface for the AaveVault (Aave V3 USDC yield vault)
 
 *Mirrors the external/public API of `src/core/vaults/AaveVault.sol`*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
 ### initialize
 
 Initializes the Aave vault
+
+*Initializes the AaveVault contract with required addresses*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -42,22 +61,24 @@ function initialize(
 
 Deploy USDC to Aave V3 pool to earn yield
 
+*Deploys USDC to Aave V3 pool to earn yield*
+
 **Notes:**
-- security: Validates oracle price freshness, enforces exposure limits
+- Validates oracle price freshness, enforces exposure limits
 
-- validation: Validates amount > 0, checks max exposure limits
+- Validates amount > 0, checks max exposure limits
 
-- state-changes: Updates principalDeposited, transfers USDC, receives aUSDC
+- Updates principalDeposited, transfers USDC, receives aUSDC
 
-- events: Emits DeployedToAave with operation details
+- Emits DeployedToAave with operation details
 
-- errors: Throws WouldExceedLimit if exceeds maxAaveExposure
+- Throws WouldExceedLimit if exceeds maxAaveExposure
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to VAULT_MANAGER_ROLE
+- Restricted to VAULT_MANAGER_ROLE
 
-- oracle: Requires fresh EUR/USD price for health validation
+- Requires fresh EUR/USD price for health validation
 
 
 ```solidity
@@ -80,22 +101,24 @@ function deployToAave(uint256 amount) external returns (uint256 aTokensReceived)
 
 Withdraw USDC from Aave V3 pool
 
+*Withdraws USDC from Aave V3 pool*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -118,22 +141,24 @@ function withdrawFromAave(uint256 amount) external returns (uint256 usdcWithdraw
 
 Claim Aave rewards (if any)
 
+*Claims Aave rewards if any are available*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -153,21 +178,21 @@ Harvest Aave yield and distribute via YieldShift
 *This function calls YieldShift.harvestAndDistributeAaveYield() to handle distribution*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -184,22 +209,24 @@ function harvestAaveYield() external returns (uint256 yieldHarvested);
 
 Calculate available yield for harvest
 
+*Calculates the amount of yield available for harvest*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -216,22 +243,24 @@ function getAvailableYield() external view returns (uint256 available);
 
 Get yield distribution breakdown for current state
 
+*Returns the breakdown of yield distribution for current state*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -250,100 +279,126 @@ function getYieldDistribution() external view returns (uint256 protocolYield, ui
 
 Current aUSDC balance of the vault
 
+*Returns the current aUSDC balance of the vault*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
 function getAaveBalance() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The current aUSDC balance|
+
 
 ### getAccruedInterest
 
 Accrued interest (same as available yield)
 
+*Returns the accrued interest (same as available yield)*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
 function getAccruedInterest() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The accrued interest amount|
+
 
 ### getAaveAPY
 
 Current Aave APY in basis points
 
+*Returns the current Aave APY in basis points*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
 function getAaveAPY() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Current APY in basis points|
+
 
 ### getAavePositionDetails
 
 Aave position details snapshot
 
+*Returns a snapshot of Aave position details*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -366,22 +421,24 @@ function getAavePositionDetails()
 
 Aave market data snapshot
 
+*Returns Aave market data snapshot*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -404,22 +461,24 @@ function getAaveMarketData()
 
 Basic Aave pool health and pause state
 
+*Returns basic Aave pool health and pause state*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -438,22 +497,24 @@ function checkAaveHealth() external view returns (bool isHealthy, bool pauseStat
 
 Attempt auto-rebalancing allocation
 
+*Automatically rebalances allocation based on current market conditions and yield opportunities*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -471,22 +532,24 @@ function autoRebalance() external returns (bool rebalanced, uint256 newAllocatio
 
 Compute optimal allocation and expected yield
 
+*Calculates the optimal allocation percentage and expected yield based on current market conditions*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -504,22 +567,24 @@ function calculateOptimalAllocation() external view returns (uint256 optimalAllo
 
 Update max exposure to Aave
 
+*Sets the maximum USDC exposure limit for Aave protocol interactions*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -536,22 +601,24 @@ function setMaxAaveExposure(uint256 _maxExposure) external;
 
 Emergency: withdraw all from Aave
 
+*Emergency function to withdraw all funds from Aave protocol in case of emergency*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -568,22 +635,24 @@ function emergencyWithdrawFromAave() external returns (uint256 amountWithdrawn);
 
 Risk metrics snapshot
 
+*Returns current risk metrics including exposure ratio and risk scores*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -605,22 +674,24 @@ function getRiskMetrics()
 
 Update vault parameters
 
+*Updates key vault parameters including harvest threshold, yield fee, and rebalance threshold*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -640,22 +711,24 @@ function updateAaveParameters(uint256 newHarvestThreshold, uint256 newYieldFee, 
 
 Aave config snapshot
 
+*Returns current Aave configuration including pool address, token address, and key parameters*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -679,22 +752,24 @@ function getAaveConfig()
 
 Toggle emergency mode
 
+*Enables or disables emergency mode with a reason for the action*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -712,22 +787,24 @@ function toggleEmergencyMode(bool enabled, string calldata reason) external;
 
 Pause the vault
 
+*Pauses all vault operations for emergency situations*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -738,22 +815,24 @@ function pause() external;
 
 Unpause the vault
 
+*Resumes vault operations after being paused*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -764,22 +843,24 @@ function unpause() external;
 
 Recover ERC20 tokens sent by mistake
 
+*Allows recovery of ERC20 tokens accidentally sent to the contract*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -798,22 +879,24 @@ function recoverToken(address token, address to, uint256 amount) external;
 
 Recover ETH sent by mistake
 
+*Allows recovery of ETH accidentally sent to the contract*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -822,204 +905,1004 @@ function recoverETH() external;
 
 ### hasRole
 
+Check if an account has a specific role
+
+*Returns true if the account has the specified role*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
+
 
 ```solidity
 function hasRole(bytes32 role, address account) external view returns (bool);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`role`|`bytes32`|The role to check|
+|`account`|`address`|The account to check|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if the account has the role, false otherwise|
+
 
 ### getRoleAdmin
+
+Get the admin role for a specific role
+
+*Returns the admin role that controls the specified role*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function getRoleAdmin(bytes32 role) external view returns (bytes32);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`role`|`bytes32`|The role to get the admin for|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes32`|bytes32 The admin role|
+
 
 ### grantRole
+
+Grant a role to an account
+
+*Grants the specified role to the account*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function grantRole(bytes32 role, address account) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`role`|`bytes32`|The role to grant|
+|`account`|`address`|The account to grant the role to|
+
 
 ### revokeRole
+
+Revoke a role from an account
+
+*Revokes the specified role from the account*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function revokeRole(bytes32 role, address account) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`role`|`bytes32`|The role to revoke|
+|`account`|`address`|The account to revoke the role from|
+
 
 ### renounceRole
+
+Renounce a role
+
+*Renounces the specified role from the caller*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function renounceRole(bytes32 role, address callerConfirmation) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`role`|`bytes32`|The role to renounce|
+|`callerConfirmation`|`address`|Confirmation that the caller is renouncing the role|
+
 
 ### paused
+
+Check if the contract is paused
+
+*Returns true if the contract is paused, false otherwise*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function paused() external view returns (bool);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if paused, false otherwise|
+
 
 ### upgradeTo
+
+Upgrade the contract implementation
+
+*Upgrades the contract to a new implementation*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function upgradeTo(address newImplementation) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newImplementation`|`address`|Address of the new implementation|
+
 
 ### upgradeToAndCall
+
+Upgrade the contract implementation and call a function
+
+*Upgrades the contract to a new implementation and calls a function*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newImplementation`|`address`|Address of the new implementation|
+|`data`|`bytes`|Data to call on the new implementation|
+
 
 ### GOVERNANCE_ROLE
+
+Get the governance role identifier
+
+*Returns the governance role identifier*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function GOVERNANCE_ROLE() external view returns (bytes32);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes32`|bytes32 The governance role identifier|
+
 
 ### VAULT_MANAGER_ROLE
+
+Get the vault manager role identifier
+
+*Returns the vault manager role identifier*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function VAULT_MANAGER_ROLE() external view returns (bytes32);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes32`|bytes32 The vault manager role identifier|
+
 
 ### EMERGENCY_ROLE
+
+Get the emergency role identifier
+
+*Returns the emergency role identifier*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function EMERGENCY_ROLE() external view returns (bytes32);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes32`|bytes32 The emergency role identifier|
+
 
 ### UPGRADER_ROLE
+
+Get the upgrader role identifier
+
+*Returns the upgrader role identifier*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function UPGRADER_ROLE() external view returns (bytes32);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes32`|bytes32 The upgrader role identifier|
+
 
 ### usdc
+
+Get the USDC token address
+
+*Returns the address of the USDC token contract*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function usdc() external view returns (address);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|address The USDC token address|
+
 
 ### aUSDC
+
+Get the aUSDC token address
+
+*Returns the address of the aUSDC token contract*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function aUSDC() external view returns (address);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|address The aUSDC token address|
+
 
 ### aavePool
+
+Get the Aave pool address
+
+*Returns the address of the Aave pool contract*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function aavePool() external view returns (address);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|address The Aave pool address|
+
 
 ### aaveProvider
+
+Get the Aave provider address
+
+*Returns the address of the Aave provider contract*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function aaveProvider() external view returns (address);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|address The Aave provider address|
+
 
 ### rewardsController
+
+Get the rewards controller address
+
+*Returns the address of the rewards controller contract*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function rewardsController() external view returns (address);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|address The rewards controller address|
+
 
 ### yieldShift
+
+Get the yield shift address
+
+*Returns the address of the yield shift contract*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function yieldShift() external view returns (address);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|address The yield shift address|
+
 
 ### maxAaveExposure
+
+Get the maximum Aave exposure
+
+*Returns the maximum amount that can be deposited to Aave*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function maxAaveExposure() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The maximum Aave exposure|
+
 
 ### harvestThreshold
+
+Get the harvest threshold
+
+*Returns the minimum amount required to trigger a harvest*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function harvestThreshold() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The harvest threshold|
+
 
 ### yieldFee
+
+Get the yield fee
+
+*Returns the fee percentage charged on harvested yield*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function yieldFee() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The yield fee in basis points|
+
 
 ### rebalanceThreshold
+
+Get the rebalance threshold
+
+*Returns the threshold for triggering rebalancing*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function rebalanceThreshold() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The rebalance threshold|
+
 
 ### principalDeposited
+
+Get the principal deposited amount
+
+*Returns the total amount of principal deposited to Aave*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function principalDeposited() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The principal deposited amount|
+
 
 ### lastHarvestTime
+
+Get the last harvest time
+
+*Returns the timestamp of the last harvest*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function lastHarvestTime() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The last harvest time|
+
 
 ### totalYieldHarvested
+
+Get the total yield harvested
+
+*Returns the total amount of yield harvested from Aave*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function totalYieldHarvested() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The total yield harvested|
+
 
 ### totalFeesCollected
+
+Get the total fees collected
+
+*Returns the total amount of fees collected*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function totalFeesCollected() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The total fees collected|
+
 
 ### utilizationLimit
+
+Get the utilization limit
+
+*Returns the maximum utilization rate allowed*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function utilizationLimit() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The utilization limit|
+
 
 ### emergencyExitThreshold
+
+Get the emergency exit threshold
+
+*Returns the threshold for triggering emergency exit*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function emergencyExitThreshold() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The emergency exit threshold|
+
 
 ### emergencyMode
+
+Get the emergency mode status
+
+*Returns true if the contract is in emergency mode*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
 
 
 ```solidity
 function emergencyMode() external view returns (bool);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|bool True if in emergency mode, false otherwise|
+
 

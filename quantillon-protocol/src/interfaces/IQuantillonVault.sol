@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
  * @title IQuantillonVault
  * @notice Interface for the Quantillon vault managing QEURO mint/redeem against USDC
  * @dev Exposes core swap functions, views, governance, emergency, and recovery
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IQuantillonVault {

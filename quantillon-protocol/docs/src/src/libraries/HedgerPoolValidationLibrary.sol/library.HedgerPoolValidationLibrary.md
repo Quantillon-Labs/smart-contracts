@@ -1,5 +1,5 @@
 # HedgerPoolValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/libraries/HedgerPoolValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/libraries/HedgerPoolValidationLibrary.sol)
 
 Validation functions for HedgerPool to reduce contract size
 
@@ -10,6 +10,23 @@ Validation functions for HedgerPool to reduce contract size
 Validates all position parameters against maximum limits
 
 *Ensures all position parameters are within acceptable bounds*
+
+**Notes:**
+- Validates all position parameters against maximum limits
+
+- Validates all position parameters against maximum limits
+
+- No state changes - pure function
+
+- No events emitted
+
+- Throws various errors if parameters exceed limits
+
+- Not applicable - pure function
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -44,6 +61,23 @@ Validates total margin and exposure limits
 
 *Ensures combined totals don't exceed system-wide limits*
 
+**Notes:**
+- Validates total margin and exposure limits
+
+- Validates total margin and exposure limits
+
+- No state changes - pure function
+
+- No events emitted
+
+- Throws various errors if totals exceed limits
+
+- Not applicable - pure function
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
+
 
 ```solidity
 function validateTotals(
@@ -73,6 +107,23 @@ Validates timestamp fits in uint32 for storage optimization
 
 *Prevents timestamp overflow when casting to uint32*
 
+**Notes:**
+- Validates timestamp fits in uint32 for storage optimization
+
+- Validates timestamp fits in uint32 for storage optimization
+
+- No state changes - pure function
+
+- No events emitted
+
+- Throws TimestampOverflow if timestamp exceeds uint32 max
+
+- Not applicable - pure function
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
+
 
 ```solidity
 function validateTimestamp(uint256 timestamp) internal pure;
@@ -89,6 +140,23 @@ function validateTimestamp(uint256 timestamp) internal pure;
 Validates new margin amount against maximum limit
 
 *Ensures margin additions don't exceed individual position limits*
+
+**Notes:**
+- Validates new margin amount against maximum limit
+
+- Validates new margin amount against maximum limit
+
+- No state changes - pure function
+
+- No events emitted
+
+- Throws NewMarginExceedsMaximum if margin exceeds limit
+
+- Not applicable - pure function
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -107,6 +175,23 @@ function validateNewMargin(uint256 newMargin, uint256 maxMargin) internal pure;
 Validates pending rewards against maximum accumulation limit
 
 *Prevents excessive reward accumulation that could cause overflow*
+
+**Notes:**
+- Validates pending rewards against maximum accumulation limit
+
+- Validates pending rewards against maximum accumulation limit
+
+- No state changes - pure function
+
+- No events emitted
+
+- Throws PendingRewardsExceedMaximum if rewards exceed limit
+
+- Not applicable - pure function
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity

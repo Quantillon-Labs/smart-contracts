@@ -110,9 +110,18 @@ contract HedgerPoolTestSuite is Test {
      * @dev Deploys a new HedgerPool contract using proxy pattern and initializes it
      */
     function setUp() public {
+        // Deploy TimeProvider through proxy
+        TimeProvider timeProviderImpl = new TimeProvider();
+        bytes memory timeProviderInitData = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy = new ERC1967Proxy(address(timeProviderImpl), timeProviderInitData);
+        TimeProvider timeProvider = TimeProvider(address(timeProviderProxy));
+        
         // Deploy implementation
-        TimeProvider timeProvider = new TimeProvider();
-        timeProvider.initialize(admin, admin, admin);
         implementation = new HedgerPool(timeProvider);
         
         // Deploy proxy with initialization
@@ -229,8 +238,16 @@ contract HedgerPoolTestSuite is Test {
      * @dev Verifies that initialization fails with invalid parameters
      */
     function test_Initialization_ZeroAddresses_Revert() public {
-        TimeProvider timeProvider2 = new TimeProvider();
-        timeProvider2.initialize(admin, admin, admin);
+        TimeProvider timeProviderImpl2 = new TimeProvider();
+        bytes memory timeProviderInitData2 = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy2 = new ERC1967Proxy(address(timeProviderImpl2), timeProviderInitData2);
+        TimeProvider timeProvider2 = TimeProvider(address(timeProviderProxy2));
+        
         HedgerPool newImplementation = new HedgerPool(timeProvider2);
         
         // Test with zero admin
@@ -248,8 +265,16 @@ contract HedgerPoolTestSuite is Test {
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero USDC
-        TimeProvider timeProvider3 = new TimeProvider();
-        timeProvider3.initialize(admin, admin, admin);
+        TimeProvider timeProviderImpl3 = new TimeProvider();
+        bytes memory timeProviderInitData3 = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy3 = new ERC1967Proxy(address(timeProviderImpl3), timeProviderInitData3);
+        TimeProvider timeProvider3 = TimeProvider(address(timeProviderProxy3));
+        
         HedgerPool newImplementation2 = new HedgerPool(timeProvider3);
         bytes memory initData2 = abi.encodeWithSelector(
             HedgerPool.initialize.selector,
@@ -265,8 +290,16 @@ contract HedgerPoolTestSuite is Test {
         new ERC1967Proxy(address(newImplementation2), initData2);
         
         // Test with zero oracle
-        TimeProvider timeProvider4 = new TimeProvider();
-        timeProvider4.initialize(admin, admin, admin);
+        TimeProvider timeProviderImpl4 = new TimeProvider();
+        bytes memory timeProviderInitData4 = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy4 = new ERC1967Proxy(address(timeProviderImpl4), timeProviderInitData4);
+        TimeProvider timeProvider4 = TimeProvider(address(timeProviderProxy4));
+        
         HedgerPool newImplementation3 = new HedgerPool(timeProvider4);
         bytes memory initData3 = abi.encodeWithSelector(
             HedgerPool.initialize.selector,
@@ -282,8 +315,16 @@ contract HedgerPoolTestSuite is Test {
         new ERC1967Proxy(address(newImplementation3), initData3);
         
         // Test with zero YieldShift
-        TimeProvider timeProvider5 = new TimeProvider();
-        timeProvider5.initialize(admin, admin, admin);
+        TimeProvider timeProviderImpl5 = new TimeProvider();
+        bytes memory timeProviderInitData5 = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy5 = new ERC1967Proxy(address(timeProviderImpl5), timeProviderInitData5);
+        TimeProvider timeProvider5 = TimeProvider(address(timeProviderProxy5));
+        
         HedgerPool newImplementation4 = new HedgerPool(timeProvider5);
         bytes memory initData4 = abi.encodeWithSelector(
             HedgerPool.initialize.selector,

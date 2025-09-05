@@ -214,9 +214,18 @@ contract YieldShiftTestSuite is Test {
         aaveVault = new MockAaveVault();
         stQEURO = new MockStQEURO();
         
+        // Deploy TimeProvider through proxy
+        TimeProvider timeProviderImpl = new TimeProvider();
+        bytes memory timeProviderInitData = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy = new ERC1967Proxy(address(timeProviderImpl), timeProviderInitData);
+        TimeProvider timeProvider = TimeProvider(address(timeProviderProxy));
+        
         // Deploy implementation
-        TimeProvider timeProvider = new TimeProvider();
-        timeProvider.initialize(admin, admin, admin);
         implementation = new YieldShift(timeProvider);
         
         // Deploy proxy
@@ -324,8 +333,16 @@ contract YieldShiftTestSuite is Test {
      * @dev Verifies zero address validation
      */
     function test_Initialization_ZeroAdmin_Revert() public {
-        TimeProvider timeProvider3 = new TimeProvider();
-        timeProvider3.initialize(admin, admin, admin);
+        TimeProvider timeProviderImpl3 = new TimeProvider();
+        bytes memory timeProviderInitData3 = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy3 = new ERC1967Proxy(address(timeProviderImpl3), timeProviderInitData3);
+        TimeProvider timeProvider3 = TimeProvider(address(timeProviderProxy3));
+        
         YieldShift newImplementation = new YieldShift(timeProvider3);
         
         bytes memory initData = abi.encodeWithSelector(
@@ -349,8 +366,16 @@ contract YieldShiftTestSuite is Test {
      * @dev Verifies zero address validation
      */
     function test_Initialization_ZeroUsdc_Revert() public {
-        TimeProvider timeProvider3 = new TimeProvider();
-        timeProvider3.initialize(admin, admin, admin);
+        TimeProvider timeProviderImpl3 = new TimeProvider();
+        bytes memory timeProviderInitData3 = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy3 = new ERC1967Proxy(address(timeProviderImpl3), timeProviderInitData3);
+        TimeProvider timeProvider3 = TimeProvider(address(timeProviderProxy3));
+        
         YieldShift newImplementation = new YieldShift(timeProvider3);
         
         bytes memory initData = abi.encodeWithSelector(

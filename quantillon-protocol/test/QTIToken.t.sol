@@ -104,9 +104,16 @@ contract QTITokenTestSuite is Test {
      * @dev Deploys a new QTIToken contract using proxy pattern and initializes it
      */
     function setUp() public {
-        // Deploy TimeProvider first
-        timeProvider = new TimeProvider();
-        timeProvider.initialize(admin, governance, admin); // Use admin for emergency role
+        // Deploy TimeProvider through proxy
+        TimeProvider timeProviderImpl = new TimeProvider();
+        bytes memory timeProviderInitData = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            governance,
+            admin // Use admin for emergency role
+        );
+        ERC1967Proxy timeProviderProxy = new ERC1967Proxy(address(timeProviderImpl), timeProviderInitData);
+        timeProvider = TimeProvider(address(timeProviderProxy));
         
         // Deploy implementation with TimeProvider
         implementation = new QTITokenTestHelper(timeProvider);

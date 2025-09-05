@@ -909,6 +909,7 @@ contract QTIToken is
      * @notice Execute a successful proposal
      * @param proposalId Proposal ID
      */
+    // slither-disable-next-line low-level-calls
     function executeProposal(uint256 proposalId) external nonReentrant {
         Proposal storage proposal = proposals[proposalId];
         if (timeProvider.currentTime() < proposal.endTime) revert ErrorLibrary.VotingNotEnded();
@@ -922,8 +923,7 @@ contract QTIToken is
 
         // Execute the proposal data
         if (proposal.data.length > 0) {
-            // slither-disable-next-line low-level-calls
-            (bool success, ) = address(this).call(proposal.data);
+            (bool success, ) = address(this).call(proposal.data); // slither-disable-line low-level-calls
             if (!success) {
                 // Use Address.verifyCallResult to bubble up revert reason without assembly
                 _verifyCallResult(success);

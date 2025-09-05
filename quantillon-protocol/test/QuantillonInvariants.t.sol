@@ -101,8 +101,16 @@ contract QuantillonInvariants is Test {
     function _deployEssentialContracts() internal {
         // Deploy only the most essential contracts for basic invariant testing
         // Deploy QTIToken
-        TimeProvider timeProvider = new TimeProvider();
-        timeProvider.initialize(admin, admin, admin);
+        TimeProvider timeProviderImpl = new TimeProvider();
+        bytes memory timeProviderInitData = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin,
+            admin
+        );
+        ERC1967Proxy timeProviderProxy = new ERC1967Proxy(address(timeProviderImpl), timeProviderInitData);
+        TimeProvider timeProvider = TimeProvider(address(timeProviderProxy));
+        
         QTIToken qtiImplementation = new QTIToken(timeProvider);
         bytes memory qtiInitData = abi.encodeWithSelector(
             QTIToken.initialize.selector,

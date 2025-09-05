@@ -152,7 +152,24 @@ forge coverage --report lcov
 ```bash
 # Generate gas report
 forge test --gas-report
+
+# Run comprehensive gas analysis
+make gas-analysis
+
+# Or run directly
+./scripts/analyze-gas.sh
 ```
+
+The gas analysis script provides detailed insights into:
+- Contract size analysis
+- State variable optimizations
+- Function visibility recommendations
+- Unused code detection
+- Costly loop operations
+- Storage layout analysis
+- Function gas usage analysis
+
+Reports are generated in a single human-readable text format.
 
 ## 🔧 Development
 
@@ -188,6 +205,98 @@ forge script script/deploy/DeployProtocol.s.sol --rpc-url $BASE_RPC_URL --broadc
 # Verify contracts on Basescan
 forge verify-contract <CONTRACT_ADDRESS> src/core/QEUROToken.sol:QEUROToken --chain-id 8453 --etherscan-api-key $BASESCAN_API_KEY
 ```
+
+## 🛠️ Development Tools
+
+The protocol includes several development and analysis tools in the `scripts/` directory:
+
+### Gas Analysis
+
+```bash
+# Run comprehensive gas analysis
+./scripts/analyze-gas.sh
+
+# Or use the Makefile target
+make gas-analysis
+```
+
+**Features:**
+- Contract size analysis with size limit warnings
+- State variable optimization recommendations
+- Function visibility analysis (external vs public)
+- Unused code detection
+- Costly loop operation identification
+- Storage layout analysis
+- Function gas usage analysis
+- Comprehensive optimization recommendations
+- Uses Foundry for contract building and gas reporting
+- Optional Slither integration for advanced analysis
+
+**Output:**
+- Single comprehensive report: `gas-analysis-YYYYMMDD_HHMMSS.txt`
+- All analysis results in one human-readable text file
+
+### NatSpec Validation
+
+```bash
+# Validate NatSpec documentation coverage
+./scripts/validate-natspec.js
+
+# Or use the Makefile target
+make validate-natspec
+```
+
+**Features:**
+- Scans all Solidity files for NatSpec documentation
+- Identifies missing or incomplete documentation
+- Provides detailed coverage reports
+- Generates validation report: `natspec-validation-report.txt`
+
+### Security Analysis
+
+```bash
+# Run Slither security analysis
+./scripts/run-slither.sh
+
+# Or use the Makefile target
+make slither
+```
+
+**Features:**
+- Comprehensive security vulnerability detection
+- Gas optimization recommendations
+- Code quality analysis
+- Best practice enforcement
+
+### Documentation Generation
+
+```bash
+# Generate contract documentation
+./scripts/build-docs.sh
+
+# Or use the Makefile target
+make docs
+```
+
+**Features:**
+- Generates comprehensive NatSpec documentation
+- Creates searchable HTML documentation
+- Includes all contract interfaces and implementations
+
+### Benchmarking
+
+```bash
+# Benchmark specific functions or contracts
+./scripts/benchmark-gas.sh <contract_name> <function_name>
+
+# Example
+./scripts/benchmark-gas.sh QEUROToken mint
+```
+
+**Features:**
+- Targeted gas usage analysis
+- Function-specific benchmarking
+- Test-specific gas reporting
 
 ## 📊 Protocol Parameters
 
@@ -236,6 +345,9 @@ make slither
 
 # Or run directly
 ./scripts/run-slither.sh
+
+# Run comprehensive gas analysis (includes security insights)
+make gas-analysis
 ```
 
 ## 🤝 Contributing
@@ -254,6 +366,28 @@ make slither
 - Add comprehensive tests for new features
 - Update documentation for any changes
 - Ensure all tests pass before submitting PR
+
+## 🚀 Quick Reference
+
+### Common Commands
+
+```bash
+# Development
+make build          # Build contracts
+make test           # Run all tests
+make coverage       # Generate test coverage
+make docs           # Generate documentation
+
+# Analysis
+make gas-analysis   # Comprehensive gas analysis
+make validate-natspec  # Validate NatSpec documentation
+make slither        # Security analysis
+
+# Quality Assurance
+make lint           # Code linting
+make format         # Code formatting
+make all            # Run all checks (build, test, coverage, docs, validation)
+```
 
 ## 🌐 Links
 

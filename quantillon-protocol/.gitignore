@@ -58,3 +58,6 @@ slither-report.*
 *.slither
 .slither/
 slither-cache/
+
+# Gas analysis reports
+gas-analysis/

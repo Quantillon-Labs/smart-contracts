@@ -302,7 +302,6 @@ interface ITimelockUpgradeable {
     /**
      * @notice Checks if an address is a multi-sig signer
      * @dev Returns true if the address is authorized as a multi-sig signer
-     * @param signer Address to check
      * @return True if the address is a multi-sig signer
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -333,8 +332,6 @@ interface ITimelockUpgradeable {
     /**
      * @notice Checks if a signer has approved an upgrade
      * @dev Returns true if the signer has approved the specific upgrade
-     * @param signer Address of the signer
-     * @param implementation Address of the implementation
      * @return True if the signer has approved the upgrade
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -350,7 +347,6 @@ interface ITimelockUpgradeable {
     /**
      * @notice Returns the number of approvals for an upgrade
      * @dev Returns the count of approvals for a specific upgrade
-     * @param implementation Address of the implementation
      * @return Number of approvals for the upgrade
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints

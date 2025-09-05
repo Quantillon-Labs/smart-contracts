@@ -151,13 +151,103 @@ interface IQEUROToken {
     );
 
     // Initialization
+    /**
+     * @notice Initialize the QEURO token contract
+     * @dev Sets up initial roles and configuration for the token
+     * @param admin Address of the admin role
+     * @param vault Address of the vault contract
+     * @param timelock Address of the timelock contract
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function initialize(address admin, address vault, address timelock) external;
 
     // Core functions
+    /**
+     * @notice Mint new QEURO tokens to an address
+     * @dev Creates new tokens and adds them to the specified address
+     * @param to Address to receive the minted tokens
+     * @param amount Amount of tokens to mint (18 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function mint(address to, uint256 amount) external;
+    
+    /**
+     * @notice Burn QEURO tokens from an address
+     * @dev Destroys tokens from the specified address
+     * @param from Address to burn tokens from
+     * @param amount Amount of tokens to burn (18 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function burn(address from, uint256 amount) external;
+    
+    /**
+     * @notice Mint new QEURO tokens to multiple addresses
+     * @dev Creates new tokens and distributes them to multiple recipients
+     * @param recipients Array of addresses to receive the minted tokens
+     * @param amounts Array of amounts to mint for each recipient (18 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function batchMint(address[] calldata recipients, uint256[] calldata amounts) external;
+    
+    /**
+     * @notice Burn QEURO tokens from multiple addresses
+     * @dev Destroys tokens from multiple addresses
+     * @param froms Array of addresses to burn tokens from
+     * @param amounts Array of amounts to burn from each address (18 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function batchBurn(address[] calldata froms, uint256[] calldata amounts) external;
+    
+    /**
+     * @notice Transfer QEURO tokens to multiple addresses
+     * @dev Transfers tokens from the caller to multiple recipients
+     * @param recipients Array of addresses to receive the tokens
+     * @param amounts Array of amounts to transfer to each recipient (18 decimals)
+     * @return success True if all transfers were successful
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
     function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external returns (bool);
 
     // Rate limiting

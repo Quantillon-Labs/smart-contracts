@@ -50,11 +50,11 @@ remappings = [
 ]
 
 # Additional compiler settings
-# Formal verification with SMTChecker enabled
-[profile.default.model_checker]
-contracts = { "src" = [ "all" ] }
-engine = "chc"
-targets = [ "assert", "underflow", "overflow", "divByZero", "constantCondition", "popEmptyArray", "outOfBounds" ]
+# Formal verification with SMTChecker disabled (requires z3 or Eldarica solver)
+# [profile.default.model_checker]
+# contracts = { "src" = [ "all" ] }
+# engine = "chc"
+# targets = [ "assert", "underflow", "overflow", "divByZero", "constantCondition", "popEmptyArray", "outOfBounds" ]
 
 # Production profile for deployment
 [profile.production]

@@ -35,7 +35,7 @@ help:
 # Build contracts
 build:
 	@echo "🔨 Building contracts..."
-	forge build
+	forge build --force 2>&1 | tee build-output.log
 
 # Clean build artifacts
 clean:

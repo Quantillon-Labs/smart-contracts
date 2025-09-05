@@ -105,14 +105,14 @@ interface IHedgerPool {
      * @param positionId The ID of the position to liquidate
      * @param salt The same salt value used in the commitment
      * @return liquidationReward The reward paid to the liquidator
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function liquidateHedger(address hedger, uint256 positionId, bytes32 salt) external returns (uint256 liquidationReward);
     
@@ -122,14 +122,14 @@ interface IHedgerPool {
      * @param hedger The address of the hedger
      * @param positionId The ID of the position
      * @return bool True if there's a pending liquidation commitment
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
     /**

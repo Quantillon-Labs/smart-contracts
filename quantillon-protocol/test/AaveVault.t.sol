@@ -278,7 +278,6 @@ contract MockAavePool {
      * @param asset The asset to supply
      * @param amount The amount to supply
      * @param onBehalfOf The address to supply on behalf of
-     * @param referralCode The referral code
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
      * @custom:state-changes Transfers USDC and mints aUSDC
@@ -288,7 +287,7 @@ contract MockAavePool {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external {
+    function supply(address asset, uint256 amount, address onBehalfOf, uint16 /* referralCode */) external {
         require(asset == address(usdc), "Invalid asset");
         require(amount > 0, "Amount must be positive");
         
@@ -522,8 +521,6 @@ contract MockRewardsController {
      * @notice Claims rewards for assets
      * @dev Mock function for testing purposes
      * @param assets The assets to claim rewards for
-     * @param amount The amount to claim
-     * @param to The address to send rewards to
      * @return The total amount claimed
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
@@ -536,8 +533,8 @@ contract MockRewardsController {
      */
     function claimRewards(
         address[] calldata assets,
-        uint256 amount,
-        address to
+        uint256 /* amount */,
+        address /* to */
     ) external returns (uint256) {
         uint256 totalClaimed = 0;
         for (uint256 i = 0; i < assets.length; i++) {
@@ -554,7 +551,6 @@ contract MockRewardsController {
      * @notice Gets user rewards for assets
      * @dev Mock function for testing purposes
      * @param assets The assets to get rewards for
-     * @param user The user address
      * @return The rewards for each asset
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
@@ -567,7 +563,7 @@ contract MockRewardsController {
      */
     function getUserRewards(
         address[] calldata assets,
-        address user
+        address /* user */
     ) external view returns (uint256[] memory) {
         uint256[] memory rewards = new uint256[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {

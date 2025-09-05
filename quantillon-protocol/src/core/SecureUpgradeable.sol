@@ -31,7 +31,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     event TimelockSet(address indexed timelock);
     event SecureUpgradesToggled(bool enabled);
-    event SecureUpgradeAuthorized(address indexed newImplementation, address indexed authorizedBy);
+    event SecureUpgradeAuthorized(address indexed newImplementation, address indexed authorizedBy, string description);
     
     // ============ Modifiers ============
     
@@ -176,7 +176,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         _authorizeUpgrade(newImplementation);
         upgradeToAndCall(newImplementation, "");
         
-        emit SecureUpgradeAuthorized(newImplementation, msg.sender);
+        emit SecureUpgradeAuthorized(newImplementation, msg.sender, description);
     }
     
     // ============ Override Functions ============

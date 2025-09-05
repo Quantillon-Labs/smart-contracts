@@ -61,3 +61,12 @@ slither-cache/
 
 # Gas analysis reports
 gas-analysis/
+
+# Generated analysis files
+build-output.log
+test-output-with-warnings.log
+coverage_output.txt
+slither-report.txt
+warnings-analysis/
+gas-analysis-*.txt
+natspec-validation-report.txt

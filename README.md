@@ -144,11 +144,39 @@ forge build
 forge script script/deploy/DeployProtocol.s.sol --rpc-url http://localhost:8545 --broadcast
 ```
 
+### Development Tools
+
+The protocol includes comprehensive development and analysis tools:
+
+```bash
+# Code Quality & Analysis
+make gas-analysis      # Comprehensive gas optimization analysis
+make analyze-warnings  # Analyze and categorize build warnings
+make validate-natspec  # Validate NatSpec documentation coverage
+make slither          # Security vulnerability analysis
+
+# Documentation & Testing
+make docs             # Generate HTML documentation
+make test             # Run comprehensive test suite
+make coverage         # Generate test coverage report
+
+# Complete Development Pipeline
+make all              # Run all checks (build, test, coverage, docs, analysis)
+```
+
+**Key Features:**
+- **Gas Analysis**: Contract size optimization, function visibility analysis, storage layout optimization
+- **Warning Analysis**: Categorizes build warnings by type with actionable recommendations
+- **NatSpec Validation**: Ensures 100% documentation coverage for security audits
+- **Security Analysis**: Comprehensive vulnerability detection with Slither
+- **Documentation**: Auto-generated HTML documentation from NatSpec comments
+
 ## 🔒 Security
 
 - **Security Contact**: `team@quantillon.money`
 - **Security Features**: Role-based access control, reentrancy protection, emergency pause mechanisms
 - **Security Analysis**: Integrated Slither analysis with `make slither`
+- **Warning Analysis**: Comprehensive build warning analysis with `make analyze-warnings`
 
 For detailed security information, see the [main project README](./quantillon-protocol/README.md#security).
 

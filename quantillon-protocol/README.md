@@ -268,6 +268,31 @@ make slither
 - Code quality analysis
 - Best practice enforcement
 
+### Warning Analysis
+
+```bash
+# Analyze build warnings
+./scripts/analyze-warnings.sh
+
+# Or use the Makefile target
+make analyze-warnings
+```
+
+**Features:**
+- Categorizes warnings by type (unused variables, parameters, function mutability)
+- Identifies files with the most warnings
+- Provides actionable recommendations for fixing warnings
+- Generates organized reports in `warnings-analysis/` directory
+- Colorized output for better readability
+- Integration with CI/CD pipeline
+
+**Output Files:**
+- `warnings-analysis/warnings-summary.log` - Complete analysis summary
+- `warnings-analysis/warnings-unused-variables.log` - Unused variable warnings
+- `warnings-analysis/warnings-unused-parameters.log` - Unused parameter warnings
+- `warnings-analysis/warnings-function-mutability.log` - Function mutability warnings
+- `warnings-analysis/warnings-solver.log` - Solver/CHC warnings
+
 ### Documentation Generation
 
 ```bash
@@ -382,6 +407,7 @@ make docs           # Generate documentation
 make gas-analysis   # Comprehensive gas analysis
 make validate-natspec  # Validate NatSpec documentation
 make slither        # Security analysis
+make analyze-warnings  # Analyze build warnings
 
 # Quality Assurance
 make lint           # Code linting

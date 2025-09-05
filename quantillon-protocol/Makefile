@@ -1,7 +1,7 @@
 # Quantillon Protocol - Development Makefile
 # Integrates Foundry commands with Slither security analysis
 
-.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis
+.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings
 
 # Default target
 help:
@@ -21,6 +21,9 @@ help:
 	@echo ""
 	@echo "⛽ Gas Analysis:"
 	@echo "  make gas-analysis - Run comprehensive gas optimization analysis"
+	@echo ""
+	@echo "⚠️  Warning Analysis:"
+	@echo "  make analyze-warnings - Analyze and isolate build warnings"
 	@echo ""
 	@echo "📝 Documentation:"
 	@echo "  make docs            - Generate HTML documentation"
@@ -66,8 +69,14 @@ gas-analysis:
 	@cd "$(CURDIR)" && ./scripts/analyze-gas.sh
 	@echo "⛽ Gas analysis complete!"
 
+# Analyze build warnings
+analyze-warnings:
+	@echo "⚠️  Analyzing build warnings..."
+	@cd "$(CURDIR)" && ./scripts/analyze-warnings.sh
+	@echo "⚠️  Warning analysis complete!"
+
 # Run all checks
-all: build test coverage slither docs gas-analysis
+all: build test coverage slither docs gas-analysis analyze-warnings
 	@echo "🎯 All checks completed successfully!"
 
 # Install dependencies
@@ -90,5 +99,5 @@ validate-natspec:
 	@cd scripts && node validate-natspec.js
 
 # CI/CD pipeline command
-ci: build test slither validate-natspec gas-analysis
+ci: build test slither validate-natspec gas-analysis analyze-warnings
 	@echo "🚀 CI/CD pipeline completed!"

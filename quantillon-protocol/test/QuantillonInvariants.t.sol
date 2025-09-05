@@ -106,6 +106,18 @@ contract QuantillonInvariants is Test {
         _setupEssentialRoles();
     }
     
+    /**
+     * @notice Deploys essential contracts for invariant testing
+     * @dev Deploys only the most essential contracts for basic invariant testing
+     * @custom:security No security validations - test setup function
+     * @custom:validation No input validation - test setup function
+     * @custom:state-changes Deploys and initializes essential contracts
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test setup function
+     * @custom:access Internal - test setup function
+     * @custom:oracle No oracle dependencies
+     */
     function _deployEssentialContracts() internal {
         // Deploy only the most essential contracts for basic invariant testing
         // Deploy QTIToken
@@ -143,6 +155,18 @@ contract QuantillonInvariants is Test {
         qeuroToken = QEUROToken(address(qeuroProxy));
     }
     
+    /**
+     * @notice Sets up essential roles for invariant testing
+     * @dev Grants roles for essential contracts only
+     * @custom:security No security validations - test setup function
+     * @custom:validation No input validation - test setup function
+     * @custom:state-changes Grants roles to essential contracts
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test setup function
+     * @custom:access Internal - test setup function
+     * @custom:oracle No oracle dependencies
+     */
     function _setupEssentialRoles() internal {
         // Grant roles for essential contracts only
         vm.startPrank(admin);
@@ -631,7 +655,35 @@ contract QuantillonInvariants is Test {
 // =============================================================================
 
 interface IERC20 {
+    /**
+     * @notice Returns the balance of an account
+     * @dev Interface function for ERC20 balance query
+     * @param account The account to query
+     * @return The balance of the account
+     * @custom:security No security validations - interface function
+     * @custom:validation No input validation - interface function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - interface function
+     * @custom:oracle No oracle dependencies
+     */
     function balanceOf(address account) external view returns (uint256);
+    
+    /**
+     * @notice Returns the total supply of tokens
+     * @dev Interface function for ERC20 total supply query
+     * @return The total supply of tokens
+     * @custom:security No security validations - interface function
+     * @custom:validation No input validation - interface function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - interface function
+     * @custom:oracle No oracle dependencies
+     */
     function totalSupply() external view returns (uint256);
 }
 

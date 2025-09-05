@@ -2071,17 +2071,60 @@ contract MockERC20 {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     
+    /**
+     * @notice Initializes the mock ERC20 token
+     * @dev Mock function for testing purposes
+     * @param _name The name of the token
+     * @param _symbol The symbol of the token
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Sets name and symbol state variables
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     constructor(string memory _name, string memory _symbol) {
         name = _name;
         symbol = _symbol;
     }
     
+    /**
+     * @notice Mints tokens to an address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates balanceOf and totalSupply
+     * @custom:events Emits Transfer event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) public {
         balanceOf[to] += amount;
         totalSupply += amount;
         emit Transfer(address(0), to, amount);
     }
     
+    /**
+     * @notice Transfers tokens to an address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer succeeded
+     * @custom:security No security validations - test mock
+     * @custom:validation Validates sufficient balance
+     * @custom:state-changes Updates balanceOf mapping
+     * @custom:events Emits Transfer event
+     * @custom:errors Throws if insufficient balance
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) public returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -2090,12 +2133,43 @@ contract MockERC20 {
         return true;
     }
     
+    /**
+     * @notice Approves a spender to spend tokens
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve
+     * @param amount The amount of tokens to approve
+     * @return True if approval succeeded
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events Emits Approval event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) public returns (bool) {
         allowance[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
         return true;
     }
     
+    /**
+     * @notice Transfers tokens from one address to another
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return True if transfer succeeded
+     * @custom:security No security validations - test mock
+     * @custom:validation Validates sufficient balance and allowance
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events Emits Transfer event
+     * @custom:errors Throws if insufficient balance or allowance
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) public returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");

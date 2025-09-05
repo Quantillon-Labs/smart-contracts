@@ -143,6 +143,7 @@ library AccessControlLibrary {
      * @custom:errors Throws InvalidAddress if address is zero
      * @custom:reentrancy Not applicable - pure function
      * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function validateAddress(address addr) internal pure {
         if (addr == address(0)) {

@@ -170,6 +170,19 @@ contract ChainlinkOracle is
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
     TimeProvider public immutable timeProvider;
 
+    /**
+     * @notice Constructor for ChainlinkOracle contract
+     * @dev Initializes the TimeProvider and disables initializers for proxy pattern
+     * @param _timeProvider Address of the TimeProvider contract for centralized time management
+     * @custom:security Validates TimeProvider address is not zero
+     * @custom:validation Validates _timeProvider is not address(0)
+     * @custom:state-changes Sets timeProvider immutable variable and disables initializers
+     * @custom:events No events emitted
+     * @custom:errors Throws "Zero address" if _timeProvider is address(0)
+     * @custom:reentrancy Not applicable - constructor
+     * @custom:access Public - anyone can deploy
+     * @custom:oracle No oracle dependencies
+     */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(TimeProvider _timeProvider) {
         if (address(_timeProvider) == address(0)) revert("Zero address");
@@ -179,17 +192,19 @@ contract ChainlinkOracle is
 
     /**
      * @notice Initializes the oracle contract with Chainlink price feeds
-     * 
+     * @dev Sets up all core dependencies, roles, and default configuration parameters
      * @param admin Address with administrator privileges
      * @param _eurUsdPriceFeed Chainlink EUR/USD price feed address on Base
      * @param _usdcUsdPriceFeed Chainlink USDC/USD price feed address on Base
      * @param _treasury Treasury address for ETH recovery
-     * 
-     * @dev This function:
-     *      1. Configures access roles
-     *      2. Initializes Chainlink interfaces
-     *      3. Sets default price bounds
-     *      4. Performs an initial price update
+     * @custom:security Validates all addresses are not zero, grants admin roles
+     * @custom:validation Validates all input addresses are not address(0)
+     * @custom:state-changes Initializes all state variables, sets default price bounds
+     * @custom:events Emits PriceUpdated during initial price update
+     * @custom:errors Throws "Oracle: Admin cannot be zero" if admin is address(0)
+     * @custom:reentrancy Protected by initializer modifier
+     * @custom:access Public - only callable once during deployment
+     * @custom:oracle Initializes Chainlink price feed interfaces
      */
     function initialize(
         address admin,
@@ -253,14 +268,15 @@ contract ChainlinkOracle is
 
     /**
      * @notice Removes pause and resumes oracle operations
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Allows emergency role to unpause the oracle after resolving issues
+     * @custom:security Validates emergency role authorization
+     * @custom:validation No input validation required
+     * @custom:state-changes Removes pause state, resumes oracle operations
+     * @custom:events Emits Unpaused event from OpenZeppelin
+     * @custom:errors No errors thrown - safe unpause operation
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to EMERGENCY_ROLE
+     * @custom:oracle No oracle dependencies for unpause
      */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
@@ -272,12 +288,18 @@ contract ChainlinkOracle is
 
     /**
      * @notice Performs division with proper rounding to nearest integer
-     * 
+     * @dev Adds half the divisor before division to achieve proper rounding
      * @param a Numerator
      * @param b Denominator
      * @return Result of division with rounding to nearest
-     * 
-
+     * @custom:security Validates denominator is not zero to prevent division by zero
+     * @custom:validation Validates b > 0
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws "Oracle: Division by zero" if b is 0
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _divRound(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b > 0, "Oracle: Division by zero");
@@ -286,8 +308,17 @@ contract ChainlinkOracle is
 
     /**
      * @notice Validates if a timestamp is recent enough to prevent manipulation attacks
+     * @dev Checks timestamp is not in future and not too old beyond staleness + drift limits
      * @param reportedTime The timestamp to validate
      * @return true if the timestamp is valid, false otherwise
+     * @custom:security Validates timestamp is not in future and within acceptable age
+     * @custom:validation Validates reportedTime <= currentTime and within MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies for timestamp validation
      */
     function _validateTimestamp(uint256 reportedTime) internal view returns (bool) {
         // Reject if reported time is in the future
@@ -303,8 +334,15 @@ contract ChainlinkOracle is
 
     /**
      * @notice Updates and validates internal prices
-     * @dev Internal function called during initialization and resets
-     * @dev FIXED: No longer calls external functions on itself during initialization
+     * @dev Internal function called during initialization and resets, fetches fresh prices from Chainlink
+     * @custom:security Validates price data integrity, circuit breaker bounds, and deviation limits
+     * @custom:validation Validates roundId == answeredInRound, startedAt <= updatedAt, price > 0
+     * @custom:state-changes Updates lastValidEurUsdPrice, lastPriceUpdateTime, lastPriceUpdateBlock
+     * @custom:events Emits PriceUpdated with current prices or CircuitBreakerTriggered if invalid
+     * @custom:errors Throws "EUR/USD price data is stale" if roundId != answeredInRound
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle Fetches fresh prices from Chainlink EUR/USD and USDC/USD feeds
      */
     function _updatePrices() internal {
         // Fetch EUR/USD price data directly from Chainlink
@@ -385,10 +423,18 @@ contract ChainlinkOracle is
 
     /**
      * @notice Scale price to 18 decimals for consistency
+     * @dev Converts Chainlink price from its native decimals to 18 decimals with proper rounding
      * @param rawPrice Raw price from Chainlink
      * @param decimals Number of decimals in raw price
      * @return Scaled price with 18 decimals
-     * @dev FIXED: Now scales to 18 decimals instead of 8 to match contract expectations
+     * @custom:security Validates rawPrice > 0 and handles decimal conversion safely
+     * @custom:validation Validates rawPrice > 0, returns 0 if invalid
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe arithmetic used
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies for price scaling
      */
     function _scalePrice(int256 rawPrice, uint8 decimals) internal pure returns (uint256) {
         if (rawPrice <= 0) return 0;
@@ -414,13 +460,18 @@ contract ChainlinkOracle is
 
     /**
      * @notice Retrieves the oracle global health status
-     * 
+     * @dev Checks freshness of both price feeds and overall system health
      * @return isHealthy true if everything operates normally
      * @return eurUsdFresh true if EUR/USD price is fresh
      * @return usdcUsdFresh true if USDC/USD price is fresh
-     * 
-     * @dev Used by UI and monitoring systems to display real-time status
-     * @dev FIXED: No longer calls external functions on itself
+     * @custom:security Validates price feed connectivity and data integrity
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function with try/catch
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check oracle health
+     * @custom:oracle Checks connectivity to Chainlink EUR/USD and USDC/USD feeds
      */
     function getOracleHealth() 
         external 
@@ -471,12 +522,20 @@ contract ChainlinkOracle is
 
     /**
      * @notice Retrieves detailed information about the EUR/USD price
-     * 
+     * @dev Provides comprehensive EUR/USD price data including staleness and bounds checks
      * @return currentPrice Current price (may be fallback)
      * @return lastValidPrice Last validated price
      * @return lastUpdate Timestamp of last update
      * @return isStale true if the price is stale
      * @return withinBounds true if within acceptable bounds
+     * @custom:security Validates price feed data integrity and circuit breaker status
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function with try/catch
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query EUR/USD details
+     * @custom:oracle Fetches fresh data from Chainlink EUR/USD price feed
      */
     function getEurUsdDetails() 
         external 
@@ -551,12 +610,20 @@ contract ChainlinkOracle is
 
     /**
      * @notice Retrieves current configuration parameters
-     * 
+     * @dev Returns all key configuration values for oracle operations
      * @return minPrice Minimum EUR/USD price
      * @return maxPrice Maximum EUR/USD price
      * @return maxStaleness Maximum duration before staleness
      * @return usdcTolerance USDC tolerance in basis points
      * @return circuitBreakerActive Circuit breaker status
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query configuration
+     * @custom:oracle No oracle dependencies for configuration query
      */
     function getOracleConfig() 
         external 
@@ -580,11 +647,19 @@ contract ChainlinkOracle is
 
     /**
      * @notice Retrieves addresses of the Chainlink price feeds used
-     * 
+     * @dev Returns feed addresses and their decimal configurations
      * @return eurUsdFeedAddress EUR/USD feed address
      * @return usdcUsdFeedAddress USDC/USD feed address
      * @return eurUsdDecimals Number of decimals for the EUR/USD feed
      * @return usdcUsdDecimals Number of decimals for the USDC/USD feed
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query feed addresses
+     * @custom:oracle Queries decimal configuration from Chainlink feeds
      */
     function getPriceFeedAddresses() 
         external 
@@ -606,11 +681,19 @@ contract ChainlinkOracle is
 
     /**
      * @notice Tests connectivity to the Chainlink price feeds
-     * 
+     * @dev Tests if both price feeds are responding and returns latest round information
      * @return eurUsdConnected true if the EUR/USD feed responds
      * @return usdcUsdConnected true if the USDC/USD feed responds
      * @return eurUsdLatestRound Latest round ID for EUR/USD
      * @return usdcUsdLatestRound Latest round ID for USDC/USD
+     * @custom:security Validates price feed connectivity and data integrity
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function with try/catch
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can test feed connectivity
+     * @custom:oracle Tests connectivity to Chainlink EUR/USD and USDC/USD feeds
      */
     function checkPriceFeedConnectivity() 
         external 
@@ -678,8 +761,17 @@ contract ChainlinkOracle is
 
     /**
      * @notice Recovers tokens accidentally sent to the contract to treasury only
+     * @dev Emergency function to recover ERC20 tokens that are not part of normal operations
      * @param token Address of the token to recover
      * @param amount Amount to recover
+     * @custom:security Validates admin role and uses secure recovery library
+     * @custom:validation No input validation required - library handles validation
+     * @custom:state-changes Transfers tokens from contract to treasury
+     * @custom:events No events emitted - library handles events
+     * @custom:errors No errors thrown - library handles error cases
+     * @custom:reentrancy Not protected - library handles reentrancy
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle No oracle dependencies for token recovery
      */
     function recoverToken(
         address token,
@@ -758,14 +850,15 @@ contract ChainlinkOracle is
 
     /**
      * @notice Pauses all oracle operations
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @dev Emergency function to pause oracle in case of critical issues
+     * @custom:security Validates emergency role authorization
+     * @custom:validation No input validation required
+     * @custom:state-changes Sets pause state, stops oracle operations
+     * @custom:events Emits Paused event from OpenZeppelin
+     * @custom:errors No errors thrown - safe pause operation
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to EMERGENCY_ROLE
+     * @custom:oracle No oracle dependencies for pause
      */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
@@ -883,12 +976,17 @@ contract ChainlinkOracle is
 
     /**
      * @notice Updates price bounds for the circuit breaker
-     * 
+     * @dev Allows oracle manager to adjust price thresholds based on market conditions
      * @param _minPrice Minimum accepted EUR/USD price (18 decimals)
      * @param _maxPrice Maximum accepted EUR/USD price (18 decimals)
-     * 
-     * @dev Used to adjust thresholds according to market conditions.
-     *      Example: widen the range during a crisis.
+     * @custom:security Validates oracle manager role and price bounds constraints
+     * @custom:validation Validates _minPrice > 0, _maxPrice > _minPrice, _maxPrice < 10e18
+     * @custom:state-changes Updates minEurUsdPrice and maxEurUsdPrice
+     * @custom:events Emits PriceBoundsUpdated with new bounds
+     * @custom:errors Throws "Oracle: Min price must be positive" if _minPrice <= 0
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to ORACLE_MANAGER_ROLE
+     * @custom:oracle No oracle dependencies for bounds update
      */
     function updatePriceBounds(
         uint256 _minPrice,
@@ -906,7 +1004,16 @@ contract ChainlinkOracle is
 
     /**
      * @notice Updates the tolerance for USDC/USD
-     * @param newToleranceBps New tolerance in basis points
+     * @dev Allows oracle manager to adjust USDC price tolerance around $1.00
+     * @param newToleranceBps New tolerance in basis points (e.g., 200 = 2%)
+     * @custom:security Validates oracle manager role and tolerance constraints
+     * @custom:validation Validates newToleranceBps <= 1000 (max 10%)
+     * @custom:state-changes Updates usdcToleranceBps
+     * @custom:events No events emitted for tolerance update
+     * @custom:errors Throws "Oracle: Tolerance too high" if newToleranceBps > 1000
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to ORACLE_MANAGER_ROLE
+     * @custom:oracle No oracle dependencies for tolerance update
      */
     function updateUsdcTolerance(uint256 newToleranceBps) 
         external 
@@ -918,11 +1025,17 @@ contract ChainlinkOracle is
 
     /**
      * @notice Updates the Chainlink price feed addresses
-     * 
+     * @dev Allows oracle manager to update price feed addresses for maintenance or upgrades
      * @param _eurUsdFeed New EUR/USD feed address
      * @param _usdcUsdFeed New USDC/USD feed address
-     * 
-     * @dev Used if Chainlink updates its contracts or to switch to newer, more precise feeds
+     * @custom:security Validates oracle manager role and feed address constraints
+     * @custom:validation Validates both feed addresses are not address(0)
+     * @custom:state-changes Updates eurUsdPriceFeed and usdcUsdPriceFeed interfaces
+     * @custom:events Emits PriceFeedsUpdated with new feed addresses
+     * @custom:errors Throws "Oracle: EUR/USD feed cannot be zero" if _eurUsdFeed is address(0)
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to ORACLE_MANAGER_ROLE
+     * @custom:oracle Updates Chainlink price feed interface addresses
      */
     function updatePriceFeeds(
         address _eurUsdFeed,

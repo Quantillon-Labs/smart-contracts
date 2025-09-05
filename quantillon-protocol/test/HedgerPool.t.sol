@@ -25,7 +25,7 @@ import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
  *      - Administrative functions
  *      - Edge cases and security scenarios
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerPoolTestSuite is Test {

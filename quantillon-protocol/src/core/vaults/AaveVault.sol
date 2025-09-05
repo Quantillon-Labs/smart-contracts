@@ -18,7 +18,7 @@ import "../SecureUpgradeable.sol";
 
 /**
  * @title AaveVault
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IPool {
@@ -205,7 +205,7 @@ struct ReserveData {
  *      - Yield shift mechanism for yield distribution
  *      - Rewards controller for additional incentives
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract AaveVault is 

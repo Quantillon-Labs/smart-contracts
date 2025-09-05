@@ -16,7 +16,7 @@ import "forge-std/console.sol";
  *      5. User redeems QEURO
  *      6. Verify all balances and states
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract IntegrationTests is Test {

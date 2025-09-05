@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 /**
  * @title IstQEURO
  * @notice Interface for the stQEURO yield-bearing wrapper token (yield accrual mechanism)
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IstQEURO {

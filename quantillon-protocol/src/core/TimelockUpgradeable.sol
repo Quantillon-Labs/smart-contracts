@@ -8,7 +8,7 @@ import "../libraries/TimeProviderLibrary.sol";
 
 /**
  * @title TimelockUpgradeable
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  * @notice Secure upgrade mechanism with timelock and multi-sig requirements
  * @dev Replaces unrestricted upgrade capability with governance-controlled upgrades

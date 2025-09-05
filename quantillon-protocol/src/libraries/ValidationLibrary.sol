@@ -13,7 +13,7 @@ import "./ErrorLibrary.sol";
  *      - Balance and exposure validation functions
  *      - Array and position validation utilities
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library ValidationLibrary {

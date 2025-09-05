@@ -14,7 +14,7 @@ import "./ErrorLibrary.sol";
  *      - Reduces contract bytecode size through library extraction
  *      - Provides standardized error handling for access control
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library AccessControlLibrary {

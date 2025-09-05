@@ -367,7 +367,7 @@ contract MockStQEURO {
  *      - Access control
  *      - Edge cases and error conditions
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 contract YieldShiftTestSuite is Test {

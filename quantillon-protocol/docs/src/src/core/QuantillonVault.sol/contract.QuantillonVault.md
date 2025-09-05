@@ -1,11 +1,11 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
-Quantillon Labs
+Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Main vault managing QEURO minting against USDC collateral
 
@@ -64,7 +64,7 @@ Main vault managing QEURO minting against USDC collateral
 - Vault math library for precise calculations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -259,8 +259,28 @@ modifier flashLoanProtection();
 
 ### constructor
 
-**Note:**
-oz-upgrades-unsafe-allow: constructor
+Constructor for QuantillonVault contract
+
+*Disables initializers for security*
+
+**Notes:**
+- Disables initializers for security
+
+- No validation needed
+
+- Disables initializers
+
+- No events emitted
+
+- No errors thrown
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- No oracle dependencies
+
+- constructor
 
 
 ```solidity
@@ -277,6 +297,23 @@ Initializes the vault with contracts and parameters
 3. Default protocol parameters
 4. Security (pause, reentrancy, upgrades)*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Initializes all contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to initializer modifier
+
+- No oracle dependencies
+
 
 ```solidity
 function initialize(address admin, address _qeuro, address _usdc, address _oracle, address _timelock)
@@ -291,7 +328,7 @@ function initialize(address admin, address _qeuro, address _usdc, address _oracl
 |`_qeuro`|`address`|Address of the QEURO token contract|
 |`_usdc`|`address`|Address of the USDC token contract|
 |`_oracle`|`address`|Address of the Oracle contract|
-|`_timelock`|`address`||
+|`_timelock`|`address`|Address of the timelock contract|
 
 
 ### mintQEURO
@@ -307,6 +344,23 @@ Mints QEURO tokens by swapping USDC
 
 *Example: 1100 USDC → ~1000 QEURO (if EUR/USD = 1.10)
 Simple swap with protocol fee applied*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- No access restrictions
+
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -331,6 +385,23 @@ Redeems QEURO for USDC
 4. Update vault balances
 5. Transfer USDC to user*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- No access restrictions
+
+- Requires fresh oracle price data
+
 
 ```solidity
 function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentrant whenNotPaused flashLoanProtection;
@@ -346,6 +417,25 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 ### getVaultMetrics
 
 Retrieves the vault's global metrics
+
+*Returns comprehensive vault metrics for monitoring and analytics*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- No errors thrown
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -366,6 +456,25 @@ function getVaultMetrics()
 ### calculateMintAmount
 
 Calculates the amount of QEURO that can be minted for a given USDC amount
+
+*Calculates mint amount based on current oracle price and protocol fees*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- No errors thrown
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -388,6 +497,25 @@ function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 
 ### calculateRedeemAmount
 
 Calculates the amount of USDC received for a QEURO redemption
+
+*Calculates redeem amount based on current oracle price and protocol fees*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes
+
+- No events emitted
+
+- No errors thrown
+
+- No reentrancy protection needed
+
+- No access restrictions
+
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -414,6 +542,23 @@ Updates the vault parameters (governance only)
 *Safety constraints:
 - Fees <= 5% (user protection)*
 
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
+
 
 ```solidity
 function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external onlyRole(GOVERNANCE_ROLE);
@@ -430,22 +575,24 @@ function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external onl
 
 Updates the oracle address
 
+*Updates the oracle contract address for price feeds*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -466,6 +613,23 @@ Updates price deviation protection parameters
 
 *Note: This function requires converting constants to state variables
 for full implementation. Currently a placeholder for future governance control.*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -488,21 +652,21 @@ Withdraws accumulated protocol fees
 *Fees accumulate during minting and redemptions*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -522,19 +686,21 @@ Updates the last valid price timestamp when a valid price is fetched
 *Internal function to track price update timing for monitoring*
 
 **Notes:**
-- security: Updates timestamp only for valid price fetches
+- Updates timestamp only for valid price fetches
 
-- validation: No input validation required
+- No input validation required
 
-- state-changes: Updates lastPriceUpdateTime if price is valid
+- Updates lastPriceUpdateTime if price is valid
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity
@@ -554,21 +720,21 @@ Returns the current price protection status
 *Useful for monitoring and debugging price protection*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -596,21 +762,21 @@ Pauses all vault operations
 - Read functions still active*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -621,22 +787,24 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 
 Unpauses and resumes operations
 
+*Resumes all vault operations after emergency pause*
+
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -651,6 +819,23 @@ Recovers tokens accidentally sent to the vault to treasury only
 - Cannot recover own vault tokens
 - Tokens are sent to treasury address only
 - Only third-party tokens can be recovered*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to DEFAULT_ADMIN_ROLE
+
+- No oracle dependencies
 
 
 ```solidity
@@ -677,21 +862,21 @@ Recover ETH to treasury address only
 - Uses call() for reliable ETH transfers to any contract*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity

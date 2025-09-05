@@ -10,7 +10,7 @@ pragma solidity 0.8.24;
  *      - Min/max value selection for safe boundaries
  *      - Decimal scaling utilities for different token precisions
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library VaultMath {

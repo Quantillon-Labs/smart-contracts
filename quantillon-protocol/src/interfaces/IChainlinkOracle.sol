@@ -5,7 +5,7 @@ pragma solidity 0.8.24;
  * @title IChainlinkOracle
  * @notice Interface for the Quantillon Chainlink-based oracle
  * @dev Exposes read methods for prices and health, plus admin/emergency controls
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IChainlinkOracle {

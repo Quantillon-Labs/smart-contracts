@@ -11,7 +11,7 @@ pragma solidity 0.8.24;
  *      - Categorized errors for access control, validation, state, operations
  *      - Supports governance, vault, yield, and liquidation operations
  * 
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 library ErrorLibrary {

@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 /**
  * @title IYieldShift
  * @notice Interface for YieldShift dynamic yield redistribution
- * @author Quantillon Labs
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
 interface IYieldShift {

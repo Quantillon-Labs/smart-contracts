@@ -12,6 +12,28 @@ const parser = require('@solidity-parser/parser');
  * @custom:security-contact team@quantillon.money
  */
 
+/**
+ * @notice Finds the project root directory by looking for foundry.toml
+ * @return The absolute path to the project root
+ */
+function findProjectRoot() {
+    let currentDir = __dirname;
+    
+    while (currentDir !== path.dirname(currentDir)) {
+        const foundryToml = path.join(currentDir, 'foundry.toml');
+        if (fs.existsSync(foundryToml)) {
+            return currentDir;
+        }
+        currentDir = path.dirname(currentDir);
+    }
+    
+    // Fallback: assume project root is parent of scripts directory
+    return path.dirname(__dirname);
+}
+
+// Find project root
+const PROJECT_ROOT = findProjectRoot();
+
 // Configuration
 const CONFIG = {
     // Directories to scan (relative to project root)
@@ -245,28 +267,32 @@ function validateCommentCompleteness(comment, node) {
 
 /**
  * @notice Scans a directory for Solidity files
- * @param dirPath Directory path to scan
+ * @param dirPath Directory path to scan (relative to project root)
  * @return Array of file paths
  */
 function scanDirectory(dirPath) {
     const files = [];
+    const fullPath = path.isAbsolute(dirPath) ? dirPath : path.join(PROJECT_ROOT, dirPath);
     
-    if (!fs.existsSync(dirPath)) {
-        console.warn(`Directory ${dirPath} does not exist`);
-        return files;
+    if (!fs.existsSync(fullPath)) {
+        console.error(`❌ ERROR: Directory ${dirPath} does not exist`);
+        console.error(`   Full path: ${fullPath}`);
+        console.error(`   Project root: ${PROJECT_ROOT}`);
+        console.error(`   This is a critical path error - validation cannot continue`);
+        process.exit(1);
     }
     
-    const items = fs.readdirSync(dirPath);
+    const items = fs.readdirSync(fullPath);
     
     for (const item of items) {
-        const fullPath = path.join(dirPath, item);
-        const stat = fs.statSync(fullPath);
+        const itemFullPath = path.join(fullPath, item);
+        const stat = fs.statSync(itemFullPath);
         
         if (stat.isDirectory()) {
             // Recursively scan subdirectories
-            files.push(...scanDirectory(fullPath));
+            files.push(...scanDirectory(itemFullPath));
         } else if (stat.isFile() && CONFIG.extensions.includes(path.extname(item))) {
-            files.push(fullPath);
+            files.push(itemFullPath);
         }
     }
     
@@ -378,6 +404,9 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
 function main() {
     console.log('🔍 Quantillon Protocol NatSpec Validation\n');
     console.log('=' .repeat(60));
+    console.log(`📁 Project Root: ${PROJECT_ROOT}`);
+    console.log(`📁 Script Directory: ${__dirname}`);
+    console.log('');
     
     let totalFiles = 0;
     let totalFunctions = 0;
@@ -397,6 +426,14 @@ function main() {
             totalFunctions += result.totalFunctions;
             totalDocumented += result.documentedFunctions;
         }
+    }
+    
+    // Check if any files were found
+    if (totalFiles === 0) {
+        console.error('❌ ERROR: No Solidity files found in any configured directories');
+        console.error('   This indicates a critical path configuration error');
+        console.error('   Configured directories:', CONFIG.directories.join(', '));
+        process.exit(1);
     }
     
     // Calculate overall coverage
@@ -422,7 +459,7 @@ function main() {
     }
     
     // Write results to file
-    const outputFile = path.join(__dirname, '..', 'natspec-validation-report.txt');
+    const outputFile = path.join(PROJECT_ROOT, 'natspec-validation-report.txt');
     writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented, overallCoverage, outputFile);
     
     // Generate recommendations

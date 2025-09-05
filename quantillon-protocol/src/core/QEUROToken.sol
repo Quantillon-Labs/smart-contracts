@@ -331,6 +331,7 @@ contract QEUROToken is
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         treasury = _treasury;
     }
 
@@ -1243,6 +1244,7 @@ contract QEUROToken is
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

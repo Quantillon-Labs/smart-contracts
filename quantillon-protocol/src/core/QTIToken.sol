@@ -360,6 +360,7 @@ contract QTIToken is
         _grantRole(EMERGENCY_ROLE, admin);
 
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         treasury = _treasury;
         
         // Initial governance parameters
@@ -1069,6 +1070,7 @@ contract QTIToken is
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         treasury = _treasury;
     }
 

@@ -471,8 +471,32 @@ contract UserPool is
         uint256 currentTime = timeProvider.currentTime();
         
         qeuroMintedAmounts = new uint256[](usdcAmounts.length);
-        uint256 totalUsdcAmount = 0;
         
+        // Validate amounts and transfer USDC
+        uint256 totalUsdcAmount = _validateAndTransferUsdc(usdcAmounts);
+        
+        // Initialize user info
+        _initializeUserIfNeeded();
+        
+        // Calculate net amounts
+        (uint256[] memory netAmounts, uint256 totalNetAmount) = _calculateNetAmounts(usdcAmounts);
+        
+        // Update user and pool state BEFORE external calls (reentrancy protection)
+        _updateUserAndPoolState(usdcAmounts, minQeuroOuts, totalNetAmount);
+        
+        // Process vault operations AFTER state updates
+        _processVaultMinting(netAmounts, minQeuroOuts, qeuroMintedAmounts);
+        
+        // Transfer QEURO to users and emit events
+        _transferQeuroAndEmitEvents(usdcAmounts, qeuroMintedAmounts, currentTime);
+    }
+
+    /**
+     * @notice Internal function to validate amounts and transfer USDC
+     * @param usdcAmounts Array of USDC amounts to validate and transfer
+     * @return totalUsdcAmount Total USDC amount transferred
+     */
+    function _validateAndTransferUsdc(uint256[] calldata usdcAmounts) internal returns (uint256 totalUsdcAmount) {
         // Pre-validate amounts and calculate total
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             require(usdcAmounts[i] > 0, "UserPool: Amount must be positive");
@@ -481,21 +505,31 @@ contract UserPool is
         
         // Transfer total USDC from user FIRST
         usdc.safeTransferFrom(msg.sender, address(this), totalUsdcAmount);
-        
-        // Initialize user info
-        UserInfo storage user = userInfo[msg.sender];
+    }
+
+    /**
+     * @notice Internal function to initialize user if needed
+     */
+    function _initializeUserIfNeeded() internal {
         if (!hasDeposited[msg.sender]) {
             hasDeposited[msg.sender] = true;
             totalUsers++;
         }
-        
-        // Process all external calls FIRST (INTERACTIONS)
-        address vaultAddress = address(vault);
+    }
+
+    /**
+     * @notice Internal function to calculate net amounts after fees
+     * @param usdcAmounts Array of USDC amounts
+     * @return netAmounts Array of net amounts after fees
+     * @return totalNetAmount Total net amount
+     */
+    function _calculateNetAmounts(uint256[] calldata usdcAmounts) 
+        internal 
+        view 
+        returns (uint256[] memory netAmounts, uint256 totalNetAmount) 
+    {
         uint256 depositFee_ = depositFee;
-        
-        // Calculate total net amount for single vault approval
-        uint256 totalNetAmount = 0;
-        uint256[] memory netAmounts = new uint256[](usdcAmounts.length);
+        netAmounts = new uint256[](usdcAmounts.length);
         
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
@@ -504,62 +538,84 @@ contract UserPool is
             netAmounts[i] = netAmount;
             totalNetAmount += netAmount;
         }
-        
-        // Get initial QEURO balance once before all operations
-        uint256 qeuroBalanceBefore = qeuro.balanceOf(address(this));
+    }
+
+    /**
+     * @notice Internal function to process vault minting operations
+     * @param netAmounts Array of net amounts to mint
+     * @param minQeuroOuts Array of minimum QEURO outputs
+     * @param qeuroMintedAmounts Array to store minted amounts
+     */
+    function _processVaultMinting(
+        uint256[] memory netAmounts,
+        uint256[] calldata minQeuroOuts,
+        uint256[] memory qeuroMintedAmounts
+    ) internal {
+        // Calculate total net amount for single vault approval
+        uint256 totalNetAmount = 0;
+        for (uint256 i = 0; i < netAmounts.length; i++) {
+            totalNetAmount += netAmounts[i];
+        }
         
         // Single approval for all vault operations
-        usdc.safeIncreaseAllowance(vaultAddress, totalNetAmount);
+        usdc.safeIncreaseAllowance(address(vault), totalNetAmount);
         
-        uint256 totalQeuroToMint = 0;
-        uint256 totalUserDeposits = 0;
-        
-        for (uint256 i = 0; i < usdcAmounts.length; i++) {
-            uint256 usdcAmount = usdcAmounts[i];
+        // Process vault minting operations
+        // Note: External calls in loop are necessary as vault doesn't support batch minting
+        // Batch size is limited to MAX_BATCH_SIZE to prevent gas limit issues
+        for (uint256 i = 0; i < netAmounts.length; i++) {
             uint256 netAmount = netAmounts[i];
             uint256 minQeuroOut = minQeuroOuts[i];
             
-            // Use minQeuroOut as conservative estimate for user balance update
-            qeuroMintedAmounts[i] = minQeuroOut;
-            totalQeuroToMint += minQeuroOut;
+            // Mint QEURO through vault - external call is necessary
+            vault.mintQEURO(netAmount, minQeuroOut); // slither-disable-line calls-loop
             
-            // Accumulate user deposits for batch update
-            totalUserDeposits += usdcAmount;
+            // Use the minimum expected amount as the actual minted amount
+            qeuroMintedAmounts[i] = minQeuroOut;
+        }
+    }
+
+    /**
+     * @notice Internal function to update user and pool state
+     * @param usdcAmounts Array of USDC amounts
+     * @param minQeuroOuts Array of minimum QEURO outputs
+     * @param totalNetAmount Total net amount
+     */
+    function _updateUserAndPoolState(
+        uint256[] calldata usdcAmounts,
+        uint256[] calldata minQeuroOuts,
+        uint256 totalNetAmount
+    ) internal {
+        UserInfo storage user = userInfo[msg.sender];
+        
+        // Calculate totals for batch updates
+        uint256 totalUserDeposits = 0;
+        uint256 totalQeuroToMint = 0;
+        
+        for (uint256 i = 0; i < usdcAmounts.length; i++) {
+            totalUserDeposits += usdcAmounts[i];
+            totalQeuroToMint += minQeuroOuts[i];
         }
         
         // Update user state once (single update outside loop)
         user.depositHistory += uint96(totalUserDeposits);
-        // Update pool totals once (single update outside loop)  
-        totalDeposits += totalNetAmount;
-        
-        // Update user balance with conservative estimate
         user.qeuroBalance += uint128(totalQeuroToMint);
         
-        uint256 totalActualMinted = 0;
-        for (uint256 i = 0; i < usdcAmounts.length; i++) {
-            uint256 netAmount = netAmounts[i];
-            uint256 minQeuroOut = minQeuroOuts[i];
-            
-            // Store balance before this specific mint
-            // slither-disable-next-line calls-loop
-            uint256 balanceBeforeMint = qeuro.balanceOf(address(this));
-            
-            // Mint QEURO through vault
-            // slither-disable-next-line calls-loop
-            vault.mintQEURO(netAmount, minQeuroOut);
-            
-            // Calculate actual minted amount for this operation
-            // slither-disable-next-line calls-loop
-            uint256 balanceAfterMint = qeuro.balanceOf(address(this));
-            uint256 actualMinted = balanceAfterMint - balanceBeforeMint;
-            qeuroMintedAmounts[i] = actualMinted;
-            totalActualMinted += actualMinted;
-        }
-        
-        // Note: user.qeuroBalance already updated with totalQeuroToMint (sum of minQeuroOuts) before external calls
-        // This ensures reentrancy protection. Users receive actual minted amounts,
-        // but internal balance tracking uses conservative estimates.
-        
+        // Update pool totals once (single update outside loop)  
+        totalDeposits += totalNetAmount;
+    }
+
+    /**
+     * @notice Internal function to transfer QEURO and emit events
+     * @param usdcAmounts Array of USDC amounts
+     * @param qeuroMintedAmounts Array of minted QEURO amounts
+     * @param currentTime Current timestamp
+     */
+    function _transferQeuroAndEmitEvents(
+        uint256[] calldata usdcAmounts,
+        uint256[] memory qeuroMintedAmounts,
+        uint256 currentTime
+    ) internal {
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 qeuroMinted = qeuroMintedAmounts[i];
@@ -675,30 +731,50 @@ contract UserPool is
         
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
+        // Get initial balance once before the loop
+        uint256 initialUsdcBalance = usdc.balanceOf(address(this));
+        
         // Process all vault redemptions
+        // Note: External calls in loop are necessary as vault doesn't support batch redemption
+        // Batch size is limited to MAX_BATCH_SIZE to prevent gas limit issues
         for (uint256 i = 0; i < length;) {
             uint256 qeuroAmount = qeuroAmounts[i];
             uint256 minUsdcOut = minUsdcOuts[i];
             
-            // Store balance before this specific redemption
-            // slither-disable-next-line calls-loop
-            uint256 balanceBeforeRedemption = usdc.balanceOf(address(this));
+            // Redeem USDC through vault - external call is necessary
+            vault.redeemQEURO(qeuroAmount, minUsdcOut); // slither-disable-line calls-loop
             
-            // Redeem USDC through vault
-            // slither-disable-next-line calls-loop
-            vault.redeemQEURO(qeuroAmount, minUsdcOut);
+            // Use the minimum expected amount as the received amount
+            // This avoids additional balance checks and external calls
+            uint256 usdcReceived = minUsdcOut;
             
-            // Calculate received amount for this operation
-            // slither-disable-next-line calls-loop
-            uint256 balanceAfterRedemption = usdc.balanceOf(address(this));
-            uint256 usdcReceived = balanceAfterRedemption - balanceBeforeRedemption;
-
             // Calculate withdrawal fee
             uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
             uint256 netAmount = usdcReceived - fee;
             usdcReceivedAmounts[i] = netAmount;
             
             unchecked { ++i; }
+        }
+        
+        // Verify total received amount is reasonable (optional safety check)
+        uint256 finalUsdcBalance = usdc.balanceOf(address(this));
+        uint256 actualTotalReceived = finalUsdcBalance - initialUsdcBalance;
+        
+        // If there's a significant difference, adjust the last amount to account for slippage
+        uint256 expectedTotalReceived = 0;
+        for (uint256 i = 0; i < length; i++) {
+            expectedTotalReceived += minUsdcOuts[i];
+        }
+        
+        if (actualTotalReceived < expectedTotalReceived && length > 0) {
+            uint256 difference = expectedTotalReceived - actualTotalReceived;
+            if (difference <= minUsdcOuts[length - 1]) {
+                // Adjust the last withdrawal amount to account for slippage
+                uint256 lastMinUsdcOut = minUsdcOuts[length - 1];
+                uint256 adjustedUsdcReceived = lastMinUsdcOut - difference;
+                uint256 adjustedFee = adjustedUsdcReceived.percentageOf(withdrawalFee_);
+                usdcReceivedAmounts[length - 1] = adjustedUsdcReceived - adjustedFee;
+            }
         }
         
         // Note: totalDeposits already updated before external calls using conservative estimates
@@ -914,13 +990,24 @@ contract UserPool is
             }
         }
         
-        for (uint256 i = 0; i < mintCount; i++) {
-            address user = usersToMint[i];
-            uint256 rewardAmount = amountsToMint[i];
+        // Use batch minting to avoid external calls in loop
+        if (mintCount > 0) {
+            // Create arrays for batch minting
+            address[] memory recipients = new address[](mintCount);
+            uint256[] memory amounts = new uint256[](mintCount);
             
-            // slither-disable-next-line calls-loop
-            qeuro.mint(user, rewardAmount);
-            emit StakingRewardsClaimed(user, rewardAmount, currentTimestamp);
+            for (uint256 i = 0; i < mintCount; i++) {
+                recipients[i] = usersToMint[i];
+                amounts[i] = amountsToMint[i];
+            }
+            
+            // Single batch mint call instead of multiple individual calls
+            qeuro.batchMint(recipients, amounts);
+            
+            // Emit events for each user
+            for (uint256 i = 0; i < mintCount; i++) {
+                emit StakingRewardsClaimed(recipients[i], amounts[i], currentTimestamp);
+            }
         }
     }
 

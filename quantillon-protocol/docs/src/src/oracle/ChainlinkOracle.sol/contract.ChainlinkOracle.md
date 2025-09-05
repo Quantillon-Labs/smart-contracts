@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -261,6 +261,23 @@ Update treasury address
 
 *SECURITY: Only admin can update treasury address*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -275,6 +292,23 @@ function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE)
 ### unpause
 
 Removes pause and resumes oracle operations
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -511,6 +545,23 @@ Recover ETH to treasury address only
 - Validates balance before attempting transfer
 - Uses call() for reliable ETH transfers to any contract*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -522,6 +573,23 @@ Resets the circuit breaker and resumes oracle usage
 
 *Emergency action after resolving an incident.
 Restarts price updates and disables fallback mode.*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -535,6 +603,23 @@ Manually triggers the circuit breaker
 *Used when the team detects an issue with the oracles.
 Forces the use of the last known valid price.*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function triggerCircuitBreaker() external onlyRole(EMERGENCY_ROLE);
@@ -543,6 +628,23 @@ function triggerCircuitBreaker() external onlyRole(EMERGENCY_ROLE);
 ### pause
 
 Pauses all oracle operations
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

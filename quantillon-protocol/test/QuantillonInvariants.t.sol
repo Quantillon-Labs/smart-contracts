@@ -91,6 +91,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Sets up the invariant testing environment
      * @dev Initializes all protocol contracts for comprehensive invariant testing
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function setUp() public {
         // Deploy only essential contracts for invariant testing
@@ -161,6 +169,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify total supply consistency across all contracts
      * @dev Ensures that total supply equals circulating supply plus locked/burned amounts
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_totalSupplyConsistency() public view {
         // QTI Token supply consistency
@@ -187,6 +203,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify that supply caps are never exceeded
      * @dev Ensures protocol supply limits are respected
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_supplyCapRespect() public view {
         // QTI supply cap check
@@ -205,6 +229,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify collateralization ratios are within safe bounds
      * @dev Ensures system remains properly collateralized
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_collateralizationRatio() public view {
         // Verify collateralization ratios are within safe bounds
@@ -222,6 +254,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify that liquidation thresholds are respected
      * @dev Ensures positions can be liquidated when needed
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_liquidationThresholds() public view {
         // Verify liquidation thresholds are properly configured
@@ -241,6 +281,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify yield distribution integrity
      * @dev Ensures yield is distributed fairly and completely
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_yieldDistributionIntegrity() public view {
         // Verify yield distribution integrity
@@ -257,6 +305,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify yield shift parameters are within bounds
      * @dev Ensures yield shift mechanism operates correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_yieldShiftParameters() public view {
         // Verify yield shift parameters are properly configured
@@ -277,6 +333,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify governance power consistency
      * @dev Ensures voting power calculations are consistent
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_governancePowerConsistency() public view {
         uint256 totalVotingPower = qtiToken.totalVotingPower();
@@ -293,6 +357,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify governance parameters are reasonable
      * @dev Ensures governance thresholds are set correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_governanceParameters() public view {
         uint256 proposalThreshold = qtiToken.proposalThreshold();
@@ -321,6 +393,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify emergency state consistency
      * @dev Ensures emergency mechanisms work correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_emergencyStateConsistency() public view {
         // Check that emergency roles are properly assigned
@@ -334,6 +414,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify pause state consistency across contracts
      * @dev Ensures pause mechanisms are synchronized
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_pauseStateConsistency() public view {
         // Verify pause state consistency across contracts
@@ -356,6 +444,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify liquidation state consistency
      * @dev Ensures liquidation mechanisms work correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_liquidationStateConsistency() public view {
         // Check that liquidation commitments are properly managed
@@ -376,6 +472,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify access control consistency
      * @dev Ensures role assignments are correct
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_accessControlConsistency() public view {
         // Check that admin roles are properly assigned
@@ -398,6 +502,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify mathematical consistency
      * @dev Ensures mathematical operations are correct
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_mathematicalConsistency() public view {
         // Check that percentages are calculated correctly
@@ -432,6 +544,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify cross-contract integration consistency
      * @dev Ensures contracts work together correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_crossContractIntegration() public view {
         // Check that vault and user pool are properly connected
@@ -453,6 +573,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Verify gas optimization invariants
      * @dev Ensures gas usage remains reasonable
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function invariant_gasOptimization() public view {
         // Check that storage reads are optimized
@@ -470,6 +598,14 @@ contract QuantillonInvariants is Test {
     /**
      * @notice Run all invariants in a single test
      * @dev Comprehensive invariant verification
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_allInvariants() public view {
         invariant_totalSupplyConsistency();

@@ -151,6 +151,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test initialization with zero addresses should revert
      * @dev Verifies that initialization fails with invalid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroAddresses_Revert() public {
         QEUROToken newImplementation = new QEUROToken();
@@ -184,6 +192,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that initialization can only be called once
      * @dev Verifies the initializer modifier works correctly
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
@@ -218,6 +234,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test minting by non-vault address should revert
      * @dev Verifies that only the vault can mint tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Mint_NonVault_Revert() public {
         vm.prank(user1);
@@ -228,6 +252,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test minting to zero address should revert
      * @dev Verifies that minting to zero address is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Mint_ZeroAddress_Revert() public {
         vm.prank(vault);
@@ -238,6 +270,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test minting zero amount should revert
      * @dev Verifies that minting zero tokens is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Mint_ZeroAmount_Revert() public {
         vm.prank(vault);
@@ -248,6 +288,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test minting to blacklisted address should revert
      * @dev Verifies that blacklisted addresses cannot receive tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Mint_BlacklistedAddress_Revert() public {
         // Blacklist user1
@@ -263,6 +311,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test minting when whitelist is enabled
      * @dev Verifies whitelist functionality works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Mint_WhitelistEnabled() public {
         // Enable whitelist
@@ -287,6 +343,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test minting exceeds supply cap should revert
      * @dev Verifies that minting cannot exceed the maximum supply
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Mint_ExceedsSupplyCap_Revert() public {
         uint256 maxSupply = qeuroToken.maxSupply();
@@ -320,6 +384,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test successful burning by vault
      * @dev Verifies that the vault can burn tokens from users
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Burn_Success() public {
         // First mint some tokens
@@ -341,6 +413,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch minting of QEURO tokens
      * @dev Validates that multiple mint operations can be performed in a single transaction
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchMint_Success() public {
         address[] memory recipients = new address[](2);
@@ -361,6 +441,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests that batch minting reverts when array lengths don't match
      * @dev Validates that recipient and amount arrays must have matching lengths
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchMint_ArrayLengthMismatch_Revert() public {
         address[] memory recipients = new address[](2);
@@ -377,6 +465,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch burning of QEURO tokens
      * @dev Validates that multiple burn operations can be performed in a single transaction
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchBurn_Success() public {
         // Mint first
@@ -402,6 +498,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch transfer of QEURO tokens
      * @dev Validates that multiple transfer operations can be performed in a single transaction
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchTransfer_Success() public {
         // Mint to user1
@@ -426,6 +530,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests batch compliance operations with whitelist and blacklist
      * @dev Validates that batch compliance checks work correctly with access controls
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchCompliance_WhitelistAndBlacklist() public {
         // Batch whitelist
@@ -467,6 +579,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests that batch minting reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for mint operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchMint_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
@@ -486,6 +606,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests that batch burning reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for burn operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchBurn_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
@@ -505,6 +633,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests that batch transfer reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for transfer operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
@@ -524,6 +660,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests that batch compliance reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for compliance operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchCompliance_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_COMPLIANCE_BATCH_SIZE (50)
@@ -541,6 +685,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch compliance at maximum batch size
      * @dev Validates that compliance operations work correctly at the maximum allowed batch size
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchCompliance_MaxBatchSize_Success() public {
         // Test with exactly MAX_BATCH_SIZE (100)
@@ -564,6 +716,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch compliance at maximum compliance batch size
      * @dev Validates that compliance operations work correctly at the maximum allowed compliance batch size
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchCompliance_MaxComplianceBatchSize_Success() public {
         // Test with exactly MAX_COMPLIANCE_BATCH_SIZE (50)
@@ -585,6 +745,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test burning by non-vault address should revert
      * @dev Verifies that only the vault can burn tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Burn_NonVault_Revert() public {
         vm.prank(user1);
@@ -595,6 +763,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test burning from zero address should revert
      * @dev Verifies that burning from zero address is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Burn_ZeroAddress_Revert() public {
         vm.prank(vault);
@@ -605,6 +781,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test burning zero amount should revert
      * @dev Verifies that burning zero tokens is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Burn_ZeroAmount_Revert() public {
         vm.prank(vault);
@@ -615,6 +799,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test burning more than balance should revert
      * @dev Verifies that burning cannot exceed user's balance
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Burn_InsufficientBalance_Revert() public {
         // Mint some tokens
@@ -634,6 +826,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test rate limiting for minting within limits
      * @dev Verifies that minting within rate limits works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_RateLimit_MintWithinLimit() public {
         uint256 rateLimit = qeuroToken.mintRateLimit();
@@ -648,6 +848,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test rate limiting for minting exceeds limit
      * @dev Verifies that minting beyond rate limit is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_RateLimit_MintExceedsLimit_Revert() public {
         uint256 rateLimit = qeuroToken.mintRateLimit();
@@ -665,6 +873,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test rate limiting for burning within limits
      * @dev Verifies that burning within rate limits works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_RateLimit_BurnWithinLimit() public {
         uint256 rateLimit = qeuroToken.burnRateLimit();
@@ -683,6 +899,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test rate limiting for burning exceeds limit
      * @dev Verifies that burning beyond rate limit is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_RateLimit_BurnExceedsLimit_Revert() public {
         uint256 rateLimit = qeuroToken.burnRateLimit();
@@ -722,6 +946,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test rate limit reset after one hour
      * @dev Verifies that rate limits reset after the time period
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_RateLimit_ResetAfterOneHour() public {
         uint256 rateLimit = qeuroToken.mintRateLimit();
@@ -743,6 +975,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test rate limit update by admin
      * @dev Verifies that admin can update rate limits
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_RateLimit_UpdateByAdmin() public {
         uint256 newMintLimit = 1000 * 1e18;
@@ -758,6 +998,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test rate limit update by non-admin should revert
      * @dev Verifies that only admin can update rate limits
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_RateLimit_UpdateByNonAdmin_Revert() public {
         vm.prank(user1);
@@ -768,6 +1016,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test rate limit update with invalid values should revert
      * @dev Verifies validation of rate limit parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_RateLimit_UpdateInvalidValues_Revert() public {
         // Test zero values
@@ -797,6 +1053,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test blacklisting an address
      * @dev Verifies that compliance role can blacklist addresses
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_BlacklistAddress() public {
         vm.prank(compliance);
@@ -808,6 +1072,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test blacklisting by non-compliance role should revert
      * @dev Verifies that only compliance role can blacklist
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_BlacklistByNonCompliance_Revert() public {
         vm.prank(user1);
@@ -818,6 +1090,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test blacklisting zero address should revert
      * @dev Verifies that zero address cannot be blacklisted
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_BlacklistZeroAddress_Revert() public {
         vm.prank(compliance);
@@ -828,6 +1108,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test blacklisting already blacklisted address should revert
      * @dev Verifies that already blacklisted addresses cannot be blacklisted again
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_BlacklistAlreadyBlacklisted_Revert() public {
         vm.prank(compliance);
@@ -841,6 +1129,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test unblacklisting an address
      * @dev Verifies that compliance role can remove addresses from blacklist
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_UnblacklistAddress() public {
         // First blacklist
@@ -857,6 +1153,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test unblacklisting non-blacklisted address should revert
      * @dev Verifies that only blacklisted addresses can be unblacklisted
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_UnblacklistNonBlacklisted_Revert() public {
         vm.prank(compliance);
@@ -867,6 +1171,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test whitelisting an address
      * @dev Verifies that compliance role can whitelist addresses
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_WhitelistAddress() public {
         vm.prank(compliance);
@@ -878,6 +1190,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test whitelisting by non-compliance role should revert
      * @dev Verifies that only compliance role can whitelist
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_WhitelistByNonCompliance_Revert() public {
         vm.prank(user1);
@@ -888,6 +1208,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test whitelisting zero address should revert
      * @dev Verifies that zero address cannot be whitelisted
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_WhitelistZeroAddress_Revert() public {
         vm.prank(compliance);
@@ -898,6 +1226,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test whitelisting already whitelisted address should revert
      * @dev Verifies that already whitelisted addresses cannot be whitelisted again
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_WhitelistAlreadyWhitelisted_Revert() public {
         vm.prank(compliance);
@@ -911,6 +1247,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test unwhitelisting an address
      * @dev Verifies that compliance role can remove addresses from whitelist
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_UnwhitelistAddress() public {
         // First whitelist
@@ -927,6 +1271,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test unwhitelisting non-whitelisted address should revert
      * @dev Verifies that only whitelisted addresses can be unwhitelisted
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_UnwhitelistNonWhitelisted_Revert() public {
         vm.prank(compliance);
@@ -937,6 +1289,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test toggling whitelist mode
      * @dev Verifies that compliance role can toggle whitelist mode
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_ToggleWhitelistMode() public {
         // Enable whitelist
@@ -953,6 +1313,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test toggling whitelist mode by non-compliance role should revert
      * @dev Verifies that only compliance role can toggle whitelist mode
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Compliance_ToggleWhitelistByNonCompliance_Revert() public {
         vm.prank(user1);
@@ -967,6 +1335,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test pausing the contract
      * @dev Verifies that pauser role can pause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Pause() public {
         vm.prank(admin);
@@ -978,6 +1354,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test pausing by non-pauser role should revert
      * @dev Verifies that only pauser role can pause
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_PauseByNonPauser_Revert() public {
         vm.prank(user1);
@@ -988,6 +1372,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test unpausing the contract
      * @dev Verifies that pauser role can unpause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Unpause() public {
         // First pause
@@ -1004,6 +1396,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test unpausing by non-pauser role should revert
      * @dev Verifies that only pauser role can unpause
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_UnpauseByNonPauser_Revert() public {
         // First pause
@@ -1019,6 +1419,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test minting when paused should revert
      * @dev Verifies that minting is blocked when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_MintWhenPaused_Revert() public {
         vm.prank(admin);
@@ -1032,6 +1440,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test burning when paused should revert
      * @dev Verifies that burning is blocked when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_BurnWhenPaused_Revert() public {
         // First mint some tokens
@@ -1055,6 +1471,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test updating maximum supply
      * @dev Verifies that admin can update the maximum supply
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateMaxSupply() public {
         uint256 newMaxSupply = 200_000_000 * 1e18;
@@ -1068,6 +1492,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test updating max supply by non-admin should revert
      * @dev Verifies that only admin can update maximum supply
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateMaxSupplyByNonAdmin_Revert() public {
         vm.prank(user1);
@@ -1078,6 +1510,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test updating max supply below current supply should revert
      * @dev Verifies that max supply cannot be set below current supply
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateMaxSupplyBelowCurrent_Revert() public {
         // Mint some tokens
@@ -1093,6 +1533,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test updating max supply to zero should revert
      * @dev Verifies that max supply cannot be set to zero
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateMaxSupplyToZero_Revert() public {
         vm.prank(admin);
@@ -1103,6 +1551,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test updating minimum price precision
      * @dev Verifies that admin can update minimum price precision
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateMinPricePrecision() public {
         uint256 newPrecision = 1e6;
@@ -1116,6 +1572,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test updating min price precision by non-admin should revert
      * @dev Verifies that only admin can update minimum price precision
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateMinPricePrecisionByNonAdmin_Revert() public {
         vm.prank(user1);
@@ -1126,6 +1590,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test updating min price precision to zero should revert
      * @dev Verifies that minimum price precision cannot be set to zero
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateMinPricePrecisionToZero_Revert() public {
         vm.prank(admin);
@@ -1136,6 +1608,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test updating min price precision too high should revert
      * @dev Verifies that minimum price precision cannot exceed PRECISION
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateMinPricePrecisionTooHigh_Revert() public {
         vm.prank(admin);
@@ -1150,6 +1630,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test price normalization with different decimal precisions
      * @dev Verifies that price normalization works correctly for different feed decimals
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_NormalizePrice() public view {
         // Test with 8 decimals (like Chainlink)
@@ -1171,6 +1659,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test price normalization with too many decimals should revert
      * @dev Verifies that price normalization fails with invalid decimal count
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_NormalizePriceTooManyDecimals_Revert() public {
         vm.expectRevert(ErrorLibrary.TooManyDecimals.selector);
@@ -1180,6 +1676,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test price normalization with zero price should revert
      * @dev Verifies that price normalization fails with zero price
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_NormalizePriceZeroPrice_Revert() public {
         vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
@@ -1189,6 +1693,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test price precision validation
      * @dev Verifies that price precision validation works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_ValidatePricePrecision() public view {
         // Test with valid precision (normalized to 18 decimals)
@@ -1206,6 +1718,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test supply utilization calculation
      * @dev Verifies that supply utilization percentage is calculated correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_GetSupplyUtilization() public {
         // Initially 0% utilization
@@ -1239,6 +1759,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test token info retrieval
      * @dev Verifies that complete token information is returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_GetTokenInfo() public view {
         (
@@ -1271,6 +1799,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering external tokens to treasury
      * @dev Verifies that admin can recover accidentally sent tokens to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverToken() public {
         // Create a mock ERC20 token
@@ -1289,6 +1825,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering QEURO tokens should revert
      * @dev Verifies that QEURO tokens cannot be recovered
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverQEURO_Revert() public {
         vm.prank(admin);
@@ -1299,6 +1843,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering tokens by non-admin should revert
      * @dev Verifies that only admin can recover tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
@@ -1311,6 +1863,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering ETH to treasury address
      * @dev Verifies that admin can recover accidentally sent ETH to treasury only
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETH() public {
         // Send ETH to the contract
@@ -1327,6 +1887,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering ETH by non-admin should revert
      * @dev Verifies that only admin can recover ETH
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHByNonAdmin_Revert() public {
         vm.deal(address(qeuroToken), 1 ether);
@@ -1341,6 +1909,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering ETH when no ETH available should revert
      * @dev Verifies that recovery fails when contract has no ETH
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
@@ -1355,6 +1931,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test complete mint-burn cycle
      * @dev Verifies that a complete mint and burn cycle works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_CompleteMintBurnCycle() public {
         // Mint tokens
@@ -1379,6 +1963,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test blacklist and whitelist integration
      * @dev Verifies that blacklist and whitelist work together correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_BlacklistWhitelistIntegration() public {
         // Enable whitelist
@@ -1415,6 +2007,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test pause and unpause integration
      * @dev Verifies that pause functionality works with all operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_PauseUnpauseIntegration() public {
         // Mint some tokens

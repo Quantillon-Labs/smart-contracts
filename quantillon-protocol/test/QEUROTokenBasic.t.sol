@@ -21,6 +21,14 @@ contract QEUROTokenBasicTest is Test {
     /**
      * @notice Sets up the test environment with QEURO token deployment and initialization
      * @dev Deploys implementation, creates proxy, and initializes with test parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function setUp() public {
         // Deploy implementation
@@ -49,6 +57,14 @@ contract QEUROTokenBasicTest is Test {
     /**
      * @notice Test successful contract initialization
      * @dev Verifies proper initialization with valid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         assertEq(qeuroToken.name(), "Quantillon Euro");
@@ -60,6 +76,14 @@ contract QEUROTokenBasicTest is Test {
     /**
      * @notice Test token minting with valid parameters
      * @dev Verifies that tokens can be minted successfully
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testMint_WithValidParameters_ShouldMintTokens() public {
         vm.prank(vault);

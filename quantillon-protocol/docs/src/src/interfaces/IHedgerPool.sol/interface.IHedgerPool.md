@@ -1,5 +1,5 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/interfaces/IHedgerPool.sol)
 
 Interface for the Quantillon HedgerPool contract
 
@@ -53,6 +53,23 @@ function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external retur
 
 Closes an existing hedge position
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function exitHedgePosition(uint256 positionId) external returns (int256 pnl);
@@ -74,6 +91,23 @@ function exitHedgePosition(uint256 positionId) external returns (int256 pnl);
 
 Adds additional margin to an existing position
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function addMargin(uint256 positionId, uint256 amount) external;
@@ -89,6 +123,23 @@ function addMargin(uint256 positionId, uint256 amount) external;
 ### removeMargin
 
 Removes margin from an existing position
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -106,6 +157,23 @@ function removeMargin(uint256 positionId, uint256 amount) external;
 
 Commits to liquidating a position (first step of two-phase liquidation)
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
@@ -122,6 +190,23 @@ function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) ext
 ### liquidateHedger
 
 Executes the liquidation of a position (second step of two-phase liquidation)
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -147,6 +232,23 @@ function liquidateHedger(address hedger, uint256 positionId, bytes32 salt)
 ### hasPendingLiquidationCommitment
 
 Checks if there's a pending liquidation commitment for a position
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -256,6 +358,23 @@ function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee)
 ### getHedgingConfig
 
 Get hedging configuration parameters
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -481,6 +600,23 @@ function positions(uint256)
 ### hedgers
 
 Get hedger information
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

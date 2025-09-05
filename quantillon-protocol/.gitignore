@@ -22,6 +22,12 @@ env/
 env.bak/
 .venv.bak/
 
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
 # Python cache and compiled files
 __pycache__/
 *.py[cod]

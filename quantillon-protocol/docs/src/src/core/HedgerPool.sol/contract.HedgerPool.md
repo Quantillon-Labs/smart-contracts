@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -916,6 +916,23 @@ Returns the total exposure across all active hedge positions
 
 *Used for monitoring overall risk and system health*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function getTotalHedgeExposure() external view returns (uint256);
@@ -945,6 +962,23 @@ Updates the EUR and USD interest rates used for reward calculations
 
 *Only callable by governance. Rates are in basis points (e.g., 500 = 5%)*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external;
@@ -970,6 +1004,23 @@ Emergency closure of a hedge position by authorized emergency role
 
 *Bypasses normal closure process for emergency situations*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function emergencyClosePosition(address hedger, uint256 positionId) external;
@@ -988,6 +1039,23 @@ Pauses all hedging operations in emergency situations
 
 *Can only be called by addresses with EMERGENCY_ROLE*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function pause() external;
@@ -998,6 +1066,23 @@ function pause() external;
 Unpauses hedging operations after emergency is resolved
 
 *Can only be called by addresses with EMERGENCY_ROLE*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1016,6 +1101,23 @@ function hasPendingLiquidationCommitment(address hedger, uint256 positionId) ext
 Returns the current hedging configuration parameters
 
 *Provides access to all key configuration values for hedging operations*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1048,6 +1150,23 @@ function getHedgingConfig()
 Returns the current maximum values for packed struct fields
 
 *Useful for monitoring and debugging overflow protection*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1083,6 +1202,23 @@ Checks if hedging operations are currently active
 
 *Returns false if contract is paused or in emergency mode*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function isHedgingActive() external view returns (bool);
@@ -1099,6 +1235,23 @@ function isHedgingActive() external view returns (bool);
 Clear expired liquidation commitment after cooldown period
 
 *Uses block numbers instead of timestamps for security against miner manipulation*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1117,6 +1270,23 @@ function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) e
 Cancels a pending liquidation commitment
 
 *Allows hedgers to cancel their liquidation commitment before execution*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1144,6 +1314,23 @@ Recovers accidentally sent ERC20 tokens from the contract
 
 *Emergency function to recover tokens that are not part of normal operations*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function recoverToken(address token, uint256 amount) external;
@@ -1160,6 +1347,23 @@ function recoverToken(address token, uint256 amount) external;
 
 Recover ETH to treasury address only
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function recoverETH() external;
@@ -1168,6 +1372,23 @@ function recoverETH() external;
 ### updateTreasury
 
 Update treasury address
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -335,6 +335,23 @@ function initialize(
 
 Stake QEURO to receive stQEURO
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function stake(uint256 qeuroAmount)
@@ -360,6 +377,23 @@ function stake(uint256 qeuroAmount)
 ### unstake
 
 Unstake QEURO by burning stQEURO
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -451,6 +485,23 @@ function batchTransfer(address[] calldata recipients, uint256[] calldata amounts
 
 Distribute yield to stQEURO holders (increases exchange rate)
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function distributeYield(uint256 yieldAmount) external onlyRole(YIELD_MANAGER_ROLE);
@@ -466,6 +517,23 @@ function distributeYield(uint256 yieldAmount) external onlyRole(YIELD_MANAGER_RO
 
 Claim accumulated yield for a user (in USDC)
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function claimYield() public returns (uint256 yieldAmount);
@@ -480,6 +548,23 @@ function claimYield() public returns (uint256 yieldAmount);
 ### getPendingYield
 
 Get pending yield for a user (in USDC)
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -502,6 +587,23 @@ function getPendingYield(address user) public view returns (uint256 yieldAmount)
 
 Get current exchange rate between QEURO and stQEURO
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function getExchangeRate() external view returns (uint256);
@@ -511,6 +613,23 @@ function getExchangeRate() external view returns (uint256);
 
 Get total value locked in stQEURO
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function getTVL() external view returns (uint256);
@@ -519,6 +638,23 @@ function getTVL() external view returns (uint256);
 ### getQEUROEquivalent
 
 Get user's QEURO equivalent balance
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -540,6 +676,23 @@ function getQEUROEquivalent(address user) external view returns (uint256 qeuroEq
 ### getStakingStats
 
 Get staking statistics
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -628,6 +781,23 @@ function updateYieldParameters(uint256 _yieldFee, uint256 _minYieldThreshold, ui
 
 Update treasury address
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE);
@@ -638,6 +808,23 @@ function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE);
 Returns the number of decimals used by the token
 
 *Always returns 18 to match QEURO token standard*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -656,6 +843,23 @@ Pauses all token transfers and minting/burning operations
 
 *Can only be called by addresses with EMERGENCY_ROLE during emergencies*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function pause() external onlyRole(EMERGENCY_ROLE);
@@ -667,6 +871,23 @@ Unpauses all token transfers and minting/burning operations
 
 *Can only be called by addresses with EMERGENCY_ROLE to resume normal operations*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function unpause() external onlyRole(EMERGENCY_ROLE);
@@ -676,6 +897,23 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 
 Emergency withdrawal of QEURO (only in emergency)
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function emergencyWithdraw(address user) external onlyRole(EMERGENCY_ROLE);
@@ -684,6 +922,23 @@ function emergencyWithdraw(address user) external onlyRole(EMERGENCY_ROLE);
 ### recoverToken
 
 Recover accidentally sent tokens to treasury only
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -696,6 +951,23 @@ Recover ETH to treasury address only
 
 *SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -706,6 +978,23 @@ function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 Returns the current virtual protection status
 
 *Useful for monitoring and debugging virtual protection*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

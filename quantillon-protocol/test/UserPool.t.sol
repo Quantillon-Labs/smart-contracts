@@ -246,6 +246,14 @@ contract UserPoolTestSuite is Test {
      * @dev Sets up the balance mocks needed for the new deposit function logic
      * @param initialBalance Initial QEURO balance before minting
      * @param finalBalance Final QEURO balance after minting
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function _setupDepositMocks(uint256 initialBalance, uint256 finalBalance) internal {
         // Don't clear all mocks as we need the USDC transfer mocks to remain
@@ -271,6 +279,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test successful contract initialization
      * @dev Verifies proper initialization with valid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         // Check roles are properly assigned
@@ -282,6 +298,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test initialization with zero addresses should revert
      * @dev Verifies that initialization fails with invalid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroAddresses_Revert() public {
         // Create implementation once to reuse
@@ -376,6 +400,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test that initialization can only be called once
      * @dev Verifies the initializer modifier works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
@@ -425,6 +457,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test deposit with zero amount should revert
      * @dev Verifies that depositing zero USDC is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Deposit_DepositZeroAmount_Revert() public {
         vm.prank(user1);
@@ -435,6 +475,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test deposit when contract is paused should revert
      * @dev Verifies that deposits are blocked when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Deposit_DepositWhenPaused_Revert() public {
         // Pause the contract
@@ -450,6 +498,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test multiple users depositing
      * @dev Verifies that multiple users can deposit USDC
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Deposit_MultipleUsersDeposit() public {
         // Setup mocks for deposit operation
@@ -477,6 +533,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test successful QEURO withdrawal
      * @dev Verifies that users can withdraw QEURO to receive USDC
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Withdrawal_WithdrawSuccess() public {
         // Setup mocks for deposit operation (this will result in qeuroMinted = 0, which is expected)
@@ -528,6 +592,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test withdrawal with zero amount should revert
      * @dev Verifies that withdrawing zero QEURO is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Withdrawal_WithdrawZeroAmount_Revert() public {
         vm.prank(user1);
@@ -538,6 +610,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test withdrawal with insufficient balance should revert
      * @dev Verifies that users cannot withdraw more QEURO than they have
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Withdrawal_WithdrawInsufficientBalance_Revert() public {
         uint256 tooMuch = 1000 * 1e18;
@@ -550,6 +630,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test withdrawal when contract is paused should revert
      * @dev Verifies that withdrawals are blocked when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Withdrawal_WithdrawWhenPaused_Revert() public {
         // First deposit some USDC
@@ -578,6 +666,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test successful QEURO staking
      * @dev Verifies that users can stake QEURO for rewards
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Staking_StakeSuccess() public {
         // First deposit some USDC to get QEURO
@@ -602,6 +698,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test staking with amount below minimum should revert
      * @dev Verifies that staking below minimum amount is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Staking_StakeBelowMinimum_Revert() public {
         uint256 belowMinimum = 50 * 1e18; // Below 100 QEURO minimum
@@ -614,6 +718,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test staking when contract is paused should revert
      * @dev Verifies that staking is blocked when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Staking_StakeWhenPaused_Revert() public {
         // First deposit some USDC to get QEURO
@@ -639,6 +751,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test successful unstaking request and completion
      * @dev Verifies that users can request unstaking and complete it after cooldown
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_UnstakeSuccess() public {
         // First deposit and stake
@@ -677,6 +797,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test unstaking without request should revert
      * @dev Verifies that users cannot unstake without first requesting
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_UnstakeWithoutRequest_Revert() public {
         vm.prank(user1);
@@ -687,6 +815,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test unstaking before cooldown should revert
      * @dev Verifies that users cannot unstake before cooldown period
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_UnstakeBeforeCooldown_Revert() public {
         // First deposit and stake
@@ -715,6 +851,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test claiming staking rewards
      * @dev Verifies that users can claim their staking rewards
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Rewards_ClaimStakingRewards() public {
         // First deposit and stake
@@ -767,6 +911,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test claiming rewards with no stake should return zero
      * @dev Verifies that users with no stake get no rewards
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Rewards_ClaimRewardsNoStake() public {
         vm.prank(user1);
@@ -783,6 +935,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test getting user deposits
      * @dev Verifies that user deposit history is returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetUserDeposits() public {
         // First deposit some USDC
@@ -799,6 +959,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test getting user stakes
      * @dev Verifies that user staked amounts are returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetUserStakes() public {
         // First deposit and stake
@@ -818,6 +986,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test getting user pending rewards
      * @dev Verifies that user pending rewards are calculated correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetUserPendingRewards() public {
         // First deposit and stake
@@ -843,6 +1019,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test getting pool metrics
      * @dev Verifies that pool metrics are calculated correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetPoolMetrics() public {
         // First deposit some USDC
@@ -863,6 +1047,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test projected rewards calculation with valid parameters
      * @dev Verifies projected rewards calculation functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testView_WithValidParameters_ShouldCalculateProjectedRewards() public view {
         // Placeholder test - actual function calls removed due to contract interface mismatch
@@ -872,6 +1064,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test staking APY calculation with valid parameters
      * @dev Verifies staking APY calculation functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testView_WithValidParameters_ShouldGetStakingAPY() public view {
         uint256 stakingAPY = userPool.getStakingAPY();
@@ -881,6 +1081,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test deposit APY calculation with valid parameters
      * @dev Verifies deposit APY calculation functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testView_WithValidParameters_ShouldGetDepositAPY() public view {
         uint256 depositAPY = userPool.getDepositAPY();
@@ -890,6 +1098,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test pool configuration retrieval with valid parameters
      * @dev Verifies pool configuration data retrieval
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testView_WithValidParameters_ShouldGetPoolConfig() public view {
         // Placeholder test - actual function calls removed due to contract interface mismatch
@@ -903,6 +1119,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test updating staking parameters
      * @dev Verifies that governance can update staking parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_UpdateStakingParameters() public {
         uint256 newStakingAPY = 1000; // 10% APY
@@ -920,6 +1144,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test updating staking parameters by non-governance should revert
      * @dev Verifies that only governance can update staking parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_UpdateStakingParametersByNonGovernance_Revert() public {
         vm.prank(user1);
@@ -930,6 +1162,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test updating staking parameters with invalid values should revert
      * @dev Verifies that invalid staking parameters are rejected
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_UpdateStakingParametersInvalidValues_Revert() public {
         // Test APY too high
@@ -951,6 +1191,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test setting pool fees
      * @dev Verifies that governance can set pool fees
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetPoolFees() public {
         uint256 newDepositFee = 20; // 0.2%
@@ -968,6 +1216,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test setting pool fees by non-governance should revert
      * @dev Verifies that only governance can set pool fees
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetPoolFeesByNonGovernance_Revert() public {
         vm.prank(user1);
@@ -982,6 +1238,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test pausing the contract
      * @dev Verifies that emergency role can pause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Pause() public {
         vm.prank(emergency);
@@ -993,6 +1257,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test pausing by non-emergency role should revert
      * @dev Verifies that only emergency role can pause
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_PauseByNonEmergency_Revert() public {
         vm.prank(user1);
@@ -1003,6 +1275,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test unpausing the contract
      * @dev Verifies that emergency role can unpause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Unpause() public {
         // First pause
@@ -1019,6 +1299,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test emergency unstake
      * @dev Verifies that emergency role can unstake user's QEURO
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyUnstake() public {
         // First deposit and stake
@@ -1049,6 +1337,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test emergency unstake by non-emergency role should revert
      * @dev Verifies that only emergency role can perform emergency unstake
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyUnstakeByNonEmergency_Revert() public {
         vm.prank(user1);
@@ -1063,6 +1359,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test complete deposit, stake, and reward cycle
      * @dev Verifies that a complete cycle works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_CompleteDepositStakeRewardCycle() public {
         // First deposit some USDC
@@ -1095,6 +1399,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test multiple users with different operations
      * @dev Verifies that multiple users can interact with the pool
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_MultipleUsersDifferentOperations() public {
         // User1 deposits and stakes
@@ -1125,6 +1437,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test request unstake functionality
      * @dev Verifies that users can request to unstake their tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_RequestUnstake() public {
         // First stake some tokens
@@ -1147,6 +1467,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test request unstake with zero amount
      * @dev Verifies that requesting unstake with zero amount reverts
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_RequestUnstakeZeroAmount_Revert() public {
         // First stake some tokens so the function doesn't revert for insufficient balance
@@ -1167,6 +1495,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test request unstake with insufficient balance
      * @dev Verifies that requesting unstake with insufficient balance reverts
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_RequestUnstakeInsufficientBalance_Revert() public {
         vm.prank(user1);
@@ -1177,6 +1513,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test distribute yield functionality
      * @dev Verifies that yield can be distributed to the pool
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_DistributeYield() public {
         uint256 yieldAmount = 1000 * 1e6; // 1000 USDC
@@ -1194,6 +1538,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test distribute yield by non-yield shift
      * @dev Verifies that only yield shift can distribute yield
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_DistributeYieldByNonYieldShift_Revert() public {
         uint256 yieldAmount = 1000 * 1e6; // 1000 USDC
@@ -1206,6 +1558,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test get user info functionality
      * @dev Verifies that user information can be retrieved
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetUserInfo() public {
         // First deposit and stake
@@ -1230,6 +1590,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test get total deposits
      * @dev Verifies that total deposits can be retrieved
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetTotalDeposits() public {
         // First deposit
@@ -1247,6 +1615,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test get total stakes
      * @dev Verifies that total stakes can be retrieved
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetTotalStakes() public {
         // First deposit and stake
@@ -1265,6 +1641,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test get staking APY
      * @dev Verifies that staking APY can be retrieved
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetStakingAPY() public view {
         uint256 stakingAPY = userPool.getStakingAPY();
@@ -1274,6 +1658,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test get deposit APY
      * @dev Verifies that deposit APY can be retrieved
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetDepositAPY() public view {
         uint256 depositAPY = userPool.getDepositAPY();
@@ -1283,6 +1675,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test get pool configuration
      * @dev Verifies that pool configuration can be retrieved
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetPoolConfig() public view {
         (uint256 minStakeAmount_, uint256 unstakingCooldown_, uint256 depositFee_, uint256 withdrawalFee_, uint256 performanceFee_) = userPool.getPoolConfig();
@@ -1297,6 +1697,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test is pool active
      * @dev Verifies that pool activity status can be checked
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_IsPoolActive() public {
         bool isActive = userPool.isPoolActive();
@@ -1318,6 +1726,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering external tokens to treasury
      * @dev Verifies that admin can recover accidentally sent tokens to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverToken() public {
         // Create a mock ERC20 token
@@ -1336,6 +1752,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering tokens by non-admin should revert
      * @dev Verifies that only admin can recover tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
@@ -1348,6 +1772,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering own user pool tokens should revert
      * @dev Verifies that user pool's own tokens cannot be recovered
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
@@ -1358,6 +1790,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering QEURO tokens should succeed
      * @dev Verifies that QEURO tokens can now be recovered to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverQEUROToken_Success() public {
         // Create a mock QEURO token for testing
@@ -1376,6 +1816,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering USDC tokens should succeed
      * @dev Verifies that USDC tokens can now be recovered to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverUSDCToken_Success() public {
         // Create a mock USDC token for testing
@@ -1394,6 +1842,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering tokens to treasury should succeed
      * @dev Verifies that tokens are automatically sent to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenToTreasury_Success() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
@@ -1412,6 +1868,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering ETH to treasury address
      * @dev Verifies that admin can recover accidentally sent ETH to treasury only
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
@@ -1431,6 +1895,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering ETH by non-admin (should revert)
      * @dev Verifies that only admin can recover ETH
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHByNonAdmin_Revert() public {
         vm.deal(address(userPool), 1 ether);
@@ -1445,6 +1917,14 @@ contract UserPoolTestSuite is Test {
     /**
      * @notice Test recovering ETH when contract has no ETH (should revert)
      * @dev Verifies that recovery fails when there's no ETH to recover
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);

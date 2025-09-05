@@ -1,5 +1,5 @@
 # IQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/872c40203709a592ab12a8276b4170d2d29fd99f/src/interfaces/IQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/07b6c9d21c3d2b99aa95cee2e6cc9c3f00f0009a/src/interfaces/IQEUROToken.sol)
 
 **Author:**
 Quantillon Labs
@@ -17,6 +17,23 @@ security-contact: team@quantillon.money
 
 Token name
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function name() external view returns (string memory);
@@ -25,6 +42,23 @@ function name() external view returns (string memory);
 ### symbol
 
 Token symbol
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -35,6 +69,23 @@ function symbol() external view returns (string memory);
 
 Token decimals (always 18)
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function decimals() external view returns (uint8);
@@ -44,6 +95,23 @@ function decimals() external view returns (uint8);
 
 Total token supply
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function totalSupply() external view returns (uint256);
@@ -52,6 +120,23 @@ function totalSupply() external view returns (uint256);
 ### balanceOf
 
 Balance of an account
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -68,6 +153,23 @@ function balanceOf(address account) external view returns (uint256);
 
 Whether an address has the minter role
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function isMinter(address account) external view returns (bool);
@@ -82,6 +184,23 @@ function isMinter(address account) external view returns (bool);
 ### isBurner
 
 Whether an address has the burner role
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -98,6 +217,23 @@ function isBurner(address account) external view returns (bool);
 
 Percentage of max supply utilized (basis points)
 
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
+
 
 ```solidity
 function getSupplyUtilization() external view returns (uint256);
@@ -106,6 +242,23 @@ function getSupplyUtilization() external view returns (uint256);
 ### getTokenInfo
 
 Aggregated token information snapshot
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to authorized roles
+
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

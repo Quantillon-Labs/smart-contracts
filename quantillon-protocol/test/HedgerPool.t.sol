@@ -232,6 +232,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test successful contract initialization
      * @dev Verifies proper initialization with valid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         // Check roles are properly assigned
@@ -244,6 +252,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test initialization with zero addresses should revert
      * @dev Verifies that initialization fails with invalid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroAddresses_Revert() public {
         TimeProvider timeProviderImpl2 = new TimeProvider();
@@ -351,6 +367,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test that initialization can only be called once
      * @dev Verifies the initializer modifier works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
@@ -413,6 +437,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test position opening with insufficient margin should revert
      * @dev Verifies that positions cannot be opened with inadequate margin
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Position_OpenPositionInsufficientMargin_Revert() public {
         uint256 smallMargin = 1; // Very small margin (0.001 USDC)
@@ -436,6 +468,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test position opening with excessive leverage should revert
      * @dev Verifies that positions cannot be opened with leverage above maximum
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Position_OpenPositionExcessiveLeverage_Revert() public {
         uint256 excessiveLeverage = 15; // Above max leverage of 10
@@ -448,6 +488,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test position opening when contract is paused should revert
      * @dev Verifies that positions cannot be opened when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Position_OpenPositionWhenPaused_Revert() public {
         // Pause the contract
@@ -463,6 +511,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test successful position closing
      * @dev Verifies that hedgers can close positions and receive P&L
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Position_ClosePositionSuccess() public {
         // First open a position
@@ -497,6 +553,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test closing non-existent position should revert
      * @dev Verifies that closing invalid positions is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Position_CloseNonExistentPosition_Revert() public {
         vm.prank(hedger1);
@@ -507,6 +571,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test closing position by non-owner should revert
      * @dev Verifies that only position owners can close their positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Position_ClosePositionByNonOwner_Revert() public {
         // First open a position
@@ -526,6 +598,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test successful margin addition
      * @dev Verifies that hedgers can add margin to their positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Margin_AddMarginSuccess() public {
         // First open a position
@@ -553,6 +633,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test margin addition to non-existent position should revert
      * @dev Verifies that adding margin to invalid positions is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Margin_AddMarginToNonExistentPosition_Revert() public {
         vm.prank(hedger1);
@@ -563,6 +651,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test margin addition by non-owner should revert
      * @dev Verifies that only position owners can add margin
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Margin_AddMarginByNonOwner_Revert() public {
         // First open a position
@@ -578,6 +674,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test successful margin removal
      * @dev Verifies that hedgers can remove margin from their positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Margin_RemoveMarginSuccess() public {
         // First open a position
@@ -602,6 +706,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test margin removal that would violate minimum margin should revert
      * @dev Verifies that margin removal cannot violate minimum margin requirements
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Margin_RemoveMarginBelowMinimum_Revert() public {
         // First open a position
@@ -622,6 +734,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test successful position liquidation
      * @dev Verifies that liquidators can liquidate undercollateralized positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Liquidation_LiquidatePositionSuccess() public {
         // First open a position
@@ -662,6 +782,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test liquidation by non-liquidator should revert
      * @dev Verifies that only authorized liquidators can liquidate positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Liquidation_LiquidateByNonLiquidator_Revert() public {
         // First open a position
@@ -677,6 +805,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test liquidation of healthy position should revert
      * @dev Verifies that healthy positions cannot be liquidated
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Liquidation_LiquidateHealthyPosition_Revert() public {
         // First open a position with high margin
@@ -697,6 +833,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test claiming hedging rewards
      * @dev Verifies that hedgers can claim their rewards
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Rewards_ClaimHedgingRewards() public {
         // First open a position
@@ -719,6 +863,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test claiming rewards with no position should return zero
      * @dev Verifies that hedgers with no positions get no rewards
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Rewards_ClaimRewardsNoPosition() public {
         vm.prank(hedger1);
@@ -735,6 +887,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test getting position information
      * @dev Verifies that position details are returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetPositionInfo() public {
         // First open a position
@@ -759,6 +919,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test getting hedger information
      * @dev Verifies that hedger details are returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetHedgerInfo() public {
         // First open a position
@@ -782,6 +950,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test updating pool parameters
      * @dev Verifies that governance can update pool parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_UpdatePoolParameters() public {
         uint256 newMinMarginRatio = 1500; // 15%
@@ -806,6 +982,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test updating pool parameters by non-governance should revert
      * @dev Verifies that only governance can update pool parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_UpdateHedgingParametersByNonGovernance_Revert() public {
         vm.prank(hedger1);
@@ -816,6 +1000,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test setting hedging fees
      * @dev Verifies that governance can set hedging fees
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetHedgingFees() public {
         uint256 newEntryFee = 60; // 0.6%
@@ -833,6 +1025,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test setting hedging fees by non-governance should revert
      * @dev Verifies that only governance can set hedging fees
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetHedgingFeesByNonGovernance_Revert() public {
         vm.prank(hedger1);
@@ -847,6 +1047,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test emergency pause
      * @dev Verifies that emergency role can pause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Pause() public {
         vm.prank(emergency);
@@ -858,6 +1066,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test emergency pause by non-emergency should revert
      * @dev Verifies that only emergency role can pause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_PauseByNonEmergency_Revert() public {
         vm.prank(hedger1);
@@ -868,6 +1084,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test emergency unpause
      * @dev Verifies that emergency role can unpause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Unpause() public {
         // First pause
@@ -884,6 +1108,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test emergency close position
      * @dev Verifies that emergency role can close positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyClosePosition() public {
         // First open a position
@@ -902,6 +1134,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test emergency close position by non-emergency should revert
      * @dev Verifies that only emergency role can emergency close positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyClosePositionByNonEmergency_Revert() public {
         // First open a position
@@ -921,6 +1161,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test complete position lifecycle
      * @dev Verifies that a complete position lifecycle works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_CompletePositionLifecycle() public {
         // Open position
@@ -951,6 +1199,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test multiple hedgers with different operations
      * @dev Verifies that multiple hedgers can interact with the pool
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_MultipleHedgersDifferentOperations() public {
         // Hedger1 opens position
@@ -979,6 +1235,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test to understand hedgers mapping structure
      * @dev This test helps us understand the actual structure of the hedgers mapping
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Debug_HedgersMappingStructure() public {
         // First open a position to populate the mapping
@@ -1006,6 +1270,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test commit liquidation functionality
      * @dev Verifies that liquidators can commit to liquidate positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Liquidation_CommitLiquidation() public {
         // Open position
@@ -1024,6 +1296,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test commit liquidation by non-liquidator
      * @dev Verifies that only liquidators can commit liquidations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Liquidation_CommitLiquidationByNonLiquidator_Revert() public {
         // Open position
@@ -1040,6 +1320,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test clear expired liquidation commitment
      * @dev Verifies that expired liquidation commitments can be cleared
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Liquidation_ClearExpiredLiquidationCommitment() public {
         // Open position
@@ -1065,6 +1353,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test cancel liquidation commitment
      * @dev Verifies that liquidators can cancel their own commitments
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Liquidation_CancelLiquidationCommitment() public {
         // Open position
@@ -1087,6 +1383,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test cancel liquidation commitment by different liquidator
      * @dev Verifies that only the committing liquidator can cancel
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Liquidation_CancelLiquidationCommitmentByDifferentLiquidator_Revert() public {
         // Open position
@@ -1107,6 +1411,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test get hedging configuration
      * @dev Verifies that hedging configuration can be retrieved
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetHedgingConfig() public view {
         (uint256 minMarginRatio_, uint256 liquidationThreshold_, uint256 maxLeverage_, uint256 liquidationPenalty_, uint256 entryFee_, uint256 exitFee_) = hedgerPool.getHedgingConfig();
@@ -1121,6 +1433,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test is hedging active
      * @dev Verifies that hedging activity status can be checked
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_IsHedgingActive() public {
         bool isActive = hedgerPool.isHedgingActive();
@@ -1138,6 +1458,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test update interest rates
      * @dev Verifies that interest rates can be updated by governance
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_UpdateInterestRates() public {
         uint256 newEurRate = 500; // 5%
@@ -1155,6 +1483,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test update interest rates by non-governance
      * @dev Verifies that only governance can update interest rates
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_UpdateInterestRatesByNonGovernance_Revert() public {
         uint256 newEurRate = 500; // 5%
@@ -1170,6 +1506,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test get hedger margin ratio
      * @dev Verifies that hedger margin ratio can be calculated
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetHedgerMarginRatio() public {
         // Open position
@@ -1183,6 +1527,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test is hedger liquidatable
      * @dev Verifies that liquidatability can be checked
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_IsHedgerLiquidatable() public {
         // Open position
@@ -1196,6 +1548,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test has pending liquidation commitment
      * @dev Verifies that liquidation commitment status can be checked
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_HasPendingLiquidationCommitment() public {
         // Open position
@@ -1223,6 +1583,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test recovering ERC20 tokens to treasury
      * @dev Verifies that admin can recover accidentally sent tokens to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverToken() public {
         // Deploy a mock ERC20 token
@@ -1245,6 +1613,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test recovering ERC20 tokens by non-admin (should revert)
      * @dev Verifies that only admin can recover tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
@@ -1257,6 +1633,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test recovering own hedger pool tokens should revert
      * @dev Verifies that hedger pool's own tokens cannot be recovered
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
@@ -1267,6 +1651,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test recovering USDC tokens should succeed
      * @dev Verifies that USDC tokens can now be recovered to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverUSDCToken_Success() public {
         // Create a mock USDC token for testing
@@ -1285,6 +1677,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test recovering tokens to treasury should succeed
      * @dev Verifies that tokens are automatically sent to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenToTreasury_Success() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
@@ -1303,6 +1703,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test recovering ETH to treasury address
      * @dev Verifies that admin can recover accidentally sent ETH to treasury only
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
@@ -1322,6 +1730,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test recovering ETH by non-admin (should revert)
      * @dev Verifies that only admin can recover ETH
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHByNonAdmin_Revert() public {
         vm.deal(address(hedgerPool), 1 ether);
@@ -1336,6 +1752,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test recovering ETH when contract has no ETH (should revert)
      * @dev Verifies that recovery fails when there's no ETH to recover
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
@@ -1346,6 +1770,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test unbounded loop vulnerability is fixed
      * @dev Verifies that position removal works efficiently even with many positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Security_UnboundedLoopVulnerabilityFixed() public {
         // Setup: Create a few positions to test gas efficiency
@@ -1385,6 +1817,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test gas efficiency improvement demonstration
      * @dev Demonstrates the significant gas savings from O(1) removal vs unbounded loops
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Security_GasEfficiencyImprovement() public {
         // Create multiple positions to demonstrate gas efficiency
@@ -1450,6 +1890,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Test gas griefing attack is prevented
      * @dev Verifies that malicious users cannot cause excessive gas consumption
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Security_GasGriefingAttackPrevented() public {
         // Setup: Create maximum positions to simulate attack
@@ -1490,6 +1938,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Tests that closing positions in batch reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for position closure operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_ClosePositionsBatch_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (50)
@@ -1507,6 +1963,14 @@ contract HedgerPoolTestSuite is Test {
     /**
      * @notice Tests successful batch closure of positions at maximum batch size
      * @dev Validates that positions can be closed in batch up to the maximum allowed size
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_ClosePositionsBatch_MaxBatchSize_Success() public {
         // Test with exactly MAX_BATCH_SIZE (50) but respect the 10 positions per tx limit

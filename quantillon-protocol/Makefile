@@ -1,7 +1,7 @@
 # Quantillon Protocol - Development Makefile
 # Integrates Foundry commands with Slither security analysis
 
-.PHONY: help build test coverage slither clean
+.PHONY: help build test coverage slither clean validate-natspec docs
 
 # Default target
 help:
@@ -18,6 +18,10 @@ help:
 	@echo "🔍 Security:"
 	@echo "  make slither    - Run Slither security analysis"
 	@echo "  make security   - Run comprehensive security checks"
+	@echo ""
+	@echo "📝 Documentation:"
+	@echo "  make docs            - Generate HTML documentation"
+	@echo "  make validate-natspec - Validate NatSpec documentation coverage"
 	@echo ""
 	@echo "🚀 Development:"
 	@echo "  make all        - Build, test, and analyze security"
@@ -56,7 +60,7 @@ security: build slither
 	@echo "🛡️  Security analysis complete!"
 
 # Run all checks
-all: build test coverage slither
+all: build test coverage slither docs
 	@echo "🎯 All checks completed successfully!"
 
 # Install dependencies
@@ -67,6 +71,17 @@ install:
 	python3 -m venv venv
 	./venv/bin/pip install -r requirements.txt
 
+# Generate HTML documentation
+docs:
+	@echo "📚 Generating HTML documentation..."
+	@cd "$(CURDIR)" && ./scripts/build-docs.sh
+
+# Validate NatSpec documentation
+validate-natspec:
+	@echo "📝 Validating NatSpec documentation..."
+	@cd scripts && npm install --silent
+	@cd scripts && node validate-natspec.js
+
 # CI/CD pipeline command
-ci: build test slither
+ci: build test slither validate-natspec
 	@echo "🚀 CI/CD pipeline completed!"

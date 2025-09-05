@@ -29,6 +29,14 @@ interface IstQEURO {
      * @notice Stake QEURO to receive stQEURO
      * @param qeuroAmount Amount of QEURO to stake
      * @return stQEUROAmount Amount of stQEURO received
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function stake(uint256 qeuroAmount) external returns (uint256 stQEUROAmount);
 
@@ -36,6 +44,14 @@ interface IstQEURO {
      * @notice Unstake QEURO by burning stQEURO
      * @param stQEUROAmount Amount of stQEURO to burn
      * @return qeuroAmount Amount of QEURO received
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function unstake(uint256 stQEUROAmount) external returns (uint256 qeuroAmount);
 
@@ -43,6 +59,14 @@ interface IstQEURO {
      * @notice Batch stake QEURO amounts
      * @param qeuroAmounts Array of QEURO amounts
      * @return stQEUROAmounts Array of stQEURO minted
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function batchStake(uint256[] calldata qeuroAmounts) external returns (uint256[] memory stQEUROAmounts);
 
@@ -50,23 +74,55 @@ interface IstQEURO {
      * @notice Batch unstake stQEURO amounts
      * @param stQEUROAmounts Array of stQEURO amounts
      * @return qeuroAmounts Array of QEURO returned
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function batchUnstake(uint256[] calldata stQEUROAmounts) external returns (uint256[] memory qeuroAmounts);
 
     /**
      * @notice Batch transfer stQEURO to multiple recipients
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external returns (bool);
 
     /**
      * @notice Distribute yield to stQEURO holders (increases exchange rate)
      * @param yieldAmount Amount of yield in USDC
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function distributeYield(uint256 yieldAmount) external;
 
     /**
      * @notice Claim accumulated yield for a user (in USDC)
      * @return yieldAmount Amount of yield claimed
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function claimYield() external returns (uint256 yieldAmount);
 
@@ -74,16 +130,40 @@ interface IstQEURO {
      * @notice Get pending yield for a user (in USDC)
      * @param user User address
      * @return yieldAmount Pending yield amount
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getPendingYield(address user) external view returns (uint256 yieldAmount);
 
     /**
      * @notice Get current exchange rate between QEURO and stQEURO
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getExchangeRate() external view returns (uint256);
 
     /**
      * @notice Get total value locked in stQEURO
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getTVL() external view returns (uint256);
 
@@ -91,6 +171,14 @@ interface IstQEURO {
      * @notice Get user's QEURO equivalent balance
      * @param user User address
      * @return qeuroEquivalent QEURO equivalent of stQEURO balance
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getQEUROEquivalent(address user) external view returns (uint256 qeuroEquivalent);
 
@@ -101,6 +189,14 @@ interface IstQEURO {
      * @return currentExchangeRate Current exchange rate
      * @return _totalYieldEarned Total yield earned
      * @return apy Annual percentage yield
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getStakingStats() external view returns (
         uint256 totalStQEUROSupply,
@@ -121,31 +217,79 @@ interface IstQEURO {
 
     /**
      * @notice Update treasury address
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function updateTreasury(address _treasury) external;
 
     /**
      * @notice Pause the contract
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function pause() external;
 
     /**
      * @notice Unpause the contract
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function unpause() external;
 
     /**
      * @notice Emergency withdrawal of QEURO
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function emergencyWithdraw(address user) external;
 
     /**
      * @notice Recover accidentally sent tokens
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function recoverToken(address token, address to, uint256 amount) external;
 
     /**
      * @notice Recover accidentally sent ETH
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external;
 

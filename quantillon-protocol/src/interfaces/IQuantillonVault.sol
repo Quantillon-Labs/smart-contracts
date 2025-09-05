@@ -15,6 +15,14 @@ interface IQuantillonVault {
      * @param _qeuro QEURO token address
      * @param _usdc USDC token address
      * @param _oracle Oracle contract address
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function initialize(address admin, address _qeuro, address _usdc, address _oracle) external;
 
@@ -22,6 +30,14 @@ interface IQuantillonVault {
      * @notice Mints QEURO by swapping USDC
      * @param usdcAmount Amount of USDC to swap
      * @param minQeuroOut Minimum QEURO expected (slippage protection)
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external;
 
@@ -29,6 +45,14 @@ interface IQuantillonVault {
      * @notice Redeems QEURO for USDC
      * @param qeuroAmount Amount of QEURO to swap
      * @param minUsdcOut Minimum USDC expected
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external;
 
@@ -37,6 +61,14 @@ interface IQuantillonVault {
      * @return totalUsdcHeld_ Total USDC held in the vault
      * @return totalMinted_ Total QEURO minted
      * @return totalDebtValue Total debt value in USD
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getVaultMetrics() external view returns (
         uint256 totalUsdcHeld_,
@@ -49,6 +81,14 @@ interface IQuantillonVault {
      * @param usdcAmount USDC to swap
      * @return qeuroAmount Expected QEURO to mint (after fees)
      * @return fee Protocol fee
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee);
 
@@ -57,6 +97,14 @@ interface IQuantillonVault {
      * @param qeuroAmount QEURO to swap
      * @return usdcAmount USDC returned after fees
      * @return fee Protocol fee
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee);
 
@@ -64,28 +112,68 @@ interface IQuantillonVault {
      * @notice Updates vault parameters
      * @param _mintFee New minting fee
      * @param _redemptionFee New redemption fee
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external;
 
     /**
      * @notice Updates the oracle address
      * @param _oracle New oracle address
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function updateOracle(address _oracle) external;
 
     /**
      * @notice Withdraws accumulated protocol fees
      * @param to Recipient address
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function withdrawProtocolFees(address to) external;
 
     /**
      * @notice Pauses the vault
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function pause() external;
 
     /**
      * @notice Unpauses the vault
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function unpause() external;
 
@@ -94,11 +182,27 @@ interface IQuantillonVault {
      * @param token Token address
      * @param to Recipient
      * @param amount Amount to transfer
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function recoverToken(address token, address to, uint256 amount) external;
 
     /**
      * @notice Recovers ETH sent by mistake
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external;
 

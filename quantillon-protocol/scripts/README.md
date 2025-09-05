@@ -1,339 +1,448 @@
-# Scripts Documentation
+# Quantillon Protocol Scripts
 
-This directory contains utility scripts for building documentation and running security analysis for the Quantillon Protocol smart contracts.
+This directory contains utility scripts for the Quantillon Protocol development workflow.
 
-## 📚 Documentation Generation
+## Scripts Overview
 
-### `build-docs.sh` - Smart Contract Documentation Builder
+This directory contains utility scripts for the Quantillon Protocol development workflow, including documentation generation, security analysis, and NatSpec validation.
 
-**Purpose**: Generates comprehensive documentation for all smart contracts with correct GitHub URLs.
+## Documentation Generation Script
 
-**Features**:
-- Automatically generates documentation using Foundry's `forge doc`
-- Fixes GitHub URL references to point to correct repository structure
-- Handles subdirectory repository configurations
-- Preserves custom favicon and branding
-- Restores original Git remote configuration after processing
+The `build-docs.sh` script generates comprehensive documentation for the Quantillon Protocol smart contracts using Foundry's built-in documentation generator.
 
-**Usage**:
+### Features
+
+- **Automatic Documentation Generation**: Uses `forge doc --build` to generate HTML documentation
+- **GitHub URL Correction**: Automatically fixes GitHub source links to point to the correct repository structure
+- **Custom Branding**: Applies custom favicon files for professional documentation appearance
+- **Safe Git Operations**: Temporarily modifies git remote URLs and restores them automatically
+
+### Usage
+
 ```bash
-# From project root
-./scripts/build-docs.sh
+# Run from the scripts directory
+./build-docs.sh
 
-# Or using Makefile
+# Or from the project root
 make docs
 ```
 
-**What it does**:
-1. Temporarily adjusts Git remote to handle subdirectory structure
-2. Generates documentation using `forge doc --build`
-3. Copies custom favicon files to override defaults
-4. Post-processes all HTML files to fix GitHub URLs
-5. Restores original Git remote configuration
+### What It Does
 
-**Output**: Generated documentation in `docs/book/` directory with correct GitHub links.
+1. **Temporarily Updates Git Remote**: Changes the git remote URL to ensure correct GitHub source links
+2. **Generates Documentation**: Runs `forge doc --build` to create HTML documentation
+3. **Applies Custom Branding**: Copies custom favicon files to the generated documentation
+4. **Fixes GitHub URLs**: Post-processes HTML files to correct GitHub source links
+5. **Restores Git State**: Reverts git remote URL to original state
 
----
+### Output
 
-## 🔍 Security Analysis
+- **Location**: `docs/book/` directory
+- **Format**: HTML documentation with navigation and search
+- **Features**: Source code links, contract inheritance diagrams, and comprehensive API documentation
 
-### `run-slither.sh` - Enhanced Slither Security Scanner
+### Requirements
 
-**Purpose**: Runs comprehensive security analysis on all smart contracts using Slither with integrated human-readable output.
+- Git repository with proper remote configuration
+- Foundry installed and configured
+- Custom favicon files in `docs/` directory (optional)
 
-**Features**:
-- **🎨 Beautiful Visual Design**: Enhanced section separators and formatting
-- **🚨 Color-Coded Priority Levels**: Clear visual distinction between issue types
-- **📌 Icon-Based Findings**: Each finding marked with relevant icons
-- **━━━ Enhanced Separators**: Better visual organization of sections
-- **🔍 Improved Readability**: Cleaner, more engaging output format
-- **🔧 Integrated Parser**: Human-readable output by default
-- **📊 Comprehensive Analysis**: Security findings with actionable recommendations
-- **🔄 Automated Workflow**: Python environment management and dependency installation
+## Security Analysis Script
 
-**Usage**:
+The `run-slither.sh` script provides comprehensive security analysis of the Quantillon Protocol smart contracts using the Slither static analysis tool.
+
+### Features
+
+- **Comprehensive Security Analysis**: Runs Slither with detailed configuration
+- **Beautiful Reporting**: Generates human-readable reports with emojis and formatting
+- **Multiple Output Formats**: Creates JSON, SARIF, and text reports
+- **Priority Classification**: Categorizes issues by severity (High, Medium, Low, Informational)
+- **Actionable Recommendations**: Provides specific guidance for fixing identified issues
+- **Virtual Environment Management**: Automatically sets up Python environment
+
+### Usage
+
 ```bash
-# Direct execution
-./scripts/run-slither.sh
+# Run from the scripts directory
+./run-slither.sh
 
-# Using Makefile (recommended)
+# Or from the project root
+make slither
+```
+
+### What It Does
+
+1. **Environment Setup**: Creates and activates Python virtual environment
+2. **Dependency Installation**: Installs Slither and required dependencies
+3. **Security Analysis**: Runs Slither with comprehensive configuration
+4. **Report Generation**: Creates multiple report formats:
+   - `slither-report.txt` - Beautiful human-readable report
+   - `slither-report.json` - Detailed JSON output
+   - `slither-report.sarif` - IDE integration format
+5. **Issue Classification**: Categorizes findings by priority and detector type
+6. **Cleanup**: Removes temporary files and deactivates virtual environment
+
+### Output Files
+
+- **`slither-report.txt`**: Main human-readable report with executive summary
+- **`slither-report.json`**: Detailed JSON output for programmatic processing
+- **`slither-report.sarif`**: SARIF format for IDE integration
+- **Console Output**: Real-time analysis results with beautiful formatting
+
+### Issue Categories
+
+#### 🚨 High Priority Issues
+- Reentrancy vulnerabilities
+- Arbitrary ETH transfers
+- Uninitialized state variables
+- Dangerous strict equalities
+
+#### ⚠️ Medium Priority Issues
+- Reentrancy without ETH
+- Unused return values
+- Incorrect equality checks
+- Uninitialized local variables
+
+#### 💡 Low Priority Issues
+- Variable shadowing
+- Missing zero checks
+- Loop-based external calls
+- Timestamp usage
+- Costly loops
+
+#### ℹ️ Informational Issues
+- Cyclomatic complexity
+- Missing inheritance
+- Unused state variables
+- Naming conventions
+
+### Configuration
+
+The script uses `slither.config.json` for analysis configuration, which includes:
+- Detector enablement/disablement
+- Exclusion patterns
+- Output formatting options
+- Custom analysis rules
+
+## Makefile Integration
+
+All scripts are integrated into the project's Makefile for easy execution:
+
+### Available Commands
+
+```bash
+# Documentation generation
+make docs                 # Generate HTML documentation
+
+# Security analysis
+make slither             # Run comprehensive security analysis
+
+# NatSpec validation
+make validate-natspec    # Validate NatSpec documentation coverage
+
+# Complete development workflow
+make all                 # Build, test, and analyze security
+make ci                  # CI/CD pipeline (build, test, slither, validate-natspec)
+```
+
+### Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/Quantillon-Labs/smart-contracts.git
+cd smart-contracts/quantillon-protocol
+
+# Install dependencies
+make install
+
+# Generate documentation
+make docs
+
+# Run security analysis
 make slither
 
-# Comprehensive security check
-make security
+# Validate NatSpec coverage
+make validate-natspec
+
+# Run complete development workflow
+make all
 ```
 
-**Configuration**:
-- Uses `slither.config.json` for custom settings
-- Excludes library files, tests, and build artifacts
-- Generates JSON and SARIF reports
-- Custom detector exclusions for false positives
+## Development Workflow
 
-**Output**:
-- **Console output** with security findings and human-readable summary
-- **`slither-report.txt`** - Human-readable text report
-- **`slither-report.json`** - Machine-readable results
-- **`slither-report.sarif`** - IDE integration format
-
----
-
-## 🚀 Development Workflow Integration
-
-### Makefile Commands
-
-The project includes a comprehensive Makefile that integrates all tools:
-
+### 1. Documentation Generation
 ```bash
-make help          # Show all available commands
-make build         # Compile contracts
-make test          # Run tests
-make coverage      # Generate coverage report
-make slither       # Security analysis
-make security      # Build + security
-make all           # Complete pipeline
-make ci            # CI/CD pipeline
+# Generate comprehensive HTML documentation
+make docs
+
+# View generated documentation
+open docs/book/index.html
 ```
 
-### CI/CD Integration
+### 2. Security Analysis
+```bash
+# Run comprehensive security analysis
+make slither
 
-**GitHub Actions Workflow** (`.github/workflows/ci.yml`):
-- Automated testing on every PR
-- Security analysis with Slither
-- Coverage reporting
-- Foundry and Python environment setup
+# Review security findings
+cat slither-report.txt
+```
 
-**Workflow Steps**:
-1. Setup Foundry toolchain
-2. Setup Python environment
-3. Install dependencies
-4. Build contracts
-5. Run tests
-6. Generate coverage
-7. Run Slither security analysis
-8. Upload coverage to Codecov
+### 3. NatSpec Validation
+```bash
+# Validate NatSpec documentation coverage
+make validate-natspec
 
----
+# Fix missing documentation (if needed)
+# The script will provide specific guidance on what needs to be documented
+```
 
-## 📋 Prerequisites
+### 4. Complete Development Cycle
+```bash
+# Run the complete development workflow
+make all
 
-### For Documentation Generation
-- Foundry (forge) installed
-- Git repository with proper remote configuration
-- Custom favicon files in `docs/` directory
+# This will:
+# 1. Build the project
+# 2. Run all tests
+# 3. Perform security analysis
+# 4. Validate NatSpec documentation
+```
 
-### For Security Analysis
-- Python 3.11+
-- Foundry toolchain
-- Internet connection for dependency installation
+## Troubleshooting
+
+### Common Issues
+
+#### Documentation Generation
+- **Issue**: GitHub URLs are incorrect in generated docs
+- **Solution**: The script automatically fixes this, but ensure git remote is properly configured
+
+#### Security Analysis
+- **Issue**: Slither fails to run
+- **Solution**: Ensure Python 3.7+ is installed and virtual environment is created properly
+
+#### NatSpec Validation
+- **Issue**: Low coverage percentage
+- **Solution**: Use the detailed output to identify missing documentation and add required tags
 
 ### Dependencies
+
+- **Node.js**: Required for NatSpec validation script
+- **Python 3.7+**: Required for Slither security analysis
+- **Foundry**: Required for documentation generation and project building
+- **Git**: Required for proper source link generation
+
+## NatSpec Validation Script
+
+The `validate-natspec.js` script provides comprehensive validation of NatSpec documentation across all Solidity contracts in the protocol.
+
+### Features
+
+- **Complete Coverage Analysis**: Scans all Solidity files in the protocol
+- **Comprehensive Validation**: Checks for all required NatSpec tags including @custom tags
+- **Detailed Reporting**: Provides specific feedback on missing or incomplete documentation
+- **CI/CD Integration**: Can be integrated into automated workflows
+- **Configurable**: Easy to modify validation rules and requirements
+
+### Required NatSpec Tags
+
+The script validates that all public and external functions have:
+
+#### Basic Tags
+- `@notice` - User-friendly description
+- `@dev` - Technical implementation details
+- `@param` - Parameter descriptions (for functions with parameters)
+- `@return` - Return value descriptions (for functions with return values)
+
+#### Custom Tags (Quantillon Protocol Standard)
+- `@custom:security` - Security considerations and checks
+- `@custom:validation` - Input validation details
+- `@custom:state-changes` - State modifications
+- `@custom:events` - Events emitted
+- `@custom:errors` - Custom errors thrown
+- `@custom:reentrancy` - Reentrancy protection status
+- `@custom:access` - Access control requirements
+- `@custom:oracle` - Oracle dependencies
+
+### Usage
+
+#### Using Make (Recommended)
 ```bash
-# Python dependencies (auto-installed)
-slither-analyzer>=0.9.3
-crytic-compile>=0.3.0
-
-# Foundry dependencies (auto-installed)
-forge
+# From the project root
+make validate-natspec
 ```
 
----
-
-## 🔧 Configuration Files
-
-### `slither.config.json`
-```json
-{
-  "filter_paths": "lib,test,out,cache",
-  "exclude_informational": false,
-  "exclude_low": false,
-  "exclude_medium": false,
-  "exclude_high": false,
-  "detectors_to_exclude": [
-    "naming-convention",
-    "external-function"
-  ],
-  "json": "slither-report.json",
-  "sarif": "slither-report.sarif"
-}
-```
-
-### `foundry.toml`
-- Includes formal verification settings
-- SMTChecker configuration for model checking
-- Compiler optimization settings
-
----
-
-## 📊 Security Analysis Results
-
-### Typical Output Structure
-- **High Priority**: Critical vulnerabilities (must fix)
-- **Medium Priority**: Important security issues
-- **Low Priority**: Minor concerns and best practices
-- **Informational**: Suggestions and optimizations
-
-### Common Issue Categories
-- Reentrancy vulnerabilities
-- Access control issues
-- Integer overflow/underflow
-- Uninitialized state variables
-- Dangerous external calls
-- Gas optimization opportunities
-
----
-
-## 🚨 Troubleshooting
-
-### Documentation Issues
+#### Direct Execution
 ```bash
-# Check Git remote configuration
-git remote -v
+# Install dependencies
+cd scripts
+npm install
 
-# Verify Foundry installation
-forge --version
-
-# Check custom favicon files
-ls -la docs/favicon.*
+# Run validation
+node validate-natspec.js
 ```
 
-### Slither Issues
+#### Programmatic Usage
+```javascript
+const { validateNatSpec, scanDirectory } = require('./validate-natspec.js');
+
+// Validate a single contract
+const result = validateNatSpec('src/core/QEUROToken.sol');
+console.log(`Coverage: ${result.coverage}%`);
+
+// Scan a directory
+const files = scanDirectory('src/core');
+```
+
+### Output
+
+The script provides:
+
+1. **Summary Statistics**
+   - Total files scanned
+   - Total functions found
+   - Documented functions count
+   - Overall coverage percentage
+
+2. **Detailed Reports**
+   - Per-contract coverage analysis
+   - List of functions missing documentation
+   - List of functions with incomplete documentation
+   - Specific missing tags for each function
+
+3. **Recommendations**
+   - Actionable steps to improve documentation
+   - Required tags for complete documentation
+
+### Example Output
+
+```
+🔍 Quantillon Protocol NatSpec Validation
+
+============================================================
+
+📊 SUMMARY
+============================================================
+Total Files Scanned: 25
+Total Functions: 156
+Documented Functions: 156
+Overall Coverage: 100.00%
+Missing Documentation: 0
+
+📋 DETAILED REPORTS
+============================================================
+
+📄 src/core/QEUROToken.sol
+   Coverage: 100.00% (45/45 functions)
+   ✅ All functions properly documented!
+
+📄 src/core/UserPool.sol
+   Coverage: 100.00% (38/38 functions)
+   ✅ All functions properly documented!
+
+💡 RECOMMENDATIONS
+============================================================
+✅ All functions have complete NatSpec documentation!
+🎉 The protocol meets MiCA regulatory requirements.
+
+✅ Validation passed - all functions documented
+```
+
+### Configuration
+
+The script can be configured by modifying the `CONFIG` object in `validate-natspec.js`:
+
+```javascript
+const CONFIG = {
+    // Directories to scan
+    directories: [
+        'src/core',
+        'src/interfaces', 
+        'src/libraries',
+        'src/oracle',
+        'src/core/vaults',
+        'src/core/yieldmanagement',
+        'test'
+    ],
+    
+    // Required NatSpec tags
+    requiredTags: [
+        '@notice',
+        '@dev',
+        '@param',
+        '@return',
+        '@custom:security',
+        '@custom:validation', 
+        '@custom:state-changes',
+        '@custom:events',
+        '@custom:errors',
+        '@custom:reentrancy',
+        '@custom:access',
+        '@custom:oracle'
+    ],
+    
+    // Functions to exclude from validation
+    excludePatterns: [
+        /^constructor$/,
+        /^fallback$/,
+        /^receive$/,
+        /^_authorizeUpgrade$/,
+        /^__.*__$/, // OpenZeppelin internal functions
+        /^_disableInitializers$/
+    ]
+};
+```
+
+### Integration
+
+#### CI/CD Pipeline
+The script is integrated into the project's Makefile and can be included in CI/CD pipelines:
+
+```yaml
+# GitHub Actions example
+- name: Validate NatSpec Documentation
+  run: make validate-natspec
+```
+
+#### Pre-commit Hooks
+Can be used as a pre-commit hook to ensure documentation standards:
+
 ```bash
-# Recreate virtual environment
-rm -rf venv
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Check Python version
-python3 --version
-
-# Verify Slither installation
-slither --version
+#!/bin/sh
+# .git/hooks/pre-commit
+make validate-natspec
+if [ $? -ne 0 ]; then
+    echo "❌ NatSpec validation failed. Please fix documentation issues."
+    exit 1
+fi
 ```
 
-### Permission Issues
-```bash
-# Make scripts executable
-chmod +x scripts/*.sh
+### Troubleshooting
 
-# Check file permissions
-ls -la scripts/
-```
+#### Common Issues
 
----
+1. **Parser Errors**: If you encounter parsing errors, ensure your Solidity syntax is valid
+2. **Missing Dependencies**: Run `npm install` in the scripts directory
+3. **Node Version**: Requires Node.js 14.0.0 or higher
 
-## 📈 Best Practices
+#### False Positives
 
-### Documentation
-- Run documentation generation before each release
-- Verify GitHub links are correct after generation
-- Keep custom branding files updated
-- Review generated documentation for completeness
+The script may report false positives for:
+- Private functions (excluded by default)
+- Constructor functions (excluded by default)
+- OpenZeppelin internal functions (excluded by default)
 
-### Security Analysis
-- Run Slither on every significant change
-- Include security checks in CI/CD pipeline
-- Review and address high/medium priority issues
-- Document false positives and exclusions
-- Regular security audit scheduling
+These can be configured in the `excludePatterns` array.
 
-### Development Workflow
-- Use Makefile commands for consistency
-- Run `make all` before major commits
-- Include security analysis in PR reviews
-- Monitor CI/CD pipeline results
+### Contributing
 
----
+When adding new functions to the protocol:
 
-## 🔗 Related Documentation
+1. Ensure all public/external functions have complete NatSpec documentation
+2. Run `make validate-natspec` to verify compliance
+3. Follow the established documentation patterns
+4. Include all required @custom tags
 
-- [Foundry Book](https://book.getfoundry.sh/)
-- [Slither Documentation](https://github.com/crytic/slither)
-- [Crytic Tools](https://crytic.io/)
-- [Quantillon Protocol Main README](../README.md)
+### License
 
----
-
-**Last Updated**: December 2024  
-**Status**: ✅ Active and Integrated  
-**Coverage**: Documentation + Security Analysis
-
-## Problem
-
-When using `forge doc --build`, Foundry generates documentation with incorrect GitHub source URLs like:
-```
-https://github.com/Quantillon-Labs/smart-contracts/blob/a0c4605b79826572de49aa1618715c7e4813adad/src/libraries/VaultMath.sol
-```
-
-These URLs point to the wrong paths because the source files are located in the `quantillon-protocol` subdirectory, not at the repository root.
-
-## Root Cause
-
-The issue is that `forge doc --build` **generates** the `book.toml` file during the build process, using the Git remote URL as the base. Since your Git remote points to the root repository (`https://github.com/Quantillon-Labs/smart-contracts.git`) but your source files are in a subdirectory (`quantillon-protocol/`), the generated URLs are incorrect.
-
-## Solution
-
-The final solution combines two approaches:
-1. **Temporarily change the Git remote URL** to point to the subdirectory during documentation generation
-2. **Post-process the generated HTML files** to fix any remaining incorrect URLs
-
-## Scripts
-
-### `build-docs.sh` ⭐ **RECOMMENDED**
-**The complete solution that actually works**
-
-This script:
-1. Temporarily changes the Git remote URL to point to the subdirectory
-2. Runs `forge doc --build` to generate documentation
-3. Restores the original Git remote URL
-4. Post-processes all HTML files to fix any remaining incorrect GitHub URLs
-
-**Usage:**
-```bash
-./scripts/build-docs.sh
-```
-
-**Result:** All GitHub source links will point to the correct paths:
-```
-https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/src/libraries/VaultMath.sol
-```
-
-## Manual Solution
-
-If you prefer to fix the issue manually:
-
-1. **Store the original remote URL:**
-   ```bash
-   ORIGINAL_REMOTE=$(git remote get-url origin)
-   ```
-
-2. **Temporarily change the remote URL:**
-   ```bash
-   git remote set-url origin "https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol.git"
-   ```
-
-3. **Generate documentation:**
-   ```bash
-   forge doc --build
-   ```
-
-4. **Restore the original remote URL:**
-   ```bash
-   git remote set-url origin "$ORIGINAL_REMOTE"
-   ```
-
-5. **Post-process HTML files** (optional, for any remaining incorrect URLs):
-   ```bash
-   find docs/book -name "*.html" -type f -exec sed -i 's|https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/[^"]*/src/|https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/src/|g' {} \;
-   ```
-
-## Why This Works
-
-- **Root cause**: `forge doc --build` generates URLs using the Git remote URL
-- **Solution**: Temporarily change the Git remote URL to point to the subdirectory
-- **Post-processing**: Fix any remaining incorrect URLs in the generated HTML files
-- **Safety**: Original Git remote URL is always restored
-
-## Note
-
-This solution addresses the complete GitHub URL issue by fixing both the generation process and any remaining incorrect URLs in the final output.
+MIT License - See LICENSE file for details.

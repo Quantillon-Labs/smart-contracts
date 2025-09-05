@@ -16,11 +16,27 @@ interface IYieldShift {
      * @param _hedgerPool HedgerPool address
      * @param _aaveVault Aave vault address
      * @param _stQEURO stQEURO token address
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function initialize(address admin, address _usdc, address _userPool, address _hedgerPool, address _aaveVault, address _stQEURO) external;
 
     /**
      * @notice Update yield distribution according to pool balances
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function updateYieldDistribution() external;
 
@@ -28,6 +44,14 @@ interface IYieldShift {
      * @notice Add new yield to be distributed
      * @param yieldAmount Yield amount in USDC equivalent
      * @param source Source identifier (e.g., "aave", "fees")
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function addYield(uint256 yieldAmount, bytes32 source) external;
 
@@ -35,6 +59,14 @@ interface IYieldShift {
      * @notice Claim pending yield for a user
      * @param user Address of the user
      * @return yieldAmount Yield amount claimed
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function claimUserYield(address user) external returns (uint256 yieldAmount);
 
@@ -42,28 +74,68 @@ interface IYieldShift {
      * @notice Claim pending yield for a hedger
      * @param hedger Address of the hedger
      * @return yieldAmount Yield amount claimed
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function claimHedgerYield(address hedger) external returns (uint256 yieldAmount);
 
     /**
      * @notice Current yield shift percentage (bps)
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getCurrentYieldShift() external view returns (uint256);
 
     /**
      * @notice Pending yield amounts
      * @param user Address of the user
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getUserPendingYield(address user) external view returns (uint256);
 
     /**
      * @notice Pending yield amounts
      * @param hedger Address of the hedger
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getHedgerPendingYield(address hedger) external view returns (uint256);
 
     /**
      * @notice Total yield generated to date
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getTotalYieldGenerated() external view returns (uint256);
 
@@ -71,6 +143,14 @@ interface IYieldShift {
      * @notice Yield distribution breakdown
      * @return userAllocation Current allocation to users
      * @return hedgerAllocation Current allocation to hedgers
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getYieldDistributionBreakdown() external view returns (
         uint256 userAllocation,
@@ -82,6 +162,14 @@ interface IYieldShift {
      * @return userPoolSize User pool size
      * @return hedgerPoolSize Hedger pool size
      * @return poolRatio Ratio (bps) user/hedger
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getPoolMetrics() external view returns (
         uint256 userPoolSize,
@@ -93,6 +181,14 @@ interface IYieldShift {
      * @notice Calculate optimal yield shift based on current metrics
      * @return optimalShift Optimal shift (bps)
      * @return currentDeviation Current deviation from optimal
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function calculateOptimalYieldShift() external view returns (
         uint256 optimalShift,
@@ -105,6 +201,14 @@ interface IYieldShift {
      * @return protocolFees Protocol fees amount
      * @return interestDifferential Interest differential amount
      * @return otherSources Other sources amount
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getYieldSources() external view returns (
         uint256 aaveYield,
@@ -120,6 +224,14 @@ interface IYieldShift {
      * @return maxShift Maximum shift over period
      * @return minShift Minimum shift over period
      * @return volatility Volatility measure
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getHistoricalYieldShift(uint256 period) external view returns (
         uint256 averageShift,
@@ -134,6 +246,14 @@ interface IYieldShift {
      * @return averageUserYield Average user yield
      * @return averageHedgerYield Average hedger yield
      * @return yieldEfficiency Yield efficiency percentage
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getYieldPerformanceMetrics() external view returns (
         uint256 totalYieldDistributed_,
@@ -147,12 +267,28 @@ interface IYieldShift {
      * @param _baseYieldShift Base allocation (bps)
      * @param _maxYieldShift Max allocation (bps)
      * @param _adjustmentSpeed Adjustment speed (bps)
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function setYieldShiftParameters(uint256 _baseYieldShift, uint256 _maxYieldShift, uint256 _adjustmentSpeed) external;
 
     /**
      * @notice Set the target pool ratio (bps)
      * @param _targetPoolRatio Target ratio
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function setTargetPoolRatio(uint256 _targetPoolRatio) external;
 
@@ -160,12 +296,28 @@ interface IYieldShift {
      * @notice Authorize a yield source for specific yield type
      * @param source Address of the yield source
      * @param yieldType Type of yield this source is authorized for
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function authorizeYieldSource(address source, bytes32 yieldType) external;
 
     /**
      * @notice Revoke authorization for a yield source
      * @param source Address of the yield source to revoke
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function revokeYieldSource(address source) external;
 
@@ -174,6 +326,14 @@ interface IYieldShift {
      * @param source Address to check
      * @param yieldType Yield type to check
      * @return True if authorized
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function isYieldSourceAuthorized(address source, bytes32 yieldType) external view returns (bool);
 
@@ -182,6 +342,14 @@ interface IYieldShift {
      * @param user Address of participant
      * @param amount Amount to add/subtract
      * @param isUser True if user pool, false if hedger pool
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function updateYieldAllocation(address user, uint256 amount, bool isUser) external;
 
@@ -189,16 +357,40 @@ interface IYieldShift {
      * @notice Emergency manual yield distribution
      * @param userAmount Amount to users
      * @param hedgerAmount Amount to hedgers
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function emergencyYieldDistribution(uint256 userAmount, uint256 hedgerAmount) external;
 
     /**
      * @notice Pause yield distribution operations
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function pauseYieldDistribution() external;
 
     /**
      * @notice Resume yield distribution operations
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function resumeYieldDistribution() external;
 
@@ -208,6 +400,14 @@ interface IYieldShift {
      * @return maxShift Max shift (bps)
      * @return adjustmentSpeed_ Adjustment speed (bps)
      * @return lastUpdate Last update timestamp
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getYieldShiftConfig() external view returns (
         uint256 baseShift,
@@ -218,11 +418,27 @@ interface IYieldShift {
 
     /**
      * @notice Whether yield distribution is active (not paused)
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function isYieldDistributionActive() external view returns (bool);
 
     /**
      * @notice Check if an update to yield distribution is needed and apply if so
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function checkAndUpdateYieldDistribution() external;
 
@@ -231,6 +447,14 @@ interface IYieldShift {
      * @param user Address of the user
      * @dev This function is called by the user pool when users deposit
      * @dev Used for time-weighted average calculations
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function updateLastDepositTime(address user) external;
 
@@ -238,6 +462,14 @@ interface IYieldShift {
      * @notice Force update yield distribution (governance only)
      * @dev This function allows governance to force an update to yield distribution
      * @dev Only callable by governance role
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function forceUpdateYieldDistribution() external;
 

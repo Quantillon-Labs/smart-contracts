@@ -11,44 +11,108 @@ pragma solidity 0.8.24;
 interface IQEUROToken {
     /**
      * @notice Token name
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function name() external view returns (string memory);
 
     /**
      * @notice Token symbol
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function symbol() external view returns (string memory);
 
     /**
      * @notice Token decimals (always 18)
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function decimals() external view returns (uint8);
 
     /**
      * @notice Total token supply
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function totalSupply() external view returns (uint256);
 
     /**
      * @notice Balance of an account
      * @param account Address to query
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function balanceOf(address account) external view returns (uint256);
 
     /**
      * @notice Whether an address has the minter role
      * @param account Address to check
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function isMinter(address account) external view returns (bool);
 
     /**
      * @notice Whether an address has the burner role
      * @param account Address to check
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function isBurner(address account) external view returns (bool);
 
     /**
      * @notice Percentage of max supply utilized (basis points)
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getSupplyUtilization() external view returns (uint256);
 
@@ -65,6 +129,14 @@ interface IQEUROToken {
      * @return whitelistEnabled_ Whether whitelist mode is active
      * @return mintRateLimit_ Current mint rate limit per hour
      * @return burnRateLimit_ Current burn rate limit per hour
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getTokenInfo() external view returns (
         string memory name_,

@@ -205,6 +205,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Sets up the YieldShift test environment
      * @dev Deploys mock contracts and initializes the yield shift system for testing
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function setUp() public {
         // Deploy mock contracts
@@ -313,6 +321,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test successful contract initialization
      * @dev Verifies proper initialization with valid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         // Check roles are properly assigned
@@ -331,6 +347,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test initialization with zero admin address should revert
      * @dev Verifies zero address validation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroAdmin_Revert() public {
         TimeProvider timeProviderImpl3 = new TimeProvider();
@@ -364,6 +388,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test initialization with zero USDC address should revert
      * @dev Verifies zero address validation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroUsdc_Revert() public {
         TimeProvider timeProviderImpl3 = new TimeProvider();
@@ -401,6 +433,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield distribution update with valid parameters
      * @dev Verifies yield distribution update functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testYieldDistribution_WithValidParameters_ShouldUpdateYieldDistribution() public view {
         // Placeholder test - actual function calls removed due to contract interface mismatch
@@ -410,6 +450,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield addition by yield manager
      * @dev Verifies yield addition functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldDistribution_AddYield() public {
         uint256 yieldAmount = 10000 * 1e6; // 10K USDC
@@ -445,6 +493,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield addition by non-yield manager should revert
      * @dev Verifies access control
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldDistribution_AddYieldUnauthorized_Revert() public {
         uint256 yieldAmount = 10000 * 1e6;
@@ -457,6 +513,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield addition with zero amount should revert
      * @dev Verifies parameter validation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldDistribution_AddYieldZeroAmount_Revert() public {
         // Authorize yieldManager for test_source
@@ -471,6 +535,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield addition by unauthorized source should revert
      * @dev Verifies yield source authorization
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldDistribution_AddYieldUnauthorizedSource_Revert() public {
         uint256 yieldAmount = 10000 * 1e6;
@@ -484,6 +556,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield addition without USDC should revert
      * @dev Verifies USDC transfer validation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldDistribution_AddYieldWithoutUSDC_Revert() public {
         uint256 yieldAmount = 10000 * 1e6;
@@ -504,6 +584,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test successful yield addition with proper authorization and USDC
      * @dev Verifies the fix works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldDistribution_AddYieldWithAuthorization_Success() public {
         uint256 yieldAmount = 10000 * 1e6;
@@ -539,6 +627,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield source authorization and revocation
      * @dev Verifies authorization management
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldSourceAuthorization_Management() public {
         // Test authorization
@@ -562,6 +658,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test user yield claiming
      * @dev Verifies user yield claiming functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldClaiming_ClaimUserYield() public {
         // Setup: Add yield first to populate yield pools
@@ -596,6 +700,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test hedger yield claiming
      * @dev Verifies hedger yield claiming functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldClaiming_ClaimHedgerYield() public {
         // Setup: Add yield first to populate yield pools
@@ -630,6 +742,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield claiming before holding period should revert
      * @dev Verifies holding period requirement
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldClaiming_ClaimBeforeHoldingPeriod_Revert() public {
         // Setup: Add yield and allocate to user
@@ -654,6 +774,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield claiming by unauthorized address should revert
      * @dev Verifies access control
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldClaiming_ClaimUnauthorized_Revert() public {
         // Setup: Add yield and allocate to user
@@ -681,6 +809,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test pool metrics retrieval with valid parameters
      * @dev Verifies pool metrics calculation functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testPoolMetrics_WithValidParameters_ShouldGetPoolMetrics() public view {
         (uint256 userPoolBalance, uint256 hedgerPoolBalance, uint256 totalBalance, uint256 poolRatio) = yieldShift.getPoolMetrics();
@@ -694,6 +830,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test optimal yield shift calculation with valid parameters
      * @dev Verifies optimal yield shift calculation functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testPoolMetrics_WithValidParameters_ShouldCalculateOptimalYieldShift() public view {
         // Placeholder test - actual function calls removed due to contract interface mismatch
@@ -707,6 +851,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield sources tracking
      * @dev Verifies yield source breakdown
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldSources_GetYieldSources() public {
         // Add yield from different sources
@@ -739,6 +891,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield shift parameters update
      * @dev Verifies governance parameter updates
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetYieldShiftParameters() public {
         uint256 newBaseShift = 6000; // 60%
@@ -758,6 +918,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield shift parameters update by non-governance should revert
      * @dev Verifies access control
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetYieldShiftParametersUnauthorized_Revert() public {
         vm.prank(user);
@@ -768,6 +936,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield shift parameters update with invalid values should revert
      * @dev Verifies parameter validation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetYieldShiftParametersInvalid_Revert() public {
         // Test base shift too high
@@ -794,6 +970,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test target pool ratio update
      * @dev Verifies target ratio updates
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetTargetPoolRatio() public {
         uint256 newTargetRatio = 12000; // 1.2:1
@@ -809,6 +993,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test target pool ratio update with invalid values should revert
      * @dev Verifies parameter validation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_SetTargetPoolRatioInvalid_Revert() public {
         // Test zero target ratio
@@ -829,6 +1021,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test emergency yield distribution
      * @dev Verifies emergency yield distribution functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyYieldDistribution() public {
         // Setup: Add yield to pools
@@ -856,6 +1056,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test emergency yield distribution by non-emergency role should revert
      * @dev Verifies access control
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyYieldDistributionUnauthorized_Revert() public {
         vm.prank(user);
@@ -866,6 +1074,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test emergency yield distribution with insufficient yield should revert
      * @dev Verifies balance validation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyYieldDistributionInsufficient_Revert() public {
         uint256 excessiveAmount = 1000000 * 1e6; // 1M USDC (more than available)
@@ -878,6 +1094,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test pause and resume yield distribution
      * @dev Verifies pause functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_PauseAndResumeYieldDistribution() public {
         // Pause yield distribution
@@ -896,6 +1120,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test pause by non-emergency role should revert
      * @dev Verifies access control
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_PauseUnauthorized_Revert() public {
         vm.prank(user);
@@ -910,6 +1142,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test Aave yield harvesting and distribution
      * @dev Verifies automated yield harvesting
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Automated_HarvestAndDistributeAaveYield() public {
         // Set Aave yield amount
@@ -935,6 +1175,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test check and update yield distribution
      * @dev Verifies conditional yield distribution updates
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Automated_CheckAndUpdateYieldDistribution() public {
         // Test the checkAndUpdateYieldDistribution function without triggering updates
@@ -962,6 +1210,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test force update yield distribution
      * @dev Verifies governance override functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Automated_ForceUpdateYieldDistribution() public {
         // Test governance access control without triggering the problematic update
@@ -989,6 +1245,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test force update by non-governance should revert
      * @dev Verifies access control
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Automated_ForceUpdateUnauthorized_Revert() public {
         vm.prank(user);
@@ -1003,6 +1267,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield distribution breakdown
      * @dev Verifies yield allocation calculations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_ViewFunctions_GetYieldDistributionBreakdown() public {
         // Add yield
@@ -1027,6 +1299,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield performance metrics
      * @dev Verifies performance calculations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_ViewFunctions_GetYieldPerformanceMetrics() public {
         // Add yield and distribute some
@@ -1056,6 +1336,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test historical yield shift retrieval with valid parameters
      * @dev Verifies historical data retrieval
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testViewFunctions_WithValidParameters_ShouldGetHistoricalYieldShift() public view {
         // Placeholder test - actual function calls removed due to contract interface mismatch
@@ -1069,6 +1357,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield claiming with zero pending yield
      * @dev Verifies handling of zero yield claims
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_EdgeCases_ClaimZeroYield() public {
         // Set last deposit time to meet holding period
@@ -1085,6 +1381,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield distribution with moderate pool ratios
      * @dev Verifies handling of moderate imbalance scenarios
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_EdgeCases_ModeratePoolRatios() public {
         // Set moderate imbalance to avoid overflow
@@ -1109,6 +1413,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield distribution with balanced pools
      * @dev Verifies handling of balanced pool scenario
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_EdgeCases_BalancedPools() public {
         // Set balanced pools to avoid overflow
@@ -1128,6 +1440,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield distribution with larger user pool
      * @dev Verifies handling of user-dominant scenario
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_EdgeCases_UserDominantPool() public {
         // Set user-dominant pools to avoid overflow
@@ -1151,6 +1471,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test complete yield distribution workflow
      * @dev Verifies end-to-end yield distribution process
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_CompleteYieldWorkflow() public {
         // 1. Add yield from multiple sources
@@ -1193,6 +1521,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test yield distribution with pool rebalancing
      * @dev Verifies dynamic yield adjustment
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_PoolRebalancing() public {
         // Initial state: balanced pools
@@ -1225,6 +1561,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test update last deposit time
      * @dev Verifies that last deposit time can be updated by authorized pools
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_User_UpdateLastDepositTime() public {
         // Update last deposit time by user pool (authorized)
@@ -1238,6 +1582,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test update last deposit time by unauthorized caller
      * @dev Verifies that unauthorized callers cannot update deposit time
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_User_UpdateLastDepositTimeUnauthorized_Revert() public {
         // Try to update last deposit time by unauthorized caller
@@ -1249,6 +1601,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test update yield allocation
      * @dev Verifies that yield allocation can be updated by yield manager
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldManagement_UpdateYieldAllocation() public {
         uint256 allocationAmount = 1000 * 1e6;
@@ -1272,6 +1632,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test update yield allocation by non-yield manager
      * @dev Verifies that only yield manager can update allocations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_YieldManagement_UpdateYieldAllocationUnauthorized_Revert() public {
         uint256 allocationAmount = 1000 * 1e6;
@@ -1284,6 +1652,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test get yield shift configuration
      * @dev Verifies that yield shift configuration can be retrieved
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetYieldShiftConfig() public view {
         (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed_, uint256 lastUpdate) = yieldShift.getYieldShiftConfig();
@@ -1297,6 +1673,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test is yield distribution active
      * @dev Verifies that yield distribution activity status can be checked
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_IsYieldDistributionActive() public {
         bool isActive = yieldShift.isYieldDistributionActive();
@@ -1322,6 +1706,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test individual authorization calls
      * @dev Verifies each authorization call works individually
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_IndividualAuthorizationCalls() public {
         // Check initial state
@@ -1356,6 +1748,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test recovering external tokens to treasury
      * @dev Verifies that admin can recover accidentally sent tokens to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverToken() public {
         // Create a mock ERC20 token
@@ -1374,6 +1774,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test recovering tokens by non-admin should revert
      * @dev Verifies that only admin can recover tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
@@ -1386,6 +1794,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test recovering own yield shift tokens should revert
      * @dev Verifies that yield shift's own tokens cannot be recovered
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
@@ -1396,6 +1812,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test recovering USDC tokens should succeed
      * @dev Verifies that USDC tokens can now be recovered to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverUSDCToken_Success() public {
         // Give some USDC to the contract for testing
@@ -1413,6 +1837,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test recovering tokens to treasury should succeed
      * @dev Verifies that tokens are automatically sent to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenToTreasury_Success() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
@@ -1431,6 +1863,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test recovering ETH to treasury address
      * @dev Verifies that admin can recover accidentally sent ETH to treasury only
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
@@ -1450,6 +1890,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test recovering ETH by non-admin (should revert)
      * @dev Verifies that only admin can recover ETH
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHByNonAdmin_Revert() public {
         vm.deal(address(yieldShift), 1 ether);
@@ -1464,6 +1912,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test recovering ETH when contract has no ETH (should revert)
      * @dev Verifies that recovery fails when there's no ETH to recover
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
@@ -1474,6 +1930,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test manual authorization setup
      * @dev Verifies that authorization can be set up manually
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_ManualAuthorization_Setup() public {
         // Manually authorize yieldManager for test_source
@@ -1495,6 +1959,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Debug authorization step by step
      * @dev Verifies each step of the authorization process
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_DebugAuthorizationStepByStep() public {
         // Check if admin has governance role
@@ -1519,6 +1991,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test gas optimization for getTimeWeightedAverage function
      * @dev Verifies that the optimized function produces the same results with lower gas costs
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_GasOptimization_TimeWeightedAverage() public {
         // GAS OPTIMIZATION: Reduce the number of snapshots to prevent OutOfGas
@@ -1562,6 +2042,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test gas optimization for getHistoricalYieldShift function
      * @dev Verifies that the optimized function produces the same results with lower gas costs
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_GasOptimization_HistoricalYieldShift() public {
         // GAS OPTIMIZATION: Reduce the number of snapshots to prevent OutOfGas
@@ -1598,6 +2086,14 @@ contract YieldShiftTestSuite is Test {
     /**
      * @notice Test that gas optimizations maintain functional correctness
      * @dev Ensures that optimized functions produce identical results to unoptimized versions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_GasOptimization_FunctionalCorrectness() public {
         // GAS OPTIMIZATION: Reduce the number of snapshots to prevent OutOfGas

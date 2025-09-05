@@ -42,6 +42,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test min function
      * @dev Verifies minimum value calculation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BasicMath_Min() public pure {
         assertEq(VaultMath.min(100, 200), 100);
@@ -52,6 +60,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test max function
      * @dev Verifies maximum value calculation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BasicMath_Max() public pure {
         assertEq(VaultMath.max(100, 200), 200);
@@ -66,6 +82,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test percentage calculation with normal values
      * @dev Verifies percentage calculation using basis points
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testPercentageOf_WithNormalValues_ShouldCalculateCorrectly() public pure {
         uint256 result = VaultMath.percentageOf(1000, 2500); // 2500 basis points = 25%
@@ -75,6 +99,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test percentage calculation with zero inputs
      * @dev Verifies behavior with zero inputs
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testPercentageOf_WithZeroInputs_ShouldReturnZero() public pure {
         uint256 result = VaultMath.percentageOf(0, 50);
@@ -87,6 +119,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test percentage calculation with 100%
      * @dev Verifies 100% calculation using basis points
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testPercentageOf_With100Percent_ShouldReturnFullValue() public pure {
         uint256 result = VaultMath.percentageOf(1000, 10000); // 10000 basis points = 100%
@@ -100,6 +140,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test EUR to USD conversion
      * @dev Verifies EUR to USD conversion with exchange rate
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Currency_EurToUsd() public pure {
         uint256 eurAmount = 100 * 1e18; // 100 EUR
@@ -112,6 +160,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test USD to EUR conversion
      * @dev Verifies USD to EUR conversion with exchange rate
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Currency_UsdToEur() public pure {
         uint256 usdAmount = 110 * 1e18; // 110 USD
@@ -128,6 +184,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test collateralization ratio calculation
      * @dev Verifies collateralization ratio calculation
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Collateralization_CalculateRatio() public pure {
         uint256 collateralValue = 1000 * 1e18; // 1000 USD
@@ -140,6 +204,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test collateralization ratio with zero debt
      * @dev Verifies infinite ratio when no debt
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Collateralization_ZeroDebt_ShouldReturnInfinite() public pure {
         uint256 collateralValue = 1000 * 1e18;
@@ -156,6 +228,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test yield distribution calculation
      * @dev Verifies yield distribution between users and hedgers
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_CalculateDistribution() public pure {
         uint256 totalYield = 1000 * 1e18;
@@ -177,6 +257,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test tolerance checking
      * @dev Verifies tolerance checking functionality
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_IsWithinTolerance() public pure {
         uint256 value1 = 1000 * 1e18;
@@ -190,6 +278,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test tolerance checking with values outside tolerance
      * @dev Verifies tolerance boundary enforcement
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_OutsideTolerance_ShouldReturnFalse() public pure {
         uint256 value1 = 1000 * 1e18;
@@ -207,6 +303,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test complete yield distribution workflow
      * @dev Verifies end-to-end yield distribution calculations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_CompleteYieldWorkflow() public pure {
         // Initial parameters
@@ -229,6 +333,14 @@ contract VaultMathTestSuite is Test {
     /**
      * @notice Test complete currency conversion workflow
      * @dev Verifies end-to-end currency conversion calculations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_CompleteCurrencyWorkflow() public pure {
         // Initial EUR amount

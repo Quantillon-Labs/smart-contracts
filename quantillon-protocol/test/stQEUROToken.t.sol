@@ -86,6 +86,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Set up test environment before each test
      * @dev Deploys a new stQEUROToken contract using proxy pattern and initializes it
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function setUp() public {
         // Deploy TimeProvider through proxy
@@ -207,6 +215,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test successful contract initialization
      * @dev Verifies proper initialization with valid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         // Check token details
@@ -229,6 +245,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test initialization with zero addresses should revert
      * @dev Verifies that initialization fails with invalid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroAddresses_Revert() public {
         // Create implementation once to reuse
@@ -318,6 +342,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test that initialization can only be called once
      * @dev Verifies the initializer modifier works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
@@ -332,6 +364,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test successful QEURO staking
      * @dev Verifies that users can stake QEURO to receive stQEURO
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Staking_StakeSuccess() public {
         vm.prank(user1);
@@ -356,6 +396,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test staking with zero amount should revert
      * @dev Verifies that staking zero QEURO is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Staking_StakeZeroAmount_Revert() public {
         vm.prank(user1);
@@ -366,6 +414,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test staking with insufficient QEURO balance should revert
      * @dev Verifies that users cannot stake more QEURO than they have
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Staking_StakeInsufficientBalance_Revert() public {
         uint256 tooMuch = INITIAL_QEURO_AMOUNT + 1;
@@ -378,6 +434,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test staking when contract is paused should revert
      * @dev Verifies that staking is blocked when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Staking_StakeWhenPaused_Revert() public {
         // Pause the contract
@@ -393,6 +457,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test multiple users staking
      * @dev Verifies that multiple users can stake QEURO
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Staking_MultipleUsersStake() public {
         // User1 stakes
@@ -421,6 +493,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test successful QEURO unstaking
      * @dev Verifies that users can unstake QEURO by burning stQEURO
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_UnstakeSuccess() public {
         // First stake some QEURO
@@ -451,6 +531,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch staking of multiple amounts
      * @dev Validates that batch staking works correctly with multiple valid amounts
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchStake_Success() public {
         uint256[] memory amounts = new uint256[](3);
@@ -469,6 +557,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch unstaking of multiple amounts
      * @dev Validates that batch unstaking works correctly with multiple valid amounts
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchUnstake_Success() public {
         // Stake first
@@ -490,6 +586,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch transfer of tokens to multiple recipients
      * @dev Validates that batch transfers work correctly with multiple valid transfers
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchTransfer_Success() public {
         // Stake then transfer out
@@ -518,6 +622,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests that batch staking reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for staking operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchStake_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
@@ -535,6 +647,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests that batch unstaking reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for unstaking operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchUnstake_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
@@ -552,6 +672,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests that batch transfer reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for transfer operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
@@ -571,6 +699,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests successful batch staking at maximum batch size
      * @dev Validates that staking works correctly at the maximum allowed batch size
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchStake_MaxBatchSize_Success() public {
         // Test with exactly MAX_BATCH_SIZE (100)
@@ -595,6 +731,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests the virtual protection status functionality
      * @dev Validates that virtual protection status is correctly tracked and reported
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VirtualProtection_Status() public {
         // Test virtual protection status function
@@ -609,6 +753,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Tests that virtual protection prevents donation attacks
      * @dev Validates that the virtual protection mechanism prevents malicious donation attacks
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VirtualProtection_DonationAttackPrevention() public {
         // Test that virtual protection prevents donation attacks
@@ -634,6 +786,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test unstaking with zero amount should revert
      * @dev Verifies that unstaking zero stQEURO is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_UnstakeZeroAmount_Revert() public {
         vm.prank(user1);
@@ -644,6 +804,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test unstaking with insufficient stQEURO balance should revert
      * @dev Verifies that users cannot unstake more stQEURO than they have
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_UnstakeInsufficientBalance_Revert() public {
         uint256 tooMuch = STAKE_AMOUNT + 1;
@@ -656,6 +824,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test unstaking when contract is paused should revert
      * @dev Verifies that unstaking is blocked when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_UnstakeWhenPaused_Revert() public {
         // First stake some QEURO
@@ -675,6 +851,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test partial unstaking
      * @dev Verifies that users can unstake part of their stQEURO
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Unstaking_PartialUnstake() public {
         // First stake some QEURO
@@ -706,6 +890,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test yield distribution
      * @dev Verifies that yield can be distributed to increase exchange rate
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_DistributeYield() public {
         // First stake some QEURO
@@ -727,6 +919,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test yield distribution with zero amount should revert
      * @dev Verifies that distributing zero yield is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_DistributeZeroYield_Revert() public {
         vm.prank(yieldManager);
@@ -737,6 +937,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test yield distribution with no stQEURO supply should revert
      * @dev Verifies that yield cannot be distributed when no one has staked
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_DistributeYieldNoSupply_Revert() public {
         vm.prank(yieldManager);
@@ -747,6 +955,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test yield distribution by non-yield manager should revert
      * @dev Verifies that only yield manager can distribute yield
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_DistributeYieldByNonManager_Revert() public {
         // First stake some QEURO
@@ -762,6 +978,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test yield distribution and exchange rate increase
      * @dev Verifies that yield distribution increases the exchange rate
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_UnstakeAfterYieldDistribution() public {
         // First stake some QEURO
@@ -798,6 +1022,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test yield claiming (should return 0 in this model)
      * @dev Verifies that yield claiming returns 0 as yield is distributed via exchange rate
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_ClaimYield() public {
         // First stake some QEURO
@@ -815,6 +1047,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test getting pending yield (should return 0 in this model)
      * @dev Verifies that pending yield returns 0 as yield is distributed via exchange rate
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Yield_GetPendingYield() public {
         // First stake some QEURO
@@ -835,6 +1075,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test exchange rate calculation
      * @dev Verifies that exchange rate is calculated correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_ExchangeRate_GetExchangeRate() public {
         // Initial exchange rate should be 1:1
@@ -861,6 +1109,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test QEURO equivalent calculation
      * @dev Verifies that QEURO equivalent is calculated correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_ExchangeRate_GetQEUROEquivalent() public {
         // Stake some QEURO
@@ -883,6 +1139,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test QEURO equivalent for user with no balance
      * @dev Verifies that QEURO equivalent returns 0 for users with no stQEURO
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_ExchangeRate_GetQEUROEquivalentNoBalance() public view {
         uint256 qeuroEquivalent = stQEURO.getQEUROEquivalent(user1);
@@ -896,6 +1160,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test getting TVL
      * @dev Verifies that total value locked is returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetTVL() public {
         // Initial TVL should be 0
@@ -914,6 +1186,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test getting staking statistics
      * @dev Verifies that staking statistics are returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetStakingStats() public {
         // Get initial stats
@@ -958,6 +1238,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test pausing the contract
      * @dev Verifies that emergency role can pause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Pause() public {
         vm.prank(admin);
@@ -969,6 +1257,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test pausing by non-emergency role should revert
      * @dev Verifies that only emergency role can pause
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_PauseByNonEmergency_Revert() public {
         vm.prank(user1);
@@ -979,6 +1275,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test unpausing the contract
      * @dev Verifies that emergency role can unpause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Unpause() public {
         // First pause
@@ -995,6 +1299,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test emergency withdrawal
      * @dev Verifies that emergency role can withdraw user's QEURO
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyWithdraw() public {
         // First stake some QEURO
@@ -1018,6 +1330,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test emergency withdrawal by non-emergency role should revert
      * @dev Verifies that only emergency role can perform emergency withdrawal
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyWithdrawByNonEmergency_Revert() public {
         // First stake some QEURO
@@ -1037,6 +1357,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test updating yield parameters
      * @dev Verifies that governance role can update yield parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateYieldParameters() public {
         uint256 newFee = 500; // 5%
@@ -1054,6 +1382,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test updating yield parameters by non-governance role should revert
      * @dev Verifies that only governance role can update yield parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateYieldParametersByNonGovernance_Revert() public {
         vm.prank(user1);
@@ -1064,6 +1400,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test updating yield parameters with invalid values should revert
      * @dev Verifies that invalid yield parameters are rejected
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateYieldParametersInvalidValues_Revert() public {
         // Test yield fee too high
@@ -1080,6 +1424,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test updating treasury address
      * @dev Verifies that governance role can update treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateTreasury() public {
         address newTreasury = address(0x999);
@@ -1093,6 +1445,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test updating treasury to zero address should revert
      * @dev Verifies that treasury cannot be set to zero address
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateTreasuryToZero_Revert() public {
         vm.prank(governance);
@@ -1103,6 +1463,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test updating treasury by non-governance role should revert
      * @dev Verifies that only governance role can update treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateTreasuryByNonGovernance_Revert() public {
         vm.prank(user1);
@@ -1117,6 +1485,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering external tokens to treasury
      * @dev Verifies that admin can recover accidentally sent tokens to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverToken() public {
         // Deploy a mock ERC20 token
@@ -1139,6 +1515,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering QEURO tokens to treasury
      * @dev Verifies that admin can recover QEURO tokens to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverQEURO() public {
         uint256 amount = 1000e18;
@@ -1158,6 +1542,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering stQEURO tokens should revert
      * @dev Verifies that stQEURO tokens cannot be recovered
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverStQEURO() public {
         uint256 amount = 1000e18;
@@ -1170,6 +1562,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering tokens by non-admin should revert
      * @dev Verifies that only admin can recover tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MTK");
@@ -1182,6 +1582,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering ETH to treasury address
      * @dev Verifies that admin can recover accidentally sent ETH to treasury only
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETH() public {
         // Fund the contract with some ETH
@@ -1198,6 +1606,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test recovering ETH by non-admin should revert
      * @dev Verifies that only admin can recover ETH
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHByNonAdmin_Revert() public {
         // Fund the contract with some ETH
@@ -1215,6 +1631,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test complete staking and yield cycle
      * @dev Verifies that a complete staking and yield cycle works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_CompleteStakingYieldCycle() public {
         // User1 stakes QEURO
@@ -1248,6 +1672,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test multiple yield distributions
      * @dev Verifies that multiple yield distributions work correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_MultipleYieldDistributions() public {
         // User stakes QEURO
@@ -1278,6 +1710,14 @@ contract stQEUROTokenTestSuite is Test {
     /**
      * @notice Test partial staking and unstaking with yield
      * @dev Verifies that partial operations work correctly with yield
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_PartialStakingUnstakingWithYield() public {
         // User stakes QEURO

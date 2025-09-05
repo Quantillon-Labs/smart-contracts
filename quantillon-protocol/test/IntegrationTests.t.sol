@@ -28,6 +28,14 @@ contract IntegrationTests is Test {
     /**
      * @notice Tests the complete end-to-end protocol workflow
      * @dev Validates user deposit, staking, hedging, and withdrawal in a complete cycle
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_CompleteProtocolWorkflow() public {
         console.log("=== Complete Protocol Workflow Integration Test ===");
@@ -146,6 +154,14 @@ contract IntegrationTests is Test {
     /**
      * @notice Tests batch operations across multiple contracts
      * @dev Validates batch deposits, stakes, and hedging operations work correctly together
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchOperationsWorkflow() public {
         console.log("\n=== Batch Operations Integration Test ===");
@@ -188,6 +204,14 @@ contract IntegrationTests is Test {
     /**
      * @notice Tests emergency recovery procedures across the protocol
      * @dev Validates emergency pause, recovery, and restoration of normal operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_EmergencyRecoveryWorkflow() public {
         console.log("\n=== Emergency Recovery Integration Test ===");
@@ -227,6 +251,14 @@ contract IntegrationTests is Test {
     /**
      * @notice Tests consistency of data and state across all protocol contracts
      * @dev Validates that all contracts maintain consistent state and data integrity
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_CrossContractConsistency() public {
         console.log("\n=== Cross-Contract Consistency Test ===");

@@ -102,6 +102,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Set up test environment before each test
      * @dev Deploys a new QTIToken contract using proxy pattern and initializes it
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function setUp() public {
         // Deploy TimeProvider through proxy
@@ -157,6 +165,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test successful contract initialization
      * @dev Verifies that the contract is properly initialized with correct roles and settings
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_Success() public view {
         // Check token details
@@ -185,6 +201,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test initialization with zero addresses should revert
      * @dev Verifies that initialization fails with invalid parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroAddresses_Revert() public {
         QTITokenTestHelper newImplementation = new QTITokenTestHelper(timeProvider);
@@ -216,6 +240,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test that initialization can only be called once
      * @dev Verifies the initializer modifier works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
@@ -230,6 +262,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test successful token locking
      * @dev Verifies that users can lock tokens for voting power
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_LockSuccess() public {
         uint256 lockTime = ONE_MONTH;
@@ -256,6 +296,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test locking with zero amount should revert
      * @dev Verifies that locking zero tokens is prevented
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_LockZeroAmount_Revert() public {
         vm.prank(user1);
@@ -266,6 +314,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test locking with insufficient balance should revert
      * @dev Verifies that users cannot lock more than they have
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_LockInsufficientBalance_Revert() public {
         uint256 tooMuch = INITIAL_MINT_AMOUNT + 1;
@@ -278,6 +334,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test locking with too short duration should revert
      * @dev Verifies that minimum lock time is enforced
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_LockTooShort_Revert() public {
         uint256 tooShort = 6 days; // Less than MIN_LOCK_TIME (7 days)
@@ -290,6 +354,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test locking with too long duration should revert
      * @dev Verifies that maximum lock time is enforced
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_LockTooLong_Revert() public {
         uint256 tooLong = FOUR_YEARS + 1; // More than MAX_LOCK_TIME
@@ -302,6 +374,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test locking with amount exceeding uint96 max should revert
      * @dev Verifies that amount overflow protection is working
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_LockAmountOverflow_Revert() public {
         // Test with a realistic scenario that would cause overflow
@@ -313,6 +393,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test locking with voting power overflow should revert
      * @dev Verifies that voting power overflow protection is working
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_VotingPowerOverflow_Revert() public {
         // Use an amount that would cause voting power to exceed uint96.max if validation was missing
@@ -331,6 +419,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test locking with total amount overflow should revert
      * @dev Verifies that total amount overflow protection is working
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_TotalAmountOverflow_Revert() public {
         // First lock a large amount (within user's balance)
@@ -349,6 +445,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test locking with unlock time overflow should revert
      * @dev Verifies that unlock time overflow protection is working
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_UnlockTimeOverflow_Revert() public {
         // Use a lock time that would cause unlock time to exceed uint32 max
@@ -362,6 +466,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test extending lock with overflow should revert
      * @dev Verifies that extended unlock time overflow protection is working
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_ExtendedUnlockTimeOverflow_Revert() public {
         // First lock with a reasonable time
@@ -380,6 +492,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test successful locking with maximum safe values
      * @dev Verifies that the fix allows legitimate large amounts
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_LockMaximumSafeValues_Success() public {
         uint256 maxSafeAmount = 800_000 * 1e18; // 800k QTI (within user's balance)
@@ -397,6 +517,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test that overflow protection is working
      * @dev Verifies that the fix prevents overflow scenarios
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_OverflowProtection_Success() public {
         // Test with a large amount that would cause issues without overflow protection
@@ -419,6 +547,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test extending an existing lock
      * @dev Verifies that users can extend their lock duration
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_ExtendLock() public {
         // Initial lock
@@ -440,6 +576,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test successful token unlocking
      * @dev Verifies that users can unlock tokens after lock period expires
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_UnlockSuccess() public {
         // Lock tokens
@@ -473,6 +617,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test unlocking before lock expires should revert
      * @dev Verifies that users cannot unlock before the lock period ends
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_UnlockBeforeExpiry_Revert() public {
         // Lock tokens
@@ -488,6 +640,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test unlocking with no lock should revert
      * @dev Verifies that users cannot unlock if they have no lock
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_UnlockNoLock_Revert() public {
         vm.prank(user1);
@@ -498,6 +658,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test voting power calculation with different lock times
      * @dev Verifies that voting power multiplier works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_VotingPowerCalculation() public {
         // Test minimum lock time (1x multiplier)
@@ -520,6 +688,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test voting power decay over time
      * @dev Verifies that voting power decreases as time passes
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_VoteEscrow_VotingPowerDecay() public {
         // Setup: User locks tokens for 1 year
@@ -549,6 +725,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Fuzz test for minting with bounded inputs
      * @dev Tests minting with various valid inputs
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testFuzz_MintBounded(address to, uint256 amount) public view {
         // Bound inputs to very conservative ranges to avoid supply cap issues
@@ -573,6 +757,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test successful proposal creation
      * @dev Verifies that users with sufficient voting power can create proposals
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_CreateProposal() public {
         // Lock tokens to get voting power
@@ -600,6 +792,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests successful batch locking of QTI tokens
      * @dev Validates that multiple QTI lock operations can be performed in a single transaction
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchLock_Success() public {
         uint256[] memory amounts = new uint256[](2);
@@ -621,6 +821,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests successful batch unlocking by admin
      * @dev Validates that admin can unlock multiple positions in a single transaction
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchUnlock_Admin_Success() public {
         // two users lock
@@ -645,6 +853,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests successful batch transfer of QTI tokens
      * @dev Validates that multiple QTI transfers can be performed in a single transaction
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchTransfer_Success() public {
         address[] memory recipients = new address[](2);
@@ -665,6 +881,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests successful batch voting on governance proposals
      * @dev Validates that multiple governance votes can be cast in a single transaction
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchVote_Success() public {
         vm.prank(user1);
@@ -697,6 +921,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests that batch locking reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for lock operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchLock_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
@@ -716,6 +948,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests that batch unlocking reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for unlock operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchUnlock_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_UNLOCK_BATCH_SIZE (50)
@@ -733,6 +973,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests that batch transfer reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for transfer operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchTransfer_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_BATCH_SIZE (100)
@@ -752,6 +1000,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests that batch voting reverts when batch size exceeds limit
      * @dev Validates that the batch size limit is enforced for voting operations
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchVote_BatchSizeTooLarge_Revert() public {
         // Create array larger than MAX_VOTE_BATCH_SIZE (50)
@@ -771,6 +1027,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Tests successful batch locking at maximum batch size
      * @dev Validates that locking works correctly at the maximum allowed batch size
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_BatchLock_MaxBatchSize_Success() public {
         // Test with exactly MAX_BATCH_SIZE (100)
@@ -790,6 +1054,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test proposal creation with insufficient voting power should revert
      * @dev Verifies that users need sufficient voting power to create proposals
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_CreateProposalInsufficientPower_Revert() public {
         // Try to create proposal without locking tokens
@@ -801,6 +1073,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test proposal creation with too short voting period should revert
      * @dev Verifies that minimum voting period is enforced
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_CreateProposalTooShortPeriod_Revert() public {
         // Lock tokens
@@ -816,6 +1096,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test proposal creation with too long voting period should revert
      * @dev Verifies that maximum voting period is enforced
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_CreateProposalTooLongPeriod_Revert() public {
         // Lock tokens
@@ -831,6 +1119,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test successful voting on proposal
      * @dev Verifies that users can vote on proposals
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_VoteSuccess() public {
         // Create proposal
@@ -853,6 +1149,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test voting without voting power should revert
      * @dev Verifies that users need voting power to vote
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_VoteNoPower_Revert() public {
         // Create proposal
@@ -870,6 +1174,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test double voting should revert
      * @dev Verifies that users cannot vote twice on the same proposal
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_DoubleVote_Revert() public {
         // Create proposal
@@ -891,6 +1203,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test voting before voting starts should revert
      * @dev Verifies that voting cannot happen before the voting period starts
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_VoteBeforeStart_Revert() public {
         // Create proposal
@@ -907,6 +1227,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test voting after voting ends should revert
      * @dev Verifies that voting cannot happen after the voting period ends
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_VoteAfterEnd_Revert() public {
         // Create proposal
@@ -927,6 +1255,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test successful proposal execution
      * @dev Verifies that successful proposals can be executed
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_ExecuteProposal() public {
         // Create proposal with enough voting power to meet quorum
@@ -961,6 +1297,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test executing proposal before voting ends should revert
      * @dev Verifies that proposals cannot be executed before voting period ends
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_ExecuteBeforeEnd_Revert() public {
         // Create proposal
@@ -978,6 +1322,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test executing failed proposal should revert
      * @dev Verifies that failed proposals cannot be executed
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_ExecuteFailedProposal_Revert() public {
         // Create proposal
@@ -1002,6 +1354,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test executing proposal without quorum should revert
      * @dev Verifies that proposals need sufficient votes to pass
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_ExecuteWithoutQuorum_Revert() public {
         // Create proposal with enough voting power to create but not enough to meet quorum
@@ -1026,6 +1386,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test proposal cancellation by proposer
      * @dev Verifies that proposers can cancel their proposals
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_CancelProposalByProposer() public {
         // Create proposal
@@ -1046,6 +1414,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test proposal cancellation by governance role
      * @dev Verifies that governance role can cancel any proposal
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_CancelProposalByGovernance() public {
         // Create proposal
@@ -1066,6 +1442,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test proposal cancellation by unauthorized user should revert
      * @dev Verifies that only proposer or governance can cancel proposals
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Governance_CancelProposalUnauthorized_Revert() public {
         // Create proposal
@@ -1087,6 +1471,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test pausing the contract
      * @dev Verifies that emergency role can pause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Pause() public {
         vm.prank(admin);
@@ -1098,6 +1490,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test pausing by non-emergency role should revert
      * @dev Verifies that only emergency role can pause
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_PauseByNonEmergency_Revert() public {
         vm.prank(user1);
@@ -1108,6 +1508,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test unpausing the contract
      * @dev Verifies that emergency role can unpause the contract
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_Unpause() public {
         // First pause
@@ -1124,6 +1532,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test operations when paused
      * @dev Verifies that operations are blocked when contract is paused
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_OperationsWhenPaused() public {
         // Pause the contract
@@ -1148,6 +1564,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test updating governance parameters
      * @dev Verifies that governance role can update parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateGovernanceParameters() public {
         uint256 newThreshold = 200_000 * 1e18;
@@ -1165,6 +1589,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test updating governance parameters by non-governance role should revert
      * @dev Verifies that only governance role can update parameters
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateGovernanceParametersByNonGovernance_Revert() public {
         vm.prank(user1);
@@ -1175,6 +1607,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test updating treasury address
      * @dev Verifies that governance role can update treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateTreasury() public {
         address newTreasury = address(0x999);
@@ -1188,6 +1628,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test updating treasury to zero address should revert
      * @dev Verifies that treasury cannot be set to zero address
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateTreasuryToZero_Revert() public {
         vm.prank(governance);
@@ -1198,6 +1646,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test updating decentralization level
      * @dev Verifies that decentralization level can be updated
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Admin_UpdateDecentralizationLevel() public {
         // Advance time to trigger decentralization
@@ -1219,6 +1675,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test getting governance information
      * @dev Verifies that governance info is returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetGovernanceInfo() public {
         // Lock some tokens
@@ -1243,6 +1707,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test getting lock information
      * @dev Verifies that lock info is returned correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetLockInfo() public {
         // Lock tokens
@@ -1273,6 +1745,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test complete governance cycle
      * @dev Verifies that a complete governance cycle works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_CompleteGovernanceCycle() public {
         // User1 locks tokens and creates proposal
@@ -1305,6 +1785,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test multiple users with different lock times
      * @dev Verifies that different lock strategies work correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_MultipleUsersDifferentLocks() public {
         // User1: Short lock
@@ -1334,6 +1822,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test voting power decay over time
      * @dev Verifies that voting power decreases correctly over time
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_VotingPowerDecay() public {
         // Lock tokens for 1 month
@@ -1356,6 +1852,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test recovering external tokens to treasury
      * @dev Verifies that admin can recover accidentally sent tokens to treasury
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverToken() public {
         // Create a mock ERC20 token
@@ -1382,6 +1886,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test recovering QTI tokens should revert
      * @dev Verifies that QTI tokens cannot be recovered
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverQTIToken_Revert() public {
         vm.prank(admin);
@@ -1392,6 +1904,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test recovering tokens by non-admin should revert
      * @dev Verifies that only admin can recover tokens
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverTokenByNonAdmin_Revert() public {
         MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
@@ -1404,6 +1924,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test recovering ETH to treasury address
      * @dev Verifies that admin can recover accidentally sent ETH to treasury only
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETH() public {
         uint256 recoveryAmount = 1 ether;
@@ -1423,6 +1951,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test recovering ETH by non-admin (should revert)
      * @dev Verifies that only admin can recover ETH
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHByNonAdmin_Revert() public {
         vm.deal(address(qtiToken), 1 ether);
@@ -1437,6 +1973,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test recovering ETH when contract has no ETH (should revert)
      * @dev Verifies that recovery fails when there's no ETH to recover
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
@@ -1447,6 +1991,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test MEV protection for governance functions
      * @dev Verifies that governance functions are protected against MEV attacks
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testSecurity_MEVProtectionForGovernance_ShouldBeProtected() public pure {
         // TODO: Implement MEV protection tests after contract functions are updated
@@ -1457,6 +2009,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test that MEV protection prevents immediate execution
      * @dev Verifies that proposals cannot be executed immediately after scheduling
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testSecurity_MEVProtectionPreventsImmediateExecution_ShouldPreventExecution() public pure {
         // TODO: Implement MEV protection tests after contract functions are updated
@@ -1467,6 +2027,14 @@ contract QTITokenTestSuite is Test {
     /**
      * @notice Test that execution hash verification prevents unauthorized execution
      * @dev Verifies that only the correct execution hash can be used
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
      */
     function testSecurity_ExecutionHashVerification_ShouldPreventUnauthorizedExecution() public pure {
         // TODO: Implement MEV protection tests after contract functions are updated

@@ -1,0 +1,26 @@
+{
+  "name": "quantillon-natspec-validator",
+  "version": "1.0.0",
+  "description": "NatSpec documentation validator for Quantillon Protocol",
+  "main": "validate-natspec.js",
+  "scripts": {
+    "validate": "node validate-natspec.js",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "@solidity-parser/parser": "^0.16.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "solidity",
+    "natspec",
+    "documentation",
+    "validation",
+    "quantillon",
+    "protocol"
+  ],
+  "author": "Quantillon Labs",
+  "license": "MIT"
+}

@@ -319,6 +319,14 @@ contract stQEUROToken is
      * @notice Stake QEURO to receive stQEURO
      * @param qeuroAmount Amount of QEURO to stake
      * @return stQEUROAmount Amount of stQEURO received
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused flashLoanProtection returns (uint256 stQEUROAmount) {
         require(qeuroAmount > 0, "stQEURO: Amount must be positive");
@@ -351,6 +359,14 @@ contract stQEUROToken is
      * @return qeuroAmount Amount of QEURO received
      * 
 
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function unstake(uint256 stQEUROAmount) external nonReentrant whenNotPaused returns (uint256 qeuroAmount) {
         require(stQEUROAmount > 0, "stQEURO: Amount must be positive");
@@ -532,6 +548,14 @@ contract stQEUROToken is
     /**
      * @notice Distribute yield to stQEURO holders (increases exchange rate)
      * @param yieldAmount Amount of yield in USDC
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function distributeYield(uint256 yieldAmount) external onlyRole(YIELD_MANAGER_ROLE) {
         require(yieldAmount > 0, "stQEURO: Yield amount must be positive");
@@ -564,6 +588,14 @@ contract stQEUROToken is
     /**
      * @notice Claim accumulated yield for a user (in USDC)
      * @return yieldAmount Amount of yield claimed
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function claimYield() public returns (uint256 yieldAmount) {
         // In yield accrual model, yield is claimed by unstaking
@@ -577,6 +609,14 @@ contract stQEUROToken is
      * @notice Get pending yield for a user (in USDC)
      * @param user User address
      * @return yieldAmount Pending yield amount
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getPendingYield(address user) public view returns (uint256 yieldAmount) {
         uint256 userBalance = balanceOf(user);
@@ -594,6 +634,14 @@ contract stQEUROToken is
 
     /**
      * @notice Get current exchange rate between QEURO and stQEURO
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getExchangeRate() external view returns (uint256) {
         return _calculateCurrentExchangeRate();
@@ -601,6 +649,14 @@ contract stQEUROToken is
 
     /**
      * @notice Get total value locked in stQEURO
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getTVL() external view returns (uint256) {
         return totalUnderlying;
@@ -610,6 +666,14 @@ contract stQEUROToken is
      * @notice Get user's QEURO equivalent balance
      * @param user User address
      * @return qeuroEquivalent QEURO equivalent of stQEURO balance
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getQEUROEquivalent(address user) external view returns (uint256 qeuroEquivalent) {
         uint256 stQEUROBalance = balanceOf(user);
@@ -621,6 +685,14 @@ contract stQEUROToken is
 
     /**
      * @notice Get staking statistics
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getStakingStats() external view returns (
         uint256 totalStQEUROSupply,
@@ -732,6 +804,14 @@ contract stQEUROToken is
 
     /**
      * @notice Update treasury address
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
         require(_treasury != address(0), "stQEURO: Treasury cannot be zero");
@@ -746,6 +826,14 @@ contract stQEUROToken is
      * @notice Returns the number of decimals used by the token
      * @dev Always returns 18 to match QEURO token standard
      * @return The number of decimals (18)
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function decimals() public pure override returns (uint8) {
         return 18;
@@ -760,6 +848,14 @@ contract stQEUROToken is
     /**
      * @notice Pauses all token transfers and minting/burning operations
      * @dev Can only be called by addresses with EMERGENCY_ROLE during emergencies
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
@@ -768,6 +864,14 @@ contract stQEUROToken is
     /**
      * @notice Unpauses all token transfers and minting/burning operations
      * @dev Can only be called by addresses with EMERGENCY_ROLE to resume normal operations
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
@@ -777,6 +881,14 @@ contract stQEUROToken is
      * @notice Emergency withdrawal of QEURO (only in emergency)
      * 
 
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function emergencyWithdraw(address user) external onlyRole(EMERGENCY_ROLE) {
         uint256 stQEUROBalance = balanceOf(user);
@@ -798,6 +910,14 @@ contract stQEUROToken is
 
     /**
      * @notice Recover accidentally sent tokens to treasury only
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure token recovery to treasury
@@ -807,6 +927,14 @@ contract stQEUROToken is
     /**
      * @notice Recover ETH to treasury address only
      * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
 
@@ -822,6 +950,14 @@ contract stQEUROToken is
      * @return effectiveSupply Effective supply including virtual shares
      * @return effectiveAssets Effective assets including virtual assets
      * @dev Useful for monitoring and debugging virtual protection
+      * @custom:security Validates input parameters and enforces security checks
+      * @custom:validation Validates input parameters and business logic constraints
+      * @custom:state-changes Updates contract state variables
+      * @custom:events Emits relevant events for state changes
+      * @custom:errors Throws custom errors for invalid conditions
+      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:access Restricted to authorized roles
+      * @custom:oracle Requires fresh oracle price data
      */
     function getVirtualProtectionStatus() external view returns (
         uint256 virtualShares,

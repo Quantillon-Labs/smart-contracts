@@ -17,6 +17,7 @@ help:
 	@echo ""
 	@echo "🔍 Security:"
 	@echo "  make slither    - Run Slither security analysis"
+	@echo "  make mythril    - Run Mythril symbolic execution analysis"
 	@echo "  make security   - Run comprehensive security checks"
 	@echo ""
 	@echo "⛽ Gas Analysis:"
@@ -57,10 +58,15 @@ slither:
 	@echo "🔍 Running Slither security analysis..."
 	@cd "$(CURDIR)" && ./scripts/run-slither.sh
 
+# Run Mythril symbolic execution analysis
+mythril:
+	@echo "🔍 Running Mythril symbolic execution analysis..."
+	@cd "$(CURDIR)" && ./scripts/run-mythril.sh
+
 
 
 # Run comprehensive security checks
-security: build slither
+security: build slither mythril
 	@echo "🛡️  Security analysis complete!"
 
 # Run comprehensive gas analysis

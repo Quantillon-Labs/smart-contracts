@@ -1285,7 +1285,7 @@ contract AaveVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testAaveMarket_WithValidParameters_ShouldGetAaveMarketData() public view {
+    function testAaveMarket_WithValidParameters_ShouldGetAaveMarketData() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Aave market data test placeholder");
     }
@@ -1302,7 +1302,7 @@ contract AaveVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testAaveMarket_WithValidParameters_ShouldCheckAaveHealth() public view {
+    function testAaveMarket_WithValidParameters_ShouldCheckAaveHealth() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Aave health check test placeholder");
     }
@@ -1352,7 +1352,7 @@ contract AaveVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testAutomaticStrategies_WithValidParameters_ShouldCalculateOptimalAllocation() public view {
+    function testAutomaticStrategies_WithValidParameters_ShouldCalculateOptimalAllocation() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Optimal allocation test placeholder");
     }
@@ -1772,7 +1772,7 @@ contract AaveVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_View_WithValidParameters_ShouldGetAaveConfig() public view {
+    function test_View_WithValidParameters_ShouldGetAaveConfig() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Aave config test placeholder");
     }

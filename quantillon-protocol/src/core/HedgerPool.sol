@@ -1457,7 +1457,7 @@ contract HedgerPool is
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function getMaxValues() external view returns (
+    function getMaxValues() external pure returns (
         uint256 maxPositionSize,
         uint256 maxMargin,
         uint256 maxEntryPrice,

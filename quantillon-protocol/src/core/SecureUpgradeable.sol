@@ -186,7 +186,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @dev Internal function that determines upgrade authorization based on secure upgrade settings
      * @param newImplementation Address of the new implementation
      */
-    function _authorizeUpgrade(address newImplementation) internal override {
+    function _authorizeUpgrade(address newImplementation) internal override view {
         // If secure upgrades are enabled and timelock is set, only timelock can upgrade
         if (secureUpgradesEnabled && address(timelock) != address(0)) {
             require(msg.sender == address(timelock), "SecureUpgradeable: Only timelock can upgrade");

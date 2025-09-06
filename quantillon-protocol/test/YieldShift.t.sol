@@ -654,7 +654,7 @@ contract YieldShiftTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testYieldDistribution_WithValidParameters_ShouldUpdateYieldDistribution() public view {
+    function testYieldDistribution_WithValidParameters_ShouldUpdateYieldDistribution() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Yield distribution update test placeholder");
     }
@@ -1051,7 +1051,7 @@ contract YieldShiftTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testPoolMetrics_WithValidParameters_ShouldCalculateOptimalYieldShift() public view {
+    function testPoolMetrics_WithValidParameters_ShouldCalculateOptimalYieldShift() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Optimal yield shift calculation test placeholder");
     }
@@ -1552,7 +1552,7 @@ contract YieldShiftTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testViewFunctions_WithValidParameters_ShouldGetHistoricalYieldShift() public view {
+    function testViewFunctions_WithValidParameters_ShouldGetHistoricalYieldShift() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Historical yield shift test placeholder");
     }

@@ -1062,7 +1062,7 @@ contract ChainlinkOracleTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testHealthMonitoring_WithHealthyOracle_ShouldReturnHealthyStatus() public view {
+    function testHealthMonitoring_WithHealthyOracle_ShouldReturnHealthyStatus() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Oracle health test placeholder");
     }
@@ -1217,7 +1217,7 @@ contract ChainlinkOracleTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testHealthMonitoring_WithValidParameters_ShouldCheckPriceFeedConnectivity() public view {
+    function testHealthMonitoring_WithValidParameters_ShouldCheckPriceFeedConnectivity() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Price feed connectivity test placeholder");
     }

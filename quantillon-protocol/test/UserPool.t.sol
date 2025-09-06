@@ -1056,7 +1056,7 @@ contract UserPoolTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldCalculateProjectedRewards() public view {
+    function testView_WithValidParameters_ShouldCalculateProjectedRewards() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Projected rewards calculation test placeholder");
     }
@@ -1107,7 +1107,7 @@ contract UserPoolTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldGetPoolConfig() public view {
+    function testView_WithValidParameters_ShouldGetPoolConfig() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Pool config test placeholder");
     }

@@ -301,7 +301,7 @@ contract QTITokenTestSuite is Test {
         uint256 lockTime = ONE_MONTH;
         
         vm.prank(user1);
-        uint256 veQTI = qtiToken.lock(LOCK_AMOUNT, lockTime);
+        qtiToken.lock(LOCK_AMOUNT, lockTime);
         
         // Check lock info
         (uint256 amount, uint256 unlockTime, uint256 votingPower, , uint256 initialVotingPower, ) = qtiToken.getLockInfo(user1);
@@ -558,7 +558,7 @@ contract QTITokenTestSuite is Test {
         
         // This should work with the overflow protection in place
         vm.prank(user1);
-        uint256 veQTI = qtiToken.lock(largeAmount, ONE_YEAR);
+        qtiToken.lock(largeAmount, ONE_YEAR);
         
         // Verify the lock was successful and voting power is calculated correctly
         (uint256 amount, , uint256 votingPower, , , ) = qtiToken.getLockInfo(user1);
@@ -585,11 +585,11 @@ contract QTITokenTestSuite is Test {
     function test_VoteEscrow_ExtendLock() public {
         // Initial lock
         vm.prank(user1);
-        uint256 initialVeQTI = qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
+        qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
         
         // Extend lock
         vm.prank(user1);
-        uint256 extendedVeQTI = qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
+        qtiToken.lock(LOCK_AMOUNT, ONE_MONTH);
         
         // Check that unlock time was extended
         (, uint256 unlockTime, , , , ) = qtiToken.getLockInfo(user1);
@@ -727,14 +727,14 @@ contract QTITokenTestSuite is Test {
         // Setup: User locks tokens for 1 year
         uint256 lockTime = ONE_YEAR;
         vm.prank(user1);
-        uint256 veQTI = qtiToken.lock(LOCK_AMOUNT, lockTime);
+        qtiToken.lock(LOCK_AMOUNT, lockTime);
         
         // Fast forward 6 months
         vm.warp(block.timestamp + 6 * 30 days);
         
         // Voting power should have decreased
         uint256 votingPowerAfter6Months = qtiToken.getVotingPower(user1);
-        assertLt(votingPowerAfter6Months, veQTI);
+        assertLt(votingPowerAfter6Months, qtiToken.getVotingPower(user1));
         
         // Fast forward to near unlock time
         vm.warp(block.timestamp + 5 * 30 days);

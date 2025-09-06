@@ -490,7 +490,6 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      */
     function getMultisigSigners() external view returns (address[] memory signers) {
         signers = new address[](multisigSignerCount);
-        uint256 index = 0;
         
         // This is a simplified version - in production, you'd want to maintain a separate array
         // For now, we'll return an empty array as this is just for demonstration

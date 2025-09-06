@@ -522,7 +522,7 @@ contract UserPool is
         qeuroMintedAmounts = new uint256[](usdcAmounts.length);
         
         // Validate amounts and transfer USDC
-        uint256 totalUsdcAmount = _validateAndTransferUsdc(usdcAmounts);
+        _validateAndTransferUsdc(usdcAmounts);
         
         // Initialize user info
         _initializeUserIfNeeded();

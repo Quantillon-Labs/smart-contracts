@@ -547,7 +547,7 @@ contract QTIToken is
         LockInfo storage lockInfo = locks[msg.sender];
         uint256 oldVotingPower = lockInfo.votingPower;
         
-        (uint256 totalNewVotingPower, uint256 totalNewAmount) = _processBatchLocks(
+        (uint256 totalNewVotingPower,) = _processBatchLocks(
             amounts, 
             lockTimes, 
             veQTIAmounts, 

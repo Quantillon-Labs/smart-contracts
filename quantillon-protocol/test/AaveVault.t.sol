@@ -1022,7 +1022,7 @@ contract AaveVaultTestSuite is Test {
         aaveVault.toggleEmergencyMode(true, "Test withdrawal");
         
         // Record initial state
-        uint256 initialAaveBalance = aaveVault.getAaveBalance();
+        aaveVault.getAaveBalance(); // Call to ensure state is consistent
         
         // Withdraw all from Aave
         vm.prank(vaultManager);
@@ -1333,7 +1333,7 @@ contract AaveVaultTestSuite is Test {
         
         // Test auto rebalancing
         vm.prank(vaultManager);
-        (bool rebalanced, uint256 newAllocation, uint256 expectedYield) = aaveVault.autoRebalance();
+        (, uint256 newAllocation, ) = aaveVault.autoRebalance();
         
         // Check rebalancing result
         assertGe(newAllocation, 0);
@@ -1425,7 +1425,7 @@ contract AaveVaultTestSuite is Test {
         aaveVault.deployToAave(deployAmount);
         
         // Record initial state
-        uint256 initialAaveBalance = aaveVault.getAaveBalance();
+        aaveVault.getAaveBalance(); // Call to ensure state is consistent
         
         // Emergency withdrawal
         vm.prank(emergencyRole);

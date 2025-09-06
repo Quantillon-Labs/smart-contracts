@@ -19,6 +19,9 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 OUTPUT_DIR="gas-analysis"
 TEXT_REPORT_FILE="${OUTPUT_DIR}/gas-analysis-${TIMESTAMP}.txt"
 
+# Create output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
+
 # Function to print colored output
 print_header() {
     echo -e "${BLUE}================================${NC}"

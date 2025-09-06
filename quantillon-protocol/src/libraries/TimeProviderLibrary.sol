@@ -461,7 +461,7 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) {
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) view {
         // Additional upgrade validation can be added here
         if (newImplementation == address(0)) revert ErrorLibrary.ZeroAddress();
     }

@@ -84,7 +84,7 @@ contract TimeProviderTest is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_InitialState() public {
+    function test_InitialState() public view {
         // Check initial values
         assertEq(timeProvider.timeOffset(), 0);
         assertEq(timeProvider.emergencyMode(), false);
@@ -134,7 +134,7 @@ contract TimeProviderTest is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_TimeUtilityFunctions() public {
+    function test_TimeUtilityFunctions() public view {
         uint256 currentTime = timeProvider.currentTime();
         
         // Test isFuture
@@ -165,7 +165,7 @@ contract TimeProviderTest is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_GetTimeInfo() public {
+    function test_GetTimeInfo() public view {
         (
             uint256 currentProviderTime,
             uint256 rawBlockTimestamp,
@@ -636,7 +636,7 @@ contract TimeProviderTest is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_AccessControl_AllRoles() public {
+    function test_AccessControl_AllRoles() public view {
         // Test DEFAULT_ADMIN_ROLE
         assertTrue(timeProvider.hasRole(timeProvider.DEFAULT_ADMIN_ROLE(), admin));
         assertFalse(timeProvider.hasRole(timeProvider.DEFAULT_ADMIN_ROLE(), user));
@@ -694,7 +694,7 @@ contract TimeProviderTest is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_UpgradeAuthorization() public {
+    function test_UpgradeAuthorization() public view {
         // Only UPGRADER_ROLE should be able to authorize upgrades
         // This is tested implicitly through the OpenZeppelin upgrade mechanism
         assertTrue(timeProvider.hasRole(timeProvider.UPGRADER_ROLE(), admin));
@@ -712,7 +712,7 @@ contract TimeProviderTest is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_Version() public {
+    function test_Version() public view {
         assertEq(timeProvider.version(), "1.0.0");
     }
     

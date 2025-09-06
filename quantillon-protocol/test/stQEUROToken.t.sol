@@ -740,7 +740,7 @@ contract stQEUROTokenTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_VirtualProtection_Status() public {
+    function test_VirtualProtection_Status() public view {
         // Test virtual protection status function
         (uint256 virtualShares, uint256 virtualAssets, uint256 effectiveSupply, uint256 effectiveAssets) = stQEURO.getVirtualProtectionStatus();
         
@@ -762,7 +762,7 @@ contract stQEUROTokenTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_VirtualProtection_DonationAttackPrevention() public {
+    function test_VirtualProtection_DonationAttackPrevention() public view {
         // Test that virtual protection prevents donation attacks
         stQEURO.totalSupply(); // Call to ensure state is consistent
         stQEURO.totalUnderlying(); // Call to ensure state is consistent

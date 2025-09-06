@@ -710,7 +710,7 @@ contract QTIToken is
      * @custom:access Internal function
      * @custom:oracle No oracle dependencies
      */
-    function _calculateVotingPower(uint256 amount, uint256 lockTime) internal view returns (uint256) {
+    function _calculateVotingPower(uint256 amount, uint256 lockTime) internal pure returns (uint256) {
         uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
         uint256 newVotingPower = amount * multiplier / 1e18;
         if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();

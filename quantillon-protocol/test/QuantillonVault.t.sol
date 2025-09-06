@@ -302,7 +302,7 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldCalculateMintAmount() public view {
+    function testView_WithValidParameters_ShouldCalculateMintAmount() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Mint amount calculation test placeholder");
     }
@@ -319,7 +319,7 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldCalculateRedeemAmount() public view {
+    function testView_WithValidParameters_ShouldCalculateRedeemAmount() public pure {
         // Placeholder test - actual function calls removed due to contract interface mismatch
         assertTrue(true, "Redeem amount calculation test placeholder");
     }

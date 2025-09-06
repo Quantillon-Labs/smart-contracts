@@ -262,7 +262,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_collateralizationRatio() public view {
+    function invariant_collateralizationRatio() public pure {
         // Verify collateralization ratios are within safe bounds
         // Note: This test is simplified when Vault and HedgerPool are not deployed
         // In a full deployment, this would verify:
@@ -287,7 +287,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_liquidationThresholds() public view {
+    function invariant_liquidationThresholds() public pure {
         // Verify liquidation thresholds are properly configured
         // Note: This test is simplified when HedgerPool is not deployed
         // In a full deployment, this would verify:
@@ -314,7 +314,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_yieldDistributionIntegrity() public view {
+    function invariant_yieldDistributionIntegrity() public pure {
         // Verify yield distribution integrity
         // Note: This test is simplified when YieldShift and stQEURO are not deployed
         // In a full deployment, this would verify:
@@ -338,7 +338,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_yieldShiftParameters() public view {
+    function invariant_yieldShiftParameters() public pure {
         // Verify yield shift parameters are properly configured
         // Note: This test is simplified when YieldShift is not deployed
         // In a full deployment, this would verify:
@@ -447,7 +447,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_pauseStateConsistency() public view {
+    function invariant_pauseStateConsistency() public pure {
         // Verify pause state consistency across contracts
         // Note: This test is simplified when Oracle is not deployed
         // In a full deployment, this would verify:
@@ -477,7 +477,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_liquidationStateConsistency() public view {
+    function invariant_liquidationStateConsistency() public pure {
         // Check that liquidation commitments are properly managed
         // Note: This test is skipped when HedgerPool is not deployed
         // In a full deployment, this would verify:
@@ -535,7 +535,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_mathematicalConsistency() public view {
+    function invariant_mathematicalConsistency() public pure {
         // Check that percentages are calculated correctly
         uint256 testValue = 1000 * PRECISION;
         uint256 testPercentage = 5000; // 50% in basis points (5000/10000 = 50%)
@@ -606,7 +606,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_gasOptimization() public view {
+    function invariant_gasOptimization() public pure {
         // Check that storage reads are optimized
         // Check that loops are bounded
         // Check that expensive operations are minimized

@@ -37,7 +37,7 @@ contract IntegrationTests is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_CompleteProtocolWorkflow() public {
+    function test_CompleteProtocolWorkflow() public pure {
         console.log("=== Complete Protocol Workflow Integration Test ===");
         
         // =============================================================================
@@ -163,7 +163,7 @@ contract IntegrationTests is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_BatchOperationsWorkflow() public {
+    function test_BatchOperationsWorkflow() public pure {
         console.log("\n=== Batch Operations Integration Test ===");
         
         // Simulate multiple users performing batch operations
@@ -213,7 +213,7 @@ contract IntegrationTests is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_EmergencyRecoveryWorkflow() public {
+    function test_EmergencyRecoveryWorkflow() public pure {
         console.log("\n=== Emergency Recovery Integration Test ===");
         
         console.log("\n--- Normal Operations ---");
@@ -260,7 +260,7 @@ contract IntegrationTests is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_CrossContractConsistency() public {
+    function test_CrossContractConsistency() public pure {
         console.log("\n=== Cross-Contract Consistency Test ===");
         
         // Simulate state across multiple contracts

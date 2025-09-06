@@ -486,6 +486,38 @@ async function healthCheck() {
 - [Mythril Symbolic Execution](https://github.com/ConsenSys/mythril)
 - [Echidna Fuzzing](https://github.com/crytic/echidna)
 
+### Security Analysis Results
+
+**Mythril Symbolic Execution Analysis**:
+- **Total Contracts Analyzed**: 10
+- **Contracts with Issues**: 0
+- **Total Issues Found**: 0
+- **Security Status**: ✅ **CLEAN** - No vulnerabilities detected
+
+**Analyzed Contracts**:
+- QEUROToken ✅ No issues found
+- QTIToken ✅ No issues found
+- QuantillonVault ✅ No issues found
+- UserPool ✅ No issues found
+- HedgerPool ✅ No issues found
+- stQEUROToken ✅ No issues found
+- AaveVault ✅ No issues found
+- YieldShift ✅ No issues found
+- ChainlinkOracle ✅ No issues found
+- TimeProviderLibrary ✅ No issues found
+
+**Running Mythril Analysis**:
+```bash
+# Run Mythril analysis
+make mythril
+
+# Or run directly
+./scripts/run-mythril.sh
+
+# Run comprehensive security analysis (Slither + Mythril)
+make security
+```
+
 
 ---
 

@@ -59,6 +59,12 @@ slither-report.*
 .slither/
 slither-cache/
 
+# Mythril analysis reports
+mythril-reports/
+mythril-report.json
+mythril-report.*
+*.mythril
+
 # Gas analysis reports
 gas-analysis/
 

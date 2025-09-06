@@ -1,5 +1,5 @@
 # IQuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/interfaces/IQuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e665b137b9c124a3a0f62fb142df5c259e29a6fb/src/interfaces/IQuantillonVault.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin

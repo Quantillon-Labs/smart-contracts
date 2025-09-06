@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-orange.svg)](https://getfoundry.sh/)
-[![Tests](https://img.shields.io/badge/Tests-573%20passed%20%7C%201%20failed-red.svg)](https://github.com/quantillon/smart-contracts)
+[![Tests](https://img.shields.io/badge/Tests-574%20passed%20%7C%200%20failed-green.svg)](https://github.com/quantillon/smart-contracts)
 [![Security](https://img.shields.io/badge/Security-0%20Critical%20%7C%200%20Medium-green.svg)](https://github.com/quantillon/smart-contracts)
 
 > **Euro-pegged stablecoin protocol with dual-pool architecture, yield generation, and governance mechanisms**
@@ -11,6 +11,14 @@
 ## 📖 Overview
 
 Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability.
+
+## 📚 Documentation
+
+- **[API Documentation](docs/API.md)** - Complete API reference for all smart contracts
+- **[Technical Reference](docs/API-Reference.md)** - Detailed technical specifications and implementation details
+- **[Quick Start Guide](docs/Quick-Start.md)** - Get started quickly with integration examples
+- **[Integration Examples](docs/Integration-Examples.md)** - Comprehensive integration examples and patterns
+- **[Documentation Hub](docs/README.md)** - Comprehensive documentation overview
 
 ### 🎯 Key Features
 

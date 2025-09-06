@@ -1,5 +1,5 @@
 # TimeProvider
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/3993e93133d3119484d0f2c85dfa0b9e2dac8891/src/libraries/TimeProviderLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e665b137b9c124a3a0f62fb142df5c259e29a6fb/src/libraries/TimeProviderLibrary.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, UUPSUpgradeable
@@ -633,7 +633,7 @@ Authorizes contract upgrades
 
 
 ```solidity
-function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE);
+function _authorizeUpgrade(address newImplementation) internal view override onlyRole(UPGRADER_ROLE);
 ```
 **Parameters**
 

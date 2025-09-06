@@ -747,7 +747,7 @@ cast call CONTRACT_ADDRESS "initialized()" --rpc-url $RPC_URL
 
 **Technical Support**:
 - Email: team@quantillon.money
-- Discord: [Quantillon Discord](https://discord.gg/quantillon)
+- Discord: [Quantillon Discord](https://discord.gg/uk8T9GqdE5)
 - GitHub: [Issues](https://github.com/Quantillon-Labs/smart-contracts/issues)
 
 **Emergency Support**:

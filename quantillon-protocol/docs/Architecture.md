@@ -10,64 +10,38 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
 
 ### High-Level Architecture
 
-```mermaid
-graph TB
-    subgraph "User Layer"
-        U1[Retail Users]
-        U2[Institutional Users]
-        U3[Liquidity Providers]
-    end
-    
-    subgraph "Protocol Layer"
-        QV[QuantillonVault]
-        QE[QEUROToken]
-        QT[QTIToken]
-        UP[UserPool]
-        HP[HedgerPool]
-        ST[stQEUROToken]
-    end
-    
-    subgraph "Yield Layer"
-        AV[AaveVault]
-        YS[YieldShift]
-    end
-    
-    subgraph "Infrastructure Layer"
-        CO[ChainlinkOracle]
-        TP[TimeProvider]
-        SL[Security Libraries]
-    end
-    
-    subgraph "External Systems"
-        AAVE[Aave Protocol]
-        CL[Chainlink Feeds]
-        ETH[Ethereum Network]
-    end
-    
-    U1 --> QV
-    U2 --> QV
-    U3 --> UP
-    U1 --> UP
-    U2 --> HP
-    
-    QV --> QE
-    UP --> QE
-    HP --> QE
-    
-    UP --> ST
-    YS --> UP
-    YS --> HP
-    
-    AV --> AAVE
-    YS --> AV
-    
-    CO --> CL
-    QV --> CO
-    HP --> CO
-    
-    TP --> QV
-    TP --> HP
-    TP --> QT
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        SYSTEM ARCHITECTURE                      │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   User Layer    │    │ Protocol Layer  │    │  Yield Layer    │
+├─────────────────┤    ├─────────────────┤    ├─────────────────┤
+│ • Retail Users  │───▶│ • QuantillonVault│    │ • AaveVault     │
+│ • Institutional │    │ • QEUROToken    │    │ • YieldShift    │
+│ • Liquidity     │    │ • QTIToken      │    └─────────────────┘
+│   Providers     │    │ • UserPool      │             │
+└─────────────────┘    │ • HedgerPool    │             │
+                       │ • stQEUROToken  │             │
+                       └─────────────────┘             │
+                                │                      │
+                       ┌─────────────────┐             │
+                       │Infrastructure   │             │
+                       │Layer            │             │
+                       ├─────────────────┤             │
+                       │ • ChainlinkOracle│            │
+                       │ • TimeProvider  │             │
+                       │ • Security Libs │             │
+                       └─────────────────┘             │
+                                │                      │
+                       ┌─────────────────┐             │
+                       │External Systems │             │
+                       ├─────────────────┤             │
+                       │ • Aave Protocol │◀────────────┘
+                       │ • Chainlink     │
+                       │ • Ethereum      │
+                       └─────────────────┘
 ```
 
 ---
@@ -248,66 +222,80 @@ graph TB
 
 ### QEURO Minting Flow
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant V as QuantillonVault
-    participant O as ChainlinkOracle
-    participant Q as QEUROToken
-    participant USDC as USDC Token
-    
-    U->>USDC: approve(vault, amount)
-    U->>V: mintQEURO(amount, minOut)
-    V->>O: getEurUsdPrice()
-    O-->>V: price, isValid
-    V->>V: validatePrice(isValid)
-    V->>V: calculateMintAmount(amount)
-    V->>USDC: transferFrom(user, vault, amount)
-    V->>Q: mint(user, qeuroAmount)
-    V->>V: emit QEUROMinted()
-    V-->>U: success
+```
+QEURO Minting Flow:
+┌─────────┐    ┌──────────────┐    ┌─────────────────┐    ┌─────────────┐
+│  User   │    │QuantillonVault│    │ChainlinkOracle │    │QEUROToken   │
+└────┬────┘    └──────┬───────┘    └────────┬────────┘    └──────┬──────┘
+     │                │                      │                    │
+     │ approve()      │                      │                    │
+     ├───────────────▶│                      │                    │
+     │ mintQEURO()    │                      │                    │
+     ├───────────────▶│                      │                    │
+     │                │ getEurUsdPrice()     │                    │
+     │                ├─────────────────────▶│                    │
+     │                │ price, isValid       │                    │
+     │                │◀─────────────────────┤                    │
+     │                │ validatePrice()      │                    │
+     │                │ calculateMintAmount()│                    │
+     │                │ transferFrom()       │                    │
+     │                │ mint()               │                    │
+     │                ├─────────────────────────────────────────▶│
+     │                │ emit QEUROMinted()   │                    │
+     │ success        │                      │                    │
+     │◀───────────────┤                      │                    │
 ```
 
 ### Yield Distribution Flow
 
-```mermaid
-sequenceDiagram
-    participant YS as YieldShift
-    participant AV as AaveVault
-    participant UP as UserPool
-    participant HP as HedgerPool
-    participant AAVE as Aave Protocol
-    
-    YS->>AV: harvestAaveYield()
-    AV->>AAVE: claimRewards()
-    AAVE-->>AV: yieldAmount
-    AV->>YS: addYield(yieldAmount)
-    YS->>YS: calculateOptimalDistribution()
-    YS->>UP: distributeUserYield(amount)
-    YS->>HP: distributeHedgerYield(amount)
-    YS->>YS: emit YieldDistributed()
+```
+Yield Distribution Flow:
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ YieldShift  │    │ AaveVault   │    │  UserPool   │    │ HedgerPool  │
+└──────┬──────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+       │                  │                  │                  │
+       │ harvestAaveYield()│                  │                  │
+       ├─────────────────▶│                  │                  │
+       │                  │ claimRewards()   │                  │
+       │                  ├─────────────────▶│                  │
+       │                  │ yieldAmount      │                  │
+       │                  │◀─────────────────┤                  │
+       │ addYield()       │                  │                  │
+       │◀─────────────────┤                  │                  │
+       │ calculateOptimalDistribution()      │                  │
+       │ distributeUserYield()               │                  │
+       ├─────────────────────────────────────▶│                  │
+       │ distributeHedgerYield()             │                  │
+       ├───────────────────────────────────────────────────────▶│
+       │ emit YieldDistributed()             │                  │
 ```
 
 ### Governance Flow
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant QT as QTIToken
-    participant TL as Timelock
-    participant T as Target Contract
-    
-    U->>QT: lock(amount, duration)
-    QT->>QT: calculateVotingPower()
-    QT->>QT: emit TokensLocked()
-    U->>QT: createProposal(description, start, end)
-    QT->>QT: validateVotingPower()
-    QT->>QT: emit ProposalCreated()
-    U->>QT: vote(proposalId, support)
-    QT->>QT: emit VoteCast()
-    U->>QT: executeProposal(proposalId)
-    QT->>TL: schedule(proposal)
-    TL->>T: execute(proposal)
+```
+Governance Flow:
+┌─────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  User   │    │  QTIToken   │    │  Timelock   │    │   Target    │
+│         │    │             │    │             │    │  Contract   │
+└────┬────┘    └──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+     │                │                  │                  │
+     │ lock()         │                  │                  │
+     ├───────────────▶│                  │                  │
+     │                │ calculateVotingPower()              │
+     │                │ emit TokensLocked()                 │
+     │ createProposal()│                  │                  │
+     ├───────────────▶│                  │                  │
+     │                │ validateVotingPower()               │
+     │                │ emit ProposalCreated()              │
+     │ vote()         │                  │                  │
+     ├───────────────▶│                  │                  │
+     │                │ emit VoteCast()  │                  │
+     │ executeProposal()│                │                  │
+     ├───────────────▶│                  │                  │
+     │                │ schedule()       │                  │
+     │                ├─────────────────▶│                  │
+     │                │                  │ execute()        │
+     │                │                  ├─────────────────▶│
 ```
 
 ---

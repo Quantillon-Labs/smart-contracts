@@ -43,21 +43,76 @@ npm install
 
 ### Deployment Order
 
-```mermaid
-graph TD
-    A[1. Deploy Libraries] --> B[2. Deploy TimeProvider]
-    B --> C[3. Deploy ChainlinkOracle]
-    C --> D[4. Deploy QEUROToken]
-    D --> E[5. Deploy QTIToken]
-    E --> F[6. Deploy QuantillonVault]
-    F --> G[7. Deploy UserPool]
-    G --> H[8. Deploy HedgerPool]
-    H --> I[9. Deploy stQEUROToken]
-    I --> J[10. Deploy AaveVault]
-    J --> K[11. Deploy YieldShift]
-    K --> L[12. Configure Contracts]
-    L --> M[13. Verify Contracts]
-    M --> N[14. Initialize System]
+```
+Deployment Order:
+┌─────────────────────┐
+│ 1. Deploy Libraries │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 2. Deploy TimeProvider │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 3. Deploy ChainlinkOracle │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 4. Deploy QEUROToken │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 5. Deploy QTIToken  │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 6. Deploy QuantillonVault │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 7. Deploy UserPool  │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 8. Deploy HedgerPool │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 9. Deploy stQEUROToken │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 10. Deploy AaveVault │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 11. Deploy YieldShift │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 12. Configure Contracts │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 13. Verify Contracts │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ 14. Initialize System │
+└─────────────────────┘
 ```
 
 ### Contract Dependencies

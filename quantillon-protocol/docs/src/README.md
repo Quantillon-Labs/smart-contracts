@@ -49,29 +49,41 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 
 ### Protocol Flow
 
-```mermaid
-graph TD
-    A[User Deposits USDC] --> B[UserPool]
-    B --> C[Mint QEURO]
-    C --> D[User Receives QEURO]
-    D --> E[User Can Stake QEURO]
-    E --> F[stQEURO Token]
-    F --> G[Automatic Yield Accrual]
-    
-    H[Hedgers] --> I[HedgerPool]
-    I --> J[EUR/USD Positions]
-    J --> K[Yield Generation]
-    K --> L[Protocol Fees]
-    L --> G
-    
-    M[Governance] --> N[QTIToken]
-    N --> O[Vote-escrow System]
-    O --> P[Proposal Execution]
-    
-    Q[AaveVault] --> R[Aave Protocol]
-    R --> S[Yield Farming]
-    S --> T[Yield Distribution]
-    T --> G
+```
+Protocol Flow:
+┌─────────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ User Deposits   │───▶│  UserPool   │───▶│ Mint QEURO  │───▶│ User Receives│
+│     USDC        │    │             │    │             │    │    QEURO    │
+└─────────────────┘    └─────────────┘    └─────────────┘    └──────┬──────┘
+                                                                     │
+                                                                     ▼
+┌─────────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ User Can Stake  │◀───│    QEURO    │    │ stQEURO     │    │ Automatic   │
+│     QEURO       │    │             │    │   Token     │───▶│ Yield Accrual│
+└─────────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+                                                                     ▲
+                                                                     │
+┌─────────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│    Hedgers      │───▶│ HedgerPool  │───▶│ EUR/USD     │───▶│ Yield       │
+│                 │    │             │    │ Positions   │    │ Generation  │
+└─────────────────┘    └─────────────┘    └─────────────┘    └──────┬──────┘
+                                                                     │
+                                                                     ▼
+┌─────────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Governance    │───▶│  QTIToken   │───▶│ Vote-escrow │───▶│ Proposal    │
+│                 │    │             │    │   System    │    │ Execution   │
+└─────────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+
+┌─────────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   AaveVault     │───▶│ Aave Protocol│───▶│ Yield       │───▶│ Yield       │
+│                 │    │             │    │ Farming     │    │ Distribution│
+└─────────────────┘    └─────────────┘    └─────────────┘    └──────┬──────┘
+                                                                     │
+                                                                     ▼
+                                                              ┌─────────────┐
+                                                              │ Automatic   │
+                                                              │ Yield Accrual│
+                                                              └─────────────┘
 ```
 
 ## 🚀 Quick Start
@@ -148,7 +160,7 @@ Documentation will be available at `http://localhost:3000`
 
 ### Test Results
 
-**Current Status**: 573 tests passed, 1 test failed
+**Current Status**: 574 tests passed, 0 tests failed
 
 - ✅ **Integration Tests**: 4/4 passed
 - ✅ **QuantillonVault**: 45/45 passed
@@ -162,7 +174,7 @@ Documentation will be available at `http://localhost:3000`
 - ✅ **QEUROToken**: 77/77 passed
 - ✅ **YieldShift**: 61/61 passed
 - ✅ **TimeProvider**: 29/29 passed
-- ❌ **QTIToken**: 69/70 passed (1 failing test)
+- ✅ **QTIToken**: 70/70 passed
 - ✅ **QuantillonInvariants**: 16/16 passed
 
 ### Run All Tests
@@ -476,7 +488,7 @@ make all            # Run all checks (build, test, coverage, docs, validation)
 ### Current Status
 
 - **Build**: ✅ Successful
-- **Tests**: ⚠️ 573 passed, 1 failed
+- **Tests**: ✅ 574 passed, 0 failed
 - **Security**: ✅ No critical issues
 - **Documentation**: ✅ 100% NatSpec coverage
 - **Gas Optimization**: ✅ Analyzed and optimized
@@ -488,7 +500,7 @@ make all            # Run all checks (build, test, coverage, docs, validation)
 - **Documentation**: [docs.quantillon.money](https://docs.quantillon.money)
 - **X (Twitter)**: [@QuantillonLabs](https://x.com/QuantillonLabs)
 - **Discord**: [discord.gg/uk8T9GqdE5](https://discord.gg/uk8T9GqdE5)
-- **Telegram**: [@QuantillonLabs](https://t.me/QuantillonLabs)
+- **Telegram**: [t.me/quantillon](https://t.me/quantillon)
 
 ## 🙏 Acknowledgments
 

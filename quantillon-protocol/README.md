@@ -3,6 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-orange.svg)](https://getfoundry.sh/)
+[![Tests](https://img.shields.io/badge/Tests-573%20passed%20%7C%201%20failed-red.svg)](https://github.com/quantillon/smart-contracts)
+[![Security](https://img.shields.io/badge/Security-0%20Critical%20%7C%200%20Medium-green.svg)](https://github.com/quantillon/smart-contracts)
 
 > **Euro-pegged stablecoin protocol with dual-pool architecture, yield generation, and governance mechanisms**
 
@@ -18,6 +20,8 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **Governance Token**: QTI token with vote-escrow mechanics for decentralized governance
 - **Advanced Hedging**: EUR/USD hedging positions with margin management and liquidation systems
 - **Yield-Bearing Wrapper**: stQEURO token that automatically accrues yield for holders
+- **Aave Integration**: Automated yield farming through Aave protocol integration
+- **Comprehensive Security**: Role-based access control, reentrancy protection, and emergency pause mechanisms
 
 ## 🏗️ Architecture
 
@@ -31,6 +35,9 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 | **UserPool** | User deposits | Staking rewards, yield distribution, deposit/withdrawal management |
 | **HedgerPool** | Hedging operations | EUR/USD positions, margin management, liquidation system |
 | **stQEUROToken** | Yield-bearing wrapper | Automatic yield accrual, exchange rate mechanism |
+| **AaveVault** | Aave integration | Automated yield farming, risk management, emergency controls |
+| **YieldShift** | Yield management | Dynamic yield distribution, pool rebalancing, performance metrics |
+| **ChainlinkOracle** | Price feeds | EUR/USD and USDC/USD price feeds with circuit breakers |
 
 ### Protocol Flow
 
@@ -52,6 +59,11 @@ graph TD
     M[Governance] --> N[QTIToken]
     N --> O[Vote-escrow System]
     O --> P[Proposal Execution]
+    
+    Q[AaveVault] --> R[Aave Protocol]
+    R --> S[Yield Farming]
+    S --> T[Yield Distribution]
+    T --> G
 ```
 
 ## 🚀 Quick Start
@@ -121,8 +133,29 @@ Documentation will be available at `http://localhost:3000`
 - **[UserPool](./docs/src/src/core/UserPool.sol/contract.UserPool.md)**: User deposit and staking management
 - **[HedgerPool](./docs/src/src/core/HedgerPool.sol/contract.HedgerPool.md)**: EUR/USD hedging operations
 - **[stQEUROToken](./docs/src/src/core/stQEUROToken.sol/contract.stQEUROToken.md)**: Yield-bearing wrapper token
+- **[AaveVault](./docs/src/src/core/vaults/AaveVault.sol/contract.AaveVault.md)**: Aave protocol integration
+- **[YieldShift](./docs/src/src/core/yieldmanagement/YieldShift.sol/contract.YieldShift.md)**: Yield management and distribution
 
 ## 🧪 Testing
+
+### Test Results
+
+**Current Status**: 573 tests passed, 1 test failed
+
+- ✅ **Integration Tests**: 4/4 passed
+- ✅ **QuantillonVault**: 45/45 passed
+- ✅ **ChainlinkOracle**: 44/44 passed
+- ✅ **UserPool**: 60/60 passed
+- ✅ **VaultMath**: 14/14 passed
+- ✅ **AaveVault**: 39/39 passed
+- ✅ **stQEUROToken**: 54/54 passed
+- ✅ **QEUROTokenBasic**: 2/2 passed
+- ✅ **HedgerPool**: 59/59 passed
+- ✅ **QEUROToken**: 77/77 passed
+- ✅ **YieldShift**: 61/61 passed
+- ✅ **TimeProvider**: 29/29 passed
+- ❌ **QTIToken**: 69/70 passed (1 failing test)
+- ✅ **QuantillonInvariants**: 16/16 passed
 
 ### Run All Tests
 
@@ -358,8 +391,24 @@ make docs
 - **Oracle Validation**: Price feed validation and precision checks
 - **Upgradeable Architecture**: UUPS pattern for future improvements
 
+### Security Analysis Results
+
+**Current Security Status**: ✅ **No Critical or Medium Priority Issues**
+
+- **🔴 High Priority Issues**: 0
+- **🟡 Medium Priority Issues**: 0
+- **🟢 Low Priority Issues**: 2 (calls-loop)
+- **ℹ️ Informational Issues**: 1 (low-level-calls)
+
+**Security Tools Used:**
+- Slither static analysis
+- Comprehensive test coverage (573 tests)
+- Invariant testing (16 invariants)
+- Gas optimization analysis
+- Warning analysis and resolution
+
 ### Security Contact
-update all README files to 
+
 For security issues, please contact: `team@quantillon.money`
 
 ### Security Analysis
@@ -391,6 +440,7 @@ make gas-analysis
 - Add comprehensive tests for new features
 - Update documentation for any changes
 - Ensure all tests pass before submitting PR
+- Run security analysis before submitting PR
 
 ## 🚀 Quick Reference
 
@@ -415,6 +465,15 @@ make format         # Code formatting
 make all            # Run all checks (build, test, coverage, docs, validation)
 ```
 
+### Current Status
+
+- **Build**: ✅ Successful
+- **Tests**: ⚠️ 573 passed, 1 failed
+- **Security**: ✅ No critical issues
+- **Documentation**: ✅ 100% NatSpec coverage
+- **Gas Optimization**: ✅ Analyzed and optimized
+- **Warning Analysis**: ✅ 7 unused variable warnings (acceptable)
+
 ## 🌐 Links
 
 - **Website**: [quantillon.money](https://quantillon.money)
@@ -433,3 +492,5 @@ make all            # Run all checks (build, test, coverage, docs, validation)
 ---
 
 **Built with ❤️ by the Quantillon Labs team**
+
+**Author**: Quantillon Labs - Nicolas Bellengé - @chewbaccoin

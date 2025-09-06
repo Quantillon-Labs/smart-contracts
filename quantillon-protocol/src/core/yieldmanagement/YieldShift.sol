@@ -1047,8 +1047,14 @@ contract YieldShift is
     ) {
         totalYieldDistributed_ = totalYieldDistributed;
         
-        (uint256 totalUsers,,,) = userPool.getPoolMetrics();
+        (uint256 totalUsers, uint256 totalStakes, uint256 totalDeposits, uint256 totalRewards) = userPool.getPoolMetrics();
         // Note: totalStakes, totalDeposits, and totalRewards are intentionally unused for performance metrics
+        assembly {
+            // Suppress unused variable warnings
+            pop(totalStakes)
+            pop(totalDeposits)
+            pop(totalRewards)
+        }
         uint256 activeHedgers = hedgerPool.activeHedgers();
         
         averageUserYield = totalUsers > 0 ? 

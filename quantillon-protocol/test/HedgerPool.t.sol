@@ -505,7 +505,7 @@ contract HedgerPoolTestSuite is Test {
         // Try to open position
         vm.prank(hedger1);
         vm.expectRevert();
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
     }
     
     /**
@@ -588,7 +588,7 @@ contract HedgerPoolTestSuite is Test {
         // Try to close by different user
         vm.prank(hedger2);
         vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
-        int256 pnl = hedgerPool.exitHedgePosition(positionId);
+        hedgerPool.exitHedgePosition(positionId);
     }
 
     // =============================================================================
@@ -845,7 +845,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Rewards_ClaimHedgingRewards() public {
         // First open a position
         vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Advance time to accumulate rewards
         vm.warp(block.timestamp + 30 days);
@@ -1187,7 +1187,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Close position
         vm.prank(hedger1);
-        int256 pnl = hedgerPool.exitHedgePosition(positionId);
+        hedgerPool.exitHedgePosition(positionId);
         
         // Check final state
         assertEq(hedgerPool.totalMargin(), 0);
@@ -1215,7 +1215,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Hedger2 opens position
         vm.prank(hedger2);
-        uint256 positionId2 = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 3);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 3);
         
         // Check pool metrics
         uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
@@ -1475,7 +1475,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.updateInterestRates(newEurRate, newUsdRate);
         
         // Check that rates were updated
-        (uint256 minMarginRatio_, uint256 liquidationThreshold_, uint256 maxLeverage_, , uint256 entryFee_, uint256 exitFee_) = hedgerPool.getHedgingConfig();
+        (uint256 minMarginRatio_, , uint256 maxLeverage_, , , ) = hedgerPool.getHedgingConfig();
         assertGt(maxLeverage_, 0);
         assertGt(minMarginRatio_, 0);
     }

@@ -430,7 +430,7 @@ make ci
 
 1. **Regular Analysis**: Run gas analysis regularly during development
 2. **Before Deployment**: Always run gas analysis before mainnet deployment
-3. **Optimization Focus**: Focus on high-impact optimizations first
+3. **Optimization Focus**: Focus on high-impact optimizations firstre
 4. **Testing**: Always test optimizations thoroughly
 5. **Documentation**: Document optimization decisions
 

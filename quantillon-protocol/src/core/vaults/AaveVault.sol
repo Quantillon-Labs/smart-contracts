@@ -1003,7 +1003,6 @@ contract AaveVault is
         
         if (aaveBalance > 0) {
             emergencyMode = true;
-            uint256 originalPrincipal = principalDeposited;
             // In emergency, reset principal to 0 before external call (conservative approach)
             principalDeposited = 0;
             
@@ -1061,7 +1060,7 @@ contract AaveVault is
         exposureRatio = totalAssets > 0 ? aaveBalance.mulDiv(10000, totalAssets) : 0;
         concentrationRisk = exposureRatio > 8000 ? 3 : exposureRatio > 6000 ? 2 : 1;
 
-        (uint256 totalLiquidity, uint256 utilizationRate, uint256 availableLiquidity, uint256 totalStableDebt) = this.getAaveMarketData();
+        (, uint256 utilizationRate,,) = this.getAaveMarketData();
         // Note: totalLiquidity, availableLiquidity, and totalStableDebt are intentionally unused for risk metrics
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
     }

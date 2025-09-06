@@ -290,7 +290,6 @@ contract IntegrationTests is Test {
         console.log("+ Vault has sufficient USDC backing");
         
         // Check yield distribution consistency
-        uint256 totalYield = 1000 * 1e6;
         uint256 userAllocation = 7000; // 70%
         uint256 hedgerAllocation = 3000; // 30%
         assertEq(userAllocation + hedgerAllocation, 10000, "Yield allocations should sum to 100%");

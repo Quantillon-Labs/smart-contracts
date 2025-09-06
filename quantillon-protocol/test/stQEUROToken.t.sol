@@ -764,8 +764,8 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_VirtualProtection_DonationAttackPrevention() public {
         // Test that virtual protection prevents donation attacks
-        uint256 initialSupply = stQEURO.totalSupply();
-        uint256 initialUnderlying = stQEURO.totalUnderlying();
+        stQEURO.totalSupply(); // Call to ensure state is consistent
+        stQEURO.totalUnderlying(); // Call to ensure state is consistent
         
         // The virtual protection should ensure that even with 0 supply and underlying,
         // the effective values are reasonable due to virtual shares/assets

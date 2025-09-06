@@ -505,7 +505,7 @@ contract HedgerPoolTestSuite is Test {
         // Try to open position
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
     }
     
     /**
@@ -537,7 +537,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Check that position was closed
-        (address hedger, , , , , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
+        (, , , , , , , , bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check P&L (can be negative due to fees and price movement)
@@ -588,7 +588,7 @@ contract HedgerPoolTestSuite is Test {
         // Try to close by different user
         vm.prank(hedger2);
         vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
-        hedgerPool.exitHedgePosition(positionId);
+        int256 pnl = hedgerPool.exitHedgePosition(positionId);
     }
 
     // =============================================================================
@@ -620,7 +620,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.addMargin(positionId, additionalMargin);
         
         // Check position margin was updated
-        (address hedger, , uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (, , uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
         uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
         uint256 netAdditionalMargin = additionalMargin * (10000 - hedgerPool.marginFee()) / 10000;
         assertEq(margin, netMargin + netAdditionalMargin);
@@ -694,7 +694,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.removeMargin(positionId, marginToRemove);
         
         // Check position margin was updated
-        (address hedger, , uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (, , uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
         uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
         assertEq(margin, netMargin - marginToRemove);
         assertTrue(isActive);
@@ -766,7 +766,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 liquidationReward = hedgerPool.liquidateHedger(hedger1, positionId, bytes32(0));
         
         // Check that position was liquidated
-        (address hedger, , , , , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
+        (, , , , , , , , bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check liquidation reward
@@ -853,7 +853,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Claim rewards
         vm.prank(hedger1);
-        (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards) = hedgerPool.claimHedgingRewards();
+        (, , uint256 totalRewards) = hedgerPool.claimHedgingRewards();
         
         // For now, accept that rewards might be 0 due to precision issues
         // TODO: Investigate reward calculation precision issues
@@ -874,7 +874,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Rewards_ClaimRewardsNoPosition() public {
         vm.prank(hedger1);
-        (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards) = hedgerPool.claimHedgingRewards();
+        (, , uint256 totalRewards) = hedgerPool.claimHedgingRewards();
         
         // Should return 0 as no position (but might have some base rewards)
         console2.log("Total rewards:", totalRewards);
@@ -902,7 +902,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Get position info
-        (address hedger, uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 entryTime, , int128 unrealizedPnL, uint256 leverage, bool isActive) = hedgerPool.positions(positionId);
+        (address hedger, uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 entryTime, , , uint256 leverage, bool isActive) = hedgerPool.positions(positionId);
         
         assertEq(hedger, hedger1);
         uint256 netMargin = MARGIN_AMOUNT * (10000 - hedgerPool.entryFee()) / 10000;
@@ -1127,7 +1127,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.emergencyClosePosition(hedger1, positionId);
         
         // Check that position was closed
-        (address hedger, , , , , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
+        (, , , , , , , , bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
     }
     
@@ -1421,7 +1421,7 @@ contract HedgerPoolTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetHedgingConfig() public view {
-        (uint256 minMarginRatio_, uint256 liquidationThreshold_, uint256 maxLeverage_, uint256 liquidationPenalty_, uint256 entryFee_, uint256 exitFee_) = hedgerPool.getHedgingConfig();
+        (uint256 minMarginRatio_, uint256 liquidationThreshold_, uint256 maxLeverage_, , uint256 entryFee_, uint256 exitFee_) = hedgerPool.getHedgingConfig();
         
         assertGt(maxLeverage_, 0);
         assertGt(minMarginRatio_, 0);
@@ -1475,7 +1475,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.updateInterestRates(newEurRate, newUsdRate);
         
         // Check that rates were updated
-        (uint256 minMarginRatio_, uint256 liquidationThreshold_, uint256 maxLeverage_, uint256 liquidationPenalty_, uint256 entryFee_, uint256 exitFee_) = hedgerPool.getHedgingConfig();
+        (uint256 minMarginRatio_, uint256 liquidationThreshold_, uint256 maxLeverage_, , uint256 entryFee_, uint256 exitFee_) = hedgerPool.getHedgingConfig();
         assertGt(maxLeverage_, 0);
         assertGt(minMarginRatio_, 0);
     }
@@ -1910,7 +1910,7 @@ contract HedgerPoolTestSuite is Test {
         // Test that closing any position doesn't consume excessive gas
         for (uint i = 0; i < 5; i++) {
             uint256 gasBeforeAttack = gasleft();
-            int256 pnlAttack = hedgerPool.exitHedgePosition(positionIds[i]);
+            hedgerPool.exitHedgePosition(positionIds[i]);
             uint256 gasUsedAttack = gasBeforeAttack - gasleft();
             
             // Each operation should be gas-efficient
@@ -1924,7 +1924,7 @@ contract HedgerPoolTestSuite is Test {
         }
         
         uint256 gasBefore = gasleft();
-        int256[] memory pnls = hedgerPool.closePositionsBatch(batchPositions, 10);
+        hedgerPool.closePositionsBatch(batchPositions, 10);
         uint256 gasUsed = gasBefore - gasleft();
         
         // Batch operation should be efficient

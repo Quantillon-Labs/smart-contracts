@@ -312,9 +312,6 @@ contract YieldShift is
       * @custom:oracle Requires fresh oracle price data
      */
     function updateYieldDistribution() external nonReentrant whenNotPaused {
-        uint256 avgUserPoolSize = getTimeWeightedAverage(userPoolHistory, TWAP_PERIOD, true);
-        uint256 avgHedgerPoolSize = getTimeWeightedAverage(hedgerPoolHistory, TWAP_PERIOD, false);
-        
         // Apply holding period requirements to current pool metrics
         (uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize,) = _getEligiblePoolMetrics();
         
@@ -1050,7 +1047,7 @@ contract YieldShift is
     ) {
         totalYieldDistributed_ = totalYieldDistributed;
         
-        (uint256 totalUsers, uint256 totalStakes, uint256 totalDeposits, uint256 totalRewards) = userPool.getPoolMetrics();
+        (uint256 totalUsers,,,) = userPool.getPoolMetrics();
         // Note: totalStakes, totalDeposits, and totalRewards are intentionally unused for performance metrics
         uint256 activeHedgers = hedgerPool.activeHedgers();
         

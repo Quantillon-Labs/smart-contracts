@@ -20,15 +20,15 @@ This guide will help you quickly integrate with the Quantillon Protocol smart co
 ### JavaScript/TypeScript
 
 ```bash
-npm install @quantillon/protocol
+npm install ethers
 # or
-yarn add @quantillon/protocol
+yarn add ethers
 ```
 
 ### Python
 
 ```bash
-pip install quantillon-protocol
+pip install web3
 ```
 
 ---
@@ -38,12 +38,17 @@ pip install quantillon-protocol
 ### 1. Connect to the Protocol
 
 ```javascript
-import { QuantillonVault, QEUROToken, UserPool } from '@quantillon/protocol';
+import { ethers } from 'ethers';
+
+// Contract ABIs (you'll need to import these from the compiled contracts)
+import QuantillonVaultABI from './abis/QuantillonVault.json';
+import QEUROTokenABI from './abis/QEUROToken.json';
+import UserPoolABI from './abis/UserPool.json';
 
 // Initialize contracts
-const vault = new QuantillonVault(vaultAddress, provider);
-const qeuro = new QEUROToken(qeuroAddress, provider);
-const userPool = new UserPool(userPoolAddress, provider);
+const vault = new ethers.Contract(vaultAddress, QuantillonVaultABI, provider);
+const qeuro = new ethers.Contract(qeuroAddress, QEUROTokenABI, provider);
+const userPool = new ethers.Contract(userPoolAddress, UserPoolABI, provider);
 ```
 
 ### 2. Mint QEURO
@@ -154,16 +159,6 @@ npm test
 
 # Run specific test
 npm test -- --grep "mintQEURO"
-```
-
-### Testnet Deployment
-
-```bash
-# Deploy to testnet
-npx hardhat deploy --network goerli
-
-# Verify contracts
-npx hardhat verify --network goerli
 ```
 
 ---
@@ -308,14 +303,14 @@ console.log('Gas used:', tx.gasUsed);
 
 - **Documentation**: [docs.quantillon.money](https://docs.quantillon.money)
 - **GitHub**: [github.com/Quantillon-Labs](https://github.com/Quantillon-Labs)
-- **Discord**: [discord.gg/quantillon](https://discord.gg/quantillon)
+- **Discord**: [discord.gg/uk8T9GqdE5](https://discord.gg/uk8T9GqdE5)
 - **Email**: team@quantillon.money
 
 ### Community
 
 - **Telegram**: [t.me/quantillon](https://t.me/quantillon)
 - **Twitter**: [@QuantillonLabs](https://twitter.com/QuantillonLabs)
-- **Medium**: [medium.com/@quantillon](https://medium.com/@quantillon)
+- **Medium**: [medium.com/@quantillonlabs](https://medium.com/@quantillonlabs)
 
 ---
 
@@ -325,15 +320,14 @@ console.log('Gas used:', tx.gasUsed);
 
 ```javascript
 import { ethers } from 'ethers';
-import { QuantillonVault, QEUROToken, UserPool } from '@quantillon/protocol';
 
 class QuantillonIntegration {
     constructor(provider, signer) {
         this.provider = provider;
         this.signer = signer;
-        this.vault = new QuantillonVault(VAULT_ADDRESS, provider, signer);
-        this.qeuro = new QEUROToken(QEURO_ADDRESS, provider, signer);
-        this.userPool = new UserPool(USER_POOL_ADDRESS, provider, signer);
+        this.vault = new ethers.Contract(VAULT_ADDRESS, QuantillonVaultABI, signer);
+        this.qeuro = new ethers.Contract(QEURO_ADDRESS, QEUROTokenABI, signer);
+        this.userPool = new ethers.Contract(USER_POOL_ADDRESS, UserPoolABI, signer);
     }
 
     async mintQEURO(usdcAmount, slippage = 0.05) {

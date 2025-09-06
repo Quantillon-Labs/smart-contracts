@@ -129,45 +129,6 @@ function emergencyPause() external onlyRole(EMERGENCY_ROLE) {
 
 ---
 
-## Audit Reports
-
-### Security Audit v1.0
-
-**Auditor**: [Audit Firm Name]
-**Date**: [Audit Date]
-**Scope**: All smart contracts
-**Status**: ✅ Completed
-
-**Key Findings**:
-- ✅ No critical vulnerabilities found
-- ✅ No high-severity issues identified
-- ⚠️ 3 medium-severity issues (resolved)
-- ⚠️ 5 low-severity issues (resolved)
-- ℹ️ 12 informational findings (addressed)
-
-**Resolved Issues**:
-1. **Gas Optimization**: Optimized storage layout and function calls
-2. **Input Validation**: Enhanced parameter validation
-3. **Event Logging**: Improved event emission for monitoring
-4. **Error Handling**: Standardized error messages
-5. **Documentation**: Enhanced NatSpec documentation
-
-### Security Audit v1.1
-
-**Auditor**: [Second Audit Firm]
-**Date**: [Audit Date]
-**Scope**: Updated contracts and new features
-**Status**: 🔄 In Progress
-
-**Focus Areas**:
-- Yield management system
-- Cross-contract interactions
-- Governance mechanisms
-- Oracle integration
-- Emergency procedures
-
----
-
 ## Bug Bounty Program
 
 ### Program Details
@@ -503,76 +464,11 @@ async function healthCheck() {
 
 ---
 
-## Compliance and Regulatory
-
-### Regulatory Compliance
-
-**KYC/AML**:
-- Compliance role management
-- Address whitelist/blacklist
-- Transaction monitoring
-- Reporting capabilities
-
-**Data Protection**:
-- Privacy-preserving design
-- Minimal data collection
-- Secure data handling
-- User consent management
-
-### Audit Trail
-
-**Transaction Logging**:
-- All state changes logged
-- Event emission for monitoring
-- Immutable audit trail
-- Compliance reporting
-
-**Access Logging**:
-- Role changes tracked
-- Administrative actions logged
-- Emergency activations recorded
-- Governance decisions documented
-
----
-
-## Security Roadmap
-
-### Short Term (Q1 2025)
-
-- [ ] Complete security audit v1.1
-- [ ] Implement additional monitoring
-- [ ] Enhance bug bounty program
-- [ ] Deploy security dashboards
-
-### Medium Term (Q2 2025)
-
-- [ ] Formal verification for critical functions
-- [ ] Advanced threat detection
-- [ ] Cross-chain security measures
-- [ ] Institutional security features
-
-### Long Term (Q3 2025)
-
-- [ ] Zero-knowledge proof integration
-- [ ] Advanced MEV protection
-- [ ] Decentralized security monitoring
-- [ ] Automated response systems
-
----
-
 ## Security Contacts
 
 ### Primary Contacts
 
 **Security Team**: security@quantillon.money
-**Emergency Response**: emergency@quantillon.money
-**Bug Bounty**: bounty@quantillon.money
-
-### Community
-
-**Discord**: [Security Channel](https://discord.gg/quantillon)
-**Telegram**: [Security Group](https://t.me/quantillon)
-**GitHub**: [Security Issues](https://github.com/Quantillon-Labs/smart-contracts/issues)
 
 ---
 
@@ -590,11 +486,6 @@ async function healthCheck() {
 - [Mythril Symbolic Execution](https://github.com/ConsenSys/mythril)
 - [Echidna Fuzzing](https://github.com/crytic/echidna)
 
-### Auditors
-
-- [Trail of Bits](https://www.trailofbits.com/)
-- [ConsenSys Diligence](https://consensys.net/diligence/)
-- [OpenZeppelin](https://openzeppelin.com/)
 
 ---
 

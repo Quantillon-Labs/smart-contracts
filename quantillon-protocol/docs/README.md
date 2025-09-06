@@ -129,29 +129,26 @@ npm run docs:api
 ## 🌐 Network Support
 
 ### Mainnet
-- **Ethereum**: Deployed and operational
-- **Base**: Deployed and operational
+- **Ethereum**: Coming soon
+- **Base**: Coming soon
 - **Polygon**: Coming soon
 - **Arbitrum**: Coming soon
 
 ### Testnets
-- **Goerli**: Available for testing
-- **Sepolia**: Available for testing
-- **Base Goerli**: Available for testing
+- **Base Testnet**: Available for testing
 
 ---
 
 ## 🔐 Security
 
 ### Audits
-- **Quantillon Protocol v1.0**: Completed by [Audit Firm]
-- **Quantillon Protocol v1.1**: In progress
+- **Quantillon Protocol v1.0**: Coming soon
 
 ### Bug Bounty
-- **Program**: Active
+- **Program**: Coming soon
 - **Rewards**: Up to $100,000
 - **Scope**: All smart contracts
-- **Contact**: security@quantillon.money
+- **Contact**: team@quantillon.money
 
 ### Security Best Practices
 1. Always validate inputs
@@ -166,13 +163,13 @@ npm run docs:api
 
 ### Technical Support
 - **Email**: team@quantillon.money
-- **Discord**: [discord.gg/quantillon](https://discord.gg/quantillon)
+- **Discord**: [discord.gg/uk8T9GqdE5](https://discord.gg/uk8T9GqdE5)
 - **Telegram**: [t.me/quantillon](https://t.me/quantillon)
 
 ### Community
 - **Twitter**: [@QuantillonLabs](https://twitter.com/QuantillonLabs)
-- **Medium**: [medium.com/@quantillon](https://medium.com/@quantillon)
-- **GitHub**: [github.com/Quantillon-Labs](https://github.com/Quantillon-Labs)
+- **Medium**: [medium.com/@quantillonlabs](https://medium.com/@quantillonlabs)
+- **GitHub**: [github.com/QuantillonLabs](https://github.com/Quantillon-Labs)
 
 ### Documentation Issues
 - **GitHub Issues**: [Report documentation issues](https://github.com/Quantillon-Labs/smart-contracts/issues)
@@ -222,28 +219,6 @@ This documentation is licensed under the [MIT License](LICENSE).
 
 ---
 
-## 📈 Roadmap
-
-### Q1 2025
-- [ ] Cross-chain deployment
-- [ ] Additional yield strategies
-- [ ] Enhanced governance features
-- [ ] Mobile SDK
-
-### Q2 2025
-- [ ] Institutional features
-- [ ] Advanced risk management
-- [ ] Protocol upgrades
-- [ ] Community governance
-
-### Q3 2025
-- [ ] Layer 2 optimization
-- [ ] MEV protection
-- [ ] Advanced analytics
-- [ ] Protocol partnerships
-
----
-
-*This documentation is maintained by Quantillon Labs and updated regularly. Last updated: January 2025*
+*This documentation is maintained by Quantillon Labs and updated regularly. Last updated: September 2025*
 
 **Quantillon Protocol** - Building the future of decentralized finance with euro-pegged stability and intelligent yield management.

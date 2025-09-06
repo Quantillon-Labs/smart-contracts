@@ -12,15 +12,15 @@ This document provides detailed technical specifications for all Quantillon Prot
 
 | Contract | Address | Network |
 |----------|---------|---------|
-| QuantillonVault | `0x...` | Ethereum Mainnet |
-| QEUROToken | `0x...` | Ethereum Mainnet |
-| QTIToken | `0x...` | Ethereum Mainnet |
-| UserPool | `0x...` | Ethereum Mainnet |
-| HedgerPool | `0x...` | Ethereum Mainnet |
-| stQEUROToken | `0x...` | Ethereum Mainnet |
-| AaveVault | `0x...` | Ethereum Mainnet |
-| YieldShift | `0x...` | Ethereum Mainnet |
-| ChainlinkOracle | `0x...` | Ethereum Mainnet |
+| QuantillonVault | `0x...` | Base Mainnet |
+| QEUROToken | `0x...` | Base Mainnet |
+| QTIToken | `0x...` | Base Mainnet |
+| UserPool | `0x...` | Base Mainnet |
+| HedgerPool | `0x...` | Base Mainnet |
+| stQEUROToken | `0x...` | Base Mainnet |
+| AaveVault | `0x...` | Base Mainnet |
+| YieldShift | `0x...` | Base Mainnet |
+| ChainlinkOracle | `0x...` | Base Mainnet |
 
 ---
 

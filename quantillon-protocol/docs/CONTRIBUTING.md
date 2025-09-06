@@ -394,7 +394,7 @@ markdownlint docs/*.md
 ### Questions and Support
 
 - **GitHub Issues**: [Create an issue](https://github.com/Quantillon-Labs/smart-contracts/issues)
-- **Discord**: [Join our Discord](https://discord.gg/quantillon)
+- **Discord**: [Join our Discord](https://discord.gg/uk8T9GqdE5)
 - **Email**: team@quantillon.money
 
 ### Mentorship

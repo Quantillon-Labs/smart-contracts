@@ -152,13 +152,19 @@ git clone https://github.com/Quantillon-Labs/smart-contracts.git
 cd smart-contracts/quantillon-protocol
 
 # Install dependencies
-npm install
+forge install
+
+# Build contracts
+forge build
 
 # Run tests
-npm test
+forge test
 
 # Run specific test
-npm test -- --grep "mintQEURO"
+forge test --match-contract QEUROToken
+
+# Run security analysis
+make security  # Runs both Slither and Mythril
 ```
 
 ---
@@ -217,6 +223,21 @@ async function retryTransaction(txFunction, maxRetries = 3) {
         }
     }
 }
+```
+
+### 5. Security Analysis
+
+```bash
+# Run comprehensive security analysis
+make security
+
+# Run individual tools
+make slither    # Static analysis
+make mythril    # Symbolic execution analysis
+
+# Check security reports
+ls mythril-reports/  # Mythril reports
+ls slither-report.*  # Slither reports
 ```
 
 ---

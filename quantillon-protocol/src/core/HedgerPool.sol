@@ -464,6 +464,7 @@ contract HedgerPool is
         position.unrealizedPnL = 0;
         position.isActive = true;
 
+        // Update hedger info and totals
         HedgerInfo storage hedger = hedgers[msg.sender];
         if (!hedger.isActive) {
             hedger.isActive = true;
@@ -487,19 +488,15 @@ contract HedgerPool is
         hedgerPositions[msg.sender].push(positionId);
         hedgerPositionIndex[msg.sender][positionId] = hedgerPositions[msg.sender].length - 1;
         
-        // Mark position as owned by hedger
+        // Mark position as owned by hedger and update counters
         hedgerHasPosition[msg.sender][positionId] = true;
-
         activePositionCount[msg.sender]++;
-
         totalMargin += netMargin;
         totalExposure += positionSize;
 
-        emit HedgePositionOpened(
-            msg.sender,
-            positionId,
-            _packPositionOpenData(positionSize, netMargin, leverage, eurUsdPrice)
-        );
+        // Pack position data to reduce stack depth
+        bytes32 positionData = _packPositionOpenData(positionSize, netMargin, leverage, eurUsdPrice);
+        emit HedgePositionOpened(msg.sender, positionId, positionData);
     }
 
     /**
@@ -593,10 +590,7 @@ contract HedgerPool is
         uint256 exitFee_ = exitFee;
         HedgerInfo storage hedger = hedgers[msg.sender];
         
-        // Accumulate totals for batch update
-        uint256 totalMarginToDeduct = 0;
-        uint256 totalExposureToDeduct = 0;
-        
+        // Process positions in batch
         for (uint i = 0; i < positionIds.length; i++) {
             (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted) = _closeSinglePositionBatch(
                 positionIds[i], 
@@ -606,13 +600,10 @@ contract HedgerPool is
                 currentTime
             );
             pnls[i] = pnl;
-            totalMarginToDeduct += marginDeducted;
-            totalExposureToDeduct += exposureDeducted;
+            // Update global totals directly to reduce stack depth
+            totalMargin -= marginDeducted;
+            totalExposure -= exposureDeducted;
         }
-        
-        // Update global totals once outside the loop
-        totalMargin -= totalMarginToDeduct;
-        totalExposure -= totalExposureToDeduct;
     }
 
     /**

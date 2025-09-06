@@ -729,12 +729,15 @@ contract QTITokenTestSuite is Test {
         vm.prank(user1);
         qtiToken.lock(LOCK_AMOUNT, lockTime);
         
+        // Get initial voting power right after locking
+        uint256 initialVotingPower = qtiToken.getVotingPower(user1);
+        
         // Fast forward 6 months
         vm.warp(block.timestamp + 6 * 30 days);
         
         // Voting power should have decreased
         uint256 votingPowerAfter6Months = qtiToken.getVotingPower(user1);
-        assertLt(votingPowerAfter6Months, qtiToken.getVotingPower(user1));
+        assertLt(votingPowerAfter6Months, initialVotingPower);
         
         // Fast forward to near unlock time
         vm.warp(block.timestamp + 5 * 30 days);

@@ -50,7 +50,7 @@ test:
 # Generate coverage report
 coverage:
 	@echo "📊 Generating coverage report..."
-	forge coverage --report lcov
+	forge coverage --report lcov --via-ir
 
 # Run Slither security analysis
 slither:

@@ -899,9 +899,13 @@ contract HedgerPool is
 
         if (!_isPositionLiquidatable(positionId)) revert ErrorLibrary.PositionNotLiquidatable();
 
-        (, bool isValid) = oracle.getEurUsdPrice();
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         ValidationLibrary.validateOraclePrice(isValid);
         // Note: currentPrice is intentionally unused for liquidation logic
+        assembly {
+            // Suppress unused variable warning
+            pop(currentPrice)
+        }
 
         liquidationReward = uint256(position.margin).percentageOf(liquidationPenalty);
         uint256 remainingMargin = uint256(position.margin) - liquidationReward;

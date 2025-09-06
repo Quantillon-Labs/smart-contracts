@@ -1011,7 +1011,7 @@ contract UserPoolTestSuite is Test {
         vm.roll(block.number + 365 days / 12); // Advance blocks (assuming 12 second blocks)
         
         // Check pending rewards
-        uint256 pendingRewards = userPool.getUserPendingRewards(user1);
+        userPool.getUserPendingRewards(user1);
         // For now, accept that rewards might be 0 due to precision issues
         // TODO: Investigate reward calculation precision issues
     }
@@ -1386,7 +1386,7 @@ contract UserPoolTestSuite is Test {
         
         // Claim rewards
         vm.prank(user1);
-        uint256 rewardAmount = userPool.claimStakingRewards();
+        userPool.claimStakingRewards();
         
         // For now, accept that rewards might be 0 due to precision issues
         // TODO: Investigate reward calculation precision issues

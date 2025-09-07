@@ -816,102 +816,103 @@ contract UserPool is
         if (qeuroAmounts.length != minUsdcOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
         if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
-        // Cache timestamp to avoid external calls in loop
         uint256 currentTime = timeProvider.currentTime();
-        
         usdcReceivedAmounts = new uint256[](qeuroAmounts.length);
+        
+        // Validate and process withdrawal
+        _validateAndProcessBatchWithdrawal(qeuroAmounts, minUsdcOuts, usdcReceivedAmounts);
+        
+        // Final transfers and events
+        _executeBatchTransfers(qeuroAmounts, usdcReceivedAmounts, currentTime);
+    }
+    
+    /**
+     * @notice Validates and processes batch withdrawal
+     * @param qeuroAmounts Array of QEURO amounts to withdraw
+     * @param minUsdcOuts Array of minimum USDC amounts expected
+     * @param usdcReceivedAmounts Array to store received USDC amounts
+     * @dev Internal helper to reduce stack depth
+     */
+    function _validateAndProcessBatchWithdrawal(
+        uint256[] calldata qeuroAmounts,
+        uint256[] calldata minUsdcOuts,
+        uint256[] memory usdcReceivedAmounts
+    ) internal {
         UserInfo storage user = userInfo[msg.sender];
+        uint256 length = qeuroAmounts.length;
         uint256 totalQeuroAmount = 0;
         
-
-        uint256 length = qeuroAmounts.length;
-        
-        // Pre-validate amounts and calculate total
+        // Calculate total QEURO amount
         for (uint256 i = 0; i < length;) {
             require(qeuroAmounts[i] > 0, "UserPool: Amount must be positive");
-
-            unchecked { totalQeuroAmount += qeuroAmounts[i]; }
-            
-            unchecked { ++i; }
+            unchecked { 
+                totalQeuroAmount += qeuroAmounts[i];
+                ++i; 
+            }
         }
         
         require(user.qeuroBalance >= totalQeuroAmount, "UserPool: Insufficient balance");
-        
         user.qeuroBalance -= uint128(totalQeuroAmount);
         
-        // Calculate conservative estimate for totalDeposits using minimum expected amounts
+        // Calculate and update total deposits
         uint256 totalEstimatedNetAmount = 0;
         uint256 withdrawalFee_ = withdrawalFee;
         for (uint256 i = 0; i < length;) {
-            uint256 minUsdcOut = minUsdcOuts[i];
-            uint256 estimatedFee = minUsdcOut.percentageOf(withdrawalFee_);
-            uint256 estimatedNetAmount = minUsdcOut - estimatedFee;
-            totalEstimatedNetAmount += estimatedNetAmount;
+            uint256 estimatedFee = minUsdcOuts[i].percentageOf(withdrawalFee_);
+            totalEstimatedNetAmount += minUsdcOuts[i] - estimatedFee;
             unchecked { ++i; }
         }
         totalDeposits -= totalEstimatedNetAmount;
         
+        // Transfer QEURO tokens
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
         
-        // Get initial balance once before the loop
-        uint256 initialUsdcBalance = usdc.balanceOf(address(this));
+        // Process vault redemptions
+        _processVaultRedemptions(qeuroAmounts, minUsdcOuts, usdcReceivedAmounts, withdrawalFee_);
+    }
+    
+    /**
+     * @notice Processes vault redemptions for batch withdrawal
+     * @param qeuroAmounts Array of QEURO amounts to redeem
+     * @param minUsdcOuts Array of minimum USDC amounts expected
+     * @param usdcReceivedAmounts Array to store received USDC amounts
+     * @param withdrawalFee_ Cached withdrawal fee percentage
+     * @dev Internal helper to reduce stack depth
+     */
+    function _processVaultRedemptions(
+        uint256[] calldata qeuroAmounts,
+        uint256[] calldata minUsdcOuts,
+        uint256[] memory usdcReceivedAmounts,
+        uint256 withdrawalFee_
+    ) internal {
+        uint256 length = qeuroAmounts.length;
         
-        // Process all vault redemptions
-        // Note: External calls in loop are necessary as vault doesn't support batch redemption
-        // Batch size is limited to MAX_BATCH_SIZE to prevent gas limit issues
         // slither-disable-next-line calls-loop
         for (uint256 i = 0; i < length;) {
-            uint256 qeuroAmount = qeuroAmounts[i];
-            uint256 minUsdcOut = minUsdcOuts[i];
-            
-            // Redeem USDC through vault - external call is necessary
-            vault.redeemQEURO(qeuroAmount, minUsdcOut); 
-            
-            // Use the minimum expected amount as the received amount
-            // This avoids additional balance checks and external calls
-            uint256 usdcReceived = minUsdcOut;
-            
-            // Calculate withdrawal fee
-            uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
-            uint256 netAmount = usdcReceived - fee;
-            usdcReceivedAmounts[i] = netAmount;
-            
+            vault.redeemQEURO(qeuroAmounts[i], minUsdcOuts[i]); 
+            uint256 fee = minUsdcOuts[i].percentageOf(withdrawalFee_);
+            usdcReceivedAmounts[i] = minUsdcOuts[i] - fee;
             unchecked { ++i; }
         }
-        // Verify total received amount is reasonable (optional safety check)
-        uint256 finalUsdcBalance = usdc.balanceOf(address(this));
-        uint256 actualTotalReceived = finalUsdcBalance - initialUsdcBalance;
+    }
+    
+    /**
+     * @notice Executes final transfers and emits events for batch withdrawal
+     * @param qeuroAmounts Array of QEURO amounts withdrawn
+     * @param usdcReceivedAmounts Array of USDC amounts received
+     * @param currentTime Current timestamp for events
+     * @dev Internal helper to reduce stack depth
+     */
+    function _executeBatchTransfers(
+        uint256[] calldata qeuroAmounts,
+        uint256[] memory usdcReceivedAmounts,
+        uint256 currentTime
+    ) internal {
+        uint256 length = qeuroAmounts.length;
         
-        // If there's a significant difference, adjust the last amount to account for slippage
-        uint256 expectedTotalReceived = 0;
-        for (uint256 i = 0; i < length; i++) {
-            expectedTotalReceived += minUsdcOuts[i];
-        }
-        
-        if (actualTotalReceived < expectedTotalReceived && length > 0) {
-            uint256 difference = expectedTotalReceived - actualTotalReceived;
-            if (difference <= minUsdcOuts[length - 1]) {
-                // Adjust the last withdrawal amount to account for slippage
-                uint256 lastMinUsdcOut = minUsdcOuts[length - 1];
-                uint256 adjustedUsdcReceived = lastMinUsdcOut - difference;
-                uint256 adjustedFee = adjustedUsdcReceived.percentageOf(withdrawalFee_);
-                usdcReceivedAmounts[length - 1] = adjustedUsdcReceived - adjustedFee;
-            }
-        }
-        
-        // Note: totalDeposits already updated before external calls using conservative estimates
-        // Users receive actual net amounts, internal tracking uses conservative values for reentrancy protection
-        
-        // Final transfers and events
         for (uint256 i = 0; i < length;) {
-            uint256 qeuroAmount = qeuroAmounts[i];
-            uint256 netAmount = usdcReceivedAmounts[i];
-            
-            // Transfer USDC to user
-            usdc.safeTransfer(msg.sender, netAmount);
-
-            emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, currentTime);
-            
+            usdc.safeTransfer(msg.sender, usdcReceivedAmounts[i]);
+            emit UserWithdrawal(msg.sender, qeuroAmounts[i], usdcReceivedAmounts[i], currentTime);
             unchecked { ++i; }
         }
     }

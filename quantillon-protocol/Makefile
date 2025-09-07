@@ -51,7 +51,7 @@ test:
 # Generate coverage report
 coverage:
 	@echo "📊 Generating coverage report..."
-	forge coverage --report lcov --via-ir
+	FOUNDRY_PROFILE=coverage forge coverage --report lcov
 
 # Run Slither security analysis
 slither:

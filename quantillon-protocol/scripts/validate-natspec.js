@@ -201,6 +201,36 @@ function findFunctionComment(code, node) {
 }
 
 /**
+ * @notice Counts non-commented parameters in a function signature
+ * @param parameters Array of parameter AST nodes
+ * @return Number of non-commented parameters
+ */
+function countNonCommentedParameters(parameters) {
+    if (!parameters || parameters.length === 0) return 0;
+    
+    return parameters.filter(param => {
+        // Check if parameter name is commented out (e.g., "uint16 /* referralCode */")
+        const paramName = param.name;
+        return paramName && !paramName.startsWith('/*') && !paramName.endsWith('*/');
+    }).length;
+}
+
+/**
+ * @notice Counts non-commented return parameters in a function signature
+ * @param returnParameters Array of return parameter AST nodes
+ * @return Number of non-commented return parameters
+ */
+function countNonCommentedReturnParameters(returnParameters) {
+    if (!returnParameters || returnParameters.length === 0) return 0;
+    
+    return returnParameters.filter(param => {
+        // Check if return parameter name is commented out
+        const paramName = param.name;
+        return paramName && !paramName.startsWith('/*') && !paramName.endsWith('*/');
+    }).length;
+}
+
+/**
  * @notice Validates the completeness of a NatSpec comment
  * @param comment The comment text
  * @param node The function AST node
@@ -214,27 +244,29 @@ function validateCommentCompleteness(comment, node) {
     if (!comment.includes('@notice')) missing.push('@notice');
     if (!comment.includes('@dev')) missing.push('@dev');
     
-    // Check for parameter documentation
-    if (node.parameters && node.parameters.length > 0) {
+    // Check for parameter documentation - only count non-commented parameters
+    const nonCommentedParamCount = countNonCommentedParameters(node.parameters);
+    if (nonCommentedParamCount > 0) {
         if (!comment.includes('@param')) {
             missing.push('@param');
         } else {
             // Count parameters vs @param tags
             const paramMatches = comment.match(/@param\s+\w+/g);
-            if (!paramMatches || paramMatches.length < node.parameters.length) {
+            if (!paramMatches || paramMatches.length < nonCommentedParamCount) {
                 incomplete.push('@param (missing some parameters)');
             }
         }
     }
     
-    // Check for return value documentation
-    if (node.returnParameters && node.returnParameters.length > 0) {
+    // Check for return value documentation - only count non-commented return parameters
+    const nonCommentedReturnParamCount = countNonCommentedReturnParameters(node.returnParameters);
+    if (nonCommentedReturnParamCount > 0) {
         if (!comment.includes('@return')) {
             missing.push('@return');
         } else {
             // Count return values vs @return tags
             const returnMatches = comment.match(/@return\s+\w+/g);
-            if (!returnMatches || returnMatches.length < node.returnParameters.length) {
+            if (!returnMatches || returnMatches.length < nonCommentedReturnParamCount) {
                 incomplete.push('@return (missing some return values)');
             }
         }

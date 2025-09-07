@@ -1765,7 +1765,6 @@ contract MockYieldShift {
     /**
      * @notice Gets the pending yield for a user
      * @dev Mock function for testing purposes
-     * @param user The user address to get pending yield for (ignored in mock)
      * @return The pending yield amount
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock

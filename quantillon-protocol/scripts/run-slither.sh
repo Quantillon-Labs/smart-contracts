@@ -25,14 +25,20 @@ pip install -r requirements.txt
 
 # Configuration
 RESULTS_DIR="${RESULTS_DIR:-results}"
+SLITHER_DIR="$RESULTS_DIR/slither"
 
 # Create results directory
-mkdir -p "$RESULTS_DIR"
+mkdir -p "$SLITHER_DIR"
 
 # Run Slither analysis with checklist output for detailed findings
 echo "🚀 Running Slither analysis..."
 slither . --config-file slither.config.json --exclude-dependencies --show-ignored-findings --checklist 2>&1 | tee slither-temp-output.txt
 SLITHER_EXIT_CODE=${PIPESTATUS[0]}
+
+# Generate JSON and SARIF reports
+echo "📄 Generating JSON and SARIF reports..."
+slither . --config-file slither.config.json --exclude-dependencies --json $SLITHER_DIR/slither-report.json
+slither . --config-file slither.config.json --exclude-dependencies --sarif $SLITHER_DIR/slither-report.sarif
 
 # Check exit code
 if [ $SLITHER_EXIT_CODE -eq 0 ]; then
@@ -50,16 +56,16 @@ extract_issues_by_detector() {
     local priority="$2"
     local priority_icon="$3"
     
-    echo "🔍 DETECTOR: $detector_name" >> results/$RESULTS_DIR/slither-report.txt
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $RESULTS_DIR/slither-report.txt
+    echo "🔍 DETECTOR: $detector_name" >> $SLITHER_DIR/slither-report.txt
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $SLITHER_DIR/slither-report.txt
     
     # Extract issues for this specific detector using bash
-    echo "   📍 ## $detector_name" >> $RESULTS_DIR/slither-report.txt
+    echo "   📍 ## $detector_name" >> $SLITHER_DIR/slither-report.txt
     
     # Find the section for this detector
     local section_start=$(grep -n "## $detector_name" slither-temp-output.txt | head -1 | cut -d: -f1)
     if [ -z "$section_start" ]; then
-        echo "         ✅ No issues found for this detector" >> $RESULTS_DIR/slither-report.txt
+        echo "         ✅ No issues found for this detector" >> $SLITHER_DIR/slither-report.txt
         return
     fi
     
@@ -77,7 +83,7 @@ extract_issues_by_detector() {
         
         # Process each ID
         for id in $ids; do
-            echo "      └─  - [ ] ID-$id" >> $RESULTS_DIR/slither-report.txt
+            echo "      └─  - [ ] ID-$id" >> $SLITHER_DIR/slither-report.txt
             issue_count=$((issue_count + 1))
             
             # Find the start line for this ID
@@ -103,21 +109,21 @@ extract_issues_by_detector() {
                     
                     # Capture file location
                     if [[ "$line" =~ ^[[:space:]]*src/ ]]; then
-                        echo "         📍 File: $line" >> $RESULTS_DIR/slither-report.txt
+                        echo "         📍 File: $line" >> $SLITHER_DIR/slither-report.txt
                     # Capture description lines (skip empty lines and file locations)
                     elif [[ -n "$line" ]] && [[ ! "$line" =~ ^[[:space:]]*$ ]]; then
-                        echo "         📝 $line" >> $RESULTS_DIR/slither-report.txt
+                        echo "         📝 $line" >> $SLITHER_DIR/slither-report.txt
                     fi
                 done
             fi
         done
         
-        echo "   📊 Total Issues: $issue_count" >> $RESULTS_DIR/slither-report.txt
+        echo "   📊 Total Issues: $issue_count" >> $SLITHER_DIR/slither-report.txt
     else
-        echo "         ✅ No issues found for this detector" >> $RESULTS_DIR/slither-report.txt
+        echo "         ✅ No issues found for this detector" >> $SLITHER_DIR/slither-report.txt
     fi
     
-    echo "" >> $RESULTS_DIR/slither-report.txt
+    echo "" >> $SLITHER_DIR/slither-report.txt
 }
 
 # Function to count issues by detector
@@ -129,7 +135,7 @@ count_issues_by_detector() {
 }
 
 # Create the beautiful report
-cat > $RESULTS_DIR/slither-report.txt << EOF
+cat > $SLITHER_DIR/slither-report.txt << EOF
 🎨 QUANTILLON PROTOCOL - ENHANCED SECURITY ANALYSIS REPORT
 ═══════════════════════════════════════════════════════════════════
 Generated: $(date)
@@ -179,7 +185,7 @@ else
     INFO_ISSUES=0
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << EOF
+cat >> $SLITHER_DIR/slither-report.txt << EOF
 🔴 High Priority Issues: $HIGH_ISSUES
 🟡 Medium Priority Issues: $MEDIUM_ISSUES  
 🟢 Low Priority Issues: $LOW_ISSUES
@@ -197,7 +203,7 @@ if [ -f "slither-temp-output.txt" ]; then
     extract_issues_by_detector "dangerous-strict-equalities" "HIGH" "🚨"
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 ⚠️  MEDIUM PRIORITY FINDINGS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -211,7 +217,7 @@ if [ -f "slither-temp-output.txt" ]; then
     extract_issues_by_detector "uninitialized-local" "MEDIUM" "⚠️"
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 💡 LOW PRIORITY FINDINGS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -229,7 +235,7 @@ if [ -f "slither-temp-output.txt" ]; then
     extract_issues_by_detector "weak-prng" "LOW" "💡"
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 ℹ️  INFORMATIONAL FINDINGS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -247,7 +253,7 @@ if [ -f "slither-temp-output.txt" ]; then
 fi
 
 # Add comprehensive issue listing by detector type
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 📋 COMPREHENSIVE ISSUE LISTING BY DETECTOR TYPE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -259,8 +265,8 @@ if [ -f "slither-temp-output.txt" ]; then
     detectors=$(grep -E "## [a-zA-Z-]+" slither-temp-output.txt | sed 's/## //')
     
     for detector in $detectors; do
-        echo "🔍 DETECTOR: $detector" >> $RESULTS_DIR/slither-report.txt
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $RESULTS_DIR/slither-report.txt
+        echo "🔍 DETECTOR: $detector" >> $SLITHER_DIR/slither-report.txt
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >> $SLITHER_DIR/slither-report.txt
         
         # Extract all issues for this detector
         awk -v det="$detector" '
@@ -296,13 +302,13 @@ if [ -f "slither-temp-output.txt" ]; then
         in_section && /^[[:space:]]*🎯 Confidence:/ {
             print "         " $0
         }
-        ' slither-temp-output.txt >> $RESULTS_DIR/slither-report.txt
+        ' slither-temp-output.txt >> $SLITHER_DIR/slither-report.txt
         
-        echo "" >> $RESULTS_DIR/slither-report.txt
+        echo "" >> $SLITHER_DIR/slither-report.txt
     done
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 🎯 ACTION PLAN & RECOMMENDATIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -310,34 +316,34 @@ cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
 EOF
 
 if [ "$HIGH_ISSUES" != "0" ]; then
-    echo "   • Fix $HIGH_ISSUES high-priority issues (reentrancy, arbitrary ETH transfers)" >> $RESULTS_DIR/slither-report.txt
-    echo "   • Focus on functions that send ETH to arbitrary destinations" >> $RESULTS_DIR/slither-report.txt
-    echo "   • Address uninitialized state variables" >> $RESULTS_DIR/slither-report.txt
+    echo "   • Fix $HIGH_ISSUES high-priority issues (reentrancy, arbitrary ETH transfers)" >> $SLITHER_DIR/slither-report.txt
+    echo "   • Focus on functions that send ETH to arbitrary destinations" >> $SLITHER_DIR/slither-report.txt
+    echo "   • Address uninitialized state variables" >> $SLITHER_DIR/slither-report.txt
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 ⚠️  NEXT DEVELOPMENT CYCLE:
 EOF
 
 if [ "$MEDIUM_ISSUES" -gt 0 ]; then
-    echo "   • Address $MEDIUM_ISSUES medium-priority issues" >> $RESULTS_DIR/slither-report.txt
-    echo "   • Fix unused return values and reentrancy vulnerabilities" >> $RESULTS_DIR/slither-report.txt
-    echo "   • Implement proper reentrancy guards" >> $RESULTS_DIR/slither-report.txt
+    echo "   • Address $MEDIUM_ISSUES medium-priority issues" >> $SLITHER_DIR/slither-report.txt
+    echo "   • Fix unused return values and reentrancy vulnerabilities" >> $SLITHER_DIR/slither-report.txt
+    echo "   • Implement proper reentrancy guards" >> $SLITHER_DIR/slither-report.txt
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 💡 IMPROVEMENT OPPORTUNITIES:
 EOF
 
 if [ "$LOW_ISSUES" -gt 0 ]; then
-    echo "   • Consider $LOW_ISSUES low-priority items for future optimizations" >> $RESULTS_DIR/slither-report.txt
-    echo "   • Address timestamp usage and shadowing issues" >> $RESULTS_DIR/slither-report.txt
-    echo "   • Optimize loops and external calls" >> $RESULTS_DIR/slither-report.txt
+    echo "   • Consider $LOW_ISSUES low-priority items for future optimizations" >> $SLITHER_DIR/slither-report.txt
+    echo "   • Address timestamp usage and shadowing issues" >> $SLITHER_DIR/slither-report.txt
+    echo "   • Optimize loops and external calls" >> $SLITHER_DIR/slither-report.txt
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 📚 RESOURCES & NEXT STEPS:
    • Review complete technical details in the generated report above
@@ -350,14 +356,14 @@ cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
 EOF
 
 if [ "$HIGH_ISSUES" -eq 0 ]; then
-    echo "   ✅ No critical vulnerabilities found!" >> $RESULTS_DIR/slither-report.txt
+    echo "   ✅ No critical vulnerabilities found!" >> $SLITHER_DIR/slither-report.txt
 elif [ "$HIGH_ISSUES" -lt 5 ]; then
-    echo "   🟡 Low critical vulnerability count - good progress!" >> $RESULTS_DIR/slither-report.txt
+    echo "   🟡 Low critical vulnerability count - good progress!" >> $SLITHER_DIR/slither-report.txt
 else
-    echo "   🔴 Multiple critical vulnerabilities require immediate attention!" >> $RESULTS_DIR/slither-report.txt
+    echo "   🔴 Multiple critical vulnerabilities require immediate attention!" >> $SLITHER_DIR/slither-report.txt
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 🌟 REMEMBER: Security is an ongoing process, not a one-time check!
 
@@ -370,16 +376,16 @@ EOF
 
 # Add the complete raw Slither output for transparency
 if [ -f "slither-temp-output.txt" ]; then
-    cat slither-temp-output.txt >> $RESULTS_DIR/slither-report.txt
+    cat slither-temp-output.txt >> $SLITHER_DIR/slither-report.txt
 fi
 
-cat >> $RESULTS_DIR/slither-report.txt << 'EOF'
+cat >> $SLITHER_DIR/slither-report.txt << 'EOF'
 
 ═══════════════════════════════════════════════════════════════════
 End of Complete Slither Analysis Report
 EOF
 
-echo "✨ Beautiful human-readable report generated: $RESULTS_DIR/slither-report.txt"
+echo "✨ Beautiful human-readable report generated: $SLITHER_DIR/slither-report.txt"
 
 # Now display the beautiful report in console
 echo ""
@@ -388,17 +394,17 @@ echo "════════════════════════�
 echo ""
 
 # Display the beautiful report content
-cat $RESULTS_DIR/slither-report.txt
+cat $SLITHER_DIR/slither-report.txt
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════════"
 echo "📊 Reports generated:"
 echo "   - Console output (above)"
-echo "   - $RESULTS_DIR/slither-report.json (detailed JSON)"
-echo "   - $RESULTS_DIR/slither-report.sarif (IDE integration)"
-echo "   - $RESULTS_DIR/slither-report.txt (beautiful human-readable report)"
+echo "   - $SLITHER_DIR/slither-report.json (detailed JSON)"
+echo "   - $SLITHER_DIR/slither-report.sarif (IDE integration)"
+echo "   - $SLITHER_DIR/slither-report.txt (beautiful human-readable report)"
 echo ""
-echo "💡 For complete findings, check $RESULTS_DIR/slither-report.txt"
+echo "💡 For complete findings, check $SLITHER_DIR/slither-report.txt"
 echo "🔧 Run 'make slither' to regenerate reports"
 
 # Add a beautiful final summary
@@ -415,7 +421,7 @@ if [ "$MEDIUM_ISSUES" -gt 0 ]; then
 fi
 echo ""
 echo "💡 NEXT STEPS:"
-echo "   • Review detailed findings in $RESULTS_DIR/slither-report.txt"
+echo "   • Review detailed findings in $SLITHER_DIR/slither-report.txt"
 echo "   • Prioritize fixes based on impact and exploitability"
 echo "   • Consider automated fixes where possible"
 echo "   • Run 'make slither' after each fix to verify resolution"

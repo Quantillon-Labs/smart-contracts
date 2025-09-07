@@ -502,7 +502,7 @@ All analysis output files are organized in the `results/` directory (configurabl
 - **`results/gas-analysis/`** - Gas optimization reports
 - **`results/mythril-reports/`** - Mythril security analysis
 - **`results/warnings-analysis/`** - Build warnings analysis
-- **`results/slither-report.*`** - Slither security analysis
+- **`results/slither/`** - Slither security analysis
 - **`results/natspec-validation-report.txt`** - NatSpec documentation validation
 
 **Custom Output Directory:**

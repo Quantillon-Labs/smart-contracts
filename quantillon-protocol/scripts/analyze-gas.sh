@@ -15,8 +15,9 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
+RESULTS_DIR="${RESULTS_DIR:-results}"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-OUTPUT_DIR="gas-analysis"
+OUTPUT_DIR="${RESULTS_DIR}/gas-analysis"
 TEXT_REPORT_FILE="${OUTPUT_DIR}/gas-analysis-${TIMESTAMP}.txt"
 
 # Create output directory if it doesn't exist

@@ -459,7 +459,11 @@ function main() {
     }
     
     // Write results to file
-    const outputFile = path.join(PROJECT_ROOT, 'natspec-validation-report.txt');
+    const resultsDir = path.join(PROJECT_ROOT, process.env.RESULTS_DIR || 'results');
+    if (!fs.existsSync(resultsDir)) {
+        fs.mkdirSync(resultsDir, { recursive: true });
+    }
+    const outputFile = path.join(resultsDir, 'natspec-validation-report.txt');
     writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented, overallCoverage, outputFile);
     
     // Generate recommendations
@@ -485,7 +489,7 @@ function main() {
     // Report status without failing the build
     if (overallCoverage < 100) {
         console.log('\n⚠️  Validation complete - incomplete documentation detected');
-        console.log('📄 Check natspec-validation-report.txt for detailed results');
+        console.log(`📄 Check ${process.env.RESULTS_DIR || 'results'}/natspec-validation-report.txt for detailed results`);
     } else {
         console.log('\n✅ Validation complete - all functions documented');
     }

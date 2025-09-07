@@ -14,7 +14,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUTPUT_DIR="$PROJECT_ROOT/mythril-reports"
+RESULTS_DIR="${RESULTS_DIR:-results}"
+OUTPUT_DIR="$PROJECT_ROOT/$RESULTS_DIR/mythril-reports"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 REPORT_FILE="$OUTPUT_DIR/mythril-report-$TIMESTAMP.txt"
 SARIF_FILE="$OUTPUT_DIR/mythril-report-$TIMESTAMP.sarif"

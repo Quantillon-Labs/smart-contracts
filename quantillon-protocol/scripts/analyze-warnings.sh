@@ -16,8 +16,9 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-BUILD_OUTPUT_FILE="build-output.log"
-WARNINGS_DIR="warnings-analysis"
+RESULTS_DIR="${RESULTS_DIR:-results}"
+BUILD_OUTPUT_FILE="${RESULTS_DIR}/build-output.log"
+WARNINGS_DIR="${RESULTS_DIR}/warnings-analysis"
 
 echo -e "${BLUE}🔍 Quantillon Protocol - Build Warnings Analysis${NC}"
 echo -e "${BLUE}================================================${NC}"

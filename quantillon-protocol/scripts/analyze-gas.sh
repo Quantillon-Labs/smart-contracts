@@ -95,13 +95,19 @@ else
     print_success "Foundry found"
 fi
 
-# Check for Slither
-if ! command_exists slither; then
+# Check for Slither (including virtual environment)
+if ! command_exists slither && ! command_exists ./venv/bin/slither; then
     print_warning "Slither not found. Some analysis will be skipped."
     SLITHER_AVAILABLE=false
 else
     print_success "Slither found"
     SLITHER_AVAILABLE=true
+    # Set SLITHER_CMD to use the correct path
+    if command_exists slither; then
+        SLITHER_CMD="slither"
+    else
+        SLITHER_CMD="./venv/bin/slither"
+    fi
 fi
 
 # 1. Build contracts first
@@ -150,7 +156,7 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     
     # State variable optimizations
     echo "Analyzing state variable optimizations..."
-    STATE_OPTIMIZATIONS=$(slither . --detect constable-states,immutable-states 2>/dev/null | grep -E "(should be constant|should be immutable)" || echo "")
+    STATE_OPTIMIZATIONS=$($SLITHER_CMD . --detect constable-states,immutable-states 2>/dev/null | grep -E "(should be constant|should be immutable)" || echo "")
     if [ -n "$STATE_OPTIMIZATIONS" ]; then
         print_warning "Found state variable optimization opportunities"
         generate_report "STATE VARIABLE OPTIMIZATIONS\n---------------------------\n⚠️ Found optimization opportunities:\n$STATE_OPTIMIZATIONS\n\n"
@@ -161,7 +167,7 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     
     # Function visibility optimizations
     echo "Analyzing function visibility optimizations..."
-    VISIBILITY_OPTIMIZATIONS=$(slither . --detect external-function 2>/dev/null | grep -E "should be declared external" || echo "")
+    VISIBILITY_OPTIMIZATIONS=$($SLITHER_CMD . --detect external-function 2>/dev/null | grep -E "should be declared external" || echo "")
     if [ -n "$VISIBILITY_OPTIMIZATIONS" ]; then
         print_warning "Found function visibility optimization opportunities"
         generate_report "FUNCTION VISIBILITY OPTIMIZATIONS\n--------------------------------\n⚠️ Found optimization opportunities:\n$VISIBILITY_OPTIMIZATIONS\n\n"
@@ -172,7 +178,7 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     
     # Unused code detection
     echo "Analyzing unused code..."
-    UNUSED_CODE=$(slither . --detect dead-code,unused-state 2>/dev/null | grep -E "(is never used|Dead code)" || echo "")
+    UNUSED_CODE=$($SLITHER_CMD . --detect dead-code,unused-state 2>/dev/null | grep -E "(is never used|Dead code)" || echo "")
     if [ -n "$UNUSED_CODE" ]; then
         print_warning "Found unused code"
         generate_report "UNUSED CODE DETECTION\n-------------------\n⚠️ Found unused code:\n$UNUSED_CODE\n\n"
@@ -183,7 +189,7 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     
     # Expensive operations in loops
     echo "Analyzing expensive operations in loops..."
-    COSTLY_LOOPS=$(slither . --detect costly-loop 2>/dev/null | grep -E "has costly operations inside a loop" || echo "")
+    COSTLY_LOOPS=$($SLITHER_CMD . --detect costly-loop 2>/dev/null | grep -E "has costly operations inside a loop" || echo "")
     if [ -n "$COSTLY_LOOPS" ]; then
         print_warning "Found expensive operations in loops"
         generate_report "COSTLY LOOP OPERATIONS\n--------------------\n⚠️ Found costly operations:\n$COSTLY_LOOPS\n\n"
@@ -194,7 +200,7 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     
     # Storage layout analysis
     echo "Analyzing storage layout..."
-    STORAGE_LAYOUT=$(slither . --print variable-order 2>/dev/null | head -100 || echo "")
+    STORAGE_LAYOUT=$($SLITHER_CMD . --print variable-order 2>/dev/null | head -100 || echo "")
     if [ -n "$STORAGE_LAYOUT" ]; then
         print_success "Storage layout analysis completed"
         generate_report "STORAGE LAYOUT ANALYSIS\n----------------------\n$STORAGE_LAYOUT\n\n"
@@ -202,7 +208,7 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     
     # Function summary
     echo "Generating function summary..."
-    FUNCTION_SUMMARY=$(slither . --print function-summary 2>/dev/null | head -50 || echo "")
+    FUNCTION_SUMMARY=$($SLITHER_CMD . --print function-summary 2>/dev/null | head -50 || echo "")
     if [ -n "$FUNCTION_SUMMARY" ]; then
         print_success "Function summary generated"
         generate_report "FUNCTION SUMMARY\n---------------\n$FUNCTION_SUMMARY\n\n"

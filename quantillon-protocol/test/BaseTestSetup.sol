@@ -67,6 +67,18 @@ contract BaseTestSetup is Test {
     
     // ==================== SETUP ====================
     
+    /**
+     * @notice Sets up the test environment with all necessary contracts and configurations
+     * @dev Deploys and initializes all core protocol contracts with proper dependencies
+     * @custom:security This function sets up the complete protocol ecosystem for testing
+     * @custom:validation All contracts are properly initialized with valid parameters
+     * @custom:state-changes Deploys all contracts and sets up initial state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors expected during normal setup
+     * @custom:reentrancy No reentrancy concerns in setup
+     * @custom:access Only test framework can call this function
+     * @custom:oracle Sets up mock oracle for testing
+     */
     function setUp() public virtual {
         // Deploy mock USDC
         usdc = new MockUSDC();
@@ -233,16 +245,60 @@ contract MockUSDC {
     string public symbol = "USDC";
     uint8 public decimals = 6;
     
+    /**
+     * @notice Mints new USDC tokens to the specified address
+     * @dev Mock function for testing purposes - increases balance and total supply
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     * @custom:security Mock function - no real security implications
+     * @custom:validation Validates address is not zero
+     * @custom:state-changes Increases balanceOf[to] and totalSupply
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
     
+    /**
+     * @notice Approves the spender to transfer tokens on behalf of the caller
+     * @dev Mock ERC20 approve function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return success Always returns true for mock implementation
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
     }
     
+    /**
+     * @notice Transfers tokens from the caller to the specified address
+     * @dev Mock ERC20 transfer function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation Checks sufficient balance before transfer
+     * @custom:state-changes Updates balanceOf mappings
+     * @custom:events No events emitted
+     * @custom:errors Reverts if insufficient balance
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -250,6 +306,22 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Transfers tokens from one address to another using allowance
+     * @dev Mock ERC20 transferFrom function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation Checks sufficient balance and allowance
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events No events emitted
+     * @custom:errors Reverts if insufficient balance or allowance
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");

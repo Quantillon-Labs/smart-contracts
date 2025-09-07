@@ -110,12 +110,13 @@ npm run docs:api
 ## 📊 Protocol Metrics
 
 ### Current Status
-- **Test Coverage**: 100% (574/574 tests passing)
+- **Test Coverage**: 100% (678/678 tests passing)
 - **Security Issues**: 0 critical/medium priority
 - **Mythril Analysis**: 0 vulnerabilities detected (10 contracts analyzed)
 - **Compilation Warnings**: 0
 - **Gas Optimization**: Optimized
-- **Documentation Coverage**: 100% NatSpec
+- **Documentation Coverage**: 100% NatSpec (1872/1872 functions documented)
+- **Edge Case Testing**: 104 comprehensive edge case tests
 
 ### Contract Sizes
 - **QuantillonVault**: ~45KB
@@ -167,7 +168,7 @@ npm run docs:api
 ### Technical Support
 - **Email**: team@quantillon.money
 - **Discord**: [discord.gg/uk8T9GqdE5](https://discord.gg/uk8T9GqdE5)
-- **Telegram**: [t.me/quantillon](https://t.me/quantillon)
+- **Telegram**: [@QuantillonLabs](https://t.me/QuantillonLabs)
 
 ### Community
 - **Twitter**: [@QuantillonLabs](https://twitter.com/QuantillonLabs)

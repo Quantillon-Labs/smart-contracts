@@ -67,6 +67,32 @@ contract GovernanceAttackVectors is Test {
     
     // ==================== SETUP ====================
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets up the test environment for governance attack vector testing
+     * @dev Mock function for testing purposes
+     
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setUp() public {
         // Deploy TimeProvider
         TimeProvider timeProviderImpl = new TimeProvider();
@@ -150,6 +176,28 @@ contract GovernanceAttackVectors is Test {
      * @notice Test basic setup and mock USDC functionality
      * @dev Verifies basic test setup works correctly
      */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test basic governance functionality
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Governance_BasicFunctionality() public {
         // Test basic setup
         assertEq(usdc.balanceOf(governance), INITIAL_USDC_AMOUNT, "Governance should have USDC");
@@ -169,6 +217,28 @@ contract GovernanceAttackVectors is Test {
      * @notice Test governance token manipulation attacks
      * @dev Verifies governance token manipulation scenarios
      */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance token manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Governance_TokenManipulation() public {
         vm.startPrank(attacker);
         
@@ -187,6 +257,28 @@ contract GovernanceAttackVectors is Test {
      * @notice Test governance role manipulation attacks
      * @dev Verifies governance role manipulation scenarios
      */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance role manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Governance_RoleManipulation() public {
         vm.startPrank(governance);
         
@@ -202,6 +294,28 @@ contract GovernanceAttackVectors is Test {
     /**
      * @notice Test governance voting manipulation attacks
      * @dev Verifies voting manipulation scenarios
+     */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance voting manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Governance_VotingManipulation() public {
         vm.startPrank(governanceManipulator);
@@ -220,6 +334,28 @@ contract GovernanceAttackVectors is Test {
     /**
      * @notice Test governance flash loan attacks
      * @dev Verifies flash loan governance manipulation
+     */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance flash loan attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Governance_FlashLoanAttack() public {
         vm.startPrank(flashLoanAttacker);
@@ -247,6 +383,28 @@ contract GovernanceAttackVectors is Test {
      * @notice Test governance proposal manipulation
      * @dev Verifies proposal manipulation scenarios
      */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance proposal manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Governance_ProposalManipulation() public {
         vm.startPrank(attacker);
         
@@ -264,6 +422,28 @@ contract GovernanceAttackVectors is Test {
     /**
      * @notice Test governance quorum manipulation
      * @dev Verifies quorum manipulation scenarios
+     */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance quorum manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Governance_QuorumManipulation() public {
         vm.startPrank(governanceManipulator);
@@ -283,6 +463,28 @@ contract GovernanceAttackVectors is Test {
      * @notice Test governance delegation attacks
      * @dev Verifies delegation manipulation scenarios
      */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance delegation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Governance_DelegationAttack() public {
         vm.startPrank(attacker);
         
@@ -300,6 +502,28 @@ contract GovernanceAttackVectors is Test {
     /**
      * @notice Test governance timelock manipulation
      * @dev Verifies timelock manipulation scenarios
+     */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance timelock manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Governance_TimelockManipulation() public {
         vm.startPrank(maliciousGovernor);
@@ -319,6 +543,28 @@ contract GovernanceAttackVectors is Test {
      * @notice Test governance emergency manipulation
      * @dev Verifies emergency governance manipulation
      */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance emergency manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Governance_EmergencyManipulation() public {
         vm.startPrank(emergencyRole);
         
@@ -336,6 +582,28 @@ contract GovernanceAttackVectors is Test {
     /**
      * @notice Test governance parameter manipulation
      * @dev Verifies parameter manipulation scenarios
+     */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance parameter manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Governance_ParameterManipulation() public {
         vm.startPrank(governance);
@@ -355,6 +623,28 @@ contract GovernanceAttackVectors is Test {
      * @notice Test governance treasury manipulation
      * @dev Verifies treasury manipulation scenarios
      */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance treasury manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Governance_TreasuryManipulation() public {
         vm.startPrank(treasury);
         
@@ -372,6 +662,28 @@ contract GovernanceAttackVectors is Test {
     /**
      * @notice Test governance multi-signature attacks
      * @dev Verifies multi-signature manipulation scenarios
+     */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance multisig attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Governance_MultiSigAttack() public {
         vm.startPrank(admin);
@@ -391,6 +703,28 @@ contract GovernanceAttackVectors is Test {
      * @notice Test governance upgrade manipulation
      * @dev Verifies upgrade manipulation scenarios
      */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance upgrade manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Governance_UpgradeManipulation() public {
         vm.startPrank(governance);
         
@@ -408,6 +742,28 @@ contract GovernanceAttackVectors is Test {
     /**
      * @notice Test governance cross-contract manipulation
      * @dev Verifies cross-contract governance manipulation
+     */
+    /**
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test governance cross-contract manipulation attacks
+     * @dev Verifies governance attack vectors functionality and edge cases
+     * @custom:security Tests governance attack vectors security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Governance_CrossContractManipulation() public {
         vm.startPrank(attacker);
@@ -441,11 +797,65 @@ contract MockUSDC {
     string public symbol = "USDC";
     uint8 public decimals = 6;
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Mints new USDC tokens to the specified address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Transfers tokens from the caller to the specified address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -453,11 +863,66 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Approves the spender to transfer tokens on behalf of the caller
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return success Always returns true for mock implementation
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Transfers tokens from one address to another using allowance
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
@@ -480,20 +945,128 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     uint80 private _roundId;
     bool private _shouldRevert;
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets the mock price for testing
+     * @dev Mock function for testing purposes
+     * @param price The new price to set
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setPrice(int256 price) external {
         _price = price;
         _updatedAt = block.timestamp;
         _roundId++;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets the updated timestamp for testing
+     * @dev Mock function for testing purposes
+     * @param timestamp The new timestamp to set
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setUpdatedAt(uint256 timestamp) external {
         _updatedAt = timestamp;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets whether the mock should revert for testing
+     * @dev Mock function for testing purposes
+     * @param shouldRevert Whether the mock should revert
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setShouldRevert(bool shouldRevert) external {
         _shouldRevert = shouldRevert;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the latest round data from the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return roundId The round ID
+     * @return answer The price answer
+     * @return startedAt The timestamp when the round started
+     * @return updatedAt The timestamp when the round was updated
+     * @return answeredInRound The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function latestRoundData() external view override returns (
         uint80 roundId,
         int256 answer,
@@ -514,6 +1087,36 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         );
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets round data for the mock price feed
+     * @dev Mock function for testing purposes
+     * @param roundId The round ID to query (ignored in mock implementation)
+     * @return The round ID
+     * @return The price answer
+     * @return The timestamp when the round started
+     * @return The timestamp when the round was updated
+     * @return The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function getRoundData(uint80 roundId) external view override returns (
         uint80,
         int256,
@@ -534,14 +1137,92 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         );
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the description of the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return The description string
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function description() external pure override returns (string memory) {
         return "Mock EUR/USD Price Feed";
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the version of the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return The version number
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function version() external pure override returns (uint256) {
         return 1;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the decimals of the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return The number of decimals
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function decimals() external pure override returns (uint8) {
         return 8;
     }

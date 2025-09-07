@@ -51,24 +51,21 @@ wheels/
 *.egg
 MANIFEST
 
-# Slither analysis reports and security files
+# Analysis results folder
+results/
+
+# Legacy analysis files (kept for backward compatibility)
 slither-report.json
 slither-report.sarif
 slither-report.*
 *.slither
 .slither/
 slither-cache/
-
-# Mythril analysis reports
 mythril-reports/
 mythril-report.json
 mythril-report.*
 *.mythril
-
-# Gas analysis reports
 gas-analysis/
-
-# Generated analysis files
 build-output.log
 test-output-with-warnings.log
 coverage_output.txt

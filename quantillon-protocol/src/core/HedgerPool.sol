@@ -635,27 +635,23 @@ contract HedgerPool is
     ) internal returns (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted) {
 
         HedgePosition storage position = positions[positionId];
-        uint128 positionMargin = position.margin;
-        uint128 positionSize = position.positionSize;
-        address positionHedger = position.hedger;
-        bool positionIsActive = position.isActive;
         
-        ValidationLibrary.validatePositionOwner(positionHedger, msg.sender);
-        ValidationLibrary.validatePositionActive(positionIsActive);
+        ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
+        ValidationLibrary.validatePositionActive(position.isActive);
 
         pnl = _calculatePnL(position, currentPrice);
 
-        uint256 grossPayout = uint256(int256(uint256(positionMargin)) + pnl);
+        uint256 grossPayout = uint256(int256(uint256(position.margin)) + pnl);
         uint256 exitFeeAmount = grossPayout.percentageOf(exitFee_);
         uint256 netPayout = grossPayout - exitFeeAmount;
 
         // Update hedger totals
-        hedger.totalMargin -= positionMargin;
-        hedger.totalExposure -= positionSize;
+        hedger.totalMargin -= position.margin;
+        hedger.totalExposure -= position.positionSize;
 
         // Return values for global total updates (done outside loop)
-        marginDeducted = positionMargin;
-        exposureDeducted = positionSize;
+        marginDeducted = position.margin;
+        exposureDeducted = position.positionSize;
 
         // Update position state
         position.isActive = false;

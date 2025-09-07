@@ -80,3 +80,9 @@ fail_on_revert = false
 [profile.test]
 optimizer = false
 via_ir = false
+
+# Coverage profile with optimized settings
+[profile.coverage]
+optimizer = true
+optimizer_runs = 200
+via_ir = true

@@ -67,6 +67,18 @@ contract YieldStakingEdgeCases is Test {
     
     // ==================== SETUP ====================
     
+    /**
+     * @notice Sets up the test environment for yield and staking edge case testing
+     * @dev Deploys all necessary contracts with mock dependencies for testing yield distribution and staking mechanisms
+     * @custom:security This function sets up the complete protocol ecosystem for yield testing
+     * @custom:validation All contracts are properly initialized with valid parameters
+     * @custom:state-changes Deploys all contracts and sets up initial state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors expected during normal setup
+     * @custom:reentrancy No reentrancy concerns in setup
+     * @custom:access Only test framework can call this function
+     * @custom:oracle Sets up mock oracles for testing
+     */
     function setUp() public {
         // Deploy TimeProvider
         TimeProvider timeProviderImpl = new TimeProvider();
@@ -149,6 +161,28 @@ contract YieldStakingEdgeCases is Test {
      * @notice Test basic setup and mock USDC functionality
      * @dev Verifies basic test setup works correctly
      */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test basic yield and staking functionality
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_YieldStaking_BasicFunctionality() public {
         // Test basic setup
         assertEq(usdc.balanceOf(user1), INITIAL_USDC_AMOUNT, "User1 should have USDC");
@@ -167,6 +201,28 @@ contract YieldStakingEdgeCases is Test {
     /**
      * @notice Test yield farming scenarios
      * @dev Verifies yield farming edge cases
+     */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test yield farming scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_YieldStaking_YieldFarming() public {
         vm.startPrank(yieldFarmer);
@@ -187,6 +243,28 @@ contract YieldStakingEdgeCases is Test {
     /**
      * @notice Test staking mechanism edge cases
      * @dev Verifies staking mechanism scenarios
+     */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test staking mechanisms
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_YieldStaking_StakingMechanisms() public {
         vm.startPrank(stakingTester);
@@ -222,6 +300,28 @@ contract YieldStakingEdgeCases is Test {
      * @notice Test yield distribution edge cases
      * @dev Verifies yield distribution scenarios
      */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test yield distribution scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_YieldStaking_YieldDistribution() public {
         vm.startPrank(yieldEdgeCaseUser);
         
@@ -242,6 +342,28 @@ contract YieldStakingEdgeCases is Test {
      * @notice Test reward calculation edge cases
      * @dev Verifies reward calculation scenarios
      */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test reward calculation scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_YieldStaking_RewardCalculation() public {
         vm.startPrank(staker);
         
@@ -261,6 +383,28 @@ contract YieldStakingEdgeCases is Test {
     /**
      * @notice Test staking pool edge cases
      * @dev Verifies staking pool scenarios
+     */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test staking pool scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_YieldStaking_StakingPool() public {
         vm.startPrank(user1);
@@ -296,6 +440,28 @@ contract YieldStakingEdgeCases is Test {
      * @notice Test yield compounding edge cases
      * @dev Verifies yield compounding scenarios
      */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test yield compounding scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_YieldStaking_YieldCompounding() public {
         vm.startPrank(yieldFarmer);
         
@@ -323,6 +489,28 @@ contract YieldStakingEdgeCases is Test {
     /**
      * @notice Test staking withdrawal edge cases
      * @dev Verifies staking withdrawal scenarios
+     */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test staking withdrawal scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_YieldStaking_StakingWithdrawal() public {
         vm.startPrank(stakingTester);
@@ -352,6 +540,28 @@ contract YieldStakingEdgeCases is Test {
      * @notice Test yield rate edge cases
      * @dev Verifies yield rate scenarios
      */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test yield rate scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_YieldStaking_YieldRate() public {
         vm.startPrank(yieldEdgeCaseUser);
         
@@ -372,6 +582,28 @@ contract YieldStakingEdgeCases is Test {
      * @notice Test staking duration edge cases
      * @dev Verifies staking duration scenarios
      */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test staking duration scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_YieldStaking_StakingDuration() public {
         vm.startPrank(staker);
         
@@ -391,6 +623,28 @@ contract YieldStakingEdgeCases is Test {
     /**
      * @notice Test yield optimization edge cases
      * @dev Verifies yield optimization scenarios
+     */
+    /**
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test yield optimization scenarios
+     * @dev Verifies yield and staking edge cases functionality and edge cases
+     * @custom:security Tests yield and staking edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_YieldStaking_YieldOptimization() public {
         vm.startPrank(yieldFarmer);
@@ -425,15 +679,97 @@ contract MockAggregatorV3 {
     uint256 public updatedAt = block.timestamp;
     uint80 public answeredInRound = 1;
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets the mock price for testing
+     * @dev Mock function for testing purposes
+     * @param _price The new price to set
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setPrice(int256 _price) external {
         price = _price;
         updatedAt = block.timestamp;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets the updated timestamp for testing
+     * @dev Mock function for testing purposes
+     * @param _updatedAt The new timestamp to set
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setUpdatedAt(uint256 _updatedAt) external {
         updatedAt = _updatedAt;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the latest round data from the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return roundId The round ID
+     * @return answer The price answer
+     * @return startedAt The timestamp when the round started
+     * @return updatedAt The timestamp when the round was updated
+     * @return answeredInRound The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function latestRoundData() external view returns (
         uint80,
         int256,
@@ -458,11 +794,65 @@ contract MockUSDC {
     string public symbol = "USDC";
     uint8 public decimals = 6;
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Mints new USDC tokens to the specified address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Transfers tokens from the caller to the specified address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -470,11 +860,66 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Approves the spender to transfer tokens on behalf of the caller
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return success Always returns true for mock implementation
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Transfers tokens from one address to another using allowance
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");

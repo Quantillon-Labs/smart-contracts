@@ -67,6 +67,18 @@ contract GasResourceEdgeCases is Test {
     
     // ==================== SETUP ====================
     
+    /**
+     * @notice Sets up the test environment for gas and resource edge case testing
+     * @dev Deploys all necessary contracts with mock dependencies for testing gas optimization and resource management
+     * @custom:security This function sets up the complete protocol ecosystem for gas testing
+     * @custom:validation All contracts are properly initialized with valid parameters
+     * @custom:state-changes Deploys all contracts and sets up initial state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors expected during normal setup
+     * @custom:reentrancy No reentrancy concerns in setup
+     * @custom:access Only test framework can call this function
+     * @custom:oracle Sets up mock oracles for testing
+     */
     function setUp() public {
         // Deploy TimeProvider
         TimeProvider timeProviderImpl = new TimeProvider();
@@ -132,6 +144,14 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test basic setup and mock USDC functionality
      * @dev Verifies basic test setup works correctly
+     * @custom:security Tests basic functionality and setup validation
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between user1 and user2
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with user1 and user2 accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_BasicFunctionality() public {
         // Test basic setup
@@ -151,6 +171,14 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test gas limit attacks on contract functions
      * @dev Verifies contracts handle gas limit scenarios properly
+     * @custom:security Tests protection against gas limit attacks
+     * @custom:validation Validates gas limit handling and error conditions
+     * @custom:state-changes No state changes in this test
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with various test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_GasLimitAttack() public {
         // Simulate gas limit attack by setting very low gas limit
@@ -173,6 +201,14 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test resource exhaustion through repeated operations
      * @dev Verifies system handles resource exhaustion attempts
+     * @custom:security Tests protection against resource exhaustion attacks
+     * @custom:validation Validates system resilience under repeated operations
+     * @custom:state-changes Updates USDC balances through repeated transfers
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with resourceExhaustionAttacker and user1 accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_ResourceExhaustion() public {
         vm.startPrank(resourceExhaustionAttacker);
@@ -191,6 +227,14 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test gas optimization in batch operations
      * @dev Verifies efficient gas usage in batch scenarios
+     * @custom:security Tests gas optimization in batch operations
+     * @custom:validation Validates efficient gas usage in batch scenarios
+     * @custom:state-changes Updates USDC balances through batch transfers
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with user1, user2, attacker, and gasAttacker accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_BatchOperations() public {
         vm.startPrank(user1);
@@ -210,8 +254,16 @@ contract GasResourceEdgeCases is Test {
     }
 
     /**
-     * @notice Test gas optimization in approval patterns
+     * @notice Test gas optimization in approval operations
      * @dev Verifies efficient approval and transferFrom patterns
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_ApprovalOptimization() public {
         vm.startPrank(user1);
@@ -238,6 +290,14 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test gas optimization in complex operations
      * @dev Verifies efficient gas usage in complex scenarios
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_ComplexOperations() public {
         vm.startPrank(user1);
@@ -264,6 +324,28 @@ contract GasResourceEdgeCases is Test {
      * @notice Test gas optimization in edge case scenarios
      * @dev Verifies efficient handling of edge cases
      */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization in edge cases
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Gas_EdgeCaseOptimization() public {
         // Test zero amount transfers (should be gas efficient)
         vm.startPrank(user1);
@@ -284,6 +366,28 @@ contract GasResourceEdgeCases is Test {
      * @notice Test gas optimization in approval edge cases
      * @dev Verifies efficient approval handling
      */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization in approval edge cases
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Gas_ApprovalEdgeCases() public {
         vm.startPrank(user1);
         
@@ -302,6 +406,28 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test gas optimization in batch approval patterns
      * @dev Verifies efficient batch approval handling
+     */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization in batch approval operations
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_BatchApprovalOptimization() public {
         vm.startPrank(user1);
@@ -322,6 +448,28 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test gas optimization in transferFrom patterns
      * @dev Verifies efficient transferFrom usage
+     */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization in transferFrom operations
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_TransferFromOptimization() public {
         vm.startPrank(user1);
@@ -345,6 +493,28 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test gas optimization in complex multi-step operations
      * @dev Verifies efficient complex operation handling
+     */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization in complex multi-step operations
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_ComplexMultiStepOperations() public {
         // Step 1: User1 approves User2
@@ -379,6 +549,28 @@ contract GasResourceEdgeCases is Test {
      * @notice Test gas optimization in error handling scenarios
      * @dev Verifies efficient error handling
      */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization in error handling
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Gas_ErrorHandlingOptimization() public {
         vm.startPrank(user1);
         
@@ -400,6 +592,28 @@ contract GasResourceEdgeCases is Test {
      * @notice Test gas optimization in large number operations
      * @dev Verifies efficient handling of large numbers
      */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization with large numbers
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Gas_LargeNumberOptimization() public {
         vm.startPrank(user1);
         
@@ -417,6 +631,28 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test gas optimization in repeated operations
      * @dev Verifies efficient repeated operation handling
+     */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization in repeated operations
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_RepeatedOperationsOptimization() public {
         vm.startPrank(user1);
@@ -436,6 +672,28 @@ contract GasResourceEdgeCases is Test {
     /**
      * @notice Test gas optimization in mixed operation patterns
      * @dev Verifies efficient mixed operation handling
+     */
+    /**
+     * @custom:security Tests gas optimization and resource management security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas optimization in mixed operations
+     * @dev Verifies gas optimization functionality and edge cases
+     * @custom:security Tests gas optimization security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Gas_MixedOperationOptimization() public {
         // Mixed operations: approve, transfer, transferFrom
@@ -474,11 +732,65 @@ contract MockUSDC {
     string public symbol = "USDC";
     uint8 public decimals = 6;
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Mints new USDC tokens to the specified address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Transfers tokens from the caller to the specified address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -486,11 +798,66 @@ contract MockUSDC {
         return true;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Approves the spender to transfer tokens on behalf of the caller
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return success Always returns true for mock implementation
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Transfers tokens from one address to another using allowance
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
@@ -513,20 +880,128 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     uint80 private _roundId;
     bool private _shouldRevert;
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets the mock price for testing
+     * @dev Mock function for testing purposes
+     * @param price The new price to set
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setPrice(int256 price) external {
         _price = price;
         _updatedAt = block.timestamp;
         _roundId++;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets the updated timestamp for testing
+     * @dev Mock function for testing purposes
+     * @param timestamp The new timestamp to set
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setUpdatedAt(uint256 timestamp) external {
         _updatedAt = timestamp;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets whether the mock should revert for testing
+     * @dev Mock function for testing purposes
+     * @param shouldRevert Whether the mock should revert
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setShouldRevert(bool shouldRevert) external {
         _shouldRevert = shouldRevert;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the latest round data from the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return roundId The round ID
+     * @return answer The price answer
+     * @return startedAt The timestamp when the round started
+     * @return updatedAt The timestamp when the round was updated
+     * @return answeredInRound The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function latestRoundData() external view override returns (
         uint80 roundId,
         int256 answer,
@@ -547,6 +1022,36 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         );
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets round data for the mock price feed
+     * @dev Mock function for testing purposes
+     * @param roundId The round ID to query (ignored in mock implementation)
+     * @return The round ID
+     * @return The price answer
+     * @return The timestamp when the round started
+     * @return The timestamp when the round was updated
+     * @return The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function getRoundData(uint80 roundId) external view override returns (
         uint80,
         int256,
@@ -567,14 +1072,92 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         );
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the description of the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return The description string
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function description() external pure override returns (string memory) {
         return "Mock EUR/USD Price Feed";
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the version of the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return The version number
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function version() external pure override returns (uint256) {
         return 1;
     }
 
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the decimals of the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return The number of decimals
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function decimals() external pure override returns (uint8) {
         return 8;
     }

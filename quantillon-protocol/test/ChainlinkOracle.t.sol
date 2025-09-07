@@ -150,6 +150,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     /**
      * @notice Gets round data for the mock price feed
      * @dev Mock function for testing purposes
+     * @param _id The round ID to query (ignored in mock implementation)
      * @return _roundId The round ID
      * @return _answer The price answer
      * @return _startedAt The timestamp when the round started

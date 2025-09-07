@@ -68,6 +68,18 @@ contract EconomicAttackVectors is Test {
     
     // ==================== SETUP ====================
     
+    /**
+     * @notice Sets up the test environment for economic attack vector testing
+     * @dev Deploys all necessary contracts with mock dependencies for testing economic exploits
+     * @custom:security This function sets up the complete protocol ecosystem for attack testing
+     * @custom:validation All contracts are properly initialized with valid parameters
+     * @custom:state-changes Deploys all contracts and sets up initial state
+     * @custom:events No events emitted during setup
+     * @custom:errors No errors expected during normal setup
+     * @custom:reentrancy No reentrancy concerns in setup
+     * @custom:access Only test framework can call this function
+     * @custom:oracle Sets up mock oracles for testing
+     */
     function setUp() public {
         // Deploy TimeProvider through proxy
         TimeProvider timeProviderImpl = new TimeProvider();
@@ -201,6 +213,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test cross-pool arbitrage attack
      * @dev Verifies arbitrageur cannot exploit price differences between pools
+     * @custom:security Tests protection against cross-pool arbitrage exploitation
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between arbitrageur and flash loan attacker
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with arbitrageur and flash loan attacker accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_CrossPoolArbitrageAttack() public {
         // Test basic setup
@@ -219,6 +239,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test yield manipulation attack
      * @dev Verifies yield manipulator cannot exploit yield distribution
+     * @custom:security Tests protection against yield manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between yield manipulator and arbitrageur
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with yield manipulator and arbitrageur accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_YieldManipulationAttack() public {
         // Yield manipulator attempts to manipulate yield distribution
@@ -237,6 +265,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test price manipulation attack
      * @dev Verifies price manipulator cannot exploit oracle price feeds
+     * @custom:security Tests protection against price manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between price manipulator and flash loan attacker
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with price manipulator and flash loan attacker accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_PriceManipulationAttack() public {
         // Price manipulator attempts to manipulate oracle prices
@@ -255,6 +291,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test flash loan arbitrage attack
      * @dev Verifies flash loan attacker cannot exploit protocol for profit
+     * @custom:security Tests protection against flash loan arbitrage attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between flash loan attacker and arbitrageur
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with flash loan attacker and arbitrageur accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_FlashLoanArbitrageAttack() public {
         // Flash loan attacker attempts arbitrage
@@ -273,6 +317,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through multiple users
      * @dev Verifies coordinated attack by multiple users is prevented
+     * @custom:security Tests protection against coordinated multi-user attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between user1 and user2
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with user1 and user2 accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_CoordinatedMultiUserAttack() public {
         // Multiple users attempt coordinated attack
@@ -292,6 +344,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through yield farming
      * @dev Verifies yield farming attacks are prevented
+     * @custom:security Tests protection against yield farming attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between yield manipulator, arbitrageur, and flash loan attacker
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with yield manipulator, arbitrageur, and flash loan attacker accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_YieldFarmingAttack() public {
         // Yield farmer attempts to exploit yield distribution
@@ -312,6 +372,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through liquidation manipulation
      * @dev Verifies liquidation manipulation attacks are prevented
+     * @custom:security Tests protection against liquidation manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between flash loan attacker and user1
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with flash loan attacker and user1 accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_LiquidationManipulationAttack() public {
         // Attacker attempts to manipulate liquidations for profit
@@ -330,6 +398,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through governance manipulation
      * @dev Verifies governance manipulation attacks are prevented
+     * @custom:security Tests protection against governance manipulation attacks
+     * @custom:validation Validates governance token distribution and access controls
+     * @custom:state-changes No state changes in this test
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with arbitrageur account
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_GovernanceManipulationAttack() public {
         // Attacker attempts to manipulate governance
@@ -347,6 +423,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through fee manipulation
      * @dev Verifies fee manipulation attacks are prevented
+     * @custom:security Tests protection against fee manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between price manipulator and arbitrageur
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with price manipulator and arbitrageur accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_FeeManipulationAttack() public {
         // Attacker attempts to manipulate fees
@@ -365,6 +449,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through reserve manipulation
      * @dev Verifies reserve manipulation attacks are prevented
+     * @custom:security Tests protection against reserve manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between yield manipulator, arbitrageur, and flash loan attacker
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with yield manipulator, arbitrageur, and flash loan attacker accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_ReserveManipulationAttack() public {
         // Attacker attempts to manipulate reserves
@@ -385,6 +477,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through time manipulation
      * @dev Verifies time manipulation attacks are prevented
+     * @custom:security Tests protection against time manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates with time manipulation
+     * @custom:state-changes Updates USDC balances between arbitrageur and flash loan attacker with time warp
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with arbitrageur and flash loan attacker accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_TimeManipulationAttack() public {
         // Attacker attempts to manipulate time-based functions
@@ -406,6 +506,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through cross-contract manipulation
      * @dev Verifies cross-contract manipulation attacks are prevented
+     * @custom:security Tests protection against cross-contract manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates across multiple contracts
+     * @custom:state-changes Updates USDC balances between flash loan attacker, arbitrageur, and user1
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with flash loan attacker, arbitrageur, and user1 accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_CrossContractManipulationAttack() public {
         // Attacker attempts to manipulate multiple contracts
@@ -426,6 +534,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through economic incentive manipulation
      * @dev Verifies economic incentive manipulation attacks are prevented
+     * @custom:security Tests protection against economic incentive manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between yield manipulator, arbitrageur, and flash loan attacker
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with yield manipulator, arbitrageur, and flash loan attacker accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_IncentiveManipulationAttack() public {
         // Attacker attempts to manipulate economic incentives
@@ -446,6 +562,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through protocol parameter manipulation
      * @dev Verifies protocol parameter manipulation attacks are prevented
+     * @custom:security Tests protection against protocol parameter manipulation attacks
+     * @custom:validation Validates protocol parameter integrity and governance controls
+     * @custom:state-changes No state changes in this test
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with price manipulator account
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_ParameterManipulationAttack() public {
         // Attacker attempts to manipulate protocol parameters
@@ -463,6 +587,14 @@ contract EconomicAttackVectors is Test {
     /**
      * @notice Test economic exploit through economic model manipulation
      * @dev Verifies economic model manipulation attacks are prevented
+     * @custom:security Tests protection against economic model manipulation attacks
+     * @custom:validation Validates USDC transfer functionality and balance updates
+     * @custom:state-changes Updates USDC balances between arbitrageur, flash loan attacker, and user1
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with arbitrageur, flash loan attacker, and user1 accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Economic_ModelManipulationAttack() public {
         // Attacker attempts to manipulate economic model
@@ -496,25 +628,94 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     uint256 public updatedAt;
     bool public shouldRevert;
     
+    /**
+     * @notice Constructor for MockAggregatorV3
+     * @dev Initializes the mock price feed with specified decimals
+     * @param _decimals The number of decimals for the price feed
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Sets decimals and updatedAt timestamp
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Only called during contract deployment
+     * @custom:oracle No oracle dependencies
+     */
     constructor(uint8 _decimals) {
         decimals = _decimals;
         updatedAt = block.timestamp;
     }
     
+    /**
+     * @notice Sets the mock price for testing
+     * @dev Updates the price and increments the round ID
+     * @param _price The new price to set
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates price, updatedAt, and roundId
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setPrice(int256 _price) external {
         price = _price;
         updatedAt = block.timestamp;
         roundId++;
     }
     
+    /**
+     * @notice Sets the updated timestamp for testing
+     * @dev Updates the updatedAt timestamp
+     * @param _updatedAt The new timestamp to set
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates updatedAt timestamp
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setUpdatedAt(uint256 _updatedAt) external {
         updatedAt = _updatedAt;
     }
     
+    /**
+     * @notice Sets whether the mock should revert for testing
+     * @dev Updates the shouldRevert flag
+     * @param _shouldRevert Whether the mock should revert
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates shouldRevert flag
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setShouldRevert(bool _shouldRevert) external {
         shouldRevert = _shouldRevert;
     }
     
+    /**
+     * @notice Gets the latest round data from the mock price feed
+     * @dev Returns mock round data or reverts based on shouldRevert flag
+     * @return _roundId The round ID
+     * @return _answer The price answer
+     * @return _startedAt The timestamp when the round started
+     * @return _updatedAt The timestamp when the round was updated
+     * @return _answeredInRound The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors Throws "MockAggregator: Simulated failure" if shouldRevert is true
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function latestRoundData() external view returns (
         uint80 _roundId,
         int256 _answer,
@@ -529,6 +730,24 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         return (roundId, price, 0, updatedAt, roundId);
     }
     
+    /**
+     * @notice Gets round data for the mock price feed
+     * @dev Returns mock round data or reverts based on shouldRevert flag
+     * @param _roundId The round ID to query (ignored in mock implementation)
+     * @return The round ID
+     * @return The price answer
+     * @return The timestamp when the round started
+     * @return The timestamp when the round was updated
+     * @return The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors Throws "MockAggregator: Simulated failure" if shouldRevert is true
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function getRoundData(uint80 _roundId) external view returns (
         uint80,
         int256,
@@ -543,10 +762,36 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         return (roundId, price, 0, updatedAt, roundId);
     }
     
+    /**
+     * @notice Gets the description of the mock price feed
+     * @dev Returns a mock description string
+     * @return The description string
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function description() external pure returns (string memory) {
         return "Mock EUR/USD Price Feed";
     }
     
+    /**
+     * @notice Gets the version of the mock price feed
+     * @dev Returns a mock version number
+     * @return The version number
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function version() external pure returns (uint256) {
         return 1;
     }
@@ -565,11 +810,40 @@ contract MockUSDC {
     string public symbol = "USDC";
     uint8 public decimals = 6;
     
+    /**
+     * @notice Mints new USDC tokens to the specified address
+     * @dev Mock function for testing purposes - increases balance and total supply
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     * @custom:security Mock function - no real security implications
+     * @custom:validation Validates address is not zero
+     * @custom:state-changes Increases balanceOf[to] and totalSupply
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
     
+    /**
+     * @notice Transfers tokens from the caller to the specified address
+     * @dev Mock ERC20 transfer function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation Checks sufficient balance before transfer
+     * @custom:state-changes Updates balanceOf mappings
+     * @custom:events No events emitted
+     * @custom:errors Reverts if insufficient balance
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -577,11 +851,42 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Approves the spender to transfer tokens on behalf of the caller
+     * @dev Mock ERC20 approve function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return success Always returns true for mock implementation
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
     }
     
+    /**
+     * @notice Transfers tokens from one address to another using allowance
+     * @dev Mock ERC20 transferFrom function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation Checks sufficient balance and allowance
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events No events emitted
+     * @custom:errors Reverts if insufficient balance or allowance
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");

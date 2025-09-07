@@ -58,6 +58,18 @@ contract LiquidationEdgeCases is Test {
     
     // ==================== SETUP ====================
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setUp() public {
         // Deploy TimeProvider through proxy
         TimeProvider timeProviderImpl = new TimeProvider();
@@ -164,6 +176,14 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Helper function to create a basic hedger position
      * @dev Creates a position with initial margin for testing
+     * @custom:security Tests position creation with proper margin requirements
+     * @custom:validation Validates position creation with initial margin
+     * @custom:state-changes Creates a new hedger position with initial margin
+     * @custom:events Emits position creation events
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this helper function
+     * @custom:access Tests with hedger account
+     * @custom:oracle No oracle dependencies in this helper function
      */
     function _createBasicHedgerPosition() internal {
         vm.startPrank(hedger);
@@ -178,6 +198,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test basic setup and mock USDC functionality
      * @dev Verifies basic test setup works correctly
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test flash loan threshold attack on liquidation
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_FlashLoanThresholdAttack() public {
         // Test basic setup
@@ -196,6 +238,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test flash loan attacks on liquidation rewards
      * @dev Verifies liquidation rewards cannot be manipulated via flash loans
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test flash loan reward manipulation in liquidation
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_FlashLoanRewardManipulation() public {
         // Create a basic hedger position first
@@ -225,6 +289,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test flash loan attacks on position values
      * @dev Verifies position values cannot be manipulated via flash loans
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test flash loan position value attack in liquidation
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_FlashLoanPositionValueAttack() public {
         // Create a basic hedger position first
@@ -258,6 +344,28 @@ contract LiquidationEdgeCases is Test {
      * @notice Test MEV attacks on liquidation opportunities
      * @dev Verifies MEV protection mechanisms work correctly
      */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test MEV attack on liquidation
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Liquidation_MEVAttack() public {
         // Create a basic hedger position first
         _createBasicHedgerPosition();
@@ -286,6 +394,28 @@ contract LiquidationEdgeCases is Test {
      * @notice Test MEV sandwich attacks on liquidations
      * @dev Verifies liquidation cannot be sandwiched for profit
      */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test MEV sandwich attack on liquidation
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Liquidation_MEVSandwichAttack() public {
         // Create a basic hedger position first
         _createBasicHedgerPosition();
@@ -311,6 +441,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test MEV attacks on liquidation timing
      * @dev Verifies liquidation timing cannot be manipulated
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test MEV timing attack on liquidation
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_MEVTimingAttack() public {
         // Create a basic hedger position first
@@ -341,6 +493,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test liquidation during 99% price drops
      * @dev Verifies liquidation works during extreme market conditions
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test liquidation with extreme price drop
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_ExtremePriceDrop() public {
         // Create a basic hedger position first
@@ -377,6 +551,28 @@ contract LiquidationEdgeCases is Test {
      * @notice Test liquidation when oracle is stale
      * @dev Verifies liquidation behavior with stale oracle data
      */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test liquidation with stale oracle data
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Liquidation_StaleOracle() public {
         // Create a basic hedger position first
         _createBasicHedgerPosition();
@@ -406,6 +602,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test partial liquidation scenarios
      * @dev Verifies partial liquidation works correctly
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test partial liquidation scenarios
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_PartialLiquidation() public {
         // Create a basic hedger position first
@@ -445,6 +663,28 @@ contract LiquidationEdgeCases is Test {
      * @notice Test multiple liquidators competing for same position
      * @dev Verifies only one liquidator can commit to a position
      */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test concurrent liquidators scenario
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Liquidation_ConcurrentLiquidators() public {
         // Create a basic hedger position first
         _createBasicHedgerPosition();
@@ -470,6 +710,28 @@ contract LiquidationEdgeCases is Test {
      * @notice Test liquidation commitment conflicts
      * @dev Verifies commitment system prevents conflicts
      */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test commitment conflicts in liquidation
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Liquidation_CommitmentConflicts() public {
         // Create a basic hedger position first
         _createBasicHedgerPosition();
@@ -494,6 +756,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test liquidation gas griefing
      * @dev Verifies liquidation cannot be griefed with gas attacks
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test gas griefing in liquidation
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_GasGriefing() public {
         // Create a basic hedger position first
@@ -540,6 +824,28 @@ contract LiquidationEdgeCases is Test {
      * @notice Test liquidation of non-existent position
      * @dev Verifies liquidation fails for non-existent positions
      */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test liquidation of non-existent position
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
     function test_Liquidation_NonExistentPosition() public {
         vm.startPrank(liquidator);
         
@@ -553,6 +859,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test liquidation of healthy position
      * @dev Verifies liquidation fails for healthy positions
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test liquidation of healthy position
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_HealthyPosition() public {
         // Create a basic hedger position first
@@ -570,6 +898,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test liquidation by non-liquidator
      * @dev Verifies only liquidators can commit liquidations
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test liquidation by non-liquidator
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_NonLiquidator() public {
         // Create a basic hedger position first
@@ -597,6 +947,28 @@ contract LiquidationEdgeCases is Test {
     /**
      * @notice Test liquidation cooldown enforcement
      * @dev Verifies liquidation cooldown is properly enforced
+     */
+    /**
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
+     */
+    /**
+     * @notice Test liquidation cooldown enforcement
+     * @dev Verifies liquidation edge cases functionality and edge cases
+     * @custom:security Tests liquidation edge cases security
+     * @custom:validation Validates functionality and state changes
+     * @custom:state-changes Updates contract state as needed
+     * @custom:events No events emitted in this test
+     * @custom:errors No errors expected during normal operation
+     * @custom:reentrancy No reentrancy concerns in this test
+     * @custom:access Tests with appropriate test accounts
+     * @custom:oracle No oracle dependencies in this test
      */
     function test_Liquidation_CooldownEnforcement() public {
         // Create a basic hedger position first
@@ -634,26 +1006,147 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     uint256 public updatedAt;
     bool public shouldRevert;
     
+    /**
+     * @notice Constructor for MockAggregatorV3
+     * @dev Initializes the mock price feed with specified decimals
+     * @param _decimals The number of decimals for the price feed
+     * @custom:security No security validations - test mock
+     * @custom:validation No input validation - test mock
+     * @custom:state-changes Initializes decimals, roundId, and updatedAt
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can deploy this mock contract
+     * @custom:oracle No oracle dependencies
+     */
     constructor(uint8 _decimals) {
         decimals = _decimals;
         roundId = 1;
         updatedAt = block.timestamp;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets the mock price for testing
+     * @dev Mock function for testing purposes
+     * @param _price The new price to set
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setPrice(int256 _price) external {
         price = _price;
         roundId++;
         updatedAt = block.timestamp;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets the updated timestamp for testing
+     * @dev Mock function for testing purposes
+     * @param _updatedAt The new timestamp to set
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setUpdatedAt(uint256 _updatedAt) external {
         updatedAt = _updatedAt;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Sets whether the mock should revert for testing
+     * @dev Mock function for testing purposes
+     * @param _shouldRevert Whether the mock should revert
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function setShouldRevert(bool _shouldRevert) external {
         shouldRevert = _shouldRevert;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the latest round data from the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return roundId The round ID
+     * @return answer The price answer
+     * @return startedAt The timestamp when the round started
+     * @return updatedAt The timestamp when the round was updated
+     * @return answeredInRound The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function latestRoundData() external view override returns (
         uint80,
         int256,
@@ -674,6 +1167,36 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         );
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets round data for the mock price feed
+     * @dev Mock function for testing purposes
+     * @param _roundId The round ID to query (ignored in mock implementation)
+     * @return The round ID
+     * @return The price answer
+     * @return The timestamp when the round started
+     * @return The timestamp when the round was updated
+     * @return The round ID when the answer was provided
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function getRoundData(uint80 _roundId) external view override returns (
         uint80,
         int256,
@@ -694,10 +1217,62 @@ contract MockAggregatorV3 is AggregatorV3Interface {
         );
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the description of the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return The description string
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function description() external pure override returns (string memory) {
         return "Mock Price Feed";
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Gets the version of the mock price feed
+     * @dev Mock function for testing purposes
+     
+     * @return The version number
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function version() external pure override returns (uint256) {
         return 1;
     }
@@ -716,16 +1291,97 @@ contract MockUSDC {
     string public symbol = "USDC";
     uint8 public decimals = 6;
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Mints new USDC tokens to the specified address
+     * @dev Mock function for testing purposes
+     * @param to The address to mint tokens to
+     * @param amount The amount of tokens to mint
+     
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Approves the spender to transfer tokens on behalf of the caller
+     * @dev Mock function for testing purposes
+     * @param spender The address to approve for spending
+     * @param amount The amount of tokens to approve
+     * @return success Always returns true for mock implementation
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Transfers tokens from the caller to the specified address
+     * @dev Mock function for testing purposes
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -733,6 +1389,34 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Mock function for testing
+     * @dev Mock function for testing purposes
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Transfers tokens from one address to another using allowance
+     * @dev Mock function for testing purposes
+     * @param from The address to transfer tokens from
+     * @param to The address to transfer tokens to
+     * @param amount The amount of tokens to transfer
+     * @return success Returns true if transfer is successful
+     * @custom:security Mock function - no real security implications
+     * @custom:validation No validation in mock implementation
+     * @custom:state-changes Updates mock contract state
+     * @custom:events No events emitted
+     * @custom:errors No errors expected
+     * @custom:reentrancy No reentrancy concerns
+     * @custom:access Anyone can call this mock function
+     * @custom:oracle No oracle dependencies
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");

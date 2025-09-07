@@ -278,6 +278,7 @@ contract MockAavePool {
      * @param asset The asset to supply
      * @param amount The amount to supply
      * @param onBehalfOf The address to supply on behalf of
+     * @param referralCode The referral code (ignored in mock implementation)
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
      * @custom:state-changes Transfers USDC and mints aUSDC
@@ -521,6 +522,8 @@ contract MockRewardsController {
      * @notice Claims rewards for assets
      * @dev Mock function for testing purposes
      * @param assets The assets to claim rewards for
+     * @param amount The amount to claim (ignored in mock implementation)
+     * @param to The address to send rewards to (ignored in mock implementation)
      * @return The total amount claimed
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
@@ -551,6 +554,7 @@ contract MockRewardsController {
      * @notice Gets user rewards for assets
      * @dev Mock function for testing purposes
      * @param assets The assets to get rewards for
+     * @param user The user address to get rewards for (ignored in mock implementation)
      * @return The rewards for each asset
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock

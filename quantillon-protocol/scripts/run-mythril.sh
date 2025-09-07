@@ -32,15 +32,30 @@ echo ""
 # Check if Mythril is installed
 if ! command -v myth &> /dev/null; then
     echo -e "${RED}❌ Mythril is not installed!${NC}"
-    echo -e "${YELLOW}📦 Installing Mythril...${NC}"
+    echo -e "${YELLOW}📦 Installing Mythril using pipx...${NC}"
     
-    # Install Mythril
-    pip3 install mythril
+    # Check if pipx is available
+    if ! command -v pipx &> /dev/null; then
+        echo -e "${YELLOW}📦 Installing pipx first...${NC}"
+        sudo apt update && sudo apt install -y pipx
+        pipx ensurepath
+        export PATH="$PATH:/home/$USER/.local/bin"
+    fi
+    
+    # Install Mythril using pipx
+    pipx install mythril
     
     if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Failed to install Mythril. Please install manually:${NC}"
-        echo -e "${YELLOW}   pip3 install mythril${NC}"
-        exit 1
+        echo -e "${YELLOW}⚠️  pipx failed, trying pip3 --user...${NC}"
+        pip3 install --user mythril
+        
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}❌ Failed to install Mythril. Please install manually:${NC}"
+            echo -e "${YELLOW}   pipx install mythril${NC}"
+            echo -e "${YELLOW}   or: pip3 install --user mythril${NC}"
+            echo -e "${YELLOW}   or: pip3 install --break-system-packages mythril${NC}"
+            exit 1
+        fi
     fi
     
     echo -e "${GREEN}✅ Mythril installed successfully!${NC}"
@@ -93,6 +108,11 @@ for contract in "${CORE_CONTRACTS[@]}"; do
     # Check if vulnerabilities were found
     if [ -f "$OUTPUT_DIR/mythril-$contract_name.json" ]; then
         issues_count=$(jq '.issues | length' "$OUTPUT_DIR/mythril-$contract_name.json" 2>/dev/null || echo "0")
+        
+        # Ensure issues_count is a valid number
+        if [ -z "$issues_count" ] || [ "$issues_count" = "null" ]; then
+            issues_count=0
+        fi
         
         if [ "$issues_count" -gt 0 ]; then
             VULNERABLE_CONTRACTS=$((VULNERABLE_CONTRACTS + 1))
@@ -170,6 +190,11 @@ for contract in "${CORE_CONTRACTS[@]}"; do
     
     if [ -f "$json_file" ] && [ -s "$json_file" ]; then
         issues_count=$(jq '.issues | length' "$json_file" 2>/dev/null || echo "0")
+        
+        # Ensure issues_count is a valid number
+        if [ -z "$issues_count" ] || [ "$issues_count" = "null" ]; then
+            issues_count=0
+        fi
         
         if [ "$issues_count" -gt 0 ]; then
             echo -e "${YELLOW}📋 $contract_name:${NC}"

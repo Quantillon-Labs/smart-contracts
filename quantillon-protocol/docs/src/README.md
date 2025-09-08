@@ -495,6 +495,22 @@ make format         # Code formatting
 make all            # Run all checks (build, test, coverage, docs, validation)
 ```
 
+### Analysis Results
+
+All analysis output files are organized in the `results/` directory (configurable via `RESULTS_DIR` environment variable):
+
+- **`results/gas-analysis/`** - Gas optimization reports
+- **`results/mythril-reports/`** - Mythril security analysis
+- **`results/warnings-analysis/`** - Build warnings analysis
+- **`results/slither/`** - Slither security analysis
+- **`results/natspec-validation-report.txt`** - NatSpec documentation validation
+
+**Custom Output Directory:**
+```bash
+RESULTS_DIR=analysis-output make gas-analysis  # Use custom directory
+RESULTS_DIR=/tmp/reports make slither          # Use absolute path
+```
+
 ### Current Status
 
 - **Build**: ✅ Successful

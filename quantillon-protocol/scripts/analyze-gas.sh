@@ -126,24 +126,10 @@ fi
 print_section "Forge Gas Report"
 echo "Generating detailed gas report..."
 
-# Create a temporary test file for gas analysis in the test directory
-cat > test/GasAnalysisTemp.sol << 'EOF'
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+# Note: Using existing project tests for gas analysis instead of creating temporary files
 
-import "forge-std/Test.sol";
-
-contract GasAnalysisTest is Test {
-    function testGasAnalysis() public pure {
-        // This test will be used to generate gas reports
-        // Simple test that always passes - using pure since no state access needed
-        require(true, "Test should always pass");
-    }
-}
-EOF
-
-# Run forge test with gas report
-FORGE_GAS_REPORT=$(forge test --gas-report --match-test testGasAnalysis 2>&1 || echo "Failed to generate gas report")
+# Run forge test with gas report using existing tests
+FORGE_GAS_REPORT=$(forge test --gas-report 2>&1 | head -50 || echo "Failed to generate gas report")
 if [ "$FORGE_GAS_REPORT" != "Failed to generate gas report" ]; then
     print_success "Forge gas report generated"
     generate_report "FORGE GAS REPORT\n---------------\n$(echo "$FORGE_GAS_REPORT" | head -50)\n\n"
@@ -256,119 +242,66 @@ else
     generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n⚠️ Failed to analyze contract sizes\n\n"
 fi
 
-# 5. Gas Usage by Function (if available)
-print_section "Function Gas Usage Analysis"
-echo "Analyzing gas usage by function..."
+# 5. Gas Usage by Function - Analyze Real Quantillon Protocol Functions
+print_section "Quantillon Protocol Function Gas Analysis"
+echo "Analyzing gas usage for critical Quantillon protocol functions..."
 
-# Create a more comprehensive gas test in the test directory
-cat > test/ComprehensiveGasTest.sol << 'EOF'
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+# Analyze gas usage for critical protocol functions
+echo "Running gas analysis for core protocol functions..."
 
-import "forge-std/Test.sol";
-
-contract ComprehensiveGasTest is Test {
-    function testGasUsage() public {
-        // Test basic operations
-        uint256 a = 1;
-        uint256 b = 2;
-        uint256 c = a + b;
-        require(c == 3, "Basic arithmetic failed");
-        
-        // Test storage operations
-        uint256 storageVar = 100;
-        storageVar = storageVar + 1;
-        require(storageVar == 101, "Storage operation failed");
-        
-        // Test array operations
-        uint256[] memory arr = new uint256[](10);
-        for (uint256 i = 0; i < arr.length; i++) {
-            arr[i] = i;
-        }
-        require(arr[5] == 5, "Array operation failed");
-    }
-}
-EOF
-
-# Run gas analysis
-FUNCTION_GAS_USAGE=$(forge test --gas-report --match-test testGasUsage 2>&1 || echo "Failed to analyze function gas usage")
-if [ "$FUNCTION_GAS_USAGE" != "Failed to analyze function gas usage" ]; then
-    print_success "Function gas usage analysis completed"
-    generate_report "FUNCTION GAS USAGE ANALYSIS\n-------------------------\n$(echo "$FUNCTION_GAS_USAGE" | head -30)\n\n"
-else
-    # Fallback: try to use existing gas-related tests for function analysis
-    print_warning "Primary function gas analysis failed, trying existing gas tests..."
-    FALLBACK_FUNCTION_GAS=$(forge test --gas-report --match-test "test_Gas_" 2>&1 || echo "Failed to analyze function gas usage")
-    if [ "$FALLBACK_FUNCTION_GAS" != "Failed to analyze function gas usage" ]; then
-        print_success "Fallback function gas analysis completed using existing tests"
-        generate_report "FUNCTION GAS USAGE ANALYSIS (Fallback)\n------------------------------------\n$(echo "$FALLBACK_FUNCTION_GAS" | head -30)\n\n"
-    else
-        print_warning "All function gas analysis failed"
-        generate_report "FUNCTION GAS USAGE ANALYSIS\n-------------------------\n⚠️ Failed to analyze function gas usage (both primary and fallback methods failed)\n\n"
-    fi
+# 1. Core Vault Functions (mintQEURO, redeemQEURO)
+VAULT_GAS_USAGE=$(forge test --gas-report --match-test "test.*[Mm]int.*[Qq]euro|test.*[Rr]edeem.*[Qq]euro" 2>&1 || echo "No vault gas tests found")
+if [ "$VAULT_GAS_USAGE" != "No vault gas tests found" ]; then
+    print_success "Vault function gas analysis completed"
+    generate_report "VAULT FUNCTION GAS ANALYSIS\n-------------------------\n$(echo "$VAULT_GAS_USAGE" | head -20)\n\n"
 fi
 
-# 6. Optimization Recommendations
-print_section "Gas Optimization Recommendations"
+# 2. Staking Functions (stake, unstake, batch operations)
+STAKING_GAS_USAGE=$(forge test --gas-report --match-test "test.*[Ss]take|test.*[Bb]atch.*[Ss]take" 2>&1 || echo "No staking gas tests found")
+if [ "$STAKING_GAS_USAGE" != "No staking gas tests found" ]; then
+    print_success "Staking function gas analysis completed"
+    generate_report "STAKING FUNCTION GAS ANALYSIS\n----------------------------\n$(echo "$STAKING_GAS_USAGE" | head -20)\n\n"
+fi
 
-RECOMMENDATIONS="GAS OPTIMIZATION RECOMMENDATIONS
-================================
+# 3. Token Functions (mint, burn, batch operations)
+TOKEN_GAS_USAGE=$(forge test --gas-report --match-test "test.*[Mm]int|test.*[Bb]urn|test.*[Bb]atch.*[Mm]int|test.*[Bb]atch.*[Bb]urn" 2>&1 || echo "No token gas tests found")
+if [ "$TOKEN_GAS_USAGE" != "No token gas tests found" ]; then
+    print_success "Token function gas analysis completed"
+    generate_report "TOKEN FUNCTION GAS ANALYSIS\n--------------------------\n$(echo "$TOKEN_GAS_USAGE" | head -20)\n\n"
+fi
 
-HIGH PRIORITY
-=============
-1. Use 'immutable' for variables set only in constructor
-   - Reduces deployment gas costs
-   - Reduces runtime gas costs for reads
+# 4. HedgerPool Functions (position management)
+HEDGER_GAS_USAGE=$(forge test --gas-report --match-test "test.*[Hh]edger|test.*[Pp]osition" 2>&1 || echo "No hedger gas tests found")
+if [ "$HEDGER_GAS_USAGE" != "No hedger gas tests found" ]; then
+    print_success "HedgerPool function gas analysis completed"
+    generate_report "HEDGERPOOL FUNCTION GAS ANALYSIS\n--------------------------------\n$(echo "$HEDGER_GAS_USAGE" | head -20)\n\n"
+fi
 
-2. Use 'constant' for compile-time constants
-   - No storage slot required
-   - Minimal gas cost for reads
+# 5. Yield Management Functions
+YIELD_GAS_USAGE=$(forge test --gas-report --match-test "test.*[Yy]ield|test.*[Dd]istribute" 2>&1 || echo "No yield gas tests found")
+if [ "$YIELD_GAS_USAGE" != "No yield gas tests found" ]; then
+    print_success "Yield function gas analysis completed"
+    generate_report "YIELD FUNCTION GAS ANALYSIS\n---------------------------\n$(echo "$YIELD_GAS_USAGE" | head -20)\n\n"
+fi
 
-3. Optimize storage layout
-   - Pack structs efficiently
-   - Group related variables together
-   - Use appropriate data types
+# 6. Comprehensive Gas Optimization Tests (from GasResourceEdgeCases.t.sol)
+GAS_OPTIMIZATION_USAGE=$(forge test --gas-report --match-test "test_Gas_" 2>&1 || echo "No gas optimization tests found")
+if [ "$GAS_OPTIMIZATION_USAGE" != "No gas optimization tests found" ]; then
+    print_success "Gas optimization analysis completed"
+    generate_report "GAS OPTIMIZATION ANALYSIS\n-------------------------\n$(echo "$GAS_OPTIMIZATION_USAGE" | head -25)\n\n"
+fi
 
-4. Use 'external' instead of 'public' for functions not called internally
-   - Saves gas on function calls
-   - Reduces contract size
+# 7. Overall gas report for all tests
+OVERALL_GAS_USAGE=$(forge test --gas-report 2>&1 | head -50 || echo "Failed to generate overall gas report")
+if [ "$OVERALL_GAS_USAGE" != "Failed to generate overall gas report" ]; then
+    print_success "Overall gas usage analysis completed"
+    generate_report "OVERALL GAS USAGE SUMMARY\n-------------------------\n$(echo "$OVERALL_GAS_USAGE" | head -30)\n\n"
+else
+    print_warning "Overall gas analysis failed"
+    generate_report "OVERALL GAS USAGE SUMMARY\n-------------------------\n⚠️ Failed to generate overall gas usage report\n\n"
+fi
 
-MEDIUM PRIORITY
-===============
-1. Avoid expensive operations in loops
-   - Move storage reads outside loops
-   - Use local variables for repeated calculations
-
-2. Use events instead of storage for non-critical data
-   - Events are cheaper than storage
-   - Good for logging and off-chain indexing
-
-3. Optimize string operations
-   - Use 'bytes32' for fixed-length strings when possible
-   - Avoid string concatenation in loops
-
-4. Use assembly for gas-critical operations
-   - Only for experienced developers
-   - Can provide significant gas savings
-
-LOW PRIORITY
-============
-1. Remove unused code
-   - Reduces contract size
-   - Improves readability
-
-2. Use libraries for common operations
-   - Reduces code duplication
-   - Can improve gas efficiency
-
-3. Optimize function parameters
-   - Use appropriate data types
-   - Consider using structs for multiple parameters"
-
-print_success "Optimization recommendations generated"
-generate_report "$RECOMMENDATIONS\n\n"
-
-# 7. Generate summary
+# 6. Generate summary
 print_section "Analysis Summary"
 
 # Count issues found using the variables we already have
@@ -410,18 +343,17 @@ if [ $TOTAL_ISSUES -eq 0 ]; then
     generate_report "CONCLUSION\n==========\n✅ Excellent! No gas optimization issues were found in the analysis.\n\n"
 else
     print_warning "Found $TOTAL_ISSUES gas optimization opportunities"
-    generate_report "CONCLUSION\n==========\n⚠️ $TOTAL_ISSUES gas optimization opportunities were found. Review the recommendations above to improve gas efficiency.\n\n"
+    generate_report "CONCLUSION\n==========\n⚠️ $TOTAL_ISSUES gas optimization opportunities were found.\n\n"
 fi
 
-# 8. Cleanup
-rm -f test/GasAnalysisTemp.sol test/ComprehensiveGasTest.sol
+# 7. Cleanup
 
 print_header "Analysis Complete"
 echo "📄 Gas analysis report saved to: $TEXT_REPORT_FILE"
 echo ""
 
 if [ $TOTAL_ISSUES -gt 0 ]; then
-    echo -e "${YELLOW}💡 Tip: Review the recommendations in the report for gas optimization opportunities.${NC}"
+    echo -e "${YELLOW}💡 Tip: Review the analysis results for gas optimization opportunities.${NC}"
 else
     echo -e "${GREEN}🎉 Great job! Your contracts are already well-optimized for gas usage.${NC}"
 fi

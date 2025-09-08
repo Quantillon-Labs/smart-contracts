@@ -5,23 +5,23 @@ pragma solidity 0.8.24;
 // IMPORTS - OpenZeppelin libraries and protocol interfaces
 // =============================================================================
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/IQEUROToken.sol";
-import "../interfaces/IYieldShift.sol";
-import "../libraries/VaultMath.sol";
-import "../libraries/ErrorLibrary.sol";
-import "../libraries/ValidationLibrary.sol";
-import "./SecureUpgradeable.sol";
-import "../libraries/TreasuryRecoveryLibrary.sol";
-import "../libraries/FlashLoanProtectionLibrary.sol";
-import "../libraries/TimeProviderLibrary.sol";
+import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
+import {IYieldShift} from "../interfaces/IYieldShift.sol";
+import {VaultMath} from "../libraries/VaultMath.sol";
+import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
+import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {SecureUpgradeable} from "./SecureUpgradeable.sol";
+import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
+import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
+import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 
 /**
  * @title stQEUROToken
@@ -140,7 +140,7 @@ contract stQEUROToken is
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
-    TimeProvider public immutable timeProvider;
+    TimeProvider public immutable TIME_PROVIDER;
     
     // Yield and exchange rate variables
     /// @notice Exchange rate between QEURO and stQEURO (18 decimals)
@@ -265,10 +265,10 @@ contract stQEUROToken is
     /**
      * @notice Constructor for stQEURO token implementation
      * @dev Initializes the time provider and disables initialization on implementation
-     * @param _timeProvider Address of the time provider contract
+     * @param _TIME_PROVIDER Address of the time provider contract
      * @custom:security Disables initialization on implementation for security
      * @custom:validation Validates time provider is not zero address
-     * @custom:state-changes Sets timeProvider and disables initializers
+     * @custom:state-changes Sets TIME_PROVIDER and disables initializers
      * @custom:events No events emitted
      * @custom:errors Throws ZeroAddress if time provider is zero
      * @custom:reentrancy Not protected - constructor only
@@ -276,9 +276,9 @@ contract stQEUROToken is
      * @custom:oracle No oracle dependencies
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(TimeProvider _timeProvider) {
-        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
-        timeProvider = _timeProvider;
+    constructor(TimeProvider _TIME_PROVIDER) {
+        if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
+        TIME_PROVIDER = _TIME_PROVIDER;
         // Disables initialization on the implementation for security
         _disableInitializers();
     }
@@ -334,7 +334,7 @@ contract stQEUROToken is
 
         // Initialize exchange rate at 1:1
         exchangeRate = 1e18;
-        lastUpdateTime = timeProvider.currentTime();
+        lastUpdateTime = TIME_PROVIDER.currentTime();
         
         // Initial parameters
         yieldFee = 1000; // 10% fee on yield
@@ -636,12 +636,12 @@ contract stQEUROToken is
         // Update exchange rate based on yield
         uint256 oldRate = exchangeRate;
         exchangeRate = exchangeRate + (netYield.mulDiv(1e18, totalSupply()));
-        lastUpdateTime = timeProvider.currentTime();
+        lastUpdateTime = TIME_PROVIDER.currentTime();
 
         // Update totals - Use checked arithmetic for critical state
         totalYieldEarned = totalYieldEarned + netYield;
 
-        emit ExchangeRateUpdated(oldRate, exchangeRate, timeProvider.currentTime());
+        emit ExchangeRateUpdated(oldRate, exchangeRate, TIME_PROVIDER.currentTime());
         emit YieldDistributed(netYield, exchangeRate);
     }
 
@@ -804,7 +804,7 @@ contract stQEUROToken is
         if (newRate != exchangeRate) {
             uint256 oldRate = exchangeRate;
             exchangeRate = newRate;
-            lastUpdateTime = timeProvider.currentTime();
+            lastUpdateTime = TIME_PROVIDER.currentTime();
             
             emit ExchangeRateUpdated(oldRate, newRate, block.timestamp);
         }
@@ -833,7 +833,7 @@ contract stQEUROToken is
         uint256 pendingYield = yieldShift.getUserPendingYield(address(this));
         
         if (pendingYield >= minYieldThreshold || 
-            timeProvider.currentTime() >= lastUpdateTime + maxUpdateFrequency) {
+            TIME_PROVIDER.currentTime() >= lastUpdateTime + maxUpdateFrequency) {
             
             // Add bounds checking
             uint256 totalValue = totalUnderlying + pendingYield;

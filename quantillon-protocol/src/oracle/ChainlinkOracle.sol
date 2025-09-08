@@ -6,28 +6,28 @@ pragma solidity 0.8.24;
 // =============================================================================
 
 // Standard interface for Chainlink price feeds
-import "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 // OpenZeppelin role system
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 // Emergency pause mechanism
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 // Initialization pattern for upgradeable contracts
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // UUPS upgrade pattern
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // ERC20 interface and SafeERC20 for safe transfers
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Treasury recovery library for secure ETH recovery
-import "../libraries/TreasuryRecoveryLibrary.sol";
-import "../libraries/TimeProviderLibrary.sol";
-import "../libraries/ValidationLibrary.sol";
+import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
+import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
+import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
 
 /**
  * @title ChainlinkOracle
@@ -168,25 +168,25 @@ contract ChainlinkOracle is
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
-    TimeProvider public immutable timeProvider;
+    TimeProvider public immutable TIME_PROVIDER;
 
     /**
      * @notice Constructor for ChainlinkOracle contract
      * @dev Initializes the TimeProvider and disables initializers for proxy pattern
-     * @param _timeProvider Address of the TimeProvider contract for centralized time management
+     * @param _TIME_PROVIDER Address of the TimeProvider contract for centralized time management
      * @custom:security Validates TimeProvider address is not zero
-     * @custom:validation Validates _timeProvider is not address(0)
-     * @custom:state-changes Sets timeProvider immutable variable and disables initializers
+     * @custom:validation Validates _TIME_PROVIDER is not address(0)
+     * @custom:state-changes Sets TIME_PROVIDER immutable variable and disables initializers
      * @custom:events No events emitted
-     * @custom:errors Throws "Zero address" if _timeProvider is address(0)
+     * @custom:errors Throws "Zero address" if _TIME_PROVIDER is address(0)
      * @custom:reentrancy Not applicable - constructor
      * @custom:access Public - anyone can deploy
      * @custom:oracle No oracle dependencies
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(TimeProvider _timeProvider) {
-        if (address(_timeProvider) == address(0)) revert("Zero address");
-        timeProvider = _timeProvider;
+    constructor(TimeProvider _TIME_PROVIDER) {
+        if (address(_TIME_PROVIDER) == address(0)) revert("Zero address");
+        TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
 
@@ -322,12 +322,12 @@ contract ChainlinkOracle is
      */
     function _validateTimestamp(uint256 reportedTime) internal view returns (bool) {
         // Reject if reported time is in the future
-        if (reportedTime > timeProvider.currentTime()) return false;
+        if (reportedTime > TIME_PROVIDER.currentTime()) return false;
         
         // Check if the timestamp is too old (beyond normal staleness + drift)
         // Use safe arithmetic to prevent underflow
         uint256 maxAllowedAge = MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT;
-        if (timeProvider.currentTime() > reportedTime + maxAllowedAge) return false;
+        if (TIME_PROVIDER.currentTime() > reportedTime + maxAllowedAge) return false;
         
         return true;
     }
@@ -414,11 +414,11 @@ contract ChainlinkOracle is
 
         // Update internal values
         lastValidEurUsdPrice = eurUsdPrice;
-        lastPriceUpdateTime = timeProvider.currentTime();
+        lastPriceUpdateTime = TIME_PROVIDER.currentTime();
         lastPriceUpdateBlock = block.number;
 
         // Emit update event
-        emit PriceUpdated(eurUsdPrice, usdcUsdPrice, timeProvider.currentTime());
+        emit PriceUpdated(eurUsdPrice, usdcUsdPrice, TIME_PROVIDER.currentTime());
     }
 
     /**

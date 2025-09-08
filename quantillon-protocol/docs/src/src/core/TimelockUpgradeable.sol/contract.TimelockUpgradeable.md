@@ -1,5 +1,5 @@
 # TimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/70cb38d23589f7c586599f9ecbb0c11a63c1a99b/src/core/TimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/2f5647e68ddbc27f036af14281f026d5d4a6db27/src/core/TimelockUpgradeable.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -142,14 +142,14 @@ bool public emergencyMode;
 ```
 
 
-### timeProvider
+### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
 *Used to replace direct block.timestamp usage for testability and consistency*
 
 
 ```solidity
-TimeProvider public immutable timeProvider;
+TimeProvider public immutable TIME_PROVIDER;
 ```
 
 
@@ -852,13 +852,13 @@ Constructor for TimelockUpgradeable contract
 
 
 ```solidity
-constructor(TimeProvider _timeProvider);
+constructor(TimeProvider _TIME_PROVIDER);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_timeProvider`|`TimeProvider`|TimeProvider contract for centralized time management|
+|`_TIME_PROVIDER`|`TimeProvider`|TimeProvider contract for centralized time management|
 
 
 ## Events

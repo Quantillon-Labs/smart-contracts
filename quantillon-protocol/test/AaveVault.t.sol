@@ -292,7 +292,7 @@ contract MockAavePool {
         require(amount > 0, "Amount must be positive");
         
         // Transfer USDC from caller
-        usdc.transferFrom(msg.sender, address(this), amount);
+        require(usdc.transferFrom(msg.sender, address(this), amount), "TransferFrom failed");
         
         // Mint aUSDC to onBehalfOf (1:1 ratio initially)
         aUSDC.mint(onBehalfOf, amount);
@@ -339,7 +339,7 @@ contract MockAavePool {
             usdc.mint(address(this), totalToTransfer - usdc.balanceOf(address(this)));
         }
         
-        usdc.transfer(to, totalToTransfer);
+        require(usdc.transfer(to, totalToTransfer), "Transfer failed");
         return totalToTransfer;
     }
     

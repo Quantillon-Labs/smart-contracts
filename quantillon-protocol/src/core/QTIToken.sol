@@ -5,24 +5,24 @@ pragma solidity 0.8.24;
 // IMPORTS - OpenZeppelin libraries for security and standards
 // =============================================================================
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "./SecureUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {SecureUpgradeable} from "./SecureUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Custom libraries for bytecode reduction
-import "../libraries/ErrorLibrary.sol";
-import "../libraries/AccessControlLibrary.sol";
-import "../libraries/ValidationLibrary.sol";
-import "../libraries/TokenLibrary.sol";
+import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
+import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
+import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {TokenLibrary} from "../libraries/TokenLibrary.sol";
 
-import "../libraries/TreasuryRecoveryLibrary.sol";
-import "../libraries/FlashLoanProtectionLibrary.sol";
-import "../libraries/TimeProviderLibrary.sol";
+import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
+import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
+import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 
 /**
  * @title QTIToken
@@ -247,7 +247,7 @@ contract QTIToken is
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
-    TimeProvider public immutable timeProvider;
+    TimeProvider public immutable TIME_PROVIDER;
 
     // =============================================================================
     // EVENTS
@@ -338,7 +338,7 @@ contract QTIToken is
     /**
      * @notice Constructor for QTI token contract
      * @dev Sets up the time provider and disables initializers for security
-     * @param _timeProvider TimeProvider contract for centralized time management
+     * @param _TIME_PROVIDER TimeProvider contract for centralized time management
      * @custom:security Validates time provider address and disables initializers
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Sets immutable time provider and disables initializers
@@ -348,9 +348,9 @@ contract QTIToken is
      * @custom:access No access restrictions
      * @custom:oracle No oracle dependencies
      */
-    constructor(TimeProvider _timeProvider) {
-        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
-        timeProvider = _timeProvider;
+    constructor(TimeProvider _TIME_PROVIDER) {
+        if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
+        TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
 
@@ -397,7 +397,7 @@ contract QTIToken is
         maxVotingPeriod = 14 days;
         quorumVotes = 1_000_000 * 1e18; // 1M QTI quorum     
         
-        decentralizationStartTime = timeProvider.currentTime();
+        decentralizationStartTime = TIME_PROVIDER.currentTime();
         decentralizationDuration = 2 * 365 days; // 2 years to full decentralization
         currentDecentralizationLevel = 0; // Start with 0% decentralization
     }
@@ -438,12 +438,12 @@ contract QTIToken is
         
         // Calculate new unlock time with overflow check
         // Time-based logic using TimeProvider for consistent and testable timing
-        uint256 newUnlockTime = timeProvider.currentTime() + lockTime;
+        uint256 newUnlockTime = TIME_PROVIDER.currentTime() + lockTime;
         if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
         
         // If already locked, extend the lock time
         // Time-based logic using TimeProvider for consistent and testable timing
-        if (lockInfo.unlockTime > timeProvider.currentTime()) {
+        if (lockInfo.unlockTime > TIME_PROVIDER.currentTime()) {
             newUnlockTime = lockInfo.unlockTime + lockTime;
             if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
         }
@@ -493,7 +493,7 @@ contract QTIToken is
     function unlock() external whenNotPaused returns (uint256 amount) {
         LockInfo storage lockInfo = locks[msg.sender];
         // Time-based logic using TimeProvider for consistent and testable timing
-        if (lockInfo.unlockTime > timeProvider.currentTime()) revert ErrorLibrary.LockNotExpired();
+        if (lockInfo.unlockTime > TIME_PROVIDER.currentTime()) revert ErrorLibrary.LockNotExpired();
         if (lockInfo.amount == 0) revert ErrorLibrary.NothingToUnlock();
 
 
@@ -635,7 +635,7 @@ contract QTIToken is
         uint256[] memory veQTIAmounts,
         LockInfo storage lockInfo
     ) internal returns (uint256 totalNewVotingPower, uint256 totalNewAmount) {
-        uint256 currentTimestamp = timeProvider.currentTime();
+        uint256 currentTimestamp = TIME_PROVIDER.currentTime();
         uint256 lockInfoUnlockTime = lockInfo.unlockTime;
         totalNewAmount = uint256(lockInfo.amount);
         
@@ -801,7 +801,7 @@ contract QTIToken is
         amounts = new uint256[](users.length);
         
         // Time-based logic using TimeProvider for consistent and testable timing
-        uint256 currentTimestamp = timeProvider.currentTime();
+        uint256 currentTimestamp = TIME_PROVIDER.currentTime();
         uint256 length = users.length;
         
         // Accumulate totals to update once outside the loop
@@ -903,7 +903,7 @@ contract QTIToken is
         LockInfo storage lockInfo = locks[user];
         
         // If no lock or lock has expired, return 0
-        if (lockInfo.unlockTime <= timeProvider.currentTime() || lockInfo.amount == 0) {
+        if (lockInfo.unlockTime <= TIME_PROVIDER.currentTime() || lockInfo.amount == 0) {
             return 0;
         }
         
@@ -914,7 +914,7 @@ contract QTIToken is
         
         // Calculate remaining time - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
-            uint256 remainingTime = lockInfo.unlockTime - timeProvider.currentTime();
+            uint256 remainingTime = lockInfo.unlockTime - TIME_PROVIDER.currentTime();
             uint256 originalLockTime = lockInfo.lockTime;
             
             // Voting power decreases linearly to zero
@@ -1017,8 +1017,8 @@ contract QTIToken is
         
         Proposal storage proposal = proposals[proposalId];
         proposal.proposer = msg.sender;
-        proposal.startTime = timeProvider.currentTime();
-        proposal.endTime = timeProvider.currentTime() + votingPeriod;
+        proposal.startTime = TIME_PROVIDER.currentTime();
+        proposal.endTime = TIME_PROVIDER.currentTime() + votingPeriod;
         proposal.description = description;
         proposal.data = data;
 
@@ -1046,8 +1046,8 @@ contract QTIToken is
      */
     function vote(uint256 proposalId, bool support) external whenNotPaused {
         Proposal storage proposal = proposals[proposalId];
-        if (timeProvider.currentTime() < proposal.startTime) revert ErrorLibrary.VotingNotStarted();
-        if (timeProvider.currentTime() >= proposal.endTime) revert ErrorLibrary.VotingEnded();
+        if (TIME_PROVIDER.currentTime() < proposal.startTime) revert ErrorLibrary.VotingNotStarted();
+        if (TIME_PROVIDER.currentTime() >= proposal.endTime) revert ErrorLibrary.VotingEnded();
         if (proposal.receipts[msg.sender].hasVoted) revert ErrorLibrary.AlreadyVoted();
 
         // Update voting power to current time before voting
@@ -1092,7 +1092,7 @@ contract QTIToken is
         if (votingPower == 0) revert ErrorLibrary.NoVotingPower();
         
 
-        uint256 currentTimestamp = timeProvider.currentTime();
+        uint256 currentTimestamp = TIME_PROVIDER.currentTime();
         address sender = msg.sender;
         
         // Process each vote
@@ -1137,7 +1137,7 @@ contract QTIToken is
     // slither-disable-next-line low-level-calls
     function executeProposal(uint256 proposalId) external nonReentrant {
         Proposal storage proposal = proposals[proposalId];
-        if (timeProvider.currentTime() < proposal.endTime) revert ErrorLibrary.VotingNotEnded();
+        if (TIME_PROVIDER.currentTime() < proposal.endTime) revert ErrorLibrary.VotingNotEnded();
         if (proposal.executed) revert ErrorLibrary.ProposalAlreadyExecuted();
         if (proposal.canceled) revert ErrorLibrary.ProposalCanceled();
         if (proposal.forVotes <= proposal.againstVotes) revert ErrorLibrary.ProposalFailed();
@@ -1191,7 +1191,7 @@ contract QTIToken is
     ) {
         scheduled = proposalScheduled[proposalId];
         executionTime = proposalExecutionTime[proposalId];
-        canExecute = scheduled && timeProvider.currentTime() >= executionTime;
+        canExecute = scheduled && TIME_PROVIDER.currentTime() >= executionTime;
     }
 
     /**
@@ -1379,7 +1379,7 @@ contract QTIToken is
       * @custom:oracle Requires fresh oracle price data
      */
     function updateDecentralizationLevel() external onlyRole(GOVERNANCE_ROLE) {
-        uint256 timeElapsed = timeProvider.currentTime() - decentralizationStartTime;
+        uint256 timeElapsed = TIME_PROVIDER.currentTime() - decentralizationStartTime;
         
 
         if (timeElapsed > MAX_TIME_ELAPSED) {
@@ -1437,12 +1437,12 @@ contract QTIToken is
         LockInfo storage lockInfo = locks[user];
         
         // If no lock or lock has expired, voting power is 0
-        if (lockInfo.unlockTime <= timeProvider.currentTime() || lockInfo.amount == 0) {
+        if (lockInfo.unlockTime <= TIME_PROVIDER.currentTime() || lockInfo.amount == 0) {
             newVotingPower = 0;
         } else {
             // Calculate current voting power with linear decay - OPTIMIZED: Use unchecked for safe arithmetic
             unchecked {
-                uint256 remainingTime = lockInfo.unlockTime - timeProvider.currentTime();
+                uint256 remainingTime = lockInfo.unlockTime - TIME_PROVIDER.currentTime();
                 uint256 originalLockTime = lockInfo.lockTime;
                 
                 if (remainingTime >= originalLockTime) {

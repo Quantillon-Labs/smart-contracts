@@ -5,23 +5,23 @@ pragma solidity 0.8.24;
 // IMPORTS - OpenZeppelin libraries and protocol interfaces
 // =============================================================================
 
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../interfaces/IQEUROToken.sol";
-import "../interfaces/IQuantillonVault.sol";
-import "../interfaces/IYieldShift.sol";
-import "../libraries/VaultMath.sol";
-import "../libraries/ErrorLibrary.sol";
-import "../libraries/ValidationLibrary.sol";
-import "./SecureUpgradeable.sol";
-import "../libraries/TreasuryRecoveryLibrary.sol";
-import "../libraries/FlashLoanProtectionLibrary.sol";
-import "../libraries/TimeProviderLibrary.sol";
+import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
+import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
+import {IYieldShift} from "../interfaces/IYieldShift.sol";
+import {VaultMath} from "../libraries/VaultMath.sol";
+import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
+import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {SecureUpgradeable} from "./SecureUpgradeable.sol";
+import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
+import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
+import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 
 /**
  * @title UserPool
@@ -141,7 +141,7 @@ contract UserPool is
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
-    TimeProvider public immutable timeProvider;
+    TimeProvider public immutable TIME_PROVIDER;
 
     // Pool configuration parameters
     /// @notice Staking APY in basis points
@@ -338,7 +338,7 @@ contract UserPool is
 
     /**
      * @notice Constructor for UserPool contract
-     * @param _timeProvider TimeProvider contract for centralized time management
+     * @param _TIME_PROVIDER TimeProvider contract for centralized time management
      * @dev Sets up the time provider and disables initializers for security
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -349,9 +349,9 @@ contract UserPool is
      * @custom:access No access restrictions
      * @custom:oracle No oracle dependencies
      */
-    constructor(TimeProvider _timeProvider) {
-        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
-        timeProvider = _timeProvider;
+    constructor(TimeProvider _TIME_PROVIDER) {
+        if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
+        TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
 
@@ -418,7 +418,7 @@ contract UserPool is
         
         // Initialize yield tracking variables to prevent uninitialized state variable warnings
         accumulatedYieldPerShare = 0;
-        lastYieldDistribution = timeProvider.currentTime();
+        lastYieldDistribution = TIME_PROVIDER.currentTime();
         totalYieldDistributed = 0;
     }
 
@@ -486,7 +486,7 @@ contract UserPool is
         // This ensures reentrancy protection. The user receives the actual minted amount,
         // but internal balance tracking uses the conservative minQeuroOut estimate.
 
-        emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, timeProvider.currentTime());
+        emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, TIME_PROVIDER.currentTime());
     }
 
     /**
@@ -517,7 +517,7 @@ contract UserPool is
         if (usdcAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         // Cache timestamp to avoid external calls in loop
-        uint256 currentTime = timeProvider.currentTime();
+        uint256 currentTime = TIME_PROVIDER.currentTime();
         
         qeuroMintedAmounts = new uint256[](usdcAmounts.length);
         
@@ -622,8 +622,8 @@ contract UserPool is
      * @param netAmounts Array of net amounts to mint (6 decimals)
      * @param minQeuroOuts Array of minimum QEURO outputs (18 decimals)
      * @param qeuroMintedAmounts Array to store minted amounts (18 decimals)
-     * @dev Processes vault minting operations with external calls to vault.mintQEURO
-     * @custom:security Uses single approval for all vault operations to minimize external calls
+     * @dev Processes vault minting operations with single vault call to avoid external calls in loop
+     * @custom:security Uses single approval and single vault call to minimize external calls
      * @custom:validation No input validation required - parameters pre-validated
      * @custom:state-changes Updates qeuroMintedAmounts array with minted amounts
      * @custom:events No events emitted - handled by calling function
@@ -637,28 +637,25 @@ contract UserPool is
         uint256[] calldata minQeuroOuts,
         uint256[] memory qeuroMintedAmounts
     ) internal {
-        // Calculate total net amount for single vault approval
+        // Calculate total amounts for single vault call
         uint256 totalNetAmount = 0;
+        uint256 totalMinQeuroOut = 0;
+        
         for (uint256 i = 0; i < netAmounts.length; i++) {
             totalNetAmount += netAmounts[i];
+            totalMinQeuroOut += minQeuroOuts[i];
         }
         
         // Single approval for all vault operations
         usdc.safeIncreaseAllowance(address(vault), totalNetAmount);
         
-        // Process vault minting operations
-        // Note: External calls in loop are necessary as vault doesn't support batch minting
-        // Batch size is limited to MAX_BATCH_SIZE to prevent gas limit issues
+        // Single vault call instead of multiple calls in loop
+        vault.mintQEURO(totalNetAmount, totalMinQeuroOut);
+        
+        // Calculate individual amounts after single minting
         for (uint256 i = 0; i < netAmounts.length; i++) {
-            uint256 netAmount = netAmounts[i];
-            uint256 minQeuroOut = minQeuroOuts[i];
-            
-            // Mint QEURO through vault - external call is necessary
-            // slither-disable-next-line calls-loop
-            vault.mintQEURO(netAmount, minQeuroOut);
-            
             // Use the minimum expected amount as the actual minted amount
-            qeuroMintedAmounts[i] = minQeuroOut;
+            qeuroMintedAmounts[i] = minQeuroOuts[i];
         }
     }
 
@@ -787,7 +784,7 @@ contract UserPool is
         // Transfer USDC to user
         usdc.safeTransfer(msg.sender, netAmount);
 
-        emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, timeProvider.currentTime());
+        emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, TIME_PROVIDER.currentTime());
     }
 
     /**
@@ -816,7 +813,7 @@ contract UserPool is
         if (qeuroAmounts.length != minUsdcOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
         if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
-        uint256 currentTime = timeProvider.currentTime();
+        uint256 currentTime = TIME_PROVIDER.currentTime();
         usdcReceivedAmounts = new uint256[](qeuroAmounts.length);
         
         // Validate and process withdrawal
@@ -878,6 +875,7 @@ contract UserPool is
      * @param usdcReceivedAmounts Array to store received USDC amounts
      * @param withdrawalFee_ Cached withdrawal fee percentage
      * @dev Internal helper to reduce stack depth
+     * @dev OPTIMIZATION: Uses single vault call with total amounts to avoid external calls in loop
      */
     function _processVaultRedemptions(
         uint256[] calldata qeuroAmounts,
@@ -887,9 +885,21 @@ contract UserPool is
     ) internal {
         uint256 length = qeuroAmounts.length;
         
-        // slither-disable-next-line calls-loop
+        // Calculate total amounts for single vault call
+        uint256 totalQeuroAmount = 0;
+        uint256 totalMinUsdcOut = 0;
+        
         for (uint256 i = 0; i < length;) {
-            vault.redeemQEURO(qeuroAmounts[i], minUsdcOuts[i]); 
+            totalQeuroAmount += qeuroAmounts[i];
+            totalMinUsdcOut += minUsdcOuts[i];
+            unchecked { ++i; }
+        }
+        
+        // Single vault call instead of multiple calls in loop
+        vault.redeemQEURO(totalQeuroAmount, totalMinUsdcOut);
+        
+        // Calculate individual amounts after single redemption
+        for (uint256 i = 0; i < length;) {
             uint256 fee = minUsdcOuts[i].percentageOf(withdrawalFee_);
             usdcReceivedAmounts[i] = minUsdcOuts[i] - fee;
             unchecked { ++i; }
@@ -940,7 +950,7 @@ contract UserPool is
         require(qeuroAmount >= minStakeAmount_, "UserPool: Amount below minimum");
         
         // Cache timestamp to avoid external calls
-        uint256 currentTime = timeProvider.currentTime();
+        uint256 currentTime = TIME_PROVIDER.currentTime();
         
         UserInfo storage user = userInfo[msg.sender];
         
@@ -952,12 +962,12 @@ contract UserPool is
         
         // Update user staking info
         user.stakedAmount += uint128(qeuroAmount);
-        user.lastStakeTime = uint64(timeProvider.currentTime());
+        user.lastStakeTime = uint64(TIME_PROVIDER.currentTime());
         
         // Update pool totals
         totalStakes += qeuroAmount;
 
-        emit QEUROStaked(msg.sender, qeuroAmount, timeProvider.currentTime());
+        emit QEUROStaked(msg.sender, qeuroAmount, TIME_PROVIDER.currentTime());
     }
 
     /**
@@ -977,7 +987,7 @@ contract UserPool is
         if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
         // Cache timestamp to avoid external calls
-        uint256 currentTime = timeProvider.currentTime();
+        uint256 currentTime = TIME_PROVIDER.currentTime();
         
         UserInfo storage user = userInfo[msg.sender];
         uint256 totalQeuroAmount = 0;
@@ -1028,7 +1038,7 @@ contract UserPool is
      */
     function requestUnstake(uint256 qeuroAmount) external nonReentrant {
         // Cache timestamp to avoid external calls
-        uint256 currentTime = timeProvider.currentTime();
+        uint256 currentTime = TIME_PROVIDER.currentTime();
         
         UserInfo storage user = userInfo[msg.sender];
         require(user.stakedAmount >= qeuroAmount, "UserPool: Insufficient staked amount");
@@ -1058,7 +1068,7 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         require(user.unstakeAmount > 0, "UserPool: No unstaking request");
         require(
-            timeProvider.currentTime() >= user.unstakeRequestTime + unstakingCooldown,
+            TIME_PROVIDER.currentTime() >= user.unstakeRequestTime + unstakingCooldown,
             "UserPool: Cooldown period not finished"
         );
 
@@ -1074,7 +1084,7 @@ contract UserPool is
         
         IERC20(address(qeuro)).safeTransfer(msg.sender, amount);
 
-        emit QEUROUnstaked(msg.sender, amount, timeProvider.currentTime());
+        emit QEUROUnstaked(msg.sender, amount, TIME_PROVIDER.currentTime());
     }
 
     /**
@@ -1093,7 +1103,7 @@ contract UserPool is
      */
     function claimStakingRewards() external nonReentrant returns (uint256 rewardAmount) {
         // Cache timestamp to avoid external calls
-        uint256 currentTime = timeProvider.currentTime();
+        uint256 currentTime = TIME_PROVIDER.currentTime();
         _updatePendingRewards(msg.sender, currentTime);
         
         UserInfo storage user = userInfo[msg.sender];
@@ -1105,7 +1115,7 @@ contract UserPool is
             // Mint reward tokens (could be QEURO or QTI)
             qeuro.mint(msg.sender, rewardAmount);
             
-            emit StakingRewardsClaimed(msg.sender, rewardAmount, timeProvider.currentTime());
+            emit StakingRewardsClaimed(msg.sender, rewardAmount, TIME_PROVIDER.currentTime());
         }
     }
 
@@ -1135,7 +1145,7 @@ contract UserPool is
         rewardAmounts = new uint256[](users.length);
         
         // Cache timestamp to avoid external calls in loop
-        uint256 currentTime = timeProvider.currentTime();
+        uint256 currentTime = TIME_PROVIDER.currentTime();
         uint64 currentTimestamp = uint64(currentTime);
         
         // Store users with non-zero rewards to minimize external calls
@@ -1204,7 +1214,7 @@ contract UserPool is
         
         // Yield distribution moved to stQEURO contract
         // This function kept for backward compatibility but does nothing
-        emit YieldDistributed(yieldAmount, 0, timeProvider.currentTime());
+        emit YieldDistributed(yieldAmount, 0, TIME_PROVIDER.currentTime());
     }
 
     /**

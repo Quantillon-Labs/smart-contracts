@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/70cb38d23589f7c586599f9ecbb0c11a63c1a99b/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/2f5647e68ddbc27f036af14281f026d5d4a6db27/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -158,14 +158,14 @@ address public treasury;
 ```
 
 
-### timeProvider
+### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
 *Used to replace direct block.timestamp usage for testability and consistency*
 
 
 ```solidity
-TimeProvider public immutable timeProvider;
+TimeProvider public immutable TIME_PROVIDER;
 ```
 
 
@@ -444,13 +444,13 @@ Constructor for UserPool contract
 
 
 ```solidity
-constructor(TimeProvider _timeProvider);
+constructor(TimeProvider _TIME_PROVIDER);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_timeProvider`|`TimeProvider`|TimeProvider contract for centralized time management|
+|`_TIME_PROVIDER`|`TimeProvider`|TimeProvider contract for centralized time management|
 
 
 ### initialize
@@ -710,10 +710,10 @@ function _calculateNetAmounts(uint256[] calldata usdcAmounts)
 
 Internal function to process vault minting operations
 
-*Processes vault minting operations with external calls to vault.mintQEURO*
+*Processes vault minting operations with single vault call to avoid external calls in loop*
 
 **Notes:**
-- security: Uses single approval for all vault operations to minimize external calls
+- security: Uses single approval and single vault call to minimize external calls
 
 - validation: No input validation required - parameters pre-validated
 
@@ -947,6 +947,8 @@ function _validateAndProcessBatchWithdrawal(
 Processes vault redemptions for batch withdrawal
 
 *Internal helper to reduce stack depth*
+
+*OPTIMIZATION: Uses single vault call with total amounts to avoid external calls in loop*
 
 
 ```solidity

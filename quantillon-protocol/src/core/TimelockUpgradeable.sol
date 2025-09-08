@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "../libraries/TimeProviderLibrary.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 
 /**
  * @title TimelockUpgradeable
@@ -65,7 +65,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
-    TimeProvider public immutable timeProvider;
+    TimeProvider public immutable TIME_PROVIDER;
     
     // ============ Structs ============
     
@@ -181,7 +181,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         uint256 delay = customDelay >= UPGRADE_DELAY ? customDelay : UPGRADE_DELAY;
         require(delay <= MAX_UPGRADE_DELAY, "TimelockUpgradeable: Delay too long");
         
-        uint256 proposedAt = timeProvider.currentTime();
+        uint256 proposedAt = TIME_PROVIDER.currentTime();
         uint256 executableAt = proposedAt + delay;
         
         pendingUpgrades[newImplementation] = PendingUpgrade({
@@ -258,7 +258,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     function executeUpgrade(address implementation) external onlyRole(UPGRADE_EXECUTOR_ROLE) {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
         require(upgrade.implementation != address(0), "TimelockUpgradeable: No pending upgrade");
-        require(timeProvider.currentTime() >= upgrade.executableAt, "TimelockUpgradeable: Timelock not expired");
+        require(TIME_PROVIDER.currentTime() >= upgrade.executableAt, "TimelockUpgradeable: Timelock not expired");
         require(
             upgradeApprovalCount[implementation] >= MIN_MULTISIG_APPROVALS,
             "TimelockUpgradeable: Insufficient approvals"
@@ -270,7 +270,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         // Clear all approvals for this implementation
         _clearUpgradeApprovals(implementation);
         
-        emit UpgradeExecuted(implementation, msg.sender, timeProvider.currentTime());
+        emit UpgradeExecuted(implementation, msg.sender, TIME_PROVIDER.currentTime());
     }
     
     /**
@@ -328,15 +328,15 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         
         pendingUpgrades[newImplementation] = PendingUpgrade({
             implementation: newImplementation,
-            proposedAt: timeProvider.currentTime(),
-            executableAt: timeProvider.currentTime(), // Immediate execution
+            proposedAt: TIME_PROVIDER.currentTime(),
+            executableAt: TIME_PROVIDER.currentTime(), // Immediate execution
             description: description,
             isEmergency: true,
             proposer: msg.sender
         });
         
-        emit UpgradeProposed(newImplementation, timeProvider.currentTime(), timeProvider.currentTime(), description, msg.sender);
-        emit UpgradeExecuted(newImplementation, msg.sender, timeProvider.currentTime());
+        emit UpgradeProposed(newImplementation, TIME_PROVIDER.currentTime(), TIME_PROVIDER.currentTime(), description, msg.sender);
+        emit UpgradeExecuted(newImplementation, msg.sender, TIME_PROVIDER.currentTime());
     }
     
     // ============ Multi-sig Management ============
@@ -451,7 +451,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         if (upgrade.implementation == address(0)) return false;
         
         return (
-            timeProvider.currentTime() >= upgrade.executableAt &&
+            TIME_PROVIDER.currentTime() >= upgrade.executableAt &&
             upgradeApprovalCount[implementation] >= MIN_MULTISIG_APPROVALS
         );
     }
@@ -591,7 +591,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
 
     /**
      * @notice Constructor for TimelockUpgradeable contract
-     * @param _timeProvider TimeProvider contract for centralized time management
+     * @param _TIME_PROVIDER TimeProvider contract for centralized time management
      * @dev Sets up the time provider and disables initializers for security
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -602,9 +602,9 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:access No access restrictions
      * @custom:oracle No oracle dependencies
      */
-    constructor(TimeProvider _timeProvider) {
-        if (address(_timeProvider) == address(0)) revert("Zero address");
-        timeProvider = _timeProvider;
+    constructor(TimeProvider _TIME_PROVIDER) {
+        if (address(_TIME_PROVIDER) == address(0)) revert("Zero address");
+        TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
 }

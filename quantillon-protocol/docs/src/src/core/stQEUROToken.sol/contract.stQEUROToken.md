@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/70cb38d23589f7c586599f9ecbb0c11a63c1a99b/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/2f5647e68ddbc27f036af14281f026d5d4a6db27/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -158,14 +158,14 @@ address public treasury;
 ```
 
 
-### timeProvider
+### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
 *Used to replace direct block.timestamp usage for testability and consistency*
 
 
 ```solidity
-TimeProvider public immutable timeProvider;
+TimeProvider public immutable TIME_PROVIDER;
 ```
 
 
@@ -318,7 +318,7 @@ Constructor for stQEURO token implementation
 
 - validation: Validates time provider is not zero address
 
-- state-changes: Sets timeProvider and disables initializers
+- state-changes: Sets TIME_PROVIDER and disables initializers
 
 - events: No events emitted
 
@@ -334,13 +334,13 @@ Constructor for stQEURO token implementation
 
 
 ```solidity
-constructor(TimeProvider _timeProvider);
+constructor(TimeProvider _TIME_PROVIDER);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_timeProvider`|`TimeProvider`|Address of the time provider contract|
+|`_TIME_PROVIDER`|`TimeProvider`|Address of the time provider contract|
 
 
 ### initialize

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/IYieldShift.sol";
 import "../../libraries/VaultMath.sol";
@@ -1062,6 +1062,8 @@ contract AaveVault is
 
         (uint256 totalLiquidity, uint256 utilizationRate, uint256 availableLiquidity, uint256 totalStableDebt) = this.getAaveMarketData();
         // Note: totalLiquidity, availableLiquidity, and totalStableDebt are intentionally unused for risk metrics
+        // Assembly equivalent of: /* totalLiquidity, availableLiquidity, totalStableDebt */ (but preserves variables for future use)
+        // Gas optimization: pop() costs only 3 gas each vs compiler warnings
         assembly {
             // Suppress unused variable warnings
             pop(totalLiquidity)

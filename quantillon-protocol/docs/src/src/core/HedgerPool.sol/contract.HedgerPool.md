@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/70cb38d23589f7c586599f9ecbb0c11a63c1a99b/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/2f5647e68ddbc27f036af14281f026d5d4a6db27/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -130,14 +130,14 @@ address public treasury;
 ```
 
 
-### timeProvider
+### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
 *Used to replace direct block.timestamp usage for testability and consistency*
 
 
 ```solidity
-TimeProvider public immutable timeProvider;
+TimeProvider public immutable TIME_PROVIDER;
 ```
 
 
@@ -358,17 +358,17 @@ mapping(address => mapping(uint256 => uint256)) public hedgerPositionIndex;
 ```
 
 
-### totalYieldEarned
+### TOTAL_YIELD_EARNED
 
 ```solidity
-uint256 public constant totalYieldEarned = 0;
+uint256 public constant TOTAL_YIELD_EARNED = 0;
 ```
 
 
-### interestDifferentialPool
+### INTEREST_DIFFERENTIAL_POOL
 
 ```solidity
-uint256 public constant interestDifferentialPool = 0;
+uint256 public constant INTEREST_DIFFERENTIAL_POOL = 0;
 ```
 
 
@@ -536,13 +536,13 @@ Constructor for HedgerPool contract
 **Notes:**
 - security: Validates TimeProvider address is not zero
 
-- validation: Validates _timeProvider is not address(0)
+- validation: Validates _TIME_PROVIDER is not address(0)
 
-- state-changes: Sets timeProvider immutable variable and disables initializers
+- state-changes: Sets TIME_PROVIDER immutable variable and disables initializers
 
 - events: No events emitted
 
-- errors: Throws ZeroAddress if _timeProvider is address(0)
+- errors: Throws ZeroAddress if _TIME_PROVIDER is address(0)
 
 - reentrancy: Not applicable - constructor
 
@@ -552,13 +552,13 @@ Constructor for HedgerPool contract
 
 
 ```solidity
-constructor(TimeProvider _timeProvider);
+constructor(TimeProvider _TIME_PROVIDER);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_timeProvider`|`TimeProvider`|Address of the TimeProvider contract for centralized time management|
+|`_TIME_PROVIDER`|`TimeProvider`|Address of the TimeProvider contract for centralized time management|
 
 
 ### initialize
@@ -735,11 +735,11 @@ function closePositionsBatch(uint256[] calldata positionIds, uint256 maxPosition
 |`pnls`|`int256[]`|Array of profit/loss for each closed position|
 
 
-### _closeSinglePositionBatch
+### _closeSinglePositionBatchOptimized
 
-Internal function to close a single position in batch operation
+Optimized internal function to close a single position in batch operation
 
-*Internal helper for batch position closing with gas optimization*
+*Internal helper for batch position closing without external calls or costly operations in loop*
 
 **Notes:**
 - security: Validates position ownership and active status
@@ -760,13 +760,9 @@ Internal function to close a single position in batch operation
 
 
 ```solidity
-function _closeSinglePositionBatch(
-    uint256 positionId,
-    uint256 currentPrice,
-    HedgerInfo storage hedger,
-    uint256 exitFee_,
-    uint256 currentTime
-) internal returns (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted);
+function _closeSinglePositionBatchOptimized(uint256 positionId, uint256 currentPrice, uint256 currentTime)
+    internal
+    returns (int256 pnl, uint256 marginDeducted, uint256 exposureDeducted);
 ```
 **Parameters**
 
@@ -774,17 +770,15 @@ function _closeSinglePositionBatch(
 |----|----|-----------|
 |`positionId`|`uint256`|ID of the position to close|
 |`currentPrice`|`uint256`|Current EUR/USD price for PnL calculation|
-|`hedger`|`HedgerInfo`|HedgerInfo storage reference for the position owner|
-|`exitFee_`|`uint256`|Cached exit fee percentage|
-|`currentTime`|`uint256`|Current timestamp for events|
+|`currentTime`|`uint256`|Cached timestamp to avoid external calls|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`pnl`|`int256`|Profit or loss from the position|
-|`marginDeducted`|`uint256`|Amount of margin to deduct from hedger totals|
-|`exposureDeducted`|`uint256`|Amount of exposure to deduct from hedger totals|
+|`marginDeducted`|`uint256`|Amount of margin to deduct from global totals|
+|`exposureDeducted`|`uint256`|Amount of exposure to deduct from global totals|
 
 
 ### _removePositionFromArrays

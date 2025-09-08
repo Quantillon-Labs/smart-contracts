@@ -371,6 +371,14 @@ contract HedgerPool is
      * @param hedger Address of the hedger claiming ownership
      * @param positionId ID of the position to validate
      * @return position The validated position storage reference
+     * @custom:security Validates position ownership to prevent unauthorized access
+     * @custom:validation Validates hedger address and positionId > 0
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors Throws InvalidHedger if hedger doesn't own the position
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _validatePositionOwnership(address hedger, uint256 positionId) 
         internal view returns (HedgePosition storage) {
@@ -383,6 +391,14 @@ contract HedgerPool is
      * @notice Consolidated oracle price validation function
      * @dev Gets and validates oracle price, reverts if invalid
      * @return price The validated EUR/USD price
+     * @custom:security Validates oracle price freshness and validity
+     * @custom:validation Validates oracle price is valid and not stale
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors Throws InvalidOraclePrice if oracle price is invalid
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle Requires fresh EUR/USD price from Chainlink oracle
      */
     function _getValidOraclePrice() internal view returns (uint256) {
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
@@ -394,6 +410,14 @@ contract HedgerPool is
      * @notice Consolidated role validation function
      * @dev Validates that caller has the required role
      * @param role The role to validate (GOVERNANCE_ROLE, LIQUIDATOR_ROLE, etc.)
+     * @custom:security Validates caller has the required role for access control
+     * @custom:validation Validates role parameter is a valid role constant
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors Throws "Invalid role" if role is not recognized
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _validateRole(bytes32 role) internal view {
         if (role == GOVERNANCE_ROLE) {

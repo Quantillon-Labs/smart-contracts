@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/a616e9423dc69fc1960f3a480a5300eaa5fe80e0/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/19cb8abc767ecdd72800c6473b77bfc6380f2b0d/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -925,6 +925,23 @@ Validates and processes batch withdrawal
 
 *Internal helper to reduce stack depth*
 
+**Notes:**
+- Validates amounts and user balances to prevent over-withdrawal
+
+- Validates all amounts are positive and user has sufficient balance
+
+- Updates user balance and processes withdrawal calculations
+
+- No events emitted - internal helper function
+
+- Throws "Amount must be positive" if any amount is zero
+
+- Not protected - internal function only
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
+
 
 ```solidity
 function _validateAndProcessBatchWithdrawal(
@@ -950,6 +967,23 @@ Processes vault redemptions for batch withdrawal
 
 *OPTIMIZATION: Uses single vault call with total amounts to avoid external calls in loop*
 
+**Notes:**
+- Validates vault redemption amounts and minimum outputs
+
+- Validates all amounts are positive and within limits
+
+- Processes vault redemptions and updates received amounts
+
+- No events emitted - internal helper function
+
+- Throws validation errors if amounts are invalid
+
+- Not protected - internal function only
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
+
 
 ```solidity
 function _processVaultRedemptions(
@@ -974,6 +1008,23 @@ function _processVaultRedemptions(
 Executes final transfers and emits events for batch withdrawal
 
 *Internal helper to reduce stack depth*
+
+**Notes:**
+- Executes final token transfers and emits withdrawal events
+
+- Validates all amounts are positive before transfer
+
+- Burns QEURO tokens and transfers USDC to user
+
+- Emits Withdrawal event for each withdrawal
+
+- Throws transfer errors if token operations fail
+
+- Not protected - internal function only
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
 
 
 ```solidity

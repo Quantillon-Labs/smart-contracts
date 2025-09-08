@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/a616e9423dc69fc1960f3a480a5300eaa5fe80e0/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/19cb8abc767ecdd72800c6473b77bfc6380f2b0d/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -486,6 +486,47 @@ modifier secureOperation();
 modifier secureNonReentrant();
 ```
 
+### _packData
+
+Consolidated data packing function for event emissions
+
+*Packs multiple values into a single bytes32 for gas-efficient event logging*
+
+
+```solidity
+function _packData(
+    uint256 v1,
+    uint256 s1,
+    uint256 v2,
+    uint256 s2,
+    uint256 v3,
+    uint256 s3,
+    uint256 v4,
+    uint256 s4,
+    uint256 flags
+) private pure returns (bytes32);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`v1`|`uint256`|First value|
+|`s1`|`uint256`|Bit shift for first value|
+|`v2`|`uint256`|Second value (optional, 0 if not used)|
+|`s2`|`uint256`|Bit shift for second value (optional, 0 if not used)|
+|`v3`|`uint256`|Third value (optional, 0 if not used)|
+|`s3`|`uint256`|Bit shift for third value (optional, 0 if not used)|
+|`v4`|`uint256`|Fourth value (optional, 0 if not used)|
+|`s4`|`uint256`|Bit shift for fourth value (optional, 0 if not used)|
+|`flags`|`uint256`|Additional flags (for bool values, etc.)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes32`|Packed bytes32 data|
+
+
 ### _packPositionOpenData
 
 
@@ -526,6 +567,115 @@ function _packRewardData(uint256 interestDifferential, uint256 yieldShiftRewards
     pure
     returns (bytes32);
 ```
+
+### _validatePositionOwnership
+
+Consolidated position validation function
+
+*Validates position ownership and returns the position for further use*
+
+**Notes:**
+- Validates position ownership to prevent unauthorized access
+
+- Validates hedger address and positionId > 0
+
+- No state changes - view function only
+
+- No events emitted
+
+- Throws InvalidHedger if hedger doesn't own the position
+
+- Not applicable - view function
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
+
+
+```solidity
+function _validatePositionOwnership(address hedger, uint256 positionId) internal view returns (HedgePosition storage);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger claiming ownership|
+|`positionId`|`uint256`|ID of the position to validate|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`HedgePosition`|position The validated position storage reference|
+
+
+### _getValidOraclePrice
+
+Consolidated oracle price validation function
+
+*Gets and validates oracle price, reverts if invalid*
+
+**Notes:**
+- Validates oracle price freshness and validity
+
+- Validates oracle price is valid and not stale
+
+- No state changes - view function only
+
+- No events emitted
+
+- Throws InvalidOraclePrice if oracle price is invalid
+
+- Not applicable - view function
+
+- Internal function - no access restrictions
+
+- Requires fresh EUR/USD price from Chainlink oracle
+
+
+```solidity
+function _getValidOraclePrice() internal view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|price The validated EUR/USD price|
+
+
+### _validateRole
+
+Consolidated role validation function
+
+*Validates that caller has the required role*
+
+**Notes:**
+- Validates caller has the required role for access control
+
+- Validates role parameter is a valid role constant
+
+- No state changes - view function only
+
+- No events emitted
+
+- Throws "Invalid role" if role is not recognized
+
+- Not applicable - view function
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
+
+
+```solidity
+function _validateRole(bytes32 role) internal view;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`role`|`bytes32`|The role to validate (GOVERNANCE_ROLE, LIQUIDATOR_ROLE, etc.)|
+
 
 ### constructor
 

@@ -1,5 +1,5 @@
 # HedgerPoolValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/a616e9423dc69fc1960f3a480a5300eaa5fe80e0/src/libraries/HedgerPoolValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/19cb8abc767ecdd72800c6473b77bfc6380f2b0d/src/libraries/HedgerPoolValidationLibrary.sol)
 
 Validation functions for HedgerPool to reduce contract size
 

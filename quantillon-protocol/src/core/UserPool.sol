@@ -829,6 +829,14 @@ contract UserPool is
      * @param minUsdcOuts Array of minimum USDC amounts expected
      * @param usdcReceivedAmounts Array to store received USDC amounts
      * @dev Internal helper to reduce stack depth
+     * @custom:security Validates amounts and user balances to prevent over-withdrawal
+     * @custom:validation Validates all amounts are positive and user has sufficient balance
+     * @custom:state-changes Updates user balance and processes withdrawal calculations
+     * @custom:events No events emitted - internal helper function
+     * @custom:errors Throws "Amount must be positive" if any amount is zero
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _validateAndProcessBatchWithdrawal(
         uint256[] calldata qeuroAmounts,
@@ -876,6 +884,14 @@ contract UserPool is
      * @param withdrawalFee_ Cached withdrawal fee percentage
      * @dev Internal helper to reduce stack depth
      * @dev OPTIMIZATION: Uses single vault call with total amounts to avoid external calls in loop
+     * @custom:security Validates vault redemption amounts and minimum outputs
+     * @custom:validation Validates all amounts are positive and within limits
+     * @custom:state-changes Processes vault redemptions and updates received amounts
+     * @custom:events No events emitted - internal helper function
+     * @custom:errors Throws validation errors if amounts are invalid
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _processVaultRedemptions(
         uint256[] calldata qeuroAmounts,
@@ -912,6 +928,14 @@ contract UserPool is
      * @param usdcReceivedAmounts Array of USDC amounts received
      * @param currentTime Current timestamp for events
      * @dev Internal helper to reduce stack depth
+     * @custom:security Executes final token transfers and emits withdrawal events
+     * @custom:validation Validates all amounts are positive before transfer
+     * @custom:state-changes Burns QEURO tokens and transfers USDC to user
+     * @custom:events Emits Withdrawal event for each withdrawal
+     * @custom:errors Throws transfer errors if token operations fail
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
      */
     function _executeBatchTransfers(
         uint256[] calldata qeuroAmounts,

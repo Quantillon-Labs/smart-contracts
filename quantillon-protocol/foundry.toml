@@ -16,8 +16,8 @@ via_ir = true
 
 # Gas settings
 gas_price = 0
-gas_limit = 30000000
-block_gas_limit = 30000000
+gas_limit = 100000000
+block_gas_limit = 100000000
 
 # Base network configuration
 [rpc_endpoints]

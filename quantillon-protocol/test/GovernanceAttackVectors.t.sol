@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
@@ -12,7 +12,6 @@ import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
@@ -206,7 +205,7 @@ contract GovernanceAttackVectors is Test {
         
         // Test basic USDC functionality
         vm.startPrank(governance);
-        usdc.transfer(attacker, 10000 * USDC_PRECISION);
+        require(usdc.transfer(attacker, 10000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         assertEq(usdc.balanceOf(governance), INITIAL_USDC_AMOUNT - 10000 * USDC_PRECISION, "Governance balance should decrease");
@@ -243,8 +242,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(attacker);
         
         // Attempt to manipulate governance through token transfers
-        usdc.transfer(voter1, 50000 * USDC_PRECISION);
-        usdc.transfer(voter2, 30000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 50000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 30000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -283,7 +282,7 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(governance);
         
         // Attempt to manipulate roles through transfers
-        usdc.transfer(maliciousGovernor, 100000 * USDC_PRECISION);
+        require(usdc.transfer(maliciousGovernor, 100000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -321,8 +320,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(governanceManipulator);
         
         // Attempt to manipulate voting through token distribution
-        usdc.transfer(voter1, 20000 * USDC_PRECISION);
-        usdc.transfer(voter2, 20000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 20000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 20000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -361,18 +360,18 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(flashLoanAttacker);
         
         // Simulate flash loan governance attack
-        usdc.transfer(voter1, 100000 * USDC_PRECISION);
-        usdc.transfer(voter2, 100000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 100000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 100000 * USDC_PRECISION), "Transfer failed");
         
         // Transfer back to simulate flash loan
         vm.stopPrank();
         
         vm.startPrank(voter1);
-        usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION);
+        require(usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         vm.startPrank(voter2);
-        usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION);
+        require(usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         // Verify flash loan attack simulation
@@ -409,8 +408,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(attacker);
         
         // Attempt to manipulate proposals through token distribution
-        usdc.transfer(voter1, 50000 * USDC_PRECISION);
-        usdc.transfer(voter2, 50000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 50000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 50000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -449,8 +448,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(governanceManipulator);
         
         // Attempt to manipulate quorum through token distribution
-        usdc.transfer(voter1, 30000 * USDC_PRECISION);
-        usdc.transfer(voter2, 30000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 30000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 30000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -489,8 +488,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(attacker);
         
         // Attempt to manipulate delegation through token transfers
-        usdc.transfer(voter1, 40000 * USDC_PRECISION);
-        usdc.transfer(voter2, 40000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 40000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 40000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -529,8 +528,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(maliciousGovernor);
         
         // Attempt to manipulate timelock through token distribution
-        usdc.transfer(voter1, 60000 * USDC_PRECISION);
-        usdc.transfer(voter2, 60000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 60000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 60000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -569,8 +568,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(emergencyRole);
         
         // Attempt to manipulate emergency governance
-        usdc.transfer(voter1, 25000 * USDC_PRECISION);
-        usdc.transfer(voter2, 25000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 25000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 25000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -609,8 +608,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(governance);
         
         // Attempt to manipulate parameters through token distribution
-        usdc.transfer(voter1, 35000 * USDC_PRECISION);
-        usdc.transfer(voter2, 35000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 35000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 35000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -649,8 +648,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(treasury);
         
         // Attempt to manipulate treasury through token distribution
-        usdc.transfer(voter1, 45000 * USDC_PRECISION);
-        usdc.transfer(voter2, 45000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 45000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 45000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -689,8 +688,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(admin);
         
         // Attempt to manipulate multi-signature through token distribution
-        usdc.transfer(voter1, 55000 * USDC_PRECISION);
-        usdc.transfer(voter2, 55000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 55000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 55000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -729,8 +728,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(governance);
         
         // Attempt to manipulate upgrades through token distribution
-        usdc.transfer(voter1, 65000 * USDC_PRECISION);
-        usdc.transfer(voter2, 65000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 65000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 65000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -769,8 +768,8 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(attacker);
         
         // Attempt to manipulate cross-contract governance
-        usdc.transfer(voter1, 75000 * USDC_PRECISION);
-        usdc.transfer(voter2, 75000 * USDC_PRECISION);
+        require(usdc.transfer(voter1, 75000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(voter2, 75000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         

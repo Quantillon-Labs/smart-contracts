@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
@@ -13,7 +13,6 @@ import {AaveVault} from "../src/core/vaults/AaveVault.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 import {VaultMath} from "../src/libraries/VaultMath.sol";
 
 /**

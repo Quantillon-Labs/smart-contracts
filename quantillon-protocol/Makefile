@@ -3,6 +3,10 @@
 
 .PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings
 
+# Configuration variables
+RESULTS_DIR ?= results
+BUILD_OUTPUT := $(RESULTS_DIR)/build-output.log
+
 # Default target
 help:
 	@echo "🔧 Quantillon Protocol Development Commands:"
@@ -10,6 +14,7 @@ help:
 	@echo "📦 Build & Compile:"
 	@echo "  make build      - Compile all contracts"
 	@echo "  make clean      - Clean build artifacts"
+	@echo "  RESULTS_DIR=custom make build - Use custom output directory"
 	@echo ""
 	@echo "🧪 Testing:"
 	@echo "  make test       - Run all tests"
@@ -36,12 +41,15 @@ help:
 # Build contracts
 build:
 	@echo "🔨 Building contracts..."
-	forge build --force 2>&1 | tee build-output.log
+	@mkdir -p $(RESULTS_DIR)
+	forge build --force 2>&1 | tee $(BUILD_OUTPUT)
 
 # Clean build artifacts
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	forge clean
+	@echo "🧹 Cleaning results directory..."
+	@rm -rf $(RESULTS_DIR)
 
 # Run tests
 test:

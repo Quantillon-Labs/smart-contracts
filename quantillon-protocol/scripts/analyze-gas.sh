@@ -126,17 +126,18 @@ fi
 print_section "Forge Gas Report"
 echo "Generating detailed gas report..."
 
-# Create a temporary test file for gas analysis
-cat > /tmp/gas_test.sol << 'EOF'
+# Create a temporary test file for gas analysis in the test directory
+cat > test/GasAnalysisTemp.sol << 'EOF'
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
 contract GasAnalysisTest is Test {
-    function testGasAnalysis() public {
+    function testGasAnalysis() public pure {
         // This test will be used to generate gas reports
-        assertTrue(true);
+        // Simple test that always passes - using pure since no state access needed
+        require(true, "Test should always pass");
     }
 }
 EOF
@@ -147,8 +148,16 @@ if [ "$FORGE_GAS_REPORT" != "Failed to generate gas report" ]; then
     print_success "Forge gas report generated"
     generate_report "FORGE GAS REPORT\n---------------\n$(echo "$FORGE_GAS_REPORT" | head -50)\n\n"
 else
-    print_warning "Forge gas report generation failed"
-    generate_report "FORGE GAS REPORT\n---------------\n⚠️ Failed to generate gas report\n\n"
+    # Fallback: try to use existing gas-related tests
+    print_warning "Primary gas report failed, trying existing gas tests..."
+    FALLBACK_GAS_REPORT=$(forge test --gas-report --match-test "test_Gas_" 2>&1 || echo "Failed to generate fallback gas report")
+    if [ "$FALLBACK_GAS_REPORT" != "Failed to generate fallback gas report" ]; then
+        print_success "Fallback gas report generated using existing tests"
+        generate_report "FORGE GAS REPORT (Fallback)\n---------------------------\n$(echo "$FALLBACK_GAS_REPORT" | head -50)\n\n"
+    else
+        print_warning "All gas report generation failed"
+        generate_report "FORGE GAS REPORT\n---------------\n⚠️ Failed to generate gas report (both primary and fallback methods failed)\n\n"
+    fi
 fi
 
 # 3. Slither Analysis (if available)
@@ -251,8 +260,8 @@ fi
 print_section "Function Gas Usage Analysis"
 echo "Analyzing gas usage by function..."
 
-# Create a more comprehensive gas test
-cat > /tmp/comprehensive_gas_test.sol << 'EOF'
+# Create a more comprehensive gas test in the test directory
+cat > test/ComprehensiveGasTest.sol << 'EOF'
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
@@ -264,19 +273,19 @@ contract ComprehensiveGasTest is Test {
         uint256 a = 1;
         uint256 b = 2;
         uint256 c = a + b;
-        assertEq(c, 3);
+        require(c == 3, "Basic arithmetic failed");
         
         // Test storage operations
         uint256 storageVar = 100;
         storageVar = storageVar + 1;
-        assertEq(storageVar, 101);
+        require(storageVar == 101, "Storage operation failed");
         
         // Test array operations
         uint256[] memory arr = new uint256[](10);
         for (uint256 i = 0; i < arr.length; i++) {
             arr[i] = i;
         }
-        assertEq(arr[5], 5);
+        require(arr[5] == 5, "Array operation failed");
     }
 }
 EOF
@@ -287,8 +296,16 @@ if [ "$FUNCTION_GAS_USAGE" != "Failed to analyze function gas usage" ]; then
     print_success "Function gas usage analysis completed"
     generate_report "FUNCTION GAS USAGE ANALYSIS\n-------------------------\n$(echo "$FUNCTION_GAS_USAGE" | head -30)\n\n"
 else
-    print_warning "Function gas usage analysis failed"
-    generate_report "FUNCTION GAS USAGE ANALYSIS\n-------------------------\n⚠️ Failed to analyze function gas usage\n\n"
+    # Fallback: try to use existing gas-related tests for function analysis
+    print_warning "Primary function gas analysis failed, trying existing gas tests..."
+    FALLBACK_FUNCTION_GAS=$(forge test --gas-report --match-test "test_Gas_" 2>&1 || echo "Failed to analyze function gas usage")
+    if [ "$FALLBACK_FUNCTION_GAS" != "Failed to analyze function gas usage" ]; then
+        print_success "Fallback function gas analysis completed using existing tests"
+        generate_report "FUNCTION GAS USAGE ANALYSIS (Fallback)\n------------------------------------\n$(echo "$FALLBACK_FUNCTION_GAS" | head -30)\n\n"
+    else
+        print_warning "All function gas analysis failed"
+        generate_report "FUNCTION GAS USAGE ANALYSIS\n-------------------------\n⚠️ Failed to analyze function gas usage (both primary and fallback methods failed)\n\n"
+    fi
 fi
 
 # 6. Optimization Recommendations
@@ -397,7 +414,7 @@ else
 fi
 
 # 8. Cleanup
-rm -f /tmp/gas_test.sol /tmp/comprehensive_gas_test.sol
+rm -f test/GasAnalysisTemp.sol test/ComprehensiveGasTest.sol
 
 print_header "Analysis Complete"
 echo "📄 Gas analysis report saved to: $TEXT_REPORT_FILE"

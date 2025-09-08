@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
@@ -12,7 +12,6 @@ import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
@@ -191,7 +190,7 @@ contract TimeBlockEdgeCases is Test {
         
         // Test basic USDC functionality
         vm.startPrank(user1);
-        usdc.transfer(timeManipulator, 10000 * USDC_PRECISION);
+        require(usdc.transfer(timeManipulator, 10000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         assertEq(usdc.balanceOf(user1), INITIAL_USDC_AMOUNT - 10000 * USDC_PRECISION, "User1 balance should decrease");
@@ -230,15 +229,15 @@ contract TimeBlockEdgeCases is Test {
         vm.startPrank(timeManipulator);
         
         // Test transfers at different time points
-        usdc.transfer(user1, 20000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 20000 * USDC_PRECISION), "Transfer failed");
         
         // Warp time forward
         vm.warp(initialTime + 1 days);
-        usdc.transfer(user2, 15000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 15000 * USDC_PRECISION), "Transfer failed");
         
         // Warp time further
         vm.warp(initialTime + 7 days);
-        usdc.transfer(temporalTester, 10000 * USDC_PRECISION);
+        require(usdc.transfer(temporalTester, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -280,15 +279,15 @@ contract TimeBlockEdgeCases is Test {
         vm.startPrank(blockManipulator);
         
         // Test transfers at different block numbers
-        usdc.transfer(user1, 25000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 25000 * USDC_PRECISION), "Transfer failed");
         
         // Roll to next block
         vm.roll(initialBlock + 1);
-        usdc.transfer(user2, 20000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 20000 * USDC_PRECISION), "Transfer failed");
         
         // Roll to multiple blocks ahead
         vm.roll(initialBlock + 10);
-        usdc.transfer(timeEdgeCaseUser, 15000 * USDC_PRECISION);
+        require(usdc.transfer(timeEdgeCaseUser, 15000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -329,13 +328,13 @@ contract TimeBlockEdgeCases is Test {
         
         // Test edge case time values
         vm.warp(0); // Test at epoch
-        usdc.transfer(user1, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.warp(type(uint256).max); // Test at max timestamp
-        usdc.transfer(user2, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.warp(1); // Test at minimum non-zero timestamp
-        usdc.transfer(timeManipulator, 10000 * USDC_PRECISION);
+        require(usdc.transfer(timeManipulator, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -467,15 +466,15 @@ contract TimeBlockEdgeCases is Test {
         vm.startPrank(temporalTester);
         
         // Combined time and block manipulation
-        usdc.transfer(user1, 15000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 15000 * USDC_PRECISION), "Transfer failed");
         
         vm.warp(block.timestamp + 1 hours);
         vm.roll(block.number + 1);
-        usdc.transfer(user2, 12000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 12000 * USDC_PRECISION), "Transfer failed");
         
         vm.warp(block.timestamp + 1 days);
         vm.roll(block.number + 10);
-        usdc.transfer(timeManipulator, 10000 * USDC_PRECISION);
+        require(usdc.transfer(timeManipulator, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -519,13 +518,13 @@ contract TimeBlockEdgeCases is Test {
         vm.startPrank(user1);
         
         // Time-based transferFrom patterns
-        usdc.transferFrom(timeEdgeCaseUser, user1, 20000 * USDC_PRECISION);
+        require(usdc.transferFrom(timeEdgeCaseUser, user1, 20000 * USDC_PRECISION), "TransferFrom failed");
         
         vm.warp(block.timestamp + 2 hours);
-        usdc.transferFrom(timeEdgeCaseUser, user2, 15000 * USDC_PRECISION);
+        require(usdc.transferFrom(timeEdgeCaseUser, user2, 15000 * USDC_PRECISION), "TransferFrom failed");
         
         vm.warp(block.timestamp + 1 days);
-        usdc.transferFrom(timeEdgeCaseUser, temporalTester, 5000 * USDC_PRECISION);
+        require(usdc.transferFrom(timeEdgeCaseUser, temporalTester, 5000 * USDC_PRECISION), "TransferFrom failed");
         
         vm.stopPrank();
         
@@ -570,13 +569,13 @@ contract TimeBlockEdgeCases is Test {
         vm.startPrank(user1);
         
         // Block-based transferFrom patterns
-        usdc.transferFrom(blockManipulator, user1, 25000 * USDC_PRECISION);
+        require(usdc.transferFrom(blockManipulator, user1, 25000 * USDC_PRECISION), "TransferFrom failed");
         
         vm.roll(block.number + 2);
-        usdc.transferFrom(blockManipulator, user2, 15000 * USDC_PRECISION);
+        require(usdc.transferFrom(blockManipulator, user2, 15000 * USDC_PRECISION), "TransferFrom failed");
         
         vm.roll(block.number + 5);
-        usdc.transferFrom(blockManipulator, timeEdgeCaseUser, 5000 * USDC_PRECISION);
+        require(usdc.transferFrom(blockManipulator, timeEdgeCaseUser, 5000 * USDC_PRECISION), "TransferFrom failed");
         
         vm.stopPrank();
         
@@ -618,13 +617,13 @@ contract TimeBlockEdgeCases is Test {
         
         // Extreme time scenarios
         vm.warp(1); // Minimum time
-        usdc.transfer(user1, 5000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 5000 * USDC_PRECISION), "Transfer failed");
         
         vm.warp(365 days); // One year
-        usdc.transfer(user2, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.warp(365 * 100 days); // 100 years
-        usdc.transfer(temporalTester, 15000 * USDC_PRECISION);
+        require(usdc.transfer(temporalTester, 15000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -665,13 +664,13 @@ contract TimeBlockEdgeCases is Test {
         
         // Extreme block scenarios
         vm.roll(1); // Minimum block
-        usdc.transfer(user1, 8000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 8000 * USDC_PRECISION), "Transfer failed");
         
         vm.roll(1000); // 1000 blocks
-        usdc.transfer(user2, 12000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 12000 * USDC_PRECISION), "Transfer failed");
         
         vm.roll(1000000); // 1 million blocks
-        usdc.transfer(timeEdgeCaseUser, 20000 * USDC_PRECISION);
+        require(usdc.transfer(timeEdgeCaseUser, 20000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         

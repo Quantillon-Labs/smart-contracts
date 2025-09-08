@@ -6,30 +6,30 @@ pragma solidity 0.8.24;
 // =============================================================================
 
 // ERC20 upgradeable with all standard functionality
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 // Replace missing upgradeable IERC20/SafeERC20 with non-upgradeable interface and library
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Role system to control who can do what
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 // Emergency pause mechanism
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 // Base for upgradeable contracts
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // UUPS: Universal Upgradeable Proxy Standard (more gas-efficient than Transparent)
-import "./SecureUpgradeable.sol";
+import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 
 // Custom libraries for bytecode reduction
-import "../libraries/ErrorLibrary.sol";
-import "../libraries/AccessControlLibrary.sol";
-import "../libraries/ValidationLibrary.sol";
-import "../libraries/TokenLibrary.sol";
-import "../libraries/TreasuryRecoveryLibrary.sol";
-import "../libraries/FlashLoanProtectionLibrary.sol";
+import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
+import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
+import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {TokenLibrary} from "../libraries/TokenLibrary.sol";
+import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
+import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 
 /**
  * @title QEUROToken

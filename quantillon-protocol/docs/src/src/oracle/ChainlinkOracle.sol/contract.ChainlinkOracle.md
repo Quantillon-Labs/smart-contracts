@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/70cb38d23589f7c586599f9ecbb0c11a63c1a99b/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/2f5647e68ddbc27f036af14281f026d5d4a6db27/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -207,14 +207,14 @@ uint256 public usdcToleranceBps;
 ```
 
 
-### timeProvider
+### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
 *Used to replace direct block.timestamp usage for testability and consistency*
 
 
 ```solidity
-TimeProvider public immutable timeProvider;
+TimeProvider public immutable TIME_PROVIDER;
 ```
 
 
@@ -228,13 +228,13 @@ Constructor for ChainlinkOracle contract
 **Notes:**
 - security: Validates TimeProvider address is not zero
 
-- validation: Validates _timeProvider is not address(0)
+- validation: Validates _TIME_PROVIDER is not address(0)
 
-- state-changes: Sets timeProvider immutable variable and disables initializers
+- state-changes: Sets TIME_PROVIDER immutable variable and disables initializers
 
 - events: No events emitted
 
-- errors: Throws "Zero address" if _timeProvider is address(0)
+- errors: Throws "Zero address" if _TIME_PROVIDER is address(0)
 
 - reentrancy: Not applicable - constructor
 
@@ -246,13 +246,13 @@ Constructor for ChainlinkOracle contract
 
 
 ```solidity
-constructor(TimeProvider _timeProvider);
+constructor(TimeProvider _TIME_PROVIDER);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_timeProvider`|`TimeProvider`|Address of the TimeProvider contract for centralized time management|
+|`_TIME_PROVIDER`|`TimeProvider`|Address of the TimeProvider contract for centralized time management|
 
 
 ### initialize

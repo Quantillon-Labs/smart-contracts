@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../interfaces/IUserPool.sol";
 import "../../interfaces/IHedgerPool.sol";
@@ -116,7 +116,7 @@ contract YieldShift is
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
-    TimeProvider public immutable timeProvider;
+    TimeProvider public immutable TIME_PROVIDER;
 
     uint256 public baseYieldShift;
     uint256 public maxYieldShift;
@@ -201,7 +201,7 @@ contract YieldShift is
     /**
      * @notice Constructor for YieldShift implementation
      * @dev Sets up the time provider and disables initialization on implementation for security
-     * @param _timeProvider Address of the time provider contract
+     * @param _TIME_PROVIDER Address of the time provider contract
      * @custom:security Validates time provider address and disables initialization on implementation
      * @custom:validation Validates time provider is not zero address
      * @custom:state-changes Sets time provider and disables initializers
@@ -211,9 +211,9 @@ contract YieldShift is
      * @custom:access Public constructor
      * @custom:oracle No oracle dependencies
      */
-    constructor(TimeProvider _timeProvider) {
-        if (address(_timeProvider) == address(0)) revert ErrorLibrary.ZeroAddress();
-        timeProvider = _timeProvider;
+    constructor(TimeProvider _TIME_PROVIDER) {
+        if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
+        TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
 
@@ -279,7 +279,7 @@ contract YieldShift is
         adjustmentSpeed = 100;
         targetPoolRatio = 10000;
         currentYieldShift = baseYieldShift;
-        lastUpdateTime = timeProvider.currentTime();
+        lastUpdateTime = TIME_PROVIDER.currentTime();
 
         // Initialize arrays to prevent uninitialized state variable warnings
         _recordPoolSnapshot();
@@ -287,7 +287,7 @@ contract YieldShift is
         // Initialize yieldShiftHistory with initial snapshot
         yieldShiftHistory.push(YieldShiftSnapshot({
             yieldShift: uint128(currentYieldShift),
-            timestamp: uint64(timeProvider.currentTime())
+            timestamp: uint64(TIME_PROVIDER.currentTime())
         }));
 
         yieldSourceNames.push(keccak256("aave"));
@@ -323,7 +323,7 @@ contract YieldShift is
         uint256 newYieldShift = _applyGradualAdjustment(optimalShift);
         
         currentYieldShift = newYieldShift;
-        lastUpdateTime = timeProvider.currentTime();
+        lastUpdateTime = TIME_PROVIDER.currentTime();
         
         // Record snapshot using eligible pool sizes to prevent future manipulation
         _recordPoolSnapshotWithEligibleSizes(eligibleUserPoolSize, eligibleHedgerPoolSize);
@@ -332,7 +332,7 @@ contract YieldShift is
             newYieldShift,
             _calculateUserAllocation(),
             _calculateHedgerAllocation(),
-            timeProvider.currentTime()
+            TIME_PROVIDER.currentTime()
         );
     }
 
@@ -387,7 +387,7 @@ contract YieldShift is
             stQEURO.distributeYield(userAllocation);
         }
         
-        emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), timeProvider.currentTime());
+        emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), TIME_PROVIDER.currentTime());
     }
 
 
@@ -420,20 +420,20 @@ contract YieldShift is
         
         if (yieldAmount > 0) {
             // Check holding period
-            if (timeProvider.currentTime() < lastDepositTime[user] + MIN_HOLDING_PERIOD) {
+            if (TIME_PROVIDER.currentTime() < lastDepositTime[user] + MIN_HOLDING_PERIOD) {
                 revert ErrorLibrary.HoldingPeriodNotMet();
             }
             
             if (userYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
             
             userPendingYield[user] = 0;
-            userLastClaim[user] = timeProvider.currentTime();
+            userLastClaim[user] = TIME_PROVIDER.currentTime();
             userYieldPool -= yieldAmount;
             totalYieldDistributed += yieldAmount;
             
             usdc.safeTransfer(user, yieldAmount);
             
-            emit UserYieldClaimed(user, yieldAmount, timeProvider.currentTime());
+            emit UserYieldClaimed(user, yieldAmount, TIME_PROVIDER.currentTime());
         }
     }
 
@@ -466,13 +466,13 @@ contract YieldShift is
             if (hedgerYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
             
             hedgerPendingYield[hedger] = 0;
-            hedgerLastClaim[hedger] = timeProvider.currentTime();
+            hedgerLastClaim[hedger] = TIME_PROVIDER.currentTime();
             hedgerYieldPool -= yieldAmount;
             totalYieldDistributed += yieldAmount;
             
             usdc.safeTransfer(hedger, yieldAmount);
             
-            emit HedgerYieldClaimed(hedger, yieldAmount, timeProvider.currentTime());
+            emit HedgerYieldClaimed(hedger, yieldAmount, TIME_PROVIDER.currentTime());
         }
     }
 
@@ -672,7 +672,7 @@ contract YieldShift is
         uint256 baseDiscount = 8000; // 80%
         
         // Adjust based on time since last major deposit activity
-        uint256 timeSinceLastUpdate = timeProvider.currentTime() - lastUpdateTime;
+        uint256 timeSinceLastUpdate = TIME_PROVIDER.currentTime() - lastUpdateTime;
         
         if (timeSinceLastUpdate < MIN_HOLDING_PERIOD) {
             // Recent activity - apply stricter discount
@@ -733,7 +733,7 @@ contract YieldShift is
         if (msg.sender != address(userPool) && msg.sender != address(hedgerPool)) {
             revert ErrorLibrary.NotAuthorized();
         }
-        lastDepositTime[user] = timeProvider.currentTime();
+        lastDepositTime[user] = TIME_PROVIDER.currentTime();
     }
 
     /**
@@ -943,7 +943,7 @@ contract YieldShift is
         minHoldingPeriod = MIN_HOLDING_PERIOD;
         baseDiscount = 8000; // Current hardcoded base discount
         currentDiscount = _calculateHoldingPeriodDiscount();
-        timeSinceLastUpdate = timeProvider.currentTime() - lastUpdateTime;
+        timeSinceLastUpdate = TIME_PROVIDER.currentTime() - lastUpdateTime;
         
         return (minHoldingPeriod, baseDiscount, currentDiscount, timeSinceLastUpdate);
     }
@@ -976,8 +976,8 @@ contract YieldShift is
             return (currentYieldShift, currentYieldShift, currentYieldShift, 0);
         }
         
-        uint256 cutoffTime = timeProvider.currentTime() > period ? 
-            timeProvider.currentTime() - period : 0;
+        uint256 cutoffTime = TIME_PROVIDER.currentTime() > period ? 
+            TIME_PROVIDER.currentTime() - period : 0;
         
         uint256[] memory validShifts = new uint256[](length);
         uint256 validCount = 0;
@@ -1049,6 +1049,8 @@ contract YieldShift is
         
         (uint256 totalUsers, uint256 totalStakes, uint256 totalDeposits, uint256 totalRewards) = userPool.getPoolMetrics();
         // Note: totalStakes, totalDeposits, and totalRewards are intentionally unused for performance metrics
+        // Assembly equivalent of: /* totalStakes, totalDeposits, totalRewards */ (but preserves variables for future use)
+        // Gas optimization: pop() costs only 3 gas each vs compiler warnings
         assembly {
             // Suppress unused variable warnings
             pop(totalStakes)
@@ -1381,7 +1383,7 @@ contract YieldShift is
       * @custom:oracle Requires fresh oracle price data
      */
     function checkAndUpdateYieldDistribution() external {
-        uint256 timeSinceUpdate = timeProvider.currentTime() - lastUpdateTime;
+        uint256 timeSinceUpdate = TIME_PROVIDER.currentTime() - lastUpdateTime;
         
         if (timeSinceUpdate > MAX_TIME_ELAPSED) {
             timeSinceUpdate = MAX_TIME_ELAPSED;
@@ -1444,8 +1446,8 @@ contract YieldShift is
             return 0;
         }
         
-        uint256 cutoffTime = timeProvider.currentTime() > period ? 
-            timeProvider.currentTime() - period : 0;
+        uint256 cutoffTime = TIME_PROVIDER.currentTime() > period ? 
+            TIME_PROVIDER.currentTime() - period : 0;
         
         uint256 totalWeightedValue = 0;
         uint256 totalWeight = 0;
@@ -1549,7 +1551,7 @@ contract YieldShift is
         }
         
         poolHistory.push(PoolSnapshot({
-            timestamp: uint64(timeProvider.currentTime()),
+            timestamp: uint64(TIME_PROVIDER.currentTime()),
             userPoolSize: isUserPool ? uint128(poolSize) : 0,
             hedgerPoolSize: isUserPool ? 0 : uint128(poolSize)
         }));

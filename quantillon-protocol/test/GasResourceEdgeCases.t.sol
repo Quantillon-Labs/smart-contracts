@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
@@ -12,7 +12,6 @@ import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
@@ -161,7 +160,7 @@ contract GasResourceEdgeCases is Test {
 
         // Test basic USDC functionality
         vm.startPrank(user1);
-        usdc.transfer(user2, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 10000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(user1), INITIAL_USDC_AMOUNT - 10000 * USDC_PRECISION, "User1 balance should decrease");
@@ -189,12 +188,13 @@ contract GasResourceEdgeCases is Test {
         // Attempt to exhaust gas with repeated calls
         for (uint256 i = 0; i < 10; i++) {
             // Simple transfer should work even with low gas
-            usdc.transfer(user2, 1000 * USDC_PRECISION);
+            require(usdc.transfer(user2, 1000 * USDC_PRECISION), "Transfer failed");
         }
         
         vm.stopPrank();
         
-        // Verify transfers succeeded
+        // Verify transfers succeeded and gas limit was respected
+        assertTrue(gasLimit < 200000, "Gas limit should be low for attack simulation");
         assertGt(usdc.balanceOf(user2), INITIAL_USDC_AMOUNT, "User2 should receive transfers");
     }
 
@@ -215,7 +215,7 @@ contract GasResourceEdgeCases is Test {
         
         // Attempt to exhaust resources with many small operations
         for (uint256 i = 0; i < 50; i++) {
-            usdc.transfer(user1, 100 * USDC_PRECISION);
+            require(usdc.transfer(user1, 100 * USDC_PRECISION), "Transfer failed");
         }
         
         vm.stopPrank();
@@ -240,9 +240,9 @@ contract GasResourceEdgeCases is Test {
         vm.startPrank(user1);
         
         // Batch multiple transfers efficiently
-        usdc.transfer(user2, 10000 * USDC_PRECISION);
-        usdc.transfer(attacker, 5000 * USDC_PRECISION);
-        usdc.transfer(gasAttacker, 3000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 10000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(attacker, 5000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(gasAttacker, 3000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -276,9 +276,9 @@ contract GasResourceEdgeCases is Test {
         // User2 can make multiple transfers
         vm.startPrank(user2);
         
-        usdc.transferFrom(user1, user2, 10000 * USDC_PRECISION);
-        usdc.transferFrom(user1, attacker, 5000 * USDC_PRECISION);
-        usdc.transferFrom(user1, gasAttacker, 3000 * USDC_PRECISION);
+        require(usdc.transferFrom(user1, user2, 10000 * USDC_PRECISION), "TransferFrom failed");
+        require(usdc.transferFrom(user1, attacker, 5000 * USDC_PRECISION), "TransferFrom failed");
+        require(usdc.transferFrom(user1, gasAttacker, 3000 * USDC_PRECISION), "TransferFrom failed");
         
         vm.stopPrank();
         
@@ -304,14 +304,14 @@ contract GasResourceEdgeCases is Test {
         
         // Complex operation: approve, transfer, then transfer back
         usdc.approve(user2, 20000 * USDC_PRECISION);
-        usdc.transfer(user2, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
         vm.startPrank(user2);
         
-        usdc.transferFrom(user1, user2, 10000 * USDC_PRECISION);
-        usdc.transfer(user1, 5000 * USDC_PRECISION);
+        require(usdc.transferFrom(user1, user2, 10000 * USDC_PRECISION), "TransferFrom failed");
+        require(usdc.transfer(user1, 5000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -349,7 +349,7 @@ contract GasResourceEdgeCases is Test {
     function test_Gas_EdgeCaseOptimization() public {
         // Test zero amount transfers (should be gas efficient)
         vm.startPrank(user1);
-        usdc.transfer(user2, 0);
+        require(usdc.transfer(user2, 0), "Transfer failed");
         vm.stopPrank();
         
         // Test maximum amount transfers
@@ -479,9 +479,9 @@ contract GasResourceEdgeCases is Test {
         vm.startPrank(user2);
         
         // Multiple transferFrom operations
-        usdc.transferFrom(user1, user2, 5000 * USDC_PRECISION);
-        usdc.transferFrom(user1, attacker, 3000 * USDC_PRECISION);
-        usdc.transferFrom(user1, gasAttacker, 2000 * USDC_PRECISION);
+        require(usdc.transferFrom(user1, user2, 5000 * USDC_PRECISION), "TransferFrom failed");
+        require(usdc.transferFrom(user1, attacker, 3000 * USDC_PRECISION), "TransferFrom failed");
+        require(usdc.transferFrom(user1, gasAttacker, 2000 * USDC_PRECISION), "TransferFrom failed");
         
         vm.stopPrank();
         
@@ -524,18 +524,18 @@ contract GasResourceEdgeCases is Test {
         
         // Step 2: User2 transfers to multiple recipients
         vm.startPrank(user2);
-        usdc.transferFrom(user1, user2, 5000 * USDC_PRECISION);
-        usdc.transferFrom(user1, attacker, 3000 * USDC_PRECISION);
+        require(usdc.transferFrom(user1, user2, 5000 * USDC_PRECISION), "TransferFrom failed");
+        require(usdc.transferFrom(user1, attacker, 3000 * USDC_PRECISION), "TransferFrom failed");
         vm.stopPrank();
         
         // Step 3: User1 transfers directly
         vm.startPrank(user1);
-        usdc.transfer(gasAttacker, 2000 * USDC_PRECISION);
+        require(usdc.transfer(gasAttacker, 2000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         // Step 4: User2 transfers back to User1
         vm.startPrank(user2);
-        usdc.transfer(user1, 1000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 1000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         // Verify final state
@@ -619,7 +619,7 @@ contract GasResourceEdgeCases is Test {
         
         // Test with large amounts
         uint256 largeAmount = INITIAL_USDC_AMOUNT / 2;
-        usdc.transfer(user2, largeAmount);
+        require(usdc.transfer(user2, largeAmount), "Transfer failed");
         
         vm.stopPrank();
         
@@ -659,7 +659,7 @@ contract GasResourceEdgeCases is Test {
         
         // Repeated small transfers
         for (uint256 i = 0; i < 20; i++) {
-            usdc.transfer(user2, 100 * USDC_PRECISION);
+            require(usdc.transfer(user2, 100 * USDC_PRECISION), "Transfer failed");
         }
         
         vm.stopPrank();
@@ -699,12 +699,12 @@ contract GasResourceEdgeCases is Test {
         // Mixed operations: approve, transfer, transferFrom
         vm.startPrank(user1);
         usdc.approve(user2, 10000 * USDC_PRECISION);
-        usdc.transfer(attacker, 5000 * USDC_PRECISION);
+        require(usdc.transfer(attacker, 5000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         vm.startPrank(user2);
-        usdc.transferFrom(user1, user2, 3000 * USDC_PRECISION);
-        usdc.transfer(gasAttacker, 1000 * USDC_PRECISION);
+        require(usdc.transferFrom(user1, user2, 3000 * USDC_PRECISION), "TransferFrom failed");
+        require(usdc.transfer(gasAttacker, 1000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         // Verify mixed operations

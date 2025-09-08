@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
@@ -12,7 +12,6 @@ import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
@@ -178,7 +177,7 @@ contract IntegrationEdgeCases is Test {
         
         // Test basic USDC functionality
         vm.startPrank(user1);
-        usdc.transfer(integrator, 10000 * USDC_PRECISION);
+        require(usdc.transfer(integrator, 10000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         assertEq(usdc.balanceOf(user1), INITIAL_USDC_AMOUNT - 10000 * USDC_PRECISION, "User1 balance should decrease");
@@ -201,9 +200,9 @@ contract IntegrationEdgeCases is Test {
         vm.startPrank(crossContractUser);
         
         // Test cross-contract token transfers
-        usdc.transfer(user1, 20000 * USDC_PRECISION);
-        usdc.transfer(user2, 15000 * USDC_PRECISION);
-        usdc.transfer(integrator, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 20000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 15000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(integrator, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -230,12 +229,12 @@ contract IntegrationEdgeCases is Test {
         
         // Complex integration flow: approve, transfer, transferFrom
         usdc.approve(user1, 50000 * USDC_PRECISION);
-        usdc.transfer(user2, 30000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 30000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
         vm.startPrank(user1);
-        usdc.transferFrom(integrationTester, user1, 25000 * USDC_PRECISION);
+        require(usdc.transferFrom(integrationTester, user1, 25000 * USDC_PRECISION), "TransferFrom failed");
         vm.stopPrank();
         
         // Verify complex flow

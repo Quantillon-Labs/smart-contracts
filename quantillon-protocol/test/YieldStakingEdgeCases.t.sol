@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
@@ -12,12 +12,10 @@ import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
-import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title YieldStakingEdgeCases
@@ -191,7 +189,7 @@ contract YieldStakingEdgeCases is Test {
         
         // Test basic USDC functionality
         vm.startPrank(user1);
-        usdc.transfer(staker, 10000 * USDC_PRECISION);
+        require(usdc.transfer(staker, 10000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         assertEq(usdc.balanceOf(user1), INITIAL_USDC_AMOUNT - 10000 * USDC_PRECISION, "User1 balance should decrease");
@@ -228,9 +226,9 @@ contract YieldStakingEdgeCases is Test {
         vm.startPrank(yieldFarmer);
         
         // Yield farming scenarios
-        usdc.transfer(user1, 20000 * USDC_PRECISION);
-        usdc.transfer(user2, 15000 * USDC_PRECISION);
-        usdc.transfer(staker, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 20000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 15000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(staker, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -278,15 +276,15 @@ contract YieldStakingEdgeCases is Test {
         
         // Use approvals for staking simulation
         vm.startPrank(user1);
-        usdc.transferFrom(stakingTester, user1, 15000 * USDC_PRECISION);
+        require(usdc.transferFrom(stakingTester, user1, 15000 * USDC_PRECISION), "TransferFrom failed");
         vm.stopPrank();
         
         vm.startPrank(user2);
-        usdc.transferFrom(stakingTester, user2, 12000 * USDC_PRECISION);
+        require(usdc.transferFrom(stakingTester, user2, 12000 * USDC_PRECISION), "TransferFrom failed");
         vm.stopPrank();
         
         vm.startPrank(staker);
-        usdc.transferFrom(stakingTester, staker, 10000 * USDC_PRECISION);
+        require(usdc.transferFrom(stakingTester, staker, 10000 * USDC_PRECISION), "TransferFrom failed");
         vm.stopPrank();
         
         // Verify staking mechanisms
@@ -326,9 +324,9 @@ contract YieldStakingEdgeCases is Test {
         vm.startPrank(yieldEdgeCaseUser);
         
         // Yield distribution scenarios
-        usdc.transfer(user1, 25000 * USDC_PRECISION);
-        usdc.transfer(user2, 20000 * USDC_PRECISION);
-        usdc.transfer(yieldFarmer, 15000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 25000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 20000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(yieldFarmer, 15000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -368,9 +366,9 @@ contract YieldStakingEdgeCases is Test {
         vm.startPrank(staker);
         
         // Reward calculation scenarios
-        usdc.transfer(user1, 18000 * USDC_PRECISION);
-        usdc.transfer(user2, 16000 * USDC_PRECISION);
-        usdc.transfer(stakingTester, 14000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 18000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 16000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(stakingTester, 14000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -418,15 +416,15 @@ contract YieldStakingEdgeCases is Test {
         
         // Pool operations
         vm.startPrank(user2);
-        usdc.transferFrom(user1, user2, 20000 * USDC_PRECISION);
+        require(usdc.transferFrom(user1, user2, 20000 * USDC_PRECISION), "TransferFrom failed");
         vm.stopPrank();
         
         vm.startPrank(staker);
-        usdc.transferFrom(user1, staker, 15000 * USDC_PRECISION);
+        require(usdc.transferFrom(user1, staker, 15000 * USDC_PRECISION), "TransferFrom failed");
         vm.stopPrank();
         
         vm.startPrank(yieldFarmer);
-        usdc.transferFrom(user1, yieldFarmer, 10000 * USDC_PRECISION);
+        require(usdc.transferFrom(user1, yieldFarmer, 10000 * USDC_PRECISION), "TransferFrom failed");
         vm.stopPrank();
         
         // Verify staking pool
@@ -466,18 +464,18 @@ contract YieldStakingEdgeCases is Test {
         vm.startPrank(yieldFarmer);
         
         // Yield compounding scenarios
-        usdc.transfer(user1, 12000 * USDC_PRECISION);
-        usdc.transfer(user2, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 12000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
         // Compound yield
         vm.startPrank(user1);
-        usdc.transfer(yieldFarmer, 6000 * USDC_PRECISION);
+        require(usdc.transfer(yieldFarmer, 6000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         vm.startPrank(user2);
-        usdc.transfer(yieldFarmer, 5000 * USDC_PRECISION);
+        require(usdc.transfer(yieldFarmer, 5000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         // Verify yield compounding
@@ -516,18 +514,18 @@ contract YieldStakingEdgeCases is Test {
         vm.startPrank(stakingTester);
         
         // Initial staking
-        usdc.transfer(user1, 30000 * USDC_PRECISION);
-        usdc.transfer(user2, 25000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 30000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 25000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
         // Withdrawal scenarios
         vm.startPrank(user1);
-        usdc.transfer(stakingTester, 15000 * USDC_PRECISION);
+        require(usdc.transfer(stakingTester, 15000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         vm.startPrank(user2);
-        usdc.transfer(stakingTester, 12000 * USDC_PRECISION);
+        require(usdc.transfer(stakingTester, 12000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         // Verify staking withdrawals
@@ -566,9 +564,9 @@ contract YieldStakingEdgeCases is Test {
         vm.startPrank(yieldEdgeCaseUser);
         
         // Yield rate scenarios
-        usdc.transfer(user1, 8000 * USDC_PRECISION);
-        usdc.transfer(user2, 7000 * USDC_PRECISION);
-        usdc.transfer(staker, 6000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 8000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 7000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(staker, 6000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -608,9 +606,9 @@ contract YieldStakingEdgeCases is Test {
         vm.startPrank(staker);
         
         // Staking duration scenarios
-        usdc.transfer(user1, 22000 * USDC_PRECISION);
-        usdc.transfer(user2, 18000 * USDC_PRECISION);
-        usdc.transfer(yieldEdgeCaseUser, 16000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 22000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 18000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(yieldEdgeCaseUser, 16000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -650,9 +648,9 @@ contract YieldStakingEdgeCases is Test {
         vm.startPrank(yieldFarmer);
         
         // Yield optimization scenarios
-        usdc.transfer(user1, 14000 * USDC_PRECISION);
-        usdc.transfer(user2, 12000 * USDC_PRECISION);
-        usdc.transfer(stakingTester, 10000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 14000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user2, 12000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(stakingTester, 10000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         

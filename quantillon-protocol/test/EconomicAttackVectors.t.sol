@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
@@ -12,7 +12,6 @@ import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
@@ -229,7 +228,7 @@ contract EconomicAttackVectors is Test {
         
         // Test basic USDC functionality
         vm.startPrank(arbitrageur);
-        usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION);
+        require(usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         assertEq(usdc.balanceOf(arbitrageur), INITIAL_USDC_AMOUNT - 100000 * USDC_PRECISION, "Arbitrageur balance should decrease");
@@ -253,7 +252,7 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(yieldManipulator);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(arbitrageur, 100000 * USDC_PRECISION);
+        require(usdc.transfer(arbitrageur, 100000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -279,7 +278,7 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(priceManipulator);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION);
+        require(usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -305,7 +304,7 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(flashLoanAttacker);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(arbitrageur, 50000 * USDC_PRECISION);
+        require(usdc.transfer(arbitrageur, 50000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -329,11 +328,11 @@ contract EconomicAttackVectors is Test {
     function test_Economic_CoordinatedMultiUserAttack() public {
         // Multiple users attempt coordinated attack
         vm.startPrank(user1);
-        usdc.transfer(user2, 100000 * USDC_PRECISION);
+        require(usdc.transfer(user2, 100000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         vm.startPrank(user2);
-        usdc.transfer(user1, 50000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 50000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         // Verify coordinated attack was prevented
@@ -358,8 +357,8 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(yieldManipulator);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(arbitrageur, 100000 * USDC_PRECISION);
-        usdc.transfer(flashLoanAttacker, 50000 * USDC_PRECISION);
+        require(usdc.transfer(arbitrageur, 100000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(flashLoanAttacker, 50000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -386,7 +385,7 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(flashLoanAttacker);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(user1, 100000 * USDC_PRECISION);
+        require(usdc.transfer(user1, 100000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -437,7 +436,7 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(priceManipulator);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(arbitrageur, 1000000 * USDC_PRECISION);
+        require(usdc.transfer(arbitrageur, 1000000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -463,8 +462,8 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(yieldManipulator);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(arbitrageur, 100000 * USDC_PRECISION);
-        usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION);
+        require(usdc.transfer(arbitrageur, 100000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -491,11 +490,11 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(arbitrageur);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION);
+        require(usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION), "Transfer failed");
         vm.warp(block.timestamp + 1);
         // Note: flashLoanAttacker transfers back to arbitrageur
         vm.startPrank(flashLoanAttacker);
-        usdc.transfer(arbitrageur, 50000 * USDC_PRECISION);
+        require(usdc.transfer(arbitrageur, 50000 * USDC_PRECISION), "Transfer failed");
         vm.stopPrank();
         
         // Verify time manipulation was prevented
@@ -520,8 +519,8 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(flashLoanAttacker);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(arbitrageur, 100000 * USDC_PRECISION);
-        usdc.transfer(user1, 100000 * USDC_PRECISION);
+        require(usdc.transfer(arbitrageur, 100000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user1, 100000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -548,8 +547,8 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(yieldManipulator);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(arbitrageur, 100000 * USDC_PRECISION);
-        usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION);
+        require(usdc.transfer(arbitrageur, 100000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -601,8 +600,8 @@ contract EconomicAttackVectors is Test {
         vm.startPrank(arbitrageur);
         
         // Test basic USDC functionality instead of complex contract calls
-        usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION);
-        usdc.transfer(user1, 100000 * USDC_PRECISION);
+        require(usdc.transfer(flashLoanAttacker, 100000 * USDC_PRECISION), "Transfer failed");
+        require(usdc.transfer(user1, 100000 * USDC_PRECISION), "Transfer failed");
         
         vm.stopPrank();
         
@@ -733,7 +732,6 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     /**
      * @notice Gets round data for the mock price feed
      * @dev Returns mock round data or reverts based on shouldRevert flag
-     * @param _roundId The round ID to query (ignored in mock implementation)
      * @return The round ID
      * @return The price answer
      * @return The timestamp when the round started
@@ -748,7 +746,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
      * @custom:access Anyone can call this mock function
      * @custom:oracle No oracle dependencies
      */
-    function getRoundData(uint80 _roundId) external view returns (
+    function getRoundData(uint80 /* _roundId */) external view returns (
         uint80,
         int256,
         uint256,

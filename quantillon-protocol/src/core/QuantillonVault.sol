@@ -5,20 +5,20 @@ pragma solidity 0.8.24;
 // IMPORTS - OpenZeppelin security and features
 // =============================================================================
 
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./SecureUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {SecureUpgradeable} from "./SecureUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Internal interfaces of the Quantillon protocol
-import "../interfaces/IQEUROToken.sol";
-import "../interfaces/IChainlinkOracle.sol";
-import "../libraries/VaultMath.sol";
-import "../libraries/TreasuryRecoveryLibrary.sol";
-import "../libraries/FlashLoanProtectionLibrary.sol";
+import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
+import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
+import {VaultMath} from "../libraries/VaultMath.sol";
+import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
+import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 
 /**
  * @title QuantillonVault

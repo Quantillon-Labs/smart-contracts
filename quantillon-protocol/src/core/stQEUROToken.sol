@@ -20,7 +20,6 @@ import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
 import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
-import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 
 /**

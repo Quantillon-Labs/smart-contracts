@@ -10,7 +10,6 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
-import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";

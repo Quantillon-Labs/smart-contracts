@@ -42,7 +42,7 @@ help:
 build:
 	@echo "🔨 Building contracts..."
 	@mkdir -p $(RESULTS_DIR)
-	forge build --force 2>&1 | tee $(BUILD_OUTPUT)
+	forge build --force 2>&1 | ./scripts/filter-mixed-case.sh | tee $(BUILD_OUTPUT)
 
 # Clean build artifacts
 clean:
@@ -60,6 +60,8 @@ test:
 coverage:
 	@echo "📊 Generating coverage report..."
 	FOUNDRY_PROFILE=coverage forge coverage --report lcov
+	@echo "🧹 Cleaning up coverage file..."
+	@rm -f lcov.info
 
 # Run Slither security analysis
 slither:

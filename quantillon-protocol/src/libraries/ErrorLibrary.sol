@@ -48,6 +48,9 @@ library ErrorLibrary {
     error NotActive();
     error AlreadyPaused();
     error NotPaused();
+    /// @notice Thrown when minting operations are blocked by the emergency killswitch
+    /// @dev Used when mintingKillswitch is enabled to prevent QEURO minting during collateral crises
+    error MintingDisabled();
     error EmergencyModeActive();
     error PositionNotActive();
     error InsufficientBalance();

@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/1f61d050f598a726eb86716f69d241d6b628f401/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5f58ae9c97abfaa14690edd65751159b391dbc7c/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -185,6 +185,23 @@ RateLimitCaps public rateLimitCaps;
 
 ```solidity
 RateLimitInfo public rateLimitInfo;
+```
+
+
+### mintingKillswitch
+Emergency killswitch to prevent all QEURO minting operations
+
+*When enabled (true), blocks both regular and batch minting functions*
+
+*Can only be toggled by addresses with PAUSER_ROLE*
+
+*Used as a crisis management tool when protocol lacks sufficient collateral*
+
+*Independent of the general pause mechanism - provides granular control*
+
+
+```solidity
+bool public mintingKillswitch;
 ```
 
 
@@ -1770,6 +1787,46 @@ function mintRateLimit() external view returns (uint256 limit);
 |`limit`|`uint256`|Mint rate limit in wei per hour (18 decimals)|
 
 
+### setMintingKillswitch
+
+Toggle the emergency minting killswitch to enable/disable all minting operations
+
+*Emergency function that provides granular control over minting without affecting other operations*
+
+*Can only be called by addresses with PAUSER_ROLE for security*
+
+*Used as a crisis management tool when protocol lacks sufficient collateral*
+
+*Independent of the general pause mechanism - allows selective operation blocking*
+
+*When enabled, both mint() and batchMint() functions will revert with MintingDisabled error*
+
+*Burning operations remain unaffected by the killswitch*
+
+**Notes:**
+- security: Only callable by PAUSER_ROLE holders
+
+- events: Emits MintingKillswitchToggled event with new state and caller
+
+- state-changes: Updates mintingKillswitch state variable
+
+- access: Restricted to PAUSER_ROLE
+
+- reentrancy: Not protected - simple state change
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function setMintingKillswitch(bool enabled) external onlyRole(PAUSER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|True to enable killswitch (block all minting), false to disable (allow minting)|
+
+
 ### burnRateLimit
 
 Get current burn rate limit (per hour)
@@ -1822,6 +1879,23 @@ event TokensMinted(address indexed to, uint256 indexed amount, address indexed m
 |`to`|`address`|Recipient of the tokens|
 |`amount`|`uint256`|Amount minted in wei (18 decimals)|
 |`minter`|`address`|Address that performed the mint (vault)|
+
+### MintingKillswitchToggled
+Emitted when the minting killswitch is toggled on or off
+
+*Provides transparency for emergency actions taken by protocol administrators*
+
+
+```solidity
+event MintingKillswitchToggled(bool enabled, address indexed caller);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|True if killswitch is being enabled (minting blocked), false if disabled (minting allowed)|
+|`caller`|`address`|Address of the PAUSER_ROLE holder who toggled the killswitch|
 
 ### TokensBurned
 Emitted when tokens are burned

@@ -2,7 +2,7 @@
 pragma solidity 0.8.24;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "./ErrorLibrary.sol";
+import {ErrorLibrary} from "./ErrorLibrary.sol";
 
 /**
  * @title AccessControlLibrary

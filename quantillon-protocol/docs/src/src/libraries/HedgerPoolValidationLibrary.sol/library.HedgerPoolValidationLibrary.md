@@ -1,5 +1,5 @@
 # HedgerPoolValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/19cb8abc767ecdd72800c6473b77bfc6380f2b0d/src/libraries/HedgerPoolValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/cf25e194cd85e5cb9da956b32397dbf23de4fde3/src/libraries/HedgerPoolValidationLibrary.sol)
 
 Validation functions for HedgerPool to reduce contract size
 
@@ -12,21 +12,21 @@ Validates all position parameters against maximum limits
 *Ensures all position parameters are within acceptable bounds*
 
 **Notes:**
-- Validates all position parameters against maximum limits
+- security: Validates all position parameters against maximum limits
 
-- Validates all position parameters against maximum limits
+- validation: Validates all position parameters against maximum limits
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws various errors if parameters exceed limits
+- errors: Throws various errors if parameters exceed limits
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -62,21 +62,21 @@ Validates total margin and exposure limits
 *Ensures combined totals don't exceed system-wide limits*
 
 **Notes:**
-- Validates total margin and exposure limits
+- security: Validates total margin and exposure limits
 
-- Validates total margin and exposure limits
+- validation: Validates total margin and exposure limits
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws various errors if totals exceed limits
+- errors: Throws various errors if totals exceed limits
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -108,21 +108,21 @@ Validates timestamp fits in uint32 for storage optimization
 *Prevents timestamp overflow when casting to uint32*
 
 **Notes:**
-- Validates timestamp fits in uint32 for storage optimization
+- security: Validates timestamp fits in uint32 for storage optimization
 
-- Validates timestamp fits in uint32 for storage optimization
+- validation: Validates timestamp fits in uint32 for storage optimization
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws TimestampOverflow if timestamp exceeds uint32 max
+- errors: Throws TimestampOverflow if timestamp exceeds uint32 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -142,21 +142,21 @@ Validates new margin amount against maximum limit
 *Ensures margin additions don't exceed individual position limits*
 
 **Notes:**
-- Validates new margin amount against maximum limit
+- security: Validates new margin amount against maximum limit
 
-- Validates new margin amount against maximum limit
+- validation: Validates new margin amount against maximum limit
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws NewMarginExceedsMaximum if margin exceeds limit
+- errors: Throws NewMarginExceedsMaximum if margin exceeds limit
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -177,21 +177,21 @@ Validates pending rewards against maximum accumulation limit
 *Prevents excessive reward accumulation that could cause overflow*
 
 **Notes:**
-- Validates pending rewards against maximum accumulation limit
+- security: Validates pending rewards against maximum accumulation limit
 
-- Validates pending rewards against maximum accumulation limit
+- validation: Validates pending rewards against maximum accumulation limit
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws PendingRewardsExceedMaximum if rewards exceed limit
+- errors: Throws PendingRewardsExceedMaximum if rewards exceed limit
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

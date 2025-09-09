@@ -8,13 +8,13 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../interfaces/IYieldShift.sol";
-import "../../libraries/VaultMath.sol";
-import "../../libraries/ErrorLibrary.sol";
-import "../../libraries/AccessControlLibrary.sol";
-import "../../libraries/ValidationLibrary.sol";
-import "../../libraries/TreasuryRecoveryLibrary.sol";
-import "../SecureUpgradeable.sol";
+import {IYieldShift} from "../../interfaces/IYieldShift.sol";
+import {VaultMath} from "../../libraries/VaultMath.sol";
+import {ErrorLibrary} from "../../libraries/ErrorLibrary.sol";
+import {AccessControlLibrary} from "../../libraries/AccessControlLibrary.sol";
+import {ValidationLibrary} from "../../libraries/ValidationLibrary.sol";
+import {TreasuryRecoveryLibrary} from "../../libraries/TreasuryRecoveryLibrary.sol";
+import {SecureUpgradeable} from "../SecureUpgradeable.sol";
 
 /**
  * @title AaveVault

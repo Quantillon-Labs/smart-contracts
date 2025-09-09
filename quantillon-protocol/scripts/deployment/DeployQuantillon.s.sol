@@ -5,16 +5,16 @@ import "forge-std/Script.sol";
 import "forge-std/console.sol";
 
 // Import all contracts
-import "../src/libraries/TimeProviderLibrary.sol";
-import "../src/oracle/ChainlinkOracle.sol";
-import "../src/core/QEUROToken.sol";
-import "../src/core/QTIToken.sol";
-import "../src/core/QuantillonVault.sol";
-import "../src/core/UserPool.sol";
-import "../src/core/HedgerPool.sol";
-import "../src/core/stQEUROToken.sol";
-import "../src/core/vaults/AaveVault.sol";
-import "../src/core/yieldmanagement/YieldShift.sol";
+import "../../src/libraries/TimeProviderLibrary.sol";
+import "../../src/oracle/ChainlinkOracle.sol";
+import "../../src/core/QEUROToken.sol";
+import "../../src/core/QTIToken.sol";
+import "../../src/core/QuantillonVault.sol";
+import "../../src/core/UserPool.sol";
+import "../../src/core/HedgerPool.sol";
+import "../../src/core/stQEUROToken.sol";
+import "../../src/core/vaults/AaveVault.sol";
+import "../../src/core/yieldmanagement/YieldShift.sol";
 
 /**
  * @title DeployQuantillon

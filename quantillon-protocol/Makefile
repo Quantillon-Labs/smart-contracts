@@ -1,7 +1,7 @@
 # Quantillon Protocol - Development Makefile
 # Integrates Foundry commands with Slither security analysis
 
-.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings
+.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings deploy-localhost deploy-sepolia deploy-base deploy-full deploy-verify deploy-uups
 
 # Configuration variables
 RESULTS_DIR ?= results
@@ -37,6 +37,14 @@ help:
 	@echo ""
 	@echo "🚀 Development:"
 	@echo "  make all        - Build, test, and analyze security"
+	@echo ""
+	@echo "🌐 Deployment:"
+	@echo "  make deploy-localhost - Deploy to localhost with UUPS proxies"
+	@echo "  make deploy-sepolia   - Deploy to Sepolia testnet"
+	@echo "  make deploy-base      - Deploy to Base mainnet"
+	@echo "  make deploy-full      - Full UUPS deployment with verification"
+	@echo "  make deploy-uups      - Deploy UUPS proxies only (localhost)"
+	@echo "  make deploy-verify    - Verify deployed contracts"
 
 # Build contracts
 build:
@@ -117,3 +125,41 @@ validate-natspec:
 # CI/CD pipeline command
 ci: build test slither validate-natspec gas-analysis analyze-warnings
 	@echo "🚀 CI/CD pipeline completed!"
+
+# Deployment targets
+deploy-localhost:
+	@echo "🌐 Deploying to localhost with UUPS proxies..."
+	@echo "⚠️  Make sure Anvil is running on localhost:8545"
+	@export BASESCAN_API_KEY=dummy && forge script scripts/deployment/DeployUUPS.s.sol --rpc-url http://localhost:8545 --broadcast
+	@echo "✅ Localhost UUPS deployment completed!"
+
+deploy-sepolia:
+	@echo "🌐 Deploying to Sepolia testnet..."
+	@echo "⚠️  Make sure PRIVATE_KEY and network environment variables are set"
+	@export NETWORK=sepolia && forge script scripts/deployment/DeployNetwork.s.sol --rpc-url $(SEPOLIA_RPC_URL) --broadcast --verify
+	@echo "✅ Sepolia deployment completed!"
+
+deploy-base:
+	@echo "🌐 Deploying to Base mainnet..."
+	@echo "⚠️  Make sure PRIVATE_KEY and network environment variables are set"
+	@export NETWORK=base && forge script scripts/deployment/DeployNetwork.s.sol --rpc-url $(BASE_RPC_URL) --broadcast --verify
+	@echo "✅ Base deployment completed!"
+
+deploy-full:
+	@echo "🌐 Full UUPS deployment with verification..."
+	@export BASESCAN_API_KEY=dummy && forge script scripts/deployment/DeployUUPS.s.sol --rpc-url http://localhost:8545 --broadcast
+	@echo "✅ UUPS deployment completed!"
+	@echo "🔍 Verifying deployment..."
+	@forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url http://localhost:8545
+	@echo "✅ Full deployment with verification completed!"
+
+deploy-uups:
+	@echo "🌐 Deploying UUPS proxies to localhost..."
+	@echo "⚠️  Make sure Anvil is running on localhost:8545"
+	@export BASESCAN_API_KEY=dummy && forge script scripts/deployment/DeployUUPS.s.sol --rpc-url http://localhost:8545 --broadcast
+	@echo "✅ UUPS proxy deployment completed!"
+
+deploy-verify:
+	@echo "🔍 Verifying deployed contracts..."
+	@forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url http://localhost:8545
+	@echo "✅ Verification completed!"

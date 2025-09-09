@@ -2048,6 +2048,264 @@ contract QEUROTokenTestSuite is Test {
         assertEq(qeuroToken.balanceOf(user2), SMALL_AMOUNT);
         assertEq(qeuroToken.balanceOf(user1), INITIAL_MINT_AMOUNT - SMALL_AMOUNT);
     }
+
+    // =============================================================================
+    // KILLSWITCH TESTS
+    // =============================================================================
+
+    /**
+     * @notice Test that killswitch can be enabled by PAUSER_ROLE
+     * @dev Verifies that only PAUSER_ROLE can toggle the killswitch
+     */
+    function test_Killswitch_EnableByPauserRole_Success() public {
+        // Initially killswitch should be disabled
+        assertFalse(qeuroToken.mintingKillswitch());
+
+        // Enable killswitch as pauser
+        vm.prank(admin); // admin has PAUSER_ROLE
+        qeuroToken.setMintingKillswitch(true);
+
+        // Verify killswitch is enabled
+        assertTrue(qeuroToken.mintingKillswitch());
+    }
+
+    /**
+     * @notice Test that killswitch can be disabled by PAUSER_ROLE
+     * @dev Verifies that killswitch can be toggled off
+     */
+    function test_Killswitch_DisableByPauserRole_Success() public {
+        // First enable killswitch
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(true);
+        assertTrue(qeuroToken.mintingKillswitch());
+
+        // Disable killswitch
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(false);
+
+        // Verify killswitch is disabled
+        assertFalse(qeuroToken.mintingKillswitch());
+    }
+
+    /**
+     * @notice Test that non-PAUSER_ROLE cannot toggle killswitch
+     * @dev Verifies access control for killswitch function
+     */
+    function test_Killswitch_NonPauserRole_Revert() public {
+        // Try to enable killswitch as non-pauser
+        vm.prank(user1);
+        vm.expectRevert();
+        qeuroToken.setMintingKillswitch(true);
+
+        // Try to enable killswitch as vault (has MINTER_ROLE but not PAUSER_ROLE)
+        vm.prank(vault);
+        vm.expectRevert();
+        qeuroToken.setMintingKillswitch(true);
+
+        // Verify killswitch is still disabled
+        assertFalse(qeuroToken.mintingKillswitch());
+    }
+
+    /**
+     * @notice Test that minting is blocked when killswitch is active
+     * @dev Verifies that killswitch prevents all minting operations
+     */
+    function test_Killswitch_MintingBlockedWhenActive_Revert() public {
+        // Enable killswitch
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(true);
+
+        // Try to mint - should revert
+        vm.prank(vault);
+        vm.expectRevert(ErrorLibrary.MintingDisabled.selector);
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+
+        // Verify no tokens were minted
+        assertEq(qeuroToken.balanceOf(user1), 0);
+        assertEq(qeuroToken.totalSupply(), 0); // No initial tokens minted
+    }
+
+    /**
+     * @notice Test that batch minting is blocked when killswitch is active
+     * @dev Verifies that killswitch prevents batch minting operations
+     */
+    function test_Killswitch_BatchMintingBlockedWhenActive_Revert() public {
+        // Enable killswitch
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(true);
+
+        // Prepare batch mint data
+        address[] memory recipients = new address[](2);
+        recipients[0] = user1;
+        recipients[1] = user2;
+        
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = SMALL_AMOUNT;
+        amounts[1] = SMALL_AMOUNT;
+
+        // Try to batch mint - should revert
+        vm.prank(vault);
+        vm.expectRevert(ErrorLibrary.MintingDisabled.selector);
+        qeuroToken.batchMint(recipients, amounts);
+
+        // Verify no tokens were minted
+        assertEq(qeuroToken.balanceOf(user1), 0);
+        assertEq(qeuroToken.balanceOf(user2), 0);
+        assertEq(qeuroToken.totalSupply(), 0); // No initial tokens minted
+    }
+
+    /**
+     * @notice Test that minting works normally when killswitch is disabled
+     * @dev Verifies that killswitch doesn't affect normal operations when disabled
+     */
+    function test_Killswitch_MintingWorksWhenDisabled_Success() public {
+        // Ensure killswitch is disabled (should be by default)
+        assertFalse(qeuroToken.mintingKillswitch());
+
+        // Mint should work normally
+        vm.prank(vault);
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+
+        // Verify tokens were minted
+        assertEq(qeuroToken.balanceOf(user1), SMALL_AMOUNT);
+        assertEq(qeuroToken.totalSupply(), SMALL_AMOUNT); // Only the newly minted tokens
+    }
+
+    /**
+     * @notice Test that minting resumes after killswitch is disabled
+     * @dev Verifies that operations resume normally after killswitch is turned off
+     */
+    function test_Killswitch_MintingResumesAfterDisable_Success() public {
+        // Enable killswitch
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(true);
+
+        // Verify minting is blocked
+        vm.prank(vault);
+        vm.expectRevert(ErrorLibrary.MintingDisabled.selector);
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+
+        // Disable killswitch
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(false);
+
+        // Now minting should work again
+        vm.prank(vault);
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+
+        // Verify tokens were minted
+        assertEq(qeuroToken.balanceOf(user1), SMALL_AMOUNT);
+        assertEq(qeuroToken.totalSupply(), SMALL_AMOUNT); // Only the newly minted tokens
+    }
+
+    /**
+     * @notice Test that killswitch events are emitted correctly
+     * @dev Verifies that events are emitted when killswitch is toggled
+     */
+    function test_Killswitch_EventsEmitted_Success() public {
+        // Test enabling killswitch event
+        vm.prank(admin);
+        vm.expectEmit(true, true, false, true);
+        emit QEUROToken.MintingKillswitchToggled(true, admin);
+        qeuroToken.setMintingKillswitch(true);
+
+        // Test disabling killswitch event
+        vm.prank(admin);
+        vm.expectEmit(true, true, false, true);
+        emit QEUROToken.MintingKillswitchToggled(false, admin);
+        qeuroToken.setMintingKillswitch(false);
+    }
+
+    /**
+     * @notice Test that killswitch works independently of pause mechanism
+     * @dev Verifies that killswitch and pause are separate mechanisms
+     */
+    function test_Killswitch_IndependentOfPause_Success() public {
+        // Enable killswitch but keep contract unpaused
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(true);
+
+        // Verify contract is not paused
+        assertFalse(qeuroToken.paused());
+
+        // Minting should still be blocked by killswitch
+        vm.prank(vault);
+        vm.expectRevert(ErrorLibrary.MintingDisabled.selector);
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+
+        // Now pause the contract
+        vm.prank(admin);
+        qeuroToken.pause();
+
+        // Minting should still be blocked (both killswitch and pause)
+        vm.prank(vault);
+        vm.expectRevert(); // Could be either MintingDisabled or EnforcedPause
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+
+        // Disable killswitch but keep paused
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(false);
+
+        // Minting should still be blocked by pause
+        vm.prank(vault);
+        vm.expectRevert(); // Should be EnforcedPause now
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+    }
+
+    /**
+     * @notice Test that killswitch doesn't affect burning operations
+     * @dev Verifies that killswitch only affects minting, not burning
+     */
+    function test_Killswitch_DoesNotAffectBurning_Success() public {
+        // First mint some tokens to user1
+        vm.prank(vault);
+        qeuroToken.mint(user1, INITIAL_MINT_AMOUNT);
+        
+        // Enable killswitch
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(true);
+
+        // Verify minting is blocked
+        vm.prank(vault);
+        vm.expectRevert(ErrorLibrary.MintingDisabled.selector);
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+
+        // But burning should still work
+        vm.prank(vault);
+        qeuroToken.burn(user1, SMALL_AMOUNT);
+
+        // Verify tokens were burned
+        assertEq(qeuroToken.balanceOf(user1), INITIAL_MINT_AMOUNT - SMALL_AMOUNT);
+        assertEq(qeuroToken.totalSupply(), INITIAL_MINT_AMOUNT - SMALL_AMOUNT);
+    }
+
+    /**
+     * @notice Test killswitch with multiple toggles
+     * @dev Verifies that killswitch can be toggled multiple times
+     */
+    function test_Killswitch_MultipleToggles_Success() public {
+        // Toggle killswitch multiple times
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(true);
+        assertTrue(qeuroToken.mintingKillswitch());
+
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(false);
+        assertFalse(qeuroToken.mintingKillswitch());
+
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(true);
+        assertTrue(qeuroToken.mintingKillswitch());
+
+        vm.prank(admin);
+        qeuroToken.setMintingKillswitch(false);
+        assertFalse(qeuroToken.mintingKillswitch());
+
+        // Final state should allow minting
+        vm.prank(vault);
+        qeuroToken.mint(user1, SMALL_AMOUNT);
+        assertEq(qeuroToken.balanceOf(user1), SMALL_AMOUNT);
+    }
 }
 
 // =============================================================================

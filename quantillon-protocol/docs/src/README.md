@@ -18,6 +18,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **[Technical Reference](docs/API-Reference.md)** - Detailed technical specifications and implementation details
 - **[Quick Start Guide](docs/Quick-Start.md)** - Get started quickly with integration examples
 - **[Integration Examples](docs/Integration-Examples.md)** - Comprehensive integration examples and patterns
+- **[Deployment Guide](scripts/deployment/README.md)** - Complete deployment instructions and procedures
 - **[Documentation Hub](docs/README.md)** - Comprehensive documentation overview
 
 ### 🎯 Key Features
@@ -116,6 +117,70 @@ ETHERSCAN_API_KEY=your_etherscan_api_key
 # Deployment
 PRIVATE_KEY=your_private_key
 ```
+
+## 🚀 Deployment
+
+### Quick Start
+
+Deploy the complete Quantillon Protocol to localhost:
+
+```bash
+# Start local blockchain
+anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
+
+# Deploy all contracts
+make deploy-full
+```
+
+### Deployment Options
+
+| Command | Description | Use Case |
+|---------|-------------|----------|
+| `make deploy-localhost` | Deploy to localhost (Anvil) | Development & testing |
+| `make deploy-sepolia` | Deploy to Sepolia testnet | Testnet validation |
+| `make deploy-base` | Deploy to Base mainnet | Production deployment |
+| `make deploy-partial` | Deploy contracts only | Custom initialization |
+| `make deploy-full` | Full deployment + initialization | Complete setup |
+| `make deploy-verify` | Verify deployed contracts | Post-deployment check |
+
+### Manual Deployment
+
+For custom deployment scenarios:
+
+```bash
+# Deploy contracts
+forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url <RPC_URL> --broadcast
+
+# Initialize contracts
+forge script scripts/deployment/InitializeQuantillon.s.sol --rpc-url <RPC_URL> --broadcast
+
+# Verify deployment
+forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url <RPC_URL>
+```
+
+### Network Configuration
+
+Set environment variables for different networks:
+
+```bash
+# Sepolia testnet
+export NETWORK=sepolia
+export SEPOLIA_RPC_URL=https://sepolia.base.org
+export EUR_USD_FEED_SEPOLIA=0x...
+export USDC_USD_FEED_SEPOLIA=0x...
+export USDC_TOKEN_SEPOLIA=0x...
+export AAVE_POOL_SEPOLIA=0x...
+
+# Base mainnet
+export NETWORK=base
+export BASE_RPC_URL=https://mainnet.base.org
+export EUR_USD_FEED_BASE=0x...
+export USDC_USD_FEED_BASE=0x...
+export USDC_TOKEN_BASE=0x...
+export AAVE_POOL_BASE=0x...
+```
+
+For detailed deployment instructions, see the [Deployment Guide](scripts/deployment/README.md).
 
 ## 📚 Documentation
 

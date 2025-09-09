@@ -151,6 +151,14 @@ contract QEUROToken is
     
     RateLimitInfo public rateLimitInfo;
 
+    /// @notice Emergency killswitch to prevent all QEURO minting operations
+    /// @dev When enabled (true), blocks both regular and batch minting functions
+    /// @dev Can only be toggled by addresses with PAUSER_ROLE
+    /// @dev Used as a crisis management tool when protocol lacks sufficient collateral
+    /// @dev Independent of the general pause mechanism - provides granular control
+    /// @return Current state of the killswitch (true = minting blocked, false = minting allowed)
+    bool public mintingKillswitch;
+
     /// @notice Blacklist mapping for compliance and security
     /// @dev Blacklisted addresses cannot transfer or receive tokens
     /// @dev Can be managed by addresses with COMPLIANCE_ROLE
@@ -185,6 +193,12 @@ contract QEUROToken is
     /// @param minter Address that performed the mint (vault)
     /// @dev OPTIMIZED: Indexed amount for efficient filtering by mint size
     event TokensMinted(address indexed to, uint256 indexed amount, address indexed minter);
+    
+    /// @notice Emitted when the minting killswitch is toggled on or off
+    /// @dev Provides transparency for emergency actions taken by protocol administrators
+    /// @param enabled True if killswitch is being enabled (minting blocked), false if disabled (minting allowed)
+    /// @param caller Address of the PAUSER_ROLE holder who toggled the killswitch
+    event MintingKillswitchToggled(bool enabled, address indexed caller);
     
     /// @notice Emitted when tokens are burned
     /// @param from Address from which tokens are burned
@@ -398,6 +412,9 @@ contract QEUROToken is
         onlyRole(MINTER_ROLE)    // Only the vault can mint
         whenNotPaused            // Not in pause mode
     {
+        // Emergency killswitch check - prevents minting when protocol lacks collateral
+        if (mintingKillswitch) revert ErrorLibrary.MintingDisabled();
+        
         // Strict parameter validation
         TokenLibrary.validateMint(to, amount, totalSupply(), maxSupply);
         
@@ -448,6 +465,9 @@ contract QEUROToken is
         whenNotPaused
         flashLoanProtection
     {
+        // Emergency killswitch check - prevents batch minting when protocol lacks collateral
+        if (mintingKillswitch) revert ErrorLibrary.MintingDisabled();
+        
         if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
         if (recipients.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
         
@@ -1599,6 +1619,31 @@ contract QEUROToken is
      */
     function mintRateLimit() external view returns (uint256 limit) {
         return rateLimitCaps.mint;
+    }
+
+    // =============================================================================
+    // KILLSWITCH FUNCTIONS
+    // =============================================================================
+
+    /**
+     * @notice Toggle the emergency minting killswitch to enable/disable all minting operations
+     * @dev Emergency function that provides granular control over minting without affecting other operations
+     * @dev Can only be called by addresses with PAUSER_ROLE for security
+     * @dev Used as a crisis management tool when protocol lacks sufficient collateral
+     * @dev Independent of the general pause mechanism - allows selective operation blocking
+     * @dev When enabled, both mint() and batchMint() functions will revert with MintingDisabled error
+     * @dev Burning operations remain unaffected by the killswitch
+     * @param enabled True to enable killswitch (block all minting), false to disable (allow minting)
+     * @custom:security Only callable by PAUSER_ROLE holders
+     * @custom:events Emits MintingKillswitchToggled event with new state and caller
+     * @custom:state-changes Updates mintingKillswitch state variable
+     * @custom:access Restricted to PAUSER_ROLE
+     * @custom:reentrancy Not protected - simple state change
+     * @custom:oracle No oracle dependencies
+     */
+    function setMintingKillswitch(bool enabled) external onlyRole(PAUSER_ROLE) {
+        mintingKillswitch = enabled;
+        emit MintingKillswitchToggled(enabled, msg.sender);
     }
 
     /**

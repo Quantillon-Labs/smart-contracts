@@ -128,10 +128,27 @@ ci: build test slither validate-natspec gas-analysis analyze-warnings
 
 # Deployment targets
 deploy-localhost:
-	@echo "🌐 Deploying to localhost with UUPS proxies..."
+	@echo "🌐 Deploying to localhost..."
 	@echo "⚠️  Make sure Anvil is running on localhost:8545"
-	@export BASESCAN_API_KEY=dummy && forge script scripts/deployment/DeployUUPS.s.sol --rpc-url http://localhost:8545 --broadcast
-	@echo "✅ Localhost UUPS deployment completed!"
+	@export BASESCAN_API_KEY=dummy && forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545 --broadcast
+	@echo "✅ Localhost deployment completed!"
+
+deploy-multisig:
+	@echo "🌐 Deploying to localhost with multisig configuration..."
+	@echo "⚠️  Make sure Anvil is running on localhost:8545"
+	@export BASESCAN_API_KEY=dummy && forge script scripts/deployment/DeployMultisig.s.sol --rpc-url http://localhost:8545 --broadcast
+	@echo "✅ Multisig deployment completed!"
+
+init-multisig:
+	@echo "⚙️ Initializing multisig deployment..."
+	@echo "⚠️  Make sure contracts are deployed first"
+	@forge script scripts/deployment/InitializeMultisig.s.sol --rpc-url http://localhost:8545 --broadcast
+	@echo "✅ Multisig initialization completed!"
+
+verify-multisig:
+	@echo "🔍 Verifying multisig deployment..."
+	@forge script scripts/deployment/VerifyMultisig.s.sol --rpc-url http://localhost:8545
+	@echo "✅ Multisig verification completed!"
 
 deploy-sepolia:
 	@echo "🌐 Deploying to Sepolia testnet..."

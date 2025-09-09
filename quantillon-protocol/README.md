@@ -132,11 +132,41 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 make deploy-full
 ```
 
+### Multisig Deployment (Recommended for Production)
+
+Deploy with multisig governance for enhanced security:
+
+```bash
+# Start local blockchain
+anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
+
+# Set multisig wallet address
+export MULTISIG_WALLET=0xYourMultisigWalletAddress
+
+# Deploy with multisig configuration
+make deploy-multisig
+
+# Initialize contracts and transfer admin roles
+make init-multisig
+
+# Verify deployment
+make verify-multisig
+```
+
+**Benefits of Multisig Deployment:**
+- ✅ **Enhanced Security**: Multiple signatures required for critical operations
+- ✅ **Decentralized Governance**: All protocol changes require multisig approval
+- ✅ **Emergency Controls**: Multisig can pause or modify protocol parameters
+- ✅ **Transparent Operations**: All changes are visible and require consensus
+
 ### Deployment Options
 
 | Command | Description | Use Case |
 |---------|-------------|----------|
 | `make deploy-localhost` | Deploy to localhost (Anvil) | Development & testing |
+| `make deploy-multisig` | Deploy with multisig configuration | Production with governance |
+| `make init-multisig` | Initialize multisig deployment | Post-deployment setup |
+| `make verify-multisig` | Verify multisig deployment | Post-deployment verification |
 | `make deploy-sepolia` | Deploy to Sepolia testnet | Testnet validation |
 | `make deploy-base` | Deploy to Base mainnet | Production deployment |
 | `make deploy-partial` | Deploy contracts only | Custom initialization |
@@ -147,6 +177,7 @@ make deploy-full
 
 For custom deployment scenarios:
 
+**Standard Deployment:**
 ```bash
 # Deploy contracts
 forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url <RPC_URL> --broadcast
@@ -156,6 +187,26 @@ forge script scripts/deployment/InitializeQuantillon.s.sol --rpc-url <RPC_URL> -
 
 # Verify deployment
 forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url <RPC_URL>
+```
+
+**Multisig Deployment:**
+```bash
+# Set multisig wallet address
+export MULTISIG_WALLET=0xYourMultisigWalletAddress
+
+# Deploy contracts with multisig configuration
+forge script scripts/deployment/DeployMultisig.s.sol --rpc-url <RPC_URL> --broadcast
+
+# Set contract addresses and initialize
+export TIME_PROVIDER=0x...
+export CHAINLINK_ORACLE=0x...
+# ... (set all contract addresses)
+
+# Initialize contracts and transfer admin roles
+forge script scripts/deployment/SimpleMultisigInit.s.sol --rpc-url <RPC_URL> --broadcast
+
+# Verify multisig deployment
+forge script scripts/deployment/VerifyMultisig.s.sol --rpc-url <RPC_URL>
 ```
 
 ### Network Configuration
@@ -181,6 +232,8 @@ export AAVE_POOL_BASE=0x...
 ```
 
 For detailed deployment instructions, see the [Deployment Guide](scripts/deployment/README.md).
+
+For multisig deployment instructions, see the [Multisig Deployment Guide](MULTISIG_DEPLOYMENT.md).
 
 ## 📚 Documentation
 

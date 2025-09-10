@@ -127,4 +127,8 @@ ci: build test slither validate-natspec gas-analysis analyze-warnings
 deploy-localhost:
 	@echo "🌐 Deploying to localhost..."
 	@./scripts/deploy-localhost.sh
+	@echo "📋 Copying ABIs to frontend..."
+	@./scripts/copy-abis.sh
+	@echo "📍 Updating frontend addresses..."
+	@./scripts/update-frontend-addresses.sh
 

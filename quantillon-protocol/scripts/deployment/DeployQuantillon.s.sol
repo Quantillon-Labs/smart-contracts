@@ -34,6 +34,18 @@ contract DeployQuantillon is Script {
     address public aaveVault;
     address public yieldShift;
 
+    // Contract instances (to avoid stack too deep)
+    TimeProvider public timeProviderContract;
+    ChainlinkOracle public chainlinkOracleContract;
+    QEUROToken public qeuroTokenContract;
+    QTIToken public qtiTokenContract;
+    QuantillonVault public quantillonVaultContract;
+    UserPool public userPoolContract;
+    HedgerPool public hedgerPoolContract;
+    stQEUROToken public stQeuroTokenContract;
+    AaveVault public aaveVaultContract;
+    YieldShift public yieldShiftContract;
+
     // Mock addresses for localhost (replace with real addresses for testnet/mainnet)
     address constant MOCK_EUR_USD_FEED = 0x1234567890123456789012345678901234567890;
     address constant MOCK_USDC_USD_FEED = 0x2345678901234567890123456789012345678901;
@@ -50,115 +62,103 @@ contract DeployQuantillon is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Phase 1: Deploy Core Infrastructure
+        // Deploy all contracts in phases
+        _deployPhase1();
+        _deployPhase2();
+        _deployPhase3();
+        _deployPhase4();
+
+        vm.stopBroadcast();
+        
+        console.log("\n=== DEPLOYMENT COMPLETED SUCCESSFULLY ===");
+        console.log("All contracts deployed and ready for initialization");
+        console.log("Deployment addresses:");
+        console.log("TimeProvider:", timeProvider);
+        console.log("ChainlinkOracle:", chainlinkOracle);
+        console.log("QEUROToken:", qeuroToken);
+        console.log("QTIToken:", qtiToken);
+        console.log("QuantillonVault:", quantillonVault);
+        console.log("UserPool:", userPool);
+        console.log("HedgerPool:", hedgerPool);
+        console.log("stQEUROToken:", stQeuroToken);
+        console.log("AaveVault:", aaveVault);
+        console.log("YieldShift:", yieldShift);
+    }
+
+    function _deployPhase1() internal {
         console.log("\n=== PHASE 1: CORE INFRASTRUCTURE ===");
         
         // 1. Deploy TimeProvider (required by most contracts)
         console.log("Deploying TimeProvider...");
-        TimeProvider timeProviderContract = new TimeProvider();
+        timeProviderContract = new TimeProvider();
         timeProvider = address(timeProviderContract);
         console.log("TimeProvider deployed to:", timeProvider);
 
         // 2. Deploy ChainlinkOracle
         console.log("Deploying ChainlinkOracle...");
-        ChainlinkOracle chainlinkOracleContract = new ChainlinkOracle(timeProviderContract);
+        chainlinkOracleContract = new ChainlinkOracle(timeProviderContract);
         chainlinkOracle = address(chainlinkOracleContract);
         console.log("ChainlinkOracle deployed to:", chainlinkOracle);
 
         // 3. Deploy QEUROToken
         console.log("Deploying QEUROToken...");
-        QEUROToken qeuroTokenContract = new QEUROToken();
+        qeuroTokenContract = new QEUROToken();
         qeuroToken = address(qeuroTokenContract);
         console.log("QEUROToken deployed to:", qeuroToken);
+    }
 
-        // Phase 2: Deploy Core Protocol Contracts
+    function _deployPhase2() internal {
         console.log("\n=== PHASE 2: CORE PROTOCOL ===");
         
         // 4. Deploy QTIToken
         console.log("Deploying QTIToken...");
-        QTIToken qtiTokenContract = new QTIToken(timeProviderContract);
+        qtiTokenContract = new QTIToken(timeProviderContract);
         qtiToken = address(qtiTokenContract);
         console.log("QTIToken deployed to:", qtiToken);
 
         // 5. Deploy QuantillonVault
         console.log("Deploying QuantillonVault...");
-        QuantillonVault quantillonVaultContract = new QuantillonVault();
+        quantillonVaultContract = new QuantillonVault();
         quantillonVault = address(quantillonVaultContract);
         console.log("QuantillonVault deployed to:", quantillonVault);
+    }
 
-        // Phase 3: Deploy Pool Contracts
+    function _deployPhase3() internal {
         console.log("\n=== PHASE 3: POOL CONTRACTS ===");
         
         // 6. Deploy UserPool
         console.log("Deploying UserPool...");
-        UserPool userPoolContract = new UserPool(timeProviderContract);
+        userPoolContract = new UserPool(timeProviderContract);
         userPool = address(userPoolContract);
         console.log("UserPool deployed to:", userPool);
 
         // 7. Deploy HedgerPool
         console.log("Deploying HedgerPool...");
-        HedgerPool hedgerPoolContract = new HedgerPool(timeProviderContract);
+        hedgerPoolContract = new HedgerPool(timeProviderContract);
         hedgerPool = address(hedgerPoolContract);
         console.log("HedgerPool deployed to:", hedgerPool);
 
         // 8. Deploy stQEUROToken
         console.log("Deploying stQEUROToken...");
-        stQEUROToken stQeuroTokenContract = new stQEUROToken(timeProviderContract);
+        stQeuroTokenContract = new stQEUROToken(timeProviderContract);
         stQeuroToken = address(stQeuroTokenContract);
         console.log("stQEUROToken deployed to:", stQeuroToken);
+    }
 
-        // Phase 4: Deploy Yield Management
+    function _deployPhase4() internal {
         console.log("\n=== PHASE 4: YIELD MANAGEMENT ===");
         
         // 9. Deploy AaveVault
         console.log("Deploying AaveVault...");
-        AaveVault aaveVaultContract = new AaveVault();
+        aaveVaultContract = new AaveVault();
         aaveVault = address(aaveVaultContract);
         console.log("AaveVault deployed to:", aaveVault);
 
         // 10. Deploy YieldShift
         console.log("Deploying YieldShift...");
-        YieldShift yieldShiftContract = new YieldShift(timeProviderContract);
+        yieldShiftContract = new YieldShift(timeProviderContract);
         yieldShift = address(yieldShiftContract);
         console.log("YieldShift deployed to:", yieldShift);
-
-        vm.stopBroadcast();
-
-        // Save deployment info
-        _saveDeploymentInfo(deployer);
-        
-        console.log("\n=== DEPLOYMENT COMPLETED SUCCESSFULLY ===");
-        console.log("All contracts deployed and ready for initialization");
-        console.log("Deployment info saved to deployments/localhost.json");
     }
 
-    function _saveDeploymentInfo(address deployer) internal {
-        string memory deploymentInfo = string(abi.encodePacked(
-            '{\n',
-            '  "network": "localhost",\n',
-            '  "timestamp": "', vm.toString(block.timestamp), '",\n',
-            '  "deployer": "', vm.toString(deployer), '",\n',
-            '  "contracts": {\n',
-            '    "TimeProvider": "', vm.toString(timeProvider), '",\n',
-            '    "ChainlinkOracle": "', vm.toString(chainlinkOracle), '",\n',
-            '    "QEUROToken": "', vm.toString(qeuroToken), '",\n',
-            '    "QTIToken": "', vm.toString(qtiToken), '",\n',
-            '    "QuantillonVault": "', vm.toString(quantillonVault), '",\n',
-            '    "UserPool": "', vm.toString(userPool), '",\n',
-            '    "HedgerPool": "', vm.toString(hedgerPool), '",\n',
-            '    "stQEUROToken": "', vm.toString(stQeuroToken), '",\n',
-            '    "AaveVault": "', vm.toString(aaveVault), '",\n',
-            '    "YieldShift": "', vm.toString(yieldShift), '"\n',
-            '  },\n',
-            '  "mockAddresses": {\n',
-            '    "EUR_USD_FEED": "', vm.toString(MOCK_EUR_USD_FEED), '",\n',
-            '    "USDC_USD_FEED": "', vm.toString(MOCK_USDC_USD_FEED), '",\n',
-            '    "USDC_TOKEN": "', vm.toString(MOCK_USDC_TOKEN), '",\n',
-            '    "AAVE_POOL": "', vm.toString(MOCK_AAVE_POOL), '"\n',
-            '  }\n',
-            '}'
-        ));
-
-        vm.writeFile("deployments/localhost.json", deploymentInfo);
-    }
 }

@@ -6,16 +6,16 @@ import "forge-std/console.sol";
 import "forge-std/StdJson.sol";
 
 // Import all contracts
-import "../src/libraries/TimeProviderLibrary.sol";
-import "../src/oracle/ChainlinkOracle.sol";
-import "../src/core/QEUROToken.sol";
-import "../src/core/QTIToken.sol";
-import "../src/core/QuantillonVault.sol";
-import "../src/core/UserPool.sol";
-import "../src/core/HedgerPool.sol";
-import "../src/core/stQEUROToken.sol";
-import "../src/core/vaults/AaveVault.sol";
-import "../src/core/yieldmanagement/YieldShift.sol";
+import "../../src/libraries/TimeProviderLibrary.sol";
+import "../../src/oracle/ChainlinkOracle.sol";
+import "../../src/core/QEUROToken.sol";
+import "../../src/core/QTIToken.sol";
+import "../../src/core/QuantillonVault.sol";
+import "../../src/core/UserPool.sol";
+import "../../src/core/HedgerPool.sol";
+import "../../src/core/stQEUROToken.sol";
+import "../../src/core/vaults/AaveVault.sol";
+import "../../src/core/yieldmanagement/YieldShift.sol";
 
 /**
  * @title InitializeQuantillon
@@ -61,7 +61,7 @@ contract InitializeQuantillon is Script {
             deployer, // governance
             deployer  // emergency
         );
-        console.log("✓ TimeProvider initialized");
+        console.log("TimeProvider initialized");
 
         // Initialize ChainlinkOracle
         console.log("Initializing ChainlinkOracle...");
@@ -71,7 +71,7 @@ contract InitializeQuantillon is Script {
             MOCK_USDC_USD_FEED,
             deployer  // treasury
         );
-        console.log("✓ ChainlinkOracle initialized");
+        console.log("ChainlinkOracle initialized");
 
         // Phase 2: Initialize Core Protocol
         console.log("\n=== PHASE 2: CORE PROTOCOL ===");
@@ -84,7 +84,7 @@ contract InitializeQuantillon is Script {
             deployer, // timelock
             deployer  // treasury
         );
-        console.log("✓ QEUROToken initialized");
+        console.log("QEUROToken initialized");
 
         // Initialize QTIToken
         console.log("Initializing QTIToken...");
@@ -93,7 +93,7 @@ contract InitializeQuantillon is Script {
             deployer, // treasury
             deployer  // timelock
         );
-        console.log("✓ QTIToken initialized");
+        console.log("QTIToken initialized");
 
         // Initialize QuantillonVault
         console.log("Initializing QuantillonVault...");
@@ -104,7 +104,7 @@ contract InitializeQuantillon is Script {
             chainlinkOracle,
             deployer  // timelock
         );
-        console.log("✓ QuantillonVault initialized");
+        console.log("QuantillonVault initialized");
 
         // Phase 3: Initialize Pool Contracts
         console.log("\n=== PHASE 3: POOL CONTRACTS ===");
@@ -120,7 +120,7 @@ contract InitializeQuantillon is Script {
             deployer, // timelock
             deployer  // treasury
         );
-        console.log("✓ UserPool initialized");
+        console.log("UserPool initialized");
 
         // Initialize HedgerPool
         console.log("Initializing HedgerPool...");
@@ -132,7 +132,7 @@ contract InitializeQuantillon is Script {
             deployer, // timelock
             deployer  // treasury
         );
-        console.log("✓ HedgerPool initialized");
+        console.log("HedgerPool initialized");
 
         // Initialize stQEUROToken
         console.log("Initializing stQEUROToken...");
@@ -144,7 +144,7 @@ contract InitializeQuantillon is Script {
             deployer, // treasury
             deployer  // timelock
         );
-        console.log("✓ stQEUROToken initialized");
+        console.log("stQEUROToken initialized");
 
         // Phase 4: Initialize Yield Management
         console.log("\n=== PHASE 4: YIELD MANAGEMENT ===");
@@ -160,7 +160,7 @@ contract InitializeQuantillon is Script {
             deployer, // timelock
             deployer  // treasury
         );
-        console.log("✓ AaveVault initialized");
+        console.log("AaveVault initialized");
 
         // Initialize YieldShift
         console.log("Initializing YieldShift...");
@@ -174,7 +174,7 @@ contract InitializeQuantillon is Script {
             deployer, // timelock
             deployer  // treasury
         );
-        console.log("✓ YieldShift initialized");
+        console.log("YieldShift initialized");
 
         // Phase 5: Configure Contract Relationships
         console.log("\n=== PHASE 5: CONFIGURE RELATIONSHIPS ===");
@@ -183,13 +183,13 @@ contract InitializeQuantillon is Script {
         console.log("Configuring QEURO token roles...");
         bytes32 MINTER_ROLE = QEUROToken(qeuroToken).MINTER_ROLE();
         QEUROToken(qeuroToken).grantRole(MINTER_ROLE, quantillonVault);
-        console.log("✓ Minter role granted to QuantillonVault");
+        console.log("Minter role granted to QuantillonVault");
 
         // Set yield manager roles
         console.log("Configuring YieldShift roles...");
         bytes32 YIELD_MANAGER_ROLE = YieldShift(yieldShift).YIELD_MANAGER_ROLE();
         YieldShift(yieldShift).grantRole(YIELD_MANAGER_ROLE, aaveVault);
-        console.log("✓ Yield manager role granted to AaveVault");
+        console.log("Yield manager role granted to AaveVault");
 
         vm.stopBroadcast();
 

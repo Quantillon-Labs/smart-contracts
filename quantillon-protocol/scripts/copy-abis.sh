@@ -13,7 +13,7 @@ SMART_CONTRACTS_OUT="../out/"
 mkdir -p "$FRONTEND_ABI_DIR"
 
 # List of contracts to copy
-contracts=("QEUROToken" "ChainlinkOracle" "QuantillonVault" "QTIToken" "stQEUROToken" "UserPool" "HedgerPool" "YieldShift")
+contracts=("QEUROToken" "ChainlinkOracle" "QuantillonVault" "QTIToken" "stQEUROToken" "UserPool" "HedgerPool" "YieldShift" "MockUSDC")
 
 # Copy each contract ABI
 for contract in "${contracts[@]}"; do

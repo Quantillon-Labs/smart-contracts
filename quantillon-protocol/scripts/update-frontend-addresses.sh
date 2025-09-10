@@ -7,18 +7,41 @@ echo "Updating frontend addresses.json with latest deployment..."
 
 # Define paths
 FRONTEND_ADDRESSES_FILE="../../../quantillon-dapp/src/config/addresses.json"
-BROADCAST_FILE="../broadcast/DeployQuantillon.s.sol/31337/run-latest.json"
 
-# Check if broadcast file exists
-if [ ! -f "$BROADCAST_FILE" ]; then
-    echo "❌ Broadcast file not found: $BROADCAST_FILE"
-    echo "Please run deployment first: make deploy-localhost"
+# Detect which network was deployed (check for broadcast files)
+LOCALHOST_BROADCAST="../broadcast/DeployQuantillon.s.sol/31337/run-latest.json"
+BASE_SEPOLIA_BROADCAST="../broadcast/DeployQuantillon.s.sol/84532/run-latest.json"
+
+if [ -f "$LOCALHOST_BROADCAST" ]; then
+    BROADCAST_FILE="$LOCALHOST_BROADCAST"
+    NETWORK="localhost"
+    CHAIN_ID="31337"
+    echo "📡 Detected localhost deployment"
+elif [ -f "$BASE_SEPOLIA_BROADCAST" ]; then
+    BROADCAST_FILE="$BASE_SEPOLIA_BROADCAST"
+    NETWORK="base-sepolia"
+    CHAIN_ID="84532"
+    echo "📡 Detected Base Sepolia deployment"
+else
+    echo "❌ No deployment broadcast file found"
+    echo "Please run deployment first:"
+    echo "  make deploy-localhost (for localhost)"
+    echo "  make deploy-base-sepolia (for Base Sepolia)"
     exit 1
 fi
+
+echo "Using broadcast file: $BROADCAST_FILE"
 
 # Extract addresses using jq
 echo "📋 Extracting deployment addresses..."
 
+MOCK_USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$BROADCAST_FILE" | head -1)
+
+# Fallback for MockUSDC if not found
+if [ "$MOCK_USDC" = "null" ] || [ -z "$MOCK_USDC" ]; then
+    echo "⚠️  MockUSDC not found in deployment, using placeholder address"
+    MOCK_USDC="0x0000000000000000000000000000000000000000"
+fi
 QEURO_TOKEN=$(jq -r '.transactions[] | select(.contractName == "QEUROToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
 QUANTILLON_VAULT=$(jq -r '.transactions[] | select(.contractName == "QuantillonVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
 QTI_TOKEN=$(jq -r '.transactions[] | select(.contractName == "QTIToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
@@ -31,8 +54,8 @@ YIELD_SHIFT=$(jq -r '.transactions[] | select(.contractName == "YieldShift") | .
 # Create updated addresses.json
 cat > "$FRONTEND_ADDRESSES_FILE" << EOF
 {
-  "31337": {
-    "name": "Anvil Localhost",
+  "$CHAIN_ID": {
+    "name": "$(if [ "$NETWORK" = "localhost" ]; then echo "Anvil Localhost"; else echo "Base Sepolia"; fi)",
     "isTestnet": true,
     "contracts": {
       "QEUROToken": "$QEURO_TOKEN",
@@ -43,7 +66,7 @@ cat > "$FRONTEND_ADDRESSES_FILE" << EOF
       "UserPool": "$USER_POOL",
       "HedgerPool": "$HEDGER_POOL",
       "YieldShift": "$YIELD_SHIFT",
-      "USDC": "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+      "USDC": "$MOCK_USDC"
     }
   },
   "84532": {
@@ -81,6 +104,7 @@ EOF
 
 echo "✅ Frontend addresses.json updated successfully!"
 echo "📄 Updated addresses:"
+echo "   MockUSDC: $MOCK_USDC"
 echo "   QEUROToken: $QEURO_TOKEN"
 echo "   QuantillonVault: $QUANTILLON_VAULT"
 echo "   QTIToken: $QTI_TOKEN"

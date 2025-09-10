@@ -40,6 +40,8 @@ help:
 	@echo ""
 	@echo "🌐 Deployment:"
 	@echo "  make deploy-localhost - Deploy to localhost (Anvil) with automated checks"
+	@echo "  make deploy-localhost-with-mock-usdc - Deploy to localhost with MockUSDC"
+	@echo "  make deploy-base-sepolia - Deploy to Base Sepolia testnet with MockUSDC"
 	@echo ""
 	@echo "📝 Note: Other deployments are manual - use forge script commands directly"
 
@@ -127,6 +129,24 @@ ci: build test slither validate-natspec gas-analysis analyze-warnings
 deploy-localhost:
 	@echo "🌐 Deploying to localhost..."
 	@./scripts/deploy-localhost.sh
+	@echo "📋 Copying ABIs to frontend..."
+	@./scripts/copy-abis.sh
+	@echo "📍 Updating frontend addresses..."
+	@./scripts/update-frontend-addresses.sh
+
+# Localhost deployment with MockUSDC
+deploy-localhost-with-mock-usdc:
+	@echo "🌐 Deploying to localhost with MockUSDC..."
+	@./scripts/deploy-localhost.sh --with-mock-usdc
+	@echo "📋 Copying ABIs to frontend..."
+	@./scripts/copy-abis.sh
+	@echo "📍 Updating frontend addresses..."
+	@./scripts/update-frontend-addresses.sh
+
+# Base Sepolia deployment
+deploy-base-sepolia:
+	@echo "🌐 Deploying to Base Sepolia..."
+	@./scripts/deploy-base-sepolia.sh
 	@echo "📋 Copying ABIs to frontend..."
 	@./scripts/copy-abis.sh
 	@echo "📍 Updating frontend addresses..."

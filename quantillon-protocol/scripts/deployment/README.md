@@ -6,10 +6,10 @@ This directory contains the complete deployment infrastructure for the Quantillo
 
 ### **Script Status**
 - ✅ **All scripts compile successfully**
-- ✅ **3/5 scripts run without errors**
-- ⚠️ **2/5 scripts have expected limitations** (Production script needs real oracles, some need deployment files)
+- ✅ **All deployment scripts run without errors**
 - 🎯 **Streamlined deployment**: Only essential scripts for maximum efficiency
 - 🤖 **Automated localhost deployment**: Available via `make deploy-localhost`
+- 🪙 **MockUSDC integration**: Automatic MockUSDC deployment for testing networks
 
 ## 📁 Script Structure
 
@@ -18,7 +18,7 @@ This directory contains the complete deployment infrastructure for the Quantillo
 | Script | Purpose | Status | Usage |
 |--------|---------|--------|-------|
 | `DeployProduction.s.sol` | **🚀 PRODUCTION DEPLOYMENT** - UUPS + Multisig + Network config | ✅ **Working** | `export MULTISIG_WALLET=0x... && forge script scripts/deployment/DeployProduction.s.sol --rpc-url <RPC> --broadcast` |
-| `DeployQuantillon.s.sol` | **🛠️ DEVELOPMENT DEPLOYMENT** - Deploys all contracts for development/testing | ✅ **Working** | `forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url <RPC> --broadcast` |
+| `DeployQuantillon.s.sol` | **🛠️ DEVELOPMENT DEPLOYMENT** - Deploys all contracts with MockUSDC for localhost/Base Sepolia | ✅ **Working** | `forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url <RPC> --broadcast` |
 | `InitializeQuantillon.s.sol` | **Initialization script** - Sets up contracts with proper roles and relationships | ✅ **Working** | `forge script scripts/deployment/InitializeQuantillon.s.sol --rpc-url <RPC> --broadcast` |
 | `VerifyDeployment.s.sol` | **Verification script** - Verifies deployment and contract integrity | ✅ **Working** | `forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url <RPC>` |
 | `VerifyQuantillon.s.sol` | **Protocol verification script** - Comprehensive protocol verification | ⚠️ **Needs deployment file** | `forge script scripts/deployment/VerifyQuantillon.s.sol --rpc-url <RPC>` |
@@ -26,17 +26,20 @@ This directory contains the complete deployment infrastructure for the Quantillo
 ### Deployment Methods
 
 - **Localhost**: Automated script with `make deploy-localhost` or `./scripts/deploy-localhost.sh`
+- **Localhost with MockUSDC**: `make deploy-localhost-with-mock-usdc` or `./scripts/deploy-localhost.sh --with-mock-usdc`
+- **Base Sepolia**: Automated script with `make deploy-base-sepolia` (includes MockUSDC)
 - **Production**: Manual deployment using `forge script` commands directly
-- **Other Networks**: Manual deployment with full control over environment variables
 
 ## 📁 File Structure
 
 ```
 scripts/
-├── deploy-localhost.sh         # 🚀 Automated localhost deployment script
+├── deploy-localhost.sh         # 🚀 Automated localhost deployment script (with MockUSDC option)
+├── deploy-base-sepolia.sh      # 🚀 Automated Base Sepolia deployment script (with MockUSDC)
 └── deployment/
     ├── DeployProduction.s.sol      # 🚀 PRODUCTION deployment (UUPS + Multisig + Network)
-    ├── DeployQuantillon.s.sol      # 🛠️ Development deployment script
+    ├── DeployQuantillon.s.sol      # 🛠️ Development deployment script (with MockUSDC)
+    ├── DeployMockUSDC.s.sol        # 🪙 Standalone MockUSDC deployment script
     ├── InitializeQuantillon.s.sol  # Initialization script
     ├── VerifyDeployment.s.sol      # Verification script
     ├── VerifyQuantillon.s.sol      # Protocol verification script
@@ -44,7 +47,8 @@ scripts/
 
 deployments/
 ├── production-localhost.json   # Production deployment addresses
-└── localhost.json              # Development deployment addresses
+├── localhost.json              # Development deployment addresses
+└── base-sepolia.json           # Base Sepolia deployment addresses
 ```
 
 ## 🎯 Deployment Types & Use Cases

@@ -15,6 +15,7 @@ import "../../src/core/HedgerPool.sol";
 import "../../src/core/stQEUROToken.sol";
 import "../../src/core/vaults/AaveVault.sol";
 import "../../src/core/yieldmanagement/YieldShift.sol";
+import "../../src/mocks/MockUSDC.sol";
 
 /**
  * @title DeployQuantillon
@@ -33,6 +34,7 @@ contract DeployQuantillon is Script {
     address public stQeuroToken;
     address public aaveVault;
     address public yieldShift;
+    address public mockUSDC;
 
     // Contract instances (to avoid stack too deep)
     TimeProvider public timeProviderContract;
@@ -45,22 +47,43 @@ contract DeployQuantillon is Script {
     stQEUROToken public stQeuroTokenContract;
     AaveVault public aaveVaultContract;
     YieldShift public yieldShiftContract;
+    MockUSDC public mockUSDCContract;
 
+    // Network configuration
+    string public network;
+    bool public isLocalhost;
+    bool public isBaseSepolia;
+    
     // Mock addresses for localhost (replace with real addresses for testnet/mainnet)
     address constant MOCK_EUR_USD_FEED = 0x1234567890123456789012345678901234567890;
     address constant MOCK_USDC_USD_FEED = 0x2345678901234567890123456789012345678901;
-    address constant MOCK_USDC_TOKEN = 0x3456789012345678901234567890123456789012;
     address constant MOCK_AAVE_POOL = 0x4567890123456789012345678901234567890123;
+    
+    // Base Sepolia addresses (real addresses for testnet)
+    // Note: These are placeholder addresses - update with actual Base Sepolia addresses
+    address constant BASE_SEPOLIA_EUR_USD_FEED = 0x0000000000000000000000000000000000000001; // EUR/USD on Base Sepolia
+    address constant BASE_SEPOLIA_USDC_USD_FEED = 0x0000000000000000000000000000000000000002; // USDC/USD on Base Sepolia
+    address constant BASE_SEPOLIA_USDC_TOKEN = 0x0000000000000000000000000000000000000003; // USDC on Base Sepolia
+    address constant BASE_SEPOLIA_AAVE_POOL = 0x0000000000000000000000000000000000000004; // Aave Pool on Base Sepolia
 
     function run() external {
         uint256 deployerPrivateKey = vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
         address deployer = vm.addr(deployerPrivateKey);
         
+        // Detect network
+        _detectNetwork();
+        
         console.log("=== QUANTILLON PROTOCOL DEPLOYMENT ===");
+        console.log("Network:", network);
         console.log("Deploying with account:", deployer);
         console.log("Account balance:", deployer.balance / 1e18, "ETH");
 
         vm.startBroadcast(deployerPrivateKey);
+
+        // Deploy MockUSDC first if needed (localhost or Base Sepolia)
+        if (isLocalhost || isBaseSepolia) {
+            _deployMockUSDC();
+        }
 
         // Deploy all contracts in phases
         _deployPhase1();
@@ -73,6 +96,9 @@ contract DeployQuantillon is Script {
         console.log("\n=== DEPLOYMENT COMPLETED SUCCESSFULLY ===");
         console.log("All contracts deployed and ready for initialization");
         console.log("Deployment addresses:");
+        if (isLocalhost || isBaseSepolia) {
+            console.log("MockUSDC:", mockUSDC);
+        }
         console.log("TimeProvider:", timeProvider);
         console.log("ChainlinkOracle:", chainlinkOracle);
         console.log("QEUROToken:", qeuroToken);
@@ -83,6 +109,84 @@ contract DeployQuantillon is Script {
         console.log("stQEUROToken:", stQeuroToken);
         console.log("AaveVault:", aaveVault);
         console.log("YieldShift:", yieldShift);
+    }
+
+    function _detectNetwork() internal {
+        uint256 chainId = block.chainid;
+        
+        if (chainId == 31337) {
+            network = "localhost";
+            isLocalhost = true;
+            isBaseSepolia = false;
+        } else if (chainId == 84532) {
+            network = "base-sepolia";
+            isLocalhost = false;
+            isBaseSepolia = true;
+        } else {
+            network = "unknown";
+            isLocalhost = false;
+            isBaseSepolia = false;
+        }
+        
+        console.log("Detected chain ID:", chainId);
+        console.log("Network:", network);
+    }
+
+    function _deployMockUSDC() internal {
+        console.log("\n=== DEPLOYING MOCK USDC ===");
+        
+        console.log("Deploying MockUSDC...");
+        mockUSDCContract = new MockUSDC();
+        mockUSDC = address(mockUSDCContract);
+        console.log("MockUSDC deployed to:", mockUSDC);
+        console.log("MockUSDC name:", mockUSDCContract.name());
+        console.log("MockUSDC symbol:", mockUSDCContract.symbol());
+        console.log("MockUSDC decimals:", mockUSDCContract.decimals());
+        
+        // Mint some USDC to deployer for testing
+        uint256 mintAmount = 1000000 * 10**6; // 1M USDC
+        mockUSDCContract.mint(msg.sender, mintAmount);
+        console.log("Minted", mintAmount / 10**6, "USDC to deployer");
+    }
+
+    function _getUSDCAddress() internal view returns (address) {
+        if (isLocalhost) {
+            return mockUSDC;
+        } else if (isBaseSepolia) {
+            return BASE_SEPOLIA_USDC_TOKEN;
+        } else {
+            return address(0); // fallback - no USDC available
+        }
+    }
+
+    function _getEURUSDFeed() internal view returns (address) {
+        if (isLocalhost) {
+            return MOCK_EUR_USD_FEED;
+        } else if (isBaseSepolia) {
+            return BASE_SEPOLIA_EUR_USD_FEED;
+        } else {
+            return MOCK_EUR_USD_FEED; // fallback
+        }
+    }
+
+    function _getUSDCUSDFeed() internal view returns (address) {
+        if (isLocalhost) {
+            return MOCK_USDC_USD_FEED;
+        } else if (isBaseSepolia) {
+            return BASE_SEPOLIA_USDC_USD_FEED;
+        } else {
+            return MOCK_USDC_USD_FEED; // fallback
+        }
+    }
+
+    function _getAavePool() internal view returns (address) {
+        if (isLocalhost) {
+            return MOCK_AAVE_POOL;
+        } else if (isBaseSepolia) {
+            return BASE_SEPOLIA_AAVE_POOL;
+        } else {
+            return MOCK_AAVE_POOL; // fallback
+        }
     }
 
     function _deployPhase1() internal {
@@ -99,6 +203,8 @@ contract DeployQuantillon is Script {
         chainlinkOracleContract = new ChainlinkOracle(timeProviderContract);
         chainlinkOracle = address(chainlinkOracleContract);
         console.log("ChainlinkOracle deployed to:", chainlinkOracle);
+        console.log("Using EUR/USD feed:", _getEURUSDFeed());
+        console.log("Using USDC/USD feed:", _getUSDCUSDFeed());
 
         // 3. Deploy QEUROToken
         console.log("Deploying QEUROToken...");
@@ -153,6 +259,8 @@ contract DeployQuantillon is Script {
         aaveVaultContract = new AaveVault();
         aaveVault = address(aaveVaultContract);
         console.log("AaveVault deployed to:", aaveVault);
+        console.log("Using USDC address:", _getUSDCAddress());
+        console.log("Using Aave pool:", _getAavePool());
 
         // 10. Deploy YieldShift
         console.log("Deploying YieldShift...");

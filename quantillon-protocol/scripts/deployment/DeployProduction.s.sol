@@ -120,14 +120,14 @@ contract DeployProduction is Script {
 
     function _loadNetworkConfig() internal {
         if (keccak256(abi.encodePacked(network)) == keccak256(abi.encodePacked("localhost"))) {
-            // Mock addresses for localhost
+            // Mock addresses for localhost (for testing production script locally)
             eurUsdFeed = 0x1234567890123456789012345678901234567890;
             usdcUsdFeed = 0x2345678901234567890123456789012345678901;
             usdcToken = 0x3456789012345678901234567890123456789012;
             aavePool = 0x4567890123456789012345678901234567890123;
             rewardsController = address(0);
         } else {
-            // Load from environment variables for real networks
+            // Load from environment variables for real networks (mainnet, testnet)
             eurUsdFeed = vm.envAddress(string(abi.encodePacked("EUR_USD_FEED_", _toUpperCase(network))));
             usdcUsdFeed = vm.envAddress(string(abi.encodePacked("USDC_USD_FEED_", _toUpperCase(network))));
             usdcToken = vm.envAddress(string(abi.encodePacked("USDC_TOKEN_", _toUpperCase(network))));

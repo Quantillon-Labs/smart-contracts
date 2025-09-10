@@ -19,9 +19,9 @@ contract DeployOracleWithProxy is Script {
         // TimeProvider address from previous deployment
         address timeProviderAddress = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
         
-        // Mock price feed addresses from previous deployment
-        address eurUsdFeed = 0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e;
-        address usdcUsdFeed = 0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82;
+        // Mock price feed addresses from latest deployment
+        address eurUsdFeed = 0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE;
+        address usdcUsdFeed = 0x3Aa5ebB10DC797CAC828524e59A333d0A371443c;
         
         console.log("=== DEPLOYING ORACLE WITH PROXY ===");
         console.log("Deploying with account:", deployer);
@@ -62,5 +62,14 @@ contract DeployOracleWithProxy is Script {
         console.log("Implementation:", address(implementation));
         console.log("Proxy (Oracle):", address(oracle));
         console.log("Update your dApp to use the proxy address:", address(oracle));
+        
+        // Copy ChainlinkOracle ABI to frontend
+        copyOracleABIToFrontend();
+    }
+
+    function copyOracleABIToFrontend() internal {
+        console.log("Copying ChainlinkOracle ABI to frontend...");
+        console.log("Please run './scripts/copy-abis.sh' manually to copy ABIs to frontend");
+        console.log("This ensures the frontend has the latest contract interfaces.");
     }
 }

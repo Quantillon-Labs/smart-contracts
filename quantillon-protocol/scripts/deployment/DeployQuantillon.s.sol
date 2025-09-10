@@ -159,6 +159,15 @@ contract DeployQuantillon is Script {
         yieldShiftContract = new YieldShift(timeProviderContract);
         yieldShift = address(yieldShiftContract);
         console.log("YieldShift deployed to:", yieldShift);
+
+        // 11. Copy ABIs to frontend
+        copyABIsToFrontend();
+    }
+
+    function copyABIsToFrontend() internal {
+        console.log("Copying ABIs to frontend...");
+        console.log("Please run './scripts/copy-abis.sh' manually to copy ABIs to frontend");
+        console.log("This ensures the frontend has the latest contract interfaces.");
     }
 
 }

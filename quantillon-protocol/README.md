@@ -128,8 +128,11 @@ Deploy the complete Quantillon Protocol to localhost:
 # Start local blockchain
 anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 
-# Deploy all contracts
-make deploy-full
+# Deploy all contracts (includes MockUSDC automatically)
+make deploy-localhost
+
+# Or deploy with explicit MockUSDC flag
+make deploy-localhost-with-mock-usdc
 ```
 
 ### Multisig Deployment (Recommended for Production)
@@ -144,13 +147,7 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 export MULTISIG_WALLET=0xYourMultisigWalletAddress
 
 # Deploy with multisig configuration
-make deploy-multisig
-
-# Initialize contracts and transfer admin roles
-make init-multisig
-
-# Verify deployment
-make verify-multisig
+make deploy-production
 ```
 
 **Benefits of Multisig Deployment:**
@@ -164,67 +161,42 @@ make verify-multisig
 | Command | Description | Use Case |
 |---------|-------------|----------|
 | `make deploy-localhost` | Deploy to localhost (Anvil) | Development & testing |
-| `make deploy-multisig` | Deploy with multisig configuration | Production with governance |
-| `make init-multisig` | Initialize multisig deployment | Post-deployment setup |
-| `make verify-multisig` | Verify multisig deployment | Post-deployment verification |
-| `make deploy-sepolia` | Deploy to Sepolia testnet | Testnet validation |
-| `make deploy-base` | Deploy to Base mainnet | Production deployment |
-| `make deploy-partial` | Deploy contracts only | Custom initialization |
-| `make deploy-full` | Full deployment + initialization | Complete setup |
-| `make deploy-verify` | Verify deployed contracts | Post-deployment check |
+| `make deploy-localhost-with-mock-usdc` | Deploy to localhost with MockUSDC | Development with USDC testing |
+| `make deploy-base-sepolia` | Deploy to Base Sepolia testnet | Testnet validation with MockUSDC |
+| `make deploy-production` | Deploy with multisig configuration | Production with governance |
 
 ### Manual Deployment
 
 For custom deployment scenarios:
 
-**Standard Deployment:**
+**Development Deployment:**
 ```bash
-# Deploy contracts
+# Deploy contracts (includes MockUSDC for localhost/Base Sepolia)
 forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url <RPC_URL> --broadcast
-
-# Initialize contracts
-forge script scripts/deployment/InitializeQuantillon.s.sol --rpc-url <RPC_URL> --broadcast
-
-# Verify deployment
-forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url <RPC_URL>
 ```
 
-**Multisig Deployment:**
+**Production Deployment:**
 ```bash
 # Set multisig wallet address
 export MULTISIG_WALLET=0xYourMultisigWalletAddress
 
 # Deploy contracts with multisig configuration
-forge script scripts/deployment/DeployMultisig.s.sol --rpc-url <RPC_URL> --broadcast
-
-# Set contract addresses and initialize
-export TIME_PROVIDER=0x...
-export CHAINLINK_ORACLE=0x...
-# ... (set all contract addresses)
-
-# Initialize contracts and transfer admin roles
-forge script scripts/deployment/SimpleMultisigInit.s.sol --rpc-url <RPC_URL> --broadcast
-
-# Verify multisig deployment
-forge script scripts/deployment/VerifyMultisig.s.sol --rpc-url <RPC_URL>
+forge script scripts/deployment/DeployProduction.s.sol --rpc-url <RPC_URL> --broadcast
 ```
 
 ### Network Configuration
 
-Set environment variables for different networks:
+The deployment scripts automatically detect networks and configure accordingly:
+
+- **Localhost (Chain ID: 31337)**: Uses MockUSDC and mock oracle addresses
+- **Base Sepolia (Chain ID: 84532)**: Uses MockUSDC and real Base Sepolia oracle addresses  
+- **Production Networks**: Uses real USDC and oracle addresses from environment variables
+
+For production deployments, set environment variables:
 
 ```bash
-# Sepolia testnet
-export NETWORK=sepolia
-export SEPOLIA_RPC_URL=https://sepolia.base.org
-export EUR_USD_FEED_SEPOLIA=0x...
-export USDC_USD_FEED_SEPOLIA=0x...
-export USDC_TOKEN_SEPOLIA=0x...
-export AAVE_POOL_SEPOLIA=0x...
-
 # Base mainnet
 export NETWORK=base
-export BASE_RPC_URL=https://mainnet.base.org
 export EUR_USD_FEED_BASE=0x...
 export USDC_USD_FEED_BASE=0x...
 export USDC_TOKEN_BASE=0x...

@@ -82,12 +82,16 @@ QEURO_TOKEN=$(jq -r '.transactions[] | select(.contractName == "QEUROToken") | .
 QUANTILLON_VAULT=$(jq -r '.transactions[] | select(.contractName == "QuantillonVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
 QTI_TOKEN=$(jq -r '.transactions[] | select(.contractName == "QTIToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
 STQEURO_TOKEN=$(jq -r '.transactions[] | select(.contractName == "stQEUROToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
-CHAINLINK_ORACLE=$(jq -r '.transactions[] | select(.contractName == "ChainlinkOracle") | .contractAddress' "$BROADCAST_FILE" | head -1)
+CHAINLINK_ORACLE=$(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy") | .contractAddress' "$BROADCAST_FILE" | head -1)
 USER_POOL=$(jq -r '.transactions[] | select(.contractName == "UserPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
 HEDGER_POOL=$(jq -r '.transactions[] | select(.contractName == "HedgerPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
 YIELD_SHIFT=$(jq -r '.transactions[] | select(.contractName == "YieldShift") | .contractAddress' "$BROADCAST_FILE" | head -1)
 AAVE_VAULT=$(jq -r '.transactions[] | select(.contractName == "AaveVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
 TIME_PROVIDER=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$BROADCAST_FILE" | head -1)
+
+# Extract mock price feed addresses
+MOCK_EUR_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$BROADCAST_FILE" | head -1)
+MOCK_USDC_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$BROADCAST_FILE" | tail -1)
 
 # Fallback for MockUSDC if not found
 if [ "$MOCK_USDC" = "null" ] || [ -z "$MOCK_USDC" ]; then
@@ -113,7 +117,10 @@ cat > "$FRONTEND_ADDRESSES_FILE" << EOF
       "YieldShift": "$YIELD_SHIFT",
       "AaveVault": "$AAVE_VAULT",
       "TimeProvider": "$TIME_PROVIDER",
-      "USDC": "$MOCK_USDC"
+      "USDC": "$MOCK_USDC",
+      "MockUSDC": "$MOCK_USDC",
+      "MockEURUSD": "$MOCK_EUR_USD",
+      "MockUSDCUSD": "$MOCK_USDC_USD"
     }
   },
   "84532": {

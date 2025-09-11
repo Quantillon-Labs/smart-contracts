@@ -20,6 +20,9 @@ import "../../src/mocks/MockUSDC.sol";
 // Import mock aggregator for localhost deployment
 import "../../test/ChainlinkOracle.t.sol";
 
+// Import proxy for upgradeable contracts
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 /**
  * @title DeployQuantillon
  * @notice Complete deployment script for Quantillon Protocol
@@ -242,22 +245,27 @@ contract DeployQuantillon is Script {
         timeProvider = address(timeProviderContract);
         console.log("TimeProvider deployed to:", timeProvider);
 
-        // 2. Deploy ChainlinkOracle
-        console.log("Deploying ChainlinkOracle...");
-        chainlinkOracleContract = new ChainlinkOracle(timeProviderContract);
-        chainlinkOracle = address(chainlinkOracleContract);
-        console.log("ChainlinkOracle deployed to:", chainlinkOracle);
+        // 2. Deploy ChainlinkOracle with proxy
+        console.log("Deploying ChainlinkOracle implementation...");
+        ChainlinkOracle implementation = new ChainlinkOracle(timeProviderContract);
+        console.log("ChainlinkOracle implementation deployed to:", address(implementation));
+        
+        console.log("Deploying ChainlinkOracle proxy...");
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(implementation),
+            abi.encodeWithSelector(
+                ChainlinkOracle.initialize.selector,
+                msg.sender,        // admin
+                _getEURUSDFeed(),  // EUR/USD feed
+                _getUSDCUSDFeed(), // USDC/USD feed
+                msg.sender         // treasury (using deployer for now)
+            )
+        );
+        chainlinkOracle = address(proxy);
+        chainlinkOracleContract = ChainlinkOracle(chainlinkOracle);
+        console.log("ChainlinkOracle proxy deployed to:", chainlinkOracle);
         console.log("Using EUR/USD feed:", _getEURUSDFeed());
         console.log("Using USDC/USD feed:", _getUSDCUSDFeed());
-        
-        // Initialize ChainlinkOracle with price feed addresses
-        console.log("Initializing ChainlinkOracle...");
-        chainlinkOracleContract.initialize(
-            msg.sender, // admin
-            _getEURUSDFeed(), // EUR/USD feed
-            _getUSDCUSDFeed(), // USDC/USD feed
-            msg.sender // treasury (using deployer for now)
-        );
         console.log("ChainlinkOracle initialized successfully");
 
         // 3. Deploy QEUROToken

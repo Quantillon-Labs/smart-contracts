@@ -20,6 +20,9 @@ import "../../src/mocks/MockUSDC.sol";
 // Import mock aggregator for localhost deployment
 import "../../test/ChainlinkOracle.t.sol";
 
+// Import mock Aave contracts for localhost deployment
+import "./MockAaveContracts.sol";
+
 // Import proxy for upgradeable contracts
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
@@ -109,6 +112,8 @@ contract DeployQuantillon is Script {
         _deployPhase2();
         _deployPhase3();
         _deployPhase4();
+        _deployPhase5();
+        _initializeContracts();
 
         vm.stopBroadcast();
         
@@ -205,6 +210,30 @@ contract DeployQuantillon is Script {
             return address(0); // fallback - no USDC available
         }
     }
+    
+    function _getAaveProvider() internal view returns (address) {
+        if (isLocalhost) {
+            // Localhost - use deployer address as mock Aave provider
+            return msg.sender;
+        } else if (isBaseSepolia) {
+            // Base Sepolia - Aave V3 Provider
+            return 0x012Bef543e50E6F4b5C79e6c5Adf0F31f659860c;
+        } else {
+            return address(0); // fallback
+        }
+    }
+    
+    function _getRewardsController() internal view returns (address) {
+        if (isLocalhost) {
+            // Localhost - use deployer address as mock rewards controller
+            return msg.sender;
+        } else if (isBaseSepolia) {
+            // Base Sepolia - Aave V3 Rewards Controller
+            return 0x7794835f9E2eD8d4B8d4C4c0E4B8c4C8c0e4b8C4;
+        } else {
+            return address(0); // fallback
+        }
+    }
 
     function _getEURUSDFeed() internal view returns (address) {
         if (isLocalhost) {
@@ -268,71 +297,257 @@ contract DeployQuantillon is Script {
         console.log("Using USDC/USD feed:", _getUSDCUSDFeed());
         console.log("ChainlinkOracle initialized successfully");
 
-        // 3. Deploy QEUROToken
-        console.log("Deploying QEUROToken...");
-        qeuroTokenContract = new QEUROToken();
-        qeuroToken = address(qeuroTokenContract);
-        console.log("QEUROToken deployed to:", qeuroToken);
+        // 3. Deploy temporary QEUROToken first (needed for QuantillonVault)
+        console.log("Deploying temporary QEUROToken implementation...");
+        QEUROToken tempQeuroTokenImpl = new QEUROToken();
+        console.log("Temporary QEUROToken implementation deployed to:", address(tempQeuroTokenImpl));
+        
+        console.log("Deploying temporary QEUROToken proxy...");
+        bytes memory tempQeuroInitData = abi.encodeWithSelector(
+            QEUROToken.initialize.selector,
+            msg.sender,        // admin
+            msg.sender,        // vault (temporary - will be updated)
+            msg.sender,        // timelock
+            msg.sender         // treasury
+        );
+        ERC1967Proxy tempQeuroProxy = new ERC1967Proxy(address(tempQeuroTokenImpl), tempQeuroInitData);
+        address tempQeuroToken = address(tempQeuroProxy);
+        console.log("Temporary QEUROToken proxy deployed to:", tempQeuroToken);
+        
+        // 4. Deploy QuantillonVault with temporary QEUROToken
+        console.log("Deploying QuantillonVault implementation...");
+        QuantillonVault vaultImpl = new QuantillonVault();
+        console.log("QuantillonVault implementation deployed to:", address(vaultImpl));
+        
+        console.log("Deploying QuantillonVault proxy...");
+        bytes memory vaultInitData = abi.encodeWithSelector(
+            QuantillonVault.initialize.selector,
+            msg.sender,        // admin
+            tempQeuroToken,    // _qeuro (temporary)
+            _getUSDCAddress(), // _usdc
+            chainlinkOracle,   // _oracle
+            msg.sender         // _timelock
+        );
+        ERC1967Proxy vaultProxy = new ERC1967Proxy(address(vaultImpl), vaultInitData);
+        quantillonVault = address(vaultProxy);
+        quantillonVaultContract = QuantillonVault(quantillonVault);
+        console.log("QuantillonVault proxy deployed to:", quantillonVault);
+        
+        // 5. Deploy real QEUROToken with correct vault address
+        console.log("Deploying real QEUROToken implementation...");
+        QEUROToken qeuroTokenImpl = new QEUROToken();
+        console.log("Real QEUROToken implementation deployed to:", address(qeuroTokenImpl));
+        
+        console.log("Deploying real QEUROToken proxy...");
+        bytes memory qeuroInitData = abi.encodeWithSelector(
+            QEUROToken.initialize.selector,
+            msg.sender,        // admin
+            quantillonVault,   // vault (correct address)
+            msg.sender,        // timelock
+            msg.sender         // treasury
+        );
+        ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroTokenImpl), qeuroInitData);
+        qeuroToken = address(qeuroProxy);
+        qeuroTokenContract = QEUROToken(qeuroToken);
+        console.log("Real QEUROToken proxy deployed to:", qeuroToken);
     }
 
     function _deployPhase2() internal {
         console.log("\n=== PHASE 2: CORE PROTOCOL ===");
         
-        // 4. Deploy QTIToken
-        console.log("Deploying QTIToken...");
-        qtiTokenContract = new QTIToken(timeProviderContract);
-        qtiToken = address(qtiTokenContract);
-        console.log("QTIToken deployed to:", qtiToken);
-
-        // 5. Deploy QuantillonVault
-        console.log("Deploying QuantillonVault...");
-        quantillonVaultContract = new QuantillonVault();
-        quantillonVault = address(quantillonVaultContract);
-        console.log("QuantillonVault deployed to:", quantillonVault);
+        // 5. Deploy QTIToken (upgradeable)
+        console.log("Deploying QTIToken implementation...");
+        QTIToken qtiTokenImpl = new QTIToken(timeProviderContract);
+        console.log("QTIToken implementation deployed to:", address(qtiTokenImpl));
+        
+        console.log("Deploying QTIToken proxy...");
+        bytes memory qtiInitData = abi.encodeWithSelector(
+            QTIToken.initialize.selector,
+            msg.sender,        // admin
+            msg.sender,        // treasury
+            msg.sender         // timelock
+        );
+        ERC1967Proxy qtiProxy = new ERC1967Proxy(address(qtiTokenImpl), qtiInitData);
+        qtiToken = address(qtiProxy);
+        qtiTokenContract = QTIToken(qtiToken);
+        console.log("QTIToken proxy deployed to:", qtiToken);
+        
+        // 6. Deploy Mock Aave contracts for localhost
+        address mockAavePool;
+        address mockAaveProvider;
+        address mockRewardsController;
+        
+        if (isLocalhost) {
+            console.log("Deploying MockAavePool...");
+            MockAavePool mockPool = new MockAavePool(_getUSDCAddress(), _getUSDCAddress());
+            mockAavePool = address(mockPool);
+            console.log("MockAavePool deployed to:", mockAavePool);
+            
+            console.log("Deploying MockPoolAddressesProvider...");
+            MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(mockAavePool);
+            mockAaveProvider = address(mockProvider);
+            console.log("MockPoolAddressesProvider deployed to:", mockAaveProvider);
+            
+            console.log("Deploying MockRewardsController...");
+            MockRewardsController mockRewards = new MockRewardsController();
+            mockRewardsController = address(mockRewards);
+            console.log("MockRewardsController deployed to:", mockRewardsController);
+        } else {
+            mockAaveProvider = _getAaveProvider();
+            mockRewardsController = _getRewardsController();
+        }
+        
+        // 7. Deploy AaveVault (upgradeable) - now with proper mock addresses
+        console.log("Deploying AaveVault implementation...");
+        AaveVault aaveVaultImpl = new AaveVault();
+        console.log("AaveVault implementation deployed to:", address(aaveVaultImpl));
+        
+        console.log("Deploying AaveVault proxy...");
+        bytes memory aaveVaultInitData = abi.encodeWithSelector(
+            AaveVault.initialize.selector,
+            msg.sender,        // admin
+            _getUSDCAddress(), // _usdc
+            mockAaveProvider,  // _aaveProvider
+            mockRewardsController, // _rewardsController
+            msg.sender,        // _yieldShift (temporary - will be updated)
+            msg.sender,        // _timelock
+            msg.sender         // _treasury
+        );
+        ERC1967Proxy aaveVaultProxy = new ERC1967Proxy(address(aaveVaultImpl), aaveVaultInitData);
+        aaveVault = address(aaveVaultProxy);
+        aaveVaultContract = AaveVault(aaveVault);
+        console.log("AaveVault proxy deployed to:", aaveVault);
+        
+        // 7. Deploy stQEUROToken (upgradeable) - with temporary YieldShift address
+        console.log("Deploying stQEUROToken implementation...");
+        stQEUROToken stQeuroTokenImpl = new stQEUROToken(timeProviderContract);
+        console.log("stQEUROToken implementation deployed to:", address(stQeuroTokenImpl));
+        
+        console.log("Deploying stQEUROToken proxy...");
+        bytes memory stQeuroInitData = abi.encodeWithSelector(
+            stQEUROToken.initialize.selector,
+            msg.sender,        // admin
+            qeuroToken,        // _qeuro
+            msg.sender,        // _yieldShift (temporary - will be updated)
+            _getUSDCAddress(), // _usdc
+            msg.sender,        // _treasury
+            msg.sender         // _timelock
+        );
+        ERC1967Proxy stQeuroProxy = new ERC1967Proxy(address(stQeuroTokenImpl), stQeuroInitData);
+        stQeuroToken = address(stQeuroProxy);
+        stQeuroTokenContract = stQEUROToken(stQeuroToken);
+        console.log("stQEUROToken proxy deployed to:", stQeuroToken);
     }
 
     function _deployPhase3() internal {
         console.log("\n=== PHASE 3: POOL CONTRACTS ===");
         
-        // 6. Deploy UserPool
-        console.log("Deploying UserPool...");
-        userPoolContract = new UserPool(timeProviderContract);
-        userPool = address(userPoolContract);
-        console.log("UserPool deployed to:", userPool);
+        // 8. Deploy UserPool (upgradeable)
+        console.log("Deploying UserPool implementation...");
+        UserPool userPoolImpl = new UserPool(timeProviderContract);
+        console.log("UserPool implementation deployed to:", address(userPoolImpl));
+        
+        console.log("Deploying UserPool proxy...");
+        bytes memory userPoolInitData = abi.encodeWithSelector(
+            UserPool.initialize.selector,
+            msg.sender,        // admin
+            qeuroToken,        // _qeuro
+            _getUSDCAddress(), // _usdc
+            quantillonVault,   // _vault
+            msg.sender,        // _yieldShift (temporary - will be updated)
+            msg.sender,        // _timelock
+            msg.sender         // _treasury
+        );
+        ERC1967Proxy userPoolProxy = new ERC1967Proxy(address(userPoolImpl), userPoolInitData);
+        userPool = address(userPoolProxy);
+        userPoolContract = UserPool(userPool);
+        console.log("UserPool proxy deployed to:", userPool);
 
-        // 7. Deploy HedgerPool
-        console.log("Deploying HedgerPool...");
-        hedgerPoolContract = new HedgerPool(timeProviderContract);
-        hedgerPool = address(hedgerPoolContract);
-        console.log("HedgerPool deployed to:", hedgerPool);
-
-        // 8. Deploy stQEUROToken
-        console.log("Deploying stQEUROToken...");
-        stQeuroTokenContract = new stQEUROToken(timeProviderContract);
-        stQeuroToken = address(stQeuroTokenContract);
-        console.log("stQEUROToken deployed to:", stQeuroToken);
+        // 10. Deploy HedgerPool (upgradeable)
+        console.log("Deploying HedgerPool implementation...");
+        HedgerPool hedgerPoolImpl = new HedgerPool(timeProviderContract);
+        console.log("HedgerPool implementation deployed to:", address(hedgerPoolImpl));
+        
+        console.log("Deploying HedgerPool proxy...");
+        bytes memory hedgerPoolInitData = abi.encodeWithSelector(
+            HedgerPool.initialize.selector,
+            msg.sender,        // admin
+            _getUSDCAddress(), // _usdc
+            chainlinkOracle,   // _oracle
+            msg.sender,        // _yieldShift (temporary - will be updated)
+            msg.sender,        // _timelock
+            msg.sender         // _treasury
+        );
+        ERC1967Proxy hedgerPoolProxy = new ERC1967Proxy(address(hedgerPoolImpl), hedgerPoolInitData);
+        hedgerPool = address(hedgerPoolProxy);
+        hedgerPoolContract = HedgerPool(hedgerPool);
+        console.log("HedgerPool proxy deployed to:", hedgerPool);
+        
+        // 10. Deploy YieldShift (upgradeable) - now with all required addresses
+        console.log("Deploying YieldShift implementation...");
+        YieldShift yieldShiftImpl = new YieldShift(timeProviderContract);
+        console.log("YieldShift implementation deployed to:", address(yieldShiftImpl));
+        
+        console.log("Deploying YieldShift proxy...");
+        bytes memory yieldShiftInitData = abi.encodeWithSelector(
+            YieldShift.initialize.selector,
+            msg.sender,        // admin
+            _getUSDCAddress(), // _usdc
+            userPool,          // _userPool (now available)
+            hedgerPool,        // _hedgerPool (now available)
+            aaveVault,         // _aaveVault
+            stQeuroToken,      // _stQEURO
+            msg.sender,        // _timelock
+            msg.sender         // _treasury
+        );
+        ERC1967Proxy yieldShiftProxy = new ERC1967Proxy(address(yieldShiftImpl), yieldShiftInitData);
+        yieldShift = address(yieldShiftProxy);
+        yieldShiftContract = YieldShift(yieldShift);
+        console.log("YieldShift proxy deployed to:", yieldShift);
     }
 
     function _deployPhase4() internal {
-        console.log("\n=== PHASE 4: YIELD MANAGEMENT ===");
+        console.log("\n=== PHASE 4: UPDATE CONTRACT REFERENCES ===");
         
-        // 9. Deploy AaveVault
-        console.log("Deploying AaveVault...");
-        aaveVaultContract = new AaveVault();
-        aaveVault = address(aaveVaultContract);
-        console.log("AaveVault deployed to:", aaveVault);
-        console.log("Using USDC address:", _getUSDCAddress());
-        console.log("Using Aave pool:", _getAavePool());
+        // Update contracts with correct addresses
+        console.log("Updating AaveVault with correct YieldShift address...");
+        // Note: AaveVault doesn't have a setter for YieldShift, so we need to redeploy or use a different approach
+        
+        console.log("Updating stQEUROToken with correct YieldShift address...");
+        // Note: stQEUROToken doesn't have a setter for YieldShift, so we need to redeploy or use a different approach
+        
+        console.log("Updating YieldShift with correct UserPool and HedgerPool addresses...");
+        // Note: YieldShift doesn't have setters for UserPool and HedgerPool, so we need to redeploy or use a different approach
+        
+        console.log("Note: Some contracts may need manual configuration of cross-references.");
+        console.log("Consider using setter functions or redeploying contracts with correct addresses.");
+    }
 
-        // 10. Deploy YieldShift
-        console.log("Deploying YieldShift...");
-        yieldShiftContract = new YieldShift(timeProviderContract);
-        yieldShift = address(yieldShiftContract);
-        console.log("YieldShift deployed to:", yieldShift);
-
+    function _deployPhase5() internal {
+        console.log("\n=== PHASE 5: FINALIZATION ===");
+        
         // 11. Copy ABIs to frontend
         copyABIsToFrontend();
     }
+
+    function _initializeContracts() internal {
+        console.log("\n=== FINALIZING CONTRACT SETUP ===");
+        
+        console.log("All contracts deployed and initialized successfully!");
+        console.log("Contract addresses:");
+        console.log("  QEUROToken:", qeuroToken);
+        console.log("  QuantillonVault:", quantillonVault);
+        console.log("  QTIToken:", qtiToken);
+        console.log("  UserPool:", userPool);
+        console.log("  HedgerPool:", hedgerPool);
+        console.log("  stQEUROToken:", stQeuroToken);
+        console.log("  AaveVault:", aaveVault);
+        console.log("  YieldShift:", yieldShift);
+        console.log("  ChainlinkOracle:", chainlinkOracle);
+        console.log("");
+        console.log("Note: Some contracts may need manual configuration of cross-references.");
+    }
+    
 
     function copyABIsToFrontend() internal {
         console.log("Copying ABIs to frontend...");

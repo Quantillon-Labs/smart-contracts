@@ -182,17 +182,46 @@ elif [ "$WITH_MOCK_FEEDS" = true ]; then
 else
     echo -e "${GREEN}🎉 Localhost deployment completed!${NC}"
 fi
+
+# Automatically update frontend with new ABIs and addresses
+echo ""
+echo -e "${BLUE}🔄 Updating frontend with new ABIs and addresses...${NC}"
+echo ""
+
+# Copy ABIs to frontend
+echo -e "${YELLOW}📋 Copying contract ABIs to frontend...${NC}"
+if ./scripts/deployment/copy-abis.sh; then
+    echo -e "${GREEN}✅ ABIs copied successfully!${NC}"
+else
+    echo -e "${RED}❌ Failed to copy ABIs${NC}"
+    exit 1
+fi
+
+echo ""
+
+# Update frontend addresses
+echo -e "${YELLOW}📋 Updating frontend addresses...${NC}"
+if ./scripts/deployment/update-frontend-addresses.sh; then
+    echo -e "${GREEN}✅ Frontend addresses updated successfully!${NC}"
+else
+    echo -e "${RED}❌ Failed to update frontend addresses${NC}"
+    exit 1
+fi
+
+echo ""
+echo -e "${GREEN}🎉 Frontend integration completed!${NC}"
 echo ""
 echo -e "${BLUE}💡 Next steps:${NC}"
 echo "1. Check contract addresses in the output above"
 echo "2. Use 'cast code <ADDRESS> --rpc-url $RPC_URL' to verify deployment"
 echo "3. Interact with contracts using cast or your dApp"
+echo "4. Frontend is ready with updated ABIs and addresses"
 if [ "$WITH_MOCK_USDC" = true ]; then
-    echo "4. Use MockUSDC faucet: cast send <MOCKUSDC_ADDRESS> 'faucet(uint256)' 1000000000 --rpc-url $RPC_URL --private-key <PRIVATE_KEY>"
+    echo "5. Use MockUSDC faucet: cast send <MOCKUSDC_ADDRESS> 'faucet(uint256)' 1000000000 --rpc-url $RPC_URL --private-key <PRIVATE_KEY>"
 fi
 if [ "$WITH_MOCK_FEEDS" = true ]; then
-    echo "5. Mock price feeds are deployed and initialized with realistic prices"
-    echo "6. EUR/USD: 1.08 USD, USDC/USD: 1.00 USD"
+    echo "6. Mock price feeds are deployed and initialized with realistic prices"
+    echo "7. EUR/USD: 1.08 USD, USDC/USD: 1.00 USD"
 fi
 echo ""
 echo -e "${YELLOW}📝 Example verification:${NC}"

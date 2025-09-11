@@ -17,11 +17,11 @@ contract DeployOracleWithProxy is Script {
         address deployer = vm.addr(deployerPrivateKey);
         
         // TimeProvider address from previous deployment
-        address timeProviderAddress = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
+        address timeProviderAddress = 0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E;
         
         // Mock price feed addresses from latest deployment
-        address eurUsdFeed = 0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE;
-        address usdcUsdFeed = 0x3Aa5ebB10DC797CAC828524e59A333d0A371443c;
+        address eurUsdFeed = 0x7a2088a1bFc9d81c55368AE168C2C02570cB814F;
+        address usdcUsdFeed = 0xc5a5C42992dECbae36851359345FE25997F5C42d;
         
         console.log("=== DEPLOYING ORACLE WITH PROXY ===");
         console.log("Deploying with account:", deployer);

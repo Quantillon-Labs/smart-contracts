@@ -17,6 +17,9 @@ import "../../src/core/vaults/AaveVault.sol";
 import "../../src/core/yieldmanagement/YieldShift.sol";
 import "../../src/mocks/MockUSDC.sol";
 
+// Import mock aggregator for localhost deployment
+import "../../test/ChainlinkOracle.t.sol";
+
 /**
  * @title DeployQuantillon
  * @notice Complete deployment script for Quantillon Protocol
@@ -35,6 +38,10 @@ contract DeployQuantillon is Script {
     address public aaveVault;
     address public yieldShift;
     address public mockUSDC;
+    
+    // Mock feed addresses (for localhost)
+    address public mockEurUsdFeed;
+    address public mockUsdcUsdFeed;
 
     // Contract instances (to avoid stack too deep)
     TimeProvider public timeProviderContract;
@@ -48,6 +55,10 @@ contract DeployQuantillon is Script {
     AaveVault public aaveVaultContract;
     YieldShift public yieldShiftContract;
     MockUSDC public mockUSDCContract;
+    
+    // Mock feed instances (for localhost)
+    MockAggregatorV3 public mockEurUsdFeedContract;
+    MockAggregatorV3 public mockUsdcUsdFeedContract;
 
     // Network configuration
     string public network;
@@ -85,6 +96,11 @@ contract DeployQuantillon is Script {
             _deployMockUSDC();
         }
 
+        // Deploy mock feeds first if on localhost
+        if (isLocalhost) {
+            _deployMockFeeds();
+        }
+
         // Deploy all contracts in phases
         _deployPhase1();
         _deployPhase2();
@@ -98,6 +114,10 @@ contract DeployQuantillon is Script {
         console.log("Deployment addresses:");
         if (isLocalhost || isBaseSepolia) {
             console.log("MockUSDC:", mockUSDC);
+        }
+        if (isLocalhost) {
+            console.log("Mock EUR/USD Feed:", mockEurUsdFeed);
+            console.log("Mock USDC/USD Feed:", mockUsdcUsdFeed);
         }
         console.log("TimeProvider:", timeProvider);
         console.log("ChainlinkOracle:", chainlinkOracle);
@@ -149,6 +169,30 @@ contract DeployQuantillon is Script {
         console.log("Minted", mintAmount / 10**6, "USDC to deployer");
     }
 
+    function _deployMockFeeds() internal {
+        console.log("\n=== DEPLOYING MOCK PRICE FEEDS ===");
+        
+        // Deploy EUR/USD mock price feed (8 decimals like real Chainlink)
+        console.log("Deploying EUR/USD mock price feed...");
+        mockEurUsdFeedContract = new MockAggregatorV3(8);
+        mockEurUsdFeed = address(mockEurUsdFeedContract);
+        console.log("EUR/USD mock feed deployed to:", mockEurUsdFeed);
+        
+        // Set EUR/USD price to ~1.08 USD per EUR (realistic current price)
+        mockEurUsdFeedContract.setPrice(108000000); // 1.08 * 10^8 (8 decimals)
+        console.log("EUR/USD price set to 1.08 USD");
+
+        // Deploy USDC/USD mock price feed (8 decimals like real Chainlink)
+        console.log("Deploying USDC/USD mock price feed...");
+        mockUsdcUsdFeedContract = new MockAggregatorV3(8);
+        mockUsdcUsdFeed = address(mockUsdcUsdFeedContract);
+        console.log("USDC/USD mock feed deployed to:", mockUsdcUsdFeed);
+        
+        // Set USDC/USD price to ~1.00 USD (should be close to $1)
+        mockUsdcUsdFeedContract.setPrice(100000000); // 1.00 * 10^8 (8 decimals)
+        console.log("USDC/USD price set to 1.00 USD");
+    }
+
     function _getUSDCAddress() internal view returns (address) {
         if (isLocalhost) {
             return mockUSDC;
@@ -161,7 +205,7 @@ contract DeployQuantillon is Script {
 
     function _getEURUSDFeed() internal view returns (address) {
         if (isLocalhost) {
-            return MOCK_EUR_USD_FEED;
+            return mockEurUsdFeed; // Use deployed mock feed
         } else if (isBaseSepolia) {
             return BASE_SEPOLIA_EUR_USD_FEED;
         } else {
@@ -171,7 +215,7 @@ contract DeployQuantillon is Script {
 
     function _getUSDCUSDFeed() internal view returns (address) {
         if (isLocalhost) {
-            return MOCK_USDC_USD_FEED;
+            return mockUsdcUsdFeed; // Use deployed mock feed
         } else if (isBaseSepolia) {
             return BASE_SEPOLIA_USDC_USD_FEED;
         } else {
@@ -205,6 +249,16 @@ contract DeployQuantillon is Script {
         console.log("ChainlinkOracle deployed to:", chainlinkOracle);
         console.log("Using EUR/USD feed:", _getEURUSDFeed());
         console.log("Using USDC/USD feed:", _getUSDCUSDFeed());
+        
+        // Initialize ChainlinkOracle with price feed addresses
+        console.log("Initializing ChainlinkOracle...");
+        chainlinkOracleContract.initialize(
+            msg.sender, // admin
+            _getEURUSDFeed(), // EUR/USD feed
+            _getUSDCUSDFeed(), // USDC/USD feed
+            msg.sender // treasury (using deployer for now)
+        );
+        console.log("ChainlinkOracle initialized successfully");
 
         // 3. Deploy QEUROToken
         console.log("Deploying QEUROToken...");

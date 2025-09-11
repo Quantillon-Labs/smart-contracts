@@ -128,27 +128,27 @@ ci: build test slither validate-natspec gas-analysis analyze-warnings
 # Localhost deployment
 deploy-localhost:
 	@echo "🌐 Deploying to localhost..."
-	@./scripts/deploy-localhost.sh
+	@./scripts/deployment/deploy-localhost.sh
 	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/copy-abis.sh
+	@./scripts/deployment/copy-abis.sh localhost
 	@echo "📍 Updating frontend addresses..."
-	@./scripts/update-frontend-addresses.sh
+	@./scripts/deployment/update-frontend-addresses.sh
 
 # Localhost deployment with MockUSDC
 deploy-localhost-with-mock-usdc:
 	@echo "🌐 Deploying to localhost with MockUSDC..."
-	@./scripts/deploy-localhost.sh --with-mock-usdc
+	@./scripts/deployment/deploy-localhost.sh --with-mock-usdc
 	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/copy-abis.sh
+	@./scripts/deployment/copy-abis.sh localhost
 	@echo "📍 Updating frontend addresses..."
-	@./scripts/update-frontend-addresses.sh
+	@./scripts/deployment/update-frontend-addresses.sh
 
 # Base Sepolia deployment
 deploy-base-sepolia:
 	@echo "🌐 Deploying to Base Sepolia..."
-	@./scripts/deploy-base-sepolia.sh
+	@./scripts/deployment/deploy-base-sepolia.sh
 	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/copy-abis.sh
+	@./scripts/deployment/copy-abis.sh testnet
 	@echo "📍 Updating frontend addresses..."
-	@./scripts/update-frontend-addresses.sh
+	@./scripts/deployment/update-frontend-addresses.sh
 

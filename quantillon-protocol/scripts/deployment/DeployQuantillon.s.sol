@@ -274,7 +274,7 @@ contract DeployQuantillon is Script {
 
     function copyABIsToFrontend() internal {
         console.log("Copying ABIs to frontend...");
-        console.log("Please run './scripts/copy-abis.sh' manually to copy ABIs to frontend");
+        console.log("Please run './scripts/deployment/copy-abis.sh' manually to copy ABIs to frontend");
         console.log("This ensures the frontend has the latest contract interfaces.");
     }
 

@@ -69,7 +69,7 @@ contract DeployOracleWithProxy is Script {
 
     function copyOracleABIToFrontend() internal {
         console.log("Copying ChainlinkOracle ABI to frontend...");
-        console.log("Please run './scripts/copy-abis.sh' manually to copy ABIs to frontend");
+        console.log("Please run './scripts/deployment/copy-abis.sh' manually to copy ABIs to frontend");
         console.log("This ensures the frontend has the latest contract interfaces.");
     }
 }

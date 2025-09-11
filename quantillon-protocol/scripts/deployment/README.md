@@ -25,8 +25,8 @@ This directory contains the complete deployment infrastructure for the Quantillo
 
 ### Deployment Methods
 
-- **Localhost**: Automated script with `make deploy-localhost` or `./scripts/deploy-localhost.sh`
-- **Localhost with MockUSDC**: `make deploy-localhost-with-mock-usdc` or `./scripts/deploy-localhost.sh --with-mock-usdc`
+- **Localhost**: Automated script with `make deploy-localhost` or `./scripts/deployment/deploy-localhost.sh`
+- **Localhost with MockUSDC**: `make deploy-localhost-with-mock-usdc` or `./scripts/deployment/deploy-localhost.sh --with-mock-usdc`
 - **Base Sepolia**: Automated script with `make deploy-base-sepolia` (includes MockUSDC)
 - **Production**: Manual deployment using `forge script` commands directly
 
@@ -77,7 +77,7 @@ deployments/
 - **Upgradeability**: ❌ No
 - **Security**: Basic
 - **Complexity**: Simple
-- **Automation**: ✅ Available via `make deploy-localhost` or `./scripts/deploy-localhost.sh`
+- **Automation**: ✅ Available via `make deploy-localhost` or `./scripts/deployment/deploy-localhost.sh`
 
 ### **Automated Localhost Deployment Script** - 🤖 **`deploy-localhost.sh`**
 - **Best for**: Quick localhost deployment with automated checks
@@ -127,7 +127,7 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 # Deploy using automated script
 make deploy-localhost
 # OR
-./scripts/deploy-localhost.sh
+./scripts/deployment/deploy-localhost.sh
 ```
 
 #### **Option B: Manual Command**
@@ -280,7 +280,7 @@ cast send <CONTRACT_ADDRESS> "functionName()" --rpc-url <RPC> --private-key <PRI
 | Use Case | Recommended Method | Command |
 |----------|-------------------|---------|
 | **🚀 Production (All Networks)** | `DeployProduction.s.sol` | `export MULTISIG_WALLET=0x... && forge script scripts/deployment/DeployProduction.s.sol --rpc-url <RPC> --broadcast` |
-| **🛠️ Localhost Development** | **Automated Script** | `make deploy-localhost` or `./scripts/deploy-localhost.sh` |
+| **🛠️ Localhost Development** | **Automated Script** | `make deploy-localhost` or `./scripts/deployment/deploy-localhost.sh` |
 | **🛠️ Manual Development** | `DeployQuantillon.s.sol` | `forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545 --broadcast` |
 | **✅ Verify Deployment** | `VerifyDeployment.s.sol` | `forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url <RPC>` |
 

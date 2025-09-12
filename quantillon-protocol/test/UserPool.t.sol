@@ -433,7 +433,7 @@ contract UserPoolTestSuite is Test {
      */
     function test_Deposit_DepositSuccess() public {
         // Setup mocks for deposit operation
-        _setupDepositMocks(0, DEPOSIT_AMOUNT * 999 / 1000); // After 0.1% fee (10 bps)
+        _setupDepositMocks(0, DEPOSIT_AMOUNT); // No deposit fee
         
         vm.prank(user1);
         uint256 qeuroMinted = userPool.deposit(DEPOSIT_AMOUNT, 0);
@@ -449,7 +449,7 @@ contract UserPoolTestSuite is Test {
         assertEq(depositHistory, DEPOSIT_AMOUNT);
         
         // Check pool totals
-        assertEq(userPool.totalDeposits(), DEPOSIT_AMOUNT * 999 / 1000); // After 0.1% fee
+        assertEq(userPool.totalDeposits(), DEPOSIT_AMOUNT); // No deposit fee
         assertEq(userPool.totalUsers(), 1);
         assertTrue(userPool.hasDeposited(user1));
     }
@@ -509,7 +509,7 @@ contract UserPoolTestSuite is Test {
      */
     function test_Deposit_MultipleUsersDeposit() public {
         // Setup mocks for deposit operation
-        _setupDepositMocks(0, DEPOSIT_AMOUNT * 999 / 1000); // After 0.1% fee (10 bps)
+        _setupDepositMocks(0, DEPOSIT_AMOUNT); // No deposit fee
         
         // User1 deposits
         vm.prank(user1);
@@ -520,7 +520,7 @@ contract UserPoolTestSuite is Test {
         userPool.deposit(DEPOSIT_AMOUNT, 0);
         
         // Check pool totals
-        assertEq(userPool.totalDeposits(), 2 * DEPOSIT_AMOUNT * 999 / 1000); // After 0.1% fees
+        assertEq(userPool.totalDeposits(), 2 * DEPOSIT_AMOUNT); // No deposit fees
         assertEq(userPool.totalUsers(), 2);
         assertTrue(userPool.hasDeposited(user1));
         assertTrue(userPool.hasDeposited(user2));
@@ -1039,9 +1039,9 @@ contract UserPoolTestSuite is Test {
         (uint256 totalUsers_, uint256 averageDeposit, uint256 stakingRatio, uint256 poolTVL) = userPool.getPoolMetrics();
         
         assertEq(totalUsers_, 1);
-        assertEq(averageDeposit, DEPOSIT_AMOUNT * 999 / 1000); // After 0.1% fee
+        assertEq(averageDeposit, DEPOSIT_AMOUNT); // No deposit fee
         assertEq(stakingRatio, 0); // No staking yet
-        assertEq(poolTVL, DEPOSIT_AMOUNT * 999 / 1000); // After 0.1% fee
+        assertEq(poolTVL, DEPOSIT_AMOUNT); // No deposit fee
     }
     
     /**

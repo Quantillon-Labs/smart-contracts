@@ -412,7 +412,7 @@ contract UserPool is
         minStakeAmount = 100e18;    // 100 QEURO minimum
         unstakingCooldown = 7 days; // 7 days cooldown
         
-        depositFee = 10;            // 0.1% deposit fee
+        depositFee = 0;             // No deposit fee - Vault handles minting fees
         withdrawalFee = 20;         // 0.2% withdrawal fee
         performanceFee = 1000;      // 10% performance fee
         

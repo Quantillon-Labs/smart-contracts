@@ -466,8 +466,7 @@ contract UserPool is
         
         user.depositHistory += uint96(usdcAmount);
         totalDeposits += netAmount;
-        // Use minQeuroOut as conservative estimate for user balance
-        user.qeuroBalance += uint128(minQeuroOut);
+        // Note: user.qeuroBalance is not updated since QEURO goes to user's wallet
         
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
@@ -482,9 +481,8 @@ contract UserPool is
         uint256 qeuroAfter = qeuro.balanceOf(address(this));
         qeuroMinted = qeuroAfter - qeuroBefore;
         
-        // Note: user.qeuroBalance already updated with minQeuroOut before external call
-        // This ensures reentrancy protection. The user receives the actual minted amount,
-        // but internal balance tracking uses the conservative minQeuroOut estimate.
+        // Transfer QEURO to user immediately after minting
+        IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
         emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, TIME_PROVIDER.currentTime());
     }
@@ -667,7 +665,7 @@ contract UserPool is
      * @dev Updates user and pool state before external calls for reentrancy protection
      * @custom:security Updates state before external calls (CEI pattern)
      * @custom:validation No input validation required - parameters pre-validated
-     * @custom:state-changes Updates user.depositHistory, user.qeuroBalance, totalDeposits
+     * @custom:state-changes Updates user.depositHistory, totalDeposits
      * @custom:events No events emitted - handled by calling function
      * @custom:errors No errors thrown
      * @custom:reentrancy Not protected - internal function only
@@ -692,7 +690,7 @@ contract UserPool is
         
         // Update user state once (single update outside loop)
         user.depositHistory += uint96(totalUserDeposits);
-        user.qeuroBalance += uint128(totalQeuroToMint);
+        // Note: user.qeuroBalance is not updated since QEURO goes to user's wallet
         
         // Update pool totals once (single update outside loop)  
         totalDeposits += totalNetAmount;
@@ -754,10 +752,8 @@ contract UserPool is
     {
         require(qeuroAmount > 0, "UserPool: Amount must be positive");
         
-        UserInfo storage user = userInfo[msg.sender];
-        require(user.qeuroBalance >= qeuroAmount, "UserPool: Insufficient balance");
-
-        user.qeuroBalance -= uint128(qeuroAmount);
+        // Note: No need to check user.qeuroBalance since QEURO is held in user's wallet
+        // The user must have QEURO in their wallet to call this function
         
         // Calculate conservative estimate for totalDeposits update
         uint256 withdrawalFee_ = withdrawalFee;
@@ -856,8 +852,8 @@ contract UserPool is
             }
         }
         
-        require(user.qeuroBalance >= totalQeuroAmount, "UserPool: Insufficient balance");
-        user.qeuroBalance -= uint128(totalQeuroAmount);
+        // Note: No need to check user.qeuroBalance since QEURO is held in user's wallet
+        // The user must have QEURO in their wallet to call this function
         
         // Calculate and update total deposits
         uint256 totalEstimatedNetAmount = 0;

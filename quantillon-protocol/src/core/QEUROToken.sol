@@ -531,12 +531,12 @@ contract QEUROToken is
      * @custom:reentrancy Protected by reentrancy guard
      * @custom:access Restricted to BURNER_ROLE
      * @custom:oracle No oracle dependencies
+     * @custom:security No flash loan protection needed - only vault can burn
      */
     function burn(address from, uint256 amount) 
         external 
         onlyRole(BURNER_ROLE)    // Only the vault can burn
         whenNotPaused            // Not in pause mode
-        flashLoanProtection
     {
         // Parameter validation
         TokenLibrary.validateBurn(from, amount, balanceOf(from));

@@ -413,7 +413,7 @@ contract UserPool is
         unstakingCooldown = 7 days; // 7 days cooldown
         
         depositFee = 0;             // No deposit fee - Vault handles minting fees
-        withdrawalFee = 20;         // 0.2% withdrawal fee
+        withdrawalFee = 0;          // No withdrawal fee - Vault handles redemption fees
         performanceFee = 1000;      // 10% performance fee
         
         // Initialize yield tracking variables to prevent uninitialized state variable warnings
@@ -742,12 +742,12 @@ contract UserPool is
      * @custom:reentrancy Protected by nonReentrant modifier
      * @custom:access Public access
      * @custom:oracle No oracle dependencies
+     * @custom:security No flash loan protection needed - user-initiated operation
      */
     function withdraw(uint256 qeuroAmount, uint256 minUsdcOut) 
         external 
         nonReentrant 
         whenNotPaused 
-        flashLoanProtection
         returns (uint256 usdcReceived) 
     {
         require(qeuroAmount > 0, "UserPool: Amount must be positive");

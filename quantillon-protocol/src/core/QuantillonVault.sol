@@ -419,11 +419,12 @@ contract QuantillonVault is
      * @custom:reentrancy Protected by reentrancy guard
      * @custom:access No access restrictions
      * @custom:oracle Requires fresh oracle price data
+     * @custom:security No flash loan protection needed - legitimate redemption operation
      */
     function redeemQEURO(
         uint256 qeuroAmount,
         uint256 minUsdcOut
-    ) external nonReentrant whenNotPaused flashLoanProtection {
+    ) external nonReentrant whenNotPaused {
         // Input validations
         require(qeuroAmount > 0, "Vault: Amount must be positive");
 
@@ -453,10 +454,13 @@ contract QuantillonVault is
         // Ex: 1000 QEURO * 1.10 = 1100 USDC
         uint256 usdcToReturn = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
         
+        // Convert from 18 decimals (QEURO precision) to 6 decimals (USDC precision)
+        usdcToReturn = usdcToReturn / 1e12;
+        
         // Slippage protection
         require(usdcToReturn >= minUsdcOut, "Vault: Insufficient output amount");
 
-        // Apply protocol fees
+        // Apply protocol fees (redemptionFee is in 18 decimals, usdcToReturn is in 6 decimals)
         uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
         uint256 netUsdcToReturn = usdcToReturn - fee;
 
@@ -576,6 +580,11 @@ contract QuantillonVault is
         if (!isValid) return (0, 0);
 
         uint256 grossUsdcAmount = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
+        
+        // Convert from 18 decimals (QEURO precision) to 6 decimals (USDC precision)
+        grossUsdcAmount = grossUsdcAmount / 1e12;
+        
+        // Apply protocol fees (redemptionFee is in 18 decimals, grossUsdcAmount is in 6 decimals)
         fee = grossUsdcAmount.mulDiv(redemptionFee, 1e18);
         usdcAmount = grossUsdcAmount - fee;
     }

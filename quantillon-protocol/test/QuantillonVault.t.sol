@@ -145,7 +145,7 @@ contract QuantillonVaultTestSuite is Test {
     // =============================================================================
     
     uint256 public constant MINT_AMOUNT = 1000 * 1e6; // 1000 USDC
-    uint256 public constant REDEEM_AMOUNT = 500 * 1e6; // 0.5 QEURO
+    uint256 public constant REDEEM_AMOUNT = 454545454545454545454; // ~454.545 QEURO (18 decimals) - equivalent to 500 USDC at 1.10 rate
     uint256 public constant EUR_USD_PRICE = 110 * 1e16; // 1.10 EUR/USD (18 decimals)
     uint256 public constant EUR_USD_PRICE_HIGH = 120 * 1e16; // 1.20 EUR/USD (18 decimals)
     uint256 public constant EUR_USD_PRICE_LOW = 100 * 1e16; // 1.00 EUR/USD (18 decimals)
@@ -629,7 +629,7 @@ contract QuantillonVaultTestSuite is Test {
         vm.mockCall(
             mockUSDC,
             abi.encodeWithSelector(IERC20.balanceOf.selector),
-            abi.encode(100 * 1e6) // Only 100 USDC
+            abi.encode(400 * 1e6) // Only 400 USDC (less than the ~500 USDC needed)
         );
         
         vm.prank(user1);

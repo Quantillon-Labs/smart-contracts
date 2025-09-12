@@ -445,7 +445,7 @@ contract UserPoolTestSuite is Test {
         
         // Check user info was updated
         (uint256 qeuroBalance, , , uint256 depositHistory, ) = userPool.getUserInfo(user1);
-        assertEq(qeuroBalance, qeuroMinted); // Should be 0 with current mock setup
+        assertEq(qeuroBalance, 0); // QEURO balance should always be 0 since QEURO goes to user's wallet
         assertEq(depositHistory, DEPOSIT_AMOUNT);
         
         // Check pool totals
@@ -543,8 +543,9 @@ contract UserPoolTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Withdrawal_WithdrawSuccess() public {
-        // Setup mocks for deposit operation (this will result in qeuroMinted = 0, which is expected)
-        _setupDepositMocks(0, DEPOSIT_AMOUNT * 999 / 1000); // After 0.1% fee (10 bps)
+        // Setup mocks for deposit operation to mint QEURO
+        uint256 qeuroMinted = DEPOSIT_AMOUNT * 999 / 1000; // After 0.1% fee (10 bps)
+        _setupDepositMocks(0, qeuroMinted);
         
         // Mock vault's mintQEURO function to succeed
         vm.mockCall(
@@ -553,17 +554,13 @@ contract UserPoolTestSuite is Test {
             abi.encode()
         );
         
-        // First deposit some USDC
+        // First deposit some USDC to get QEURO
         vm.prank(user1);
         userPool.deposit(DEPOSIT_AMOUNT, 0);
         
-        // Verify the deposit was successful (even though qeuroMinted = 0 due to mock setup)
-        (uint256 qeuroBalance, , , uint256 depositHistory, ) = userPool.getUserInfo(user1);
-        assertEq(qeuroBalance, 0, "QEURO balance should be 0 with current mock setup");
+        // Verify the deposit was successful
+        (, , , uint256 depositHistory, ) = userPool.getUserInfo(user1);
         assertEq(depositHistory, DEPOSIT_AMOUNT, "Deposit history should be updated");
-        
-        // Test that withdrawal function works correctly by testing the insufficient balance case
-        // This verifies that the withdrawal function is properly implemented and handles edge cases
         
         // Setup mock for vault's redeemQEURO function to succeed
         vm.mockCall(
@@ -572,21 +569,27 @@ contract UserPoolTestSuite is Test {
             abi.encode()
         );
         
-        // Setup mock for USDC balance after redemption
-        uint256 expectedUsdcReceived = DEPOSIT_AMOUNT * 999 / 1000; // After 0.1% fee
+        // Mock QEURO transferFrom to succeed (user has QEURO in wallet)
         vm.mockCall(
-            mockUSDC,
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(userPool)),
-            abi.encode(expectedUsdcReceived)
+            mockQEURO,
+            abi.encodeWithSelector(IERC20.transferFrom.selector, user1, address(userPool), qeuroMinted),
+            abi.encode(true)
         );
         
-        // Try to withdraw with zero balance (should revert with insufficient balance)
-        vm.prank(user1);
-        vm.expectRevert("UserPool: Insufficient balance");
-        userPool.withdraw(1, 0); // Try to withdraw 1 QEURO
+        // Mock USDC transfer to succeed (sending USDC to user)
+        vm.mockCall(
+            mockUSDC,
+            abi.encodeWithSelector(IERC20.transfer.selector, user1, 0),
+            abi.encode(true)
+        );
         
-        // The test passes if the function properly checks the balance and reverts
-        // This verifies that the withdrawal function is working correctly
+        // Now test successful withdrawal - just verify it doesn't revert
+        vm.prank(user1);
+        vm.expectCall(mockQEURO, abi.encodeWithSelector(IERC20.transferFrom.selector, user1, address(userPool), qeuroMinted));
+        vm.expectCall(mockVault, abi.encodeWithSelector(IQuantillonVault.redeemQEURO.selector, qeuroMinted, 0));
+        userPool.withdraw(qeuroMinted, 0);
+        
+        // Test passes if no revert occurs
     }
     
     /**
@@ -622,8 +625,15 @@ contract UserPoolTestSuite is Test {
     function test_Withdrawal_WithdrawInsufficientBalance_Revert() public {
         uint256 tooMuch = 1000 * 1e18;
         
+        // Mock QEURO transferFrom to fail (user doesn't have enough QEURO in wallet)
+        vm.mockCall(
+            mockQEURO,
+            abi.encodeWithSelector(IERC20.transferFrom.selector, user1, address(userPool), tooMuch),
+            abi.encode(false)
+        );
+        
         vm.prank(user1);
-        vm.expectRevert("UserPool: Insufficient balance");
+        vm.expectRevert(); // ERC20 transferFrom will revert when user doesn't have enough QEURO
         userPool.withdraw(tooMuch, 0);
     }
     
@@ -650,13 +660,10 @@ contract UserPoolTestSuite is Test {
         vm.prank(emergency);
         userPool.pause();
         
-        // Get user's QEURO balance
-        (uint256 qeuroBalance, , , , ) = userPool.getUserInfo(user1);
-        
-        // Try to withdraw
+        // Try to withdraw (should revert because contract is paused)
         vm.prank(user1);
         vm.expectRevert();
-        userPool.withdraw(qeuroBalance, 0);
+        userPool.withdraw(1e18, 0); // Try to withdraw 1 QEURO
     }
 
     // =============================================================================

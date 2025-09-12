@@ -24,7 +24,7 @@ import "../../test/ChainlinkOracle.t.sol";
 import "./MockAaveContracts.sol";
 
 // Import proxy for upgradeable contracts
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
  * @title DeployQuantillon
@@ -297,24 +297,25 @@ contract DeployQuantillon is Script {
         console.log("Using USDC/USD feed:", _getUSDCUSDFeed());
         console.log("ChainlinkOracle initialized successfully");
 
-        // 3. Deploy temporary QEUROToken first (needed for QuantillonVault)
-        console.log("Deploying temporary QEUROToken implementation...");
-        QEUROToken tempQeuroTokenImpl = new QEUROToken();
-        console.log("Temporary QEUROToken implementation deployed to:", address(tempQeuroTokenImpl));
+        // 3. Deploy real QEUROToken first (needed for QuantillonVault)
+        console.log("Deploying QEUROToken implementation...");
+        QEUROToken qeuroTokenImpl = new QEUROToken();
+        console.log("QEUROToken implementation deployed to:", address(qeuroTokenImpl));
         
-        console.log("Deploying temporary QEUROToken proxy...");
-        bytes memory tempQeuroInitData = abi.encodeWithSelector(
+        console.log("Deploying QEUROToken proxy...");
+        bytes memory qeuroInitData = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             msg.sender,        // admin
-            msg.sender,        // vault (temporary - will be updated)
+            msg.sender,        // vault (temporary - will be updated after Vault deployment)
             msg.sender,        // timelock
             msg.sender         // treasury
         );
-        ERC1967Proxy tempQeuroProxy = new ERC1967Proxy(address(tempQeuroTokenImpl), tempQeuroInitData);
-        address tempQeuroToken = address(tempQeuroProxy);
-        console.log("Temporary QEUROToken proxy deployed to:", tempQeuroToken);
+        ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroTokenImpl), qeuroInitData);
+        qeuroToken = address(qeuroProxy);
+        qeuroTokenContract = QEUROToken(qeuroToken);
+        console.log("QEUROToken proxy deployed to:", qeuroToken);
         
-        // 4. Deploy QuantillonVault with temporary QEUROToken
+        // 4. Deploy QuantillonVault with real QEUROToken
         console.log("Deploying QuantillonVault implementation...");
         QuantillonVault vaultImpl = new QuantillonVault();
         console.log("QuantillonVault implementation deployed to:", address(vaultImpl));
@@ -323,7 +324,7 @@ contract DeployQuantillon is Script {
         bytes memory vaultInitData = abi.encodeWithSelector(
             QuantillonVault.initialize.selector,
             msg.sender,        // admin
-            tempQeuroToken,    // _qeuro (temporary)
+            qeuroToken,        // _qeuro (real QEURO token)
             _getUSDCAddress(), // _usdc
             chainlinkOracle,   // _oracle
             msg.sender         // _timelock
@@ -333,23 +334,19 @@ contract DeployQuantillon is Script {
         quantillonVaultContract = QuantillonVault(quantillonVault);
         console.log("QuantillonVault proxy deployed to:", quantillonVault);
         
-        // 5. Deploy real QEUROToken with correct vault address
-        console.log("Deploying real QEUROToken implementation...");
-        QEUROToken qeuroTokenImpl = new QEUROToken();
-        console.log("Real QEUROToken implementation deployed to:", address(qeuroTokenImpl));
+        // 5. Update QEUROToken roles to point to the real Vault
+        console.log("Updating QEUROToken roles to point to the real Vault...");
+        console.log("  Revoking MINTER_ROLE from temporary address (deployer)...");
+        qeuroTokenContract.revokeRole(qeuroTokenContract.MINTER_ROLE(), msg.sender);
+        console.log("  Granting MINTER_ROLE to Vault:", quantillonVault);
+        qeuroTokenContract.grantRole(qeuroTokenContract.MINTER_ROLE(), quantillonVault);
         
-        console.log("Deploying real QEUROToken proxy...");
-        bytes memory qeuroInitData = abi.encodeWithSelector(
-            QEUROToken.initialize.selector,
-            msg.sender,        // admin
-            quantillonVault,   // vault (correct address)
-            msg.sender,        // timelock
-            msg.sender         // treasury
-        );
-        ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroTokenImpl), qeuroInitData);
-        qeuroToken = address(qeuroProxy);
-        qeuroTokenContract = QEUROToken(qeuroToken);
-        console.log("Real QEUROToken proxy deployed to:", qeuroToken);
+        console.log("  Revoking BURNER_ROLE from temporary address (deployer)...");
+        qeuroTokenContract.revokeRole(qeuroTokenContract.BURNER_ROLE(), msg.sender);
+        console.log("  Granting BURNER_ROLE to Vault:", quantillonVault);
+        qeuroTokenContract.grantRole(qeuroTokenContract.BURNER_ROLE(), quantillonVault);
+        
+        console.log("QEUROToken roles updated successfully");
     }
 
     function _deployPhase2() internal {
@@ -509,7 +506,6 @@ contract DeployQuantillon is Script {
     function _deployPhase4() internal {
         console.log("\n=== PHASE 4: UPDATE CONTRACT REFERENCES ===");
         
-        // Update contracts with correct addresses
         console.log("Updating AaveVault with correct YieldShift address...");
         // Note: AaveVault doesn't have a setter for YieldShift, so we need to redeploy or use a different approach
         

@@ -76,18 +76,63 @@ echo -e "${BLUE}📄 Using broadcast file: $BROADCAST_FILE${NC}"
 # Extract addresses using jq
 echo -e "${BLUE}📋 Extracting deployment addresses...${NC}"
 
-# Extract all contract addresses
-MOCK_USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$BROADCAST_FILE" | head -1)
-QEURO_TOKEN=$(jq -r '.transactions[] | select(.contractName == "QEUROToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
-QUANTILLON_VAULT=$(jq -r '.transactions[] | select(.contractName == "QuantillonVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
-QTI_TOKEN=$(jq -r '.transactions[] | select(.contractName == "QTIToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
-STQEURO_TOKEN=$(jq -r '.transactions[] | select(.contractName == "stQEUROToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
-CHAINLINK_ORACLE=$(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy") | .contractAddress' "$BROADCAST_FILE" | head -1)
-USER_POOL=$(jq -r '.transactions[] | select(.contractName == "UserPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
-HEDGER_POOL=$(jq -r '.transactions[] | select(.contractName == "HedgerPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
-YIELD_SHIFT=$(jq -r '.transactions[] | select(.contractName == "YieldShift") | .contractAddress' "$BROADCAST_FILE" | head -1)
-AAVE_VAULT=$(jq -r '.transactions[] | select(.contractName == "AaveVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
-TIME_PROVIDER=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$BROADCAST_FILE" | head -1)
+# Function to get proxy address for a given implementation address
+get_proxy_address() {
+    local impl_address="$1"
+    # Convert to lowercase for case-insensitive comparison
+    local impl_lower=$(echo "$impl_address" | tr '[:upper:]' '[:lower:]')
+    jq -r --arg impl "$impl_lower" '.transactions[] | select(.contractName == "ERC1967Proxy" and (.arguments[0] | ascii_downcase) == $impl) | .contractAddress' "$BROADCAST_FILE" | head -1
+}
+
+# Extract implementation addresses first
+MOCK_USDC_IMPL=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$BROADCAST_FILE" | head -1)
+QEURO_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "QEUROToken") | .contractAddress' "$BROADCAST_FILE" | tail -1)  # Get the real QEURO token (last one)
+QUANTILLON_VAULT_IMPL=$(jq -r '.transactions[] | select(.contractName == "QuantillonVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
+QTI_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "QTIToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
+STQEURO_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "stQEUROToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
+CHAINLINK_ORACLE_IMPL=$(jq -r '.transactions[] | select(.contractName == "ChainlinkOracle") | .contractAddress' "$BROADCAST_FILE" | head -1)
+USER_POOL_IMPL=$(jq -r '.transactions[] | select(.contractName == "UserPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
+HEDGER_POOL_IMPL=$(jq -r '.transactions[] | select(.contractName == "HedgerPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
+YIELD_SHIFT_IMPL=$(jq -r '.transactions[] | select(.contractName == "YieldShift") | .contractAddress' "$BROADCAST_FILE" | head -1)
+AAVE_VAULT_IMPL=$(jq -r '.transactions[] | select(.contractName == "AaveVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
+TIME_PROVIDER_IMPL=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$BROADCAST_FILE" | head -1)
+
+# Get proxy addresses for upgradeable contracts
+echo -e "${BLUE}🔍 Finding proxy addresses for upgradeable contracts...${NC}"
+CHAINLINK_ORACLE=$(get_proxy_address "$CHAINLINK_ORACLE_IMPL")
+QEURO_TOKEN=$(get_proxy_address "$QEURO_TOKEN_IMPL")
+QUANTILLON_VAULT=$(get_proxy_address "$QUANTILLON_VAULT_IMPL")
+QTI_TOKEN=$(get_proxy_address "$QTI_TOKEN_IMPL")
+STQEURO_TOKEN=$(get_proxy_address "$STQEURO_TOKEN_IMPL")
+USER_POOL=$(get_proxy_address "$USER_POOL_IMPL")
+HEDGER_POOL=$(get_proxy_address "$HEDGER_POOL_IMPL")
+YIELD_SHIFT=$(get_proxy_address "$YIELD_SHIFT_IMPL")
+AAVE_VAULT=$(get_proxy_address "$AAVE_VAULT_IMPL")
+
+# Non-upgradeable contracts use implementation addresses directly
+MOCK_USDC="$MOCK_USDC_IMPL"
+TIME_PROVIDER="$TIME_PROVIDER_IMPL"
+
+# Validate that all proxy addresses were found
+echo -e "${BLUE}🔍 Validating proxy addresses...${NC}"
+if [ "$CHAINLINK_ORACLE" = "null" ] || [ -z "$CHAINLINK_ORACLE" ]; then
+    echo -e "${RED}❌ Failed to find ChainlinkOracle proxy address${NC}"
+    exit 1
+fi
+if [ "$QEURO_TOKEN" = "null" ] || [ -z "$QEURO_TOKEN" ]; then
+    echo -e "${RED}❌ Failed to find QEUROToken proxy address${NC}"
+    exit 1
+fi
+if [ "$QUANTILLON_VAULT" = "null" ] || [ -z "$QUANTILLON_VAULT" ]; then
+    echo -e "${RED}❌ Failed to find QuantillonVault proxy address${NC}"
+    exit 1
+fi
+if [ "$USER_POOL" = "null" ] || [ -z "$USER_POOL" ]; then
+    echo -e "${RED}❌ Failed to find UserPool proxy address${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ All proxy addresses found successfully${NC}"
 
 # Extract mock price feed addresses
 MOCK_EUR_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$BROADCAST_FILE" | head -1)
@@ -158,18 +203,24 @@ EOF
 
 echo -e "${GREEN}✅ Frontend addresses.json updated successfully!${NC}"
 echo ""
-echo -e "${BLUE}📄 Updated addresses for $NETWORK:${NC}"
+echo -e "${BLUE}📄 Updated addresses for $NETWORK (using proxy addresses for upgradeable contracts):${NC}"
 echo -e "${GREEN}   MockUSDC: $MOCK_USDC${NC}"
-echo -e "${GREEN}   QEUROToken: $QEURO_TOKEN${NC}"
-echo -e "${GREEN}   QuantillonVault: $QUANTILLON_VAULT${NC}"
-echo -e "${GREEN}   QTIToken: $QTI_TOKEN${NC}"
-echo -e "${GREEN}   stQEUROToken: $STQEURO_TOKEN${NC}"
-echo -e "${GREEN}   ChainlinkOracle: $CHAINLINK_ORACLE${NC}"
-echo -e "${GREEN}   UserPool: $USER_POOL${NC}"
-echo -e "${GREEN}   HedgerPool: $HEDGER_POOL${NC}"
-echo -e "${GREEN}   YieldShift: $YIELD_SHIFT${NC}"
-echo -e "${GREEN}   AaveVault: $AAVE_VAULT${NC}"
+echo -e "${GREEN}   QEUROToken (proxy): $QEURO_TOKEN${NC}"
+echo -e "${GREEN}   QuantillonVault (proxy): $QUANTILLON_VAULT${NC}"
+echo -e "${GREEN}   QTIToken (proxy): $QTI_TOKEN${NC}"
+echo -e "${GREEN}   stQEUROToken (proxy): $STQEURO_TOKEN${NC}"
+echo -e "${GREEN}   ChainlinkOracle (proxy): $CHAINLINK_ORACLE${NC}"
+echo -e "${GREEN}   UserPool (proxy): $USER_POOL${NC}"
+echo -e "${GREEN}   HedgerPool (proxy): $HEDGER_POOL${NC}"
+echo -e "${GREEN}   YieldShift (proxy): $YIELD_SHIFT${NC}"
+echo -e "${GREEN}   AaveVault (proxy): $AAVE_VAULT${NC}"
 echo -e "${GREEN}   TimeProvider: $TIME_PROVIDER${NC}"
+echo ""
+echo -e "${BLUE}📋 Implementation addresses (for reference):${NC}"
+echo -e "${YELLOW}   QEUROToken impl: $QEURO_TOKEN_IMPL${NC}"
+echo -e "${YELLOW}   QuantillonVault impl: $QUANTILLON_VAULT_IMPL${NC}"
+echo -e "${YELLOW}   UserPool impl: $USER_POOL_IMPL${NC}"
+echo -e "${YELLOW}   ChainlinkOracle impl: $CHAINLINK_ORACLE_IMPL${NC}"
 echo ""
 echo -e "${BLUE}📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE${NC}"
 echo -e "${GREEN}🎉 Addresses update completed!${NC}"

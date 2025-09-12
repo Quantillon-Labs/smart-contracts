@@ -81,7 +81,7 @@ get_proxy_address() {
     local impl_address="$1"
     # Convert to lowercase for case-insensitive comparison
     local impl_lower=$(echo "$impl_address" | tr '[:upper:]' '[:lower:]')
-    jq -r --arg impl "$impl_lower" '.transactions[] | select(.contractName == "ERC1967Proxy" and (.arguments[0] | ascii_downcase) == $impl) | .contractAddress' "$BROADCAST_FILE" | head -1
+    jq -r --arg impl "$impl_lower" '.transactions[] | select(.contractName == "ERC1967Proxy" and .arguments[0] != null and (.arguments[0] | ascii_downcase) == $impl) | .contractAddress' "$BROADCAST_FILE" | head -1
 }
 
 # Extract implementation addresses first

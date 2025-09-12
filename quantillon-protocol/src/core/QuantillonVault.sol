@@ -378,7 +378,8 @@ contract QuantillonVault is
         // Calculate amount of QEURO to mint
         // Formula: USDC / (EUR/USD) = QEURO
         // Ex: 1100 USDC / 1.10 = 1000 QEURO
-        uint256 qeuroToMint = netAmount.mulDiv(1e18, eurUsdPrice);
+        // Scale netAmount from 6 decimals (USDC) to 18 decimals (QEURO)
+        uint256 qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
         
         // Slippage protection
         require(qeuroToMint >= minQeuroOut, "Vault: Insufficient output amount");
@@ -548,7 +549,7 @@ contract QuantillonVault is
 
         fee = usdcAmount.mulDiv(mintFee, 1e18);
         uint256 netAmount = usdcAmount - fee;
-        qeuroAmount = netAmount.mulDiv(1e18, eurUsdPrice);
+        qeuroAmount = netAmount.mulDiv(1e30, eurUsdPrice);
     }
 
     /**

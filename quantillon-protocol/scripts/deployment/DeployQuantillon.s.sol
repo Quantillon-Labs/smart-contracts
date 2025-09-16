@@ -7,6 +7,7 @@ import "forge-std/console.sol";
 // Import all contracts
 import "../../src/libraries/TimeProviderLibrary.sol";
 import "../../src/oracle/ChainlinkOracle.sol";
+import "../../src/mocks/MockChainlinkOracle.sol";
 import "../../src/core/QEUROToken.sol";
 import "../../src/core/QTIToken.sol";
 import "../../src/core/QuantillonVault.sol";
@@ -274,28 +275,50 @@ contract DeployQuantillon is Script {
         timeProvider = address(timeProviderContract);
         console.log("TimeProvider deployed to:", timeProvider);
 
-        // 2. Deploy ChainlinkOracle with proxy
-        console.log("Deploying ChainlinkOracle implementation...");
-        ChainlinkOracle implementation = new ChainlinkOracle(timeProviderContract);
-        console.log("ChainlinkOracle implementation deployed to:", address(implementation));
-        
-        console.log("Deploying ChainlinkOracle proxy...");
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            address(implementation),
-            abi.encodeWithSelector(
-                ChainlinkOracle.initialize.selector,
-                msg.sender,        // admin
-                _getEURUSDFeed(),  // EUR/USD feed
-                _getUSDCUSDFeed(), // USDC/USD feed
-                msg.sender         // treasury (using deployer for now)
-            )
-        );
-        chainlinkOracle = address(proxy);
-        chainlinkOracleContract = ChainlinkOracle(chainlinkOracle);
-        console.log("ChainlinkOracle proxy deployed to:", chainlinkOracle);
-        console.log("Using EUR/USD feed:", _getEURUSDFeed());
-        console.log("Using USDC/USD feed:", _getUSDCUSDFeed());
-        console.log("ChainlinkOracle initialized successfully");
+        // 2. Deploy Oracle with proxy (MockChainlinkOracle for localhost, ChainlinkOracle for others)
+        if (isLocalhost) {
+            console.log("Deploying MockChainlinkOracle implementation for localhost...");
+            MockChainlinkOracle mockImplementation = new MockChainlinkOracle();
+            console.log("MockChainlinkOracle implementation deployed to:", address(mockImplementation));
+            
+            console.log("Deploying MockChainlinkOracle proxy...");
+            ERC1967Proxy proxy = new ERC1967Proxy(
+                address(mockImplementation),
+                abi.encodeWithSelector(
+                    MockChainlinkOracle.initialize.selector,
+                    msg.sender,        // admin
+                    _getEURUSDFeed(),  // EUR/USD feed (mock)
+                    _getUSDCUSDFeed()  // USDC/USD feed (mock)
+                )
+            );
+            chainlinkOracle = address(proxy);
+            console.log("MockChainlinkOracle proxy deployed to:", chainlinkOracle);
+            console.log("Using mock EUR/USD feed:", _getEURUSDFeed());
+            console.log("Using mock USDC/USD feed:", _getUSDCUSDFeed());
+            console.log("MockChainlinkOracle initialized successfully");
+        } else {
+            console.log("Deploying ChainlinkOracle implementation...");
+            ChainlinkOracle implementation = new ChainlinkOracle(timeProviderContract);
+            console.log("ChainlinkOracle implementation deployed to:", address(implementation));
+            
+            console.log("Deploying ChainlinkOracle proxy...");
+            ERC1967Proxy proxy = new ERC1967Proxy(
+                address(implementation),
+                abi.encodeWithSelector(
+                    ChainlinkOracle.initialize.selector,
+                    msg.sender,        // admin
+                    _getEURUSDFeed(),  // EUR/USD feed
+                    _getUSDCUSDFeed(), // USDC/USD feed
+                    msg.sender         // treasury (using deployer for now)
+                )
+            );
+            chainlinkOracle = address(proxy);
+            chainlinkOracleContract = ChainlinkOracle(chainlinkOracle);
+            console.log("ChainlinkOracle proxy deployed to:", chainlinkOracle);
+            console.log("Using EUR/USD feed:", _getEURUSDFeed());
+            console.log("Using USDC/USD feed:", _getUSDCUSDFeed());
+            console.log("ChainlinkOracle initialized successfully");
+        }
 
         // 3. Deploy real QEUROToken first (needed for QuantillonVault)
         console.log("Deploying QEUROToken implementation...");

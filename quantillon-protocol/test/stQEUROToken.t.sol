@@ -1152,6 +1152,104 @@ contract stQEUROTokenTestSuite is Test {
         uint256 qeuroEquivalent = stQEURO.getQEUROEquivalent(user1);
         assertEq(qeuroEquivalent, 0);
     }
+    
+    /**
+     * @notice Test exchange rate calculation without YieldShift dependency
+     * @dev Verifies that getExchangeRate() works without calling YieldShift.getUserPendingYield()
+     * @dev This test ensures the fix for the YieldShift integration bug works correctly
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
+     */
+    function test_ExchangeRate_GetExchangeRateWithoutYieldShiftDependency() public {
+        // Test that getExchangeRate() works even when YieldShift is not properly configured
+        // This covers the fix where we removed the YieldShift.getUserPendingYield() call
+        
+        // Initial exchange rate should be 1:1
+        uint256 rate = stQEURO.getExchangeRate();
+        assertEq(rate, 1e18);
+        
+        // Stake some QEURO to create supply
+        vm.prank(user1);
+        stQEURO.stake(STAKE_AMOUNT);
+        
+        // Exchange rate should still be 1:1 (no yield distributed yet)
+        rate = stQEURO.getExchangeRate();
+        assertEq(rate, 1e18);
+        
+        // Distribute yield directly to stQEURO contract
+        vm.prank(yieldManager);
+        stQEURO.distributeYield(YIELD_AMOUNT);
+        
+        // Exchange rate should increase after yield distribution
+        rate = stQEURO.getExchangeRate();
+        assertGt(rate, 1e18);
+        
+        // Test that getExchangeRate() works multiple times without issues
+        for (uint i = 0; i < 5; i++) {
+            uint256 currentRate = stQEURO.getExchangeRate();
+            assertEq(currentRate, rate); // Should be consistent
+        }
+        
+        // Test with multiple users staking
+        vm.prank(user2);
+        stQEURO.stake(STAKE_AMOUNT);
+        
+        // Exchange rate should remain consistent
+        uint256 rateAfterSecondStake = stQEURO.getExchangeRate();
+        assertEq(rateAfterSecondStake, rate);
+        
+        // Distribute more yield
+        vm.prank(yieldManager);
+        stQEURO.distributeYield(YIELD_AMOUNT);
+        
+        // Exchange rate should increase further
+        uint256 finalRate = stQEURO.getExchangeRate();
+        assertGt(finalRate, rate);
+    }
+    
+    /**
+     * @notice Test exchange rate calculation with minimum supply threshold
+     * @dev Verifies that getExchangeRate() returns 1:1 when supply is below minimum threshold
+     * @dev This covers the minimum supply protection in _calculateCurrentExchangeRate()
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
+     */
+    function test_ExchangeRate_MinimumSupplyThreshold() public {
+        // Test with very small supply (below 1e6 threshold)
+        // This should return 1e18 (1:1 rate) regardless of other factors
+        
+        // Initial state - no staking yet
+        uint256 rate = stQEURO.getExchangeRate();
+        assertEq(rate, 1e18);
+        
+        // Stake a very small amount (below threshold)
+        uint256 smallAmount = 1e5; // 0.0001 QEURO (below 1e6 threshold)
+        vm.prank(user1);
+        stQEURO.stake(smallAmount);
+        
+        // Exchange rate should still be 1:1 due to minimum supply protection
+        rate = stQEURO.getExchangeRate();
+        assertEq(rate, 1e18);
+        
+        // Even after yield distribution, rate should remain 1:1 for small supply
+        vm.prank(yieldManager);
+        stQEURO.distributeYield(YIELD_AMOUNT);
+        
+        rate = stQEURO.getExchangeRate();
+        assertEq(rate, 1e18);
+    }
 
     // =============================================================================
     // VIEW FUNCTION TESTS

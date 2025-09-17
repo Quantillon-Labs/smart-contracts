@@ -1,5 +1,5 @@
 # TreasuryRecoveryLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f178a58601862e43db9a3df30d13d692e003e51c/src/libraries/TreasuryRecoveryLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/bbddbedca72271d4260ea804101124f3dc71302c/src/libraries/TreasuryRecoveryLibrary.sol)
 
 **Author:**
 Quantillon Protocol Team

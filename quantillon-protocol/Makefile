@@ -4,7 +4,7 @@
 .PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings deploy-localhost
 
 # Configuration variables
-RESULTS_DIR ?= results
+RESULTS_DIR ?= scripts/results
 BUILD_OUTPUT := $(RESULTS_DIR)/build-output.log
 
 # Default target
@@ -14,7 +14,7 @@ help:
 	@echo "📦 Build & Compile:"
 	@echo "  make build      - Compile all contracts"
 	@echo "  make clean      - Clean build artifacts"
-	@echo "  RESULTS_DIR=custom make build - Use custom output directory"
+	@echo "  RESULTS_DIR=custom make build - Use custom output directory (default: scripts/results)"
 	@echo ""
 	@echo "🧪 Testing:"
 	@echo "  make test       - Run all tests"

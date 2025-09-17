@@ -839,7 +839,6 @@ contract UserPool is
         uint256[] calldata minUsdcOuts,
         uint256[] memory usdcReceivedAmounts
     ) internal {
-        UserInfo storage user = userInfo[msg.sender];
         uint256 length = qeuroAmounts.length;
         uint256 totalQeuroAmount = 0;
         

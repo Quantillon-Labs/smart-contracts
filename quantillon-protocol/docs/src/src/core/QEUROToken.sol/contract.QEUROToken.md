@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f178a58601862e43db9a3df30d13d692e003e51c/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/bbddbedca72271d4260ea804101124f3dc71302c/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -484,9 +484,11 @@ Note: The vault must have an allowance or be authorized otherwise*
 
 - No oracle dependencies
 
+- No flash loan protection needed - only vault can burn
+
 
 ```solidity
-function burn(address from, uint256 amount) external onlyRole(BURNER_ROLE) whenNotPaused flashLoanProtection;
+function burn(address from, uint256 amount) external onlyRole(BURNER_ROLE) whenNotPaused;
 ```
 **Parameters**
 
@@ -1806,7 +1808,11 @@ Toggle the emergency minting killswitch to enable/disable all minting operations
 **Notes:**
 - Only callable by PAUSER_ROLE holders
 
+- Validates caller has PAUSER_ROLE
+
 - Emits MintingKillswitchToggled event with new state and caller
+
+- Throws AccessControlUnauthorizedAccount if caller lacks PAUSER_ROLE
 
 - Updates mintingKillswitch state variable
 

@@ -1,5 +1,5 @@
 # stQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f178a58601862e43db9a3df30d13d692e003e51c/src/core/stQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/bbddbedca72271d4260ea804101124f3dc71302c/src/core/stQEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -901,7 +901,7 @@ function _updateExchangeRate() internal;
 
 Calculate current exchange rate including accrued yield
 
-*Calculates exchange rate based on total underlying assets and pending yield*
+*Returns the stored exchange rate which is updated via distributeYield()*
 
 **Notes:**
 - Uses minimum supply threshold to prevent manipulation

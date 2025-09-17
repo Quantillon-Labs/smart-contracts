@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f178a58601862e43db9a3df30d13d692e003e51c/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/bbddbedca72271d4260ea804101124f3dc71302c/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -402,9 +402,11 @@ Redeems QEURO for USDC
 
 - Requires fresh oracle price data
 
+- No flash loan protection needed - legitimate redemption operation
+
 
 ```solidity
-function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentrant whenNotPaused flashLoanProtection;
+function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentrant whenNotPaused;
 ```
 **Parameters**
 

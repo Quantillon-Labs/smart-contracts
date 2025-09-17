@@ -2056,6 +2056,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that killswitch can be enabled by PAUSER_ROLE
      * @dev Verifies that only PAUSER_ROLE can toggle the killswitch
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_EnableByPauserRole_Success() public {
         // Initially killswitch should be disabled
@@ -2072,6 +2080,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that killswitch can be disabled by PAUSER_ROLE
      * @dev Verifies that killswitch can be toggled off
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_DisableByPauserRole_Success() public {
         // First enable killswitch
@@ -2090,6 +2106,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that non-PAUSER_ROLE cannot toggle killswitch
      * @dev Verifies access control for killswitch function
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_NonPauserRole_Revert() public {
         // Try to enable killswitch as non-pauser
@@ -2109,6 +2133,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that minting is blocked when killswitch is active
      * @dev Verifies that killswitch prevents all minting operations
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_MintingBlockedWhenActive_Revert() public {
         // Enable killswitch
@@ -2128,6 +2160,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that batch minting is blocked when killswitch is active
      * @dev Verifies that killswitch prevents batch minting operations
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_BatchMintingBlockedWhenActive_Revert() public {
         // Enable killswitch
@@ -2157,6 +2197,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that minting works normally when killswitch is disabled
      * @dev Verifies that killswitch doesn't affect normal operations when disabled
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_MintingWorksWhenDisabled_Success() public {
         // Ensure killswitch is disabled (should be by default)
@@ -2174,6 +2222,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that minting resumes after killswitch is disabled
      * @dev Verifies that operations resume normally after killswitch is turned off
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_MintingResumesAfterDisable_Success() public {
         // Enable killswitch
@@ -2201,6 +2257,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that killswitch events are emitted correctly
      * @dev Verifies that events are emitted when killswitch is toggled
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_EventsEmitted_Success() public {
         // Test enabling killswitch event
@@ -2219,6 +2283,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that killswitch works independently of pause mechanism
      * @dev Verifies that killswitch and pause are separate mechanisms
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_IndependentOfPause_Success() public {
         // Enable killswitch but keep contract unpaused
@@ -2255,6 +2327,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test that killswitch doesn't affect burning operations
      * @dev Verifies that killswitch only affects minting, not burning
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_DoesNotAffectBurning_Success() public {
         // First mint some tokens to user1
@@ -2282,6 +2362,14 @@ contract QEUROTokenTestSuite is Test {
     /**
      * @notice Test killswitch with multiple toggles
      * @dev Verifies that killswitch can be toggled multiple times
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
      */
     function test_Killswitch_MultipleToggles_Success() public {
         // Toggle killswitch multiple times

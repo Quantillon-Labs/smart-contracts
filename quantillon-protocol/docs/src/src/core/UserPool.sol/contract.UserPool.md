@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f178a58601862e43db9a3df30d13d692e003e51c/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/bbddbedca72271d4260ea804101124f3dc71302c/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -757,7 +757,7 @@ Internal function to update user and pool state
 
 - No input validation required - parameters pre-validated
 
-- Updates user.depositHistory, user.qeuroBalance, totalDeposits
+- Updates user.depositHistory, totalDeposits
 
 - No events emitted - handled by calling function
 
@@ -850,13 +850,14 @@ It includes a withdrawal fee and handles the redemption process.*
 
 - No oracle dependencies
 
+- No flash loan protection needed - user-initiated operation
+
 
 ```solidity
 function withdraw(uint256 qeuroAmount, uint256 minUsdcOut)
     external
     nonReentrant
     whenNotPaused
-    flashLoanProtection
     returns (uint256 usdcReceived);
 ```
 **Parameters**

@@ -812,7 +812,7 @@ contract stQEUROToken is
     /**
      * @notice Calculate current exchange rate including accrued yield
      * @return Current exchange rate (18 decimals) including pending yield
-     * @dev Calculates exchange rate based on total underlying assets and pending yield
+     * @dev Returns the stored exchange rate which is updated via distributeYield()
      * @custom:security Uses minimum supply threshold to prevent manipulation
      * @custom:validation No input validation required
      * @custom:state-changes No state changes - view function only
@@ -828,29 +828,8 @@ contract stQEUROToken is
         // Minimum supply threshold to prevent manipulation
         if (supply < 1e6) return 1e18; // Minimum 0.000000000001 stQEURO
 
-        // Get yield from YieldShift
-        uint256 pendingYield = yieldShift.getUserPendingYield(address(this));
-        
-        if (pendingYield >= minYieldThreshold || 
-            TIME_PROVIDER.currentTime() >= lastUpdateTime + maxUpdateFrequency) {
-            
-            // Add bounds checking
-            uint256 totalValue = totalUnderlying + pendingYield;
-            
-            // Prevent extreme exchange rates
-            uint256 newRate = totalValue.mulDiv(1e18, supply);
-            
-            // Limit rate changes to prevent manipulation
-            uint256 maxChange = exchangeRate / 10; // Max 10% change
-            if (newRate > exchangeRate + maxChange) {
-                newRate = exchangeRate + maxChange;
-            } else if (newRate < exchangeRate - maxChange) {
-                newRate = exchangeRate - maxChange;
-            }
-            
-            return newRate;
-        }
-        
+        // Return the stored exchange rate which is updated via distributeYield()
+        // Yield is distributed directly to this contract, not through YieldShift
         return exchangeRate;
     }
 

@@ -1635,7 +1635,9 @@ contract QEUROToken is
      * @dev Burning operations remain unaffected by the killswitch
      * @param enabled True to enable killswitch (block all minting), false to disable (allow minting)
      * @custom:security Only callable by PAUSER_ROLE holders
+     * @custom:validation Validates caller has PAUSER_ROLE
      * @custom:events Emits MintingKillswitchToggled event with new state and caller
+     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks PAUSER_ROLE
      * @custom:state-changes Updates mintingKillswitch state variable
      * @custom:access Restricted to PAUSER_ROLE
      * @custom:reentrancy Not protected - simple state change

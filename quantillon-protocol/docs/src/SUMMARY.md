@@ -40,5 +40,7 @@
     - [TreasuryRecoveryLibrary](src/libraries/TreasuryRecoveryLibrary.sol/library.TreasuryRecoveryLibrary.md)
     - [ValidationLibrary](src/libraries/ValidationLibrary.sol/library.ValidationLibrary.md)
     - [VaultMath](src/libraries/VaultMath.sol/library.VaultMath.md)
+  - [❱ mocks](src/mocks/README.md)
+    - [MockUSDC](src/mocks/MockUSDC.sol/contract.MockUSDC.md)
   - [❱ oracle](src/oracle/README.md)
     - [ChainlinkOracle](src/oracle/ChainlinkOracle.sol/contract.ChainlinkOracle.md)

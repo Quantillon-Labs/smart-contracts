@@ -16,6 +16,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 // Internal interfaces of the Quantillon protocol
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
+import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
@@ -142,6 +143,11 @@ contract QuantillonVault is
     /// @dev Used for price calculations in swap operations
     IChainlinkOracle public oracle;
 
+    /// @notice HedgerPool contract for collateralization checks
+    /// @dev Used to verify protocol has sufficient hedging positions before minting QEURO
+    /// @dev Ensures protocol is properly collateralized by hedgers
+    IHedgerPool public hedgerPool;
+
     /// @notice Treasury address for ETH recovery
     /// @dev SECURITY: Only this address can receive ETH from recoverETH function
     address public treasury;
@@ -258,6 +264,7 @@ contract QuantillonVault is
      * @param _qeuro Address of the QEURO token contract
      * @param _usdc Address of the USDC token contract
      * @param _oracle Address of the Oracle contract
+     * @param _hedgerPool Address of the HedgerPool contract
      * @param _timelock Address of the timelock contract
      * 
      * @dev This function configures:
@@ -279,6 +286,7 @@ contract QuantillonVault is
         address _qeuro,
         address _usdc,
         address _oracle,
+        address _hedgerPool,
         address _timelock
     ) public initializer {
         // Validation of critical parameters
@@ -286,6 +294,7 @@ contract QuantillonVault is
         require(_qeuro != address(0), "Vault: QEURO cannot be zero");
         require(_usdc != address(0), "Vault: USDC cannot be zero");
         require(_oracle != address(0), "Vault: Oracle cannot be zero");
+        // Note: HedgerPool can be zero during initialization, but must be set before minting
         require(_timelock != address(0), "Vault: Timelock cannot be zero");
 
         // Initialization of security modules
@@ -303,6 +312,10 @@ contract QuantillonVault is
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
+        // HedgerPool can be set later via updateHedgerPool() if _hedgerPool is zero
+        if (_hedgerPool != address(0)) {
+            hedgerPool = IHedgerPool(_hedgerPool);
+        }
         treasury = _timelock; // Set treasury to timelock
 
         // Default protocol parameters
@@ -349,6 +362,9 @@ contract QuantillonVault is
     ) external nonReentrant whenNotPaused flashLoanProtection {
         // Input validations
         require(usdcAmount > 0, "Vault: Amount must be positive");
+
+        // Check if protocol is properly collateralized by hedgers
+        require(_isProtocolCollateralized(), "Vault: Protocol not collateralized - no active hedging positions");
 
         // Fetch EUR/USD price from oracle with detailed validation
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
@@ -589,6 +605,29 @@ contract QuantillonVault is
         usdcAmount = grossUsdcAmount - fee;
     }
 
+    /**
+     * @notice Checks if the protocol is properly collateralized by hedgers
+     * @dev Public view function to check collateralization status
+     * @return isCollateralized True if protocol has active hedging positions
+     * @return totalMargin Total margin in HedgerPool (0 if not set)
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check collateralization status
+     * @custom:oracle No oracle dependencies
+     */
+    function isProtocolCollateralized() external view returns (bool isCollateralized, uint256 totalMargin) {
+        if (address(hedgerPool) == address(0)) {
+            return (false, 0);
+        }
+        
+        totalMargin = hedgerPool.totalMargin();
+        isCollateralized = totalMargin > 0;
+    }
+
 
     // =============================================================================
     // GOVERNANCE FUNCTIONS - Governance functions
@@ -642,6 +681,25 @@ contract QuantillonVault is
     function updateOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE) {
         require(_oracle != address(0), "Vault: Oracle cannot be zero");
         oracle = IChainlinkOracle(_oracle);
+    }
+
+    /**
+     * @notice Updates the HedgerPool address
+     * @dev Updates the HedgerPool contract address for collateralization checks
+     * @param _hedgerPool New HedgerPool address
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateHedgerPool(address _hedgerPool) external onlyRole(GOVERNANCE_ROLE) {
+        require(_hedgerPool != address(0), "Vault: HedgerPool cannot be zero");
+        hedgerPool = IHedgerPool(_hedgerPool);
+        emit ParametersUpdated("hedgerPool", 0, 0);
     }
     
     /**
@@ -720,6 +778,31 @@ contract QuantillonVault is
         if (isValid) {
             lastPriceUpdateTime = block.timestamp;
         }
+    }
+
+    /**
+     * @notice Checks if the protocol is properly collateralized by hedgers
+     * @dev Ensures there are active hedging positions before allowing QEURO minting
+     * @dev Protocol is considered collateralized if totalMargin > 0 in HedgerPool
+     * @return isCollateralized True if protocol has active hedging positions
+     * @custom:security Validates protocol collateralization status
+     * @custom:validation Checks HedgerPool totalMargin > 0
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function only
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
+     */
+    function _isProtocolCollateralized() internal view returns (bool isCollateralized) {
+        // Check if HedgerPool is set
+        if (address(hedgerPool) == address(0)) {
+            return false;
+        }
+        
+        // Check if there are active hedging positions (totalMargin > 0)
+        uint256 totalMargin = hedgerPool.totalMargin();
+        return totalMargin > 0;
     }
     
     /**

@@ -8,6 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {IHedgerPool} from "../src/interfaces/IHedgerPool.sol";
 import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 /**
@@ -138,6 +139,7 @@ contract QuantillonVaultTestSuite is Test {
     // Mock contracts
     address public mockUSDC = address(0x7);
     address public mockOracle = address(0x8);
+    address public mockHedgerPool = address(0x9);
     address public mockTimelock = address(0x789); // mock timelock address (also used as treasury)
     
     // =============================================================================
@@ -186,6 +188,7 @@ contract QuantillonVaultTestSuite is Test {
             address(qeuroToken),
             mockUSDC,
             mockOracle,
+            mockHedgerPool,
             mockTimelock // mock timelock address (also used as treasury)
         );
         vault = QuantillonVault(address(new ERC1967Proxy(address(vaultImplementation), vaultInitData)));
@@ -410,7 +413,7 @@ contract QuantillonVaultTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        vault.initialize(admin, address(qeuroToken), mockUSDC, mockOracle, address(0x789));
+        vault.initialize(admin, address(qeuroToken), mockUSDC, mockOracle, mockHedgerPool, address(0x789));
     }
     
     // =============================================================================
@@ -529,6 +532,97 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(user1);
         vm.expectRevert();
         vault.mintQEURO(MINT_AMOUNT, 100 * 1e18);
+    }
+
+    /**
+     * @notice Test minting when protocol is not collateralized should revert
+     * @dev Verifies that minting is blocked when there are no active hedging positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
+     */
+    function test_Mint_WhenNotCollateralized_Revert() public {
+        // Mock HedgerPool to return 0 totalMargin (no active positions)
+        vm.mockCall(
+            mockHedgerPool,
+            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
+            abi.encode(0)
+        );
+        
+        // Try to mint - should revert due to lack of collateralization
+        vm.prank(user1);
+        vm.expectRevert("Vault: Protocol not collateralized - no active hedging positions");
+        vault.mintQEURO(MINT_AMOUNT, 0);
+    }
+
+    /**
+     * @notice Test minting when protocol is collateralized should succeed
+     * @dev Verifies that minting works when there are active hedging positions
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
+     */
+    function test_Mint_WhenCollateralized_Success() public {
+        // Mock HedgerPool to return > 0 totalMargin (active positions exist)
+        vm.mockCall(
+            mockHedgerPool,
+            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
+            abi.encode(1000 * 1e6) // 1000 USDC margin
+        );
+        
+        // Mint should succeed
+        vm.prank(user1);
+        vault.mintQEURO(MINT_AMOUNT, 0);
+        
+        // Check vault state
+        assertEq(vault.totalUsdcHeld(), MINT_AMOUNT);
+        assertGt(vault.totalMinted(), 0);
+    }
+
+    /**
+     * @notice Test collateralization status check function
+     * @dev Verifies that isProtocolCollateralized returns correct values
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
+     */
+    function test_View_IsProtocolCollateralized() public {
+        // Test when HedgerPool has no margin (not collateralized)
+        vm.mockCall(
+            mockHedgerPool,
+            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
+            abi.encode(0)
+        );
+        
+        (bool isCollateralized, uint256 totalMargin) = vault.isProtocolCollateralized();
+        assertFalse(isCollateralized);
+        assertEq(totalMargin, 0);
+        
+        // Test when HedgerPool has margin (collateralized)
+        vm.mockCall(
+            mockHedgerPool,
+            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
+            abi.encode(1000 * 1e6) // 1000 USDC margin
+        );
+        
+        (isCollateralized, totalMargin) = vault.isProtocolCollateralized();
+        assertTrue(isCollateralized);
+        assertEq(totalMargin, 1000 * 1e6);
     }
     
     // =============================================================================
@@ -885,6 +979,70 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vm.expectRevert("Vault: Oracle cannot be zero");
         vault.updateOracle(address(0));
+    }
+
+    /**
+     * @notice Test updating HedgerPool address
+     * @dev Verifies that governance can update HedgerPool address
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
+     */
+    function test_Governance_UpdateHedgerPool() public {
+        address newHedgerPool = address(0x999);
+        
+        // Check current HedgerPool address
+        assertEq(address(vault.hedgerPool()), mockHedgerPool);
+        
+        // Update HedgerPool address
+        vm.prank(governance);
+        vault.updateHedgerPool(newHedgerPool);
+        
+        // Verify update
+        assertEq(address(vault.hedgerPool()), newHedgerPool);
+    }
+
+    /**
+     * @notice Test updating HedgerPool address by non-governance should revert
+     * @dev Verifies that only governance can update HedgerPool address
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
+     */
+    function test_Governance_UpdateHedgerPoolByNonGovernance_Revert() public {
+        address newHedgerPool = address(0x999);
+        
+        vm.prank(user1);
+        vm.expectRevert();
+        vault.updateHedgerPool(newHedgerPool);
+    }
+
+    /**
+     * @notice Test updating HedgerPool with zero address should revert
+     * @dev Verifies that HedgerPool cannot be set to zero address
+      * @custom:security No security implications - test function
+      * @custom:validation No input validation required - test function
+      * @custom:state-changes No state changes - test function
+      * @custom:events No events emitted - test function
+      * @custom:errors No errors thrown - test function
+      * @custom:reentrancy Not applicable - test function
+      * @custom:access Public - no access restrictions
+      * @custom:oracle No oracle dependency for test function
+     */
+    function test_Governance_UpdateHedgerPoolZeroAddress_Revert() public {
+        vm.prank(governance);
+        vm.expectRevert("Vault: HedgerPool cannot be zero");
+        vault.updateHedgerPool(address(0));
     }
     
     /**

@@ -90,7 +90,12 @@ QEURO_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "QEUROToken"
 QUANTILLON_VAULT_IMPL=$(jq -r '.transactions[] | select(.contractName == "QuantillonVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
 QTI_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "QTIToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
 STQEURO_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "stQEUROToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
-CHAINLINK_ORACLE_IMPL=$(jq -r '.transactions[] | select(.contractName == "ChainlinkOracle") | .contractAddress' "$BROADCAST_FILE" | head -1)
+# Handle different oracle contract names based on network
+if [ "$NETWORK" = "localhost" ]; then
+    CHAINLINK_ORACLE_IMPL=$(jq -r '.transactions[] | select(.contractName == "MockChainlinkOracle") | .contractAddress' "$BROADCAST_FILE" | head -1)
+else
+    CHAINLINK_ORACLE_IMPL=$(jq -r '.transactions[] | select(.contractName == "ChainlinkOracle") | .contractAddress' "$BROADCAST_FILE" | head -1)
+fi
 USER_POOL_IMPL=$(jq -r '.transactions[] | select(.contractName == "UserPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
 HEDGER_POOL_IMPL=$(jq -r '.transactions[] | select(.contractName == "HedgerPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
 YIELD_SHIFT_IMPL=$(jq -r '.transactions[] | select(.contractName == "YieldShift") | .contractAddress' "$BROADCAST_FILE" | head -1)

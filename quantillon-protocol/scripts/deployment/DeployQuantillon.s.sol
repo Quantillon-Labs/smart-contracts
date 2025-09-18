@@ -350,6 +350,7 @@ contract DeployQuantillon is Script {
             qeuroToken,        // _qeuro (real QEURO token)
             _getUSDCAddress(), // _usdc
             chainlinkOracle,   // _oracle
+            address(0),        // _hedgerPool (temporary - will be updated after HedgerPool deployment)
             msg.sender         // _timelock
         );
         ERC1967Proxy vaultProxy = new ERC1967Proxy(address(vaultImpl), vaultInitData);
@@ -528,6 +529,11 @@ contract DeployQuantillon is Script {
 
     function _deployPhase4() internal {
         console.log("\n=== PHASE 4: UPDATE CONTRACT REFERENCES ===");
+        
+        // Update QuantillonVault with HedgerPool address
+        console.log("Updating QuantillonVault with HedgerPool address...");
+        quantillonVaultContract.updateHedgerPool(hedgerPool);
+        console.log("QuantillonVault HedgerPool address updated to:", hedgerPool);
         
         console.log("Updating AaveVault with correct YieldShift address...");
         // Note: AaveVault doesn't have a setter for YieldShift, so we need to redeploy or use a different approach

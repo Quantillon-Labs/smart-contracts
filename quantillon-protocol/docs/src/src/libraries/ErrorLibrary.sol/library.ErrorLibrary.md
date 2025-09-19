@@ -1,5 +1,5 @@
 # ErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/bbddbedca72271d4260ea804101124f3dc71302c/src/libraries/ErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/libraries/ErrorLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -13,7 +13,7 @@ Custom errors for Quantillon Protocol
 - Supports governance, vault, yield, and liquidation operations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Errors
@@ -589,6 +589,12 @@ error MarginTooLow();
 
 ```solidity
 error MarginRatioTooLow();
+```
+
+### MarginRatioTooHigh
+
+```solidity
+error MarginRatioTooHigh();
 ```
 
 ### MarginInsufficient

@@ -102,6 +102,8 @@ contract InitializeQuantillon is Script {
             qeuroToken,
             MOCK_USDC_TOKEN,
             chainlinkOracle,
+            address(0), // _hedgerPool (temporary - will be updated)
+            address(0), // _userPool (temporary - will be updated)
             deployer  // timelock
         );
         console.log("QuantillonVault initialized");

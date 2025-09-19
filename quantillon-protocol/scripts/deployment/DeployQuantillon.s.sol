@@ -351,6 +351,7 @@ contract DeployQuantillon is Script {
             _getUSDCAddress(), // _usdc
             chainlinkOracle,   // _oracle
             address(0),        // _hedgerPool (temporary - will be updated after HedgerPool deployment)
+            address(0),        // _userPool (temporary - will be updated after UserPool deployment)
             msg.sender         // _timelock
         );
         ERC1967Proxy vaultProxy = new ERC1967Proxy(address(vaultImpl), vaultInitData);
@@ -535,6 +536,11 @@ contract DeployQuantillon is Script {
         quantillonVaultContract.updateHedgerPool(hedgerPool);
         console.log("QuantillonVault HedgerPool address updated to:", hedgerPool);
         
+        // Update QuantillonVault with UserPool address
+        console.log("Updating QuantillonVault with UserPool address...");
+        quantillonVaultContract.updateUserPool(userPool);
+        console.log("QuantillonVault UserPool address updated to:", userPool);
+        
         console.log("Updating AaveVault with correct YieldShift address...");
         // Note: AaveVault doesn't have a setter for YieldShift, so we need to redeploy or use a different approach
         
@@ -546,6 +552,25 @@ contract DeployQuantillon is Script {
         
         console.log("Note: Some contracts may need manual configuration of cross-references.");
         console.log("Consider using setter functions or redeploying contracts with correct addresses.");
+        
+        console.log("\n=== PHASE 5: HEDGER ROLE MANAGEMENT ===");
+        
+        // Verify deployer has governance role (admin is deployer by default)
+        bool hasGovernanceRole = hedgerPoolContract.hasRole(hedgerPoolContract.GOVERNANCE_ROLE(), msg.sender);
+        console.log("Deployer has GOVERNANCE_ROLE:", hasGovernanceRole);
+        
+        // Grant deployer (admin) hedger role as protocol foundation is the first and main hedger
+        console.log("Granting deployer hedger role as protocol foundation...");
+        hedgerPoolContract.whitelistHedger(msg.sender);
+        console.log("Deployer whitelisted as hedger:", msg.sender);
+        
+        // Verify hedger role and whitelist status
+        bool isWhitelisted = hedgerPoolContract.isWhitelistedHedger(msg.sender);
+        bool hasHedgerRole = hedgerPoolContract.hasRole(hedgerPoolContract.HEDGER_ROLE(), msg.sender);
+        console.log("Deployer whitelist status:", isWhitelisted);
+        console.log("Deployer has HEDGER_ROLE:", hasHedgerRole);
+        
+        console.log("Hedger role management completed.");
     }
 
     function _deployPhase5() internal {

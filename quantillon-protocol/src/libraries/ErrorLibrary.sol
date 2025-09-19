@@ -139,6 +139,7 @@ library ErrorLibrary {
     // Margin Errors
     error MarginTooLow();
     error MarginRatioTooLow();
+    error MarginRatioTooHigh();
     error MarginInsufficient();
     error MarginLimitExceeded();
     

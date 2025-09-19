@@ -1,5 +1,5 @@
 # ValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/bbddbedca72271d4260ea804101124f3dc71302c/src/libraries/ValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/libraries/ValidationLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -13,7 +13,7 @@ Validation functions for Quantillon Protocol
 - Array and position validation utilities*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -24,21 +24,21 @@ Validates leverage parameters for trading positions
 *Ensures leverage is within acceptable bounds (> 0 and <= max)*
 
 **Notes:**
-- Prevents excessive leverage that could cause system instability
+- security: Prevents excessive leverage that could cause system instability
 
-- Validates leverage > 0 and leverage <= maxLeverage
+- validation: Validates leverage > 0 and leverage <= maxLeverage
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidLeverage if leverage is 0, LeverageTooHigh if exceeds max
+- errors: Throws InvalidLeverage if leverage is 0, LeverageTooHigh if exceeds max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -59,21 +59,21 @@ Validates margin ratio to ensure sufficient collateralization
 *Prevents positions from being under-collateralized*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -87,6 +87,41 @@ function validateMarginRatio(uint256 marginRatio, uint256 minRatio) internal pur
 |`minRatio`|`uint256`|The minimum required margin ratio|
 
 
+### validateMaxMarginRatio
+
+Validates margin ratio against maximum limit to prevent excessive collateralization
+
+*Prevents positions from being over-collateralized (leverage too low)*
+
+**Notes:**
+- security: Prevents excessive margin ratios that would result in leverage < 2x
+
+- validation: Validates marginRatio <= maxRatio
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws MarginRatioTooHigh if margin ratio exceeds maximum
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function validateMaxMarginRatio(uint256 marginRatio, uint256 maxRatio) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`marginRatio`|`uint256`|The current margin ratio to validate|
+|`maxRatio`|`uint256`|The maximum allowed margin ratio|
+
+
 ### validateFee
 
 Validates fee amount against maximum allowed fee
@@ -94,21 +129,21 @@ Validates fee amount against maximum allowed fee
 *Ensures fees don't exceed protocol limits (typically in basis points)*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -129,21 +164,21 @@ Validates threshold value against maximum limit
 *Used for liquidation thresholds, margin ratios, etc.*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -164,21 +199,21 @@ Validates that an amount is positive (greater than zero)
 *Essential for token amounts, deposits, withdrawals, etc.*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -198,21 +233,21 @@ Validates yield shift percentage (0-100%)
 *Ensures yield shift is within valid range of 0-10000 basis points*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -232,21 +267,21 @@ Validates adjustment speed for yield shift mechanisms
 *Prevents excessively fast adjustments that could destabilize the system*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -267,21 +302,21 @@ Validates target ratio for yield distribution mechanisms
 *Ensures ratio is positive and within acceptable bounds*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -302,21 +337,21 @@ Validates liquidation cooldown period to prevent manipulation
 *Uses block numbers to prevent timestamp manipulation attacks*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -337,21 +372,21 @@ Validates slippage protection for token swaps/trades
 *Ensures received amount is within acceptable tolerance of expected*
 
 **Notes:**
-- Prevents excessive slippage that could cause user losses
+- security: Prevents excessive slippage that could cause user losses
 
-- Validates received >= expected * (10000 - tolerance) / 10000
+- validation: Validates received >= expected * (10000 - tolerance) / 10000
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws ExcessiveSlippage if slippage exceeds tolerance
+- errors: Throws ExcessiveSlippage if slippage exceeds tolerance
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -373,21 +408,21 @@ Validates that a value meets minimum threshold requirements
 *Used for minimum deposits, stakes, withdrawals, etc.*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -408,21 +443,21 @@ Validates that a position is active before operations
 *Prevents operations on closed or invalid positions*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -442,21 +477,21 @@ Validates position ownership before allowing operations
 *Security check to ensure only position owner can modify it*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -477,21 +512,21 @@ Validates position count limits to prevent system overload
 *Enforces maximum positions per user for gas and complexity management*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -512,21 +547,21 @@ Validates that a commitment doesn't already exist
 *Prevents duplicate commitments in liquidation system*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -546,21 +581,21 @@ Validates that a valid commitment exists
 *Ensures commitment exists before executing liquidation*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -580,21 +615,21 @@ Validates oracle price data integrity
 *Ensures oracle price is valid before using in calculations*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -614,21 +649,21 @@ Validates treasury address is not zero address
 *Prevents setting treasury to zero address which could cause loss of funds*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -639,5 +674,205 @@ function validateTreasuryAddress(address treasury) internal pure;
 |Name|Type|Description|
 |----|----|-----------|
 |`treasury`|`address`|The treasury address to validate|
+
+
+### validatePositionParams
+
+Validates all position parameters against maximum limits
+
+*Ensures all position parameters are within acceptable bounds*
+
+**Notes:**
+- security: Validates all position parameters against maximum limits
+
+- validation: Validates all position parameters against maximum limits
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws various errors if parameters exceed limits
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function validatePositionParams(
+    uint256 netMargin,
+    uint256 positionSize,
+    uint256 eurUsdPrice,
+    uint256 leverage,
+    uint256 maxMargin,
+    uint256 maxPositionSize,
+    uint256 maxEntryPrice,
+    uint256 maxLeverage
+) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`netMargin`|`uint256`|The net margin amount after fees|
+|`positionSize`|`uint256`|The size of the position|
+|`eurUsdPrice`|`uint256`|The EUR/USD entry price|
+|`leverage`|`uint256`|The leverage multiplier|
+|`maxMargin`|`uint256`|Maximum allowed margin|
+|`maxPositionSize`|`uint256`|Maximum allowed position size|
+|`maxEntryPrice`|`uint256`|Maximum allowed entry price|
+|`maxLeverage`|`uint256`|Maximum allowed leverage|
+
+
+### validateTotals
+
+Validates total margin and exposure limits
+
+*Ensures combined totals don't exceed system-wide limits*
+
+**Notes:**
+- security: Validates total margin and exposure limits
+
+- validation: Validates total margin and exposure limits
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws various errors if totals exceed limits
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function validateTotals(
+    uint256 currentMargin,
+    uint256 currentExposure,
+    uint256 additionalMargin,
+    uint256 additionalExposure,
+    uint256 maxTotalMargin,
+    uint256 maxTotalExposure
+) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`currentMargin`|`uint256`|Current total margin|
+|`currentExposure`|`uint256`|Current total exposure|
+|`additionalMargin`|`uint256`|Additional margin being added|
+|`additionalExposure`|`uint256`|Additional exposure being added|
+|`maxTotalMargin`|`uint256`|Maximum allowed total margin|
+|`maxTotalExposure`|`uint256`|Maximum allowed total exposure|
+
+
+### validateTimestamp
+
+Validates timestamp fits in uint32 for storage optimization
+
+*Prevents timestamp overflow when casting to uint32*
+
+**Notes:**
+- security: Validates timestamp fits in uint32 for storage optimization
+
+- validation: Validates timestamp fits in uint32 for storage optimization
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws TimestampOverflow if timestamp exceeds uint32 max
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function validateTimestamp(uint256 timestamp) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`timestamp`|`uint256`|The timestamp to validate|
+
+
+### validateNewMargin
+
+Validates new margin amount against maximum limit
+
+*Ensures margin additions don't exceed individual position limits*
+
+**Notes:**
+- security: Validates new margin amount against maximum limit
+
+- validation: Validates new margin amount against maximum limit
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws NewMarginExceedsMaximum if margin exceeds limit
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function validateNewMargin(uint256 newMargin, uint256 maxMargin) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newMargin`|`uint256`|The new total margin amount|
+|`maxMargin`|`uint256`|Maximum allowed margin per position|
+
+
+### validatePendingRewards
+
+Validates pending rewards against maximum accumulation limit
+
+*Prevents excessive reward accumulation that could cause overflow*
+
+**Notes:**
+- security: Validates pending rewards against maximum accumulation limit
+
+- validation: Validates pending rewards against maximum accumulation limit
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws PendingRewardsExceedMaximum if rewards exceed limit
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function - no access restrictions
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function validatePendingRewards(uint256 newRewards, uint256 maxRewards) internal pure;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newRewards`|`uint256`|The new total pending rewards amount|
+|`maxRewards`|`uint256`|Maximum allowed pending rewards|
 
 

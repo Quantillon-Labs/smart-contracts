@@ -253,6 +253,8 @@ contract DeployProduction is Script {
             qeuroToken,
             usdcToken,
             chainlinkOracle,
+            address(0), // _hedgerPool (temporary - will be updated)
+            address(0), // _userPool (temporary - will be updated)
             multisigWallet  // timelock
         );
         quantillonVault = address(new ERC1967Proxy(quantillonVaultImpl, quantillonVaultInitData));

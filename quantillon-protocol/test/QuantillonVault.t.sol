@@ -9,6 +9,7 @@ import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {IHedgerPool} from "../src/interfaces/IHedgerPool.sol";
+import {IUserPool} from "../src/interfaces/IUserPool.sol";
 import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
 
 /**
@@ -189,6 +190,7 @@ contract QuantillonVaultTestSuite is Test {
             mockUSDC,
             mockOracle,
             mockHedgerPool,
+            address(0x8), // mock UserPool address
             mockTimelock // mock timelock address (also used as treasury)
         );
         vault = QuantillonVault(address(new ERC1967Proxy(address(vaultImplementation), vaultInitData)));
@@ -262,6 +264,20 @@ contract QuantillonVaultTestSuite is Test {
             mockOracle,
             abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
             abi.encode(EUR_USD_PRICE, true)
+        );
+        
+        // Mock HedgerPool totalMargin (needed for collateralization ratio calculation)
+        vm.mockCall(
+            mockHedgerPool,
+            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
+            abi.encode(1000 * 1e6) // 1000 USDC margin - sufficient for collateralization
+        );
+        
+        // Mock UserPool totalDeposits (needed for collateralization ratio calculation)
+        vm.mockCall(
+            address(0x8), // mock UserPool address
+            abi.encodeWithSelector(IUserPool.totalDeposits.selector),
+            abi.encode(10000 * 1e6) // 10000 USDC deposits - sufficient for collateralization
         );
     }
     
@@ -349,7 +365,9 @@ contract QuantillonVaultTestSuite is Test {
             address(qeuroToken),
             mockUSDC,
             mockOracle,
-            address(0x789)
+            mockHedgerPool,
+            address(0x8), // mock UserPool address
+            address(0x789) // mock timelock address
         );
         
         vm.expectRevert("Vault: Admin cannot be zero");
@@ -363,7 +381,9 @@ contract QuantillonVaultTestSuite is Test {
             address(0),
             mockUSDC,
             mockOracle,
-            address(0x789)
+            mockHedgerPool,
+            address(0x8), // mock UserPool address
+            address(0x789) // mock timelock address
         );
         
         vm.expectRevert("Vault: QEURO cannot be zero");
@@ -377,7 +397,9 @@ contract QuantillonVaultTestSuite is Test {
             address(qeuroToken),
             address(0),
             mockOracle,
-            address(0x789)
+            mockHedgerPool,
+            address(0x8), // mock UserPool address
+            address(0x789) // mock timelock address
         );
         
         vm.expectRevert("Vault: USDC cannot be zero");
@@ -391,7 +413,9 @@ contract QuantillonVaultTestSuite is Test {
             address(qeuroToken),
             mockUSDC,
             address(0),
-            address(0x789)
+            mockHedgerPool,
+            address(0x8), // mock UserPool address
+            address(0x789) // mock timelock address
         );
         
         vm.expectRevert("Vault: Oracle cannot be zero");
@@ -413,7 +437,7 @@ contract QuantillonVaultTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        vault.initialize(admin, address(qeuroToken), mockUSDC, mockOracle, mockHedgerPool, address(0x789));
+        vault.initialize(admin, address(qeuroToken), mockUSDC, mockOracle, mockHedgerPool, address(0x8), address(0x789));
     }
     
     // =============================================================================
@@ -556,7 +580,7 @@ contract QuantillonVaultTestSuite is Test {
         
         // Try to mint - should revert due to lack of collateralization
         vm.prank(user1);
-        vm.expectRevert("Vault: Protocol not collateralized - no active hedging positions");
+        vm.expectRevert("Vault: Minting not allowed - insufficient collateralization ratio");
         vault.mintQEURO(MINT_AMOUNT, 0);
     }
 
@@ -1545,6 +1569,108 @@ contract QuantillonVaultTestSuite is Test {
         assertGt(usdcAmount, 0);
     }
     
+    // =============================================================================
+    // COLLATERALIZATION TESTS
+    // =============================================================================
+    
+    /**
+     * @notice Test collateralization ratio calculation
+     * @dev Verifies that the collateralization ratio is calculated correctly using ((A+B)/A)*100 formula
+     */
+    function test_Collateralization_GetProtocolCollateralizationRatio() public {
+        // Set up mock UserPool and HedgerPool with specific values
+        MockUserPool testUserPool = new MockUserPool();
+        MockHedgerPool testHedgerPool = new MockHedgerPool();
+        
+        // Set user deposits (A) = 1,000,000 USDC
+        testUserPool.setTotalDeposits(1_000_000e6);
+        
+        // Set hedger deposits (B) = 100,000 USDC
+        testHedgerPool.setTotalMargin(100_000e6);
+        
+        // Update vault with mock contracts
+        vm.prank(governance);
+        vault.updateUserPool(address(testUserPool));
+        vm.prank(governance);
+        vault.updateHedgerPool(address(testHedgerPool));
+        
+        // Calculate expected ratio: ((1,000,000 + 100,000) / 1,000,000) * 10000 = 11000 (110%)
+        uint256 expectedRatio = 11000; // 110% in basis points
+        uint256 actualRatio = vault.getProtocolCollateralizationRatio();
+        
+        assertEq(actualRatio, expectedRatio);
+    }
+    
+    /**
+     * @notice Test minting allowed when collateralization ratio >= 105%
+     */
+    function test_Collateralization_CanMintWhenRatioAbove105() public {
+        MockUserPool testUserPool = new MockUserPool();
+        MockHedgerPool testHedgerPool = new MockHedgerPool();
+        
+        // Set up ratio = 110% (above 105% threshold)
+        testUserPool.setTotalDeposits(1_000_000e6);
+        testHedgerPool.setTotalMargin(100_000e6);
+        
+        vm.prank(governance);
+        vault.updateUserPool(address(testUserPool));
+        vm.prank(governance);
+        vault.updateHedgerPool(address(testHedgerPool));
+        
+        assertTrue(vault.canMint());
+    }
+    
+    /**
+     * @notice Test minting blocked when collateralization ratio < 105%
+     */
+    function test_Collateralization_CannotMintWhenRatioBelow105() public {
+        MockUserPool testUserPool = new MockUserPool();
+        MockHedgerPool testHedgerPool = new MockHedgerPool();
+        
+        // Set up ratio = 103% (below 105% threshold)
+        testUserPool.setTotalDeposits(1_000_000e6);
+        testHedgerPool.setTotalMargin(30_000e6); // (1,000,000 + 30,000) / 1,000,000 = 103%
+        
+        vm.prank(governance);
+        vault.updateUserPool(address(testUserPool));
+        vm.prank(governance);
+        vault.updateHedgerPool(address(testHedgerPool));
+        
+        assertFalse(vault.canMint());
+    }
+    
+    /**
+     * @notice Test liquidation trigger when collateralization ratio < 101%
+     */
+    function test_Collateralization_ShouldTriggerLiquidationWhenRatioBelow101() public {
+        MockUserPool testUserPool = new MockUserPool();
+        MockHedgerPool testHedgerPool = new MockHedgerPool();
+        
+        // Set up ratio = 99% (below 101% critical threshold)
+        testUserPool.setTotalDeposits(1_000_000e6);
+        testHedgerPool.setTotalMargin(0); // (1,000,000 + 0) / 1,000,000 = 100% (below 101%)
+        
+        vm.prank(governance);
+        vault.updateUserPool(address(testUserPool));
+        vm.prank(governance);
+        vault.updateHedgerPool(address(testHedgerPool));
+        
+        assertTrue(vault.shouldTriggerLiquidation());
+    }
+    
+    /**
+     * @notice Test updating collateralization thresholds by governance
+     */
+    function test_Collateralization_UpdateThresholdsByGovernance() public {
+        uint256 newMinRatio = 11000; // 110%
+        uint256 newCriticalRatio = 10200; // 102%
+        
+        vm.prank(governance);
+        vault.updateCollateralizationThresholds(newMinRatio, newCriticalRatio);
+        
+        assertEq(vault.minCollateralizationRatioForMinting(), newMinRatio);
+        assertEq(vault.criticalCollateralizationRatio(), newCriticalRatio);
+    }
 
     
     // =============================================================================
@@ -1655,5 +1781,29 @@ contract MockERC20 {
         allowance[msg.sender][spender] = amount;
         emit Approval(msg.sender, spender, amount);
         return true;
+    }
+}
+
+/**
+ * @title MockUserPool
+ * @notice Mock UserPool contract for testing collateralization
+ */
+contract MockUserPool {
+    uint256 public totalDeposits;
+    
+    function setTotalDeposits(uint256 _totalDeposits) external {
+        totalDeposits = _totalDeposits;
+    }
+}
+
+/**
+ * @title MockHedgerPool
+ * @notice Mock HedgerPool contract for testing collateralization
+ */
+contract MockHedgerPool {
+    uint256 public totalMargin;
+    
+    function setTotalMargin(uint256 _totalMargin) external {
+        totalMargin = _totalMargin;
     }
 }

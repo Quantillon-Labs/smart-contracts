@@ -104,6 +104,9 @@ contract LiquidationEdgeCases is Test {
         hedgerPool.grantRole(keccak256("LIQUIDATOR_ROLE"), flashLoanAttacker); // Grant liquidator role for testing
         hedgerPool.grantRole(keccak256("LIQUIDATOR_ROLE"), attacker); // Grant liquidator role for testing
         hedgerPool.grantRole(keccak256("EMERGENCY_ROLE"), emergencyRole);
+        
+        // Whitelist hedger for testing (hedger whitelist is enabled by default)
+        hedgerPool.whitelistHedger(hedger);
         vm.stopPrank();
         
         // Setup mock calls for USDC
@@ -325,7 +328,8 @@ contract LiquidationEdgeCases is Test {
         vm.startPrank(flashLoanAttacker);
         
         // Attempt to directly manipulate position (should fail due to access control)
-        // For now, just test that the call works (we'll add proper access control checks later)
+        // This should fail because flashLoanAttacker is not whitelisted as a hedger
+        vm.expectRevert(ErrorLibrary.NotWhitelisted.selector);
         hedgerPool.enterHedgePosition(1000 * USDC_PRECISION, 2 * PRECISION / PRECISION);
         
         vm.stopPrank();

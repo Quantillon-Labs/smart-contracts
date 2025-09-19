@@ -17,6 +17,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
+import {IUserPool} from "../interfaces/IUserPool.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
@@ -147,6 +148,11 @@ contract QuantillonVault is
     /// @dev Used to verify protocol has sufficient hedging positions before minting QEURO
     /// @dev Ensures protocol is properly collateralized by hedgers
     IHedgerPool public hedgerPool;
+    
+    /// @notice UserPool contract for user deposit tracking
+    /// @dev Used to get total user deposits for collateralization ratio calculations
+    /// @dev Required for accurate protocol collateralization assessment
+    IUserPool public userPool;
 
     /// @notice Treasury address for ETH recovery
     /// @dev SECURITY: Only this address can receive ETH from recoverETH function
@@ -163,6 +169,22 @@ contract QuantillonVault is
     /// @dev Example: 10 = 0.1% redemption fee
     /// @dev Revenue source for the protocol
     uint256 public redemptionFee;
+
+    // Collateralization parameters (configurable by governance)
+    
+    /// @notice Minimum collateralization ratio required for minting QEURO (in basis points)
+    /// @dev Example: 10500 = 105% collateralization ratio required for minting
+    /// @dev When protocol collateralization >= this threshold, minting is allowed
+    /// @dev When protocol collateralization < this threshold, minting is halted
+    /// @dev Can be updated by governance to adjust protocol risk parameters
+    uint256 public minCollateralizationRatioForMinting;
+    
+    /// @notice Critical collateralization ratio that triggers liquidation (in basis points)
+    /// @dev Example: 10100 = 101% collateralization ratio triggers liquidation
+    /// @dev When protocol collateralization < this threshold, hedgers start being liquidated
+    /// @dev Emergency threshold to protect protocol solvency
+    /// @dev Can be updated by governance to adjust liquidation triggers
+    uint256 public criticalCollateralizationRatio;
 
     // Global vault state
     
@@ -211,6 +233,26 @@ contract QuantillonVault is
     
     /// @notice Emitted when price deviation protection is triggered
     /// @dev Helps monitor potential flash loan attacks
+    
+    /// @notice Emitted when collateralization thresholds are updated by governance
+    /// @param minCollateralizationRatioForMinting New minimum collateralization ratio for minting (in basis points)
+    /// @param criticalCollateralizationRatio New critical collateralization ratio for liquidation (in basis points)
+    /// @param caller Address of the governance role holder who updated the thresholds
+    event CollateralizationThresholdsUpdated(
+        uint256 indexed minCollateralizationRatioForMinting,
+        uint256 indexed criticalCollateralizationRatio,
+        address indexed caller
+    );
+    
+    /// @notice Emitted when protocol collateralization status changes
+    /// @param currentRatio Current protocol collateralization ratio (in basis points)
+    /// @param canMint Whether minting is currently allowed based on collateralization
+    /// @param shouldLiquidate Whether liquidation should be triggered based on collateralization
+    event CollateralizationStatusChanged(
+        uint256 indexed currentRatio,
+        bool indexed canMint,
+        bool indexed shouldLiquidate
+    );
     event PriceDeviationDetected(
         uint256 currentPrice,
         uint256 lastValidPrice,
@@ -287,6 +329,7 @@ contract QuantillonVault is
         address _usdc,
         address _oracle,
         address _hedgerPool,
+        address _userPool,
         address _timelock
     ) public initializer {
         // Validation of critical parameters
@@ -294,7 +337,7 @@ contract QuantillonVault is
         require(_qeuro != address(0), "Vault: QEURO cannot be zero");
         require(_usdc != address(0), "Vault: USDC cannot be zero");
         require(_oracle != address(0), "Vault: Oracle cannot be zero");
-        // Note: HedgerPool can be zero during initialization, but must be set before minting
+        // Note: HedgerPool and UserPool can be zero during initialization, but must be set before minting
         require(_timelock != address(0), "Vault: Timelock cannot be zero");
 
         // Initialization of security modules
@@ -312,15 +355,22 @@ contract QuantillonVault is
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
-        // HedgerPool can be set later via updateHedgerPool() if _hedgerPool is zero
+        // HedgerPool and UserPool can be set later via update functions if addresses are zero
         if (_hedgerPool != address(0)) {
             hedgerPool = IHedgerPool(_hedgerPool);
+        }
+        if (_userPool != address(0)) {
+            userPool = IUserPool(_userPool);
         }
         treasury = _timelock; // Set treasury to timelock
 
         // Default protocol parameters
         mintFee = 1e15;                 // 0.1% mint fee
         redemptionFee = 1e15;           // 0.1% redemption fee
+        
+        // Default collateralization parameters
+        minCollateralizationRatioForMinting = 10500;  // 105% - minimum ratio for minting
+        criticalCollateralizationRatio = 10100;       // 101% - critical ratio for liquidation
         
         // Initialize price tracking for flash loan protection
         lastValidEurUsdPrice = 0;       // Will be set on first price fetch
@@ -363,8 +413,8 @@ contract QuantillonVault is
         // Input validations
         require(usdcAmount > 0, "Vault: Amount must be positive");
 
-        // Check if protocol is properly collateralized by hedgers
-        require(_isProtocolCollateralized(), "Vault: Protocol not collateralized - no active hedging positions");
+        // Check if protocol is properly collateralized and minting is allowed
+        require(canMint(), "Vault: Minting not allowed - insufficient collateralization ratio");
 
         // Fetch EUR/USD price from oracle with detailed validation
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
@@ -663,7 +713,42 @@ contract QuantillonVault is
         emit ParametersUpdated("fees", _mintFee, _redemptionFee);
     }
 
+    /**
+     * @notice Updates the collateralization thresholds (governance only)
+     * 
+     * @param _minCollateralizationRatioForMinting New minimum collateralization ratio for minting (in basis points)
+     * @param _criticalCollateralizationRatio New critical collateralization ratio for liquidation (in basis points)
+     * 
+     * @dev Safety constraints:
+     *      - minCollateralizationRatioForMinting >= 10100 (101% minimum)
+     *      - criticalCollateralizationRatio <= minCollateralizationRatioForMinting
+     *      - criticalCollateralizationRatio >= 10000 (100% minimum)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateCollateralizationThresholds(
+        uint256 _minCollateralizationRatioForMinting,
+        uint256 _criticalCollateralizationRatio
+    ) external onlyRole(GOVERNANCE_ROLE) {
+        require(_minCollateralizationRatioForMinting >= 10100, "Vault: Min ratio must be >= 101%");
+        require(_criticalCollateralizationRatio >= 10000, "Vault: Critical ratio must be >= 100%");
+        require(_criticalCollateralizationRatio <= _minCollateralizationRatioForMinting, "Vault: Critical ratio must be <= min ratio");
 
+        minCollateralizationRatioForMinting = _minCollateralizationRatioForMinting;
+        criticalCollateralizationRatio = _criticalCollateralizationRatio;
+
+        emit CollateralizationThresholdsUpdated(
+            _minCollateralizationRatioForMinting,
+            _criticalCollateralizationRatio,
+            msg.sender
+        );
+    }
 
     /**
      * @notice Updates the oracle address
@@ -700,6 +785,25 @@ contract QuantillonVault is
         require(_hedgerPool != address(0), "Vault: HedgerPool cannot be zero");
         hedgerPool = IHedgerPool(_hedgerPool);
         emit ParametersUpdated("hedgerPool", 0, 0);
+    }
+    
+    /**
+     * @notice Updates the UserPool address
+     * @dev Updates the UserPool contract address for user deposit tracking
+     * @param _userPool New UserPool address
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateUserPool(address _userPool) external onlyRole(GOVERNANCE_ROLE) {
+        require(_userPool != address(0), "Vault: UserPool cannot be zero");
+        userPool = IUserPool(_userPool);
+        emit ParametersUpdated("userPool", 0, 0);
     }
     
     /**
@@ -803,6 +907,80 @@ contract QuantillonVault is
         // Check if there are active hedging positions (totalMargin > 0)
         uint256 totalMargin = hedgerPool.totalMargin();
         return totalMargin > 0;
+    }
+    
+    /**
+     * @notice Calculates the current protocol collateralization ratio
+     * @dev Formula: ((A + B) / A) * 100 where A = user deposits, B = hedger deposits
+     * @dev Returns ratio in basis points (e.g., 10500 = 105%)
+     * @return ratio Current collateralization ratio in basis points
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted - view function
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check collateralization ratio
+     * @custom:oracle No oracle dependencies
+     */
+    function getProtocolCollateralizationRatio() public view returns (uint256 ratio) {
+        // Check if both HedgerPool and UserPool are set
+        if (address(hedgerPool) == address(0) || address(userPool) == address(0)) {
+            return 0;
+        }
+        
+        // Get user deposits from UserPool (A in the formula)
+        uint256 userDeposits = userPool.totalDeposits();
+        
+        // Get hedger deposits from HedgerPool (B in the formula)
+        uint256 hedgerDeposits = hedgerPool.totalMargin();
+        
+        // If no user deposits, return 0
+        if (userDeposits == 0) {
+            return 0;
+        }
+        
+        // Calculate ratio: ((A + B) / A) * 100
+        // Using basis points (multiply by 10000 instead of 100)
+        ratio = ((userDeposits + hedgerDeposits) * 10000) / userDeposits;
+        
+        return ratio;
+    }
+    
+    /**
+     * @notice Checks if minting is allowed based on current collateralization ratio
+     * @dev Returns true if collateralization ratio >= minCollateralizationRatioForMinting
+     * @return canMint Whether minting is currently allowed
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted - view function
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check minting status
+     * @custom:oracle No oracle dependencies
+     */
+    function canMint() public view returns (bool) {
+        uint256 currentRatio = getProtocolCollateralizationRatio();
+        return currentRatio >= minCollateralizationRatioForMinting;
+    }
+    
+    /**
+     * @notice Checks if liquidation should be triggered based on current collateralization ratio
+     * @dev Returns true if collateralization ratio < criticalCollateralizationRatio
+     * @return shouldLiquidate Whether liquidation should be triggered
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted - view function
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check liquidation status
+     * @custom:oracle No oracle dependencies
+     */
+    function shouldTriggerLiquidation() public view returns (bool shouldLiquidate) {
+        uint256 currentRatio = getProtocolCollateralizationRatio();
+        return currentRatio < criticalCollateralizationRatio;
     }
     
     /**

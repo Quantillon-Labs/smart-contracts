@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/bbddbedca72271d4260ea804101124f3dc71302c/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -17,7 +17,7 @@ EUR/USD and USDC/USD price manager for Quantillon Protocol
 - Data freshness checks*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -226,23 +226,23 @@ Constructor for ChainlinkOracle contract
 *Initializes the TimeProvider and disables initializers for proxy pattern*
 
 **Notes:**
-- Validates TimeProvider address is not zero
+- security: Validates TimeProvider address is not zero
 
-- Validates _TIME_PROVIDER is not address(0)
+- validation: Validates _TIME_PROVIDER is not address(0)
 
-- Sets TIME_PROVIDER immutable variable and disables initializers
+- state-changes: Sets TIME_PROVIDER immutable variable and disables initializers
 
-- No events emitted
+- events: No events emitted
 
-- Throws "Zero address" if _TIME_PROVIDER is address(0)
+- errors: Throws "Zero address" if _TIME_PROVIDER is address(0)
 
-- Not applicable - constructor
+- reentrancy: Not applicable - constructor
 
-- Public - anyone can deploy
+- access: Public - anyone can deploy
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
-- constructor
+- oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
@@ -262,21 +262,21 @@ Initializes the oracle contract with Chainlink price feeds
 *Sets up all core dependencies, roles, and default configuration parameters*
 
 **Notes:**
-- Validates all addresses are not zero, grants admin roles
+- security: Validates all addresses are not zero, grants admin roles
 
-- Validates all input addresses are not address(0)
+- validation: Validates all input addresses are not address(0)
 
-- Initializes all state variables, sets default price bounds
+- state-changes: Initializes all state variables, sets default price bounds
 
-- Emits PriceUpdated during initial price update
+- events: Emits PriceUpdated during initial price update
 
-- Throws "Oracle: Admin cannot be zero" if admin is address(0)
+- errors: Throws "Oracle: Admin cannot be zero" if admin is address(0)
 
-- Protected by initializer modifier
+- reentrancy: Protected by initializer modifier
 
-- Public - only callable once during deployment
+- access: Public - only callable once during deployment
 
-- Initializes Chainlink price feed interfaces
+- oracle: Initializes Chainlink price feed interfaces
 
 
 ```solidity
@@ -301,21 +301,21 @@ Update treasury address
 *SECURITY: Only admin can update treasury address*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -335,21 +335,21 @@ Removes pause and resumes oracle operations
 *Allows emergency role to unpause the oracle after resolving issues*
 
 **Notes:**
-- Validates emergency role authorization
+- security: Validates emergency role authorization
 
-- No input validation required
+- validation: No input validation required
 
-- Removes pause state, resumes oracle operations
+- state-changes: Removes pause state, resumes oracle operations
 
-- Emits Unpaused event from OpenZeppelin
+- events: Emits Unpaused event from OpenZeppelin
 
-- No errors thrown - safe unpause operation
+- errors: No errors thrown - safe unpause operation
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- No oracle dependencies for unpause
+- oracle: No oracle dependencies for unpause
 
 
 ```solidity
@@ -363,21 +363,21 @@ Performs division with proper rounding to nearest integer
 *Adds half the divisor before division to achieve proper rounding*
 
 **Notes:**
-- Validates denominator is not zero to prevent division by zero
+- security: Validates denominator is not zero to prevent division by zero
 
-- Validates b > 0
+- validation: Validates b > 0
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws "Oracle: Division by zero" if b is 0
+- errors: Throws "Oracle: Division by zero" if b is 0
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -404,21 +404,21 @@ Validates if a timestamp is recent enough to prevent manipulation attacks
 *Checks timestamp is not in future and not too old beyond staleness + drift limits*
 
 **Notes:**
-- Validates timestamp is not in future and within acceptable age
+- security: Validates timestamp is not in future and within acceptable age
 
-- Validates reportedTime <= currentTime and within MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT
+- validation: Validates reportedTime <= currentTime and within MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies for timestamp validation
+- oracle: No oracle dependencies for timestamp validation
 
 
 ```solidity
@@ -444,21 +444,21 @@ Updates and validates internal prices
 *Internal function called during initialization and resets, fetches fresh prices from Chainlink*
 
 **Notes:**
-- Validates price data integrity, circuit breaker bounds, and deviation limits
+- security: Validates price data integrity, circuit breaker bounds, and deviation limits
 
-- Validates roundId == answeredInRound, startedAt <= updatedAt, price > 0
+- validation: Validates roundId == answeredInRound, startedAt <= updatedAt, price > 0
 
-- Updates lastValidEurUsdPrice, lastPriceUpdateTime, lastPriceUpdateBlock
+- state-changes: Updates lastValidEurUsdPrice, lastPriceUpdateTime, lastPriceUpdateBlock
 
-- Emits PriceUpdated with current prices or CircuitBreakerTriggered if invalid
+- events: Emits PriceUpdated with current prices or CircuitBreakerTriggered if invalid
 
-- Throws "EUR/USD price data is stale" if roundId != answeredInRound
+- errors: Throws "EUR/USD price data is stale" if roundId != answeredInRound
 
-- Not protected - internal function only
+- reentrancy: Not protected - internal function only
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- Fetches fresh prices from Chainlink EUR/USD and USDC/USD feeds
+- oracle: Fetches fresh prices from Chainlink EUR/USD and USDC/USD feeds
 
 
 ```solidity
@@ -472,21 +472,21 @@ Scale price to 18 decimals for consistency
 *Converts Chainlink price from its native decimals to 18 decimals with proper rounding*
 
 **Notes:**
-- Validates rawPrice > 0 and handles decimal conversion safely
+- security: Validates rawPrice > 0 and handles decimal conversion safely
 
-- Validates rawPrice > 0, returns 0 if invalid
+- validation: Validates rawPrice > 0, returns 0 if invalid
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe arithmetic used
+- errors: No errors thrown - safe arithmetic used
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies for price scaling
+- oracle: No oracle dependencies for price scaling
 
 
 ```solidity
@@ -513,21 +513,21 @@ Retrieves the oracle global health status
 *Checks freshness of both price feeds and overall system health*
 
 **Notes:**
-- Validates price feed connectivity and data integrity
+- security: Validates price feed connectivity and data integrity
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function with try/catch
+- errors: No errors thrown - safe view function with try/catch
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can check oracle health
+- access: Public - anyone can check oracle health
 
-- Checks connectivity to Chainlink EUR/USD and USDC/USD feeds
+- oracle: Checks connectivity to Chainlink EUR/USD and USDC/USD feeds
 
 
 ```solidity
@@ -549,21 +549,21 @@ Retrieves detailed information about the EUR/USD price
 *Provides comprehensive EUR/USD price data including staleness and bounds checks*
 
 **Notes:**
-- Validates price feed data integrity and circuit breaker status
+- security: Validates price feed data integrity and circuit breaker status
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function with try/catch
+- errors: No errors thrown - safe view function with try/catch
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query EUR/USD details
+- access: Public - anyone can query EUR/USD details
 
-- Fetches fresh data from Chainlink EUR/USD price feed
+- oracle: Fetches fresh data from Chainlink EUR/USD price feed
 
 
 ```solidity
@@ -590,21 +590,21 @@ Retrieves current configuration parameters
 *Returns all key configuration values for oracle operations*
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query configuration
+- access: Public - anyone can query configuration
 
-- No oracle dependencies for configuration query
+- oracle: No oracle dependencies for configuration query
 
 
 ```solidity
@@ -631,21 +631,21 @@ Retrieves addresses of the Chainlink price feeds used
 *Returns feed addresses and their decimal configurations*
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query feed addresses
+- access: Public - anyone can query feed addresses
 
-- Queries decimal configuration from Chainlink feeds
+- oracle: Queries decimal configuration from Chainlink feeds
 
 
 ```solidity
@@ -671,21 +671,21 @@ Tests connectivity to the Chainlink price feeds
 *Tests if both price feeds are responding and returns latest round information*
 
 **Notes:**
-- Validates price feed connectivity and data integrity
+- security: Validates price feed connectivity and data integrity
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function with try/catch
+- errors: No errors thrown - safe view function with try/catch
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can test feed connectivity
+- access: Public - anyone can test feed connectivity
 
-- Tests connectivity to Chainlink EUR/USD and USDC/USD feeds
+- oracle: Tests connectivity to Chainlink EUR/USD and USDC/USD feeds
 
 
 ```solidity
@@ -726,21 +726,21 @@ Recovers tokens accidentally sent to the contract to treasury only
 *Emergency function to recover ERC20 tokens that are not part of normal operations*
 
 **Notes:**
-- Validates admin role and uses secure recovery library
+- security: Validates admin role and uses secure recovery library
 
-- No input validation required - library handles validation
+- validation: No input validation required - library handles validation
 
-- Transfers tokens from contract to treasury
+- state-changes: Transfers tokens from contract to treasury
 
-- No events emitted - library handles events
+- events: No events emitted - library handles events
 
-- No errors thrown - library handles error cases
+- errors: No errors thrown - library handles error cases
 
-- Not protected - library handles reentrancy
+- reentrancy: Not protected - library handles reentrancy
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependencies for token recovery
+- oracle: No oracle dependencies for token recovery
 
 
 ```solidity
@@ -767,21 +767,21 @@ Recover ETH to treasury address only
 - Uses call() for reliable ETH transfers to any contract*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -796,21 +796,21 @@ Resets the circuit breaker and resumes oracle usage
 Restarts price updates and disables fallback mode.*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -825,21 +825,21 @@ Manually triggers the circuit breaker
 Forces the use of the last known valid price.*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -853,21 +853,21 @@ Pauses all oracle operations
 *Emergency function to pause oracle in case of critical issues*
 
 **Notes:**
-- Validates emergency role authorization
+- security: Validates emergency role authorization
 
-- No input validation required
+- validation: No input validation required
 
-- Sets pause state, stops oracle operations
+- state-changes: Sets pause state, stops oracle operations
 
-- Emits Paused event from OpenZeppelin
+- events: Emits Paused event from OpenZeppelin
 
-- No errors thrown - safe pause operation
+- errors: No errors thrown - safe pause operation
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- No oracle dependencies for pause
+- oracle: No oracle dependencies for pause
 
 
 ```solidity
@@ -887,21 +887,21 @@ Retrieves the current EUR/USD price with full validation
 6. Return valid price or fallback*
 
 **Notes:**
-- Validates timestamp freshness, circuit breaker status, price bounds
+- security: Validates timestamp freshness, circuit breaker status, price bounds
 
-- Checks price > 0, timestamp < 1 hour old, within min/max bounds
+- validation: Checks price > 0, timestamp < 1 hour old, within min/max bounds
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - returns fallback price if invalid
+- errors: No errors thrown - returns fallback price if invalid
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Requires fresh Chainlink EUR/USD price feed data
+- oracle: Requires fresh Chainlink EUR/USD price feed data
 
 
 ```solidity
@@ -923,21 +923,21 @@ Retrieves the USDC/USD price with validation
 A large deviation indicates a systemic issue.*
 
 **Notes:**
-- Validates timestamp freshness, USDC tolerance bounds
+- security: Validates timestamp freshness, USDC tolerance bounds
 
-- Checks price > 0, timestamp < 1 hour old, within USDC tolerance
+- validation: Checks price > 0, timestamp < 1 hour old, within USDC tolerance
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - returns $1.00 fallback if invalid
+- errors: No errors thrown - returns $1.00 fallback if invalid
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Requires fresh Chainlink USDC/USD price feed data
+- oracle: Requires fresh Chainlink USDC/USD price feed data
 
 
 ```solidity
@@ -958,21 +958,21 @@ Updates price bounds for the circuit breaker
 *Allows oracle manager to adjust price thresholds based on market conditions*
 
 **Notes:**
-- Validates oracle manager role and price bounds constraints
+- security: Validates oracle manager role and price bounds constraints
 
-- Validates _minPrice > 0, _maxPrice > _minPrice, _maxPrice < 10e18
+- validation: Validates _minPrice > 0, _maxPrice > _minPrice, _maxPrice < 10e18
 
-- Updates minEurUsdPrice and maxEurUsdPrice
+- state-changes: Updates minEurUsdPrice and maxEurUsdPrice
 
-- Emits PriceBoundsUpdated with new bounds
+- events: Emits PriceBoundsUpdated with new bounds
 
-- Throws "Oracle: Min price must be positive" if _minPrice <= 0
+- errors: Throws "Oracle: Min price must be positive" if _minPrice <= 0
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- No oracle dependencies for bounds update
+- oracle: No oracle dependencies for bounds update
 
 
 ```solidity
@@ -993,21 +993,21 @@ Updates the tolerance for USDC/USD
 *Allows oracle manager to adjust USDC price tolerance around $1.00*
 
 **Notes:**
-- Validates oracle manager role and tolerance constraints
+- security: Validates oracle manager role and tolerance constraints
 
-- Validates newToleranceBps <= 1000 (max 10%)
+- validation: Validates newToleranceBps <= 1000 (max 10%)
 
-- Updates usdcToleranceBps
+- state-changes: Updates usdcToleranceBps
 
-- No events emitted for tolerance update
+- events: No events emitted for tolerance update
 
-- Throws "Oracle: Tolerance too high" if newToleranceBps > 1000
+- errors: Throws "Oracle: Tolerance too high" if newToleranceBps > 1000
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- No oracle dependencies for tolerance update
+- oracle: No oracle dependencies for tolerance update
 
 
 ```solidity
@@ -1027,21 +1027,21 @@ Updates the Chainlink price feed addresses
 *Allows oracle manager to update price feed addresses for maintenance or upgrades*
 
 **Notes:**
-- Validates oracle manager role and feed address constraints
+- security: Validates oracle manager role and feed address constraints
 
-- Validates both feed addresses are not address(0)
+- validation: Validates both feed addresses are not address(0)
 
-- Updates eurUsdPriceFeed and usdcUsdPriceFeed interfaces
+- state-changes: Updates eurUsdPriceFeed and usdcUsdPriceFeed interfaces
 
-- Emits PriceFeedsUpdated with new feed addresses
+- events: Emits PriceFeedsUpdated with new feed addresses
 
-- Throws "Oracle: EUR/USD feed cannot be zero" if _eurUsdFeed is address(0)
+- errors: Throws "Oracle: EUR/USD feed cannot be zero" if _eurUsdFeed is address(0)
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- Updates Chainlink price feed interface addresses
+- oracle: Updates Chainlink price feed interface addresses
 
 
 ```solidity

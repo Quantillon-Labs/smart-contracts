@@ -1,314 +1,259 @@
-# Quantillon Protocol Deployment Scripts
+# Quantillon Protocol - Secure Deployment Guide
 
-This directory contains the complete deployment infrastructure for the Quantillon Protocol. All deployment scripts have been rationalized and organized for maximum efficiency and maintainability.
+This directory contains the unified deployment infrastructure for the Quantillon Protocol with enterprise-grade security using [Dotenvx](https://dotenvx.com/) encryption.
 
-## 📊 Current Status
+## 🔐 Security Features
 
-### **Script Status**
-- ✅ **All scripts compile successfully**
-- ✅ **All deployment scripts run without errors**
-- 🎯 **Streamlined deployment**: Only essential scripts for maximum efficiency
-- 🤖 **Automated localhost deployment**: Available via `make deploy-localhost`
-- 🪙 **MockUSDC integration**: Automatic MockUSDC deployment for testing networks
+- **🔒 Encrypted Environment Variables**: All secrets protected with AES-256 encryption
+- **🔑 Separate Key Storage**: Decryption keys stored separately from encrypted files
+- **🛡️ Safe to Commit**: Encrypted `.env` files can be safely committed to version control
+- **👥 Team Collaboration**: Shared encrypted environment files with individual decryption keys
+
+## 🚀 Unified Deployment Script
+
+### **`deploy.sh` - Universal Deployment Script**
+
+The new unified deployment script handles all environments with built-in security:
+
+```bash
+./scripts/deployment/deploy.sh [environment] [options]
+```
+
+### 📋 Supported Environments
+
+| Environment | Description | RPC URL | Chain ID |
+|-------------|-------------|---------|----------|
+| **localhost** | Local Anvil development | `http://localhost:8545` | `31337` |
+| **base-sepolia** | Base Sepolia testnet | `https://sepolia.base.org` | `84532` |
+| **base** | Base mainnet production | `https://mainnet.base.org` | `8453` |
+
+### 🔧 Deployment Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--with-mocks` | Deploy mock contracts (localhost only) | `./deploy.sh localhost --with-mocks` |
+| `--verify` | Verify contracts on block explorer | `./deploy.sh base-sepolia --verify` |
+| `--production` | Use production deployment script | `./deploy.sh base --production` |
+| `--dry-run` | Simulate deployment without broadcasting | `./deploy.sh localhost --dry-run` |
+| `--help` | Show help message | `./deploy.sh --help` |
+
+## 🎯 Quick Start
+
+### 1. Environment Setup
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Fill in your values
+# Edit .env with your actual API keys, private keys, etc.
+
+# Encrypt environment variables
+npx dotenvx encrypt .env
+```
+
+### 2. Deploy to Localhost
+
+```bash
+# Start Anvil
+anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
+
+# Deploy with mock contracts
+./scripts/deployment/deploy.sh localhost --with-mocks
+```
+
+### 3. Deploy to Testnet
+
+```bash
+# Deploy to Base Sepolia with verification
+./scripts/deployment/deploy.sh base-sepolia --verify
+```
+
+### 4. Deploy to Production
+
+```bash
+# Deploy to Base mainnet with production settings
+./scripts/deployment/deploy.sh base --production --verify
+```
 
 ## 📁 Script Structure
 
 ### Core Deployment Scripts
 
-| Script | Purpose | Status | Usage |
-|--------|---------|--------|-------|
-| `DeployProduction.s.sol` | **🚀 PRODUCTION DEPLOYMENT** - UUPS + Multisig + Network config | ✅ **Working** | `export MULTISIG_WALLET=0x... && forge script scripts/deployment/DeployProduction.s.sol --rpc-url <RPC> --broadcast` |
-| `DeployQuantillon.s.sol` | **🛠️ DEVELOPMENT DEPLOYMENT** - Deploys all contracts with MockUSDC for localhost/Base Sepolia | ✅ **Working** | `forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url <RPC> --broadcast` |
-| `InitializeQuantillon.s.sol` | **Initialization script** - Sets up contracts with proper roles and relationships | ✅ **Working** | `forge script scripts/deployment/InitializeQuantillon.s.sol --rpc-url <RPC> --broadcast` |
-| `VerifyDeployment.s.sol` | **Verification script** - Verifies deployment and contract integrity | ✅ **Working** | `forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url <RPC>` |
-| `VerifyQuantillon.s.sol` | **Protocol verification script** - Comprehensive protocol verification | ⚠️ **Needs deployment file** | `forge script scripts/deployment/VerifyQuantillon.s.sol --rpc-url <RPC>` |
+| Script | Purpose | Environment | Security |
+|--------|---------|-------------|----------|
+| **`deploy.sh`** | **🚀 UNIFIED DEPLOYMENT** - Universal deployment script | All networks | ✅ Encrypted |
+| `DeployProduction.s.sol` | Production deployment with multisig | Mainnet/Testnet | ✅ Encrypted |
+| `DeployQuantillon.s.sol` | Standard deployment | All networks | ✅ Encrypted |
+| `DeployMockUSDC.s.sol` | Mock USDC deployment | Localhost/Testnet | ✅ Encrypted |
+| `DeployMockFeeds.s.sol` | Mock price feeds deployment | Localhost | ✅ Encrypted |
 
-### Deployment Methods
+### Utility Scripts
 
-- **Localhost**: Automated script with `make deploy-localhost` or `./scripts/deployment/deploy-localhost.sh`
-- **Localhost with MockUSDC**: `make deploy-localhost-with-mock-usdc` or `./scripts/deployment/deploy-localhost.sh --with-mock-usdc`
-- **Base Sepolia**: Automated script with `make deploy-base-sepolia` (includes MockUSDC)
-- **Production**: Manual deployment using `forge script` commands directly
+| Script | Purpose | Description |
+|--------|---------|-------------|
+| `copy-abis.sh` | ABI copying | Copies contract ABIs to frontend |
+| `update-frontend-addresses.sh` | Address updates | Updates frontend with deployed addresses |
 
-## 📁 File Structure
+## 🔐 Security Implementation
 
-```
-scripts/
-├── deploy-localhost.sh         # 🚀 Automated localhost deployment script (with MockUSDC option)
-├── deploy-base-sepolia.sh      # 🚀 Automated Base Sepolia deployment script (with MockUSDC)
-└── deployment/
-    ├── DeployProduction.s.sol      # 🚀 PRODUCTION deployment (UUPS + Multisig + Network)
-    ├── DeployQuantillon.s.sol      # 🛠️ Development deployment script (with MockUSDC)
-    ├── DeployMockUSDC.s.sol        # 🪙 Standalone MockUSDC deployment script
-    ├── InitializeQuantillon.s.sol  # Initialization script
-    ├── VerifyDeployment.s.sol      # Verification script
-    ├── VerifyQuantillon.s.sol      # Protocol verification script
-    └── README.md                   # Complete documentation
+### Environment Variable Encryption
 
-deployments/
-├── production-localhost.json   # Production deployment addresses
-├── localhost.json              # Development deployment addresses
-└── base-sepolia.json           # Base Sepolia deployment addresses
-```
-
-## 🎯 Deployment Types & Use Cases
-
-### **DeployProduction.s.sol** - 🚀 **PRODUCTION DEPLOYMENT (RECOMMENDED)**
-- **Best for**: Production deployments with maximum security and flexibility
-- **Features**: UUPS upgradeability + Multisig governance + Network configuration
-- **Upgradeability**: ✅ Yes (UUPS proxy pattern)
-- **Security**: ✅ Enhanced (Multisig governance)
-- **Network Support**: ✅ All networks (localhost, testnet, mainnet)
-- **Complexity**: Advanced
-- **Note**: Requires real oracle addresses for production networks
-
-#### **Production Script Features:**
-- 🔄 **UUPS Proxy Pattern**: All contracts deployed as upgradeable proxies
-- 👥 **Multisig Governance**: All admin roles assigned to multisig wallet
-- 🌐 **Network Configuration**: Automatic network-specific oracle configuration
-- 📊 **Comprehensive Logging**: Detailed deployment progress and addresses
-- 💾 **Deployment Files**: Saves deployment info to JSON files
-- 🔒 **Security First**: Production-ready security measures
-- ⚡ **Gas Optimized**: Efficient deployment with minimal gas usage
-
-### **DeployQuantillon.s.sol** - 🛠️ **Development Deployment**
-- **Best for**: Development, testing, localhost
-- **Features**: Direct contract deployment, simple setup
-- **Upgradeability**: ❌ No
-- **Security**: Basic
-- **Complexity**: Simple
-- **Automation**: ✅ Available via `make deploy-localhost` or `./scripts/deployment/deploy-localhost.sh`
-
-### **Automated Localhost Deployment Script** - 🤖 **`deploy-localhost.sh`**
-- **Best for**: Quick localhost deployment with automated checks
-- **Features**: Pre-deployment validation, error handling, address extraction
-- **Automation**: ✅ Full automation with `make deploy-localhost`
-- **User Experience**: ✅ Colorized output, clear status messages
-- **Error Handling**: ✅ Comprehensive error checking and helpful messages
-
-#### **Script Features:**
-- 🔍 **Pre-deployment Checks**: Verifies Anvil connectivity and script existence
-- 🚀 **Automated Deployment**: Runs deployment with progress tracking
-- 📋 **Address Extraction**: Automatically extracts and displays contract addresses
-- 🎨 **User Experience**: Colorized output and clear status messages
-- ⚠️ **Error Handling**: Comprehensive error checking with helpful messages
-- 💡 **Next Steps**: Provides verification commands and guidance
-
-## 🚀 Quick Start
-
-### 1. 🚀 **Production Deployment (RECOMMENDED)**
+The protocol uses [Dotenvx](https://dotenvx.com/) for enterprise-grade security:
 
 ```bash
-# Start Anvil (for localhost testing)
+# Encrypt environment file
+npx dotenvx encrypt .env
+
+# This creates:
+# - .env (encrypted with public key)
+# - .env.keys (private decryption key - NEVER commit)
+```
+
+### File Structure
+
+```
+.env                 # Encrypted environment variables (safe to commit)
+.env.keys           # Private decryption key (NEVER commit - in .gitignore)
+.env.example        # Template for new developers
+.env.backup         # Backup of original unencrypted file
+```
+
+### Security Benefits
+
+- **AES-256 Encryption**: Each secret encrypted with unique ephemeral key
+- **Elliptic Curve Cryptography**: Secp256k1 for key management (same as Bitcoin)
+- **Separate Key Storage**: Encrypted file and decryption key stored separately
+- **Computationally Infeasible**: Breaking encryption requires brute-forcing both AES-256 and ECC
+
+## 🛠️ Development Workflow
+
+### Local Development
+
+```bash
+# 1. Start Anvil
 anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 
-# Set required environment variables
-export PRIVATE_KEY=0xYourPrivateKey
-export MULTISIG_WALLET=0xYourMultisigWalletAddress
-export NETWORK=localhost  # or sepolia, base, etc.
+# 2. Deploy with mocks
+./scripts/deployment/deploy.sh localhost --with-mocks
 
-# For production networks, also set:
-export EUR_USD_FEED_SEPOLIA=0x...
-export USDC_USD_FEED_SEPOLIA=0x...
-export USDC_TOKEN_SEPOLIA=0x...
-export AAVE_POOL_SEPOLIA=0x...
+# 3. Test your changes
+forge test
 
-# Deploy with UUPS + Multisig + Network config
-forge script scripts/deployment/DeployProduction.s.sol --rpc-url http://localhost:8545 --broadcast
+# 4. Deploy to testnet
+./scripts/deployment/deploy.sh base-sepolia --verify
 ```
 
-### 2. 🛠️ **Development Deployment**
-
-#### **Option A: Automated Script (Recommended)**
-```bash
-# Start Anvil
-anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
-
-# Deploy using automated script
-make deploy-localhost
-# OR
-./scripts/deployment/deploy-localhost.sh
-```
-
-#### **Option B: Manual Command**
-```bash
-# Start Anvil
-anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
-
-# Deploy manually
-forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545 --broadcast
-```
-
-
-## 📋 Deployment Order
-
-The deployment follows a specific order to handle dependencies:
-
-### Phase 1: Core Infrastructure
-1. **TimeProvider** - Time management library
-2. **ChainlinkOracle** - Price feed oracle
-3. **QEUROToken** - Euro-pegged stablecoin
-
-### Phase 2: Core Protocol
-4. **QTIToken** - Governance token
-5. **QuantillonVault** - Main vault contract
-
-### Phase 3: Pool Contracts
-6. **UserPool** - User deposit pool
-7. **HedgerPool** - Hedger pool
-8. **stQEUROToken** - Staked QEURO token
-
-### Phase 4: Yield Management
-9. **AaveVault** - Aave integration vault
-10. **YieldShift** - Yield distribution manager
-
-## 🔧 Configuration
-
-### Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `PRIVATE_KEY` | Deployer private key | Yes |
-| `NETWORK` | Target network (localhost, sepolia, base) | No (defaults to localhost) |
-| `EUR_USD_FEED_<NETWORK>` | Chainlink EUR/USD price feed | For testnet/mainnet |
-| `USDC_USD_FEED_<NETWORK>` | Chainlink USDC/USD price feed | For testnet/mainnet |
-| `USDC_TOKEN_<NETWORK>` | USDC token address | For testnet/mainnet |
-| `AAVE_POOL_<NETWORK>` | Aave pool address | For testnet/mainnet |
-
-### Mock Addresses (Localhost)
-
-For localhost deployment, the following mock addresses are used:
-
-- EUR/USD Feed: `0x1234567890123456789012345678901234567890`
-- USDC/USD Feed: `0x2345678901234567890123456789012345678901`
-- USDC Token: `0x3456789012345678901234567890123456789012`
-- Aave Pool: `0x4567890123456789012345678901234567890123`
-
-### Multisig Configuration
-
-For multisig deployment, you need to set up a multisig wallet:
-
-**Using Gnosis Safe:**
-1. Go to [Gnosis Safe](https://safe.global/)
-2. Create a new Safe with multiple owners
-3. Set threshold (e.g., 2 of 3 signatures required)
-4. Copy the Safe address and set as `MULTISIG_WALLET`
-
-**Environment Variables:**
-```bash
-# Required for multisig deployment
-export MULTISIG_WALLET=0xYourMultisigWalletAddress
-
-# Optional: Set specific deployer
-export PRIVATE_KEY=0xYourDeployerPrivateKey
-```
-
-**Benefits:**
-- Enhanced security with multiple signatures
-- Decentralized governance
-- Emergency controls
-- Transparent operations
-
-## 📄 Output Files
-
-### Deployment Information
-
-- `deployments/localhost.json` - Localhost deployment addresses
-- `deployments/sepolia.json` - Sepolia deployment addresses (when deployed)
-- `deployments/base.json` - Base deployment addresses (when deployed)
-
-### Broadcast Files
-
-- `broadcast/DeployQuantillon.s.sol/<chain_id>/run-latest.json` - Transaction details
-- `cache/DeployQuantillon.s.sol/<chain_id>/run-latest.json` - Sensitive data
-
-## 🧪 Testing
-
-### Script Testing Results
-
-All deployment scripts have been thoroughly tested:
-
-| Script | Compilation | Execution | Notes |
-|--------|-------------|-----------|-------|
-| `DeployProduction.s.sol` | ✅ Success | ⚠️ Fails on oracle calls | UUPS + Multisig + Network |
-| `DeployQuantillon.s.sol` | ✅ Success | ✅ Success | Development deployment |
-| `InitializeQuantillon.s.sol` | ✅ Success | ⚠️ Needs deployment file | Initialization script |
-| `VerifyDeployment.s.sol` | ✅ Success | ✅ Success | Verification script |
-| `VerifyQuantillon.s.sol` | ✅ Success | ⚠️ Needs deployment file | Protocol verification |
-
-### Contract Testing
-
-After deployment, you can test the contracts:
+### Team Collaboration
 
 ```bash
-# Check contract codes
-cast code <CONTRACT_ADDRESS> --rpc-url <RPC>
+# 1. Share encrypted .env file (safe to commit)
+git add .env
+git commit -m "Update encrypted environment variables"
 
-# Call contract functions
-cast call <CONTRACT_ADDRESS> "functionName()" --rpc-url <RPC>
+# 2. Each developer needs their own .env.keys file
+# (Never commit this file - it's in .gitignore)
 
-# Send transactions
-cast send <CONTRACT_ADDRESS> "functionName()" --rpc-url <RPC> --private-key <PRIVATE_KEY>
+# 3. Developers can decrypt and use
+npx dotenvx run -- forge script DeployQuantillon.s.sol --rpc-url localhost
 ```
 
-### Known Issues & Solutions
+## 📊 Deployment Examples
 
-1. **UUPS Deployment Fails**: 
-   - **Issue**: Fails when calling mock oracle addresses
-   - **Solution**: Use real oracle addresses for production deployments
-
-2. **Initialization Scripts Need Deployment Files**:
-   - **Issue**: Scripts expect deployment JSON files
-   - **Solution**: Deploy contracts first, then run initialization
-
-3. **Environment Variables Required**:
-   - **Issue**: Some scripts require specific environment variables
-   - **Solution**: Set `PRIVATE_KEY`, `MULTISIG_WALLET`, `NETWORK` as needed
-
-## 🔒 Security Notes
-
-1. **Never commit private keys** to version control
-2. **Use environment variables** for sensitive data
-3. **Verify contracts** on block explorers after deployment
-4. **Test thoroughly** on testnets before mainnet deployment
-5. **Use multi-signature wallets** for mainnet deployments
-
-## 📋 Quick Reference
-
-### **Which Script to Use?**
-
-| Use Case | Recommended Method | Command |
-|----------|-------------------|---------|
-| **🚀 Production (All Networks)** | `DeployProduction.s.sol` | `export MULTISIG_WALLET=0x... && forge script scripts/deployment/DeployProduction.s.sol --rpc-url <RPC> --broadcast` |
-| **🛠️ Localhost Development** | **Automated Script** | `make deploy-localhost` or `./scripts/deployment/deploy-localhost.sh` |
-| **🛠️ Manual Development** | `DeployQuantillon.s.sol` | `forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545 --broadcast` |
-| **✅ Verify Deployment** | `VerifyDeployment.s.sol` | `forge script scripts/deployment/VerifyDeployment.s.sol --rpc-url <RPC>` |
-
-
-### **Environment Variables**
+### Localhost Development
 
 ```bash
-# Required for production deployments
-export PRIVATE_KEY=0xYourPrivateKey
+# Basic localhost deployment
+./scripts/deployment/deploy.sh localhost
 
-# Required for multisig deployment
-export MULTISIG_WALLET=0xYourMultisigAddress
+# With mock contracts
+./scripts/deployment/deploy.sh localhost --with-mocks
 
-# Required for network-specific deployment
-export NETWORK=sepolia  # or base, localhost
-
-# Required for testnet/mainnet
-export EUR_USD_FEED_SEPOLIA=0x...
-export USDC_USD_FEED_SEPOLIA=0x...
-export USDC_TOKEN_SEPOLIA=0x...
-export AAVE_POOL_SEPOLIA=0x...
+# Dry run (test without broadcasting)
+./scripts/deployment/deploy.sh localhost --dry-run
 ```
 
-## 📞 Support
+### Testnet Deployment
 
-For deployment issues or questions:
-- Check the deployment logs for error messages
-- Verify environment variables are set correctly
-- Ensure sufficient gas and ETH balance
-- Review contract dependencies and initialization order
-- Check the testing results table above for known issues
+```bash
+# Deploy to Base Sepolia
+./scripts/deployment/deploy.sh base-sepolia --verify
+
+# With production script
+./scripts/deployment/deploy.sh base-sepolia --production --verify
+```
+
+### Production Deployment
+
+```bash
+# Deploy to Base mainnet
+./scripts/deployment/deploy.sh base --production --verify
+
+# Ensure you have:
+# - MULTISIG_WALLET set in .env
+# - All network-specific variables configured
+# - Proper private key with sufficient ETH
+```
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+#### Missing .env.keys file
+```bash
+# Error: .env.keys file not found
+# Solution: Ensure you have the decryption key
+# Get it from another team member or re-encrypt
+npx dotenvx encrypt .env
+```
+
+#### Environment variables not loading
+```bash
+# Test decryption
+npx dotenvx run -- echo "PRIVATE_KEY: $PRIVATE_KEY"
+
+# If this fails, check your .env.keys file
+```
+
+#### Network connection issues
+```bash
+# Test network connectivity
+curl -X POST -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+  https://sepolia.base.org
+```
+
+### Getting Help
+
+```bash
+# Show help for deployment script
+./scripts/deployment/deploy.sh --help
+
+# Test environment setup
+npx dotenvx run -- forge script DeployQuantillon.s.sol --dry-run
+```
+
+## 📚 Additional Resources
+
+- **[Main README](../README.md)** - Complete project overview
+- **[Secure Deployment Guide](../SECURE_DEPLOYMENT.md)** - Detailed security implementation
+- **[API Documentation](../docs/API.md)** - Contract API reference
+- **[Dotenvx Documentation](https://dotenvx.com/)** - Environment variable encryption
+
+## 🚨 Security Notes
+
+1. **Never commit `.env.keys`** - it's in .gitignore for security
+2. **Each developer needs their own `.env.keys`** file
+3. **The encrypted `.env` file can be safely shared** with the team
+4. **For production, use secure key management** (AWS Secrets Manager, etc.)
+5. **Rotate keys regularly** for enhanced security
+
+## 🤝 Contributing
+
+When contributing to deployment scripts:
+
+1. **Test with dry-run first**: `./deploy.sh localhost --dry-run`
+2. **Use encrypted environment variables**: Never commit plain text secrets
+3. **Update documentation**: Keep this README current
+4. **Follow security best practices**: Use the unified deployment script
+5. **Test on testnet**: Always test on Base Sepolia before mainnet

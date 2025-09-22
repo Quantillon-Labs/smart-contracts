@@ -1,20 +1,132 @@
-# Compiler files
+# =============================================================================
+# QUANTILLON PROTOCOL - GITIGNORE
+# =============================================================================
+# 
+# This file ensures sensitive data and build artifacts are not committed
+# to version control, maintaining security and keeping the repository clean.
+# =============================================================================
+
+# =============================================================================
+# 🔐 ENVIRONMENT VARIABLES & SECRETS
+# =============================================================================
+
+# Dotenvx encrypted environment files
+.env.keys
+.env.keys.*
+.env.encrypted
+.env.encrypted.*
+
+# Backup environment files
+.env.backup
+.env.backup.*
+.env.old
+.env.orig
+
+# Environment file variations
+.envrc
+.env.example.local
+.env.template
+
+# =============================================================================
+# 🔑 PRIVATE KEYS & CREDENTIALS
+# =============================================================================
+
+# Private keys (various formats)
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# SSH keys
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
+
+# GPG keys
+*.gpg
+*.asc
+*.sig
+
+# =============================================================================
+# 📦 BUILD ARTIFACTS & CACHE
+# =============================================================================
+
+# Foundry build artifacts
 cache/
 out/
+artifacts/
+
+# Compiler files
+*.solc
+*.bin
+*.abi
+
+# =============================================================================
+# 📊 DEPLOYMENT & BROADCAST LOGS
+# =============================================================================
 
 # Ignores development broadcast logs
 !/broadcast
 /broadcast/*/31337/
 /broadcast/**/dry-run/
+/broadcast/**/run-latest.json
 
-# Dotenv file
-.env
+# Deployment logs
+deployments/
+deployment-*.log
+deployment-*.json
+
+# =============================================================================
+# 🧪 TESTING & ANALYSIS
+# =============================================================================
+
+# Test results
+test-results/
+coverage/
+coverage_output.txt
+test-output-with-warnings.log
+
+# Security analysis
+slither-report.json
+slither-report.sarif
+slither-report.*
+*.slither
+.slither/
+slither-cache/
+
+# Mythril analysis
+mythril-reports/
+mythril-report.json
+mythril-report.*
+*.mythril
+
+# Gas analysis
+gas-analysis/
+gas-analysis-*.txt
+
+# Natspec validation
+natspec-validation-report.txt
+warnings-analysis/
+
+# =============================================================================
+# 📚 DEPENDENCIES & LIBRARIES
+# =============================================================================
+
+# OpenZeppelin library files
 lib/openzeppelin-contracts-upgradeable/
 
-# Cursor rules
-.cursorrules
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
 
-# Python virtual environments
+# Python dependencies
 venv/
 env/
 .venv/
@@ -22,11 +134,9 @@ env/
 env.bak/
 .venv.bak/
 
-# Node.js dependencies
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# =============================================================================
+# 🐍 PYTHON ARTIFACTS
+# =============================================================================
 
 # Python cache and compiled files
 __pycache__/
@@ -51,25 +161,51 @@ wheels/
 *.egg
 MANIFEST
 
+# =============================================================================
+# 🔧 DEVELOPMENT TOOLS
+# =============================================================================
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Cursor rules
+.cursorrules
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# =============================================================================
+# 📊 ANALYSIS RESULTS
+# =============================================================================
+
 # Analysis results folder
 results/
-
-# Legacy analysis files (kept for backward compatibility)
-slither-report.json
-slither-report.sarif
-slither-report.*
-*.slither
-.slither/
-slither-cache/
-mythril-reports/
-mythril-report.json
-mythril-report.*
-*.mythril
-gas-analysis/
 build-output.log
-test-output-with-warnings.log
-coverage_output.txt
-slither-report.txt
-warnings-analysis/
-gas-analysis-*.txt
-natspec-validation-report.txt
+
+# =============================================================================
+# 🚨 SECURITY NOTES
+# =============================================================================
+#
+# IMPORTANT: Never commit the following sensitive files:
+# - .env.keys (contains decryption keys for dotenvx)
+# - Any file containing private keys or API keys
+# - Backup files with sensitive data
+# - Deployment logs with sensitive information
+#
+# If you accidentally commit sensitive data:
+# 1. Remove it from Git history immediately
+# 2. Rotate/regenerate the compromised credentials
+# 3. Update this .gitignore to prevent future accidents
+#
+# =============================================================================

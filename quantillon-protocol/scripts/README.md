@@ -1,63 +1,253 @@
-# Smart Contract Deployment Scripts
+# Quantillon Protocol - Scripts Documentation
 
-This directory contains deployment scripts for the Quantillon Protocol smart contracts.
+This directory contains all deployment and utility scripts for the Quantillon Protocol with enterprise-grade security using [Dotenvx](https://dotenvx.com/) encryption.
 
-## Deployment Scripts
+## 🔐 Security Overview
 
-- `DeployQuantillon.s.sol` - Main deployment script for development and testing (includes MockUSDC for localhost/Base Sepolia)
-- `DeployProduction.s.sol` - Production deployment script with UUPS proxies and multisig governance
-- `DeployMockUSDC.s.sol` - Standalone MockUSDC deployment script
-- `DeployOracleWithProxy.s.sol` - Oracle deployment with ERC1967 proxy
-- `DeployMockFeeds.s.sol` - Mock Chainlink price feeds for testing
+All scripts now use **encrypted environment variables** with [Dotenvx](https://dotenvx.com/) for maximum security:
 
-## ABI Management
+- **🔒 AES-256 Encryption**: All secrets protected with strong cryptography
+- **🔑 Separate Key Storage**: Decryption keys stored separately from encrypted files
+- **🛡️ Safe to Commit**: Encrypted `.env` files can be safely committed to version control
+- **👥 Team Collaboration**: Shared encrypted environment files with individual decryption keys
 
-The deployment scripts automatically copy contract ABIs to the frontend after deployment:
+## 🚀 Deployment Scripts
 
-### Automatic ABI Copying
+### **Unified Deployment Script**
 
-When you run deployment scripts, they will automatically copy the latest ABIs to:
-```
-../quantillon-dapp/src/lib/contracts/abis/
-```
-
-### Manual ABI Copying
-
-If you need to manually copy ABIs (e.g., after contract changes without redeployment):
+The new **`deploy.sh`** script provides a unified interface for all deployments:
 
 ```bash
-# From the smart-contracts directory
-./scripts/copy-abis.sh
+./scripts/deployment/deploy.sh [environment] [options]
 ```
 
-This script copies all contract ABIs to the frontend, ensuring the dApp always has the latest contract interfaces.
+#### Supported Environments
 
-### Supported Contracts
+| Environment | Description | Usage |
+|-------------|-------------|-------|
+| **localhost** | Local Anvil development | `./deploy.sh localhost --with-mocks` |
+| **base-sepolia** | Base Sepolia testnet | `./deploy.sh base-sepolia --verify` |
+| **base** | Base mainnet production | `./deploy.sh base --production --verify` |
 
-The following contracts have their ABIs automatically copied:
-- MockUSDC (for localhost/Base Sepolia deployments)
-- QEUROToken
-- ChainlinkOracle  
-- QuantillonVault
-- QTIToken
-- stQEUROToken
-- UserPool
-- HedgerPool
-- YieldShift
+#### Deployment Options
 
-## Usage
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--with-mocks` | Deploy mock contracts (localhost only) | `./deploy.sh localhost --with-mocks` |
+| `--verify` | Verify contracts on block explorer | `./deploy.sh base-sepolia --verify` |
+| `--production` | Use production deployment script | `./deploy.sh base --production` |
+| `--dry-run` | Simulate deployment without broadcasting | `./deploy.sh localhost --dry-run` |
 
-### Development Deployment
-1. Deploy contracts: `forge script DeployQuantillon.s.sol --rpc-url <RPC_URL> --broadcast`
-2. MockUSDC is automatically deployed for localhost and Base Sepolia
-3. ABIs are automatically copied to frontend
-4. Frontend will use the latest contract interfaces
+### Core Deployment Scripts
+
+| Script | Purpose | Environment | Security |
+|--------|---------|-------------|----------|
+| **`deploy.sh`** | **🚀 UNIFIED DEPLOYMENT** - Universal deployment script | All networks | ✅ Encrypted |
+| `DeployProduction.s.sol` | Production deployment with multisig governance | Mainnet/Testnet | ✅ Encrypted |
+| `DeployQuantillon.s.sol` | Standard deployment for all environments | All networks | ✅ Encrypted |
+| `DeployMockUSDC.s.sol` | Mock USDC token deployment | Localhost/Testnet | ✅ Encrypted |
+| `DeployMockFeeds.s.sol` | Mock Chainlink price feeds | Localhost | ✅ Encrypted |
+| `DeployOracleWithProxy.s.sol` | Oracle deployment with ERC1967 proxy | All networks | ✅ Encrypted |
+| `InitializeQuantillon.s.sol` | Contract initialization and role setup | All networks | ✅ Encrypted |
+
+## 🛠️ Utility Scripts
+
+### ABI Management
+
+| Script | Purpose | Description |
+|--------|---------|-------------|
+| `copy-abis.sh` | ABI copying | Copies contract ABIs to frontend after deployment |
+| `update-frontend-addresses.sh` | Address updates | Updates frontend with deployed contract addresses |
+
+### Usage Examples
+
+```bash
+# Copy ABIs to frontend
+./scripts/deployment/copy-abis.sh
+
+# Update frontend addresses
+./scripts/deployment/update-frontend-addresses.sh
+```
+
+## 🔐 Environment Setup
+
+### 1. Initial Setup
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Fill in your values (API keys, private keys, etc.)
+# Edit .env with your actual configuration
+
+# Encrypt environment variables
+npx dotenvx encrypt .env
+```
+
+### 2. Environment Files
+
+```
+.env                 # Encrypted environment variables (safe to commit)
+.env.keys           # Private decryption key (NEVER commit - in .gitignore)
+.env.example        # Template for new developers
+.env.backup         # Backup of original unencrypted file
+```
+
+### 3. Security Validation
+
+```bash
+# Test environment decryption
+npx dotenvx run -- echo "PRIVATE_KEY: $PRIVATE_KEY"
+
+# If this fails, check your .env.keys file
+```
+
+## 📋 Quick Start Guide
+
+### Local Development
+
+```bash
+# 1. Start Anvil
+anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
+
+# 2. Deploy with mock contracts
+./scripts/deployment/deploy.sh localhost --with-mocks
+
+# 3. Test your changes
+forge test
+```
+
+### Testnet Deployment
+
+```bash
+# Deploy to Base Sepolia with verification
+./scripts/deployment/deploy.sh base-sepolia --verify
+```
 
 ### Production Deployment
-1. Set multisig wallet: `export MULTISIG_WALLET=0xYourMultisigWalletAddress`
-2. Deploy contracts: `forge script DeployProduction.s.sol --rpc-url <RPC_URL> --broadcast`
-3. ABIs are automatically copied to frontend
 
-## Frontend Integration
+```bash
+# Deploy to Base mainnet with production settings
+./scripts/deployment/deploy.sh base --production --verify
+```
 
-The frontend automatically imports ABIs from `src/lib/contracts/abis/` and uses them for contract interactions. No manual ABI updates needed in the frontend code.
+## 🔧 Development Workflow
+
+### 1. Environment Configuration
+
+```bash
+# Set up encrypted environment
+cp .env.example .env
+# Edit .env with your values
+npx dotenvx encrypt .env
+```
+
+### 2. Local Development
+
+```bash
+# Deploy to localhost
+./scripts/deployment/deploy.sh localhost --with-mocks
+
+# Run tests
+forge test
+
+# Make changes to contracts
+# Redeploy as needed
+```
+
+### 3. Testnet Testing
+
+```bash
+# Deploy to testnet
+./scripts/deployment/deploy.sh base-sepolia --verify
+
+# Test on testnet
+# Verify contracts on block explorer
+```
+
+### 4. Production Deployment
+
+```bash
+# Deploy to mainnet
+./scripts/deployment/deploy.sh base --production --verify
+
+# Monitor deployment
+# Update frontend with new addresses
+```
+
+## 🛡️ Security Best Practices
+
+### Environment Variables
+
+- **Never commit `.env.keys`** - it's in .gitignore for security
+- **Each developer needs their own `.env.keys`** file
+- **The encrypted `.env` file can be safely shared** with the team
+- **For production, use secure key management** (AWS Secrets Manager, etc.)
+
+### Deployment Security
+
+- **Always use encrypted environment variables**
+- **Test on testnet before mainnet**
+- **Use dry-run for testing**: `./deploy.sh localhost --dry-run`
+- **Verify contracts on block explorer**
+- **Monitor deployments carefully**
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+#### Missing .env.keys file
+```bash
+# Error: .env.keys file not found
+# Solution: Ensure you have the decryption key
+npx dotenvx encrypt .env
+```
+
+#### Environment variables not loading
+```bash
+# Test decryption
+npx dotenvx run -- echo "PRIVATE_KEY: $PRIVATE_KEY"
+```
+
+#### Network connection issues
+```bash
+# Test network connectivity
+curl -X POST -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+  https://sepolia.base.org
+```
+
+### Getting Help
+
+```bash
+# Show help for deployment script
+./scripts/deployment/deploy.sh --help
+
+# Test environment setup
+npx dotenvx run -- forge script DeployQuantillon.s.sol --dry-run
+```
+
+## 📚 Additional Resources
+
+- **[Deployment Guide](deployment/README.md)** - Detailed deployment instructions
+- **[Secure Deployment Guide](../SECURE_DEPLOYMENT.md)** - Security implementation details
+- **[Main README](../README.md)** - Complete project overview
+- **[Dotenvx Documentation](https://dotenvx.com/)** - Environment variable encryption
+
+## 🤝 Contributing
+
+When contributing to scripts:
+
+1. **Test with dry-run first**: `./deploy.sh localhost --dry-run`
+2. **Use encrypted environment variables**: Never commit plain text secrets
+3. **Update documentation**: Keep this README current
+4. **Follow security best practices**: Use the unified deployment script
+5. **Test on testnet**: Always test on Base Sepolia before mainnet
+
+## 🚨 Security Notes
+
+1. **Environment variables are encrypted by default** - use dotenvx for all deployments
+2. **Never commit decryption keys** - `.env.keys` is in .gitignore
+3. **Test deployments with dry-run** before broadcasting
+4. **Verify contracts on block explorer** for transparency
+5. **Use secure key management** for production deployments

@@ -17,6 +17,14 @@
 
 set -e  # Exit on any error
 
+# Check if dotenvx is available and environment is encrypted
+if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" .env 2>/dev/null && [ -z "$DOTENVX_RUNNING" ]; then
+    # Use dotenvx for encrypted environment
+    echo -e "\033[0;34m🔐 Using encrypted environment variables\033[0m"
+    export DOTENVX_RUNNING=1
+    exec npx dotenvx run -- "$0" "$@"
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

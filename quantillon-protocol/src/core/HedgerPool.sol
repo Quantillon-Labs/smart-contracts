@@ -10,6 +10,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
+import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
@@ -47,6 +48,7 @@ contract HedgerPool is
     IERC20 public usdc;
     IChainlinkOracle public oracle;
     IYieldShift public yieldShift;
+    IQuantillonVault public vault;
     address public treasury;
     TimeProvider public immutable TIME_PROVIDER;
 
@@ -131,6 +133,7 @@ contract HedgerPool is
     event HedgerWhitelistModeToggled(bool enabled, address indexed caller);
     event ETHRecovered(address indexed to, uint256 indexed amount);
     event TreasuryUpdated(address indexed treasury);
+    event VaultUpdated(address indexed vault);
 
     modifier flashLoanProtection() {
         uint256 balanceBefore = usdc.balanceOf(address(this));
@@ -161,13 +164,15 @@ contract HedgerPool is
         address _oracle,
         address _yieldShift,
         address _timelock,
-        address _treasury
+        address _treasury,
+        address _vault
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(_usdc);
         AccessControlLibrary.validateAddress(_oracle);
         AccessControlLibrary.validateAddress(_yieldShift);
         AccessControlLibrary.validateAddress(_treasury);
+        AccessControlLibrary.validateAddress(_vault);
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -181,6 +186,7 @@ contract HedgerPool is
         usdc = IERC20(_usdc);
         oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
+        vault = IQuantillonVault(_vault);
         treasury = _treasury;
 
         coreParams.minMarginRatio = 500;  // 5% minimum margin ratio (20x max leverage)
@@ -266,6 +272,9 @@ contract HedgerPool is
         HedgePosition storage position = positions[positionId];
         ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
         ValidationLibrary.validatePositionActive(position.isActive);
+
+        // Check if closing this position would cause protocol undercollateralization
+        _validatePositionClosureSafety(positionId, position.margin);
 
         uint256 currentPrice = _getValidOraclePrice();
         pnl = HedgerPoolLogicLibrary.calculatePnL(
@@ -675,6 +684,13 @@ contract HedgerPool is
         emit TreasuryUpdated(_treasury);
     }
 
+    function updateVault(address _vault) external {
+        _validateRole(GOVERNANCE_ROLE);
+        AccessControlLibrary.validateAddress(_vault);
+        vault = IQuantillonVault(_vault);
+        emit VaultUpdated(_vault);
+    }
+
     function whitelistHedger(address hedger) external {
         _validateRole(GOVERNANCE_ROLE);
         AccessControlLibrary.validateAddress(hedger);
@@ -808,5 +824,64 @@ contract HedgerPool is
             (uint256(uint64(yieldShiftRewards)) << 64) |
             uint256(uint64(totalRewards))
         );
+    }
+
+    /**
+     * @notice Validates that closing a position won't cause protocol undercollateralization
+     * @dev Checks if closing the position would make the protocol undercollateralized for QEURO minting
+     * @param positionId The position ID being closed
+     * @param positionMargin The margin amount of the position being closed
+     * @custom:security Validates protocol collateralization status
+     * @custom:validation Checks vault collateralization ratio
+     * @custom:state-changes No state changes - validation only
+     * @custom:events No events emitted
+     * @custom:errors Throws PositionClosureRestricted if closure would cause undercollateralization
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
+     */
+    function _validatePositionClosureSafety(uint256 positionId, uint256 positionMargin) internal view {
+        // Skip validation if vault is not set (for backward compatibility)
+        if (address(vault) == address(0)) {
+            return;
+        }
+
+        // Get current protocol collateralization status
+        (, uint256 currentTotalMargin) = vault.isProtocolCollateralized();
+        
+        // Get minimum collateralization ratio for minting
+        uint256 minCollateralizationRatio = vault.minCollateralizationRatioForMinting();
+        
+        // Get UserPool total deposits
+        address userPoolAddress = vault.userPool();
+        uint256 userDeposits = 0;
+        if (userPoolAddress != address(0)) {
+            // Call totalDeposits on the UserPool contract
+            (bool success, bytes memory data) = userPoolAddress.staticcall(
+                abi.encodeWithSignature("totalDeposits()")
+            );
+            if (success && data.length >= 32) {
+                userDeposits = abi.decode(data, (uint256));
+            }
+        }
+        
+        // Calculate what the collateralization ratio would be after closing this position
+        uint256 remainingHedgerMargin = currentTotalMargin - positionMargin;
+        
+        // If no user deposits, hedger margin is the only collateral
+        if (userDeposits == 0) {
+            if (remainingHedgerMargin == 0) {
+                revert ErrorLibrary.PositionClosureRestricted();
+            }
+            return; // If there's still hedger margin, it's safe
+        }
+
+        // Calculate future collateralization ratio
+        uint256 futureRatio = ((userDeposits + remainingHedgerMargin) * 10000) / userDeposits;
+
+        // Check if closing would make the protocol undercollateralized for minting
+        if (futureRatio < minCollateralizationRatio) {
+            revert ErrorLibrary.PositionClosureRestricted();
+        }
     }
 }

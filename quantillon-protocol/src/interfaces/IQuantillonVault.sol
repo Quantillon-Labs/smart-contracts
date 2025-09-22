@@ -500,4 +500,50 @@ interface IQuantillonVault {
      * @custom:oracle No oracle dependencies
      */
     function totalMinted() external view returns (uint256);
+
+    /**
+     * @notice Checks if the protocol is properly collateralized by hedgers
+     * @dev Public view function to check collateralization status
+     * @return isCollateralized True if protocol has active hedging positions
+     * @return totalMargin Total margin in HedgerPool (0 if not set)
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check collateralization status
+     * @custom:oracle No oracle dependencies
+     */
+    function isProtocolCollateralized() external view returns (bool isCollateralized, uint256 totalMargin);
+
+    /**
+     * @notice Returns the minimum collateralization ratio for minting
+     * @dev Minimum ratio required for QEURO minting (in basis points)
+     * @return The minimum collateralization ratio in basis points
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query minimum ratio
+     * @custom:oracle No oracle dependencies
+     */
+    function minCollateralizationRatioForMinting() external view returns (uint256);
+
+    /**
+     * @notice Returns the UserPool contract address
+     * @dev The user pool contract managing user deposits
+     * @return Address of the UserPool contract
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query user pool address
+     * @custom:oracle No oracle dependencies
+     */
+    function userPool() external view returns (address);
 }

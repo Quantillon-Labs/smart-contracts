@@ -187,9 +187,9 @@ contract HedgerPool is
         coreParams.liquidationThreshold = 100;
         coreParams.maxLeverage = 20;      // 20x maximum leverage (5% minimum margin)
         coreParams.liquidationPenalty = 200;
-        coreParams.entryFee = 20;
-        coreParams.exitFee = 20;
-        coreParams.marginFee = 10;
+        coreParams.entryFee = 0;
+        coreParams.exitFee = 0;
+        coreParams.marginFee = 0;
         coreParams.eurInterestRate = 350;
         coreParams.usdInterestRate = 450;
         hedgerWhitelistEnabled = true;
@@ -289,6 +289,12 @@ contract HedgerPool is
         _removePositionFromArrays(msg.sender, positionId);
         
         activePositionCount[msg.sender]--;
+        
+        // Check if hedger has no more active positions
+        if (activePositionCount[msg.sender] == 0) {
+            hedgerInfo.isActive = false;
+            activeHedgers--;
+        }
 
         if (netPayout > 0) {
             usdc.safeTransfer(msg.sender, netPayout);
@@ -415,6 +421,12 @@ contract HedgerPool is
         _removePositionFromArrays(hedger, positionId);
         
         activePositionCount[hedger]--;
+        
+        // Check if hedger has no more active positions
+        if (activePositionCount[hedger] == 0) {
+            hedgerInfo.isActive = false;
+            activeHedgers--;
+        }
 
         usdc.safeTransfer(msg.sender, liquidationReward);
 
@@ -571,6 +583,12 @@ contract HedgerPool is
         _removePositionFromArrays(hedger, positionId);
         
         activePositionCount[hedger]--;
+        
+        // Check if hedger has no more active positions
+        if (activePositionCount[hedger] == 0) {
+            hedgerInfo.isActive = false;
+            activeHedgers--;
+        }
     }
 
     function pause() external {

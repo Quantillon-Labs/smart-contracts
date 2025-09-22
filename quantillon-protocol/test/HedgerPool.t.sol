@@ -2044,6 +2044,202 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.recoverETH();
     }
 
+    // =============================================================================
+    // ACTIVE HEDGERS COUNTER TESTS - Bug Fix Verification
+    // =============================================================================
+    
+    /**
+     * @notice Test that activeHedgers counter is decremented when hedger exits position
+     * @dev Verifies the bug fix for activeHedgers counter not being decremented
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes Updates activeHedgers counter
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
+     */
+    function test_ActiveHedgers_ExitPositionDecrementsCounter() public {
+        // Initially no active hedgers
+        assertEq(hedgerPool.activeHedgers(), 0);
+        
+        // Open position - should increment activeHedgers
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Should have 1 active hedger
+        assertEq(hedgerPool.activeHedgers(), 1);
+        
+        // Exit position - should decrement activeHedgers
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(positionId);
+        
+        // Should have 0 active hedgers again
+        assertEq(hedgerPool.activeHedgers(), 0);
+    }
+    
+    /**
+     * @notice Test that activeHedgers counter is decremented when position is liquidated
+     * @dev Verifies the bug fix for activeHedgers counter not being decremented on liquidation
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes Updates activeHedgers counter
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
+     */
+    function test_ActiveHedgers_LiquidationDecrementsCounter() public {
+        // Initially no active hedgers
+        assertEq(hedgerPool.activeHedgers(), 0);
+        
+        // Open position - should increment activeHedgers
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Should have 1 active hedger
+        assertEq(hedgerPool.activeHedgers(), 1);
+        
+        // Simulate price movement to make position liquidatable
+        // Set oracle price to make position unhealthy (price moved against hedger)
+        vm.mockCall(
+            address(mockOracle),
+            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encode(1.2e18, true) // Price moved from 1.08 to 1.2 (unfavorable for hedger)
+        );
+        
+        // Wait for liquidation cooldown
+        vm.roll(block.number + 600);
+        
+        // Liquidate position - should decrement activeHedgers
+        vm.prank(liquidator);
+        hedgerPool.liquidateHedger(hedger1, positionId, 0);
+        
+        // Should have 0 active hedgers again
+        assertEq(hedgerPool.activeHedgers(), 0);
+    }
+    
+    /**
+     * @notice Test that activeHedgers counter is decremented when position is emergency closed
+     * @dev Verifies the bug fix for activeHedgers counter not being decremented on emergency close
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes Updates activeHedgers counter
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
+     */
+    function test_ActiveHedgers_EmergencyCloseDecrementsCounter() public {
+        // Initially no active hedgers
+        assertEq(hedgerPool.activeHedgers(), 0);
+        
+        // Open position - should increment activeHedgers
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Should have 1 active hedger
+        assertEq(hedgerPool.activeHedgers(), 1);
+        
+        // Emergency close position - should decrement activeHedgers
+        vm.prank(emergency);
+        hedgerPool.emergencyClosePosition(hedger1, positionId);
+        
+        // Should have 0 active hedgers again
+        assertEq(hedgerPool.activeHedgers(), 0);
+    }
+    
+    /**
+     * @notice Test that activeHedgers counter is not decremented when hedger has multiple positions
+     * @dev Verifies that activeHedgers is only decremented when hedger has no more positions
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes Updates activeHedgers counter
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
+     */
+    function test_ActiveHedgers_MultiplePositionsOnlyDecrementsOnLast() public {
+        // Initially no active hedgers
+        assertEq(hedgerPool.activeHedgers(), 0);
+        
+        // Open first position - should increment activeHedgers
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId1 = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Should have 1 active hedger
+        assertEq(hedgerPool.activeHedgers(), 1);
+        
+        // Open second position - should NOT increment activeHedgers (hedger already active)
+        vm.prank(hedger1);
+        uint256 positionId2 = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Should still have 1 active hedger
+        assertEq(hedgerPool.activeHedgers(), 1);
+        
+        // Close first position - should NOT decrement activeHedgers (hedger still has positions)
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(positionId1);
+        
+        // Should still have 1 active hedger
+        assertEq(hedgerPool.activeHedgers(), 1);
+        
+        // Close second position - should decrement activeHedgers (hedger has no more positions)
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(positionId2);
+        
+        // Should have 0 active hedgers
+        assertEq(hedgerPool.activeHedgers(), 0);
+    }
+    
+    /**
+     * @notice Test that activeHedgers counter works correctly with multiple hedgers
+     * @dev Verifies that activeHedgers counter works correctly with multiple different hedgers
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes Updates activeHedgers counter
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle No oracle dependency for test function
+     */
+    function test_ActiveHedgers_MultipleHedgersCounter() public {
+        // Initially no active hedgers
+        assertEq(hedgerPool.activeHedgers(), 0);
+        
+        // Open position for hedger1 - should increment activeHedgers to 1
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId1 = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        assertEq(hedgerPool.activeHedgers(), 1);
+        
+        // Open position for hedger2 - should increment activeHedgers to 2
+        _whitelistHedger(hedger2);
+        vm.prank(hedger2);
+        uint256 positionId2 = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        assertEq(hedgerPool.activeHedgers(), 2);
+        
+        // Close hedger1's position - should decrement activeHedgers to 1
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(positionId1);
+        assertEq(hedgerPool.activeHedgers(), 1);
+        
+        // Close hedger2's position - should decrement activeHedgers to 0
+        vm.prank(hedger2);
+        hedgerPool.exitHedgePosition(positionId2);
+        assertEq(hedgerPool.activeHedgers(), 0);
+    }
+
     /**
      * @notice Test unbounded loop vulnerability is fixed
      * @dev Verifies that position removal works efficiently even with many positions

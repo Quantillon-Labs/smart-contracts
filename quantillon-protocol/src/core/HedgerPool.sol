@@ -852,6 +852,24 @@ contract HedgerPool is
         // Get minimum collateralization ratio for minting
         uint256 minCollateralizationRatio = vault.minCollateralizationRatioForMinting();
         
+        // Get QEURO total supply to check if any QEURO has been minted
+        address qeuroAddress = vault.qeuro();
+        uint256 totalQEURO = 0;
+        if (qeuroAddress != address(0)) {
+            // Call totalSupply on the QEURO contract
+            (bool success, bytes memory data) = qeuroAddress.staticcall(
+                abi.encodeWithSignature("totalSupply()")
+            );
+            if (success && data.length >= 32) {
+                totalQEURO = abi.decode(data, (uint256));
+            }
+        }
+
+        // If no QEURO has been minted, position can always be closed
+        if (totalQEURO == 0) {
+            return;
+        }
+
         // Get UserPool total deposits
         address userPoolAddress = vault.userPool();
         uint256 userDeposits = 0;
@@ -870,10 +888,9 @@ contract HedgerPool is
         
         // If no user deposits, hedger margin is the only collateral
         if (userDeposits == 0) {
-            if (remainingHedgerMargin == 0) {
-                revert ErrorLibrary.PositionClosureRestricted();
-            }
-            return; // If there's still hedger margin, it's safe
+            // If no QEURO has been minted and no user deposits, position can always be closed
+            // because there's nothing to hedge
+            return;
         }
 
         // Calculate future collateralization ratio

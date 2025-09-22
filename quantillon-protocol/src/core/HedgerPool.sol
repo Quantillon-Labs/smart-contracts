@@ -260,7 +260,7 @@ contract HedgerPool is
 
     function exitHedgePosition(uint256 positionId) 
         external 
-        secureNonReentrant
+        whenNotPaused
         returns (int256 pnl) 
     {
         HedgePosition storage position = positions[positionId];

@@ -218,6 +218,11 @@ contract HedgerPoolTestSuite is Test {
         );
         
         // Setup mock balanceOf calls for the pool itself
+        // IMPORTANT: This mock always returns 0, which means the flash loan protection
+        // never triggers because the balance never changes from 0 to 0.
+        // This is why the original tests passed but the real deployment failed.
+        // The secureNonReentrant modifier checks balance before and after the function,
+        // but with this mock, both calls return 0, so no balance decrease is detected.
         vm.mockCall(
             mockUSDC,
             abi.encodeWithSelector(IERC20.balanceOf.selector, address(hedgerPool)),
@@ -753,6 +758,64 @@ contract HedgerPoolTestSuite is Test {
         console2.log("P&L:", pnl);
         console2.log("Test passed - exitHedgePosition worked correctly!");
     }
+
+    /**
+     * @notice Test that catches the FlashLoanAttackDetected bug with proper balance mocking
+     * @dev This test should FAIL with the original buggy code and PASS with the fixed code
+     */
+    function test_Position_ExitPosition() public {
+        // Whitelist hedger1 before opening position
+        _whitelistHedger(hedger1);
+        
+        // Setup realistic balance tracking for the pool
+        uint256 initialPoolBalance = 1000000 * 1e6; // 1M USDC
+        uint256 positionMargin = MARGIN_AMOUNT; // 10k USDC
+        
+        // Mock the pool's initial USDC balance
+        vm.mockCall(
+            mockUSDC,
+            abi.encodeWithSelector(IERC20.balanceOf.selector, address(hedgerPool)),
+            abi.encode(initialPoolBalance)
+        );
+        
+        // Open a position
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        console2.log("Position ID:", positionId);
+        console2.log("Initial pool balance:", initialPoolBalance);
+        
+        // After opening position, pool should have more USDC (margin was transferred in)
+        uint256 balanceAfterOpen = initialPoolBalance + positionMargin;
+        vm.mockCall(
+            mockUSDC,
+            abi.encodeWithSelector(IERC20.balanceOf.selector, address(hedgerPool)),
+            abi.encode(balanceAfterOpen)
+        );
+        
+        console2.log("Pool balance after opening:", balanceAfterOpen);
+        
+        // Now try to close the position
+        // This should trigger FlashLoanAttackDetected with the original buggy code
+        // because the balance will decrease when USDC is transferred out
+        vm.prank(hedger1);
+        
+        // With the original buggy code, this should revert with FlashLoanAttackDetected
+        // With the fixed code, this should succeed
+        int256 pnl = hedgerPool.exitHedgePosition(positionId);
+        
+        // Verify position was closed
+        (, , , , , , , , bool isActive) = hedgerPool.positions(positionId);
+        assertFalse(isActive, "Position should be closed");
+        
+        // Verify mappings are cleaned up
+        assertFalse(hedgerPool.hedgerHasPosition(hedger1, positionId), "hedgerHasPosition should be false");
+        
+        console2.log("P&L:", pnl);
+        console2.log("Test passed - exitHedgePosition worked correctly with real balance changes!");
+    }
+
+
     
     /**
      * @notice Test that shows the data structure consistency

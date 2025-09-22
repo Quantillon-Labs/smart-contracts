@@ -149,6 +149,7 @@ library ErrorLibrary {
     error PositionOwnerMismatch();
     error PositionAlreadyClosed();
     error PositionNotLiquidatable();
+    error PositionClosureRestricted();
     
     // Governance Errors
     error InsufficientVotingPower();

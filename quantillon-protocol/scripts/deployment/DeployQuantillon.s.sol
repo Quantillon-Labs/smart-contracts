@@ -498,7 +498,8 @@ contract DeployQuantillon is Script {
             chainlinkOracle,   // _oracle
             msg.sender,        // _yieldShift (temporary - will be updated)
             msg.sender,        // _timelock
-            msg.sender         // _treasury
+            msg.sender,        // _treasury
+            quantillonVault    // _vault
         );
         ERC1967Proxy hedgerPoolProxy = new ERC1967Proxy(address(hedgerPoolImpl), hedgerPoolInitData);
         hedgerPool = address(hedgerPoolProxy);

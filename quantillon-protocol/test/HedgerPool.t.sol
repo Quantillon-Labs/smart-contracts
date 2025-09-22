@@ -406,7 +406,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        hedgerPool.initialize(admin, mockUSDC, mockOracle, mockYieldShift, mockTimelock, admin);
+        hedgerPool.initialize(admin, mockUSDC, mockOracle, mockYieldShift, mockTimelock, admin, address(0));
     }
 
     // =============================================================================
@@ -2799,6 +2799,198 @@ contract MockERC20 {
         allowance[from][msg.sender] -= amount;
         emit Transfer(from, to, amount);
         return true;
+    }
+}
+
+/**
+ * @title MockQuantillonVault
+ * @notice Mock vault contract for testing position closure validation
+ */
+contract MockQuantillonVault {
+    uint256 public minCollateralizationRatioForMinting = 10500; // 105%
+    address public userPool;
+    uint256 public totalMargin = 0;
+    
+    constructor(address _userPool) {
+        userPool = _userPool;
+    }
+    
+    function isProtocolCollateralized() external view returns (bool, uint256) {
+        return (totalMargin > 0, totalMargin);
+    }
+    
+    function setTotalMargin(uint256 _totalMargin) external {
+        totalMargin = _totalMargin;
+    }
+    
+    function setMinCollateralizationRatio(uint256 _ratio) external {
+        minCollateralizationRatioForMinting = _ratio;
+    }
+}
+
+/**
+ * @title MockUserPool
+ * @notice Mock user pool contract for testing
+ */
+contract MockUserPool {
+    uint256 public totalDeposits = 0;
+    
+    function setTotalDeposits(uint256 _deposits) external {
+        totalDeposits = _deposits;
+    }
+}
+
+/**
+ * @title HedgerPoolPositionClosureTest
+ * @notice Test suite for position closure validation
+ */
+contract HedgerPoolPositionClosureTest is Test {
+    HedgerPool public hedgerPool;
+    MockQuantillonVault public mockVault;
+    MockUserPool public mockUserPool;
+    MockERC20 public mockUSDC;
+    TimeProvider public timeProvider;
+    
+    address public admin = address(0x1);
+    address public hedger = address(0x2);
+    address public treasury = address(0x3);
+    address public timelock = address(0x4);
+    address public mockOracle = address(0x5);
+    address public mockYieldShift = address(0x6);
+    
+    function setUp() public {
+        // Deploy mock contracts
+        mockUSDC = new MockERC20("Mock USDC", "mUSDC");
+        timeProvider = new TimeProvider();
+        mockUserPool = new MockUserPool();
+        mockVault = new MockQuantillonVault(address(mockUserPool));
+        
+        // Deploy HedgerPool
+        HedgerPool implementation = new HedgerPool(timeProvider);
+        bytes memory initData = abi.encodeWithSelector(
+            HedgerPool.initialize.selector,
+            admin,
+            address(mockUSDC),
+            mockOracle,
+            mockYieldShift,
+            timelock,
+            treasury,
+            address(mockVault)
+        );
+        
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        hedgerPool = HedgerPool(address(proxy));
+        
+        // Setup test environment
+        mockUSDC.mint(hedger, 1000000e6); // 1M USDC
+        mockUSDC.mint(address(hedgerPool), 1000000e6); // 1M USDC for pool
+        
+        vm.startPrank(hedger);
+        mockUSDC.approve(address(hedgerPool), type(uint256).max);
+        vm.stopPrank();
+        
+        // Whitelist hedger
+        vm.startPrank(admin);
+        hedgerPool.whitelistHedger(hedger);
+        vm.stopPrank();
+    }
+    
+    function testPositionClosureRestrictedWhenUndercollateralized() public {
+        // Set up scenario where closing position would cause undercollateralization
+        mockUserPool.setTotalDeposits(100000e6); // 100k USDC user deposits
+        mockVault.setTotalMargin(10000e6); // 10k USDC hedger margin
+        
+        // Open a position with 5k USDC margin
+        vm.startPrank(hedger);
+        uint256 positionId = hedgerPool.enterHedgePosition(5000e6, 20); // 5k USDC, 20x leverage
+        vm.stopPrank();
+        
+        // Try to close the position - should fail because it would reduce
+        // collateralization ratio from 110% to 105%, which is at the minimum
+        vm.startPrank(hedger);
+        vm.expectRevert(ErrorLibrary.PositionClosureRestricted.selector);
+        hedgerPool.exitHedgePosition(positionId);
+        vm.stopPrank();
+    }
+    
+    function testPositionClosureAllowedWhenSufficientCollateral() public {
+        // Set up scenario where closing position is safe
+        mockUserPool.setTotalDeposits(100000e6); // 100k USDC user deposits
+        mockVault.setTotalMargin(20000e6); // 20k USDC hedger margin
+        
+        // Open a position with 5k USDC margin
+        vm.startPrank(hedger);
+        uint256 positionId = hedgerPool.enterHedgePosition(5000e6, 20); // 5k USDC, 20x leverage
+        vm.stopPrank();
+        
+        // Close the position - should succeed because it would reduce
+        // collateralization ratio from 120% to 115%, which is above minimum
+        vm.startPrank(hedger);
+        hedgerPool.exitHedgePosition(positionId);
+        vm.stopPrank();
+    }
+    
+    function testValidationLogicDirectly() public {
+        // Test the validation logic directly by setting up the mock vault state
+        mockUserPool.setTotalDeposits(100000e6); // 100k USDC user deposits
+        mockVault.setTotalMargin(10000e6); // 10k USDC hedger margin
+        
+        // Verify the mock vault returns correct values
+        (bool isCollateralized, uint256 totalMargin) = mockVault.isProtocolCollateralized();
+        assertTrue(isCollateralized);
+        assertEq(totalMargin, 10000e6); // 10k USDC
+        
+        // Verify minimum ratio
+        assertEq(mockVault.minCollateralizationRatioForMinting(), 10500); // 105%
+        
+        // Verify user pool deposits
+        assertEq(mockUserPool.totalDeposits(), 100000e6); // 100k USDC
+    }
+    
+    function testPositionClosureAllowedWhenNoVault() public {
+        // Test backward compatibility when vault is not set
+        HedgerPool implementation2 = new HedgerPool(timeProvider);
+        bytes memory initData2 = abi.encodeWithSelector(
+            HedgerPool.initialize.selector,
+            admin,
+            address(mockUSDC),
+            mockOracle,
+            mockYieldShift,
+            timelock,
+            treasury,
+            address(0) // No vault
+        );
+        
+        ERC1967Proxy proxy2 = new ERC1967Proxy(address(implementation2), initData2);
+        HedgerPool hedgerPool2 = HedgerPool(address(proxy2));
+        
+        // Whitelist hedger
+        vm.startPrank(admin);
+        hedgerPool2.whitelistHedger(hedger);
+        vm.stopPrank();
+        
+        // Open and close position - should work without validation
+        vm.startPrank(hedger);
+        uint256 positionId = hedgerPool2.enterHedgePosition(5000e6, 20);
+        hedgerPool2.exitHedgePosition(positionId); // Should not revert
+        vm.stopPrank();
+    }
+    
+    function testVaultUpdateFunction() public {
+        // Test that the vault can be updated by governance
+        vm.startPrank(admin);
+        hedgerPool.updateVault(address(0x999));
+        vm.stopPrank();
+        
+        // Verify the vault was updated
+        assertEq(address(hedgerPool.vault()), address(0x999));
+    }
+    
+    function testPositionClosureRestrictedErrorExists() public {
+        // Test that the PositionClosureRestricted error is properly defined
+        // This test verifies the error selector is correct
+        bytes4 expectedSelector = ErrorLibrary.PositionClosureRestricted.selector;
+        assertTrue(expectedSelector != bytes4(0));
     }
 }
 

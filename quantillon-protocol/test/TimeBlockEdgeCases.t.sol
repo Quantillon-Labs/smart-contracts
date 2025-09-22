@@ -134,6 +134,8 @@ contract TimeBlockEdgeCases is Test {
         vm.mockCall(address(0x3), abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector), abi.encode(0));
         
         // Mock HedgerPool's own USDC balance
+        // NOTE: This mock always returns 0, which means flash loan protection never triggers
+        // because the balance never changes from 0 to 0. This could hide bugs in real deployment.
         vm.mockCall(address(hedgerPool), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(0));
         
         // Deploy real MockUSDC for testing

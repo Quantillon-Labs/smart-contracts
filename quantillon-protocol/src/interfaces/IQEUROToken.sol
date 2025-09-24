@@ -174,6 +174,7 @@ interface IQEUROToken {
      * @param admin Address of the admin role
      * @param vault Address of the vault contract
      * @param timelock Address of the timelock contract
+     * @param treasury Treasury address
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables
@@ -183,7 +184,7 @@ interface IQEUROToken {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function initialize(address admin, address vault, address timelock) external;
+    function initialize(address admin, address vault, address timelock, address treasury) external;
 
     // Core functions
     /**
@@ -506,7 +507,6 @@ interface IQEUROToken {
      * @notice Recover accidentally sent tokens
      * @dev Allows recovery of ERC20 tokens sent to the contract by mistake
      * @param token Address of the token to recover
-     * @param to Address to send the recovered tokens to
      * @param amount Amount of tokens to recover
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -517,7 +517,7 @@ interface IQEUROToken {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverToken(address token, uint256 amount) external;
 
     /**
      * @notice Recover accidentally sent ETH

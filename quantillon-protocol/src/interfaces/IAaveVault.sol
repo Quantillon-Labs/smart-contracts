@@ -16,6 +16,8 @@ interface IAaveVault {
      * @param _aaveProvider Aave PoolAddressesProvider
      * @param _rewardsController Aave RewardsController address
      * @param _yieldShift YieldShift contract address
+     * @param _timelock Timelock contract address
+     * @param _treasury Treasury address
      * @dev Initializes the AaveVault contract with required addresses
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -31,7 +33,9 @@ interface IAaveVault {
         address _usdc,
         address _aaveProvider,
         address _rewardsController,
-        address _yieldShift
+        address _yieldShift,
+        address _timelock,
+        address _treasury
     ) external;
 
     /**
@@ -415,7 +419,6 @@ interface IAaveVault {
      * @notice Recover ERC20 tokens sent by mistake
      * @dev Allows recovery of ERC20 tokens accidentally sent to the contract
      * @param token Token address
-     * @param to Recipient
      * @param amount Amount to transfer
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -426,7 +429,7 @@ interface IAaveVault {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverToken(address token, uint256 amount) external;
 
     /**
      * @notice Recover ETH sent by mistake

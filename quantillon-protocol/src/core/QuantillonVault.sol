@@ -223,6 +223,26 @@ contract QuantillonVault is
         uint256 usdcAmount
     );
     
+    /// @notice Emitted when hedger deposits USDC to vault for unified liquidity
+    /// @param hedgerPool Address of the HedgerPool contract that made the deposit
+    /// @param usdcAmount Amount of USDC deposited (6 decimals)
+    /// @param totalUsdcHeld New total USDC held in vault after deposit (6 decimals)
+    event HedgerDepositAdded(
+        address indexed hedgerPool,
+        uint256 usdcAmount,
+        uint256 totalUsdcHeld
+    );
+    
+    /// @notice Emitted when hedger withdraws USDC from vault
+    /// @param hedger Address of the hedger receiving the USDC
+    /// @param usdcAmount Amount of USDC withdrawn (6 decimals)
+    /// @param totalUsdcHeld New total USDC held in vault after withdrawal (6 decimals)
+    event HedgerDepositWithdrawn(
+        address indexed hedger,
+        uint256 usdcAmount,
+        uint256 totalUsdcHeld
+    );
+    
     /// @notice Emitted when parameters are changed
     /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
     event ParametersUpdated(
@@ -307,6 +327,7 @@ contract QuantillonVault is
      * @param _usdc Address of the USDC token contract
      * @param _oracle Address of the Oracle contract
      * @param _hedgerPool Address of the HedgerPool contract
+     * @param _userPool Address of the UserPool contract
      * @param _timelock Address of the timelock contract
      * 
      * @dev This function configures:
@@ -856,6 +877,86 @@ contract QuantillonVault is
         
         uint256 feesToWithdraw = contractBalance - totalUsdcHeld;
         usdc.safeTransfer(to, feesToWithdraw);
+    }
+
+    // =============================================================================
+    // HEDGER POOL INTEGRATION - Functions for unified USDC liquidity management
+    // =============================================================================
+
+    /**
+     * @notice Adds hedger USDC deposit to vault's total USDC reserves
+     * @dev Called by HedgerPool when hedgers open positions to unify USDC liquidity
+     * @param usdcAmount Amount of USDC deposited by hedger (6 decimals)
+     * @custom:security Validates caller is HedgerPool contract and amount is positive
+     * @custom:validation Validates amount > 0 and caller is authorized HedgerPool
+     * @custom:state-changes Updates totalUsdcHeld with hedger deposit amount
+     * @custom:events Emits HedgerDepositAdded with deposit details
+     * @custom:errors Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+     * @custom:errors Throws "Vault: Amount must be positive" if amount is zero
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to HedgerPool contract only
+     * @custom:oracle No oracle dependencies
+     */
+    function addHedgerDeposit(uint256 usdcAmount) external nonReentrant {
+        require(msg.sender == address(hedgerPool), "Vault: Only HedgerPool can call");
+        require(usdcAmount > 0, "Vault: Amount must be positive");
+        
+        // Update vault's total USDC reserves
+        unchecked {
+            totalUsdcHeld += usdcAmount;
+        }
+        
+        emit HedgerDepositAdded(msg.sender, usdcAmount, totalUsdcHeld);
+    }
+
+    /**
+     * @notice Withdraws hedger USDC deposit from vault's reserves
+     * @dev Called by HedgerPool when hedgers close positions to return their deposits
+     * @param hedger Address of the hedger receiving the USDC
+     * @param usdcAmount Amount of USDC to withdraw (6 decimals)
+     * @custom:security Validates caller is HedgerPool, amount is positive, and sufficient reserves
+     * @custom:validation Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
+     * @custom:state-changes Updates totalUsdcHeld and transfers USDC to hedger
+     * @custom:events Emits HedgerDepositWithdrawn with withdrawal details
+     * @custom:errors Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+     * @custom:errors Throws "Vault: Amount must be positive" if amount is zero
+     * @custom:errors Throws "Vault: Insufficient USDC reserves" if not enough USDC available
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to HedgerPool contract only
+     * @custom:oracle No oracle dependencies
+     */
+    function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external nonReentrant {
+        require(msg.sender == address(hedgerPool), "Vault: Only HedgerPool can call");
+        require(usdcAmount > 0, "Vault: Amount must be positive");
+        require(hedger != address(0), "Vault: Invalid hedger address");
+        require(totalUsdcHeld >= usdcAmount, "Vault: Insufficient USDC reserves");
+        
+        // Update vault's total USDC reserves
+        unchecked {
+            totalUsdcHeld -= usdcAmount;
+        }
+        
+        // Transfer USDC to hedger
+        usdc.safeTransfer(hedger, usdcAmount);
+        
+        emit HedgerDepositWithdrawn(hedger, usdcAmount, totalUsdcHeld);
+    }
+
+    /**
+     * @notice Gets the total USDC available for hedger deposits
+     * @dev Returns the current total USDC held in the vault for transparency
+     * @return uint256 Total USDC held in vault (6 decimals)
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access - anyone can query total USDC held
+     * @custom:oracle No oracle dependencies
+     */
+    function getTotalUsdcAvailable() external view returns (uint256) {
+        return totalUsdcHeld;
     }
 
     // =============================================================================

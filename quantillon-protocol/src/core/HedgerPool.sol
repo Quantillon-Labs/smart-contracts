@@ -158,6 +158,31 @@ contract HedgerPool is
         _disableInitializers();
     }
 
+    /**
+     * @notice Initializes the HedgerPool with contracts and parameters
+     * 
+     * @param admin Address with administrator privileges
+     * @param _usdc Address of the USDC token contract
+     * @param _oracle Address of the Oracle contract
+     * @param _yieldShift Address of the YieldShift contract
+     * @param _timelock Address of the timelock contract
+     * @param _treasury Address of the treasury contract
+     * @param _vault Address of the QuantillonVault contract
+     * 
+     * @dev This function configures:
+     *      1. Access roles and permissions
+     *      2. References to external contracts
+     *      3. Default protocol parameters
+     *      4. Security (pause, reentrancy, upgrades)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Initializes all contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by initializer modifier
+     * @custom:access Restricted to initializer modifier
+     * @custom:oracle No oracle dependencies
+     */
     function initialize(
         address admin,
         address _usdc,
@@ -202,6 +227,34 @@ contract HedgerPool is
         nextPositionId = 1;
     }
 
+    /**
+     * @notice Opens a new hedge position for a hedger
+     * 
+     * @param usdcAmount Amount of USDC to deposit as margin (6 decimals)
+     * @param leverage Leverage multiplier for the position (1-20x)
+     * @return positionId Unique identifier for the new position
+     * 
+     * @dev Position opening process:
+     *      1. Validates hedger whitelist status
+     *      2. Fetches current EUR/USD price from oracle
+     *      3. Calculates position size and validates parameters
+     *      4. Transfers USDC to vault for unified liquidity
+     *      5. Creates position record and updates hedger stats
+     * 
+     * @dev Security features:
+     *      1. Flash loan protection via secureNonReentrant
+     *      2. Whitelist validation if enabled
+     *      3. Parameter validation (leverage, amounts)
+     *      4. Oracle price validation
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates amount > 0, leverage within limits, hedger whitelist
+     * @custom:state-changes Creates new position, updates hedger stats, transfers USDC to vault
+     * @custom:events Emits HedgePositionOpened with position details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by secureNonReentrant modifier
+     * @custom:access Restricted to whitelisted hedgers (if whitelist enabled)
+     * @custom:oracle Requires fresh oracle price data
+     */
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) 
         external 
         secureNonReentrant
@@ -220,7 +273,11 @@ contract HedgerPool is
                 MAX_POSITION_SIZE, MAX_ENTRY_PRICE, MAX_LEVERAGE, TIME_PROVIDER.currentTime()
             );
 
-        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
+        // Transfer USDC directly to vault for unified liquidity management
+        usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
+        
+        // Notify vault of hedger deposit to update totalUsdcHeld
+        vault.addHedgerDeposit(usdcAmount);
 
         positionId = nextPositionId++;
         
@@ -264,6 +321,33 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Closes an existing hedge position
+     * 
+     * @param positionId Unique identifier of the position to close
+     * @return pnl Profit or loss from the position (positive = profit, negative = loss)
+     * 
+     * @dev Position closing process:
+     *      1. Validates position ownership and active status
+     *      2. Checks protocol collateralization safety
+     *      3. Calculates current PnL based on price change
+     *      4. Determines net payout to hedger
+     *      5. Updates hedger stats and removes position
+     *      6. Withdraws USDC from vault for hedger payout
+     * 
+     * @dev Security features:
+     *      1. Position ownership validation
+     *      2. Protocol collateralization safety check
+     *      3. Pause protection
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates position ownership, active status, and protocol safety
+     * @custom:state-changes Closes position, updates hedger stats, withdraws USDC from vault
+     * @custom:events Emits HedgePositionClosed with position details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by whenNotPaused modifier
+     * @custom:access Restricted to position owner
+     * @custom:oracle Requires fresh oracle price data
+     */
     function exitHedgePosition(uint256 positionId) 
         external 
         whenNotPaused
@@ -306,7 +390,8 @@ contract HedgerPool is
         }
 
         if (netPayout > 0) {
-            usdc.safeTransfer(msg.sender, netPayout);
+            // Withdraw USDC from vault for hedger payout
+            vault.withdrawHedgerDeposit(msg.sender, netPayout);
         }
 
         emit HedgePositionClosed(
@@ -316,6 +401,32 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Adds additional margin to an existing hedge position
+     * 
+     * @param positionId Unique identifier of the position
+     * @param amount Amount of USDC to add as margin (6 decimals)
+     * 
+     * @dev Margin addition process:
+     *      1. Validates position ownership and active status
+     *      2. Validates amount is positive
+     *      3. Checks liquidation cooldown and pending liquidation status
+     *      4. Transfers USDC from hedger to vault
+     *      5. Updates position margin and hedger stats
+     * 
+     * @dev Security features:
+     *      1. Flash loan protection
+     *      2. Position ownership validation
+     *      3. Liquidation cooldown validation
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates position ownership, active status, positive amount, liquidation cooldown
+     * @custom:state-changes Updates position margin, hedger stats, transfers USDC to vault
+     * @custom:events Emits MarginAdded with position details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by flashLoanProtection modifier
+     * @custom:access Restricted to position owner
+     * @custom:oracle No oracle dependencies
+     */
     function addMargin(uint256 positionId, uint256 amount) external flashLoanProtection {
         HedgePosition storage position = positions[positionId];
         ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
@@ -330,7 +441,11 @@ contract HedgerPool is
         uint256 fee = amount.percentageOf(coreParams.marginFee);
         uint256 netAmount = amount - fee;
 
-        usdc.safeTransferFrom(msg.sender, address(this), amount);
+        // Transfer USDC directly to vault for unified liquidity management
+        usdc.safeTransferFrom(msg.sender, address(vault), amount);
+        
+        // Notify vault of additional hedger deposit
+        vault.addHedgerDeposit(amount);
 
         (uint256 newMargin, uint256 newMarginRatio) = HedgerPoolLogicLibrary.validateMarginOperation(
             uint256(position.margin), netAmount, true, coreParams.minMarginRatio, 
@@ -348,6 +463,32 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Removes margin from an existing hedge position
+     * 
+     * @param positionId Unique identifier of the position
+     * @param amount Amount of USDC to remove from margin (6 decimals)
+     * 
+     * @dev Margin removal process:
+     *      1. Validates position ownership and active status
+     *      2. Validates amount is positive
+     *      3. Validates margin operation maintains minimum margin ratio
+     *      4. Updates position margin and hedger stats
+     *      5. Withdraws USDC from vault to hedger
+     * 
+     * @dev Security features:
+     *      1. Flash loan protection
+     *      2. Position ownership validation
+     *      3. Minimum margin ratio validation
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates position ownership, active status, positive amount, minimum margin ratio
+     * @custom:state-changes Updates position margin, hedger stats, withdraws USDC from vault
+     * @custom:events Emits MarginUpdated with position details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by flashLoanProtection modifier
+     * @custom:access Restricted to position owner
+     * @custom:oracle No oracle dependencies
+     */
     function removeMargin(uint256 positionId, uint256 amount) external flashLoanProtection {
         HedgePosition storage position = positions[positionId];
         ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
@@ -363,7 +504,8 @@ contract HedgerPool is
         hedgers[msg.sender].totalMargin -= uint128(amount);
         totalMargin -= amount;
 
-        usdc.safeTransfer(msg.sender, amount);
+        // Withdraw USDC from vault for hedger margin removal
+        vault.withdrawHedgerDeposit(msg.sender, amount);
 
         emit MarginUpdated(
             msg.sender, 
@@ -388,6 +530,34 @@ contract HedgerPool is
         lastLiquidationAttempt[hedger] = block.number;
     }
 
+    /**
+     * @notice Liquidates an undercollateralized hedge position
+     * 
+     * @param hedger Address of the hedger to liquidate
+     * @param positionId Unique identifier of the position to liquidate
+     * @param salt Random salt for commitment validation
+     * @return liquidationReward Amount of USDC reward for the liquidator
+     * 
+     * @dev Liquidation process:
+     *      1. Validates liquidator role and commitment
+     *      2. Validates position ownership and active status
+     *      3. Calculates liquidation reward and remaining margin
+     *      4. Updates hedger stats and removes position
+     *      5. Withdraws USDC from vault for liquidator reward and remaining margin
+     * 
+     * @dev Security features:
+     *      1. Role-based access control (LIQUIDATOR_ROLE)
+     *      2. Commitment validation to prevent front-running
+     *      3. Reentrancy protection
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates liquidator role, commitment, position ownership, active status
+     * @custom:state-changes Liquidates position, updates hedger stats, withdraws USDC from vault
+     * @custom:events Emits HedgerLiquidated with liquidation details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to LIQUIDATOR_ROLE
+     * @custom:oracle Requires fresh oracle price data
+     */
     function liquidateHedger(address hedger, uint256 positionId, bytes32 salt) 
         external 
         nonReentrant 
@@ -437,10 +607,12 @@ contract HedgerPool is
             activeHedgers--;
         }
 
-        usdc.safeTransfer(msg.sender, liquidationReward);
+        // Withdraw liquidation reward from vault for liquidator
+        vault.withdrawHedgerDeposit(msg.sender, liquidationReward);
 
         if (remainingMargin > 0) {
-            usdc.safeTransfer(hedger, remainingMargin);
+            // Withdraw remaining margin from vault for hedger
+            vault.withdrawHedgerDeposit(hedger, remainingMargin);
         }
 
         emit HedgerLiquidated(
@@ -451,6 +623,31 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Claims hedging rewards for a hedger
+     * 
+     * @return interestDifferential Interest differential rewards earned
+     * @return yieldShiftRewards Yield shift rewards earned
+     * @return totalRewards Total rewards claimed
+     * 
+     * @dev Reward claiming process:
+     *      1. Calculates interest differential based on exposure and rates
+     *      2. Calculates yield shift rewards from YieldShift contract
+     *      3. Updates hedger's last reward block
+     *      4. Transfers total rewards to hedger
+     * 
+     * @dev Security features:
+     *      1. Reentrancy protection
+     *      2. Reward calculation validation
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates hedger has active positions and rewards available
+     * @custom:state-changes Updates hedger reward tracking, transfers rewards
+     * @custom:events Emits HedgingRewardsClaimed with reward details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to hedgers with active positions
+     * @custom:oracle No oracle dependencies
+     */
     function claimHedgingRewards() 
         external 
         nonReentrant 
@@ -571,6 +768,30 @@ contract HedgerPool is
         coreParams.marginFee = uint16(_marginFee);
     }
 
+    /**
+     * @notice Emergency closure of a hedge position by governance
+     * 
+     * @param hedger Address of the hedger whose position to close
+     * @param positionId Unique identifier of the position to close
+     * 
+     * @dev Emergency closure process:
+     *      1. Validates emergency role and position ownership
+     *      2. Validates position is active
+     *      3. Updates hedger stats and removes position
+     *      4. Withdraws USDC from vault for hedger's margin
+     * 
+     * @dev Security features:
+     *      1. Role-based access control (EMERGENCY_ROLE)
+     *      2. Position ownership validation
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates emergency role, position ownership, active status
+     * @custom:state-changes Closes position, updates hedger stats, withdraws USDC from vault
+     * @custom:events Emits EmergencyPositionClosed with position details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Not protected - emergency function
+     * @custom:access Restricted to EMERGENCY_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function emergencyClosePosition(address hedger, uint256 positionId) external {
         _validateRole(EMERGENCY_ROLE);
         
@@ -585,7 +806,8 @@ contract HedgerPool is
         totalMargin -= position.margin;
         totalExposure -= position.positionSize;
 
-        usdc.safeTransfer(hedger, position.margin);
+        // Withdraw USDC from vault for emergency position closure
+        vault.withdrawHedgerDeposit(hedger, position.margin);
 
         position.isActive = false;
         _removePositionFromArrays(hedger, positionId);
@@ -690,6 +912,28 @@ contract HedgerPool is
         emit VaultUpdated(_vault);
     }
 
+    /**
+     * @notice Whitelists a hedger address for position opening
+     * 
+     * @param hedger Address of the hedger to whitelist
+     * 
+     * @dev Whitelisting process:
+     *      1. Validates governance role and hedger address
+     *      2. Checks hedger is not already whitelisted
+     *      3. Adds hedger to whitelist and grants HEDGER_ROLE
+     * 
+     * @dev Security features:
+     *      1. Role-based access control (GOVERNANCE_ROLE)
+     *      2. Address validation
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates governance role, hedger address, not already whitelisted
+     * @custom:state-changes Adds hedger to whitelist, grants HEDGER_ROLE
+     * @custom:events Emits HedgerWhitelisted with hedger and caller details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Not protected - governance function
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function whitelistHedger(address hedger) external {
         _validateRole(GOVERNANCE_ROLE);
         AccessControlLibrary.validateAddress(hedger);
@@ -702,6 +946,28 @@ contract HedgerPool is
         emit HedgerWhitelisted(hedger, msg.sender);
     }
 
+    /**
+     * @notice Removes a hedger from the whitelist
+     * 
+     * @param hedger Address of the hedger to remove from whitelist
+     * 
+     * @dev Removal process:
+     *      1. Validates governance role and hedger address
+     *      2. Checks hedger is currently whitelisted
+     *      3. Removes hedger from whitelist and revokes HEDGER_ROLE
+     * 
+     * @dev Security features:
+     *      1. Role-based access control (GOVERNANCE_ROLE)
+     *      2. Address validation
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates governance role, hedger address, currently whitelisted
+     * @custom:state-changes Removes hedger from whitelist, revokes HEDGER_ROLE
+     * @custom:events Emits HedgerRemoved with hedger and caller details
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Not protected - governance function
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function removeHedger(address hedger) external {
         _validateRole(GOVERNANCE_ROLE);
         AccessControlLibrary.validateAddress(hedger);
@@ -714,12 +980,46 @@ contract HedgerPool is
         emit HedgerRemoved(hedger, msg.sender);
     }
 
+    /**
+     * @notice Toggles the hedger whitelist mode on/off
+     * 
+     * @param enabled Whether to enable or disable the whitelist mode
+     * 
+     * @dev Whitelist mode toggle:
+     *      1. Validates governance role
+     *      2. Updates hedgerWhitelistEnabled state
+     *      3. Emits event for transparency
+     * 
+     * @dev When enabled: Only whitelisted hedgers can open positions
+     * @dev When disabled: Any address can open positions
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates governance role
+     * @custom:state-changes Updates hedgerWhitelistEnabled state
+     * @custom:events Emits HedgerWhitelistModeToggled with new state and caller
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Not protected - governance function
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function toggleHedgerWhitelistMode(bool enabled) external {
         _validateRole(GOVERNANCE_ROLE);
         hedgerWhitelistEnabled = enabled;
         emit HedgerWhitelistModeToggled(enabled, msg.sender);
     }
 
+    /**
+     * @notice Gets a valid EUR/USD price from the oracle
+     * @return price Valid EUR/USD price from oracle
+     * @dev Internal function to fetch and validate oracle price
+     * @custom:security Validates oracle price is valid
+     * @custom:validation Validates oracle price is valid
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors Throws InvalidOraclePrice if price is invalid
+     * @custom:reentrancy Not protected - internal function
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle Requires fresh oracle price data
+     */
     function _getValidOraclePrice() internal returns (uint256) {
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert ErrorLibrary.InvalidOraclePrice();

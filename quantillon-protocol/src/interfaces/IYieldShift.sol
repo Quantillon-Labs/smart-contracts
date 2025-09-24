@@ -17,6 +17,8 @@ interface IYieldShift {
      * @param _hedgerPool HedgerPool address
      * @param _aaveVault Aave vault address
      * @param _stQEURO stQEURO token address
+     * @param _timelock Timelock contract address
+     * @param _treasury Treasury address
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -26,7 +28,7 @@ interface IYieldShift {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function initialize(address admin, address _usdc, address _userPool, address _hedgerPool, address _aaveVault, address _stQEURO) external;
+    function initialize(address admin, address _usdc, address _userPool, address _hedgerPool, address _aaveVault, address _stQEURO, address _timelock, address _treasury) external;
 
     /**
      * @notice Update yield distribution according to pool balances
@@ -639,7 +641,6 @@ interface IYieldShift {
      * @notice Recovers ERC20 tokens sent by mistake
      * @dev Allows governance to recover accidentally sent ERC20 tokens
      * @param token Token address
-     * @param to Recipient address
      * @param amount Amount to transfer
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -650,7 +651,7 @@ interface IYieldShift {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverToken(address token, uint256 amount) external;
     
     /**
      * @notice Recovers ETH sent by mistake

@@ -15,6 +15,7 @@ interface IChainlinkOracle {
      * @param admin Address that receives admin and manager roles
      * @param _eurUsdPriceFeed Chainlink EUR/USD feed address
      * @param _usdcUsdPriceFeed Chainlink USDC/USD feed address
+     * @param _treasury Treasury address
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -24,7 +25,7 @@ interface IChainlinkOracle {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed) external;
+    function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed, address _treasury) external;
 
     /**
      * @notice Gets the current EUR/USD price with validation
@@ -278,7 +279,6 @@ interface IChainlinkOracle {
      * @notice Recovers ERC20 tokens sent to the oracle contract by mistake
      * @dev Allows recovery of ERC20 tokens accidentally sent to the oracle contract
      * @param token Token address to recover
-     * @param to Recipient address
      * @param amount Amount to transfer
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -289,7 +289,7 @@ interface IChainlinkOracle {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverToken(address token, uint256 amount) external;
 
     /**
      * @notice Recovers ETH sent to the oracle contract by mistake

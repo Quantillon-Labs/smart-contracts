@@ -16,6 +16,9 @@ interface IQuantillonVault {
      * @param _qeuro QEURO token address
      * @param _usdc USDC token address
      * @param _oracle Oracle contract address
+     * @param _hedgerPool HedgerPool contract address
+     * @param _userPool UserPool contract address
+     * @param _timelock Timelock contract address
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -25,7 +28,7 @@ interface IQuantillonVault {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function initialize(address admin, address _qeuro, address _usdc, address _oracle) external;
+    function initialize(address admin, address _qeuro, address _usdc, address _oracle, address _hedgerPool, address _userPool, address _timelock) external;
 
     /**
      * @notice Mints QEURO by swapping USDC
@@ -546,4 +549,110 @@ interface IQuantillonVault {
      * @custom:oracle No oracle dependencies
      */
     function userPool() external view returns (address);
+
+    // =============================================================================
+    // HEDGER POOL INTEGRATION - Functions for unified USDC liquidity management
+    // =============================================================================
+
+    /**
+     * @notice Adds hedger USDC deposit to vault's total USDC reserves
+     * @dev Called by HedgerPool when hedgers open positions to unify USDC liquidity
+     * @param usdcAmount Amount of USDC deposited by hedger (6 decimals)
+     * @custom:security Validates caller is HedgerPool contract and amount is positive
+     * @custom:validation Validates amount > 0 and caller is authorized HedgerPool
+     * @custom:state-changes Updates totalUsdcHeld with hedger deposit amount
+     * @custom:events Emits HedgerDepositAdded with deposit details
+     * @custom:errors Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+     * @custom:errors Throws "Vault: Amount must be positive" if amount is zero
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to HedgerPool contract only
+     * @custom:oracle No oracle dependencies
+     */
+    function addHedgerDeposit(uint256 usdcAmount) external;
+
+    /**
+     * @notice Withdraws hedger USDC deposit from vault's reserves
+     * @dev Called by HedgerPool when hedgers close positions to return their deposits
+     * @param hedger Address of the hedger receiving the USDC
+     * @param usdcAmount Amount of USDC to withdraw (6 decimals)
+     * @custom:security Validates caller is HedgerPool, amount is positive, and sufficient reserves
+     * @custom:validation Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
+     * @custom:state-changes Updates totalUsdcHeld and transfers USDC to hedger
+     * @custom:events Emits HedgerDepositWithdrawn with withdrawal details
+     * @custom:errors Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+     * @custom:errors Throws "Vault: Amount must be positive" if amount is zero
+     * @custom:errors Throws "Vault: Insufficient USDC reserves" if not enough USDC available
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to HedgerPool contract only
+     * @custom:oracle No oracle dependencies
+     */
+    function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external;
+
+    /**
+     * @notice Gets the total USDC available for hedger deposits
+     * @dev Returns the current total USDC held in the vault for transparency
+     * @return uint256 Total USDC held in vault (6 decimals)
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access - anyone can query total USDC held
+     * @custom:oracle No oracle dependencies
+     */
+    function getTotalUsdcAvailable() external view returns (uint256);
+
+    /**
+     * @notice Updates the HedgerPool address
+     * @dev Updates the HedgerPool contract address for hedger operations
+     * @param _hedgerPool New HedgerPool address
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateHedgerPool(address _hedgerPool) external;
+
+    /**
+     * @notice Updates the UserPool address
+     * @dev Updates the UserPool contract address for user deposit tracking
+     * @param _userPool New UserPool address
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateUserPool(address _userPool) external;
+
+    /**
+     * @notice Gets the price protection status and parameters
+     * @dev Returns price protection configuration for monitoring
+     * @return lastValidPrice Last valid EUR/USD price
+     * @return lastUpdateBlock Block number of last price update
+     * @return maxDeviation Maximum allowed price deviation
+     * @return minBlocks Minimum blocks between price updates
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access - anyone can query price protection status
+     * @custom:oracle No oracle dependencies
+     */
+    function getPriceProtectionStatus() external view returns (
+        uint256 lastValidPrice,
+        uint256 lastUpdateBlock,
+        uint256 maxDeviation,
+        uint256 minBlocks
+    );
 }

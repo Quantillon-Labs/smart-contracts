@@ -492,7 +492,6 @@ contract HedgerPool is
 
     function getHedgerPosition(address hedger, uint256 positionId) 
         external 
-        view 
         returns (uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 currentPrice, uint256 leverage, uint256 lastUpdateTime) 
     {
         HedgePosition storage position = positions[positionId];
@@ -518,7 +517,7 @@ contract HedgerPool is
         return uint256(position.margin).mulDiv(10000, uint256(position.positionSize));
     }
 
-    function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool) {
+    function isHedgerLiquidatable(address hedger, uint256 positionId) external returns (bool) {
         HedgePosition storage position = positions[positionId];
         if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
         
@@ -721,7 +720,7 @@ contract HedgerPool is
         emit HedgerWhitelistModeToggled(enabled, msg.sender);
     }
 
-    function _getValidOraclePrice() internal view returns (uint256) {
+    function _getValidOraclePrice() internal returns (uint256) {
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert ErrorLibrary.InvalidOraclePrice();
         return price;

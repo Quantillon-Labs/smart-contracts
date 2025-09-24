@@ -819,7 +819,7 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_View_CalculateMintAmount() public view {
+    function test_View_CalculateMintAmount() public {
         uint256 usdcAmount = MINT_AMOUNT;
         
         (uint256 qeuroAmount, uint256 fee) = vault.calculateMintAmount(usdcAmount);
@@ -841,7 +841,7 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_View_CalculateRedeemAmount() public view {
+    function test_View_CalculateRedeemAmount() public {
         uint256 qeuroAmount = REDEEM_AMOUNT;
         
         (uint256 usdcAmount, uint256 fee) = vault.calculateRedeemAmount(qeuroAmount);

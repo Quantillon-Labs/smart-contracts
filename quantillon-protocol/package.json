@@ -1,5 +1,5 @@
 {
   "devDependencies": {
-    "@dotenvx/dotenvx": "^1.50.1"
+    "@dotenvx/dotenvx": "^1.51.0"
   }
 }

@@ -170,6 +170,7 @@ cat > "$FRONTEND_ADDRESSES_FILE" << EOF
       "QTIToken": "$QTI_TOKEN",
       "stQEUROToken": "$STQEURO_TOKEN",
       "ChainlinkOracle": "$CHAINLINK_ORACLE",
+      "MockChainlinkOracle": "$CHAINLINK_ORACLE",
       "UserPool": "$USER_POOL",
       "HedgerPool": "$HEDGER_POOL",
       "YieldShift": "$YIELD_SHIFT",

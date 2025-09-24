@@ -576,7 +576,6 @@ contract QuantillonVault is
      */
     function getVaultMetrics() 
         external 
-        view 
         returns (
             uint256 totalUsdcHeld_,
             uint256 totalMinted_,
@@ -611,7 +610,6 @@ contract QuantillonVault is
      */
     function calculateMintAmount(uint256 usdcAmount) 
         external 
-        view 
         returns (uint256 qeuroAmount, uint256 fee) 
     {
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
@@ -639,7 +637,6 @@ contract QuantillonVault is
      */
     function calculateRedeemAmount(uint256 qeuroAmount) 
         external 
-        view 
         returns (uint256 usdcAmount, uint256 fee) 
     {
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();

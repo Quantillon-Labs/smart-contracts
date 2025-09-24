@@ -83,7 +83,7 @@ if [ "$WITH_MOCK_USDC" = true ]; then
     echo -e "${YELLOW}🚀 Deploying MockUSDC to localhost...${NC}"
     echo "=================================================="
 
-    if forge script "$MOCK_USDC_SCRIPT" --rpc-url "$RPC_URL" --broadcast; then
+    if npx dotenvx run -- forge script "$MOCK_USDC_SCRIPT" --rpc-url "$RPC_URL" --broadcast; then
         echo -e "${GREEN}✅ MockUSDC deployment completed successfully!${NC}"
     else
         echo -e "${RED}❌ MockUSDC deployment failed!${NC}"
@@ -96,7 +96,7 @@ if [ "$WITH_MOCK_FEEDS" = true ]; then
     echo -e "${YELLOW}🚀 Deploying Mock Price Feeds to localhost...${NC}"
     echo "=================================================="
 
-    if forge script "$MOCK_FEEDS_SCRIPT" --rpc-url "$RPC_URL" --broadcast; then
+    if npx dotenvx run -- forge script "$MOCK_FEEDS_SCRIPT" --rpc-url "$RPC_URL" --broadcast; then
         echo -e "${GREEN}✅ Mock Price Feeds deployment completed successfully!${NC}"
     else
         echo -e "${RED}❌ Mock Price Feeds deployment failed!${NC}"
@@ -108,7 +108,7 @@ fi
 echo -e "${YELLOW}🚀 Deploying main contracts to localhost...${NC}"
 echo "=================================================="
 
-if forge script "$DEPLOYMENT_SCRIPT" --rpc-url "$RPC_URL" --broadcast; then
+if npx dotenvx run -- forge script "$DEPLOYMENT_SCRIPT" --rpc-url "$RPC_URL" --broadcast; then
     echo -e "${GREEN}✅ Main contracts deployment completed successfully!${NC}"
 else
     echo -e "${RED}❌ Main contracts deployment failed!${NC}"

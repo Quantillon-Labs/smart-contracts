@@ -40,7 +40,7 @@ interface IChainlinkOracle {
      * @custom:access Public - no access restrictions
      * @custom:oracle Requires fresh Chainlink EUR/USD price feed data
      */
-    function getEurUsdPrice() external view returns (uint256 price, bool isValid);
+    function getEurUsdPrice() external returns (uint256 price, bool isValid);
 
     /**
      * @notice Gets the current USDC/USD price with validation
@@ -73,7 +73,7 @@ interface IChainlinkOracle {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function getOracleHealth() external view returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
+    function getOracleHealth() external returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
 
     /**
      * @notice Detailed information about the EUR/USD price
@@ -92,7 +92,7 @@ interface IChainlinkOracle {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function getEurUsdDetails() external view returns (
+    function getEurUsdDetails() external returns (
         uint256 currentPrice,
         uint256 lastValidPrice,
         uint256 lastUpdate,

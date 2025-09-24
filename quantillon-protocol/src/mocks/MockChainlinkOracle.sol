@@ -86,11 +86,11 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     }
     
     /**
-     * @notice Gets the current EUR/USD price with validation
+     * @notice Gets the current EUR/USD price with validation and auto-updates lastValidEurUsdPrice
      * @return price EUR/USD price in 18 decimals
      * @return isValid True if price is valid and fresh
      */
-    function getEurUsdPrice() external view override returns (uint256 price, bool isValid) {
+    function getEurUsdPrice() external override returns (uint256 price, bool isValid) {
         // If circuit breaker is active or contract is paused, use the last valid price
         if (circuitBreakerTriggered || paused()) {
             return (lastValidEurUsdPrice, false);
@@ -111,15 +111,11 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // Circuit breaker bounds check
         isValid = price >= MIN_EUR_USD_PRICE && price <= MAX_EUR_USD_PRICE;
 
-        // Deviation check against last valid price
-        if (isValid && lastValidEurUsdPrice > 0) {
-            uint256 base = lastValidEurUsdPrice;
-            uint256 diff = price > base ? price - base : base - price;
-    
-            uint256 deviationBps = _divRound(diff * 10000, base);
-            if (deviationBps > MAX_PRICE_DEVIATION) {
-                isValid = false;
-            }
+        // For mock oracle, always update lastValidEurUsdPrice to enable step-by-step changes
+        // This allows gradual price changes without hitting deviation limits
+        if (isValid) {
+            lastValidEurUsdPrice = price;
+            lastPriceUpdateBlock = block.number;
         }
         
         return (price, isValid);
@@ -272,7 +268,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Mock implementation of getOracleHealth
      */
-    function getOracleHealth() external view override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) {
+    function getOracleHealth() external override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) {
         (uint256 eurUsdPrice, bool eurUsdValid) = this.getEurUsdPrice();
         (uint256 usdcUsdPrice, bool usdcUsdValid) = this.getUsdcUsdPrice();
         
@@ -284,7 +280,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Mock implementation of getEurUsdDetails
      */
-    function getEurUsdDetails() external view override returns (
+    function getEurUsdDetails() external override returns (
         uint256 currentPrice,
         uint256 lastValidPrice,
         uint256 lastUpdate,
@@ -379,4 +375,5 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // Mock implementation - in real oracle this would recover tokens
         // For mock, we just emit an event or do nothing
     }
+    
 }

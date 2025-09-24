@@ -9,6 +9,23 @@ pragma solidity ^0.8.24;
  */
 interface ITimelockUpgradeable {
     
+    // ============ Initialization ============
+    
+    /**
+     * @notice Initializes the timelock upgradeable contract
+     * @dev Sets up the timelock with initial configuration and assigns roles to admin
+     * @param admin Address that receives admin and upgrade proposer roles
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to initializer modifier
+     * @custom:oracle No oracle dependencies
+     */
+    function initialize(address admin) external;
+    
     // ============ Structs ============
     
     struct PendingUpgrade {

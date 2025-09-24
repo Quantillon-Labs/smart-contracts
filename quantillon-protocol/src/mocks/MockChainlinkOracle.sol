@@ -57,11 +57,13 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @param admin Admin address
      * @param _eurUsdPriceFeed Mock EUR/USD feed address
      * @param _usdcUsdPriceFeed Mock USDC/USD feed address
+     * @param _treasury Treasury address
      */
     function initialize(
         address admin,
         address _eurUsdPriceFeed,
-        address _usdcUsdPriceFeed
+        address _usdcUsdPriceFeed,
+        address _treasury
     ) public initializer {
         require(admin != address(0), "Oracle: Admin cannot be zero");
         require(_eurUsdPriceFeed != address(0), "Oracle: EUR/USD feed cannot be zero");
@@ -370,9 +372,10 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Mock implementation of recoverToken
      */
-    function recoverToken(address token, address to, uint256 amount) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(to != address(0), "Oracle: Recipient cannot be zero");
-        // Mock implementation - in real oracle this would recover tokens
+    function recoverToken(address token, uint256 amount) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(token != address(0), "Oracle: Token cannot be zero");
+        require(amount > 0, "Oracle: Amount must be positive");
+        // Mock implementation - in real oracle this would recover tokens to treasury
         // For mock, we just emit an event or do nothing
     }
     

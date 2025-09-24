@@ -287,6 +287,44 @@ interface IQTIToken {
         bool support,
         uint256 votes
     );
+    
+    /**
+     * @notice Gets proposal execution information
+     * @dev Returns execution details for a specific proposal
+     * @param proposalId ID of the proposal
+     * @return executionHash Hash of the execution data
+     * @return executionTime Time when proposal was executed
+     * @return executor Address that executed the proposal
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access - anyone can query proposal execution info
+     * @custom:oracle No oracle dependencies
+     */
+    function getProposalExecutionInfo(uint256 proposalId) external view returns (
+        bytes32 executionHash,
+        uint256 executionTime,
+        address executor
+    );
+    
+    /**
+     * @notice Gets proposal execution hash
+     * @dev Returns the execution hash for a specific proposal
+     * @param proposalId ID of the proposal
+     * @return executionHash Hash of the execution data
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access - anyone can query proposal execution hash
+     * @custom:oracle No oracle dependencies
+     */
+    function getProposalExecutionHash(uint256 proposalId) external view returns (bytes32 executionHash);
 
     /**
      * @notice Update governance parameters
@@ -1041,18 +1079,17 @@ interface IQTIToken {
      * @notice Recovers tokens accidentally sent to the contract
      * @dev Emergency function to recover ERC20 tokens that are not part of normal operations
      * @param token Address of the token to recover
-     * @param to Address to send recovered tokens to
      * @param amount Amount of tokens to recover
      * @custom:security Validates admin role and uses secure recovery library
      * @custom:validation No input validation required - library handles validation
-     * @custom:state-changes Transfers tokens from contract to specified address
+     * @custom:state-changes Transfers tokens from contract to treasury
      * @custom:events Emits TokenRecovered event
      * @custom:errors No errors thrown - library handles error cases
      * @custom:reentrancy Not protected - library handles reentrancy
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies for token recovery
      */
-    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverToken(address token, uint256 amount) external;
     
     /**
      * @notice Recovers ETH accidentally sent to the contract

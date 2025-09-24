@@ -316,7 +316,6 @@ interface IstQEURO {
      * @notice Recover accidentally sent tokens
      * @dev Allows recovery of ERC20 tokens accidentally sent to the contract
      * @param token Token address to recover
-     * @param to Recipient address
      * @param amount Amount to transfer
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -327,7 +326,7 @@ interface IstQEURO {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverToken(address token, uint256 amount) external;
 
     /**
      * @notice Recover accidentally sent ETH
@@ -846,4 +845,27 @@ interface IstQEURO {
      * @custom:oracle No oracle dependencies
      */
     function maxUpdateFrequency() external view returns (uint256);
+    
+    /**
+     * @notice Gets the virtual protection status and parameters
+     * @dev Returns virtual protection configuration for monitoring
+     * @return isEnabled Whether virtual protection is enabled
+     * @return maxDeviation Maximum allowed deviation from real price
+     * @return lastUpdateTime Last time the virtual price was updated
+     * @return virtualPrice Current virtual price
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access - anyone can query virtual protection status
+     * @custom:oracle No oracle dependencies
+     */
+    function getVirtualProtectionStatus() external view returns (
+        bool isEnabled,
+        uint256 maxDeviation,
+        uint256 lastUpdateTime,
+        uint256 virtualPrice
+    );
 }

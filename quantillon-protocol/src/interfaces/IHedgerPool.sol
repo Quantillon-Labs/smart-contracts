@@ -10,6 +10,29 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @custom:security-contact team@quantillon.money
  */
 interface IHedgerPool {
+    // Initialization
+    
+    /**
+     * @notice Initializes the HedgerPool with contracts and parameters
+     * @dev Sets up the HedgerPool with initial configuration and assigns roles to admin
+     * @param admin Admin address receiving roles
+     * @param _usdc USDC token address
+     * @param _oracle Oracle contract address
+     * @param _yieldShift YieldShift contract address
+     * @param _timelock Timelock contract address
+     * @param _treasury Treasury address
+     * @param _vault QuantillonVault contract address
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Initializes all contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by initializer modifier
+     * @custom:access Restricted to initializer modifier
+     * @custom:oracle No oracle dependencies
+     */
+    function initialize(address admin, address _usdc, address _oracle, address _yieldShift, address _timelock, address _treasury, address _vault) external;
+    
     // Core hedging functions
     
     /**
@@ -416,18 +439,17 @@ interface IHedgerPool {
      * @notice Recovers tokens accidentally sent to the contract
      * @dev Emergency function to recover ERC20 tokens that are not part of normal operations
      * @param token Address of the token to recover
-     * @param to Address to send recovered tokens to
      * @param amount Amount of tokens to recover
      * @custom:security Validates admin role and uses secure recovery library
      * @custom:validation No input validation required - library handles validation
-     * @custom:state-changes Transfers tokens from contract to specified address
+     * @custom:state-changes Transfers tokens from contract to treasury
      * @custom:events Emits TokenRecovered event
      * @custom:errors No errors thrown - library handles error cases
      * @custom:reentrancy Not protected - library handles reentrancy
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies for token recovery
      */
-    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverToken(address token, uint256 amount) external;
     
     /**
      * @notice Recovers ETH accidentally sent to the contract

@@ -1,5 +1,5 @@
 # IstQEURO
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/interfaces/IstQEURO.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/interfaces/IstQEURO.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -706,14 +706,13 @@ Recover accidentally sent tokens
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Token address to recover|
-|`to`|`address`|Recipient address|
 |`amount`|`uint256`|Amount to transfer|
 
 
@@ -1883,5 +1882,45 @@ function maxUpdateFrequency() external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|The maximum update frequency|
+
+
+### getVirtualProtectionStatus
+
+Gets the virtual protection status and parameters
+
+*Returns virtual protection configuration for monitoring*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - view function
+
+- access: Public access - anyone can query virtual protection status
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function getVirtualProtectionStatus()
+    external
+    view
+    returns (bool isEnabled, uint256 maxDeviation, uint256 lastUpdateTimestamp, uint256 virtualPrice);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`isEnabled`|`bool`|Whether virtual protection is enabled|
+|`maxDeviation`|`uint256`|Maximum allowed deviation from real price|
+|`lastUpdateTimestamp`|`uint256`|Last time the virtual price was updated|
+|`virtualPrice`|`uint256`|Current virtual price|
 
 

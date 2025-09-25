@@ -1,5 +1,5 @@
 # IChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/interfaces/IChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/interfaces/IChainlinkOracle.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -38,7 +38,7 @@ Initializes the oracle with admin and feed addresses
 
 
 ```solidity
-function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed) external;
+function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed, address _treasury) external;
 ```
 **Parameters**
 
@@ -47,6 +47,7 @@ function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPri
 |`admin`|`address`|Address that receives admin and manager roles|
 |`_eurUsdPriceFeed`|`address`|Chainlink EUR/USD feed address|
 |`_usdcUsdPriceFeed`|`address`|Chainlink USDC/USD feed address|
+|`_treasury`|`address`|Treasury address|
 
 
 ### getEurUsdPrice
@@ -74,7 +75,7 @@ Gets the current EUR/USD price with validation
 
 
 ```solidity
-function getEurUsdPrice() external view returns (uint256 price, bool isValid);
+function getEurUsdPrice() external returns (uint256 price, bool isValid);
 ```
 **Returns**
 
@@ -144,7 +145,7 @@ Returns overall oracle health signals
 
 
 ```solidity
-function getOracleHealth() external view returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
+function getOracleHealth() external returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
 ```
 **Returns**
 
@@ -182,7 +183,6 @@ Detailed information about the EUR/USD price
 ```solidity
 function getEurUsdDetails()
     external
-    view
     returns (uint256 currentPrice, uint256 lastValidPrice, uint256 lastUpdate, bool isStale, bool withinBounds);
 ```
 **Returns**
@@ -558,14 +558,13 @@ Recovers ERC20 tokens sent to the oracle contract by mistake
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Token address to recover|
-|`to`|`address`|Recipient address|
 |`amount`|`uint256`|Amount to transfer|
 
 

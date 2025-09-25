@@ -1,7 +1,7 @@
 # Quantillon Protocol - Development Makefile
 # Integrates Foundry commands with Slither security analysis and dotenvx encryption
 
-.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings deploy-localhost deploy-base-sepolia deploy-base setup-env encrypt-env
+.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings deploy-localhost deploy-base-sepolia deploy-base setup-env encrypt-env benchmark-gas
 
 # Configuration variables
 RESULTS_DIR ?= scripts/results
@@ -32,6 +32,7 @@ help:
 	@echo ""
 	@echo "⛽ Gas Analysis:"
 	@echo "  make gas-analysis - Run comprehensive gas optimization analysis"
+	@echo "  make benchmark-gas - Run gas benchmarking for specific functions"
 	@echo ""
 	@echo "⚠️  Warning Analysis:"
 	@echo "  make analyze-warnings - Analyze and isolate build warnings"
@@ -42,17 +43,18 @@ help:
 	@echo ""
 	@echo "🚀 Development:"
 	@echo "  make all        - Build, test, and analyze security"
+	@echo "  make ci         - Run CI/CD pipeline checks"
 	@echo ""
-	@echo "🌐 Deployment (Unified Script):"
+	@echo "🌐 Deployment:"
 	@echo "  make deploy-localhost     - Deploy to localhost with mock contracts"
 	@echo "  make deploy-base-sepolia  - Deploy to Base Sepolia testnet with verification"
 	@echo "  make deploy-base          - Deploy to Base mainnet with production settings"
 	@echo "  make deploy-dry-run       - Test deployment without broadcasting"
 	@echo ""
-	@echo "🔧 Advanced Deployment:"
-	@echo "  make deploy-localhost-mocks    - Deploy to localhost with mock contracts"
-	@echo "  make deploy-base-sepolia-verify - Deploy to Base Sepolia with verification"
-	@echo "  make deploy-base-production    - Deploy to Base mainnet with production settings"
+	@echo "🛡️  Secure Deployment (with pre-deployment checks):"
+	@echo "  make deploy-secure-localhost    - Deploy to localhost with security checks"
+	@echo "  make deploy-secure-base-sepolia - Deploy to Base Sepolia with security checks"
+	@echo "  make deploy-secure-base         - Deploy to Base mainnet with security checks"
 	@echo ""
 	@echo "📝 Note: All deployments use encrypted environment variables with dotenvx"
 
@@ -108,7 +110,7 @@ test:
 # Generate coverage report
 coverage:
 	@echo "📊 Generating coverage report..."
-	FOUNDRY_PROFILE=coverage forge coverage --report lcov
+	FOUNDRY_PROFILE=coverage forge coverage --report lcov --ir-minimum
 	@echo "🧹 Cleaning up coverage file..."
 	@rm -f lcov.info
 
@@ -131,6 +133,12 @@ gas-analysis:
 	@echo "⛽ Running comprehensive gas analysis..."
 	@cd "$(CURDIR)" && ./scripts/analyze-gas.sh
 	@echo "⛽ Gas analysis complete!"
+
+# Run gas benchmarking
+benchmark-gas:
+	@echo "⛽ Running gas benchmarking..."
+	@cd "$(CURDIR)" && ./scripts/benchmark-gas.sh
+	@echo "⛽ Gas benchmarking complete!"
 
 # Analyze build warnings
 analyze-warnings:
@@ -167,19 +175,10 @@ validate-natspec:
 ci: build test slither validate-natspec gas-analysis analyze-warnings
 	@echo "🚀 CI/CD pipeline completed!"
 
-# Unified deployment commands using the new deploy.sh script
+# Deployment commands using the unified deploy.sh script
 
 # Deploy to localhost
 deploy-localhost:
-	@echo "🌐 Deploying to localhost with unified script..."
-	@./scripts/deployment/deploy.sh localhost --with-mocks
-	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/deployment/copy-abis.sh
-	@echo "📍 Updating frontend addresses..."
-	@./scripts/deployment/update-frontend-addresses.sh
-
-# Deploy to localhost with mock contracts
-deploy-localhost-mocks:
 	@echo "🌐 Deploying to localhost with mock contracts..."
 	@./scripts/deployment/deploy.sh localhost --with-mocks
 	@echo "📋 Copying ABIs to frontend..."
@@ -189,15 +188,6 @@ deploy-localhost-mocks:
 
 # Deploy to Base Sepolia
 deploy-base-sepolia:
-	@echo "🌐 Deploying to Base Sepolia with unified script..."
-	@./scripts/deployment/deploy.sh base-sepolia --verify
-	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/deployment/copy-abis.sh
-	@echo "📍 Updating frontend addresses..."
-	@./scripts/deployment/update-frontend-addresses.sh
-
-# Deploy to Base Sepolia with verification
-deploy-base-sepolia-verify:
 	@echo "🌐 Deploying to Base Sepolia with verification..."
 	@./scripts/deployment/deploy.sh base-sepolia --verify
 	@echo "📋 Copying ABIs to frontend..."
@@ -207,15 +197,6 @@ deploy-base-sepolia-verify:
 
 # Deploy to Base mainnet
 deploy-base:
-	@echo "🌐 Deploying to Base mainnet with unified script..."
-	@./scripts/deployment/deploy.sh base --production --verify
-	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/deployment/copy-abis.sh
-	@echo "📍 Updating frontend addresses..."
-	@./scripts/deployment/update-frontend-addresses.sh
-
-# Deploy to Base mainnet with production settings
-deploy-base-production:
 	@echo "🌐 Deploying to Base mainnet with production settings..."
 	@./scripts/deployment/deploy.sh base --production --verify
 	@echo "📋 Copying ABIs to frontend..."
@@ -228,10 +209,6 @@ deploy-dry-run:
 	@echo "🧪 Testing deployment with dry run..."
 	@./scripts/deployment/deploy.sh localhost --dry-run
 
-# Legacy compatibility targets (deprecated but still working)
-deploy-localhost-with-mock-usdc: deploy-localhost-mocks
-	@echo "⚠️  This target is deprecated. Use 'make deploy-localhost-mocks' instead"
-
 # Security check before deployment
 deploy-check:
 	@echo "🔍 Running security checks before deployment..."
@@ -239,7 +216,7 @@ deploy-check:
 	@make validate-natspec
 	@echo "✅ Security checks passed"
 
-# Full deployment with security checks
+# Secure deployment targets (with pre-deployment security checks)
 deploy-secure-localhost: deploy-check deploy-localhost
 	@echo "🛡️  Secure localhost deployment completed"
 

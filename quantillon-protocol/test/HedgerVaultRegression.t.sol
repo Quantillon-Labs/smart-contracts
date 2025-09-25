@@ -2,12 +2,21 @@
 pragma solidity 0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+/**
+ * @title MockUserPool
+ * @dev Mock UserPool for testing purposes
+ */
+contract MockUserPool {
+    uint256 public totalDeposits = 100000000e6; // 100M USDC in deposits
+}
 
 /**
  * @title HedgerVaultRegressionTest
@@ -38,83 +47,144 @@ contract HedgerVaultRegressionTest is Test {
     // SETUP AND INITIALIZATION
     // =============================================================================
     
+    /**
+     * @notice Sets up the test environment for hedger vault regression tests
+     * @dev Deploys all necessary contracts and configures test environment
+     * @custom:security No security implications - test setup only
+     * @custom:validation No validation needed - test setup
+     * @custom:state-changes Deploys contracts and sets up mock calls
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - test setup
+     * @custom:access No access restrictions - test setup
+     * @custom:oracle Not applicable
+     */
     function setUp() public {
         // Deploy TimeProvider
-        timeProvider = new TimeProvider();
+        TimeProvider timeProviderImpl = new TimeProvider();
+        bytes memory timeProviderInitData = abi.encodeWithSelector(
+            TimeProvider.initialize.selector,
+            admin,
+            admin, // governance
+            admin  // emergency
+        );
+        timeProvider = TimeProvider(address(new ERC1967Proxy(address(timeProviderImpl), timeProviderInitData)));
         
         // Deploy mock USDC
         usdc = IERC20(address(new MockUSDC()));
         
         // Deploy QEURO token
-        qeuro = new QEUROToken();
+        QEUROToken qeuroImpl = new QEUROToken();
+        bytes memory qeuroInitData = abi.encodeWithSelector(
+            QEUROToken.initialize.selector,
+            admin,
+            address(0x123), // mock vault address (will be updated)
+            admin, // timelock
+            admin  // treasury
+        );
+        qeuro = QEUROToken(address(new ERC1967Proxy(address(qeuroImpl), qeuroInitData)));
+        
+        // Mock price feed calls before deploying oracle
+        vm.mockCall(
+            address(0x123), // Mock EUR/USD price feed
+            abi.encodeWithSelector(0xfeaf968c), // latestRoundData() selector
+            abi.encode(uint80(1), int256(1.1e8), uint256(block.timestamp), uint256(block.timestamp), uint80(1))
+        );
+        
+        vm.mockCall(
+            address(0x123), // Mock EUR/USD price feed
+            abi.encodeWithSelector(0x313ce567), // decimals() selector
+            abi.encode(uint8(8))
+        );
+        
+        vm.mockCall(
+            address(0x456), // Mock USDC/USD price feed
+            abi.encodeWithSelector(0xfeaf968c), // latestRoundData() selector
+            abi.encode(uint80(1), int256(1e8), uint256(block.timestamp), uint256(block.timestamp), uint80(1))
+        );
+        
+        vm.mockCall(
+            address(0x456), // Mock USDC/USD price feed
+            abi.encodeWithSelector(0x313ce567), // decimals() selector
+            abi.encode(uint8(8))
+        );
         
         // Deploy oracle
-        oracle = new ChainlinkOracle();
+        ChainlinkOracle oracleImpl = new ChainlinkOracle(timeProvider);
+        bytes memory oracleInitData = abi.encodeWithSelector(
+            ChainlinkOracle.initialize.selector,
+            admin,
+            address(0x123), // Mock EUR/USD price feed
+            address(0x456), // Mock USDC/USD price feed
+            admin // treasury
+        );
+        oracle = ChainlinkOracle(address(new ERC1967Proxy(address(oracleImpl), oracleInitData)));
         
         // Deploy vault
-        vault = new QuantillonVault();
+        QuantillonVault vaultImpl = new QuantillonVault();
+        bytes memory vaultInitData = abi.encodeWithSelector(
+            QuantillonVault.initialize.selector,
+            admin,
+            address(qeuro),
+            address(usdc),
+            address(oracle),
+            address(0x789), // mock hedger pool address (will be updated)
+            address(0), // UserPool (not needed for this test)
+            admin // timelock
+        );
+        vault = QuantillonVault(address(new ERC1967Proxy(address(vaultImpl), vaultInitData)));
         
         // Deploy hedger pool
-        hedgerPool = new HedgerPool(timeProvider);
+        HedgerPool hedgerPoolImpl = new HedgerPool(timeProvider);
+        bytes memory hedgerPoolInitData = abi.encodeWithSelector(
+            HedgerPool.initialize.selector,
+            admin,
+            address(usdc),
+            address(oracle),
+            address(0x999), // Mock YieldShift address (not needed for this test)
+            admin, // timelock
+            admin, // treasury
+            address(vault)
+        );
+        hedgerPool = HedgerPool(address(new ERC1967Proxy(address(hedgerPoolImpl), hedgerPoolInitData)));
         
-        // Initialize contracts
-        _initializeContracts();
+        // Update vault with correct hedger pool address
+        vm.prank(admin);
+        vault.updateHedgerPool(address(hedgerPool));
+        
+        // Grant QEURO mint/burn roles to vault
+        vm.prank(admin);
+        qeuro.grantRole(keccak256("MINTER_ROLE"), address(vault));
+        vm.prank(admin);
+        qeuro.grantRole(keccak256("BURNER_ROLE"), address(vault));
+        
+        // Deploy mock UserPool to provide collateralization
+        MockUserPool mockUserPool = new MockUserPool();
+        
+        // Update vault with UserPool
+        vm.prank(admin);
+        vault.updateUserPool(address(mockUserPool));
         
         // Setup test environment
         _setupTestEnvironment();
     }
     
-    /**
-     * @notice Initialize all contracts with proper parameters
-     * @dev Sets up the complete protocol infrastructure for testing
-     */
-    function _initializeContracts() internal {
-        // Initialize QEURO token
-        qeuro.initialize(
-            admin,
-            address(vault),
-            address(oracle),
-            timelock,
-            treasury
-        );
-        
-        // Initialize oracle
-        oracle.initialize(
-            admin,
-            address(0x123), // Mock price feed
-            timelock
-        );
-        
-        // Initialize vault
-        vault.initialize(
-            admin,
-            address(qeuro),
-            address(usdc),
-            address(oracle),
-            address(hedgerPool),
-            timelock,
-            treasury
-        );
-        
-        // Initialize hedger pool
-        hedgerPool.initialize(
-            admin,
-            address(usdc),
-            address(oracle),
-            address(0), // YieldShift (not needed for this test)
-            timelock,
-            treasury,
-            address(vault)
-        );
-    }
     
     /**
      * @notice Setup test environment with initial balances and permissions
      * @dev Prepares the test environment with necessary tokens and permissions
+     * @custom:security No security implications - test setup only
+     * @custom:validation No validation needed - test setup
+     * @custom:state-changes Mints tokens and sets up approvals
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - test setup
+     * @custom:access No access restrictions - test setup
+     * @custom:oracle Not applicable
      */
     function _setupTestEnvironment() internal {
         // Mint USDC to test addresses
-        MockUSDC(address(usdc)).mint(hedger, 1000000e6); // 1M USDC
+        MockUSDC(address(usdc)).mint(hedger, 10000000e6); // 10M USDC
         MockUSDC(address(usdc)).mint(user, 1000000e6); // 1M USDC
         
         // Approve vault to spend USDC
@@ -140,11 +210,24 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test user minting still works correctly
      * @dev Verifies that user QEURO minting functionality remains intact
+     * @custom:security Tests user minting functionality integrity
+     * @custom:validation Ensures minting works correctly
+     * @custom:state-changes Mints QEURO and verifies balances
+     * @custom:events Expects minting events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testUserMintingStillWorks() public {
         uint256 usdcAmount = 1000e6; // 1,000 USDC
         uint256 initialUserUsdc = usdc.balanceOf(user);
         uint256 initialVaultUsdc = vault.getTotalUsdcAvailable();
+        
+        // Add hedger deposit to provide collateralization for minting
+        uint256 hedgerDepositAmount = 5000000e6; // 5,000,000 USDC
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(hedgerDepositAmount, 2); // 2x leverage
         
         // User mints QEURO
         vm.prank(user);
@@ -166,9 +249,22 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test user redemption still works correctly
      * @dev Verifies that user QEURO redemption functionality remains intact
+     * @custom:security Tests user redemption functionality integrity
+     * @custom:validation Ensures redemption works correctly
+     * @custom:state-changes Redeems QEURO and verifies balances
+     * @custom:events Expects redemption events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testUserRedemptionStillWorks() public {
         uint256 usdcAmount = 1000e6; // 1,000 USDC
+        
+        // Add hedger deposit to provide collateralization for minting
+        uint256 hedgerDepositAmount = 5000000e6; // 5,000,000 USDC
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(hedgerDepositAmount, 2); // 2x leverage
         
         // User mints QEURO first
         vm.prank(user);
@@ -207,6 +303,14 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test hedger position opening still works correctly
      * @dev Verifies that hedger position opening functionality remains intact
+     * @custom:security Tests hedger position opening functionality integrity
+     * @custom:validation Ensures position opening works correctly
+     * @custom:state-changes Opens hedger position and verifies balances
+     * @custom:events Expects position opening events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testHedgerPositionOpeningStillWorks() public {
         uint256 usdcAmount = 5000e6; // 5,000 USDC
@@ -231,7 +335,7 @@ contract HedgerVaultRegressionTest is Test {
         assertGt(finalVaultUsdc, initialVaultUsdc, "Vault USDC should increase");
         
         // Verify position data is correct
-        (uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 currentPrice, uint256 positionLeverage, uint256 lastUpdateTime) = 
+        (uint256 positionSize, uint256 margin, , , uint256 positionLeverage,) = 
             hedgerPool.getHedgerPosition(hedger, positionId);
         
         assertEq(positionLeverage, leverage, "Position leverage should match");
@@ -242,6 +346,14 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test hedger position closing still works correctly
      * @dev Verifies that hedger position closing functionality remains intact
+     * @custom:security Tests hedger position closing functionality integrity
+     * @custom:validation Ensures position closing works correctly
+     * @custom:state-changes Opens and closes hedger position
+     * @custom:events Expects position opening and closing events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testHedgerPositionClosingStillWorks() public {
         uint256 usdcAmount = 5000e6; // 5,000 USDC
@@ -270,6 +382,14 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test hedger margin addition still works correctly
      * @dev Verifies that hedger margin addition functionality remains intact
+     * @custom:security Tests hedger margin addition functionality integrity
+     * @custom:validation Ensures margin addition works correctly
+     * @custom:state-changes Opens position and adds additional margin
+     * @custom:events Expects position opening and margin addition events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testHedgerMarginAdditionStillWorks() public {
         uint256 initialUsdcAmount = 3000e6; // 3,000 USDC
@@ -282,6 +402,9 @@ contract HedgerVaultRegressionTest is Test {
         
         uint256 initialVaultUsdc = vault.getTotalUsdcAvailable();
         
+        // Wait for liquidation cooldown to expire
+        vm.roll(block.number + 301);
+        
         // Hedger adds margin
         vm.prank(hedger);
         hedgerPool.addMargin(positionId, additionalMargin);
@@ -291,7 +414,7 @@ contract HedgerVaultRegressionTest is Test {
         assertGt(finalVaultUsdc, initialVaultUsdc, "Vault USDC should increase after margin addition");
         
         // Verify position margin increased
-        (uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 currentPrice, uint256 positionLeverage, uint256 lastUpdateTime) = 
+        (, uint256 margin, , , ,) = 
             hedgerPool.getHedgerPosition(hedger, positionId);
         
         assertGt(margin, initialUsdcAmount, "Position margin should increase");
@@ -300,6 +423,14 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test hedger margin removal still works correctly
      * @dev Verifies that hedger margin removal functionality remains intact
+     * @custom:security Tests hedger margin removal functionality integrity
+     * @custom:validation Ensures margin removal works correctly
+     * @custom:state-changes Opens position and removes margin
+     * @custom:events Expects position opening and margin removal events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testHedgerMarginRemovalStillWorks() public {
         uint256 usdcAmount = 5000e6; // 5,000 USDC
@@ -333,10 +464,23 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test vault metrics still work correctly
      * @dev Verifies that vault metrics functionality remains intact
+     * @custom:security Tests vault metrics functionality integrity
+     * @custom:validation Ensures vault metrics work correctly
+     * @custom:state-changes Opens positions and verifies metrics
+     * @custom:events Expects position opening and minting events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testVaultMetricsStillWork() public {
         uint256 userUsdcAmount = 1000e6; // 1,000 USDC
         uint256 hedgerUsdcAmount = 2000e6; // 2,000 USDC
+        
+        // Add hedger deposit to provide collateralization for minting
+        uint256 initialHedgerDepositAmount = 5000000e6; // 5,000,000 USDC
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(initialHedgerDepositAmount, 2); // 2x leverage
         
         // User mints QEURO
         vm.prank(user);
@@ -350,7 +494,7 @@ contract HedgerVaultRegressionTest is Test {
         (uint256 totalUsdcHeld, uint256 totalMinted, uint256 totalDebtValue) = vault.getVaultMetrics();
         
         // Verify metrics are correct
-        assertEq(totalUsdcHeld, userUsdcAmount + hedgerUsdcAmount, "Total USDC held should include both user and hedger deposits");
+        assertEq(totalUsdcHeld, initialHedgerDepositAmount + userUsdcAmount + hedgerUsdcAmount, "Total USDC held should include all deposits");
         assertGt(totalMinted, 0, "Total minted should be positive");
         assertGt(totalDebtValue, 0, "Total debt value should be positive");
     }
@@ -358,10 +502,23 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test vault state consistency
      * @dev Verifies that vault state remains consistent after operations
+     * @custom:security Tests vault state consistency integrity
+     * @custom:validation Ensures vault state remains consistent
+     * @custom:state-changes Opens positions and verifies state consistency
+     * @custom:events Expects position opening and minting events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testVaultStateConsistency() public {
         uint256 userUsdcAmount = 1000e6; // 1,000 USDC
         uint256 hedgerUsdcAmount = 2000e6; // 2,000 USDC
+        
+        // Add hedger deposit to provide collateralization for minting
+        uint256 initialHedgerDepositAmount = 5000000e6; // 5,000,000 USDC
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(initialHedgerDepositAmount, 2); // 2x leverage
         
         // User mints QEURO
         vm.prank(user);
@@ -393,6 +550,14 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test access control still works correctly
      * @dev Verifies that access control functionality remains intact
+     * @custom:security Tests access control functionality integrity
+     * @custom:validation Ensures access control works correctly
+     * @custom:state-changes Attempts unauthorized parameter updates
+     * @custom:events None expected due to revert
+     * @custom:errors Expects access control error
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Tests admin role access control
+     * @custom:oracle Not applicable
      */
     function testAccessControlStillWorks() public {
         // Non-admin should not be able to update parameters
@@ -405,7 +570,8 @@ contract HedgerVaultRegressionTest is Test {
         vault.updateParameters(100, 200);
         
         // Verify parameters were updated
-        (uint256 mintFee, uint256 redemptionFee) = vault.getParameters();
+        uint256 mintFee = vault.mintFee();
+        uint256 redemptionFee = vault.redemptionFee();
         assertEq(mintFee, 100, "Mint fee should be updated");
         assertEq(redemptionFee, 200, "Redemption fee should be updated");
     }
@@ -413,6 +579,14 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test hedger whitelist still works correctly
      * @dev Verifies that hedger whitelist functionality remains intact
+     * @custom:security Tests hedger whitelist functionality integrity
+     * @custom:validation Ensures whitelist functionality works correctly
+     * @custom:state-changes Whitelists hedger and opens position
+     * @custom:events Expects whitelist and position opening events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Tests governance role access
+     * @custom:oracle Not applicable
      */
     function testHedgerWhitelistStillWorks() public {
         address newHedger = address(0x6);
@@ -446,6 +620,14 @@ contract HedgerVaultRegressionTest is Test {
     /**
      * @notice Test error handling still works correctly
      * @dev Verifies that error handling functionality remains intact
+     * @custom:security Tests error handling functionality integrity
+     * @custom:validation Ensures error handling works correctly
+     * @custom:state-changes Attempts invalid operations to trigger errors
+     * @custom:events None expected due to revert
+     * @custom:errors Expects various validation errors
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function testErrorHandlingStillWorks() public {
         // Zero amount should fail
@@ -479,22 +661,82 @@ contract MockUSDC {
     string public symbol = "USDC";
     uint8 public decimals = 6;
     
+    /**
+     * @notice Mints tokens to a specified address
+     * @dev Mock implementation for testing purposes
+     * @param to Address to mint tokens to
+     * @param amount Amount of tokens to mint
+     * @custom:security No security implications - test mock only
+     * @custom:validation No validation needed - test function
+     * @custom:state-changes Increases balanceOf[to] and totalSupply
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - simple state update
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
     
+    /**
+     * @notice Approves a spender to transfer tokens
+     * @dev Mock implementation for testing purposes
+     * @param spender Address to approve for spending
+     * @param amount Amount of tokens to approve
+     * @return bool Always returns true
+     * @custom:security No security implications - test mock only
+     * @custom:validation No validation needed - test function
+     * @custom:state-changes Updates allowance mapping
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - simple state update
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
     }
     
+    /**
+     * @notice Transfers tokens to a specified address
+     * @dev Mock implementation for testing purposes
+     * @param to Address to transfer tokens to
+     * @param amount Amount of tokens to transfer
+     * @return bool Always returns true
+     * @custom:security No security implications - test mock only
+     * @custom:validation No validation needed - test function
+     * @custom:state-changes Updates balanceOf mappings
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - simple state update
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         balanceOf[msg.sender] -= amount;
         balanceOf[to] += amount;
         return true;
     }
     
+    /**
+     * @notice Transfers tokens from one address to another using allowance
+     * @dev Mock implementation for testing purposes
+     * @param from Address to transfer tokens from
+     * @param to Address to transfer tokens to
+     * @param amount Amount of tokens to transfer
+     * @return bool Always returns true
+     * @custom:security No security implications - test mock only
+     * @custom:validation No validation needed - test function
+     * @custom:state-changes Updates balanceOf and allowance mappings
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - simple state update
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         allowance[from][msg.sender] -= amount;
         balanceOf[from] -= amount;

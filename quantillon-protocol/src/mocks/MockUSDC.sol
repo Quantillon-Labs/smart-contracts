@@ -14,7 +14,8 @@ contract MockUSDC is ERC20, Ownable {
     
     constructor() ERC20("USD Coin", "USDC") Ownable(msg.sender) {
         // Mint initial supply to deployer
-        _mint(msg.sender, 1000000 * 10**_DECIMALS); // 1M USDC
+        uint256 initialSupply = 1_000_000 * 10**_DECIMALS; // 1M USDC
+        _mint(msg.sender, initialSupply);
     }
     
     /**

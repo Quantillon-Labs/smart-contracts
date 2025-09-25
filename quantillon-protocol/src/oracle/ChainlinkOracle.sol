@@ -8,6 +8,9 @@ pragma solidity 0.8.24;
 // Standard interface for Chainlink price feeds
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
+// Quantillon Oracle interface
+import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
+
 // OpenZeppelin role system
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
@@ -44,6 +47,7 @@ import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 contract ChainlinkOracle is 
+    IChainlinkOracle,
     Initializable,
     AccessControlUpgradeable,
     PausableUpgradeable,

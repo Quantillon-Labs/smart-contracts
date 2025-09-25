@@ -1,5 +1,5 @@
 # IYieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/interfaces/IYieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/interfaces/IYieldShift.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -42,7 +42,9 @@ function initialize(
     address _userPool,
     address _hedgerPool,
     address _aaveVault,
-    address _stQEURO
+    address _stQEURO,
+    address _timelock,
+    address _treasury
 ) external;
 ```
 **Parameters**
@@ -55,6 +57,8 @@ function initialize(
 |`_hedgerPool`|`address`|HedgerPool address|
 |`_aaveVault`|`address`|Aave vault address|
 |`_stQEURO`|`address`|stQEURO token address|
+|`_timelock`|`address`|Timelock contract address|
+|`_treasury`|`address`|Treasury address|
 
 
 ### updateYieldDistribution
@@ -1372,14 +1376,13 @@ Recovers ERC20 tokens sent by mistake
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Token address|
-|`to`|`address`|Recipient address|
 |`amount`|`uint256`|Amount to transfer|
 
 

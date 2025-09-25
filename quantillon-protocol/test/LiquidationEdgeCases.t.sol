@@ -92,7 +92,8 @@ contract LiquidationEdgeCases is Test {
             address(0x2), // mockOracle
             address(0x3), // mockYieldShift
             address(0x4), // mockTimelock
-            treasury
+            treasury,
+            address(0x999) // mock vault
         );
         ERC1967Proxy hedgerPoolProxy = new ERC1967Proxy(address(hedgerPoolImpl), hedgerPoolInitData);
         hedgerPool = HedgerPool(address(hedgerPoolProxy));
@@ -108,6 +109,48 @@ contract LiquidationEdgeCases is Test {
         // Whitelist hedger for testing (hedger whitelist is enabled by default)
         hedgerPool.whitelistHedger(hedger);
         vm.stopPrank();
+        
+        // Mock vault calls
+        vm.mockCall(
+            address(0x999), // mock vault
+            abi.encodeWithSelector(0x43b3eae5), // addHedgerDeposit(uint256)
+            abi.encode()
+        );
+        vm.mockCall(
+            address(0x999), // mock vault
+            abi.encodeWithSelector(0x8f283970), // isProtocolCollateralized()
+            abi.encode(true, uint256(1000000e6))
+        );
+        vm.mockCall(
+            address(0x999), // mock vault
+            abi.encodeWithSelector(0x8c2a993e), // minCollateralizationRatioForMinting()
+            abi.encode(uint256(110))
+        );
+        vm.mockCall(
+            address(0x999), // mock vault
+            abi.encodeWithSelector(0xc74ab303), // qeuro()
+            abi.encode(address(0x888))
+        );
+        vm.mockCall(
+            address(0x888), // mock QEURO
+            abi.encodeWithSelector(0x18160ddd), // totalSupply()
+            abi.encode(uint256(1000000e18))
+        );
+        vm.mockCall(
+            address(0x999), // mock vault
+            abi.encodeWithSelector(0x8f4f3ff4), // userPool()
+            abi.encode(address(0x666))
+        );
+        vm.mockCall(
+            address(0x666), // mock UserPool
+            abi.encodeWithSelector(0x6a627842), // totalDeposits()
+            abi.encode(uint256(1000000e6))
+        );
+        vm.mockCall(
+            address(0x999), // mock vault
+            abi.encodeWithSelector(0x2e1a7d4d), // withdrawHedgerDeposit(address,uint256)
+            abi.encode()
+        );
         
         // Setup mock calls for USDC
         vm.mockCall(

@@ -1,5 +1,5 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/interfaces/IHedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/interfaces/IHedgerPool.sol)
 
 Interface for the Quantillon HedgerPool contract
 
@@ -10,6 +10,54 @@ security-contact: team@quantillon.money
 
 
 ## Functions
+### initialize
+
+Initializes the HedgerPool with contracts and parameters
+
+*Sets up the HedgerPool with initial configuration and assigns roles to admin*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Initializes all contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by initializer modifier
+
+- access: Restricted to initializer modifier
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function initialize(
+    address admin,
+    address _usdc,
+    address _oracle,
+    address _yieldShift,
+    address _timelock,
+    address _treasury,
+    address _vault
+) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`admin`|`address`|Admin address receiving roles|
+|`_usdc`|`address`|USDC token address|
+|`_oracle`|`address`|Oracle contract address|
+|`_yieldShift`|`address`|YieldShift contract address|
+|`_timelock`|`address`|Timelock contract address|
+|`_treasury`|`address`|Treasury address|
+|`_vault`|`address`|QuantillonVault contract address|
+
+
 ### enterHedgePosition
 
 Opens a new hedge position with specified USDC amount and leverage
@@ -861,7 +909,7 @@ Recovers tokens accidentally sent to the contract
 
 - validation: No input validation required - library handles validation
 
-- state-changes: Transfers tokens from contract to specified address
+- state-changes: Transfers tokens from contract to treasury
 
 - events: Emits TokenRecovered event
 
@@ -875,14 +923,13 @@ Recovers tokens accidentally sent to the contract
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Address of the token to recover|
-|`to`|`address`|Address to send recovered tokens to|
 |`amount`|`uint256`|Amount of tokens to recover|
 
 

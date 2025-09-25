@@ -87,7 +87,7 @@ contract TimeBlockEdgeCases is Test {
         // Deploy HedgerPool with mock dependencies
         HedgerPool hedgerPoolImpl = new HedgerPool(timeProvider);
         hedgerPool = HedgerPool(address(new ERC1967Proxy(address(hedgerPoolImpl), "")));
-        hedgerPool.initialize(admin, address(0x1), address(0x2), address(0x3), address(0x4), treasury, address(0));
+        hedgerPool.initialize(admin, address(0x1), address(0x2), address(0x3), address(0x4), treasury, address(0x999));
         
         // Deploy UserPool with mock dependencies
         UserPool userPoolImpl = new UserPool(timeProvider);

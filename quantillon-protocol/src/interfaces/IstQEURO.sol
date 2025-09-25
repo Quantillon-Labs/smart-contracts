@@ -851,7 +851,7 @@ interface IstQEURO {
      * @dev Returns virtual protection configuration for monitoring
      * @return isEnabled Whether virtual protection is enabled
      * @return maxDeviation Maximum allowed deviation from real price
-     * @return lastUpdateTime Last time the virtual price was updated
+     * @return lastUpdateTimestamp Last time the virtual price was updated
      * @return virtualPrice Current virtual price
      * @custom:security No security validations required - view function
      * @custom:validation No input validation required - view function
@@ -865,7 +865,7 @@ interface IstQEURO {
     function getVirtualProtectionStatus() external view returns (
         bool isEnabled,
         uint256 maxDeviation,
-        uint256 lastUpdateTime,
+        uint256 lastUpdateTimestamp,
         uint256 virtualPrice
     );
 }

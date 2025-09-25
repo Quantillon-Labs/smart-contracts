@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -395,7 +395,7 @@ function initialize(
 |`_usdc`|`address`|Address of the USDC token contract|
 |`_oracle`|`address`|Address of the Oracle contract|
 |`_hedgerPool`|`address`|Address of the HedgerPool contract|
-|`_userPool`|`address`||
+|`_userPool`|`address`|Address of the UserPool contract|
 |`_timelock`|`address`|Address of the timelock contract|
 
 
@@ -509,10 +509,7 @@ Retrieves the vault's global metrics
 
 
 ```solidity
-function getVaultMetrics()
-    external
-    view
-    returns (uint256 totalUsdcHeld_, uint256 totalMinted_, uint256 totalDebtValue);
+function getVaultMetrics() external returns (uint256 totalUsdcHeld_, uint256 totalMinted_, uint256 totalDebtValue);
 ```
 **Returns**
 
@@ -548,7 +545,7 @@ Calculates the amount of QEURO that can be minted for a given USDC amount
 
 
 ```solidity
-function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee);
+function calculateMintAmount(uint256 usdcAmount) external returns (uint256 qeuroAmount, uint256 fee);
 ```
 **Parameters**
 
@@ -589,7 +586,7 @@ Calculates the amount of USDC received for a QEURO redemption
 
 
 ```solidity
-function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee);
+function calculateRedeemAmount(uint256 qeuroAmount) external returns (uint256 usdcAmount, uint256 fee);
 ```
 **Parameters**
 
@@ -893,6 +890,115 @@ function withdrawProtocolFees(address to) external onlyRole(GOVERNANCE_ROLE);
 |`to`|`address`|Destination address for the fees|
 
 
+### addHedgerDeposit
+
+Adds hedger USDC deposit to vault's total USDC reserves
+
+*Called by HedgerPool when hedgers open positions to unify USDC liquidity*
+
+**Notes:**
+- security: Validates caller is HedgerPool contract and amount is positive
+
+- validation: Validates amount > 0 and caller is authorized HedgerPool
+
+- state-changes: Updates totalUsdcHeld with hedger deposit amount
+
+- events: Emits HedgerDepositAdded with deposit details
+
+- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+
+- errors: Throws "Vault: Amount must be positive" if amount is zero
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to HedgerPool contract only
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function addHedgerDeposit(uint256 usdcAmount) external nonReentrant;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC deposited by hedger (6 decimals)|
+
+
+### withdrawHedgerDeposit
+
+Withdraws hedger USDC deposit from vault's reserves
+
+*Called by HedgerPool when hedgers close positions to return their deposits*
+
+**Notes:**
+- security: Validates caller is HedgerPool, amount is positive, and sufficient reserves
+
+- validation: Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
+
+- state-changes: Updates totalUsdcHeld and transfers USDC to hedger
+
+- events: Emits HedgerDepositWithdrawn with withdrawal details
+
+- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+
+- errors: Throws "Vault: Amount must be positive" if amount is zero
+
+- errors: Throws "Vault: Insufficient USDC reserves" if not enough USDC available
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to HedgerPool contract only
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external nonReentrant;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger receiving the USDC|
+|`usdcAmount`|`uint256`|Amount of USDC to withdraw (6 decimals)|
+
+
+### getTotalUsdcAvailable
+
+Gets the total USDC available for hedger deposits
+
+*Returns the current total USDC held in the vault for transparency*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - view function
+
+- access: Public access - anyone can query total USDC held
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function getTotalUsdcAvailable() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Total USDC held in vault (6 decimals)|
+
+
 ### _updatePriceTimestamp
 
 Updates the last valid price timestamp when a valid price is fetched
@@ -925,42 +1031,6 @@ function _updatePriceTimestamp(bool isValid) internal;
 |Name|Type|Description|
 |----|----|-----------|
 |`isValid`|`bool`|Whether the current price fetch was valid|
-
-
-### _isProtocolCollateralized
-
-Checks if the protocol is properly collateralized by hedgers
-
-*Ensures there are active hedging positions before allowing QEURO minting*
-
-*Protocol is considered collateralized if totalMargin > 0 in HedgerPool*
-
-**Notes:**
-- security: Validates protocol collateralization status
-
-- validation: Checks HedgerPool totalMargin > 0
-
-- state-changes: No state changes - view function
-
-- events: No events emitted
-
-- errors: No errors thrown
-
-- reentrancy: Not protected - view function only
-
-- access: Internal function - no access restrictions
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _isProtocolCollateralized() internal view returns (bool isCollateralized);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`isCollateralized`|`bool`|True if protocol has active hedging positions|
 
 
 ### getProtocolCollateralizationRatio
@@ -1253,6 +1323,38 @@ Emitted when QEURO is redeemed
 ```solidity
 event QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmount);
 ```
+
+### HedgerDepositAdded
+Emitted when hedger deposits USDC to vault for unified liquidity
+
+
+```solidity
+event HedgerDepositAdded(address indexed hedgerPool, uint256 usdcAmount, uint256 totalUsdcHeld);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedgerPool`|`address`|Address of the HedgerPool contract that made the deposit|
+|`usdcAmount`|`uint256`|Amount of USDC deposited (6 decimals)|
+|`totalUsdcHeld`|`uint256`|New total USDC held in vault after deposit (6 decimals)|
+
+### HedgerDepositWithdrawn
+Emitted when hedger withdraws USDC from vault
+
+
+```solidity
+event HedgerDepositWithdrawn(address indexed hedger, uint256 usdcAmount, uint256 totalUsdcHeld);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger receiving the USDC|
+|`usdcAmount`|`uint256`|Amount of USDC withdrawn (6 decimals)|
+|`totalUsdcHeld`|`uint256`|New total USDC held in vault after withdrawal (6 decimals)|
 
 ### ParametersUpdated
 Emitted when parameters are changed

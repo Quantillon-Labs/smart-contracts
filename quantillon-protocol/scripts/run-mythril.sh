@@ -15,33 +15,9 @@ NC='\033[0m' # No Color
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Load environment variables from .env file using dotenvx
-echo "🔐 Loading environment variables from .env file..."
-if command -v dotenvx >/dev/null 2>&1; then
-    # Use dotenvx to decrypt and load environment variables
-    # Parse the output and export only our project-specific variables
-    while IFS= read -r line; do
-        # Skip comments and empty lines
-        if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "$line" ]]; then
-            continue
-        fi
-        # Check if line contains a variable we want to load
-        if [[ "$line" =~ ^(RESULTS_DIR|BASESCAN_API_KEY|PRIVATE_KEY|FRONTEND_ABI_DIR|FRONTEND_ADDRESSES_FILE|SMART_CONTRACTS_OUT|MULTISIG_WALLET|NETWORK)= ]]; then
-            export "$line"
-        fi
-    done < <(dotenvx decrypt --stdout)
-    echo "✅ Environment variables loaded successfully with dotenvx"
-else
-    echo "⚠️  dotenvx not found, falling back to direct .env loading"
-    if [ -f ".env" ]; then
-        # Fallback: load .env file directly (without decryption)
-        set -a
-        source .env
-        set +a
-    fi
-fi
-
-RESULTS_DIR="${RESULTS_DIR:-scripts/results}"
+# Load environment variables using shared utility
+source "$(dirname "${BASH_SOURCE[0]}")/utils/load-env.sh"
+setup_environment
 OUTPUT_DIR="$PROJECT_ROOT/$RESULTS_DIR/mythril-reports"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 REPORT_FILE="$OUTPUT_DIR/mythril-report-$TIMESTAMP.txt"

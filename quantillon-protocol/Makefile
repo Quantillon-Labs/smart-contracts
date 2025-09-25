@@ -1,7 +1,7 @@
 # Quantillon Protocol - Development Makefile
 # Integrates Foundry commands with Slither security analysis and dotenvx encryption
 
-.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings deploy-localhost deploy-base-sepolia deploy-base setup-env encrypt-env benchmark-gas
+.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings analyze-contract-sizes deploy-localhost deploy-base-sepolia deploy-base setup-env encrypt-env benchmark-gas
 
 # Configuration variables
 RESULTS_DIR ?= scripts/results
@@ -36,6 +36,9 @@ help:
 	@echo ""
 	@echo "⚠️  Warning Analysis:"
 	@echo "  make analyze-warnings - Analyze and isolate build warnings"
+	@echo ""
+	@echo "📏 Contract Size Analysis:"
+	@echo "  make analyze-contract-sizes - Analyze contract sizes against EIP-170 limit"
 	@echo ""
 	@echo "📝 Documentation:"
 	@echo "  make docs            - Generate HTML documentation"
@@ -146,8 +149,14 @@ analyze-warnings:
 	@cd "$(CURDIR)" && ./scripts/analyze-warnings.sh
 	@echo "⚠️  Warning analysis complete!"
 
+# Analyze contract sizes against EIP-170 limit
+analyze-contract-sizes:
+	@echo "📏 Analyzing contract sizes against EIP-170 limit..."
+	@cd "$(CURDIR)" && ./scripts/analyze-contract-sizes.sh
+	@echo "📏 Contract size analysis complete!"
+
 # Run all checks
-all: build test coverage slither docs gas-analysis analyze-warnings
+all: build test coverage slither docs gas-analysis analyze-warnings analyze-contract-sizes
 	@echo "🎯 All checks completed successfully!"
 
 # Install dependencies
@@ -172,7 +181,7 @@ validate-natspec:
 	@cd scripts && node validate-natspec.js
 
 # CI/CD pipeline command
-ci: build test slither validate-natspec gas-analysis analyze-warnings
+ci: build test slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes
 	@echo "🚀 CI/CD pipeline completed!"
 
 # Deployment commands using the unified deploy.sh script

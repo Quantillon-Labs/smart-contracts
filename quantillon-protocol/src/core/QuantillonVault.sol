@@ -431,16 +431,15 @@ contract QuantillonVault is
         uint256 usdcAmount,
         uint256 minQeuroOut
     ) external nonReentrant whenNotPaused flashLoanProtection {
-        // Input validations
+        // CHECKS
         require(usdcAmount > 0, "Vault: Amount must be positive");
-
-        // Check if protocol is properly collateralized and minting is allowed
         require(canMint(), "Vault: Minting not allowed - insufficient collateralization ratio");
 
-        // Fetch EUR/USD price from oracle with detailed validation
+        // INTERACTIONS - Oracle call at the very beginning
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
         
+        // Price deviation check using cached price
         if (lastValidEurUsdPrice > 0 && block.number > lastPriceUpdateBlock + MIN_BLOCKS_BETWEEN_UPDATES) {
             uint256 priceDiff = eurUsdPrice > lastValidEurUsdPrice ? 
                 eurUsdPrice - lastValidEurUsdPrice : lastValidEurUsdPrice - eurUsdPrice;
@@ -451,36 +450,25 @@ contract QuantillonVault is
                 revert("Vault: Excessive price deviation");
             }
         }
-        
-        // Update price tracking for next deviation check
-        lastValidEurUsdPrice = eurUsdPrice;
-        lastPriceUpdateBlock = block.number;
-        
-        _updatePriceTimestamp(isValid);
 
-        // Calculate mint fee
+        // Calculate mint fee and QEURO amount using oracle price
         uint256 fee = usdcAmount.mulDiv(mintFee, 1e18);
         uint256 netAmount = usdcAmount - fee;
-        
-        // Calculate amount of QEURO to mint
-        // Formula: USDC / (EUR/USD) = QEURO
-        // Ex: 1100 USDC / 1.10 = 1000 QEURO
-        // Scale netAmount from 6 decimals (USDC) to 18 decimals (QEURO)
         uint256 qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
-        
-        // Slippage protection
         require(qeuroToMint >= minQeuroOut, "Vault: Insufficient output amount");
 
-        // Transfer USDC from user
-        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
+        // EFFECTS - All state updates before any external calls
+        lastPriceUpdateBlock = block.number;
+        lastValidEurUsdPrice = eurUsdPrice;
+        _updatePriceTimestamp(isValid);
 
-        // Update global balances - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
             totalUsdcHeld += usdcAmount;
             totalMinted += qeuroToMint;
         }
 
-        // Mint QEURO to user
+        // INTERACTIONS - All external calls after state updates
+        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
         qeuro.mint(msg.sender, qeuroToMint);
 
         emit QEUROminted(msg.sender, usdcAmount, qeuroToMint);
@@ -512,13 +500,14 @@ contract QuantillonVault is
         uint256 qeuroAmount,
         uint256 minUsdcOut
     ) external nonReentrant whenNotPaused {
-        // Input validations
+        // CHECKS
         require(qeuroAmount > 0, "Vault: Amount must be positive");
 
-        // Fetch EUR/USD price with detailed validation
+        // INTERACTIONS - Oracle call at the very beginning
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
         
+        // Price deviation check using cached price
         if (lastValidEurUsdPrice > 0 && block.number > lastPriceUpdateBlock + MIN_BLOCKS_BETWEEN_UPDATES) {
             uint256 priceDiff = eurUsdPrice > lastValidEurUsdPrice ? 
                 eurUsdPrice - lastValidEurUsdPrice : lastValidEurUsdPrice - eurUsdPrice;
@@ -529,44 +518,30 @@ contract QuantillonVault is
                 revert("Vault: Excessive price deviation");
             }
         }
-        
-        // Update price tracking for next deviation check
-        lastValidEurUsdPrice = eurUsdPrice;
-        lastPriceUpdateBlock = block.number;
-        
-        _updatePriceTimestamp(isValid);
 
-        // Calculate USDC to return
-        // Formula: QEURO * (EUR/USD) = USDC
-        // Ex: 1000 QEURO * 1.10 = 1100 USDC
+        // Calculate USDC to return using oracle price
         uint256 usdcToReturn = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
+        usdcToReturn = usdcToReturn / 1e12; // Convert from 18 to 6 decimals
         
-        // Convert from 18 decimals (QEURO precision) to 6 decimals (USDC precision)
-        usdcToReturn = usdcToReturn / 1e12;
-        
-        // Slippage protection
         require(usdcToReturn >= minUsdcOut, "Vault: Insufficient output amount");
+        require(totalUsdcHeld >= usdcToReturn, "Vault: Insufficient USDC reserves");
 
-        // Apply protocol fees (redemptionFee is in 18 decimals, usdcToReturn is in 6 decimals)
+        // Apply protocol fees
         uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
         uint256 netUsdcToReturn = usdcToReturn - fee;
 
-        // Verify vault has enough USDC
-        require(
-            totalUsdcHeld >= usdcToReturn, 
-            "Vault: Insufficient USDC reserves"
-        );
+        // EFFECTS - All state updates before any external calls
+        lastPriceUpdateBlock = block.number;
+        lastValidEurUsdPrice = eurUsdPrice;
+        _updatePriceTimestamp(isValid);
 
-        // UPDATE STATE BEFORE EXTERNAL CALL (CEI Pattern)
         unchecked {
             totalUsdcHeld -= usdcToReturn;
             totalMinted -= qeuroAmount;
         }
 
-        // EXTERNAL CALL - qeuro.burn() (INTERACTIONS)
+        // INTERACTIONS - All external calls after state updates
         qeuro.burn(msg.sender, qeuroAmount);
-
-
         usdc.safeTransfer(msg.sender, netUsdcToReturn);
 
         emit QEURORedeemed(msg.sender, qeuroAmount, netUsdcToReturn);
@@ -982,30 +957,6 @@ contract QuantillonVault is
         }
     }
 
-    /**
-     * @notice Checks if the protocol is properly collateralized by hedgers
-     * @dev Ensures there are active hedging positions before allowing QEURO minting
-     * @dev Protocol is considered collateralized if totalMargin > 0 in HedgerPool
-     * @return isCollateralized True if protocol has active hedging positions
-     * @custom:security Validates protocol collateralization status
-     * @custom:validation Checks HedgerPool totalMargin > 0
-     * @custom:state-changes No state changes - view function
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown
-     * @custom:reentrancy Not protected - view function only
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function _isProtocolCollateralized() internal view returns (bool isCollateralized) {
-        // Check if HedgerPool is set
-        if (address(hedgerPool) == address(0)) {
-            return false;
-        }
-        
-        // Check if there are active hedging positions (totalMargin > 0)
-        uint256 totalMargin = hedgerPool.totalMargin();
-        return totalMargin > 0;
-    }
     
     /**
      * @notice Calculates the current protocol collateralization ratio

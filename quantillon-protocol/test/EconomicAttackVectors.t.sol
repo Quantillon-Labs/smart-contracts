@@ -102,7 +102,8 @@ contract EconomicAttackVectors is Test {
             address(0x2), // mockOracle
             address(0x3), // mockYieldShift
             address(0x4), // mockTimelock
-            treasury
+            treasury,
+            address(0x999) // mock vault
         );
         ERC1967Proxy hedgerPoolProxy = new ERC1967Proxy(address(hedgerPoolImpl), hedgerPoolInitData);
         hedgerPool = HedgerPool(address(hedgerPoolProxy));

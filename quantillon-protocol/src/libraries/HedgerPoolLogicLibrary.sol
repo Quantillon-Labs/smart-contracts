@@ -35,7 +35,34 @@ library HedgerPoolLogicLibrary {
     }
 
     /**
-     * @notice Validates and calculates position opening parameters
+     * @notice Validates position parameters and calculates derived values
+     * @dev Validates all position constraints and calculates fee, margin, and position size
+     * @param usdcAmount Amount of USDC to deposit
+     * @param leverage Leverage multiplier for the position
+     * @param eurUsdPrice Current EUR/USD price from oracle
+     * @param entryFee Entry fee rate in basis points
+     * @param minMarginRatio Minimum margin ratio in basis points
+     * @param maxMarginRatio Maximum margin ratio in basis points
+     * @param maxLeverage Maximum allowed leverage
+     * @param maxPositionsPerHedger Maximum positions per hedger
+     * @param activePositionCount Current active position count for hedger
+     * @param maxMargin Maximum margin per position
+     * @param maxPositionSize Maximum position size
+     * @param maxEntryPrice Maximum entry price
+     * @param maxLeverageValue Maximum leverage value
+     * @param currentTime Current timestamp
+     * @return fee Calculated entry fee
+     * @return netMargin Net margin after fee deduction
+     * @return positionSize Calculated position size
+     * @return marginRatio Calculated margin ratio
+     * @custom:security Validates all position constraints and limits
+     * @custom:validation Ensures amounts, leverage, and ratios are within limits
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors Throws various validation errors if constraints not met
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access External pure function
+     * @custom:oracle Uses provided eurUsdPrice parameter
      */
     function validateAndCalculatePositionParams(
         uint256 usdcAmount,
@@ -77,7 +104,20 @@ library HedgerPoolLogicLibrary {
     }
 
     /**
-     * @notice Calculates profit/loss for a position
+     * @notice Calculates profit or loss for a hedge position
+     * @dev Computes PnL based on price movement from entry to current price
+     * @param positionSize Size of the position in USDC
+     * @param entryPrice Price at which the position was opened
+     * @param currentPrice Current market price
+     * @return Profit (positive) or loss (negative) amount
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle Uses provided currentPrice parameter
      */
     function calculatePnL(
         uint256 positionSize,
@@ -98,7 +138,22 @@ library HedgerPoolLogicLibrary {
     }
 
     /**
-     * @notice Calculates liquidation eligibility
+     * @notice Determines if a position is eligible for liquidation
+     * @dev Checks if position margin ratio is below liquidation threshold
+     * @param margin Current margin amount for the position
+     * @param positionSize Size of the position in USDC
+     * @param entryPrice Price at which the position was opened
+     * @param currentPrice Current market price
+     * @param liquidationThreshold Liquidation threshold in basis points
+     * @return True if position can be liquidated, false otherwise
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access External pure function
+     * @custom:oracle Uses provided currentPrice parameter
      */
     function isPositionLiquidatable(
         uint256 margin,
@@ -117,7 +172,25 @@ library HedgerPoolLogicLibrary {
     }
 
     /**
-     * @notice Calculates reward updates for hedgers
+     * @notice Calculates reward updates for hedgers based on interest rate differentials
+     * @dev Computes new pending rewards based on time elapsed and interest rates
+     * @param totalExposure Total exposure across all positions
+     * @param eurInterestRate EUR interest rate in basis points
+     * @param usdInterestRate USD interest rate in basis points
+     * @param lastRewardBlock Block number of last reward calculation
+     * @param currentBlock Current block number
+     * @param maxRewardPeriod Maximum reward period in blocks
+     * @param currentPendingRewards Current pending rewards amount
+     * @return newPendingRewards Updated pending rewards amount
+     * @return newLastRewardBlock Updated last reward block
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access External pure function
+     * @custom:oracle Not applicable
      */
     function calculateRewardUpdate(
         uint256 totalExposure,
@@ -157,7 +230,24 @@ library HedgerPoolLogicLibrary {
     }
 
     /**
-     * @notice Validates margin operations
+     * @notice Validates margin operations and calculates new margin values
+     * @dev Validates margin addition/removal and calculates resulting margin ratio
+     * @param currentMargin Current margin amount for the position
+     * @param amount Amount of margin to add or remove
+     * @param isAddition True if adding margin, false if removing
+     * @param minMarginRatio Minimum margin ratio in basis points
+     * @param positionSize Size of the position in USDC
+     * @param maxMargin Maximum margin per position
+     * @return newMargin New margin amount after operation
+     * @return newMarginRatio New margin ratio after operation
+     * @custom:security Validates margin constraints and limits
+     * @custom:validation Ensures margin operations are within limits
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors Throws InsufficientMargin or validation errors
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access External pure function
+     * @custom:oracle Not applicable
      */
     function validateMarginOperation(
         uint256 currentMargin,
@@ -184,7 +274,21 @@ library HedgerPoolLogicLibrary {
     }
 
     /**
-     * @notice Generates liquidation commitment hash
+     * @notice Generates a unique liquidation commitment hash
+     * @dev Creates a commitment hash for MEV protection in liquidation process
+     * @param hedger Address of the hedger whose position will be liquidated
+     * @param positionId ID of the position to liquidate
+     * @param salt Random salt for commitment uniqueness
+     * @param liquidator Address of the liquidator making the commitment
+     * @return Commitment hash for liquidation process
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access External pure function
+     * @custom:oracle Not applicable
      */
     function generateLiquidationCommitment(
         address hedger,

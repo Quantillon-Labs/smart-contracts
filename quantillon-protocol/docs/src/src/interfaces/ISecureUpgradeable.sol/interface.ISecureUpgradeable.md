@@ -1,5 +1,5 @@
 # ISecureUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/interfaces/ISecureUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/interfaces/ISecureUpgradeable.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -11,6 +11,40 @@ security-contact: team@quantillon.money
 
 
 ## Functions
+### initialize
+
+Initializes the secure upgradeable contract
+
+*Sets up the secure upgradeable with initial configuration and assigns roles to admin*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to initializer modifier
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function initialize(address admin) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`admin`|`address`|Address that receives admin roles|
+
+
 ### setTimelock
 
 Set the timelock contract

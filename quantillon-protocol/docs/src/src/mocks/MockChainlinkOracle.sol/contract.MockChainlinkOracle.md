@@ -1,5 +1,5 @@
 # MockChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/mocks/MockChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/mocks/MockChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -128,7 +128,7 @@ Initializes the mock oracle
 
 
 ```solidity
-function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed) public initializer;
+function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed, address) external initializer;
 ```
 **Parameters**
 
@@ -137,15 +137,16 @@ function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPri
 |`admin`|`address`|Admin address|
 |`_eurUsdPriceFeed`|`address`|Mock EUR/USD feed address|
 |`_usdcUsdPriceFeed`|`address`|Mock USDC/USD feed address|
+|`<none>`|`address`||
 
 
 ### getEurUsdPrice
 
-Gets the current EUR/USD price with validation
+Gets the current EUR/USD price with validation and auto-updates lastValidEurUsdPrice
 
 
 ```solidity
-function getEurUsdPrice() external view override returns (uint256 price, bool isValid);
+function getEurUsdPrice() external override returns (uint256 price, bool isValid);
 ```
 **Returns**
 
@@ -180,6 +181,28 @@ Updates prices and validates them
 
 ```solidity
 function _updatePrices() internal;
+```
+
+### _calculateEurUsdPrice
+
+Internal function to calculate EUR/USD price
+
+*Avoids external calls to prevent reentrancy*
+
+
+```solidity
+function _calculateEurUsdPrice() internal view returns (uint256);
+```
+
+### _calculateUsdcUsdPrice
+
+Internal function to calculate USDC/USD price
+
+*Avoids external calls to prevent reentrancy*
+
+
+```solidity
+function _calculateUsdcUsdPrice() internal view returns (uint256);
 ```
 
 ### _scalePrice
@@ -299,7 +322,7 @@ Mock implementation of getOracleHealth
 
 
 ```solidity
-function getOracleHealth() external view override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
+function getOracleHealth() external override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
 ```
 
 ### getEurUsdDetails
@@ -310,7 +333,6 @@ Mock implementation of getEurUsdDetails
 ```solidity
 function getEurUsdDetails()
     external
-    view
     override
     returns (uint256 currentPrice, uint256 lastValidPrice, uint256 lastUpdate, bool isStale, bool withinBounds);
 ```
@@ -387,7 +409,7 @@ Mock implementation of recoverToken
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external override onlyRole(DEFAULT_ADMIN_ROLE);
+function recoverToken(address token, uint256 amount) external view override onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 
 ## Events

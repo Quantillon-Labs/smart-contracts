@@ -1,5 +1,5 @@
 # IQuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/interfaces/IQuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/interfaces/IQuantillonVault.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -38,7 +38,15 @@ Initializes the vault
 
 
 ```solidity
-function initialize(address admin, address _qeuro, address _usdc, address _oracle) external;
+function initialize(
+    address admin,
+    address _qeuro,
+    address _usdc,
+    address _oracle,
+    address _hedgerPool,
+    address _userPool,
+    address _timelock
+) external;
 ```
 **Parameters**
 
@@ -48,6 +56,9 @@ function initialize(address admin, address _qeuro, address _usdc, address _oracl
 |`_qeuro`|`address`|QEURO token address|
 |`_usdc`|`address`|USDC token address|
 |`_oracle`|`address`|Oracle contract address|
+|`_hedgerPool`|`address`|HedgerPool contract address|
+|`_userPool`|`address`|UserPool contract address|
+|`_timelock`|`address`|Timelock contract address|
 
 
 ### mintQEURO
@@ -1091,5 +1102,325 @@ function totalMinted() external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|Total QEURO amount (18 decimals)|
+
+
+### isProtocolCollateralized
+
+Checks if the protocol is properly collateralized by hedgers
+
+*Public view function to check collateralization status*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe view function
+
+- reentrancy: Not applicable - view function
+
+- access: Public - anyone can check collateralization status
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function isProtocolCollateralized() external view returns (bool isCollateralized, uint256 totalMargin);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`isCollateralized`|`bool`|True if protocol has active hedging positions|
+|`totalMargin`|`uint256`|Total margin in HedgerPool (0 if not set)|
+
+
+### minCollateralizationRatioForMinting
+
+Returns the minimum collateralization ratio for minting
+
+*Minimum ratio required for QEURO minting (in basis points)*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe view function
+
+- reentrancy: Not applicable - view function
+
+- access: Public - anyone can query minimum ratio
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function minCollateralizationRatioForMinting() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|The minimum collateralization ratio in basis points|
+
+
+### userPool
+
+Returns the UserPool contract address
+
+*The user pool contract managing user deposits*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown - safe view function
+
+- reentrancy: Not applicable - view function
+
+- access: Public - anyone can query user pool address
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function userPool() external view returns (address);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|Address of the UserPool contract|
+
+
+### addHedgerDeposit
+
+Adds hedger USDC deposit to vault's total USDC reserves
+
+*Called by HedgerPool when hedgers open positions to unify USDC liquidity*
+
+**Notes:**
+- security: Validates caller is HedgerPool contract and amount is positive
+
+- validation: Validates amount > 0 and caller is authorized HedgerPool
+
+- state-changes: Updates totalUsdcHeld with hedger deposit amount
+
+- events: Emits HedgerDepositAdded with deposit details
+
+- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+
+- errors: Throws "Vault: Amount must be positive" if amount is zero
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to HedgerPool contract only
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function addHedgerDeposit(uint256 usdcAmount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC deposited by hedger (6 decimals)|
+
+
+### withdrawHedgerDeposit
+
+Withdraws hedger USDC deposit from vault's reserves
+
+*Called by HedgerPool when hedgers close positions to return their deposits*
+
+**Notes:**
+- security: Validates caller is HedgerPool, amount is positive, and sufficient reserves
+
+- validation: Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
+
+- state-changes: Updates totalUsdcHeld and transfers USDC to hedger
+
+- events: Emits HedgerDepositWithdrawn with withdrawal details
+
+- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+
+- errors: Throws "Vault: Amount must be positive" if amount is zero
+
+- errors: Throws "Vault: Insufficient USDC reserves" if not enough USDC available
+
+- reentrancy: Protected by nonReentrant modifier
+
+- access: Restricted to HedgerPool contract only
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address of the hedger receiving the USDC|
+|`usdcAmount`|`uint256`|Amount of USDC to withdraw (6 decimals)|
+
+
+### getTotalUsdcAvailable
+
+Gets the total USDC available for hedger deposits
+
+*Returns the current total USDC held in the vault for transparency*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - view function
+
+- access: Public access - anyone can query total USDC held
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function getTotalUsdcAvailable() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 Total USDC held in vault (6 decimals)|
+
+
+### updateHedgerPool
+
+Updates the HedgerPool address
+
+*Updates the HedgerPool contract address for hedger operations*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to GOVERNANCE_ROLE
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function updateHedgerPool(address _hedgerPool) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_hedgerPool`|`address`|New HedgerPool address|
+
+
+### updateUserPool
+
+Updates the UserPool address
+
+*Updates the UserPool contract address for user deposit tracking*
+
+**Notes:**
+- security: Validates input parameters and enforces security checks
+
+- validation: Validates input parameters and business logic constraints
+
+- state-changes: Updates contract state variables
+
+- events: Emits relevant events for state changes
+
+- errors: Throws custom errors for invalid conditions
+
+- reentrancy: Protected by reentrancy guard
+
+- access: Restricted to GOVERNANCE_ROLE
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function updateUserPool(address _userPool) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_userPool`|`address`|New UserPool address|
+
+
+### getPriceProtectionStatus
+
+Gets the price protection status and parameters
+
+*Returns price protection configuration for monitoring*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - view function
+
+- access: Public access - anyone can query price protection status
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function getPriceProtectionStatus()
+    external
+    view
+    returns (uint256 lastValidPrice, uint256 lastUpdateBlock, uint256 maxDeviation, uint256 minBlocks);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`lastValidPrice`|`uint256`|Last valid EUR/USD price|
+|`lastUpdateBlock`|`uint256`|Block number of last price update|
+|`maxDeviation`|`uint256`|Maximum allowed price deviation|
+|`minBlocks`|`uint256`|Minimum blocks between price updates|
 
 

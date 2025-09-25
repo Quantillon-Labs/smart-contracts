@@ -1,5 +1,5 @@
 # IQEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/interfaces/IQEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/interfaces/IQEUROToken.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -383,7 +383,7 @@ Initialize the QEURO token contract
 
 
 ```solidity
-function initialize(address admin, address vault, address timelock) external;
+function initialize(address admin, address vault, address timelock, address treasury) external;
 ```
 **Parameters**
 
@@ -392,6 +392,7 @@ function initialize(address admin, address vault, address timelock) external;
 |`admin`|`address`|Address of the admin role|
 |`vault`|`address`|Address of the vault contract|
 |`timelock`|`address`|Address of the timelock contract|
+|`treasury`|`address`|Treasury address|
 
 
 ### mint
@@ -1115,14 +1116,13 @@ Recover accidentally sent tokens
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Address of the token to recover|
-|`to`|`address`|Address to send the recovered tokens to|
 |`amount`|`uint256`|Amount of tokens to recover|
 
 

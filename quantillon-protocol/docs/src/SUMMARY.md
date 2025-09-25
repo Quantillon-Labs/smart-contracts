@@ -11,7 +11,6 @@
     - [❱ yieldmanagement](src/core/yieldmanagement/README.md)
       - [YieldShift](src/core/yieldmanagement/YieldShift.sol/contract.YieldShift.md)
     - [HedgerPool](src/core/HedgerPool.sol/contract.HedgerPool.md)
-    - [HedgerPool](src/core/HedgerPoolOptimized.sol/contract.HedgerPool.md)
     - [QEUROToken](src/core/QEUROToken.sol/contract.QEUROToken.md)
     - [QTIToken](src/core/QTIToken.sol/contract.QTIToken.md)
     - [QuantillonVault](src/core/QuantillonVault.sol/contract.QuantillonVault.md)

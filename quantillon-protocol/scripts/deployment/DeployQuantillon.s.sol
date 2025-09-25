@@ -288,7 +288,8 @@ contract DeployQuantillon is Script {
                     MockChainlinkOracle.initialize.selector,
                     msg.sender,        // admin
                     _getEURUSDFeed(),  // EUR/USD feed (mock)
-                    _getUSDCUSDFeed()  // USDC/USD feed (mock)
+                    _getUSDCUSDFeed(), // USDC/USD feed (mock)
+                    msg.sender         // treasury (using deployer for mock)
                 )
             );
             chainlinkOracle = address(proxy);

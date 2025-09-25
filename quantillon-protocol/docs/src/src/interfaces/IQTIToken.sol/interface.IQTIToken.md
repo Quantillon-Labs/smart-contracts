@@ -1,5 +1,5 @@
 # IQTIToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/91f7ed3e8a496e9d369dc182e8f549ec75449a6b/src/interfaces/IQTIToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/131c9dca87217f75290610df1bfcdddc851f5dc0/src/interfaces/IQTIToken.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -619,6 +619,91 @@ function getReceipt(uint256 proposalId, address voter)
 |`hasVoted`|`bool`|Whether user voted|
 |`support`|`bool`|Vote direction|
 |`votes`|`uint256`|Number of votes cast (18 decimals)|
+
+
+### getProposalExecutionInfo
+
+Gets proposal execution information
+
+*Returns execution details for a specific proposal*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - view function
+
+- access: Public access - anyone can query proposal execution info
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function getProposalExecutionInfo(uint256 proposalId)
+    external
+    view
+    returns (bytes32 executionHash, uint256 executionTime, address executor);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposalId`|`uint256`|ID of the proposal|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`executionHash`|`bytes32`|Hash of the execution data|
+|`executionTime`|`uint256`|Time when proposal was executed|
+|`executor`|`address`|Address that executed the proposal|
+
+
+### getProposalExecutionHash
+
+Gets proposal execution hash
+
+*Returns the execution hash for a specific proposal*
+
+**Notes:**
+- security: No security validations required - view function
+
+- validation: No input validation required - view function
+
+- state-changes: No state changes - view function only
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - view function
+
+- access: Public access - anyone can query proposal execution hash
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function getProposalExecutionHash(uint256 proposalId) external view returns (bytes32 executionHash);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposalId`|`uint256`|ID of the proposal|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`executionHash`|`bytes32`|Hash of the execution data|
 
 
 ### updateGovernanceParameters
@@ -2258,7 +2343,7 @@ Recovers tokens accidentally sent to the contract
 
 - validation: No input validation required - library handles validation
 
-- state-changes: Transfers tokens from contract to specified address
+- state-changes: Transfers tokens from contract to treasury
 
 - events: Emits TokenRecovered event
 
@@ -2272,14 +2357,13 @@ Recovers tokens accidentally sent to the contract
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Address of the token to recover|
-|`to`|`address`|Address to send recovered tokens to|
 |`amount`|`uint256`|Amount of tokens to recover|
 
 

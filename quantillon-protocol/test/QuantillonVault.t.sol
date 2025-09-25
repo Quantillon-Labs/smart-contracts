@@ -1576,6 +1576,14 @@ contract QuantillonVaultTestSuite is Test {
     /**
      * @notice Test collateralization ratio calculation
      * @dev Verifies that the collateralization ratio is calculated correctly using ((A+B)/A)*100 formula
+     * @custom:security Tests critical collateralization calculation
+     * @custom:validation Ensures ratio calculation is accurate
+     * @custom:state-changes Sets up mock pools and tests ratio calculation
+     * @custom:events None
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function test_Collateralization_GetProtocolCollateralizationRatio() public {
         // Set up mock UserPool and HedgerPool with specific values
@@ -1603,6 +1611,15 @@ contract QuantillonVaultTestSuite is Test {
     
     /**
      * @notice Test minting allowed when collateralization ratio >= 105%
+     * @dev Verifies that minting is allowed when collateralization ratio is above threshold
+     * @custom:security Tests minting permission based on collateralization
+     * @custom:validation Ensures minting works when ratio is sufficient
+     * @custom:state-changes Sets up mock pools and tests minting
+     * @custom:events Expects minting events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function test_Collateralization_CanMintWhenRatioAbove105() public {
         MockUserPool testUserPool = new MockUserPool();
@@ -1622,6 +1639,15 @@ contract QuantillonVaultTestSuite is Test {
     
     /**
      * @notice Test minting blocked when collateralization ratio < 105%
+     * @dev Verifies that minting is blocked when collateralization ratio is below threshold
+     * @custom:security Tests minting restriction based on collateralization
+     * @custom:validation Ensures minting fails when ratio is insufficient
+     * @custom:state-changes Sets up mock pools and tests minting failure
+     * @custom:events None expected due to revert
+     * @custom:errors Expects minting to fail
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function test_Collateralization_CannotMintWhenRatioBelow105() public {
         MockUserPool testUserPool = new MockUserPool();
@@ -1641,6 +1667,15 @@ contract QuantillonVaultTestSuite is Test {
     
     /**
      * @notice Test liquidation trigger when collateralization ratio < 101%
+     * @dev Verifies that liquidation is triggered when collateralization ratio is below 101%
+     * @custom:security Tests critical liquidation mechanism
+     * @custom:validation Ensures liquidation triggers at correct ratio
+     * @custom:state-changes Sets up mock pools and tests liquidation trigger
+     * @custom:events Expects liquidation events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
      */
     function test_Collateralization_ShouldTriggerLiquidationWhenRatioBelow101() public {
         MockUserPool testUserPool = new MockUserPool();
@@ -1660,6 +1695,15 @@ contract QuantillonVaultTestSuite is Test {
     
     /**
      * @notice Test updating collateralization thresholds by governance
+     * @dev Verifies that governance can update collateralization thresholds
+     * @custom:security Tests governance access control for threshold updates
+     * @custom:validation Ensures threshold updates work correctly
+     * @custom:state-changes Updates collateralization thresholds
+     * @custom:events Expects threshold update events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Tests governance role access
+     * @custom:oracle Not applicable
      */
     function test_Collateralization_UpdateThresholdsByGovernance() public {
         uint256 newMinRatio = 11000; // 110%
@@ -1791,6 +1835,19 @@ contract MockERC20 {
 contract MockUserPool {
     uint256 public totalDeposits;
     
+    /**
+     * @notice Sets the total deposits for testing purposes
+     * @dev Mock function to simulate different deposit scenarios
+     * @param _totalDeposits New total deposits amount
+     * @custom:security No security implications - test mock only
+     * @custom:validation No validation needed - test function
+     * @custom:state-changes Updates totalDeposits state variable
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - simple state update
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
     function setTotalDeposits(uint256 _totalDeposits) external {
         totalDeposits = _totalDeposits;
     }
@@ -1803,6 +1860,19 @@ contract MockUserPool {
 contract MockHedgerPool {
     uint256 public totalMargin;
     
+    /**
+     * @notice Sets the total margin for testing purposes
+     * @dev Mock function to simulate different margin scenarios
+     * @param _totalMargin New total margin amount
+     * @custom:security No security implications - test mock only
+     * @custom:validation No validation needed - test function
+     * @custom:state-changes Updates totalMargin state variable
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - simple state update
+     * @custom:access No access restrictions - test function
+     * @custom:oracle Not applicable
+     */
     function setTotalMargin(uint256 _totalMargin) external {
         totalMargin = _totalMargin;
     }

@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const parser = require('@solidity-parser/parser');
+const { execSync } = require('child_process');
 
 /**
  * @title NatSpec Validation Script
@@ -33,6 +34,41 @@ function findProjectRoot() {
 
 // Find project root
 const PROJECT_ROOT = findProjectRoot();
+
+/**
+ * @notice Loads environment variables using dotenvx
+ * @return Object containing decrypted environment variables
+ */
+function loadEnvironmentVariables() {
+    try {
+        // Use dotenvx to decrypt and load environment variables
+        const envOutput = execSync('dotenvx decrypt --stdout', { 
+            cwd: PROJECT_ROOT,
+            encoding: 'utf8',
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
+        
+        const envVars = {};
+        envOutput.split('\n').forEach(line => {
+            if (line.includes('=')) {
+                const [key, ...valueParts] = line.split('=');
+                const value = valueParts.join('=');
+                if (key && value) {
+                    envVars[key.trim()] = value.trim();
+                }
+            }
+        });
+        
+        return envVars;
+    } catch (error) {
+        console.warn('⚠️  Warning: Could not load environment variables with dotenvx:', error.message);
+        console.warn('   Falling back to process.env');
+        return process.env;
+    }
+}
+
+// Load environment variables
+const ENV = loadEnvironmentVariables();
 
 // Configuration
 const CONFIG = {
@@ -491,7 +527,7 @@ function main() {
     }
     
     // Write results to file
-    const resultsDir = path.join(PROJECT_ROOT, process.env.RESULTS_DIR || 'results');
+    const resultsDir = path.join(PROJECT_ROOT, ENV.RESULTS_DIR || 'scripts/results');
     if (!fs.existsSync(resultsDir)) {
         fs.mkdirSync(resultsDir, { recursive: true });
     }
@@ -521,7 +557,7 @@ function main() {
     // Report status without failing the build
     if (overallCoverage < 100) {
         console.log('\n⚠️  Validation complete - incomplete documentation detected');
-        console.log(`📄 Check ${process.env.RESULTS_DIR || 'results'}/natspec-validation-report.txt for detailed results`);
+        console.log(`📄 Check ${ENV.RESULTS_DIR || 'scripts/results'}/natspec-validation-report.txt for detailed results`);
     } else {
         console.log('\n✅ Validation complete - all functions documented');
     }

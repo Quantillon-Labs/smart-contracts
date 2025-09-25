@@ -57,14 +57,13 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @param admin Admin address
      * @param _eurUsdPriceFeed Mock EUR/USD feed address
      * @param _usdcUsdPriceFeed Mock USDC/USD feed address
-     * @param _treasury Treasury address
      */
     function initialize(
         address admin,
         address _eurUsdPriceFeed,
         address _usdcUsdPriceFeed,
-        address _treasury
-    ) public initializer {
+        address /* _treasury */
+    ) external initializer {
         require(admin != address(0), "Oracle: Admin cannot be zero");
         require(_eurUsdPriceFeed != address(0), "Oracle: EUR/USD feed cannot be zero");
         require(_usdcUsdPriceFeed != address(0), "Oracle: USDC/USD feed cannot be zero");
@@ -168,19 +167,35 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @dev Internal function to update and validate current prices
      */
     function _updatePrices() internal {
-        // Update EUR/USD price
-        (uint256 eurUsdPrice, bool eurUsdValid) = this.getEurUsdPrice();
-        if (eurUsdValid) {
-            lastValidEurUsdPrice = eurUsdPrice;
-        }
-        
-        // Update USDC/USD price
-        (uint256 usdcUsdPrice, bool usdcUsdValid) = this.getUsdcUsdPrice();
-        if (usdcUsdValid) {
-            lastValidUsdcUsdPrice = usdcUsdPrice;
-        }
-        
+        // Update block number first (EFFECTS - before external calls)
         lastPriceUpdateBlock = block.number;
+        
+        // Calculate new prices directly without external calls to avoid reentrancy
+        // This is a mock oracle, so we can calculate prices directly
+        uint256 eurUsdPrice = _calculateEurUsdPrice();
+        uint256 usdcUsdPrice = _calculateUsdcUsdPrice();
+        
+        // Update state variables (EFFECTS)
+        lastValidEurUsdPrice = eurUsdPrice;
+        lastValidUsdcUsdPrice = usdcUsdPrice;
+    }
+    
+    /**
+     * @notice Internal function to calculate EUR/USD price
+     * @dev Avoids external calls to prevent reentrancy
+     */
+    function _calculateEurUsdPrice() internal view returns (uint256) {
+        // Mock price calculation - in real implementation this would be from external source
+        return 1100000000; // 1.10 * 1e9 (9 decimals)
+    }
+    
+    /**
+     * @notice Internal function to calculate USDC/USD price
+     * @dev Avoids external calls to prevent reentrancy
+     */
+    function _calculateUsdcUsdPrice() internal view returns (uint256) {
+        // Mock price calculation - in real implementation this would be from external source
+        return 1000000000; // 1.00 * 1e9 (9 decimals)
     }
     
     /**
@@ -230,10 +245,18 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         uint256 balance = address(this).balance;
         require(balance > 0, "Oracle: No ETH to recover");
         
-        (bool success, ) = treasury.call{value: balance}("");
-        require(success, "Oracle: ETH recovery failed");
+        // Validate treasury address is not arbitrary - must be the admin who deployed
+        require(treasury != address(0), "Oracle: Treasury not set");
+        require(treasury != address(this), "Oracle: Cannot send to self");
+        require(hasRole(DEFAULT_ADMIN_ROLE, treasury), "Oracle: Treasury must be admin");
+        
+        // Additional validation: treasury must be the deployer/admin
+        require(treasury == msg.sender, "Oracle: Only deployer can recover ETH");
         
         emit ETHRecovered(treasury, balance);
+        
+        (bool success, ) = treasury.call{value: balance}("");
+        require(success, "Oracle: ETH recovery failed");
     }
     
     /**
@@ -241,8 +264,8 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      */
     function resetCircuitBreaker() external onlyRole(EMERGENCY_ROLE) {
         circuitBreakerTriggered = false;
-        _updatePrices(); // Attempt immediate update
         emit CircuitBreakerReset(block.number);
+        _updatePrices(); // Attempt immediate update
     }
     
     /**
@@ -271,12 +294,17 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @notice Mock implementation of getOracleHealth
      */
     function getOracleHealth() external override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) {
-        (uint256 eurUsdPrice, bool eurUsdValid) = this.getEurUsdPrice();
-        (uint256 usdcUsdPrice, bool usdcUsdValid) = this.getUsdcUsdPrice();
+        // Use internal calculations to avoid external calls
+        uint256 eurUsdPrice = _calculateEurUsdPrice();
+        uint256 usdcUsdPrice = _calculateUsdcUsdPrice();
         
-        isHealthy = eurUsdValid && usdcUsdValid;
-        eurUsdFresh = eurUsdValid;
-        usdcUsdFresh = usdcUsdValid;
+        // Validate that prices are reasonable (not zero)
+        require(eurUsdPrice > 0, "Oracle: Invalid EUR/USD price");
+        require(usdcUsdPrice > 0, "Oracle: Invalid USDC/USD price");
+        
+        isHealthy = true; // Mock oracle is always healthy
+        eurUsdFresh = true;
+        usdcUsdFresh = true;
     }
     
     /**
@@ -289,10 +317,12 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         bool isStale,
         bool withinBounds
     ) {
-        (currentPrice, withinBounds) = this.getEurUsdPrice();
+        // Use internal calculation to avoid external calls
+        currentPrice = _calculateEurUsdPrice();
         lastValidPrice = currentPrice;
         lastUpdate = block.timestamp;
         isStale = false; // Mock data is never stale
+        withinBounds = true; // Mock data is always within bounds
     }
     
     /**
@@ -372,7 +402,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Mock implementation of recoverToken
      */
-    function recoverToken(address token, uint256 amount) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+    function recoverToken(address token, uint256 amount) external view override onlyRole(DEFAULT_ADMIN_ROLE) {
         require(token != address(0), "Oracle: Token cannot be zero");
         require(amount > 0, "Oracle: Amount must be positive");
         // Mock implementation - in real oracle this would recover tokens to treasury

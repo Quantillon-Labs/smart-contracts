@@ -4,7 +4,6 @@
 - [vaults](/src/core/vaults)
 - [yieldmanagement](/src/core/yieldmanagement)
 - [HedgerPool](HedgerPool.sol/contract.HedgerPool.md)
-- [HedgerPool](HedgerPoolOptimized.sol/contract.HedgerPool.md)
 - [QEUROToken](QEUROToken.sol/contract.QEUROToken.md)
 - [QTIToken](QTIToken.sol/contract.QTIToken.md)
 - [QuantillonVault](QuantillonVault.sol/contract.QuantillonVault.md)

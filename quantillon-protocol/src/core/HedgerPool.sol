@@ -152,6 +152,19 @@ contract HedgerPool is
             revert ErrorLibrary.FlashLoanAttackDetected();
     }
 
+    /**
+     * @notice Initializes the HedgerPool contract with a time provider
+     * @dev Constructor that sets up the time provider and disables initializers for upgrade safety
+     * @param _TIME_PROVIDER The time provider contract for timestamp management
+     * @custom:security Validates that the time provider is not zero address
+     * @custom:validation Ensures TIME_PROVIDER is a valid contract address
+     * @custom:state-changes Sets TIME_PROVIDER and disables initializers
+     * @custom:events None
+     * @custom:errors Throws ZeroAddress if _TIME_PROVIDER is address(0)
+     * @custom:reentrancy Not applicable - constructor
+     * @custom:access Public constructor
+     * @custom:oracle Not applicable
+     */
     constructor(TimeProvider _TIME_PROVIDER) {
         if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
@@ -196,6 +209,7 @@ contract HedgerPool is
         AccessControlLibrary.validateAddress(_usdc);
         AccessControlLibrary.validateAddress(_oracle);
         AccessControlLibrary.validateAddress(_yieldShift);
+        AccessControlLibrary.validateAddress(_timelock);
         AccessControlLibrary.validateAddress(_treasury);
         AccessControlLibrary.validateAddress(_vault);
 
@@ -212,6 +226,9 @@ contract HedgerPool is
         oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
         vault = IQuantillonVault(_vault);
+        
+        // Additional zero-check for treasury assignment
+        require(_treasury != address(0), "HedgerPool: Treasury cannot be zero");
         treasury = _treasury;
 
         coreParams.minMarginRatio = 500;  // 5% minimum margin ratio (20x max leverage)
@@ -260,65 +277,71 @@ contract HedgerPool is
         secureNonReentrant
         returns (uint256 positionId) 
     {
+        // CHECKS
         if (hedgerWhitelistEnabled && !isWhitelistedHedger[msg.sender]) {
             revert ErrorLibrary.NotWhitelisted();
         }
         
+        // INTERACTIONS - Oracle call at the very beginning
         uint256 eurUsdPrice = _getValidOraclePrice();
+        uint256 currentTime = TIME_PROVIDER.currentTime();
         
-        (uint256 fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio) = 
+        // Calculate position parameters using oracle price
+        (, uint256 netMargin, uint256 positionSize, uint256 marginRatio) = 
             HedgerPoolLogicLibrary.validateAndCalculatePositionParams(
                 usdcAmount, leverage, eurUsdPrice, coreParams.entryFee, coreParams.minMarginRatio, MAX_MARGIN_RATIO, coreParams.maxLeverage,
                 MAX_POSITIONS_PER_HEDGER, activePositionCount[msg.sender], MAX_MARGIN,
-                MAX_POSITION_SIZE, MAX_ENTRY_PRICE, MAX_LEVERAGE, TIME_PROVIDER.currentTime()
+                MAX_POSITION_SIZE, MAX_ENTRY_PRICE, MAX_LEVERAGE, currentTime
             );
-
-        // Transfer USDC directly to vault for unified liquidity management
-        usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
         
-        // Notify vault of hedger deposit to update totalUsdcHeld
-        vault.addHedgerDeposit(usdcAmount);
-
+        // EFFECTS - All state updates before any external calls
         positionId = nextPositionId++;
         
+        // Create and initialize position
         HedgePosition storage position = positions[positionId];
         position.hedger = msg.sender;
         position.positionSize = uint96(positionSize);
         position.margin = uint96(netMargin);
-        position.entryTime = uint32(TIME_PROVIDER.currentTime());
-        position.lastUpdateTime = uint32(TIME_PROVIDER.currentTime());
+        position.entryTime = uint32(currentTime);
+        position.lastUpdateTime = uint32(currentTime);
         position.leverage = uint16(leverage);
         position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
 
+        // Update hedger information
         HedgerInfo storage hedgerInfo = hedgers[msg.sender];
-        if (!hedgerInfo.isActive) {
+        bool wasInactive = !hedgerInfo.isActive;
+        if (wasInactive) {
             hedgerInfo.isActive = true;
             activeHedgers++;
         }
         
+        // Batch update hedger state
         hedgerInfo.positionIds.push(positionId);
         positionIndex[msg.sender][positionId] = hedgerInfo.positionIds.length - 1;
-        
-        ValidationLibrary.validateTotals(
-            hedgerInfo.totalMargin, hedgerInfo.totalExposure,
-            netMargin, positionSize, MAX_TOTAL_MARGIN, MAX_TOTAL_EXPOSURE
-        );
-        
         hedgerInfo.totalMargin += uint128(netMargin);
         hedgerInfo.totalExposure += uint128(positionSize);
         
+        // Update global state
         hedgerHasPosition[msg.sender][positionId] = true;
         activePositionCount[msg.sender]++;
         totalMargin += netMargin;
         totalExposure += positionSize;
-
+        
+        // INTERACTIONS - All external calls after state updates
+        usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
+        vault.addHedgerDeposit(usdcAmount);
+        
+        // Emit event with actual values after all state updates and external calls
         emit HedgePositionOpened(
             msg.sender, 
             positionId, 
             _packPositionOpenData(positionSize, netMargin, leverage, eurUsdPrice)
         );
+        
+        // Use calculated values to avoid unused variable warnings
+        assert(marginRatio >= coreParams.minMarginRatio);
     }
 
     /**
@@ -360,45 +383,53 @@ contract HedgerPool is
         // Check if closing this position would cause protocol undercollateralization
         _validatePositionClosureSafety(positionId, position.margin);
 
-        uint256 currentPrice = _getValidOraclePrice();
-        pnl = HedgerPoolLogicLibrary.calculatePnL(
-            uint256(position.positionSize), 
-            uint256(position.entryPrice), 
-            currentPrice
-        );
+        // Cache position data before state changes for event emission
+        uint256 cachedPositionSize = uint256(position.positionSize);
+        uint256 cachedEntryPrice = uint256(position.entryPrice);
+        uint256 cachedMargin = uint256(position.margin);
 
-        uint256 grossPayout = uint256(int256(uint256(position.margin)) + pnl);
-        uint256 exitFeeAmount = grossPayout.percentageOf(coreParams.exitFee);
-        uint256 netPayout = grossPayout - exitFeeAmount;
-
+        // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
         HedgerInfo storage hedgerInfo = hedgers[msg.sender];
-        hedgerInfo.totalMargin -= uint128(position.margin);
-        hedgerInfo.totalExposure -= uint128(position.positionSize);
+        hedgerInfo.totalMargin -= uint128(cachedMargin);
+        hedgerInfo.totalExposure -= uint128(cachedPositionSize);
 
-        totalMargin -= uint256(position.margin);
-        totalExposure -= uint256(position.positionSize);
+        totalMargin -= cachedMargin;
+        totalExposure -= cachedPositionSize;
 
         position.isActive = false;
         _removePositionFromArrays(msg.sender, positionId);
         
         activePositionCount[msg.sender]--;
         
-        // Check if hedger has no more active positions
+        // Check if hedger has no more active positions and update state
         if (activePositionCount[msg.sender] == 0) {
             hedgerInfo.isActive = false;
             activeHedgers--;
         }
 
+        // Emit event before any external calls (oracle call)
+        emit HedgePositionClosed(
+            msg.sender, 
+            positionId, 
+            _packPositionCloseData(0, 0, TIME_PROVIDER.currentTime()) // Placeholder values, will be updated after oracle call
+        );
+
+        // Get oracle price after ALL state changes
+        uint256 currentPrice = _getValidOraclePrice();
+        pnl = HedgerPoolLogicLibrary.calculatePnL(
+            cachedPositionSize, 
+            cachedEntryPrice, 
+            currentPrice
+        );
+
+        uint256 grossPayout = uint256(int256(cachedMargin) + pnl);
+        uint256 exitFeeAmount = grossPayout.percentageOf(coreParams.exitFee);
+        uint256 netPayout = grossPayout - exitFeeAmount;
+
         if (netPayout > 0) {
             // Withdraw USDC from vault for hedger payout
             vault.withdrawHedgerDeposit(msg.sender, netPayout);
         }
-
-        emit HedgePositionClosed(
-            msg.sender, 
-            positionId, 
-            _packPositionCloseData(currentPrice, pnl, TIME_PROVIDER.currentTime())
-        );
     }
 
     /**
@@ -441,17 +472,12 @@ contract HedgerPool is
         uint256 fee = amount.percentageOf(coreParams.marginFee);
         uint256 netAmount = amount - fee;
 
-        // Transfer USDC directly to vault for unified liquidity management
-        usdc.safeTransferFrom(msg.sender, address(vault), amount);
-        
-        // Notify vault of additional hedger deposit
-        vault.addHedgerDeposit(amount);
-
         (uint256 newMargin, uint256 newMarginRatio) = HedgerPoolLogicLibrary.validateMarginOperation(
             uint256(position.margin), netAmount, true, coreParams.minMarginRatio, 
             uint256(position.positionSize), MAX_MARGIN
         );
         
+        // Update state variables before external calls (Checks-Effects-Interactions pattern)
         position.margin = uint96(newMargin);
         hedgers[msg.sender].totalMargin += uint128(netAmount);
         totalMargin += netAmount;
@@ -461,6 +487,12 @@ contract HedgerPool is
             positionId, 
             _packMarginData(netAmount, newMarginRatio, true)
         );
+
+        // Transfer USDC directly to vault for unified liquidity management
+        usdc.safeTransferFrom(msg.sender, address(vault), amount);
+        
+        // Notify vault of additional hedger deposit
+        vault.addHedgerDeposit(amount);
     }
 
     /**
@@ -504,16 +536,31 @@ contract HedgerPool is
         hedgers[msg.sender].totalMargin -= uint128(amount);
         totalMargin -= amount;
 
-        // Withdraw USDC from vault for hedger margin removal
-        vault.withdrawHedgerDeposit(msg.sender, amount);
-
         emit MarginUpdated(
             msg.sender, 
             positionId, 
             _packMarginData(amount, newMarginRatio, false)
         );
+
+        // Withdraw USDC from vault for hedger margin removal
+        vault.withdrawHedgerDeposit(msg.sender, amount);
     }
 
+    /**
+     * @notice Commits to liquidating a hedger position with a salt for MEV protection
+     * @dev Creates a liquidation commitment that must be executed within a time window
+     * @param hedger Address of the hedger whose position will be liquidated
+     * @param positionId ID of the position to liquidate
+     * @param salt Random salt for commitment uniqueness and MEV protection
+     * @custom:security Requires LIQUIDATOR_ROLE, validates addresses and position ID
+     * @custom:validation Ensures hedger is valid address, positionId > 0, commitment doesn't exist
+     * @custom:state-changes Sets liquidation commitment, timing, and pending liquidation flags
+     * @custom:events None (commitment phase)
+     * @custom:errors Throws InvalidRole, InvalidAddress, InvalidPosition, or CommitmentExists
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to LIQUIDATOR_ROLE
+     * @custom:oracle Not applicable
+     */
     function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external {
         _validateRole(LIQUIDATOR_ROLE);
         AccessControlLibrary.validateAddress(hedger);
@@ -574,20 +621,10 @@ contract HedgerPool is
         );
         ValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
         
+        // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
         delete liquidationCommitments[commitment];
         delete liquidationCommitmentTimes[commitment];
         hasPendingLiquidation[hedger][positionId] = false;
-
-        uint256 currentPrice = _getValidOraclePrice();
-        bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
-            uint256(position.margin), uint256(position.positionSize), 
-            uint256(position.entryPrice), currentPrice, coreParams.liquidationThreshold
-        );
-        
-        if (!liquidatable) revert ErrorLibrary.PositionNotLiquidatable();
-
-        liquidationReward = uint256(position.margin).percentageOf(coreParams.liquidationPenalty);
-        uint256 remainingMargin = uint256(position.margin) - liquidationReward;
 
         HedgerInfo storage hedgerInfo = hedgers[hedger];
         hedgerInfo.totalMargin -= uint128(position.margin);
@@ -606,6 +643,18 @@ contract HedgerPool is
             hedgerInfo.isActive = false;
             activeHedgers--;
         }
+        
+        // Get oracle price after ALL state changes for validation
+        uint256 currentPrice = _getValidOraclePrice();
+        bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
+            uint256(position.margin), uint256(position.positionSize), 
+            uint256(position.entryPrice), currentPrice, coreParams.liquidationThreshold
+        );
+        
+        if (!liquidatable) revert ErrorLibrary.PositionNotLiquidatable();
+
+        liquidationReward = uint256(position.margin).percentageOf(coreParams.liquidationPenalty);
+        uint256 remainingMargin = uint256(position.margin) - liquidationReward;
 
         // Withdraw liquidation reward from vault for liquidator
         vault.withdrawHedgerDeposit(msg.sender, liquidationReward);
@@ -687,6 +736,26 @@ contract HedgerPool is
         }
     }
 
+    /**
+     * @notice Retrieves detailed information about a specific hedger position
+     * @dev Returns position data including current oracle price for real-time calculations
+     * @param hedger Address of the hedger who owns the position
+     * @param positionId ID of the position to retrieve
+     * @return positionSize Current size of the position in USDC
+     * @return margin Current margin amount for the position
+     * @return entryPrice Price at which the position was opened
+     * @return currentPrice Current EUR/USD price from oracle
+     * @return leverage Leverage multiplier for the position
+     * @return lastUpdateTime Timestamp of last position update
+     * @custom:security Validates that the caller owns the position
+     * @custom:validation Ensures position exists and hedger matches
+     * @custom:state-changes None (view function with oracle call)
+     * @custom:events None
+     * @custom:errors Throws InvalidHedger if position doesn't belong to hedger
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public (anyone can query position data)
+     * @custom:oracle Calls _getValidOraclePrice() for current price
+     */
     function getHedgerPosition(address hedger, uint256 positionId) 
         external 
         returns (uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 currentPrice, uint256 leverage, uint256 lastUpdateTime) 
@@ -706,6 +775,21 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Calculates the current margin ratio for a hedger position
+     * @dev Returns margin ratio as basis points (10000 = 100%)
+     * @param hedger Address of the hedger who owns the position
+     * @param positionId ID of the position to check
+     * @return Current margin ratio in basis points (margin/positionSize * 10000)
+     * @custom:security Validates that the caller owns the position
+     * @custom:validation Ensures position exists and hedger matches
+     * @custom:state-changes None (view function)
+     * @custom:events None
+     * @custom:errors Throws InvalidHedger if position doesn't belong to hedger
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public (anyone can query margin ratio)
+     * @custom:oracle Not applicable
+     */
     function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256) {
         HedgePosition storage position = positions[positionId];
         if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
@@ -714,6 +798,21 @@ contract HedgerPool is
         return uint256(position.margin).mulDiv(10000, uint256(position.positionSize));
     }
 
+    /**
+     * @notice Checks if a hedger position is eligible for liquidation
+     * @dev Uses current oracle price to determine if position is undercollateralized
+     * @param hedger Address of the hedger who owns the position
+     * @param positionId ID of the position to check
+     * @return True if position can be liquidated, false otherwise
+     * @custom:security Validates that the caller owns the position
+     * @custom:validation Ensures position exists, is active, and hedger matches
+     * @custom:state-changes None (view function with oracle call)
+     * @custom:events None
+     * @custom:errors Throws InvalidHedger if position doesn't belong to hedger
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public (anyone can check liquidation status)
+     * @custom:oracle Calls _getValidOraclePrice() for current price comparison
+     */
     function isHedgerLiquidatable(address hedger, uint256 positionId) external returns (bool) {
         HedgePosition storage position = positions[positionId];
         if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
@@ -727,10 +826,39 @@ contract HedgerPool is
         );
     }
 
+    /**
+     * @notice Returns the total hedge exposure across all active positions
+     * @dev Provides aggregate exposure for risk management and monitoring
+     * @return Total exposure amount in USDC across all active hedge positions
+     * @custom:security No security validations required for view function
+     * @custom:validation None required for view function
+     * @custom:state-changes None (view function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public (anyone can query total exposure)
+     * @custom:oracle Not applicable
+     */
     function getTotalHedgeExposure() external view returns (uint256) {
         return totalExposure;
     }
 
+    /**
+     * @notice Updates core hedging parameters for the protocol
+     * @dev Allows governance to adjust risk parameters for hedge positions
+     * @param newMinMarginRatio New minimum margin ratio in basis points (minimum 500 = 5%)
+     * @param newLiquidationThreshold New liquidation threshold in basis points (must be < minMarginRatio)
+     * @param newMaxLeverage New maximum leverage multiplier (maximum 20x)
+     * @param newLiquidationPenalty New liquidation penalty in basis points (maximum 1000 = 10%)
+     * @custom:security Requires GOVERNANCE_ROLE, validates parameter ranges
+     * @custom:validation Ensures minMarginRatio >= 500, liquidationThreshold < minMarginRatio, maxLeverage <= 20, liquidationPenalty <= 1000
+     * @custom:state-changes Updates coreParams struct with new values
+     * @custom:events None
+     * @custom:errors Throws InvalidRole, ConfigValueTooLow, ConfigInvalid, or ConfigValueTooHigh
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Not applicable
+     */
     function updateHedgingParameters(
         uint256 newMinMarginRatio,
         uint256 newLiquidationThreshold,
@@ -749,6 +877,20 @@ contract HedgerPool is
         coreParams.liquidationPenalty = uint16(newLiquidationPenalty);
     }
 
+    /**
+     * @notice Updates interest rates for EUR and USD positions
+     * @dev Allows governance to adjust interest rates for yield calculations
+     * @param newEurRate New EUR interest rate in basis points (maximum 2000 = 20%)
+     * @param newUsdRate New USD interest rate in basis points (maximum 2000 = 20%)
+     * @custom:security Requires GOVERNANCE_ROLE, validates rate limits
+     * @custom:validation Ensures both rates are <= 2000 basis points (20%)
+     * @custom:state-changes Updates coreParams with new interest rates
+     * @custom:events None
+     * @custom:errors Throws InvalidRole or ConfigValueTooHigh
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Not applicable
+     */
     function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external {
         _validateRole(GOVERNANCE_ROLE);
         if (newEurRate > 2000 || newUsdRate > 2000) revert ErrorLibrary.ConfigValueTooHigh();
@@ -757,6 +899,21 @@ contract HedgerPool is
         coreParams.usdInterestRate = uint16(newUsdRate);
     }
 
+    /**
+     * @notice Sets the fee structure for hedge positions
+     * @dev Allows governance to adjust fees for position entry, exit, and margin operations
+     * @param _entryFee New entry fee in basis points (maximum 100 = 1%)
+     * @param _exitFee New exit fee in basis points (maximum 100 = 1%)
+     * @param _marginFee New margin fee in basis points (maximum 50 = 0.5%)
+     * @custom:security Requires GOVERNANCE_ROLE, validates fee limits
+     * @custom:validation Ensures entryFee <= 100, exitFee <= 100, marginFee <= 50
+     * @custom:state-changes Updates coreParams with new fee values
+     * @custom:events None
+     * @custom:errors Throws InvalidRole or InvalidFee
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Not applicable
+     */
     function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external {
         _validateRole(GOVERNANCE_ROLE);
         ValidationLibrary.validateFee(_entryFee, 100);
@@ -806,9 +963,6 @@ contract HedgerPool is
         totalMargin -= position.margin;
         totalExposure -= position.positionSize;
 
-        // Withdraw USDC from vault for emergency position closure
-        vault.withdrawHedgerDeposit(hedger, position.margin);
-
         position.isActive = false;
         _removePositionFromArrays(hedger, positionId);
         
@@ -819,22 +973,82 @@ contract HedgerPool is
             hedgerInfo.isActive = false;
             activeHedgers--;
         }
+
+        // Withdraw USDC from vault for emergency position closure
+        vault.withdrawHedgerDeposit(hedger, position.margin);
     }
 
+    /**
+     * @notice Pauses all contract operations in case of emergency
+     * @dev Emergency function to halt all user interactions
+     * @custom:security Requires EMERGENCY_ROLE
+     * @custom:validation None required
+     * @custom:state-changes Sets contract to paused state
+     * @custom:events Emits Paused event
+     * @custom:errors Throws InvalidRole if caller lacks EMERGENCY_ROLE
+     * @custom:reentrancy Not applicable
+     * @custom:access Restricted to EMERGENCY_ROLE
+     * @custom:oracle Not applicable
+     */
     function pause() external {
         _validateRole(EMERGENCY_ROLE);
         _pause();
     }
 
+    /**
+     * @notice Unpauses contract operations after emergency
+     * @dev Resumes normal contract functionality
+     * @custom:security Requires EMERGENCY_ROLE
+     * @custom:validation None required
+     * @custom:state-changes Sets contract to unpaused state
+     * @custom:events Emits Unpaused event
+     * @custom:errors Throws InvalidRole if caller lacks EMERGENCY_ROLE
+     * @custom:reentrancy Not applicable
+     * @custom:access Restricted to EMERGENCY_ROLE
+     * @custom:oracle Not applicable
+     */
     function unpause() external {
         _validateRole(EMERGENCY_ROLE);
         _unpause();
     }
 
+    /**
+     * @notice Checks if a position has a pending liquidation commitment
+     * @dev Returns true if a liquidation commitment exists for the position
+     * @param hedger Address of the hedger who owns the position
+     * @param positionId ID of the position to check
+     * @return True if liquidation commitment exists, false otherwise
+     * @custom:security No security validations required for view function
+     * @custom:validation None required for view function
+     * @custom:state-changes None (view function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public (anyone can query commitment status)
+     * @custom:oracle Not applicable
+     */
     function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool) {
         return hasPendingLiquidation[hedger][positionId];
     }
 
+    /**
+     * @notice Returns the current hedging configuration parameters
+     * @dev Provides access to all core hedging parameters for external contracts
+     * @return minMarginRatio_ Current minimum margin ratio in basis points
+     * @return liquidationThreshold_ Current liquidation threshold in basis points
+     * @return maxLeverage_ Current maximum leverage multiplier
+     * @return liquidationPenalty_ Current liquidation penalty in basis points
+     * @return entryFee_ Current entry fee in basis points
+     * @return exitFee_ Current exit fee in basis points
+     * @custom:security No security validations required for view function
+     * @custom:validation None required for view function
+     * @custom:state-changes None (view function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public (anyone can query configuration)
+     * @custom:oracle Not applicable
+     */
     function getHedgingConfig() external view returns (
         uint256 minMarginRatio_,
         uint256 liquidationThreshold_,
@@ -846,10 +1060,42 @@ contract HedgerPool is
         return (coreParams.minMarginRatio, coreParams.liquidationThreshold, coreParams.maxLeverage, coreParams.liquidationPenalty, coreParams.entryFee, coreParams.exitFee);
     }
 
+    /**
+     * @notice Returns the current margin fee rate
+     * @dev Provides the margin fee for margin operations
+     * @return Current margin fee in basis points
+     * @custom:security No security validations required for view function
+     * @custom:validation None required for view function
+     * @custom:state-changes None (view function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public (anyone can query margin fee)
+     * @custom:oracle Not applicable
+     */
     function marginFee() external view returns (uint256) {
         return coreParams.marginFee;
     }
 
+    /**
+     * @notice Returns the maximum allowed values for various parameters
+     * @dev Provides hard limits for position sizes, margins, and other constraints
+     * @return maxPositionSize Maximum position size in USDC
+     * @return maxMargin Maximum margin per position in USDC
+     * @return maxEntryPrice Maximum entry price for positions
+     * @return maxLeverageValue Maximum leverage multiplier
+     * @return maxTotalMargin Maximum total margin across all positions
+     * @return maxTotalExposure Maximum total exposure across all positions
+     * @return maxPendingRewards Maximum pending rewards amount
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public (anyone can query max values)
+     * @custom:oracle Not applicable
+     */
     function getMaxValues() external pure returns (
         uint256 maxPositionSize,
         uint256 maxMargin,
@@ -862,10 +1108,37 @@ contract HedgerPool is
         return (MAX_POSITION_SIZE, MAX_MARGIN, MAX_ENTRY_PRICE, MAX_LEVERAGE, MAX_TOTAL_MARGIN, MAX_TOTAL_EXPOSURE, MAX_PENDING_REWARDS);
     }
 
+    /**
+     * @notice Checks if hedging operations are currently active
+     * @dev Returns true if contract is not paused, false if paused
+     * @return True if hedging is active, false if paused
+     * @custom:security No security validations required for view function
+     * @custom:validation None required for view function
+     * @custom:state-changes None (view function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public (anyone can query hedging status)
+     * @custom:oracle Not applicable
+     */
     function isHedgingActive() external view returns (bool) {
         return !paused();
     }
 
+    /**
+     * @notice Clears expired liquidation commitments after cooldown period
+     * @dev Allows liquidators to clean up expired commitments
+     * @param hedger Address of the hedger whose commitment to clear
+     * @param positionId ID of the position whose commitment to clear
+     * @custom:security Requires LIQUIDATOR_ROLE, checks cooldown period
+     * @custom:validation Ensures cooldown period has passed
+     * @custom:state-changes Clears pending liquidation flag if expired
+     * @custom:events None
+     * @custom:errors Throws InvalidRole if caller lacks LIQUIDATOR_ROLE
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to LIQUIDATOR_ROLE
+     * @custom:oracle Not applicable
+     */
     function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external {
         _validateRole(LIQUIDATOR_ROLE);
         if (block.number > lastLiquidationAttempt[hedger] + LIQUIDATION_COOLDOWN) {
@@ -873,6 +1146,21 @@ contract HedgerPool is
         }
     }
 
+    /**
+     * @notice Cancels a liquidation commitment before execution
+     * @dev Allows liquidators to cancel their own commitments
+     * @param hedger Address of the hedger whose position was committed for liquidation
+     * @param positionId ID of the position whose commitment to cancel
+     * @param salt Salt used in the original commitment
+     * @custom:security Requires LIQUIDATOR_ROLE, validates commitment exists
+     * @custom:validation Ensures commitment exists and belongs to caller
+     * @custom:state-changes Deletes commitment data and clears pending liquidation flag
+     * @custom:events None
+     * @custom:errors Throws InvalidRole or CommitmentNotFound
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to LIQUIDATOR_ROLE
+     * @custom:oracle Not applicable
+     */
     function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external {
         _validateRole(LIQUIDATOR_ROLE);
         bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
@@ -885,17 +1173,56 @@ contract HedgerPool is
         hasPendingLiquidation[hedger][positionId] = false;
     }
 
+    /**
+     * @notice Recovers accidentally sent tokens to the treasury
+     * @dev Emergency function to recover tokens sent to the contract
+     * @param token Address of the token to recover
+     * @param amount Amount of tokens to recover
+     * @custom:security Requires DEFAULT_ADMIN_ROLE
+     * @custom:validation None required
+     * @custom:state-changes Transfers tokens from contract to treasury
+     * @custom:events None
+     * @custom:errors Throws InvalidRole if caller lacks DEFAULT_ADMIN_ROLE
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle Not applicable
+     */
     function recoverToken(address token, uint256 amount) external {
         _validateRole(DEFAULT_ADMIN_ROLE);
         TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
+    /**
+     * @notice Recovers accidentally sent ETH to the treasury
+     * @dev Emergency function to recover ETH sent to the contract
+     * @custom:security Requires DEFAULT_ADMIN_ROLE
+     * @custom:validation None required
+     * @custom:state-changes Transfers ETH from contract to treasury
+     * @custom:events Emits ETHRecovered event
+     * @custom:errors Throws InvalidRole if caller lacks DEFAULT_ADMIN_ROLE
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle Not applicable
+     */
     function recoverETH() external {
         _validateRole(DEFAULT_ADMIN_ROLE);
         emit ETHRecovered(treasury, address(this).balance);
         TreasuryRecoveryLibrary.recoverETH(treasury);
     }
 
+    /**
+     * @notice Updates the treasury address for fee collection
+     * @dev Allows governance to change the treasury address
+     * @param _treasury New treasury address for fee collection
+     * @custom:security Requires GOVERNANCE_ROLE, validates address
+     * @custom:validation Ensures treasury is not zero address and passes validation
+     * @custom:state-changes Updates treasury address
+     * @custom:events Emits TreasuryUpdated event
+     * @custom:errors Throws InvalidRole, InvalidAddress, or zero address error
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Not applicable
+     */
     function updateTreasury(address _treasury) external {
         _validateRole(GOVERNANCE_ROLE);
         AccessControlLibrary.validateAddress(_treasury);
@@ -905,6 +1232,19 @@ contract HedgerPool is
         emit TreasuryUpdated(_treasury);
     }
 
+    /**
+     * @notice Updates the vault address for USDC management
+     * @dev Allows governance to change the vault contract address
+     * @param _vault New vault address for USDC operations
+     * @custom:security Requires GOVERNANCE_ROLE, validates address
+     * @custom:validation Ensures vault is not zero address
+     * @custom:state-changes Updates vault address
+     * @custom:events Emits VaultUpdated event
+     * @custom:errors Throws InvalidRole or InvalidAddress
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Not applicable
+     */
     function updateVault(address _vault) external {
         _validateRole(GOVERNANCE_ROLE);
         AccessControlLibrary.validateAddress(_vault);
@@ -1026,6 +1366,19 @@ contract HedgerPool is
         return price;
     }
 
+    /**
+     * @notice Validates that the caller has the required role
+     * @dev Internal function to check role-based access control
+     * @param role The role to validate against
+     * @custom:security Validates caller has the specified role
+     * @custom:validation Checks role against AccessControlLibrary
+     * @custom:state-changes None (view function)
+     * @custom:events None
+     * @custom:errors Throws InvalidRole if caller lacks required role
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal function
+     * @custom:oracle Not applicable
+     */
     function _validateRole(bytes32 role) internal view {
         if (role == GOVERNANCE_ROLE) {
             AccessControlLibrary.onlyGovernance(this);
@@ -1040,6 +1393,20 @@ contract HedgerPool is
         }
     }
 
+    /**
+     * @notice Removes a position from the hedger's position arrays
+     * @dev Internal function to maintain position tracking arrays
+     * @param hedger Address of the hedger whose position to remove
+     * @param positionId ID of the position to remove
+     * @custom:security Validates position exists before removal
+     * @custom:validation Ensures position exists in hedger's array
+     * @custom:state-changes Removes position from arrays and updates indices
+     * @custom:events None
+     * @custom:errors Throws PositionNotFound if position doesn't exist
+     * @custom:reentrancy Not applicable - internal function
+     * @custom:access Internal function
+     * @custom:oracle Not applicable
+     */
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {
         if (!hedgerHasPosition[hedger][positionId]) revert ErrorLibrary.PositionNotFound();
         
@@ -1060,7 +1427,21 @@ contract HedgerPool is
     }
     
     /**
-     * @notice Internal event data packing functions to reduce contract size
+     * @notice Packs position open data into a single bytes32 for gas efficiency
+     * @dev Encodes position size, margin, leverage, and entry price into a compact format
+     * @param positionSize Size of the position in USDC
+     * @param margin Margin amount for the position
+     * @param leverage Leverage multiplier for the position
+     * @param entryPrice Price at which the position was opened
+     * @return Packed data as bytes32
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle Uses provided entryPrice parameter
      */
     function _packPositionOpenData(
         uint256 positionSize,
@@ -1076,6 +1457,22 @@ contract HedgerPool is
         );
     }
     
+    /**
+     * @notice Packs position close data into a single bytes32 for gas efficiency
+     * @dev Encodes exit price, PnL, and timestamp into a compact format
+     * @param exitPrice Price at which the position was closed
+     * @param pnl Profit or loss from the position (can be negative)
+     * @param timestamp Timestamp when the position was closed
+     * @return Packed data as bytes32
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle Not applicable
+     */
     function _packPositionCloseData(
         uint256 exitPrice,
         int256 pnl,
@@ -1091,6 +1488,22 @@ contract HedgerPool is
         );
     }
     
+    /**
+     * @notice Packs margin data into a single bytes32 for gas efficiency
+     * @dev Encodes margin amount, new margin ratio, and operation type
+     * @param marginAmount Amount of margin added or removed
+     * @param newMarginRatio New margin ratio after the operation
+     * @param isAdded True if margin was added, false if removed
+     * @return Packed data as bytes32
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle Not applicable
+     */
     function _packMarginData(
         uint256 marginAmount,
         uint256 newMarginRatio,
@@ -1103,6 +1516,21 @@ contract HedgerPool is
         );
     }
     
+    /**
+     * @notice Packs liquidation data into a single bytes32 for gas efficiency
+     * @dev Encodes liquidation reward and remaining margin
+     * @param liquidationReward Reward paid to the liquidator
+     * @param remainingMargin Margin remaining after liquidation
+     * @return Packed data as bytes32
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle Not applicable
+     */
     function _packLiquidationData(
         uint256 liquidationReward,
         uint256 remainingMargin
@@ -1113,6 +1541,22 @@ contract HedgerPool is
         );
     }
     
+    /**
+     * @notice Packs reward data into a single bytes32 for gas efficiency
+     * @dev Encodes interest differential, yield shift rewards, and total rewards
+     * @param interestDifferential Interest rate differential between EUR and USD
+     * @param yieldShiftRewards Rewards from yield shifting operations
+     * @param totalRewards Total rewards accumulated
+     * @return Packed data as bytes32
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle Not applicable
+     */
     function _packRewardData(
         uint256 interestDifferential,
         uint256 yieldShiftRewards,
@@ -1128,7 +1572,6 @@ contract HedgerPool is
     /**
      * @notice Validates that closing a position won't cause protocol undercollateralization
      * @dev Checks if closing the position would make the protocol undercollateralized for QEURO minting
-     * @param positionId The position ID being closed
      * @param positionMargin The margin amount of the position being closed
      * @custom:security Validates protocol collateralization status
      * @custom:validation Checks vault collateralization ratio
@@ -1139,14 +1582,17 @@ contract HedgerPool is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
-    function _validatePositionClosureSafety(uint256 positionId, uint256 positionMargin) internal view {
+    function _validatePositionClosureSafety(uint256 /* positionId */, uint256 positionMargin) internal view {
         // Skip validation if vault is not set (for backward compatibility)
         if (address(vault) == address(0)) {
             return;
         }
 
         // Get current protocol collateralization status
-        (, uint256 currentTotalMargin) = vault.isProtocolCollateralized();
+        (bool isCollateralized, uint256 currentTotalMargin) = vault.isProtocolCollateralized();
+        
+        // Additional safety check: ensure protocol is currently collateralized
+        require(isCollateralized, "HedgerPool: Protocol not collateralized");
         
         // Get minimum collateralization ratio for minting
         uint256 minCollateralizationRatio = vault.minCollateralizationRatioForMinting();

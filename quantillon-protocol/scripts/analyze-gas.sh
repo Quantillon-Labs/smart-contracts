@@ -15,7 +15,34 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-RESULTS_DIR="${RESULTS_DIR:-results}"
+
+# Load environment variables from .env file using dotenvx
+echo "🔐 Loading environment variables from .env file..."
+if command -v dotenvx >/dev/null 2>&1; then
+    # Use dotenvx to decrypt and load environment variables
+    # Parse the output and export only our project-specific variables
+    while IFS= read -r line; do
+        # Skip comments and empty lines
+        if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "$line" ]]; then
+            continue
+        fi
+        # Check if line contains a variable we want to load
+        if [[ "$line" =~ ^(RESULTS_DIR|BASESCAN_API_KEY|PRIVATE_KEY|FRONTEND_ABI_DIR|FRONTEND_ADDRESSES_FILE|SMART_CONTRACTS_OUT|MULTISIG_WALLET|NETWORK)= ]]; then
+            export "$line"
+        fi
+    done < <(dotenvx decrypt --stdout)
+    echo "✅ Environment variables loaded successfully with dotenvx"
+else
+    echo "⚠️  dotenvx not found, falling back to direct .env loading"
+    if [ -f ".env" ]; then
+        # Fallback: load .env file directly (without decryption)
+        set -a
+        source .env
+        set +a
+    fi
+fi
+
+RESULTS_DIR="${RESULTS_DIR:-scripts/results}"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 OUTPUT_DIR="${RESULTS_DIR}/gas-analysis"
 TEXT_REPORT_FILE="${OUTPUT_DIR}/gas-analysis-${TIMESTAMP}.txt"
@@ -219,9 +246,10 @@ print_section "Contract Size Analysis"
 echo "Analyzing contract sizes..."
 
 # Get contract sizes and write directly to report
-CONTRACT_SIZES=$(forge build --sizes 2>&1 || echo "Failed to get contract sizes")
+# Note: forge build --sizes can cause core dumps in some versions, so we handle it gracefully
+CONTRACT_SIZES=$(timeout 30 forge build --sizes 2>&1 || echo "Failed to get contract sizes (forge build --sizes crashed or timed out)")
 
-if [ -n "$CONTRACT_SIZES" ] && [ "$CONTRACT_SIZES" != "Failed to get contract sizes" ]; then
+if [ -n "$CONTRACT_SIZES" ] && [ "$CONTRACT_SIZES" != "Failed to get contract sizes" ] && [ "$CONTRACT_SIZES" != "Failed to get contract sizes (forge build --sizes crashed or timed out)" ]; then
     print_success "Contract size analysis completed"
     
     # Check for contracts approaching size limit
@@ -238,8 +266,8 @@ if [ -n "$CONTRACT_SIZES" ] && [ "$CONTRACT_SIZES" != "Failed to get contract si
     
     generate_report "Detailed Contract Sizes:\n$CONTRACT_SIZES\n\n"
 else
-    print_warning "Contract size analysis failed"
-    generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n⚠️ Failed to analyze contract sizes\n\n"
+    print_warning "Contract size analysis failed (forge build --sizes crashed or timed out)"
+    generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n⚠️ Failed to analyze contract sizes (forge build --sizes crashed or timed out)\n\n"
 fi
 
 # 5. Gas Usage by Function - Analyze Real Quantillon Protocol Functions

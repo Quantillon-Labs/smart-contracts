@@ -1,5 +1,5 @@
 # QEUROToken
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/486f19261aef0b99ac5330b56bb5ad5bbdda41eb/src/core/QEUROToken.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6bcc4db60b18f8d613521e2d032b420a446221cb/src/core/QEUROToken.sol)
 
 **Inherits:**
 Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -33,7 +33,7 @@ Euro-pegged stablecoin token for the Quantillon protocol
 - Peg: 1:1 with Euro (managed by vault operations)*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -287,23 +287,23 @@ Constructor for QEURO token contract
 *Disables initializers for security*
 
 **Notes:**
-- security: Disables initializers for security
+- Disables initializers for security
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: Disables initializers
+- Disables initializers
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
-- oz-upgrades-unsafe-allow: constructor
+- constructor
 
 
 ```solidity
@@ -328,21 +328,21 @@ Initializes the QEURO token (called only once at deployment)
 - Initializes all state variables*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Initializes all contract state variables
+- Initializes all contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to initializer modifier
+- Restricted to initializer modifier
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -380,21 +380,21 @@ Usage example: vault.mint(user, 1000 * 1e18) for 1000 QEURO*
 - Secure minting using OpenZeppelin*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to MINTER_ROLE
+- Restricted to MINTER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -417,21 +417,21 @@ rate limits, blacklist/whitelist checks, and max supply constraints.
 Using external mint for each entry reuses all checks and events.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to MINTER_ROLE
+- Restricted to MINTER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -468,23 +468,23 @@ Note: The vault must have an allowance or be authorized otherwise*
 - Secure burning using OpenZeppelin*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to BURNER_ROLE
+- Restricted to BURNER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
-- security: No flash loan protection needed - only vault can burn
+- No flash loan protection needed - only vault can burn
 
 
 ```solidity
@@ -506,21 +506,21 @@ Batch burn QEURO tokens from multiple addresses
 rate limits and balance checks. Accumulates total for rate limiting.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to BURNER_ROLE
+- Restricted to BURNER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -545,21 +545,21 @@ Checks and updates the mint rate limit for the caller
 *Implements sliding window rate limiting using block numbers to prevent abuse*
 
 **Notes:**
-- security: Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
+- Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
 
-- validation: Validates amount against current rate limit caps
+- Validates amount against current rate limit caps
 
-- state-changes: Updates rateLimitInfo.currentHourMinted and lastRateLimitReset
+- Updates rateLimitInfo.currentHourMinted and lastRateLimitReset
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws RateLimitExceeded if amount would exceed current rate limit
+- Throws RateLimitExceeded if amount would exceed current rate limit
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -579,21 +579,21 @@ Checks and updates the burn rate limit for the caller
 *Implements sliding window rate limiting using block numbers to prevent abuse*
 
 **Notes:**
-- security: Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
+- Resets rate limit if reset period has passed (~300 blocks), prevents block manipulation
 
-- validation: Validates amount against current rate limit caps
+- Validates amount against current rate limit caps
 
-- state-changes: Updates rateLimitInfo.currentHourBurned and lastRateLimitReset
+- Updates rateLimitInfo.currentHourBurned and lastRateLimitReset
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws RateLimitExceeded if amount would exceed current rate limit
+- Throws RateLimitExceeded if amount would exceed current rate limit
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -620,21 +620,21 @@ Updates rate limits for mint and burn operations
 - Emits RateLimitsUpdated event*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -662,21 +662,21 @@ Blacklists an address
 - Emits AddressBlacklisted event*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -703,21 +703,21 @@ Removes an address from blacklist
 - Emits AddressUnblacklisted event*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -744,21 +744,21 @@ Whitelists an address
 - Emits AddressWhitelisted event*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -784,21 +784,21 @@ Removes an address from whitelist
 - Emits AddressUnwhitelisted event*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -823,21 +823,21 @@ Toggles whitelist mode
 - Emits WhitelistModeToggled event*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -857,21 +857,21 @@ Batch blacklist multiple addresses
 *Only callable by compliance role*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -894,21 +894,21 @@ Batch unblacklist multiple addresses
 *Only callable by compliance role*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -928,21 +928,21 @@ Batch whitelist multiple addresses
 *Only callable by compliance role*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -962,21 +962,21 @@ Batch unwhitelist multiple addresses
 *Only callable by compliance role*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to COMPLIANCE_ROLE
+- Restricted to COMPLIANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1003,21 +1003,21 @@ Updates minimum price precision for external feeds
 - Emits MinPricePrecisionUpdated event*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1043,21 +1043,21 @@ Normalizes a price value to 18 decimals
 - Handles normalization correctly*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1089,21 +1089,21 @@ Validates price precision from external feed
 - Returns true if price is above or equal to minPricePrecision*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1142,21 +1142,21 @@ Used in case of:
 - Prevents any state changes*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to PAUSER_ROLE
+- Restricted to PAUSER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1176,21 +1176,21 @@ Used after resolving the issue that caused the pause*
 - Allows normal state changes*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to PAUSER_ROLE
+- Restricted to PAUSER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1209,21 +1209,21 @@ Returns the number of decimals for the token (always 18)
 - No state changes*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1248,21 +1248,21 @@ Checks if an address has the minter role
 - No state changes*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1293,21 +1293,21 @@ Checks if an address has the burner role
 - No state changes*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1341,21 +1341,21 @@ Calculates the percentage of maximum supply utilization
 - Returns 0 if totalSupply is 0*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1380,21 +1380,21 @@ Calculates remaining space for minting new tokens
 - Returns 0 if no more minting is possible*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - no access restrictions
+- Public - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1420,21 +1420,21 @@ Gets current rate limit status
 - Includes bounds checking to prevent timestamp manipulation*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - no access restrictions
+- Public - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1468,21 +1468,21 @@ Batch transfer QEURO tokens to multiple addresses
 Uses OpenZeppelin's transfer mechanism with compliance checks.*
 
 **Notes:**
-- security: Validates all recipients and amounts, enforces blacklist/whitelist checks
+- Validates all recipients and amounts, enforces blacklist/whitelist checks
 
-- validation: Validates array lengths match, amounts > 0, recipients != address(0)
+- Validates array lengths match, amounts > 0, recipients != address(0)
 
-- state-changes: Updates balances for all recipients and sender
+- Updates balances for all recipients and sender
 
-- events: Emits Transfer events for each successful transfer
+- Emits Transfer events for each successful transfer
 
-- errors: Throws ArrayLengthMismatch, BatchSizeTooLarge, InvalidAddress, InvalidAmount, BlacklistedAddress, NotWhitelisted
+- Throws ArrayLengthMismatch, BatchSizeTooLarge, InvalidAddress, InvalidAmount, BlacklistedAddress, NotWhitelisted
 
-- reentrancy: Protected by whenNotPaused modifier
+- Protected by whenNotPaused modifier
 
-- access: Public - requires sufficient balance and compliance checks
+- Public - requires sufficient balance and compliance checks
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1519,21 +1519,21 @@ Hook called before each token transfer
 - Calls super._update for standard ERC20 logic*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by whenNotPaused modifier
+- Protected by whenNotPaused modifier
 
-- access: Internal function
+- Internal function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1561,21 +1561,21 @@ Recover tokens accidentally sent to the contract to treasury only
 - Uses SafeERC20 for secure transfers*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1596,21 +1596,21 @@ Recover ETH to treasury address only
 *SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1634,21 +1634,21 @@ Requires governance and must be used with caution*
 - Emits SupplyCapUpdated event*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1668,21 +1668,21 @@ Update treasury address
 *SECURITY: Only governance can update treasury address*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1707,21 +1707,21 @@ Complete token information (for monitoring)
 - No state changes*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1762,21 +1762,21 @@ Get current mint rate limit (per hour)
 *Returns current mint rate limit*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1806,21 +1806,21 @@ Toggle the emergency minting killswitch to enable/disable all minting operations
 *Burning operations remain unaffected by the killswitch*
 
 **Notes:**
-- security: Only callable by PAUSER_ROLE holders
+- Only callable by PAUSER_ROLE holders
 
-- validation: Validates caller has PAUSER_ROLE
+- Validates caller has PAUSER_ROLE
 
-- events: Emits MintingKillswitchToggled event with new state and caller
+- Emits MintingKillswitchToggled event with new state and caller
 
-- errors: Throws AccessControlUnauthorizedAccount if caller lacks PAUSER_ROLE
+- Throws AccessControlUnauthorizedAccount if caller lacks PAUSER_ROLE
 
-- state-changes: Updates mintingKillswitch state variable
+- Updates mintingKillswitch state variable
 
-- access: Restricted to PAUSER_ROLE
+- Restricted to PAUSER_ROLE
 
-- reentrancy: Not protected - simple state change
+- Not protected - simple state change
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1840,21 +1840,21 @@ Get current burn rate limit (per hour)
 *Returns current burn rate limit*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

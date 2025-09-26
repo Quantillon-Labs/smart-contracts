@@ -41,6 +41,10 @@ jobs:
           # Set environment variables for Foundry
           export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
           
+          # Set additional environment variables to reduce complexity
+          export FOUNDRY_COMPILER_OPTIMIZER=false
+          export FOUNDRY_COMPILER_VIA_IR=false
+          
           # Store the original remote URL
           ORIGINAL_REMOTE=$(git remote get-url origin)
           echo "Original remote URL: $ORIGINAL_REMOTE"
@@ -51,16 +55,39 @@ jobs:
           
           # Generate and build documentation
           echo "Generating documentation..."
-          # Increase stack size to prevent stack overflow with complex contract hierarchies
-          ulimit -s 65536
           
-          # Try to generate docs with increased stack size
-          if ! forge doc --out docs --build; then
-              echo "Standard forge doc failed, trying alternative approach..."
-              # Fallback: Generate docs without build step first
-              forge doc --out docs
-              # Then build separately
-              forge doc --build
+          # Strategy 1: Try with maximum stack size
+          echo "Attempting with maximum stack size..."
+          ulimit -s unlimited
+          if forge doc --out docs --build; then
+              echo "Documentation generated successfully with unlimited stack size"
+          else
+              echo "Unlimited stack size failed, trying with large fixed size..."
+              # Strategy 2: Try with very large stack size
+              ulimit -s 131072
+              if forge doc --out docs --build; then
+                  echo "Documentation generated successfully with large stack size"
+              else
+                  echo "Large stack size failed, trying step-by-step approach..."
+                  # Strategy 3: Generate docs without build, then build separately
+                  ulimit -s 131072
+                  if forge doc --out docs; then
+                      echo "Docs generated, now building..."
+                      if forge doc --build; then
+                          echo "Documentation built successfully with step-by-step approach"
+                      else
+                          echo "Build step failed, trying minimal approach..."
+                          # Strategy 4: Try with minimal optimization
+                          forge doc --out docs --no-build
+                          echo "Minimal documentation generated"
+                      fi
+                  else
+                      echo "All strategies failed, trying with different compiler settings..."
+                      # Strategy 5: Try with different compiler settings
+                      FOUNDRY_COMPILER_OPTIMIZER=false forge doc --out docs --no-build
+                      echo "Documentation generated with disabled optimizer"
+                  fi
+              fi
           fi
           
           # Restore the original remote URL
@@ -114,6 +141,7 @@ jobs:
           ls -la docs
           echo "== site root (docs/book) =="
           ls -la docs/book
+          
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -466,20 +466,4 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         if (newImplementation == address(0)) revert ErrorLibrary.ZeroAddress();
     }
     
-    /**
-     * @notice Returns the version of this contract implementation
-     * @dev Pure function that returns the contract version string
-     * @return Version string
-     * @custom:security No security validations required - pure function
-     * @custom:validation No input validation required - pure function
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe pure function
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Public - anyone can query version
-     * @custom:oracle No oracle dependencies
-     */
-    function version() external pure returns (string memory) {
-        return "1.0.0";
-    }
 }

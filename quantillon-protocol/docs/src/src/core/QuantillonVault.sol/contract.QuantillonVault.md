@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/486f19261aef0b99ac5330b56bb5ad5bbdda41eb/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6bcc4db60b18f8d613521e2d032b420a446221cb/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -64,7 +64,7 @@ Main vault managing QEURO minting against USDC collateral
 - Vault math library for precise calculations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -324,23 +324,23 @@ Constructor for QuantillonVault contract
 *Disables initializers for security*
 
 **Notes:**
-- security: Disables initializers for security
+- Disables initializers for security
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: Disables initializers
+- Disables initializers
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
-- oz-upgrades-unsafe-allow: constructor
+- constructor
 
 
 ```solidity
@@ -358,21 +358,21 @@ Initializes the vault with contracts and parameters
 4. Security (pause, reentrancy, upgrades)*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Initializes all contract state variables
+- Initializes all contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to initializer modifier
+- Restricted to initializer modifier
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -414,21 +414,21 @@ Mints QEURO tokens by swapping USDC
 Simple swap with protocol fee applied*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -454,23 +454,23 @@ Redeems QEURO for USDC
 5. Transfer USDC to user*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
-- security: No flash loan protection needed - legitimate redemption operation
+- No flash loan protection needed - legitimate redemption operation
 
 
 ```solidity
@@ -491,21 +491,21 @@ Retrieves the vault's global metrics
 *Returns comprehensive vault metrics for monitoring and analytics*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -527,21 +527,21 @@ Calculates the amount of QEURO that can be minted for a given USDC amount
 *Calculates mint amount based on current oracle price and protocol fees*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -568,21 +568,21 @@ Calculates the amount of USDC received for a QEURO redemption
 *Calculates redeem amount based on current oracle price and protocol fees*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -609,21 +609,21 @@ Checks if the protocol is properly collateralized by hedgers
 *Public view function to check collateralization status*
 
 **Notes:**
-- security: No security validations required - view function
+- No security validations required - view function
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can check collateralization status
+- Public - anyone can check collateralization status
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -645,21 +645,21 @@ Updates the vault parameters (governance only)
 - Fees <= 5% (user protection)*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -683,21 +683,21 @@ Updates the collateralization thresholds (governance only)
 - criticalCollateralizationRatio >= 10000 (100% minimum)*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -721,21 +721,21 @@ Updates the oracle address
 *Updates the oracle contract address for price feeds*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -755,21 +755,21 @@ Updates the HedgerPool address
 *Updates the HedgerPool contract address for collateralization checks*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -789,21 +789,21 @@ Updates the UserPool address
 *Updates the UserPool contract address for user deposit tracking*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -826,21 +826,21 @@ Updates price deviation protection parameters
 for full implementation. Currently a placeholder for future governance control.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -863,21 +863,21 @@ Withdraws accumulated protocol fees
 *Fees accumulate during minting and redemptions*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -897,23 +897,23 @@ Adds hedger USDC deposit to vault's total USDC reserves
 *Called by HedgerPool when hedgers open positions to unify USDC liquidity*
 
 **Notes:**
-- security: Validates caller is HedgerPool contract and amount is positive
+- Validates caller is HedgerPool contract and amount is positive
 
-- validation: Validates amount > 0 and caller is authorized HedgerPool
+- Validates amount > 0 and caller is authorized HedgerPool
 
-- state-changes: Updates totalUsdcHeld with hedger deposit amount
+- Updates totalUsdcHeld with hedger deposit amount
 
-- events: Emits HedgerDepositAdded with deposit details
+- Emits HedgerDepositAdded with deposit details
 
-- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+- Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
 
-- errors: Throws "Vault: Amount must be positive" if amount is zero
+- Throws "Vault: Amount must be positive" if amount is zero
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to HedgerPool contract only
+- Restricted to HedgerPool contract only
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -933,25 +933,25 @@ Withdraws hedger USDC deposit from vault's reserves
 *Called by HedgerPool when hedgers close positions to return their deposits*
 
 **Notes:**
-- security: Validates caller is HedgerPool, amount is positive, and sufficient reserves
+- Validates caller is HedgerPool, amount is positive, and sufficient reserves
 
-- validation: Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
+- Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
 
-- state-changes: Updates totalUsdcHeld and transfers USDC to hedger
+- Updates totalUsdcHeld and transfers USDC to hedger
 
-- events: Emits HedgerDepositWithdrawn with withdrawal details
+- Emits HedgerDepositWithdrawn with withdrawal details
 
-- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+- Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
 
-- errors: Throws "Vault: Amount must be positive" if amount is zero
+- Throws "Vault: Amount must be positive" if amount is zero
 
-- errors: Throws "Vault: Insufficient USDC reserves" if not enough USDC available
+- Throws "Vault: Insufficient USDC reserves" if not enough USDC available
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to HedgerPool contract only
+- Restricted to HedgerPool contract only
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -972,21 +972,21 @@ Gets the total USDC available for hedger deposits
 *Returns the current total USDC held in the vault for transparency*
 
 **Notes:**
-- security: No security validations required - view function
+- No security validations required - view function
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public access - anyone can query total USDC held
+- Public access - anyone can query total USDC held
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1006,21 +1006,21 @@ Updates the last valid price timestamp when a valid price is fetched
 *Internal function to track price update timing for monitoring*
 
 **Notes:**
-- security: Updates timestamp only for valid price fetches
+- Updates timestamp only for valid price fetches
 
-- validation: No input validation required
+- No input validation required
 
-- state-changes: Updates lastPriceUpdateTime if price is valid
+- Updates lastPriceUpdateTime if price is valid
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1042,21 +1042,21 @@ Calculates the current protocol collateralization ratio
 *Returns ratio in basis points (e.g., 10500 = 105%)*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: No state changes - view function
+- No state changes - view function
 
-- events: No events emitted - view function
+- No events emitted - view function
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can check collateralization ratio
+- Public - anyone can check collateralization ratio
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1076,21 +1076,21 @@ Checks if minting is allowed based on current collateralization ratio
 *Returns true if collateralization ratio >= minCollateralizationRatioForMinting*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: No state changes - view function
+- No state changes - view function
 
-- events: No events emitted - view function
+- No events emitted - view function
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can check minting status
+- Public - anyone can check minting status
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1110,21 +1110,21 @@ Checks if liquidation should be triggered based on current collateralization rat
 *Returns true if collateralization ratio < criticalCollateralizationRatio*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: No state changes - view function
+- No state changes - view function
 
-- events: No events emitted - view function
+- No events emitted - view function
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can check liquidation status
+- Public - anyone can check liquidation status
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1144,21 +1144,21 @@ Returns the current price protection status
 *Useful for monitoring and debugging price protection*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1186,21 +1186,21 @@ Pauses all vault operations
 - Read functions still active*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1214,21 +1214,21 @@ Unpauses and resumes operations
 *Resumes all vault operations after emergency pause*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1245,21 +1245,21 @@ Recovers tokens accidentally sent to the vault to treasury only
 - Only third-party tokens can be recovered*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1286,21 +1286,21 @@ Recover ETH to treasury address only
 - Uses call() for reliable ETH transfers to any contract*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity

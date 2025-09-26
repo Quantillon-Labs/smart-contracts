@@ -1,5 +1,5 @@
 # CommonValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/486f19261aef0b99ac5330b56bb5ad5bbdda41eb/src/libraries/CommonValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6bcc4db60b18f8d613521e2d032b420a446221cb/src/libraries/CommonValidationLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -13,7 +13,7 @@ Common validation functions used across multiple contracts
 - Maintains same validation logic*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -24,21 +24,21 @@ Validates that an address is not zero
 *Checks if the provided address is the zero address and reverts with appropriate error*
 
 **Notes:**
-- security: Prevents zero address vulnerabilities in critical operations
+- Prevents zero address vulnerabilities in critical operations
 
-- validation: Ensures all addresses are properly initialized
+- Ensures all addresses are properly initialized
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws specific custom errors based on errorType
+- Throws specific custom errors based on errorType
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -59,21 +59,21 @@ Validates that an amount is positive
 *Ensures the amount is greater than zero to prevent zero-value operations*
 
 **Notes:**
-- security: Prevents zero-amount vulnerabilities and invalid operations
+- Prevents zero-amount vulnerabilities and invalid operations
 
-- validation: Ensures amounts are meaningful for business logic
+- Ensures amounts are meaningful for business logic
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidAmount if amount is zero
+- Throws InvalidAmount if amount is zero
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -93,21 +93,21 @@ Validates that an amount is above minimum threshold
 *Ensures the amount meets the minimum requirement for the operation*
 
 **Notes:**
-- security: Prevents operations with insufficient amounts
+- Prevents operations with insufficient amounts
 
-- validation: Ensures amounts meet business requirements
+- Ensures amounts meet business requirements
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InsufficientBalance if amount is below minimum
+- Throws InsufficientBalance if amount is below minimum
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -128,21 +128,21 @@ Validates that an amount is below maximum threshold
 *Ensures the amount does not exceed the maximum allowed limit*
 
 **Notes:**
-- security: Prevents operations that exceed system limits
+- Prevents operations that exceed system limits
 
-- validation: Ensures amounts stay within acceptable bounds
+- Ensures amounts stay within acceptable bounds
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws AboveLimit if amount exceeds maximum
+- Throws AboveLimit if amount exceeds maximum
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -163,21 +163,21 @@ Validates that a percentage is within valid range (0-100%)
 *Ensures percentage values are within acceptable bounds for fees and rates*
 
 **Notes:**
-- security: Prevents invalid percentage values that could break system logic
+- Prevents invalid percentage values that could break system logic
 
-- validation: Ensures percentages are within business rules
+- Ensures percentages are within business rules
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws AboveLimit if percentage exceeds maximum
+- Throws AboveLimit if percentage exceeds maximum
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -198,21 +198,21 @@ Validates that a duration is within valid range
 *Ensures time-based parameters are within acceptable bounds*
 
 **Notes:**
-- security: Prevents invalid time parameters that could affect system stability
+- Prevents invalid time parameters that could affect system stability
 
-- validation: Ensures durations meet business requirements
+- Ensures durations meet business requirements
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws HoldingPeriodNotMet or AboveLimit based on validation failure
+- Throws HoldingPeriodNotMet or AboveLimit based on validation failure
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -234,21 +234,21 @@ Validates that a price is valid (greater than zero)
 *Ensures price values are meaningful and not zero*
 
 **Notes:**
-- security: Prevents zero-price vulnerabilities in financial operations
+- Prevents zero-price vulnerabilities in financial operations
 
-- validation: Ensures prices are valid for calculations
+- Ensures prices are valid for calculations
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidPrice if price is zero
+- Throws InvalidPrice if price is zero
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -268,21 +268,21 @@ Validates that a boolean condition is true
 *Generic condition validator that throws specific errors based on error type*
 
 **Notes:**
-- security: Prevents invalid conditions from proceeding in critical operations
+- Prevents invalid conditions from proceeding in critical operations
 
-- validation: Ensures business logic conditions are met
+- Ensures business logic conditions are met
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws specific custom errors based on errorType
+- Throws specific custom errors based on errorType
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -303,21 +303,21 @@ Validates that a count is within limits
 *Ensures count-based operations don't exceed system limits*
 
 **Notes:**
-- security: Prevents operations that exceed system capacity limits
+- Prevents operations that exceed system capacity limits
 
-- validation: Ensures counts stay within acceptable bounds
+- Ensures counts stay within acceptable bounds
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws TooManyPositions if count exceeds maximum
+- Throws TooManyPositions if count exceeds maximum
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -338,21 +338,21 @@ Validates that a balance is sufficient
 *Ensures there's enough balance to perform the required operation*
 
 **Notes:**
-- security: Prevents operations with insufficient funds
+- Prevents operations with insufficient funds
 
-- validation: Ensures sufficient balance for operations
+- Ensures sufficient balance for operations
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InsufficientBalance if balance is below required amount
+- Throws InsufficientBalance if balance is below required amount
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal library function
+- Internal library function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

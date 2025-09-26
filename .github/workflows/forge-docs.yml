@@ -97,7 +97,7 @@ jobs:
           else
               echo "Contract build failed or timed out, trying alternative approach..."
               # Strategy 6: Try building with no optimization at all
-              if timeout 300 forge build --no-optimize; then
+              if timeout 300 FOUNDRY_COMPILER_OPTIMIZER=false FOUNDRY_COMPILER_VIA_IR=false forge build; then
                   if timeout 300 forge doc --out docs --build; then
                       echo "Documentation generated with no optimization"
                   else

@@ -12,7 +12,7 @@ evm_version = "paris"
 # Optimization
 optimizer = true
 optimizer_runs = 200  # Optimized for deployment size (bytecode reduction)
-via_ir = true  # Enable IR compilation to handle stack overflow issues
+via_ir = true  # Enable IR compilation 
 
 # Gas settings
 gas_price = 0

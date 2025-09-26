@@ -1,5 +1,5 @@
 # HedgerPoolOptimizationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/daf8385bca354b97ae7c7df1c5a1c4bdeadbab9f/src/libraries/HedgerPoolOptimizationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/e9c5d3b52c0c2fb1a1c72e3e33cbf9fa6d077fa8/src/libraries/HedgerPoolOptimizationLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -304,6 +304,47 @@ function validatePositionClosureSafety(uint256 positionMargin, address vaultAddr
 |----|----|-----------|
 |`isValid`|`bool`|True if position can be safely closed|
 
+
+### _getProtocolData
+
+Gets protocol collateralization data
+
+*Internal function to reduce stack depth*
+
+
+```solidity
+function _getProtocolData(address vaultAddress)
+    internal
+    view
+    returns (bool isCollateralized, uint256 currentTotalMargin, uint256 minCollateralizationRatio);
+```
+
+### _hasQEUROMinted
+
+Checks if QEURO has been minted
+
+*Internal function to reduce stack depth*
+
+
+```solidity
+function _hasQEUROMinted(address vaultAddress) internal view returns (bool hasMinted);
+```
+
+### _validateClosureWithUserDeposits
+
+Validates closure with user deposits
+
+*Internal function to reduce stack depth*
+
+
+```solidity
+function _validateClosureWithUserDeposits(
+    address vaultAddress,
+    uint256 positionMargin,
+    uint256 currentTotalMargin,
+    uint256 minCollateralizationRatio
+) internal view returns (bool isValid);
+```
 
 ### removePositionFromArrays
 

@@ -23,6 +23,11 @@ library ErrorLibrary {
     error NotLiquidatorRole();
     error NotYieldManager();
     error NotAdmin();
+    error InvalidAdmin();
+    error InvalidTreasury();
+    error InvalidToken();
+    error InvalidOracle();
+    error InvalidVault();
     
     // Validation Errors
     error InvalidAddress();
@@ -40,6 +45,8 @@ library ErrorLibrary {
     error InvalidPosition();
     error InvalidHedger();
     error InvalidCommitment();
+    error InvalidPrice();
+    error InvalidCondition();
     
     // State Errors
     error AlreadyInitialized();
@@ -48,6 +55,7 @@ library ErrorLibrary {
     error NotActive();
     error AlreadyPaused();
     error NotPaused();
+    error InsufficientCollateralization();
     /// @notice Thrown when minting operations are blocked by the emergency killswitch
     /// @dev Used when mintingKillswitch is enabled to prevent QEURO minting during collateral crises
     error MintingDisabled();

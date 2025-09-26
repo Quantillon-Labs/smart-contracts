@@ -18,6 +18,7 @@ import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
 import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
@@ -308,11 +309,11 @@ contract stQEUROToken is
         address _treasury,
         address _timelock
     ) public initializer {
-        require(admin != address(0), "stQEURO: Admin cannot be zero");
-        require(_qeuro != address(0), "stQEURO: QEURO cannot be zero");
-        require(_yieldShift != address(0), "stQEURO: YieldShift cannot be zero");
-        require(_usdc != address(0), "stQEURO: USDC cannot be zero");
-        require(_treasury != address(0), "stQEURO: Treasury cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
+        CommonValidationLibrary.validateNonZeroAddress(_qeuro, "token");
+        CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
+        CommonValidationLibrary.validateNonZeroAddress(_usdc, "token");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
 
         __ERC20_init("Staked Quantillon Euro", "stQEURO");
         __AccessControl_init();
@@ -329,6 +330,7 @@ contract stQEUROToken is
         yieldShift = IYieldShift(_yieldShift);
         usdc = IERC20(_usdc);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
         // Initialize exchange rate at 1:1
@@ -360,8 +362,8 @@ contract stQEUROToken is
      * @custom:oracle Requires fresh oracle price data
      */
     function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused flashLoanProtection returns (uint256 stQEUROAmount) {
-        require(qeuroAmount > 0, "stQEURO: Amount must be positive");
-        require(qeuro.balanceOf(msg.sender) >= qeuroAmount, "stQEURO: Insufficient QEURO balance");
+        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
+        CommonValidationLibrary.validateSufficientBalance(qeuro.balanceOf(msg.sender), qeuroAmount);
 
         // Update exchange rate before staking
         _updateExchangeRate();
@@ -399,8 +401,8 @@ contract stQEUROToken is
      * @custom:oracle Requires fresh oracle price data
      */
     function unstake(uint256 stQEUROAmount) external nonReentrant whenNotPaused returns (uint256 qeuroAmount) {
-        require(stQEUROAmount > 0, "stQEURO: Amount must be positive");
-        require(balanceOf(msg.sender) >= stQEUROAmount, "stQEURO: Insufficient stQEURO balance");
+        CommonValidationLibrary.validatePositiveAmount(stQEUROAmount);
+        CommonValidationLibrary.validateSufficientBalance(balanceOf(msg.sender), stQEUROAmount);
 
         // Update exchange rate before unstaking
         _updateExchangeRate();
@@ -411,7 +413,7 @@ contract stQEUROToken is
         qeuroAmount = stQEUROAmount.mulDiv(exchangeRate_, 1e18);
 
         // Ensure we have enough QEURO
-        require(totalUnderlying >= qeuroAmount, "stQEURO: Insufficient underlying");
+        CommonValidationLibrary.validateSufficientBalance(totalUnderlying, qeuroAmount);
 
         // Burn stQEURO from user
         _burn(msg.sender, stQEUROAmount);
@@ -451,11 +453,11 @@ contract stQEUROToken is
         
         // Pre-validate amounts and calculate total
         for (uint256 i = 0; i < qeuroAmounts.length; i++) {
-            require(qeuroAmounts[i] > 0, "stQEURO: Amount must be positive");
+            CommonValidationLibrary.validatePositiveAmount(qeuroAmounts[i]);
             totalQeuroAmount += qeuroAmounts[i];
         }
         
-        require(qeuro.balanceOf(msg.sender) >= totalQeuroAmount, "stQEURO: Insufficient QEURO balance");
+        CommonValidationLibrary.validateSufficientBalance(qeuro.balanceOf(msg.sender), totalQeuroAmount);
 
         // Update exchange rate before staking (once for the batch)
         _updateExchangeRate();
@@ -513,11 +515,11 @@ contract stQEUROToken is
         
         // Pre-validate amounts and calculate totals
         for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
-            require(stQEUROAmounts[i] > 0, "stQEURO: Amount must be positive");
+            CommonValidationLibrary.validatePositiveAmount(stQEUROAmounts[i]);
             totalStQEUROAmount += stQEUROAmounts[i];
         }
         
-        require(balanceOf(msg.sender) >= totalStQEUROAmount, "stQEURO: Insufficient stQEURO balance");
+        CommonValidationLibrary.validateSufficientBalance(balanceOf(msg.sender), totalStQEUROAmount);
 
         // Update exchange rate before unstaking (once for the batch)
         _updateExchangeRate();
@@ -531,7 +533,7 @@ contract stQEUROToken is
         }
 
         // Ensure we have enough QEURO
-        require(totalUnderlying >= totalQeuroAmount, "stQEURO: Insufficient underlying");
+        CommonValidationLibrary.validateSufficientBalance(totalUnderlying, totalQeuroAmount);
 
 
         address unstaker = msg.sender;
@@ -583,8 +585,8 @@ contract stQEUROToken is
         
         // Pre-validate recipients and amounts
         for (uint256 i = 0; i < length;) {
-            require(recipients[i] != address(0), "stQEURO: Cannot transfer to zero address");
-            require(amounts[i] > 0, "stQEURO: Amount must be positive");
+            CommonValidationLibrary.validateNonZeroAddress(recipients[i], "recipient");
+            CommonValidationLibrary.validatePositiveAmount(amounts[i]);
             
             unchecked { ++i; }
         }
@@ -617,8 +619,8 @@ contract stQEUROToken is
      * @custom:oracle Requires fresh oracle price data
      */
     function distributeYield(uint256 yieldAmount) external onlyRole(YIELD_MANAGER_ROLE) {
-        require(yieldAmount > 0, "stQEURO: Yield amount must be positive");
-        require(totalSupply() > 0, "stQEURO: No stQEURO supply");
+        CommonValidationLibrary.validatePositiveAmount(yieldAmount);
+        CommonValidationLibrary.validatePositiveAmount(totalSupply());
 
         // Transfer USDC yield from sender
         usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
@@ -857,8 +859,8 @@ contract stQEUROToken is
         uint256 _minYieldThreshold,
         uint256 _maxUpdateFrequency
     ) external onlyRole(GOVERNANCE_ROLE) {
-        require(_yieldFee <= 2000, "stQEURO: Yield fee too high"); // Max 20%
-        require(_maxUpdateFrequency <= 24 hours, "stQEURO: Update frequency too long");
+        CommonValidationLibrary.validatePercentage(_yieldFee, 2000); // Max 20%
+        CommonValidationLibrary.validateMaxAmount(_maxUpdateFrequency, 24 hours);
 
         yieldFee = _yieldFee;
         minYieldThreshold = _minYieldThreshold;
@@ -881,7 +883,7 @@ contract stQEUROToken is
      * @custom:oracle Requires fresh oracle price data
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
-        require(_treasury != address(0), "stQEURO: Treasury cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
     }
 

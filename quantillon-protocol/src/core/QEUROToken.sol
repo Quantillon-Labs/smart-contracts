@@ -27,6 +27,7 @@ import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
 import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {TokenLibrary} from "../libraries/TokenLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
@@ -367,7 +368,7 @@ contract QEUROToken is
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
         ValidationLibrary.validateTreasuryAddress(_treasury);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
     }
 
@@ -1545,7 +1546,7 @@ contract QEUROToken is
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

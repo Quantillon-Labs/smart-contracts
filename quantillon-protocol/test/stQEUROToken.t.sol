@@ -279,7 +279,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("stQEURO: Admin cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAdmin.selector);
         new ERC1967Proxy(address(testImplementation), initData1);
         
         // Test with zero QEURO
@@ -293,7 +293,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("stQEURO: QEURO cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData2);
         
         // Test with zero YieldShift
@@ -307,7 +307,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("stQEURO: YieldShift cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData3);
         
         // Test with zero USDC
@@ -321,7 +321,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("stQEURO: USDC cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData4);
         
         // Test with zero treasury
@@ -335,7 +335,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert("stQEURO: Treasury cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidTreasury.selector);
         new ERC1967Proxy(address(testImplementation), initData5);
     }
     
@@ -407,7 +407,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Staking_StakeZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert("stQEURO: Amount must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         stQEURO.stake(0);
     }
     
@@ -427,7 +427,7 @@ contract stQEUROTokenTestSuite is Test {
         uint256 tooMuch = INITIAL_QEURO_AMOUNT + 1;
         
         vm.prank(user1);
-        vm.expectRevert("stQEURO: Insufficient QEURO balance");
+        vm.expectRevert(ErrorLibrary.InsufficientBalance.selector);
         stQEURO.stake(tooMuch);
     }
     
@@ -797,7 +797,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Unstaking_UnstakeZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert("stQEURO: Amount must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         stQEURO.unstake(0);
     }
     
@@ -817,7 +817,7 @@ contract stQEUROTokenTestSuite is Test {
         uint256 tooMuch = STAKE_AMOUNT + 1;
         
         vm.prank(user1);
-        vm.expectRevert("stQEURO: Insufficient stQEURO balance");
+        vm.expectRevert(ErrorLibrary.InsufficientBalance.selector);
         stQEURO.unstake(tooMuch);
     }
     
@@ -930,7 +930,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Yield_DistributeZeroYield_Revert() public {
         vm.prank(yieldManager);
-        vm.expectRevert("stQEURO: Yield amount must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         stQEURO.distributeYield(0);
     }
     
@@ -948,7 +948,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Yield_DistributeYieldNoSupply_Revert() public {
         vm.prank(yieldManager);
-        vm.expectRevert("stQEURO: No stQEURO supply");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         stQEURO.distributeYield(YIELD_AMOUNT);
     }
     
@@ -1510,12 +1510,12 @@ contract stQEUROTokenTestSuite is Test {
     function test_Admin_UpdateYieldParametersInvalidValues_Revert() public {
         // Test yield fee too high
         vm.prank(governance);
-        vm.expectRevert("stQEURO: Yield fee too high");
+        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
         stQEURO.updateYieldParameters(2500, 500e6, 2 hours); // 25% fee
         
         // Test update frequency too long
         vm.prank(governance);
-        vm.expectRevert("stQEURO: Update frequency too long");
+        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
         stQEURO.updateYieldParameters(500, 500e6, 25 hours); // 25 hours
     }
     
@@ -1554,7 +1554,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Admin_UpdateTreasuryToZero_Revert() public {
         vm.prank(governance);
-        vm.expectRevert("stQEURO: Treasury cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidTreasury.selector);
         stQEURO.updateTreasury(address(0));
     }
     

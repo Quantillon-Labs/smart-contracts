@@ -1,5 +1,5 @@
 # MockChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/c3c08d7ad21ffdd5c00645d8840af657fea66c21/src/mocks/MockChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/dd3e083d5d3a3d1f4c483da8f76db5c62d86f916/src/mocks/MockChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -191,7 +191,7 @@ Internal function to calculate EUR/USD price
 
 
 ```solidity
-function _calculateEurUsdPrice() internal view returns (uint256);
+function _calculateEurUsdPrice() internal pure returns (uint256);
 ```
 
 ### _calculateUsdcUsdPrice
@@ -202,7 +202,7 @@ Internal function to calculate USDC/USD price
 
 
 ```solidity
-function _calculateUsdcUsdPrice() internal view returns (uint256);
+function _calculateUsdcUsdPrice() internal pure returns (uint256);
 ```
 
 ### _scalePrice
@@ -322,7 +322,7 @@ Mock implementation of getOracleHealth
 
 
 ```solidity
-function getOracleHealth() external override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
+function getOracleHealth() external pure override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
 ```
 
 ### getEurUsdDetails
@@ -333,6 +333,7 @@ Mock implementation of getEurUsdDetails
 ```solidity
 function getEurUsdDetails()
     external
+    view
     override
     returns (uint256 currentPrice, uint256 lastValidPrice, uint256 lastUpdate, bool isStale, bool withinBounds);
 ```

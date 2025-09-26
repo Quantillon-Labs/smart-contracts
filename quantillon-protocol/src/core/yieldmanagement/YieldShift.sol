@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity ^0.8.24;
 
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -18,6 +18,10 @@ import {AccessControlLibrary} from "../../libraries/AccessControlLibrary.sol";
 import {ValidationLibrary} from "../../libraries/ValidationLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../../libraries/TreasuryRecoveryLibrary.sol";
 import {TimeProvider} from "../../libraries/TimeProviderLibrary.sol";
+import {YieldShiftCalculationLibrary} from "../../libraries/YieldShiftCalculationLibrary.sol";
+import {YieldShiftOptimizationLibrary} from "../../libraries/YieldShiftOptimizationLibrary.sol";
+import {AdminFunctionsLibrary} from "../../libraries/AdminFunctionsLibrary.sol";
+import {CommonValidationLibrary} from "../../libraries/CommonValidationLibrary.sol";
 import {SecureUpgradeable} from "../SecureUpgradeable.sol";
 
 /**
@@ -271,7 +275,7 @@ contract YieldShift is
         aaveVault = IAaveVault(_aaveVault);
         stQEURO = IstQEURO(_stQEURO);
         ValidationLibrary.validateTreasuryAddress(_treasury);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
         baseYieldShift = 5000;
@@ -491,19 +495,9 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies
      */
     function _calculateOptimalYieldShift(uint256 poolRatio) internal view returns (uint256) {
-        if (_isWithinTolerance(poolRatio, targetPoolRatio, 1000)) {
-            return baseYieldShift;
-        }
-        
-        if (poolRatio > targetPoolRatio) {
-            uint256 excess = poolRatio - targetPoolRatio;
-            uint256 adjustment = excess.mulDiv(maxYieldShift - baseYieldShift, targetPoolRatio);
-            return VaultMath.min(baseYieldShift - adjustment, maxYieldShift);
-        } else {
-            uint256 deficit = targetPoolRatio - poolRatio;
-            uint256 adjustment = deficit.mulDiv(maxYieldShift - baseYieldShift, targetPoolRatio);
-            return VaultMath.min(baseYieldShift + adjustment, maxYieldShift);
-        }
+        return YieldShiftCalculationLibrary.calculateOptimalYieldShift(
+            poolRatio, baseYieldShift, maxYieldShift, targetPoolRatio
+        );
     }
 
     /**
@@ -521,19 +515,9 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies
      */
     function _applyGradualAdjustment(uint256 targetShift) internal view returns (uint256) {
-        if (targetShift == currentYieldShift) {
-            return currentYieldShift;
-        }
-        
-        uint256 maxAdjustment = adjustmentSpeed;
-        
-        if (targetShift > currentYieldShift) {
-            uint256 increase = VaultMath.min(targetShift - currentYieldShift, maxAdjustment);
-            return currentYieldShift + increase;
-        } else {
-            uint256 decrease = VaultMath.min(currentYieldShift - targetShift, maxAdjustment);
-            return currentYieldShift - decrease;
-        }
+        return YieldShiftCalculationLibrary.applyGradualAdjustment(
+            currentYieldShift, targetShift, adjustmentSpeed
+        );
     }
 
     /**
@@ -556,14 +540,10 @@ contract YieldShift is
         uint256 hedgerPoolSize,
         uint256 poolRatio
     ) {
-        userPoolSize = userPool.getTotalDeposits();
-        hedgerPoolSize = hedgerPool.getTotalHedgeExposure();
-        
-        if (hedgerPoolSize == 0) {
-            poolRatio = type(uint256).max;
-        } else {
-            poolRatio = userPoolSize.mulDiv(10000, hedgerPoolSize);
-        }
+        return YieldShiftOptimizationLibrary.getCurrentPoolMetrics(
+            address(userPool),
+            address(hedgerPool)
+        );
     }
     
     /**
@@ -586,73 +566,14 @@ contract YieldShift is
         uint256 hedgerPoolSize,
         uint256 poolRatio
     ) {
-        // Get current pool sizes
-        uint256 currentUserPoolSize = userPool.getTotalDeposits();
-        uint256 currentHedgerPoolSize = hedgerPool.getTotalHedgeExposure();
-        
-        // Calculate eligible pool sizes based on holding period
-        userPoolSize = _calculateEligibleUserPoolSize(currentUserPoolSize);
-        hedgerPoolSize = _calculateEligibleHedgerPoolSize(currentHedgerPoolSize);
-        
-        if (hedgerPoolSize == 0) {
-            poolRatio = type(uint256).max;
-        } else {
-            poolRatio = userPoolSize.mulDiv(10000, hedgerPoolSize);
-        }
+        return YieldShiftOptimizationLibrary.getEligiblePoolMetrics(
+            address(userPool),
+            address(hedgerPool),
+            TIME_PROVIDER.currentTime(),
+            lastUpdateTime
+        );
     }
     
-    /**
-     * @notice Calculate eligible user pool size excluding recent deposits
-     * @dev Only counts deposits older than MIN_HOLDING_PERIOD
-     * @param totalUserPoolSize Current total user pool size
-     * @return eligibleSize Eligible pool size for yield calculations
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function _calculateEligibleUserPoolSize(uint256 totalUserPoolSize) internal view returns (uint256 eligibleSize) {
-        // For now, we'll use a conservative approach by applying a holding period discount
-        // In a full implementation, this would iterate through individual user deposits
-        // and only count those meeting the holding period requirement
-        
-        // This is a simplified approach - in production, you'd want to track individual deposits
-        uint256 holdingPeriodDiscount = _calculateHoldingPeriodDiscount();
-        eligibleSize = totalUserPoolSize.mulDiv(holdingPeriodDiscount, 10000);
-        
-        // Ensure we don't return more than the total pool size
-        if (eligibleSize > totalUserPoolSize) {
-            eligibleSize = totalUserPoolSize;
-        }
-    }
-    
-    /**
-     * @notice Calculate eligible hedger pool size excluding recent deposits
-     * @dev Only counts deposits older than MIN_HOLDING_PERIOD
-     * @param totalHedgerPoolSize Current total hedger pool size
-     * @return eligibleSize Eligible pool size for yield calculations
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function _calculateEligibleHedgerPoolSize(uint256 totalHedgerPoolSize) internal view returns (uint256 eligibleSize) {
-        // Similar approach to user pool size
-        uint256 holdingPeriodDiscount = _calculateHoldingPeriodDiscount();
-        eligibleSize = totalHedgerPoolSize.mulDiv(holdingPeriodDiscount, 10000);
-        
-        if (eligibleSize > totalHedgerPoolSize) {
-            eligibleSize = totalHedgerPoolSize;
-        }
-    }
     
     /**
      * @notice Calculate holding period discount based on recent deposit activity
@@ -668,25 +589,10 @@ contract YieldShift is
      * @custom:oracle Requires fresh oracle price data
      */
     function _calculateHoldingPeriodDiscount() internal view returns (uint256 discountBps) {
-        // Base discount: assume 80% of deposits meet holding period (conservative)
-        uint256 baseDiscount = 8000; // 80%
-        
-        // Adjust based on time since last major deposit activity
-        uint256 timeSinceLastUpdate = TIME_PROVIDER.currentTime() - lastUpdateTime;
-        
-        if (timeSinceLastUpdate < MIN_HOLDING_PERIOD) {
-            // Recent activity - apply stricter discount
-            uint256 timeFactor = timeSinceLastUpdate.mulDiv(2000, MIN_HOLDING_PERIOD); // 0-20% additional discount
-            discountBps = baseDiscount - timeFactor;
-        } else {
-            // Stable period - use base discount
-            discountBps = baseDiscount;
-        }
-        
-        // Ensure discount is reasonable (minimum 50%)
-        if (discountBps < 5000) {
-            discountBps = 5000;
-        }
+        return YieldShiftOptimizationLibrary.calculateHoldingPeriodDiscount(
+            TIME_PROVIDER.currentTime(),
+            lastUpdateTime
+        );
     }
 
     /**
@@ -710,10 +616,7 @@ contract YieldShift is
         pure 
         returns (bool) 
     {
-        if (value == target) return true;
-        
-        uint256 tolerance = target.mulDiv(toleranceBps, 10000);
-        return value >= target - tolerance && value <= target + tolerance;
+        return YieldShiftOptimizationLibrary.isWithinTolerance(value, target, toleranceBps);
     }
 
     /**
@@ -1082,8 +985,11 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies
      */
     function _calculateUserAllocation() internal view returns (uint256) {
-        uint256 totalAvailable = userYieldPool + hedgerYieldPool;
-        return totalAvailable.mulDiv(currentYieldShift, 10000);
+        return YieldShiftOptimizationLibrary.calculateUserAllocation(
+            userYieldPool,
+            hedgerYieldPool,
+            currentYieldShift
+        );
     }
 
     /**
@@ -1100,8 +1006,11 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies
      */
     function _calculateHedgerAllocation() internal view returns (uint256) {
-        uint256 totalAvailable = userYieldPool + hedgerYieldPool;
-        return totalAvailable.mulDiv(10000 - currentYieldShift, 10000);
+        return YieldShiftOptimizationLibrary.calculateHedgerAllocation(
+            userYieldPool,
+            hedgerYieldPool,
+            currentYieldShift
+        );
     }
 
     /**
@@ -1590,9 +1499,7 @@ contract YieldShift is
       * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external {
-        AccessControlLibrary.onlyAdmin(this);
-        // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
     }
     
     /**
@@ -1617,11 +1524,10 @@ contract YieldShift is
     ) external {
         AccessControlLibrary.onlyGovernance(this);
         
-        require(_minHoldingPeriod >= 1 days, "Holding period too short");
-        require(_minHoldingPeriod <= 30 days, "Holding period too long");
-        require(_baseDiscount >= 5000, "Base discount too low (min 50%)");
-        require(_baseDiscount <= 9500, "Base discount too high (max 95%)");
-        require(_maxTimeFactor <= 5000, "Time factor too high (max 50%)");
+        CommonValidationLibrary.validateDuration(_minHoldingPeriod, 1 days, 30 days);
+        CommonValidationLibrary.validatePercentage(_baseDiscount, 9500); // Max 95%
+        CommonValidationLibrary.validateMinAmount(_baseDiscount, 5000); // Min 50%
+        CommonValidationLibrary.validatePercentage(_maxTimeFactor, 5000); // Max 50%
         
         // Note: MIN_HOLDING_PERIOD is a constant, so this function would require
         // converting it to a state variable for full implementation

@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/c3c08d7ad21ffdd5c00645d8840af657fea66c21/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/dd3e083d5d3a3d1f4c483da8f76db5c62d86f916/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -758,6 +758,7 @@ Retrieves detailed information about a specific hedger position
 ```solidity
 function getHedgerPosition(address hedger, uint256 positionId)
     external
+    view
     returns (
         uint256 positionSize,
         uint256 margin,
@@ -852,7 +853,7 @@ Checks if a hedger position is eligible for liquidation
 
 
 ```solidity
-function isHedgerLiquidatable(address hedger, uint256 positionId) external returns (bool);
+function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool);
 ```
 **Parameters**
 
@@ -1673,7 +1674,7 @@ Gets a valid EUR/USD price from the oracle
 
 
 ```solidity
-function _getValidOraclePrice() internal returns (uint256);
+function _getValidOraclePrice() internal view returns (uint256);
 ```
 **Returns**
 

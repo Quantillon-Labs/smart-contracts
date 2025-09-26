@@ -793,7 +793,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 newMaxPrice = 150 * 1e16;
         
         vm.prank(oracleManager);
-        vm.expectRevert("Oracle: Min price must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         oracle.updatePriceBounds(newMinPrice, newMaxPrice);
     }
     
@@ -814,7 +814,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 newMaxPrice = 100 * 1e16;
         
         vm.prank(oracleManager);
-        vm.expectRevert("Oracle: Max price must be greater than min");
+        vm.expectRevert(ErrorLibrary.InvalidCondition.selector);
         oracle.updatePriceBounds(newMinPrice, newMaxPrice);
     }
     
@@ -835,7 +835,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 newMaxPrice = 15 * 1e18; // 15 USD (too high)
         
         vm.prank(oracleManager);
-        vm.expectRevert("Oracle: Max price too high");
+        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
         oracle.updatePriceBounds(newMinPrice, newMaxPrice);
     }
     
@@ -877,7 +877,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 newTolerance = 1500; // 15% (too high)
         
         vm.prank(oracleManager);
-        vm.expectRevert("Oracle: Tolerance too high");
+        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
         oracle.updateUsdcTolerance(newTolerance);
     }
     
@@ -921,7 +921,7 @@ contract ChainlinkOracleTestSuite is Test {
         MockAggregatorV3 newUsdcUsdFeed = new MockAggregatorV3(8);
         
         vm.prank(oracleManager);
-        vm.expectRevert("Oracle: EUR/USD feed cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidOracle.selector);
         oracle.updatePriceFeeds(address(0), address(newUsdcUsdFeed));
     }
 

@@ -23,6 +23,9 @@ import {TokenLibrary} from "../libraries/TokenLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
+import {QTITokenGovernanceLibrary} from "../libraries/QTITokenGovernanceLibrary.sol";
+import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
+import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 
 /**
  * @title QTIToken
@@ -388,7 +391,7 @@ contract QTIToken is
         _grantRole(EMERGENCY_ROLE, admin);
 
         ValidationLibrary.validateTreasuryAddress(_treasury);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         
         // Initial governance parameters
@@ -597,18 +600,7 @@ contract QTIToken is
         uint256[] calldata amounts, 
         uint256[] calldata lockTimes
     ) internal pure returns (uint256 totalAmount) {
-        uint256 minLockTime = MIN_LOCK_TIME;
-        uint256 maxLockTime = MAX_LOCK_TIME;
-        
-        for (uint256 i = 0; i < amounts.length; i++) {
-            ValidationLibrary.validatePositiveAmount(amounts[i]);
-            if (lockTimes[i] < minLockTime) revert ErrorLibrary.LockTimeTooShort();
-            if (lockTimes[i] > maxLockTime) revert ErrorLibrary.LockTimeTooLong();
-            if (amounts[i] > type(uint96).max) revert ErrorLibrary.InvalidAmount();
-            if (lockTimes[i] > type(uint32).max) revert ErrorLibrary.InvalidTime();
-            
-            totalAmount += amounts[i];
-        }
+        return QTITokenGovernanceLibrary.validateAndCalculateTotalAmount(amounts, lockTimes);
     }
     
     /**
@@ -685,14 +677,7 @@ contract QTIToken is
         uint256 lockTime,
         uint256 existingUnlockTime
     ) internal pure returns (uint256 newUnlockTime) {
-        newUnlockTime = currentTimestamp + lockTime;
-        if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
-        
-        // If already locked, extend the lock time
-        if (existingUnlockTime > currentTimestamp) {
-            newUnlockTime = existingUnlockTime + lockTime;
-            if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
-        }
+        return QTITokenGovernanceLibrary.calculateUnlockTime(currentTimestamp, lockTime, existingUnlockTime);
     }
     
     /**
@@ -711,10 +696,7 @@ contract QTIToken is
      * @custom:oracle No oracle dependencies
      */
     function _calculateVotingPower(uint256 amount, uint256 lockTime) internal pure returns (uint256) {
-        uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
-        uint256 newVotingPower = amount * multiplier / 1e18;
-        if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
-        return newVotingPower;
+        return QTITokenGovernanceLibrary.calculateVotingPower(amount, lockTime);
     }
     
     /**
@@ -902,29 +884,20 @@ contract QTIToken is
     function getVotingPower(address user) external view returns (uint256 votingPower) {
         LockInfo storage lockInfo = locks[user];
         
-        // If no lock or lock has expired, return 0
-        if (lockInfo.unlockTime <= TIME_PROVIDER.currentTime() || lockInfo.amount == 0) {
-            return 0;
-        }
+        // Use library for voting power calculation
+        QTITokenGovernanceLibrary.LockInfo memory lockInfoMemory = QTITokenGovernanceLibrary.LockInfo({
+            amount: lockInfo.amount,
+            unlockTime: lockInfo.unlockTime,
+            votingPower: lockInfo.votingPower,
+            lastClaimTime: lockInfo.lastClaimTime,
+            initialVotingPower: lockInfo.initialVotingPower,
+            lockTime: lockInfo.lockTime
+        });
         
-        // If lock hasn't started yet, return initial voting power
-        if (lockInfo.unlockTime <= lockInfo.lockTime) {
-            return lockInfo.initialVotingPower;
-        }
-        
-        // Calculate remaining time - OPTIMIZED: Use unchecked for safe arithmetic
-        unchecked {
-            uint256 remainingTime = lockInfo.unlockTime - TIME_PROVIDER.currentTime();
-            uint256 originalLockTime = lockInfo.lockTime;
-            
-            // Voting power decreases linearly to zero
-            // Use the smaller of remaining time or original lock time to prevent overflow
-            if (remainingTime >= originalLockTime) {
-                return lockInfo.initialVotingPower;
-            }
-            
-            return lockInfo.initialVotingPower * remainingTime / originalLockTime;
-        }
+        return QTITokenGovernanceLibrary.calculateCurrentVotingPower(
+            lockInfoMemory,
+            TIME_PROVIDER.currentTime()
+        );
     }
 
     /**
@@ -1358,7 +1331,7 @@ contract QTIToken is
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
     }
 
@@ -1379,16 +1352,12 @@ contract QTIToken is
       * @custom:oracle Requires fresh oracle price data
      */
     function updateDecentralizationLevel() external onlyRole(GOVERNANCE_ROLE) {
-        uint256 timeElapsed = TIME_PROVIDER.currentTime() - decentralizationStartTime;
-        
-
-        if (timeElapsed > MAX_TIME_ELAPSED) {
-            timeElapsed = MAX_TIME_ELAPSED;
-        }
-        
-        uint256 newLevel = timeElapsed * 10000 / decentralizationDuration;
-        
-        if (newLevel > 10000) newLevel = 10000;
+        uint256 newLevel = QTITokenGovernanceLibrary.calculateDecentralizationLevel(
+            TIME_PROVIDER.currentTime(),
+            decentralizationStartTime,
+            decentralizationDuration,
+            MAX_TIME_ELAPSED
+        );
         
         currentDecentralizationLevel = newLevel;
         emit DecentralizationLevelUpdated(newLevel);
@@ -1413,10 +1382,7 @@ contract QTIToken is
      * @custom:oracle No oracle dependencies
      */
     function _calculateVotingPowerMultiplier(uint256 lockTime) internal pure returns (uint256) {
-        // Linear multiplier from 1x to 4x based on lock time
-        // 1x for MIN_LOCK_TIME, 4x for MAX_LOCK_TIME
-        uint256 multiplier = 1e18 + (lockTime - MIN_LOCK_TIME) * 3e18 / (MAX_LOCK_TIME - MIN_LOCK_TIME);
-        return multiplier > MAX_VE_QTI_MULTIPLIER * 1e18 ? MAX_VE_QTI_MULTIPLIER * 1e18 : multiplier;
+        return QTITokenGovernanceLibrary.calculateVotingPowerMultiplier(lockTime);
     }
 
     /**
@@ -1436,22 +1402,20 @@ contract QTIToken is
     function _updateVotingPower(address user) internal returns (uint256 newVotingPower) {
         LockInfo storage lockInfo = locks[user];
         
-        // If no lock or lock has expired, voting power is 0
-        if (lockInfo.unlockTime <= TIME_PROVIDER.currentTime() || lockInfo.amount == 0) {
-            newVotingPower = 0;
-        } else {
-            // Calculate current voting power with linear decay - OPTIMIZED: Use unchecked for safe arithmetic
-            unchecked {
-                uint256 remainingTime = lockInfo.unlockTime - TIME_PROVIDER.currentTime();
-                uint256 originalLockTime = lockInfo.lockTime;
-                
-                if (remainingTime >= originalLockTime) {
-                    newVotingPower = lockInfo.initialVotingPower;
-                } else {
-                    newVotingPower = lockInfo.initialVotingPower * remainingTime / originalLockTime;
-                }
-            }
-        }
+        // Use library for voting power calculation
+        QTITokenGovernanceLibrary.LockInfo memory lockInfoMemory = QTITokenGovernanceLibrary.LockInfo({
+            amount: lockInfo.amount,
+            unlockTime: lockInfo.unlockTime,
+            votingPower: lockInfo.votingPower,
+            lastClaimTime: lockInfo.lastClaimTime,
+            initialVotingPower: lockInfo.initialVotingPower,
+            lockTime: lockInfo.lockTime
+        });
+        
+        newVotingPower = QTITokenGovernanceLibrary.calculateCurrentVotingPower(
+            lockInfoMemory,
+            TIME_PROVIDER.currentTime()
+        );
         
         // Update stored voting power with overflow check
         uint256 oldVotingPower = lockInfo.votingPower;
@@ -1561,10 +1525,7 @@ contract QTIToken is
       * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-
-        emit ETHRecovered(treasury, address(this).balance);
-        // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
     }
 
     // =============================================================================

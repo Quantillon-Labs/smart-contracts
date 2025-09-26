@@ -13,6 +13,7 @@ import {VaultMath} from "../../libraries/VaultMath.sol";
 import {ErrorLibrary} from "../../libraries/ErrorLibrary.sol";
 import {AccessControlLibrary} from "../../libraries/AccessControlLibrary.sol";
 import {ValidationLibrary} from "../../libraries/ValidationLibrary.sol";
+import {CommonValidationLibrary} from "../../libraries/CommonValidationLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../../libraries/TreasuryRecoveryLibrary.sol";
 import {SecureUpgradeable} from "../SecureUpgradeable.sol";
 
@@ -321,7 +322,7 @@ contract AaveVault is
         rewardsController = IRewardsController(_rewardsController);
         yieldShift = IYieldShift(_yieldShift);
         ValidationLibrary.validateTreasuryAddress(_treasury);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
         ReserveData memory reserveData = aavePool.getReserveData(address(usdc));

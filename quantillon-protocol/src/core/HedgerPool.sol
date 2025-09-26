@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity ^0.8.24;
 
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -16,9 +16,11 @@ import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
 import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
-import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
+import {HedgerPoolOptimizationLibrary} from "../libraries/HedgerPoolOptimizationLibrary.sol";
+import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
+import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {HedgerPoolLogicLibrary} from "../libraries/HedgerPoolLogicLibrary.sol";
 
 /**
@@ -228,7 +230,7 @@ contract HedgerPool is
         vault = IQuantillonVault(_vault);
         
         // Additional zero-check for treasury assignment
-        require(_treasury != address(0), "HedgerPool: Treasury cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
         coreParams.minMarginRatio = 500;  // 5% minimum margin ratio (20x max leverage)
@@ -282,14 +284,13 @@ contract HedgerPool is
             revert ErrorLibrary.NotWhitelisted();
         }
         
-        // INTERACTIONS - Oracle call at the very beginning
-        uint256 eurUsdPrice = _getValidOraclePrice();
         uint256 currentTime = TIME_PROVIDER.currentTime();
         
-        // Calculate position parameters using oracle price
-        (, uint256 netMargin, uint256 positionSize, uint256 marginRatio) = 
+        // Calculate position parameters using a default price (will be updated with oracle call later)
+        uint256 defaultPrice = 1.08e18; // Default EUR/USD price
+        (uint256 _fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio) = 
             HedgerPoolLogicLibrary.validateAndCalculatePositionParams(
-                usdcAmount, leverage, eurUsdPrice, coreParams.entryFee, coreParams.minMarginRatio, MAX_MARGIN_RATIO, coreParams.maxLeverage,
+                usdcAmount, leverage, defaultPrice, coreParams.entryFee, coreParams.minMarginRatio, MAX_MARGIN_RATIO, coreParams.maxLeverage,
                 MAX_POSITIONS_PER_HEDGER, activePositionCount[msg.sender], MAX_MARGIN,
                 MAX_POSITION_SIZE, MAX_ENTRY_PRICE, MAX_LEVERAGE, currentTime
             );
@@ -305,7 +306,7 @@ contract HedgerPool is
         position.entryTime = uint32(currentTime);
         position.lastUpdateTime = uint32(currentTime);
         position.leverage = uint16(leverage);
-        position.entryPrice = uint96(eurUsdPrice);
+        position.entryPrice = uint96(defaultPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
 
@@ -329,18 +330,25 @@ contract HedgerPool is
         totalMargin += netMargin;
         totalExposure += positionSize;
         
-        // INTERACTIONS - All external calls after state updates
-        usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
-        vault.addHedgerDeposit(usdcAmount);
+        // INTERACTIONS - Oracle call before external calls
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        CommonValidationLibrary.validateCondition(isValid, "oracle");
         
-        // Emit event with actual values after all state updates and external calls
+        // Update position with actual oracle price before external calls
+        position.entryPrice = uint96(eurUsdPrice);
+        
+        // Emit event with actual values before external calls
         emit HedgePositionOpened(
             msg.sender, 
             positionId, 
             _packPositionOpenData(positionSize, netMargin, leverage, eurUsdPrice)
         );
         
-        // Use calculated values to avoid unused variable warnings
+        // INTERACTIONS - All external calls after state updates
+        usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
+        vault.addHedgerDeposit(usdcAmount);
+        
+        // Validate margin ratio meets minimum requirements
         assert(marginRatio >= coreParams.minMarginRatio);
     }
 
@@ -758,6 +766,7 @@ contract HedgerPool is
      */
     function getHedgerPosition(address hedger, uint256 positionId) 
         external 
+        view
         returns (uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 currentPrice, uint256 leverage, uint256 lastUpdateTime) 
     {
         HedgePosition storage position = positions[positionId];
@@ -813,7 +822,7 @@ contract HedgerPool is
      * @custom:access Public (anyone can check liquidation status)
      * @custom:oracle Calls _getValidOraclePrice() for current price comparison
      */
-    function isHedgerLiquidatable(address hedger, uint256 positionId) external returns (bool) {
+    function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool) {
         HedgePosition storage position = positions[positionId];
         if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
         
@@ -1188,8 +1197,7 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     function recoverToken(address token, uint256 amount) external {
-        _validateRole(DEFAULT_ADMIN_ROLE);
-        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
+        AdminFunctionsLibrary.recoverToken(address(this), token, amount, treasury, DEFAULT_ADMIN_ROLE);
     }
 
     /**
@@ -1205,9 +1213,7 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     function recoverETH() external {
-        _validateRole(DEFAULT_ADMIN_ROLE);
-        emit ETHRecovered(treasury, address(this).balance);
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
     }
 
     /**
@@ -1227,7 +1233,7 @@ contract HedgerPool is
         _validateRole(GOVERNANCE_ROLE);
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }
@@ -1360,8 +1366,8 @@ contract HedgerPool is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle Requires fresh oracle price data
      */
-    function _getValidOraclePrice() internal returns (uint256) {
-        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+    function _getValidOraclePrice() internal view returns (uint256) {
+        (uint256 price, bool isValid) = HedgerPoolOptimizationLibrary.getValidOraclePrice(address(oracle));
         if (!isValid) revert ErrorLibrary.InvalidOraclePrice();
         return price;
     }
@@ -1380,17 +1386,7 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     function _validateRole(bytes32 role) internal view {
-        if (role == GOVERNANCE_ROLE) {
-            AccessControlLibrary.onlyGovernance(this);
-        } else if (role == LIQUIDATOR_ROLE) {
-            AccessControlLibrary.onlyLiquidatorRole(this);
-        } else if (role == EMERGENCY_ROLE) {
-            AccessControlLibrary.onlyEmergencyRole(this);
-        } else if (role == DEFAULT_ADMIN_ROLE) {
-            AccessControlLibrary.onlyAdmin(this);
-        } else {
-            revert("Invalid role");
-        }
+        HedgerPoolOptimizationLibrary.validateRole(role, address(this));
     }
 
     /**
@@ -1408,22 +1404,14 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     function _removePositionFromArrays(address hedger, uint256 positionId) internal {
-        if (!hedgerHasPosition[hedger][positionId]) revert ErrorLibrary.PositionNotFound();
-        
-        uint256 index = positionIndex[hedger][positionId];
-        uint256[] storage positionIds = hedgers[hedger].positionIds;
-        uint256 lastIndex = positionIds.length - 1;
-        
-        if (index != lastIndex) {
-            uint256 lastPositionId = positionIds[lastIndex];
-            positionIds[index] = lastPositionId;
-            positionIndex[hedger][lastPositionId] = index;
-        }
-        
-        positionIds.pop();
-        
-        delete positionIndex[hedger][positionId];
-        delete hedgerHasPosition[hedger][positionId];
+        bool success = HedgerPoolOptimizationLibrary.removePositionFromArrays(
+            hedger,
+            positionId,
+            hedgerHasPosition,
+            positionIndex,
+            hedgers[hedger].positionIds
+        );
+        if (!success) revert ErrorLibrary.PositionNotFound();
     }
     
     /**
@@ -1449,12 +1437,7 @@ contract HedgerPool is
         uint256 leverage,
         uint256 entryPrice
     ) internal pure returns (bytes32) {
-        return bytes32(
-            (uint256(uint64(positionSize)) << 192) |
-            (uint256(uint64(margin)) << 128) |
-            (uint256(uint32(leverage)) << 96) |
-            uint256(uint96(entryPrice))
-        );
+        return HedgerPoolOptimizationLibrary.packPositionOpenData(positionSize, margin, leverage, entryPrice);
     }
     
     /**
@@ -1478,14 +1461,7 @@ contract HedgerPool is
         int256 pnl,
         uint256 timestamp
     ) internal pure returns (bytes32) {
-        uint256 absPnl = uint256(pnl < 0 ? -pnl : pnl);
-        uint256 signFlag = pnl < 0 ? (1 << 63) : 0;
-        return bytes32(
-            (uint256(uint96(exitPrice)) << 160) |
-            (uint256(uint96(absPnl)) << 64) |
-            uint256(uint64(timestamp)) |
-            signFlag
-        );
+        return HedgerPoolOptimizationLibrary.packPositionCloseData(exitPrice, pnl, timestamp);
     }
     
     /**
@@ -1509,11 +1485,7 @@ contract HedgerPool is
         uint256 newMarginRatio,
         bool isAdded
     ) internal pure returns (bytes32) {
-        return bytes32(
-            (uint256(uint128(marginAmount)) << 128) |
-            (uint256(uint128(newMarginRatio)) << 1) |
-            (isAdded ? 1 : 0)
-        );
+        return HedgerPoolOptimizationLibrary.packMarginData(marginAmount, newMarginRatio, isAdded);
     }
     
     /**
@@ -1535,10 +1507,7 @@ contract HedgerPool is
         uint256 liquidationReward,
         uint256 remainingMargin
     ) internal pure returns (bytes32) {
-        return bytes32(
-            (uint256(uint128(liquidationReward)) << 128) |
-            uint256(uint128(remainingMargin))
-        );
+        return HedgerPoolOptimizationLibrary.packLiquidationData(liquidationReward, remainingMargin);
     }
     
     /**
@@ -1562,11 +1531,7 @@ contract HedgerPool is
         uint256 yieldShiftRewards,
         uint256 totalRewards
     ) internal pure returns (bytes32) {
-        return bytes32(
-            (uint256(uint128(interestDifferential)) << 128) |
-            (uint256(uint64(yieldShiftRewards)) << 64) |
-            uint256(uint64(totalRewards))
-        );
+        return HedgerPoolOptimizationLibrary.packRewardData(interestDifferential, yieldShiftRewards, totalRewards);
     }
 
     /**
@@ -1583,66 +1548,8 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies
      */
     function _validatePositionClosureSafety(uint256 /* positionId */, uint256 positionMargin) internal view {
-        // Skip validation if vault is not set (for backward compatibility)
-        if (address(vault) == address(0)) {
-            return;
-        }
-
-        // Get current protocol collateralization status
-        (bool isCollateralized, uint256 currentTotalMargin) = vault.isProtocolCollateralized();
-        
-        // Additional safety check: ensure protocol is currently collateralized
-        require(isCollateralized, "HedgerPool: Protocol not collateralized");
-        
-        // Get minimum collateralization ratio for minting
-        uint256 minCollateralizationRatio = vault.minCollateralizationRatioForMinting();
-        
-        // Get QEURO total supply to check if any QEURO has been minted
-        address qeuroAddress = vault.qeuro();
-        uint256 totalQEURO = 0;
-        if (qeuroAddress != address(0)) {
-            // Call totalSupply on the QEURO contract
-            (bool success, bytes memory data) = qeuroAddress.staticcall(
-                abi.encodeWithSignature("totalSupply()")
-            );
-            if (success && data.length >= 32) {
-                totalQEURO = abi.decode(data, (uint256));
-            }
-        }
-
-        // If no QEURO has been minted, position can always be closed
-        if (totalQEURO == 0) {
-            return;
-        }
-
-        // Get UserPool total deposits
-        address userPoolAddress = vault.userPool();
-        uint256 userDeposits = 0;
-        if (userPoolAddress != address(0)) {
-            // Call totalDeposits on the UserPool contract
-            (bool success, bytes memory data) = userPoolAddress.staticcall(
-                abi.encodeWithSignature("totalDeposits()")
-            );
-            if (success && data.length >= 32) {
-                userDeposits = abi.decode(data, (uint256));
-            }
-        }
-        
-        // Calculate what the collateralization ratio would be after closing this position
-        uint256 remainingHedgerMargin = currentTotalMargin - positionMargin;
-        
-        // If no user deposits, hedger margin is the only collateral
-        if (userDeposits == 0) {
-            // If no QEURO has been minted and no user deposits, position can always be closed
-            // because there's nothing to hedge
-            return;
-        }
-
-        // Calculate future collateralization ratio
-        uint256 futureRatio = ((userDeposits + remainingHedgerMargin) * 10000) / userDeposits;
-
-        // Check if closing would make the protocol undercollateralized for minting
-        if (futureRatio < minCollateralizationRatio) {
+        bool isValid = HedgerPoolOptimizationLibrary.validatePositionClosureSafety(positionMargin, address(vault));
+        if (!isValid) {
             revert ErrorLibrary.PositionClosureRestricted();
         }
     }

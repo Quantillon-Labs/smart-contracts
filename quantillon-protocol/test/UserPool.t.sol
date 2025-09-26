@@ -333,7 +333,7 @@ contract UserPoolTestSuite is Test {
             admin
         );
         
-        vm.expectRevert("UserPool: Admin cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidAdmin.selector);
         new ERC1967Proxy(address(testImplementation), initData1);
         
         // Test with zero QEURO
@@ -348,7 +348,7 @@ contract UserPoolTestSuite is Test {
             admin
         );
         
-        vm.expectRevert("UserPool: QEURO cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData2);
         
         // Test with zero USDC
@@ -363,7 +363,7 @@ contract UserPoolTestSuite is Test {
             admin
         );
         
-        vm.expectRevert("UserPool: USDC cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData3);
         
         // Test with zero vault
@@ -378,7 +378,7 @@ contract UserPoolTestSuite is Test {
             admin
         );
         
-        vm.expectRevert("UserPool: Vault cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidVault.selector);
         new ERC1967Proxy(address(testImplementation), initData4);
         
         // Test with zero YieldShift
@@ -393,7 +393,7 @@ contract UserPoolTestSuite is Test {
             admin
         );
         
-        vm.expectRevert("UserPool: YieldShift cannot be zero");
+        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData5);
     }
     
@@ -468,7 +468,7 @@ contract UserPoolTestSuite is Test {
      */
     function test_Deposit_DepositZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert("UserPool: Amount must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         userPool.deposit(0, 0);
     }
     
@@ -606,7 +606,7 @@ contract UserPoolTestSuite is Test {
      */
     function test_Withdrawal_WithdrawZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert("UserPool: Amount must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         userPool.withdraw(0, 0);
     }
     
@@ -718,7 +718,7 @@ contract UserPoolTestSuite is Test {
         uint256 belowMinimum = 50 * 1e18; // Below 100 QEURO minimum
         
         vm.prank(user1);
-        vm.expectRevert("UserPool: Amount below minimum");
+        vm.expectRevert(ErrorLibrary.InsufficientBalance.selector);
         userPool.stake(belowMinimum);
     }
     
@@ -783,7 +783,7 @@ contract UserPoolTestSuite is Test {
         
         // Try to unstake immediately (should fail)
         vm.prank(user1);
-        vm.expectRevert("UserPool: Cooldown period not finished");
+        vm.expectRevert(ErrorLibrary.InvalidCondition.selector);
         userPool.unstake();
         
         // Advance time past cooldown
@@ -815,7 +815,7 @@ contract UserPoolTestSuite is Test {
      */
     function test_Unstaking_UnstakeWithoutRequest_Revert() public {
         vm.prank(user1);
-        vm.expectRevert("UserPool: No unstaking request");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         userPool.unstake();
     }
     
@@ -847,7 +847,7 @@ contract UserPoolTestSuite is Test {
         
         // Try to unstake before cooldown
         vm.prank(user1);
-        vm.expectRevert("UserPool: Cooldown period not finished");
+        vm.expectRevert(ErrorLibrary.InvalidCondition.selector);
         userPool.unstake();
     }
 
@@ -1181,17 +1181,17 @@ contract UserPoolTestSuite is Test {
     function test_Governance_UpdateStakingParametersInvalidValues_Revert() public {
         // Test APY too high
         vm.prank(governance);
-        vm.expectRevert("UserPool: APY too high");
+        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
         userPool.updateStakingParameters(6000, 200e18, 14 days); // 60% APY
         
         // Test min stake amount zero
         vm.prank(governance);
-        vm.expectRevert("UserPool: Min stake must be positive");
+        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
         userPool.updateStakingParameters(1000, 0, 14 days);
         
         // Test cooldown too long
         vm.prank(governance);
-        vm.expectRevert("UserPool: Cooldown too long");
+        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
         userPool.updateStakingParameters(1000, 200e18, 31 days); // 31 days
     }
     

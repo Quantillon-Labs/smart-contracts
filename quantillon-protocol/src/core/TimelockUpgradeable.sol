@@ -5,6 +5,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
+import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 
 /**
  * @title TimelockUpgradeable
@@ -112,7 +113,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     // ============ Modifiers ============
     
     modifier onlyMultisigSigner() {
-        require(multisigSigners[msg.sender], "TimelockUpgradeable: Not multisig signer");
+        CommonValidationLibrary.validateCondition(multisigSigners[msg.sender], "authorization");
         _;
     }
     
@@ -175,11 +176,11 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         string calldata description,
         uint256 customDelay
     ) external onlyRole(UPGRADE_PROPOSER_ROLE) {
-        require(newImplementation != address(0), "TimelockUpgradeable: Invalid implementation");
-        require(pendingUpgrades[newImplementation].implementation == address(0), "TimelockUpgradeable: Already proposed");
+        CommonValidationLibrary.validateNonZeroAddress(newImplementation, "implementation");
+        CommonValidationLibrary.validateCondition(pendingUpgrades[newImplementation].implementation == address(0), "duplicate");
         
         uint256 delay = customDelay >= UPGRADE_DELAY ? customDelay : UPGRADE_DELAY;
-        require(delay <= MAX_UPGRADE_DELAY, "TimelockUpgradeable: Delay too long");
+        CommonValidationLibrary.validateMaxAmount(delay, MAX_UPGRADE_DELAY);
         
         uint256 proposedAt = TIME_PROVIDER.currentTime();
         uint256 executableAt = proposedAt + delay;
@@ -211,8 +212,8 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      */
     function approveUpgrade(address implementation) external onlyMultisigSigner {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
-        require(upgrade.implementation != address(0), "TimelockUpgradeable: No pending upgrade");
-        require(!upgradeApprovals[msg.sender][implementation], "TimelockUpgradeable: Already approved");
+        CommonValidationLibrary.validateCondition(upgrade.implementation != address(0), "pending");
+        CommonValidationLibrary.validateCondition(!upgradeApprovals[msg.sender][implementation], "duplicate");
         
         upgradeApprovals[msg.sender][implementation] = true;
         upgradeApprovalCount[implementation]++;
@@ -234,7 +235,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies
      */
     function revokeUpgradeApproval(address implementation) external onlyMultisigSigner {
-        require(upgradeApprovals[msg.sender][implementation], "TimelockUpgradeable: Not approved");
+        CommonValidationLibrary.validateCondition(upgradeApprovals[msg.sender][implementation], "authorization");
         
         upgradeApprovals[msg.sender][implementation] = false;
         upgradeApprovalCount[implementation]--;
@@ -257,12 +258,9 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      */
     function executeUpgrade(address implementation) external onlyRole(UPGRADE_EXECUTOR_ROLE) {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
-        require(upgrade.implementation != address(0), "TimelockUpgradeable: No pending upgrade");
-        require(TIME_PROVIDER.currentTime() >= upgrade.executableAt, "TimelockUpgradeable: Timelock not expired");
-        require(
-            upgradeApprovalCount[implementation] >= MIN_MULTISIG_APPROVALS,
-            "TimelockUpgradeable: Insufficient approvals"
-        );
+        CommonValidationLibrary.validateCondition(upgrade.implementation != address(0), "pending");
+        CommonValidationLibrary.validateCondition(TIME_PROVIDER.currentTime() >= upgrade.executableAt, "timelock");
+        CommonValidationLibrary.validateMinAmount(upgradeApprovalCount[implementation], MIN_MULTISIG_APPROVALS);
         
         // Clear the pending upgrade
         delete pendingUpgrades[implementation];
@@ -288,10 +286,10 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      */
     function cancelUpgrade(address implementation) external {
         PendingUpgrade storage upgrade = pendingUpgrades[implementation];
-        require(upgrade.implementation != address(0), "TimelockUpgradeable: No pending upgrade");
-        require(
+        CommonValidationLibrary.validateCondition(upgrade.implementation != address(0), "pending");
+        CommonValidationLibrary.validateCondition(
             msg.sender == upgrade.proposer || hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "TimelockUpgradeable: Not authorized"
+            "authorization"
         );
         
         delete pendingUpgrades[implementation];
@@ -318,7 +316,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         address newImplementation,
         string calldata description
     ) external onlyEmergencyUpgrader {
-        require(newImplementation != address(0), "TimelockUpgradeable: Invalid implementation");
+        CommonValidationLibrary.validateNonZeroAddress(newImplementation, "implementation");
         
         // Clear any existing pending upgrade
         if (pendingUpgrades[newImplementation].implementation != address(0)) {
@@ -355,9 +353,9 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies
      */
     function addMultisigSigner(address signer) external onlyRole(MULTISIG_MANAGER_ROLE) {
-        require(signer != address(0), "TimelockUpgradeable: Invalid signer");
-        require(!multisigSigners[signer], "TimelockUpgradeable: Already signer");
-        require(multisigSignerCount < MAX_MULTISIG_SIGNERS, "TimelockUpgradeable: Too many signers");
+        CommonValidationLibrary.validateNonZeroAddress(signer, "signer");
+        CommonValidationLibrary.validateCondition(!multisigSigners[signer], "duplicate");
+        CommonValidationLibrary.validateCountLimit(multisigSignerCount, MAX_MULTISIG_SIGNERS);
         
         multisigSigners[signer] = true;
         multisigSignerCount++;
@@ -379,8 +377,8 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies
      */
     function removeMultisigSigner(address signer) external onlyRole(MULTISIG_MANAGER_ROLE) {
-        require(multisigSigners[signer], "TimelockUpgradeable: Not signer");
-        require(multisigSignerCount > 1, "TimelockUpgradeable: Cannot remove last signer");
+        CommonValidationLibrary.validateCondition(multisigSigners[signer], "authorization");
+        CommonValidationLibrary.validateMinAmount(multisigSignerCount, 2); // At least 2 signers required
         
         multisigSigners[signer] = false;
         multisigSignerCount--;

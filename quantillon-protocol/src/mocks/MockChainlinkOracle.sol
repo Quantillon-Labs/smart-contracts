@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import "../libraries/CommonValidationLibrary.sol";
 
 /**
  * @title MockChainlinkOracle
@@ -64,9 +65,9 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         address _usdcUsdPriceFeed,
         address /* _treasury */
     ) external initializer {
-        require(admin != address(0), "Oracle: Admin cannot be zero");
-        require(_eurUsdPriceFeed != address(0), "Oracle: EUR/USD feed cannot be zero");
-        require(_usdcUsdPriceFeed != address(0), "Oracle: USDC/USD feed cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
+        CommonValidationLibrary.validateNonZeroAddress(_eurUsdPriceFeed, "oracle");
+        CommonValidationLibrary.validateNonZeroAddress(_usdcUsdPriceFeed, "oracle");
         
         __AccessControl_init();
         __Pausable_init();
@@ -78,6 +79,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // Set feed addresses
         eurUsdPriceFeed = AggregatorV3Interface(_eurUsdPriceFeed);
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdPriceFeed);
+        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
         treasury = admin; // Use admin as treasury for mock
         
         // Initialize with default prices (no recursive calls during initialization)
@@ -184,18 +186,18 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @notice Internal function to calculate EUR/USD price
      * @dev Avoids external calls to prevent reentrancy
      */
-    function _calculateEurUsdPrice() internal view returns (uint256) {
+    function _calculateEurUsdPrice() internal pure returns (uint256) {
         // Mock price calculation - in real implementation this would be from external source
-        return 1100000000; // 1.10 * 1e9 (9 decimals)
+        return 1.10e9; // 1.10 * 1e9 (9 decimals)
     }
     
     /**
      * @notice Internal function to calculate USDC/USD price
      * @dev Avoids external calls to prevent reentrancy
      */
-    function _calculateUsdcUsdPrice() internal view returns (uint256) {
+    function _calculateUsdcUsdPrice() internal pure returns (uint256) {
         // Mock price calculation - in real implementation this would be from external source
-        return 1000000000; // 1.00 * 1e9 (9 decimals)
+        return 1.00e9; // 1.00 * 1e9 (9 decimals)
     }
     
     /**
@@ -227,7 +229,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @param _treasury New treasury address
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_treasury != address(0), "Oracle: Treasury cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
     }
     
@@ -243,20 +245,20 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 balance = address(this).balance;
-        require(balance > 0, "Oracle: No ETH to recover");
+        CommonValidationLibrary.validatePositiveAmount(balance);
         
         // Validate treasury address is not arbitrary - must be the admin who deployed
-        require(treasury != address(0), "Oracle: Treasury not set");
-        require(treasury != address(this), "Oracle: Cannot send to self");
-        require(hasRole(DEFAULT_ADMIN_ROLE, treasury), "Oracle: Treasury must be admin");
+        CommonValidationLibrary.validateNonZeroAddress(treasury, "treasury");
+        CommonValidationLibrary.validateCondition(treasury != address(this), "self");
+        CommonValidationLibrary.validateCondition(hasRole(DEFAULT_ADMIN_ROLE, treasury), "authorization");
         
         // Additional validation: treasury must be the deployer/admin
-        require(treasury == msg.sender, "Oracle: Only deployer can recover ETH");
+        CommonValidationLibrary.validateCondition(treasury == msg.sender, "authorization");
         
         emit ETHRecovered(treasury, balance);
         
         (bool success, ) = treasury.call{value: balance}("");
-        require(success, "Oracle: ETH recovery failed");
+        CommonValidationLibrary.validateCondition(success, "transfer");
     }
     
     /**
@@ -293,14 +295,14 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Mock implementation of getOracleHealth
      */
-    function getOracleHealth() external override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) {
+    function getOracleHealth() external pure override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) {
         // Use internal calculations to avoid external calls
         uint256 eurUsdPrice = _calculateEurUsdPrice();
         uint256 usdcUsdPrice = _calculateUsdcUsdPrice();
         
         // Validate that prices are reasonable (not zero)
-        require(eurUsdPrice > 0, "Oracle: Invalid EUR/USD price");
-        require(usdcUsdPrice > 0, "Oracle: Invalid USDC/USD price");
+        CommonValidationLibrary.validatePositiveAmount(eurUsdPrice);
+        CommonValidationLibrary.validatePositiveAmount(usdcUsdPrice);
         
         isHealthy = true; // Mock oracle is always healthy
         eurUsdFresh = true;
@@ -310,7 +312,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Mock implementation of getEurUsdDetails
      */
-    function getEurUsdDetails() external override returns (
+    function getEurUsdDetails() external view override returns (
         uint256 currentPrice,
         uint256 lastValidPrice,
         uint256 lastUpdate,
@@ -392,8 +394,8 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @notice Mock implementation of updatePriceFeeds
      */
     function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_eurUsdFeed != address(0), "Oracle: EUR/USD feed cannot be zero");
-        require(_usdcUsdFeed != address(0), "Oracle: USDC/USD feed cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(_eurUsdFeed, "oracle");
+        CommonValidationLibrary.validateNonZeroAddress(_usdcUsdFeed, "oracle");
         
         eurUsdPriceFeed = AggregatorV3Interface(_eurUsdFeed);
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdFeed);
@@ -403,8 +405,8 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @notice Mock implementation of recoverToken
      */
     function recoverToken(address token, uint256 amount) external view override onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(token != address(0), "Oracle: Token cannot be zero");
-        require(amount > 0, "Oracle: Amount must be positive");
+        CommonValidationLibrary.validateNonZeroAddress(token, "token");
+        CommonValidationLibrary.validatePositiveAmount(amount);
         // Mock implementation - in real oracle this would recover tokens to treasury
         // For mock, we just emit an event or do nothing
     }

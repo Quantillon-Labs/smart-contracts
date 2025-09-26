@@ -1,5 +1,5 @@
 # TimeProvider
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6bcc4db60b18f8d613521e2d032b420a446221cb/src/libraries/TimeProviderLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/daf8385bca354b97ae7c7df1c5a1c4bdeadbab9f/src/libraries/TimeProviderLibrary.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, UUPSUpgradeable
@@ -640,40 +640,6 @@ function _authorizeUpgrade(address newImplementation) internal view override onl
 |Name|Type|Description|
 |----|----|-----------|
 |`newImplementation`|`address`|Address of the new implementation|
-
-
-### version
-
-Returns the version of this contract implementation
-
-*Pure function that returns the contract version string*
-
-**Notes:**
-- No security validations required - pure function
-
-- No input validation required - pure function
-
-- No state changes - pure function
-
-- No events emitted
-
-- No errors thrown - safe pure function
-
-- Not applicable - pure function
-
-- Public - anyone can query version
-
-- No oracle dependencies
-
-
-```solidity
-function version() external pure returns (string memory);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`string`|Version string|
 
 
 ## Events

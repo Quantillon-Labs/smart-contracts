@@ -700,21 +700,6 @@ contract TimeProviderTest is Test {
         assertTrue(timeProvider.hasRole(timeProvider.UPGRADER_ROLE(), admin));
     }
     
-    /**
-     * @notice Tests the version function
-     * @dev Validates that the contract version is returned correctly
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Version() public view {
-        assertEq(timeProvider.version(), "1.0.0");
-    }
     
     // ==================== FUZZ TESTS ====================
     

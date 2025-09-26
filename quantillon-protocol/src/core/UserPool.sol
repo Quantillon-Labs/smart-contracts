@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity ^0.8.24;
 
 // =============================================================================
 // IMPORTS - OpenZeppelin libraries and protocol interfaces
@@ -19,9 +19,11 @@ import {VaultMath} from "../libraries/VaultMath.sol";
 import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
 import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
-import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
+import {UserPoolStakingLibrary} from "../libraries/UserPoolStakingLibrary.sol";
+import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
+import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 
 /**
  * @title UserPool
@@ -383,12 +385,12 @@ contract UserPool is
         address _timelock,
         address _treasury
     ) public initializer {
-        require(admin != address(0), "UserPool: Admin cannot be zero");
-        require(_qeuro != address(0), "UserPool: QEURO cannot be zero");
-        require(_usdc != address(0), "UserPool: USDC cannot be zero");
-        require(_vault != address(0), "UserPool: Vault cannot be zero");
-        require(_yieldShift != address(0), "UserPool: YieldShift cannot be zero");
-        require(_treasury != address(0), "UserPool: Treasury cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
+        CommonValidationLibrary.validateNonZeroAddress(_qeuro, "token");
+        CommonValidationLibrary.validateNonZeroAddress(_usdc, "token");
+        CommonValidationLibrary.validateNonZeroAddress(_vault, "vault");
+        CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -404,6 +406,7 @@ contract UserPool is
         vault = IQuantillonVault(_vault);
         yieldShift = IYieldShift(_yieldShift);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
         // Default parameters
@@ -448,7 +451,7 @@ contract UserPool is
         whenNotPaused 
         returns (uint256 qeuroMinted) 
     {
-        require(usdcAmount > 0, "UserPool: Amount must be positive");
+        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
 
         // Calculate deposit fee
         // GAS OPTIMIZATION: Cache storage read
@@ -556,7 +559,7 @@ contract UserPool is
     function _validateAndTransferUsdc(uint256[] calldata usdcAmounts) internal returns (uint256 totalUsdcAmount) {
         // Pre-validate amounts and calculate total
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
-            require(usdcAmounts[i] > 0, "UserPool: Amount must be positive");
+            CommonValidationLibrary.validatePositiveAmount(usdcAmounts[i]);
             totalUsdcAmount += usdcAmounts[i];
         }
         
@@ -750,7 +753,7 @@ contract UserPool is
         whenNotPaused 
         returns (uint256 usdcReceived) 
     {
-        require(qeuroAmount > 0, "UserPool: Amount must be positive");
+        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
         
         // Note: No need to check user.qeuroBalance since QEURO is held in user's wallet
         // The user must have QEURO in their wallet to call this function
@@ -844,7 +847,7 @@ contract UserPool is
         
         // Calculate total QEURO amount
         for (uint256 i = 0; i < length;) {
-            require(qeuroAmounts[i] > 0, "UserPool: Amount must be positive");
+            CommonValidationLibrary.validatePositiveAmount(qeuroAmounts[i]);
             unchecked { 
                 totalQeuroAmount += qeuroAmounts[i];
                 ++i; 
@@ -966,7 +969,7 @@ contract UserPool is
     function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused {
         // GAS OPTIMIZATION: Cache storage read
         uint256 minStakeAmount_ = minStakeAmount;
-        require(qeuroAmount >= minStakeAmount_, "UserPool: Amount below minimum");
+        CommonValidationLibrary.validateMinAmount(qeuroAmount, minStakeAmount_);
         
         // Cache timestamp to avoid external calls
         uint256 currentTime = TIME_PROVIDER.currentTime();
@@ -1016,7 +1019,7 @@ contract UserPool is
         
         // Pre-validate amounts and calculate total
         for (uint256 i = 0; i < qeuroAmounts.length; i++) {
-            require(qeuroAmounts[i] >= minStakeAmount_, "UserPool: Amount below minimum");
+            CommonValidationLibrary.validateMinAmount(qeuroAmounts[i], minStakeAmount_);
             totalQeuroAmount += qeuroAmounts[i];
         }
         
@@ -1060,7 +1063,7 @@ contract UserPool is
         uint256 currentTime = TIME_PROVIDER.currentTime();
         
         UserInfo storage user = userInfo[msg.sender];
-        require(user.stakedAmount >= qeuroAmount, "UserPool: Insufficient staked amount");
+        CommonValidationLibrary.validateSufficientBalance(user.stakedAmount, qeuroAmount);
         
         // Update pending rewards
         _updatePendingRewards(msg.sender, currentTime);
@@ -1085,10 +1088,10 @@ contract UserPool is
      */
     function unstake() external nonReentrant whenNotPaused {
         UserInfo storage user = userInfo[msg.sender];
-        require(user.unstakeAmount > 0, "UserPool: No unstaking request");
-        require(
+        CommonValidationLibrary.validatePositiveAmount(user.unstakeAmount);
+        CommonValidationLibrary.validateCondition(
             TIME_PROVIDER.currentTime() >= user.unstakeRequestTime + unstakingCooldown,
-            "UserPool: Cooldown period not finished"
+            "cooldown"
         );
 
         uint256 amount = user.unstakeAmount;
@@ -1229,7 +1232,7 @@ contract UserPool is
      * @custom:oracle Requires fresh oracle price data
      */
     function distributeYield(uint256 yieldAmount) external {
-        require(msg.sender == address(yieldShift), "UserPool: Only YieldShift can call");
+        CommonValidationLibrary.validateCondition(msg.sender == address(yieldShift), "authorization");
         
         // Yield distribution moved to stQEURO contract
         // This function kept for backward compatibility but does nothing
@@ -1256,30 +1259,34 @@ contract UserPool is
         UserInfo storage userdata = userInfo[user];
         
         if (userdata.stakedAmount > 0) {
-    
             uint256 currentBlock = block.number;
             uint256 lastRewardBlock = userLastRewardBlock[user];
             
             if (lastRewardBlock < 1) {
-    
                 userLastRewardBlock[user] = currentBlock;
                 return;
             }
             
             uint256 blocksElapsed = currentBlock - lastRewardBlock;
+            uint256 timeElapsed = blocksElapsed * 12; // Convert blocks to seconds
             
-            // Convert blocks to time (assuming 12 second blocks)
-            uint256 timeElapsed = blocksElapsed * 12; // seconds
-            
-
             if (timeElapsed > MAX_REWARD_PERIOD) {
                 timeElapsed = MAX_REWARD_PERIOD;
             }
             
-            // Calculate time-based staking rewards
-            uint256 stakingReward = uint256(userdata.stakedAmount)
-                .mulDiv(stakingAPY, 10000)
-                .mulDiv(timeElapsed, 365 days);
+            // Use library for reward calculation
+            uint256 stakingReward = UserPoolStakingLibrary.calculateStakingRewards(
+                UserPoolStakingLibrary.StakeInfo({
+                    amount: userdata.stakedAmount,
+                    startTime: userdata.lastStakeTime,
+                    endTime: 0,
+                    lastRewardClaim: userdata.lastStakeTime,
+                    totalRewardsClaimed: 0,
+                    isActive: true
+                }),
+                stakingAPY,
+                currentTime
+            );
             
             // Calculate yield-based rewards
             uint256 yieldReward = uint256(userdata.stakedAmount)
@@ -1287,8 +1294,6 @@ contract UserPool is
             
             userdata.pendingRewards += uint128(stakingReward + yieldReward);
             userdata.lastStakeTime = uint64(currentTime);
-            
-            // Update last reward block
             userLastRewardBlock[user] = currentBlock;
         }
     }
@@ -1470,9 +1475,12 @@ contract UserPool is
         uint256 stakingRatio,
         uint256 poolTVL
     ) {
-        totalUsers_ = totalUsers;
-        averageDeposit = totalUsers > 0 ? totalDeposits / totalUsers : 0;
-        stakingRatio = totalDeposits > 0 ? (totalStakes * 10000) / totalDeposits : 0;
+        // Use library for metrics calculation
+        uint256 metrics = UserPoolStakingLibrary.calculatePoolMetrics(
+            totalDeposits, totalStakes, totalUsers
+        );
+        
+        (stakingRatio, averageDeposit, totalUsers_) = UserPoolStakingLibrary.unpackPoolMetrics(metrics);
         poolTVL = totalDeposits;
     }
 
@@ -1557,9 +1565,9 @@ contract UserPool is
         uint256 newMinStakeAmount,
         uint256 newUnstakingCooldown
     ) external onlyRole(GOVERNANCE_ROLE) {
-        require(newStakingAPY <= 5000, "UserPool: APY too high"); // Max 50%
-        require(newMinStakeAmount > 0, "UserPool: Min stake must be positive");
-        require(newUnstakingCooldown <= 30 days, "UserPool: Cooldown too long");
+        CommonValidationLibrary.validatePercentage(newStakingAPY, 5000); // Max 50%
+        CommonValidationLibrary.validatePositiveAmount(newMinStakeAmount);
+        CommonValidationLibrary.validateMaxAmount(newUnstakingCooldown, 30 days);
 
         emit PoolParameterUpdated("stakingAPY", stakingAPY, newStakingAPY);
         emit PoolParameterUpdated("minStakeAmount", minStakeAmount, newMinStakeAmount);
@@ -1590,9 +1598,9 @@ contract UserPool is
         uint256 _withdrawalFee,
         uint256 _performanceFee
     ) external onlyRole(GOVERNANCE_ROLE) {
-        require(_depositFee <= 100, "UserPool: Deposit fee too high"); // Max 1%
-        require(_withdrawalFee <= 200, "UserPool: Withdrawal fee too high"); // Max 2%
-        require(_performanceFee <= 2000, "UserPool: Performance fee too high"); // Max 20%
+        CommonValidationLibrary.validatePercentage(_depositFee, 100); // Max 1%
+        CommonValidationLibrary.validatePercentage(_withdrawalFee, 200); // Max 2%
+        CommonValidationLibrary.validatePercentage(_performanceFee, 2000); // Max 20%
 
         depositFee = _depositFee;
         withdrawalFee = _withdrawalFee;
@@ -1728,8 +1736,7 @@ contract UserPool is
      * @custom:oracle Requires fresh oracle price data
      */
     function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Use the shared library for secure token recovery to treasury
-        TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
+        AdminFunctionsLibrary.recoverToken(address(this), token, amount, treasury, DEFAULT_ADMIN_ROLE);
     }
 
     /**
@@ -1745,9 +1752,6 @@ contract UserPool is
      * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-
-        emit ETHRecovered(treasury, address(this).balance);
-        // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
     }
 }

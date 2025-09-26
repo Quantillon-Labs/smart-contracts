@@ -1,5 +1,5 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/c3c08d7ad21ffdd5c00645d8840af657fea66c21/src/core/yieldmanagement/YieldShift.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/dd3e083d5d3a3d1f4c483da8f76db5c62d86f916/src/core/yieldmanagement/YieldShift.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -719,86 +719,6 @@ function _getEligiblePoolMetrics()
 |`userPoolSize`|`uint256`|Eligible user pool size (deposits older than MIN_HOLDING_PERIOD)|
 |`hedgerPoolSize`|`uint256`|Eligible hedger pool size (deposits older than MIN_HOLDING_PERIOD)|
 |`poolRatio`|`uint256`|Ratio of eligible pool sizes|
-
-
-### _calculateEligibleUserPoolSize
-
-Calculate eligible user pool size excluding recent deposits
-
-*Only counts deposits older than MIN_HOLDING_PERIOD*
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function _calculateEligibleUserPoolSize(uint256 totalUserPoolSize) internal view returns (uint256 eligibleSize);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalUserPoolSize`|`uint256`|Current total user pool size|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`eligibleSize`|`uint256`|Eligible pool size for yield calculations|
-
-
-### _calculateEligibleHedgerPoolSize
-
-Calculate eligible hedger pool size excluding recent deposits
-
-*Only counts deposits older than MIN_HOLDING_PERIOD*
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function _calculateEligibleHedgerPoolSize(uint256 totalHedgerPoolSize) internal view returns (uint256 eligibleSize);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalHedgerPoolSize`|`uint256`|Current total hedger pool size|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`eligibleSize`|`uint256`|Eligible pool size for yield calculations|
 
 
 ### _calculateHoldingPeriodDiscount

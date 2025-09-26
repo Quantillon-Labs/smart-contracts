@@ -435,7 +435,7 @@ contract QuantillonVault is
         require(usdcAmount > 0, "Vault: Amount must be positive");
         require(canMint(), "Vault: Minting not allowed - insufficient collateralization ratio");
 
-        // INTERACTIONS - Oracle call at the very beginning
+        // Get oracle price for calculations (but don't update state yet)
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
         
@@ -451,21 +451,22 @@ contract QuantillonVault is
             }
         }
 
-        // Calculate mint fee and QEURO amount using oracle price
+        // Calculate mint fee and QEURO amount using fresh oracle price
         uint256 fee = usdcAmount.mulDiv(mintFee, 1e18);
         uint256 netAmount = usdcAmount - fee;
         uint256 qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
         require(qeuroToMint >= minQeuroOut, "Vault: Insufficient output amount");
 
         // EFFECTS - All state updates before any external calls
-        lastPriceUpdateBlock = block.number;
-        lastValidEurUsdPrice = eurUsdPrice;
-        _updatePriceTimestamp(isValid);
-
         unchecked {
             totalUsdcHeld += usdcAmount;
             totalMinted += qeuroToMint;
         }
+        
+        // Update price state before external calls
+        lastPriceUpdateBlock = block.number;
+        lastValidEurUsdPrice = eurUsdPrice;
+        _updatePriceTimestamp(isValid);
 
         // INTERACTIONS - All external calls after state updates
         usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
@@ -503,7 +504,7 @@ contract QuantillonVault is
         // CHECKS
         require(qeuroAmount > 0, "Vault: Amount must be positive");
 
-        // INTERACTIONS - Oracle call at the very beginning
+        // Get oracle price for calculations (but don't update state yet)
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid EUR/USD price");
         
@@ -519,7 +520,7 @@ contract QuantillonVault is
             }
         }
 
-        // Calculate USDC to return using oracle price
+        // Calculate USDC to return using fresh oracle price
         uint256 usdcToReturn = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
         usdcToReturn = usdcToReturn / 1e12; // Convert from 18 to 6 decimals
         
@@ -531,14 +532,15 @@ contract QuantillonVault is
         uint256 netUsdcToReturn = usdcToReturn - fee;
 
         // EFFECTS - All state updates before any external calls
-        lastPriceUpdateBlock = block.number;
-        lastValidEurUsdPrice = eurUsdPrice;
-        _updatePriceTimestamp(isValid);
-
         unchecked {
             totalUsdcHeld -= usdcToReturn;
             totalMinted -= qeuroAmount;
         }
+        
+        // Update price state before external calls
+        lastPriceUpdateBlock = block.number;
+        lastValidEurUsdPrice = eurUsdPrice;
+        _updatePriceTimestamp(isValid);
 
         // INTERACTIONS - All external calls after state updates
         qeuro.burn(msg.sender, qeuroAmount);

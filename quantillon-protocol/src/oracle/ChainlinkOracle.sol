@@ -31,6 +31,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 
 /**
  * @title ChainlinkOracle
@@ -217,10 +218,10 @@ contract ChainlinkOracle is
         address _treasury
     ) public initializer {
         // Input parameter validation
-        require(admin != address(0), "Oracle: Admin cannot be zero");
-        require(_eurUsdPriceFeed != address(0), "Oracle: EUR/USD feed cannot be zero");
-        require(_usdcUsdPriceFeed != address(0), "Oracle: USDC/USD feed cannot be zero");
-        require(_treasury != address(0), "Oracle: Treasury cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
+        CommonValidationLibrary.validateNonZeroAddress(_eurUsdPriceFeed, "oracle");
+        CommonValidationLibrary.validateNonZeroAddress(_usdcUsdPriceFeed, "oracle");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
 
         // OpenZeppelin module initialization
         __AccessControl_init();
@@ -237,6 +238,7 @@ contract ChainlinkOracle is
         eurUsdPriceFeed = AggregatorV3Interface(_eurUsdPriceFeed);
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdPriceFeed);
         ValidationLibrary.validateTreasuryAddress(_treasury);
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
         // Default price bounds configuration
@@ -265,7 +267,7 @@ contract ChainlinkOracle is
       * @custom:oracle Requires fresh oracle price data
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_treasury != address(0), "Oracle: Treasury cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }
@@ -306,7 +308,7 @@ contract ChainlinkOracle is
      * @custom:oracle No oracle dependencies
      */
     function _divRound(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b > 0, "Oracle: Division by zero");
+        CommonValidationLibrary.validatePositiveAmount(b);
         return (a + b / 2) / b;
     }
 
@@ -353,15 +355,15 @@ contract ChainlinkOracle is
         (uint80 eurUsdRoundId, int256 eurUsdRawPrice, uint256 eurUsdStartedAt, uint256 eurUsdUpdatedAt, uint80 eurUsdAnsweredInRound) = eurUsdPriceFeed.latestRoundData();
         
         // Validate data integrity - ensure roundId matches answeredInRound and data is not too old
-        require(eurUsdRoundId == eurUsdAnsweredInRound, "EUR/USD price data is stale");
-        require(eurUsdStartedAt <= eurUsdUpdatedAt, "EUR/USD price data has invalid timestamps");
+        CommonValidationLibrary.validateCondition(eurUsdRoundId == eurUsdAnsweredInRound, "oracle");
+        CommonValidationLibrary.validateCondition(eurUsdStartedAt <= eurUsdUpdatedAt, "oracle");
         
         // Fetch USDC/USD price data directly from Chainlink
         (uint80 usdcUsdRoundId, int256 usdcUsdRawPrice, uint256 usdcUsdStartedAt, uint256 usdcUsdUpdatedAt, uint80 usdcUsdAnsweredInRound) = usdcUsdPriceFeed.latestRoundData();
         
         // Validate data integrity - ensure roundId matches answeredInRound and data is not too old
-        require(usdcUsdRoundId == usdcUsdAnsweredInRound, "USDC/USD price data is stale");
-        require(usdcUsdStartedAt <= usdcUsdUpdatedAt, "USDC/USD price data has invalid timestamps");
+        CommonValidationLibrary.validateCondition(usdcUsdRoundId == usdcUsdAnsweredInRound, "oracle");
+        CommonValidationLibrary.validateCondition(usdcUsdStartedAt <= usdcUsdUpdatedAt, "oracle");
         
         // Validate EUR/USD price
         bool eurUsdValid = true;
@@ -996,9 +998,9 @@ contract ChainlinkOracle is
         uint256 _minPrice,
         uint256 _maxPrice
     ) external onlyRole(ORACLE_MANAGER_ROLE) {
-        require(_minPrice > 0, "Oracle: Min price must be positive");
-        require(_maxPrice > _minPrice, "Oracle: Max price must be greater than min");
-        require(_maxPrice < 10e18, "Oracle: Max price too high"); // Sanity check
+        CommonValidationLibrary.validatePositiveAmount(_minPrice);
+        CommonValidationLibrary.validateCondition(_maxPrice > _minPrice, "price");
+        CommonValidationLibrary.validateMaxAmount(_maxPrice, 10e18); // Sanity check
 
         minEurUsdPrice = _minPrice;
         maxEurUsdPrice = _maxPrice;
@@ -1023,7 +1025,7 @@ contract ChainlinkOracle is
         external 
         onlyRole(ORACLE_MANAGER_ROLE) 
     {
-        require(newToleranceBps <= 1000, "Oracle: Tolerance too high"); // Max 10%
+        CommonValidationLibrary.validatePercentage(newToleranceBps, 1000); // Max 10%
         usdcToleranceBps = newToleranceBps;
     }
 
@@ -1045,8 +1047,8 @@ contract ChainlinkOracle is
         address _eurUsdFeed,
         address _usdcUsdFeed
     ) external onlyRole(ORACLE_MANAGER_ROLE) {
-        require(_eurUsdFeed != address(0), "Oracle: EUR/USD feed cannot be zero");
-        require(_usdcUsdFeed != address(0), "Oracle: USDC/USD feed cannot be zero");
+        CommonValidationLibrary.validateNonZeroAddress(_eurUsdFeed, "oracle");
+        CommonValidationLibrary.validateNonZeroAddress(_usdcUsdFeed, "oracle");
 
         eurUsdPriceFeed = AggregatorV3Interface(_eurUsdFeed);
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdFeed);

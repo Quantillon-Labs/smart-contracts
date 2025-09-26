@@ -188,52 +188,7 @@ jobs:
               echo "❌ Documentation generation failed!"
               echo "Creating emergency fallback documentation..."
               mkdir -p docs/book
-              cat > docs/book/index.html << 'EOF'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quantillon Protocol Documentation</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .info { background: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 5px; margin: 20px 0; }
-    </style>
-</head>
-<body>
-    <h1>Quantillon Protocol Documentation</h1>
-    <div class="error">
-        <h2>⚠️ Documentation Generation Issue</h2>
-        <p>The automated documentation generation encountered an issue. This is likely due to:</p>
-        <ul>
-            <li>Stack overflow during compilation (complex contracts)</li>
-            <li>Memory limitations in the CI environment</li>
-            <li>Compiler optimization issues</li>
-        </ul>
-    </div>
-    <div class="info">
-        <h2>📚 Manual Documentation</h2>
-        <p>For the latest documentation, please visit:</p>
-        <ul>
-            <li><a href="https://docs.quantillon.money">Official Documentation</a></li>
-            <li><a href="https://github.com/Quantillon-Labs/smart-contracts">GitHub Repository</a></li>
-        </ul>
-    </div>
-    <h2>🔧 Smart Contracts</h2>
-    <p>The Quantillon Protocol consists of several key smart contracts:</p>
-    <ul>
-        <li><strong>QEUROToken</strong> - Euro-pegged stablecoin</li>
-        <li><strong>QTIToken</strong> - Governance token</li>
-        <li><strong>stQEUROToken</strong> - Yield-bearing wrapper</li>
-        <li><strong>QuantillonVault</strong> - Main vault for collateral management</li>
-        <li><strong>UserPool</strong> - User deposit and staking operations</li>
-        <li><strong>HedgerPool</strong> - EUR/USD hedging operations</li>
-    </ul>
-    <p><em>Last updated: $(date)</em></p>
-</body>
-</html>
-EOF
+              echo '<!DOCTYPE html><html><head><title>Quantillon Protocol Documentation</title></head><body><h1>Quantillon Protocol</h1><p>Documentation generation failed due to stack overflow. Please check the contract complexity.</p></body></html>' > docs/book/index.html
               echo "Emergency fallback documentation created"
           fi
           

@@ -38,6 +38,9 @@ jobs:
           cd quantillon-protocol
           rm -rf docs
           
+          # Set environment variables for Foundry
+          export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
+          
           # Store the original remote URL
           ORIGINAL_REMOTE=$(git remote get-url origin)
           echo "Original remote URL: $ORIGINAL_REMOTE"
@@ -48,7 +51,17 @@ jobs:
           
           # Generate and build documentation
           echo "Generating documentation..."
-          forge doc --out docs --build
+          # Increase stack size to prevent stack overflow with complex contract hierarchies
+          ulimit -s 65536
+          
+          # Try to generate docs with increased stack size
+          if ! forge doc --out docs --build; then
+              echo "Standard forge doc failed, trying alternative approach..."
+              # Fallback: Generate docs without build step first
+              forge doc --out docs
+              # Then build separately
+              forge doc --build
+          fi
           
           # Restore the original remote URL
           echo "Restoring original remote URL..."

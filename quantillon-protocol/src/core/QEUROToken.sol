@@ -367,6 +367,7 @@ contract QEUROToken is
         rateLimitInfo = RateLimitInfo(0, 0, uint64(block.number));
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
+        require(_treasury != address(0), "Treasury cannot be zero address");
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
@@ -1544,6 +1545,7 @@ contract QEUROToken is
      * @custom:oracle No oracle dependencies
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_treasury != address(0), "Treasury cannot be zero address");
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");

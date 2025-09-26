@@ -1,5 +1,5 @@
 # YieldShiftCalculationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/dd3e083d5d3a3d1f4c483da8f76db5c62d86f916/src/libraries/YieldShiftCalculationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/486f19261aef0b99ac5330b56bb5ad5bbdda41eb/src/libraries/YieldShiftCalculationLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -16,6 +16,25 @@ security-contact: team@quantillon.money
 ### calculateOptimalYieldShift
 
 Calculates optimal yield shift based on pool ratio
+
+*Calculates optimal yield shift to balance user and hedger pools*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -46,6 +65,25 @@ function calculateOptimalYieldShift(
 
 Applies gradual adjustment to yield shift
 
+*Gradually adjusts yield shift to prevent sudden changes*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function applyGradualAdjustment(uint256 currentShift, uint256 targetShift, uint256 adjustmentSpeed)
@@ -72,6 +110,25 @@ function applyGradualAdjustment(uint256 currentShift, uint256 targetShift, uint2
 
 Calculates user allocation percentage
 
+*Calculates user allocation based on yield shift percentage*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function calculateUserAllocation(uint256 yieldShift) external pure returns (uint256 userAllocation);
@@ -93,6 +150,25 @@ function calculateUserAllocation(uint256 yieldShift) external pure returns (uint
 
 Calculates hedger allocation percentage
 
+*Calculates hedger allocation based on yield shift percentage*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function calculateHedgerAllocation(uint256 yieldShift) external pure returns (uint256 hedgerAllocation);
@@ -113,6 +189,25 @@ function calculateHedgerAllocation(uint256 yieldShift) external pure returns (ui
 ### calculatePoolTWAP
 
 Calculates TWAP for pool sizes
+
+*Calculates time-weighted average price for pool sizes*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -138,6 +233,25 @@ function calculatePoolTWAP(uint256[] memory snapshots)
 ### calculateYieldDistribution
 
 Calculates yield distribution amounts
+
+*Calculates yield distribution between users and hedgers*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -165,6 +279,25 @@ function calculateYieldDistribution(uint256 totalYield, uint256 userAllocation, 
 ### validateYieldShiftParams
 
 Validates yield shift parameters
+
+*Ensures yield shift parameters are within valid bounds*
+
+**Notes:**
+- security: Prevents invalid yield shift parameters
+
+- validation: Validates all parameters are within acceptable bounds
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws require statements for invalid parameters
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity

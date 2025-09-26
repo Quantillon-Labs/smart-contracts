@@ -15,11 +15,20 @@ library YieldShiftCalculationLibrary {
 
     /**
      * @notice Calculates optimal yield shift based on pool ratio
+     * @dev Calculates optimal yield shift to balance user and hedger pools
      * @param poolRatio Current pool ratio (user/hedger)
      * @param baseYieldShift Base yield shift percentage
      * @param maxYieldShift Maximum yield shift percentage
      * @param targetPoolRatio Target pool ratio
      * @return optimalShift Optimal yield shift percentage
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateOptimalYieldShift(
         uint256 poolRatio,
@@ -62,10 +71,19 @@ library YieldShiftCalculationLibrary {
 
     /**
      * @notice Applies gradual adjustment to yield shift
+     * @dev Gradually adjusts yield shift to prevent sudden changes
      * @param currentShift Current yield shift
      * @param targetShift Target yield shift
      * @param adjustmentSpeed Adjustment speed (basis points per update)
      * @return newShift New yield shift after adjustment
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function applyGradualAdjustment(
         uint256 currentShift,
@@ -101,8 +119,17 @@ library YieldShiftCalculationLibrary {
 
     /**
      * @notice Calculates user allocation percentage
+     * @dev Calculates user allocation based on yield shift percentage
      * @param yieldShift Current yield shift percentage
      * @return userAllocation User allocation percentage
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateUserAllocation(uint256 yieldShift) external pure returns (uint256 userAllocation) {
         return 10000 - yieldShift;
@@ -110,8 +137,17 @@ library YieldShiftCalculationLibrary {
 
     /**
      * @notice Calculates hedger allocation percentage
+     * @dev Calculates hedger allocation based on yield shift percentage
      * @param yieldShift Current yield shift percentage
      * @return hedgerAllocation Hedger allocation percentage
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateHedgerAllocation(uint256 yieldShift) external pure returns (uint256 hedgerAllocation) {
         return yieldShift;
@@ -119,9 +155,18 @@ library YieldShiftCalculationLibrary {
 
     /**
      * @notice Calculates TWAP for pool sizes
+     * @dev Calculates time-weighted average price for pool sizes
      * @param snapshots Array of pool snapshots
      * @return userPoolTWAP TWAP for user pool size
      * @return hedgerPoolTWAP TWAP for hedger pool size
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculatePoolTWAP(
         uint256[] memory snapshots
@@ -159,11 +204,20 @@ library YieldShiftCalculationLibrary {
 
     /**
      * @notice Calculates yield distribution amounts
+     * @dev Calculates yield distribution between users and hedgers
      * @param totalYield Total yield to distribute
      * @param userAllocation User allocation percentage
      * @param hedgerAllocation Hedger allocation percentage
      * @return userYield User yield amount
      * @return hedgerYield Hedger yield amount
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateYieldDistribution(
         uint256 totalYield,
@@ -176,10 +230,19 @@ library YieldShiftCalculationLibrary {
 
     /**
      * @notice Validates yield shift parameters
+     * @dev Ensures yield shift parameters are within valid bounds
      * @param baseYieldShift Base yield shift
      * @param maxYieldShift Maximum yield shift
      * @param adjustmentSpeed Adjustment speed
      * @param targetPoolRatio Target pool ratio
+     * @custom:security Prevents invalid yield shift parameters
+     * @custom:validation Validates all parameters are within acceptable bounds
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws require statements for invalid parameters
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function validateYieldShiftParams(
         uint256 baseYieldShift,

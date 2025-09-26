@@ -321,6 +321,7 @@ contract AaveVault is
         aavePool = IPool(aaveProvider.getPool());
         rewardsController = IRewardsController(_rewardsController);
         yieldShift = IYieldShift(_yieldShift);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;

@@ -48,6 +48,14 @@ library YieldShiftOptimizationLibrary {
      * @return userPoolSize Current user pool size
      * @return hedgerPoolSize Current hedger pool size
      * @return poolRatio Ratio of user to hedger pool sizes
+     * @custom:security No security implications - view function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function getCurrentPoolMetrics(
         address userPoolAddress,
@@ -88,6 +96,14 @@ library YieldShiftOptimizationLibrary {
      * @return userPoolSize Eligible user pool size (deposits older than MIN_HOLDING_PERIOD)
      * @return hedgerPoolSize Eligible hedger pool size (deposits older than MIN_HOLDING_PERIOD)
      * @return poolRatio Ratio of eligible pool sizes
+     * @custom:security Prevents flash deposit attacks by excluding recent deposits
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function getEligiblePoolMetrics(
         address userPoolAddress,
@@ -134,6 +150,14 @@ library YieldShiftOptimizationLibrary {
      * @param currentTime Current timestamp
      * @param lastUpdateTime Last update timestamp
      * @return eligibleSize Eligible pool size for yield calculations
+     * @custom:security Prevents flash deposit attacks by excluding recent deposits
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateEligibleUserPoolSize(
         uint256 totalUserPoolSize,
@@ -143,6 +167,22 @@ library YieldShiftOptimizationLibrary {
         return _calculateEligibleUserPoolSize(totalUserPoolSize, currentTime, lastUpdateTime);
     }
     
+    /**
+     * @notice Internal function to calculate eligible user pool size
+     * @dev Only counts deposits older than MIN_HOLDING_PERIOD
+     * @param totalUserPoolSize Current total user pool size
+     * @param currentTime Current timestamp
+     * @param lastUpdateTime Last update timestamp
+     * @return eligibleSize Eligible pool size for yield calculations
+     * @custom:security Prevents flash deposit attacks by excluding recent deposits
+     * @custom:validation Input validation handled by calling function
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
+     */
     function _calculateEligibleUserPoolSize(
         uint256 totalUserPoolSize,
         uint256 currentTime,
@@ -169,6 +209,14 @@ library YieldShiftOptimizationLibrary {
      * @param currentTime Current timestamp
      * @param lastUpdateTime Last update timestamp
      * @return eligibleSize Eligible pool size for yield calculations
+     * @custom:security Prevents flash deposit attacks by excluding recent deposits
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateEligibleHedgerPoolSize(
         uint256 totalHedgerPoolSize,
@@ -178,6 +226,22 @@ library YieldShiftOptimizationLibrary {
         return _calculateEligibleHedgerPoolSize(totalHedgerPoolSize, currentTime, lastUpdateTime);
     }
     
+    /**
+     * @notice Internal function to calculate eligible hedger pool size
+     * @dev Only counts deposits older than MIN_HOLDING_PERIOD
+     * @param totalHedgerPoolSize Current total hedger pool size
+     * @param currentTime Current timestamp
+     * @param lastUpdateTime Last update timestamp
+     * @return eligibleSize Eligible pool size for yield calculations
+     * @custom:security Prevents flash deposit attacks by excluding recent deposits
+     * @custom:validation Input validation handled by calling function
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
+     */
     function _calculateEligibleHedgerPoolSize(
         uint256 totalHedgerPoolSize,
         uint256 currentTime,
@@ -198,6 +262,14 @@ library YieldShiftOptimizationLibrary {
      * @param currentTime Current timestamp
      * @param lastUpdateTime Last update timestamp
      * @return discountBps Discount in basis points (10000 = 100%)
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateHoldingPeriodDiscount(
         uint256 currentTime,
@@ -206,6 +278,21 @@ library YieldShiftOptimizationLibrary {
         return _calculateHoldingPeriodDiscount(currentTime, lastUpdateTime);
     }
     
+    /**
+     * @notice Internal function to calculate holding period discount
+     * @dev Returns a percentage (in basis points) representing eligible deposits
+     * @param currentTime Current timestamp
+     * @param lastUpdateTime Last update timestamp
+     * @return discountBps Discount in basis points (10000 = 100%)
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling function
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
+     */
     function _calculateHoldingPeriodDiscount(
         uint256 currentTime,
         uint256 lastUpdateTime
@@ -243,6 +330,14 @@ library YieldShiftOptimizationLibrary {
      * @param isUserPool Whether this is for user pool or hedger pool
      * @param currentTime Current timestamp
      * @return Time weighted average value
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function getTimeWeightedAverage(
         PoolSnapshot[] memory poolHistory,
@@ -302,6 +397,14 @@ library YieldShiftOptimizationLibrary {
      * @param isUserPool Whether this is for user pool or hedger pool
      * @param currentTime Current timestamp
      * @return newHistory Updated pool history array
+     * @custom:security No security implications - pure function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function addToPoolHistory(
         PoolSnapshot[] memory poolHistory,
@@ -352,10 +455,19 @@ library YieldShiftOptimizationLibrary {
     
     /**
      * @notice Calculate user allocation from current yield shift
+     * @dev Calculates user allocation based on current yield shift percentage
      * @param userYieldPool Current user yield pool amount
      * @param hedgerYieldPool Current hedger yield pool amount
      * @param currentYieldShift Current yield shift percentage
      * @return User allocation amount based on current yield shift percentage
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateUserAllocation(
         uint256 userYieldPool,
@@ -369,10 +481,19 @@ library YieldShiftOptimizationLibrary {
     
     /**
      * @notice Calculate hedger allocation from current yield shift
+     * @dev Calculates hedger allocation based on current yield shift percentage
      * @param userYieldPool Current user yield pool amount
      * @param hedgerYieldPool Current hedger yield pool amount
      * @param currentYieldShift Current yield shift percentage
      * @return Hedger allocation amount based on current yield shift percentage
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateHedgerAllocation(
         uint256 userYieldPool,
@@ -390,10 +511,19 @@ library YieldShiftOptimizationLibrary {
     
     /**
      * @notice Check if a value is within tolerance of a target value
+     * @dev Checks if a value is within the specified tolerance of a target
      * @param value The value to check
      * @param target The target value
      * @param toleranceBps Tolerance in basis points (e.g., 1000 = 10%)
      * @return True if value is within tolerance, false otherwise
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function isWithinTolerance(
         uint256 value,
@@ -408,6 +538,7 @@ library YieldShiftOptimizationLibrary {
     
     /**
      * @notice Calculate historical yield shift metrics
+     * @dev Calculates statistical metrics for yield shift history
      * @param yieldShiftHistory Array of yield shift snapshots
      * @param period Time period to analyze
      * @param currentTime Current timestamp
@@ -415,6 +546,14 @@ library YieldShiftOptimizationLibrary {
      * @return maxShift Maximum yield shift during the period
      * @return minShift Minimum yield shift during the period
      * @return volatility Volatility measure of yield shifts
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateHistoricalYieldShift(
         YieldShiftSnapshot[] memory yieldShiftHistory,

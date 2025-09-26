@@ -274,6 +274,7 @@ contract YieldShift is
         hedgerPool = IHedgerPool(_hedgerPool);
         aaveVault = IAaveVault(_aaveVault);
         stQEURO = IstQEURO(_stQEURO);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
@@ -540,7 +541,7 @@ contract YieldShift is
         uint256 hedgerPoolSize,
         uint256 poolRatio
     ) {
-        return YieldShiftOptimizationLibrary.getCurrentPoolMetrics(
+        (userPoolSize, hedgerPoolSize, poolRatio) = YieldShiftOptimizationLibrary.getCurrentPoolMetrics(
             address(userPool),
             address(hedgerPool)
         );
@@ -566,14 +567,13 @@ contract YieldShift is
         uint256 hedgerPoolSize,
         uint256 poolRatio
     ) {
-        return YieldShiftOptimizationLibrary.getEligiblePoolMetrics(
+        (userPoolSize, hedgerPoolSize, poolRatio) = YieldShiftOptimizationLibrary.getEligiblePoolMetrics(
             address(userPool),
             address(hedgerPool),
             TIME_PROVIDER.currentTime(),
             lastUpdateTime
         );
     }
-    
     
     /**
      * @notice Calculate holding period discount based on recent deposit activity

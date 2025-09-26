@@ -230,6 +230,7 @@ contract HedgerPool is
         vault = IQuantillonVault(_vault);
         
         // Additional zero-check for treasury assignment
+        require(_treasury != address(0), "Treasury cannot be zero address");
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
@@ -286,11 +287,14 @@ contract HedgerPool is
         
         uint256 currentTime = TIME_PROVIDER.currentTime();
         
-        // Calculate position parameters using a default price (will be updated with oracle call later)
-        uint256 defaultPrice = 1.08e18; // Default EUR/USD price
+        // Get oracle price first to prevent reentrancy
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        CommonValidationLibrary.validateCondition(isValid, "oracle");
+        
+        // Calculate position parameters using actual oracle price
         (uint256 _fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio) = 
             HedgerPoolLogicLibrary.validateAndCalculatePositionParams(
-                usdcAmount, leverage, defaultPrice, coreParams.entryFee, coreParams.minMarginRatio, MAX_MARGIN_RATIO, coreParams.maxLeverage,
+                usdcAmount, leverage, eurUsdPrice, coreParams.entryFee, coreParams.minMarginRatio, MAX_MARGIN_RATIO, coreParams.maxLeverage,
                 MAX_POSITIONS_PER_HEDGER, activePositionCount[msg.sender], MAX_MARGIN,
                 MAX_POSITION_SIZE, MAX_ENTRY_PRICE, MAX_LEVERAGE, currentTime
             );
@@ -306,7 +310,7 @@ contract HedgerPool is
         position.entryTime = uint32(currentTime);
         position.lastUpdateTime = uint32(currentTime);
         position.leverage = uint16(leverage);
-        position.entryPrice = uint96(defaultPrice);
+        position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
 
@@ -329,13 +333,6 @@ contract HedgerPool is
         activePositionCount[msg.sender]++;
         totalMargin += netMargin;
         totalExposure += positionSize;
-        
-        // INTERACTIONS - Oracle call before external calls
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        CommonValidationLibrary.validateCondition(isValid, "oracle");
-        
-        // Update position with actual oracle price before external calls
-        position.entryPrice = uint96(eurUsdPrice);
         
         // Emit event with actual values before external calls
         emit HedgePositionOpened(
@@ -1231,6 +1228,7 @@ contract HedgerPool is
      */
     function updateTreasury(address _treasury) external {
         _validateRole(GOVERNANCE_ROLE);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");

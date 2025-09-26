@@ -405,6 +405,7 @@ contract UserPool is
         usdc = IERC20(_usdc);
         vault = IQuantillonVault(_vault);
         yieldShift = IYieldShift(_yieldShift);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;

@@ -64,6 +64,7 @@ library HedgerPoolLogicLibrary {
      * @custom:access External pure function
      * @custom:oracle Uses provided eurUsdPrice parameter
      */
+
     function validateAndCalculatePositionParams(
         uint256 usdcAmount,
         uint256 leverage,
@@ -85,23 +86,29 @@ library HedgerPoolLogicLibrary {
         uint256 positionSize,
         uint256 marginRatio
     ) {
+        // Validate basic parameters first
         ValidationLibrary.validatePositiveAmount(usdcAmount);
         ValidationLibrary.validateLeverage(leverage, maxLeverage);
         ValidationLibrary.validatePositionCount(activePositionCount, maxPositionsPerHedger);
 
+        // Calculate basic values
         fee = usdcAmount.percentageOf(entryFee);
         netMargin = usdcAmount - fee;
         positionSize = netMargin.mulDiv(leverage, 1);
         marginRatio = netMargin.mulDiv(10000, positionSize);
+        
+        // Validate calculated values
         ValidationLibrary.validateMarginRatio(marginRatio, minMarginRatio);
         ValidationLibrary.validateMaxMarginRatio(marginRatio, maxMarginRatio);
 
+        // Final validation with all parameters
         ValidationLibrary.validatePositionParams(
             netMargin, positionSize, eurUsdPrice, leverage,
             maxMargin, maxPositionSize, maxEntryPrice, maxLeverageValue
         );
         ValidationLibrary.validateTimestamp(currentTime);
     }
+
 
     /**
      * @notice Calculates profit or loss for a hedge position

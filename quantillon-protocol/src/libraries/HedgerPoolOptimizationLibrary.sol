@@ -210,79 +210,103 @@ library HedgerPoolOptimizationLibrary {
             return true;
         }
 
+        // Get protocol data in separate function to reduce stack depth
+        (bool isCollateralized, uint256 currentTotalMargin, uint256 minCollateralizationRatio) = _getProtocolData(vaultAddress);
+        
+        // Additional safety check: ensure protocol is currently collateralized
+        if (!isCollateralized) return false;
+        
+        // Check if QEURO has been minted
+        if (!_hasQEUROMinted(vaultAddress)) {
+            return true;
+        }
+
+        // Get user deposits and validate closure
+        return _validateClosureWithUserDeposits(vaultAddress, positionMargin, currentTotalMargin, minCollateralizationRatio);
+    }
+
+    /**
+     * @notice Gets protocol collateralization data
+     * @dev Internal function to reduce stack depth
+     */
+    function _getProtocolData(address vaultAddress) internal view returns (bool isCollateralized, uint256 currentTotalMargin, uint256 minCollateralizationRatio) {
         // Get current protocol collateralization status
         (bool success1, bytes memory data1) = vaultAddress.staticcall(
             abi.encodeWithSelector(0xad953caa) // isProtocolCollateralized()
         );
-        if (!success1 || data1.length < 64) return false;
+        if (!success1 || data1.length < 64) return (false, 0, 0);
         
-        (bool isCollateralized, uint256 currentTotalMargin) = abi.decode(data1, (bool, uint256));
-        
-        // Additional safety check: ensure protocol is currently collateralized
-        if (!isCollateralized) return false;
+        (isCollateralized, currentTotalMargin) = abi.decode(data1, (bool, uint256));
         
         // Get minimum collateralization ratio for minting
         (bool success2, bytes memory data2) = vaultAddress.staticcall(
             abi.encodeWithSelector(0x9aeb7e07) // minCollateralizationRatioForMinting()
         );
-        if (!success2 || data2.length < 32) return false;
-        uint256 minCollateralizationRatio = abi.decode(data2, (uint256));
-        
-        // Get QEURO total supply to check if any QEURO has been minted
-        (bool success3, bytes memory data3) = vaultAddress.staticcall(
+        if (!success2 || data2.length < 32) return (false, 0, 0);
+        minCollateralizationRatio = abi.decode(data2, (uint256));
+    }
+
+    /**
+     * @notice Checks if QEURO has been minted
+     * @dev Internal function to reduce stack depth
+     */
+    function _hasQEUROMinted(address vaultAddress) internal view returns (bool hasMinted) {
+        // Get QEURO address
+        (bool success, bytes memory data) = vaultAddress.staticcall(
             abi.encodeWithSelector(0xc74ab303) // qeuro()
         );
-        if (!success3 || data3.length < 32) return false;
-        address qeuroAddress = abi.decode(data3, (address));
+        if (!success || data.length < 32) return false;
+        address qeuroAddress = abi.decode(data, (address));
         
-        uint256 totalQEURO = 0;
-        if (qeuroAddress != address(0)) {
-            // Call totalSupply on the QEURO contract
-            (bool success4, bytes memory data4) = qeuroAddress.staticcall(
-                abi.encodeWithSelector(0x18160ddd) // totalSupply()
-            );
-            if (success4 && data4.length >= 32) {
-                totalQEURO = abi.decode(data4, (uint256));
-            }
-        }
+        if (qeuroAddress == address(0)) return false;
+        
+        // Call totalSupply on the QEURO contract
+        (bool success2, bytes memory data2) = qeuroAddress.staticcall(
+            abi.encodeWithSelector(0x18160ddd) // totalSupply()
+        );
+        if (!success2 || data2.length < 32) return false;
+        uint256 totalQEURO = abi.decode(data2, (uint256));
+        
+        return totalQEURO > 0;
+    }
 
-        // If no QEURO has been minted, position can always be closed
-        if (totalQEURO == 0) {
-            return true;
-        }
-
-        // Get UserPool total deposits
-        (bool success5, bytes memory data5) = vaultAddress.staticcall(
+    /**
+     * @notice Validates closure with user deposits
+     * @dev Internal function to reduce stack depth
+     */
+    function _validateClosureWithUserDeposits(
+        address vaultAddress,
+        uint256 positionMargin,
+        uint256 currentTotalMargin,
+        uint256 minCollateralizationRatio
+    ) internal view returns (bool isValid) {
+        // Get UserPool address
+        (bool success, bytes memory data) = vaultAddress.staticcall(
             abi.encodeWithSelector(0x1adc6930) // userPool()
         );
-        if (!success5 || data5.length < 32) return false;
-        address userPoolAddress = abi.decode(data5, (address));
+        if (!success || data.length < 32) return false;
+        address userPoolAddress = abi.decode(data, (address));
         
+        // Get user deposits
         uint256 userDeposits = 0;
         if (userPoolAddress != address(0)) {
-            // Call totalDeposits on the UserPool contract
-            (bool success6, bytes memory data6) = userPoolAddress.staticcall(
+            (bool success2, bytes memory data2) = userPoolAddress.staticcall(
                 abi.encodeWithSelector(0x7d882097) // totalDeposits()
             );
-            if (success6 && data6.length >= 32) {
-                userDeposits = abi.decode(data6, (uint256));
+            if (success2 && data2.length >= 32) {
+                userDeposits = abi.decode(data2, (uint256));
             }
         }
         
-        // Calculate what the collateralization ratio would be after closing this position
-        uint256 remainingHedgerMargin = currentTotalMargin - positionMargin;
-        
-        // If no user deposits, hedger margin is the only collateral
+        // If no user deposits, position can always be closed
         if (userDeposits == 0) {
-            // If no QEURO has been minted and no user deposits, position can always be closed
-            // because there's nothing to hedge
             return true;
         }
 
-        // Calculate future collateralization ratio
+        // Calculate remaining margin and future ratio
+        uint256 remainingHedgerMargin = currentTotalMargin - positionMargin;
         uint256 futureRatio = ((userDeposits + remainingHedgerMargin) * 10000) / userDeposits;
 
-        // Check if closing would make the protocol undercollateralized for minting
         return futureRatio >= minCollateralizationRatio;
     }
     

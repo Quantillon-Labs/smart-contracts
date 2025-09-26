@@ -45,6 +45,11 @@ jobs:
           export FOUNDRY_COMPILER_OPTIMIZER=false
           export FOUNDRY_COMPILER_VIA_IR=false
           
+          echo "Environment variables set:"
+          echo "FOUNDRY_DISABLE_NIGHTLY_WARNING=$FOUNDRY_DISABLE_NIGHTLY_WARNING"
+          echo "FOUNDRY_COMPILER_OPTIMIZER=$FOUNDRY_COMPILER_OPTIMIZER"
+          echo "FOUNDRY_COMPILER_VIA_IR=$FOUNDRY_COMPILER_VIA_IR"
+          
           # Store the original remote URL
           ORIGINAL_REMOTE=$(git remote get-url origin)
           echo "Original remote URL: $ORIGINAL_REMOTE"
@@ -89,7 +94,7 @@ jobs:
                       else
                           echo "All strategies failed, trying with different compiler settings..."
                           # Strategy 5: Try with different compiler settings
-                          FOUNDRY_COMPILER_OPTIMIZER=false timeout 300 forge doc --out docs
+                          timeout 300 env FOUNDRY_COMPILER_OPTIMIZER=false forge doc --out docs
                           echo "Documentation generated with disabled optimizer"
                       fi
                   fi
@@ -97,7 +102,7 @@ jobs:
           else
               echo "Contract build failed or timed out, trying alternative approach..."
               # Strategy 6: Try building with no optimization at all
-              if timeout 300 FOUNDRY_COMPILER_OPTIMIZER=false FOUNDRY_COMPILER_VIA_IR=false forge build; then
+              if timeout 300 env FOUNDRY_COMPILER_OPTIMIZER=false FOUNDRY_COMPILER_VIA_IR=false forge build; then
                   if timeout 300 forge doc --out docs --build; then
                       echo "Documentation generated with no optimization"
                   else
@@ -108,11 +113,17 @@ jobs:
                       echo "Minimal documentation created"
                   fi
               else
-                  echo "All strategies failed, creating minimal documentation..."
-                  # Strategy 8: Create minimal documentation manually
-                  mkdir -p docs/book
-                  echo "<!DOCTYPE html><html><head><title>Quantillon Protocol Documentation</title></head><body><h1>Quantillon Protocol</h1><p>Documentation generation failed due to stack overflow. Please check the contract complexity.</p></body></html>" > docs/book/index.html
-                  echo "Minimal documentation created"
+                  echo "All strategies failed, trying final fallback..."
+                  # Strategy 8: Try with minimal forge doc command
+                  if timeout 300 forge doc --out docs --no-build; then
+                      echo "Documentation generated without build step"
+                  else
+                      echo "All strategies failed, creating minimal documentation..."
+                      # Strategy 9: Create minimal documentation manually
+                      mkdir -p docs/book
+                      echo "<!DOCTYPE html><html><head><title>Quantillon Protocol Documentation</title></head><body><h1>Quantillon Protocol</h1><p>Documentation generation failed due to stack overflow. Please check the contract complexity.</p></body></html>" > docs/book/index.html
+                      echo "Minimal documentation created"
+                  fi
               fi
           fi
           
@@ -167,6 +178,64 @@ jobs:
           ls -la docs
           echo "== site root (docs/book) =="
           ls -la docs/book
+          
+          # Check if documentation was generated successfully
+          if [ -d "docs/book" ] && [ "$(ls -A docs/book)" ]; then
+              echo "✅ Documentation generated successfully!"
+              echo "Documentation files:"
+              find docs/book -name "*.html" | head -10
+          else
+              echo "❌ Documentation generation failed!"
+              echo "Creating emergency fallback documentation..."
+              mkdir -p docs/book
+              cat > docs/book/index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantillon Protocol Documentation</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .info { background: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Quantillon Protocol Documentation</h1>
+    <div class="error">
+        <h2>⚠️ Documentation Generation Issue</h2>
+        <p>The automated documentation generation encountered an issue. This is likely due to:</p>
+        <ul>
+            <li>Stack overflow during compilation (complex contracts)</li>
+            <li>Memory limitations in the CI environment</li>
+            <li>Compiler optimization issues</li>
+        </ul>
+    </div>
+    <div class="info">
+        <h2>📚 Manual Documentation</h2>
+        <p>For the latest documentation, please visit:</p>
+        <ul>
+            <li><a href="https://docs.quantillon.money">Official Documentation</a></li>
+            <li><a href="https://github.com/Quantillon-Labs/smart-contracts">GitHub Repository</a></li>
+        </ul>
+    </div>
+    <h2>🔧 Smart Contracts</h2>
+    <p>The Quantillon Protocol consists of several key smart contracts:</p>
+    <ul>
+        <li><strong>QEUROToken</strong> - Euro-pegged stablecoin</li>
+        <li><strong>QTIToken</strong> - Governance token</li>
+        <li><strong>stQEUROToken</strong> - Yield-bearing wrapper</li>
+        <li><strong>QuantillonVault</strong> - Main vault for collateral management</li>
+        <li><strong>UserPool</strong> - User deposit and staking operations</li>
+        <li><strong>HedgerPool</strong> - EUR/USD hedging operations</li>
+    </ul>
+    <p><em>Last updated: $(date)</em></p>
+</body>
+</html>
+EOF
+              echo "Emergency fallback documentation created"
+          fi
           
 
       - name: Setup Node

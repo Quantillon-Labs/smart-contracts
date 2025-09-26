@@ -42,10 +42,19 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Calculates staking rewards for a user
+     * @dev Internal function to calculate rewards based on stake duration and APY
      * @param stakeInfo Stake information
      * @param stakingAPY Staking APY in basis points
      * @param currentTime Current timestamp
      * @return rewards Calculated rewards
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling function
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
      */
     function _calculateStakingRewards(
         StakeInfo memory stakeInfo,
@@ -76,10 +85,19 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Public wrapper for calculateStakingRewards
+     * @dev Public interface for calculating staking rewards
      * @param stakeInfo Stake information
      * @param stakingAPY Staking APY in basis points
      * @param currentTime Current timestamp
      * @return rewards Calculated rewards
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateStakingRewards(
         StakeInfo memory stakeInfo,
@@ -91,10 +109,19 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Calculates total staking rewards for a user
+     * @dev Calculates total rewards across all active stakes for a user
      * @param userStakes Array of user stakes
      * @param stakingAPY Staking APY in basis points
      * @param currentTime Current timestamp
      * @return totalRewards Total rewards for all stakes
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateTotalStakingRewards(
         StakeInfo[] memory userStakes,
@@ -110,9 +137,18 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Validates stake parameters
+     * @dev Ensures stake parameters are within acceptable bounds
      * @param amount Stake amount
      * @param duration Stake duration
      * @param userStakingData User's current staking data
+     * @custom:security Prevents invalid stake parameters from being processed
+     * @custom:validation Validates amounts, durations, and user limits
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws various validation errors for invalid inputs
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function validateStakeParameters(
         uint256 amount,
@@ -143,8 +179,17 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Validates unstake parameters
+     * @dev Ensures unstake operations meet minimum requirements
      * @param stakeInfo Stake information
      * @param currentTime Current timestamp
+     * @custom:security Prevents premature unstaking and enforces cooldowns
+     * @custom:validation Validates stake status and timing requirements
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws various validation errors for invalid unstake attempts
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function validateUnstakeParameters(
         StakeInfo memory stakeInfo,
@@ -168,9 +213,18 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Calculates unstake penalty
+     * @dev Calculates penalty based on stake duration to discourage early unstaking
      * @param stakeInfo Stake information
      * @param currentTime Current timestamp
      * @return penalty Penalty percentage in basis points
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateUnstakePenalty(
         StakeInfo memory stakeInfo,
@@ -191,10 +245,19 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Calculates deposit APY based on pool metrics
+     * @dev Adjusts deposit APY based on staking ratio to incentivize optimal behavior
      * @param totalDeposits Total pool deposits
      * @param totalStaked Total staked amount
      * @param baseAPY Base APY in basis points
      * @return depositAPY Calculated deposit APY
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateDepositAPY(
         uint256 totalDeposits,
@@ -220,10 +283,19 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Calculates staking APY based on pool metrics
+     * @dev Adjusts staking APY based on staking ratio to incentivize optimal behavior
      * @param totalDeposits Total pool deposits
      * @param totalStaked Total staked amount
      * @param baseAPY Base APY in basis points
      * @return stakingAPY Calculated staking APY
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateStakingAPY(
         uint256 totalDeposits,
@@ -249,10 +321,19 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Calculates fee for deposit/withdrawal
+     * @dev Adjusts fees based on pool utilization to manage liquidity
      * @param amount Transaction amount
      * @param baseFee Base fee in basis points
      * @param poolUtilization Pool utilization ratio
      * @return fee Calculated fee amount
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculateDynamicFee(
         uint256 amount,
@@ -272,10 +353,19 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Calculates pool metrics
+     * @dev Packs pool metrics into a single uint256 for gas efficiency
      * @param totalDeposits Total pool deposits
      * @param totalStaked Total staked amount
      * @param totalUsers Total number of users
      * @return metrics Packed pool metrics
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function calculatePoolMetrics(
         uint256 totalDeposits,
@@ -291,10 +381,19 @@ library UserPoolStakingLibrary {
 
     /**
      * @notice Unpacks pool metrics
+     * @dev Unpacks pool metrics from a single uint256 for gas efficiency
      * @param metrics Packed pool metrics
      * @return stakingRatio Staking ratio in basis points
      * @return averageDeposit Average deposit per user
      * @return totalUsers Total number of users
+     * @custom:security No security implications - pure calculation function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function unpackPoolMetrics(uint256 metrics) external pure returns (
         uint256 stakingRatio,

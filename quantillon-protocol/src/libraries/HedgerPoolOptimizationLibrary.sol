@@ -25,6 +25,14 @@ library HedgerPoolOptimizationLibrary {
      * @param leverage Leverage multiplier for the position
      * @param entryPrice Price at which the position was opened
      * @return Packed data as bytes32
+     * @custom:security No security implications - pure data packing function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function packPositionOpenData(
         uint256 positionSize,
@@ -47,6 +55,14 @@ library HedgerPoolOptimizationLibrary {
      * @param pnl Profit or loss from the position (can be negative)
      * @param timestamp Timestamp when the position was closed
      * @return Packed data as bytes32
+     * @custom:security No security implications - pure data packing function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function packPositionCloseData(
         uint256 exitPrice,
@@ -70,6 +86,14 @@ library HedgerPoolOptimizationLibrary {
      * @param newMarginRatio New margin ratio after the operation
      * @param isAdded True if margin was added, false if removed
      * @return Packed data as bytes32
+     * @custom:security No security implications - pure data packing function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function packMarginData(
         uint256 marginAmount,
@@ -89,6 +113,14 @@ library HedgerPoolOptimizationLibrary {
      * @param liquidationReward Reward paid to the liquidator
      * @param remainingMargin Margin remaining after liquidation
      * @return Packed data as bytes32
+     * @custom:security No security implications - pure data packing function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function packLiquidationData(
         uint256 liquidationReward,
@@ -107,6 +139,14 @@ library HedgerPoolOptimizationLibrary {
      * @param yieldShiftRewards Rewards from yield shifting operations
      * @param totalRewards Total rewards accumulated
      * @return Packed data as bytes32
+     * @custom:security No security implications - pure data packing function
+     * @custom:validation Input validation handled by calling contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - pure function
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Public function
+     * @custom:oracle No oracle dependencies
      */
     function packRewardData(
         uint256 interestDifferential,
@@ -129,6 +169,14 @@ library HedgerPoolOptimizationLibrary {
      * @dev Internal function to check role-based access control
      * @param role The role to validate against
      * @param contractInstance The contract instance to check roles on
+     * @custom:security Prevents unauthorized access to protected functions
+     * @custom:validation Ensures proper role-based access control
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors Throws NotAuthorized if caller lacks required role
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access External function with role validation
+     * @custom:oracle No oracle dependencies
      */
     function validateRole(bytes32 role, address contractInstance) external view {
         AccessControlUpgradeable accessControl = AccessControlUpgradeable(contractInstance);
@@ -144,6 +192,14 @@ library HedgerPoolOptimizationLibrary {
      * @param positionMargin The margin amount of the position being closed
      * @param vaultAddress Address of the vault contract
      * @return isValid True if position can be safely closed
+     * @custom:security Prevents protocol undercollateralization from position closures
+     * @custom:validation Ensures protocol remains properly collateralized
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - returns boolean result
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access External function
+     * @custom:oracle No oracle dependencies
      */
     function validatePositionClosureSafety(
         uint256 positionMargin,
@@ -243,6 +299,14 @@ library HedgerPoolOptimizationLibrary {
      * @param positionIndex Mapping of hedger to position index
      * @param positionIds Array of position IDs for the hedger
      * @return success True if position was successfully removed
+     * @custom:security Maintains data integrity of position tracking arrays
+     * @custom:validation Ensures position exists before removal
+     * @custom:state-changes Modifies storage mappings and arrays
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - returns boolean result
+     * @custom:reentrancy Not applicable - no external calls
+     * @custom:access External function
+     * @custom:oracle No oracle dependencies
      */
     function removePositionFromArrays(
         address hedger,
@@ -278,9 +342,18 @@ library HedgerPoolOptimizationLibrary {
     
     /**
      * @notice Gets a valid EUR/USD price from the oracle
+     * @dev Retrieves and validates price data from the oracle contract
      * @param oracleAddress Address of the oracle contract
      * @return price Valid EUR/USD price from oracle
      * @return isValid True if price is valid
+     * @custom:security Ensures oracle price data is valid before use
+     * @custom:validation Validates oracle response format and data
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - returns boolean result
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access External function
+     * @custom:oracle Depends on oracle contract for price data
      */
     function getValidOraclePrice(address oracleAddress) external view returns (uint256 price, bool isValid) {
         (bool success, bytes memory data) = oracleAddress.staticcall(

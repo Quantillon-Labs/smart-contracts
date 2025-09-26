@@ -1,5 +1,5 @@
 # MockChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/dd3e083d5d3a3d1f4c483da8f76db5c62d86f916/src/mocks/MockChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/486f19261aef0b99ac5330b56bb5ad5bbdda41eb/src/mocks/MockChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -38,6 +38,13 @@ AggregatorV3Interface public usdcUsdPriceFeed;
 
 ```solidity
 address public treasury;
+```
+
+
+### originalAdmin
+
+```solidity
+address private originalAdmin;
 ```
 
 
@@ -253,6 +260,8 @@ function _divRound(uint256 a, uint256 b) internal pure returns (uint256);
 
 Updates treasury address
 
+*Treasury can only be updated to the original admin address to prevent arbitrary sends*
+
 
 ```solidity
 function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -276,6 +285,8 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 ### recoverETH
 
 Recovers ETH sent to the contract
+
+*Only sends ETH to the original admin address to prevent arbitrary sends*
 
 
 ```solidity

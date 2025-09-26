@@ -237,6 +237,7 @@ contract ChainlinkOracle is
         // Initialize price feed interfaces
         eurUsdPriceFeed = AggregatorV3Interface(_eurUsdPriceFeed);
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdPriceFeed);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
@@ -267,6 +268,7 @@ contract ChainlinkOracle is
       * @custom:oracle Requires fresh oracle price data
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_treasury != address(0), "Treasury cannot be zero address");
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);

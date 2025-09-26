@@ -329,6 +329,7 @@ contract stQEUROToken is
         qeuro = IQEUROToken(_qeuro);
         yieldShift = IYieldShift(_yieldShift);
         usdc = IERC20(_usdc);
+        require(_treasury != address(0), "Treasury cannot be zero address");
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;

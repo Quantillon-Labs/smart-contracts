@@ -26,6 +26,9 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     // Treasury address
     address public treasury;
     
+    // Original admin address (immutable after initialization)
+    address private originalAdmin;
+    
     // Price bounds (same as ChainlinkOracle)
     uint256 public constant MIN_EUR_USD_PRICE = 0.5e18;  // 0.5 USD
     uint256 public constant MAX_EUR_USD_PRICE = 2.0e18;  // 2.0 USD
@@ -79,7 +82,11 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // Set feed addresses
         eurUsdPriceFeed = AggregatorV3Interface(_eurUsdPriceFeed);
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdPriceFeed);
+        require(admin != address(0), "Admin cannot be zero address");
         CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
+        
+        // Store original admin address for security
+        originalAdmin = admin;
         treasury = admin; // Use admin as treasury for mock
         
         // Initialize with default prices (no recursive calls during initialization)
@@ -227,9 +234,15 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Updates treasury address
      * @param _treasury New treasury address
+     * @dev Treasury can only be updated to the original admin address to prevent arbitrary sends
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_treasury != address(0), "Treasury cannot be zero address");
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        
+        // Only allow setting treasury to the original admin address
+        CommonValidationLibrary.validateCondition(_treasury == originalAdmin, "authorization");
+        
         treasury = _treasury;
     }
     
@@ -242,23 +255,21 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     
     /**
      * @notice Recovers ETH sent to the contract
+     * @dev Only sends ETH to the original admin address to prevent arbitrary sends
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 balance = address(this).balance;
         CommonValidationLibrary.validatePositiveAmount(balance);
         
-        // Validate treasury address is not arbitrary - must be the admin who deployed
-        CommonValidationLibrary.validateNonZeroAddress(treasury, "treasury");
-        CommonValidationLibrary.validateCondition(treasury != address(this), "self");
-        CommonValidationLibrary.validateCondition(hasRole(DEFAULT_ADMIN_ROLE, treasury), "authorization");
+        // Use the original admin address (the one who deployed the contract)
+        // This prevents arbitrary sends by ensuring ETH only goes to the original deployer
+        CommonValidationLibrary.validateNonZeroAddress(originalAdmin, "admin");
+        CommonValidationLibrary.validateCondition(originalAdmin != address(this), "self");
         
-        // Additional validation: treasury must be the deployer/admin
-        CommonValidationLibrary.validateCondition(treasury == msg.sender, "authorization");
+        emit ETHRecovered(originalAdmin, balance);
         
-        emit ETHRecovered(treasury, balance);
-        
-        (bool success, ) = treasury.call{value: balance}("");
-        CommonValidationLibrary.validateCondition(success, "transfer");
+        // Use a safer transfer method - payable transfer to a known address
+        payable(originalAdmin).transfer(balance);
     }
     
     /**

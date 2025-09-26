@@ -1,5 +1,5 @@
 # QTITokenGovernanceLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/dd3e083d5d3a3d1f4c483da8f76db5c62d86f916/src/libraries/QTITokenGovernanceLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/486f19261aef0b99ac5330b56bb5ad5bbdda41eb/src/libraries/QTITokenGovernanceLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -44,6 +44,23 @@ Calculate voting power multiplier based on lock time
 
 *Calculates linear multiplier from 1x to 4x based on lock duration*
 
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function calculateVotingPowerMultiplier(uint256 lockTime) external pure returns (uint256 multiplier);
@@ -63,16 +80,66 @@ function calculateVotingPowerMultiplier(uint256 lockTime) external pure returns 
 
 ### _calculateVotingPowerMultiplier
 
+Internal function to calculate voting power multiplier
+
+*Calculates linear multiplier from 1x to 4x based on lock duration*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling function
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function _calculateVotingPowerMultiplier(uint256 lockTime) internal pure returns (uint256 multiplier);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`lockTime`|`uint256`|Duration of the lock|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`multiplier`|`uint256`|Voting power multiplier|
+
 
 ### calculateVotingPower
 
 Calculate voting power with overflow protection
 
 *Calculates voting power based on amount and lock time with overflow protection*
+
+**Notes:**
+- security: Prevents overflow in voting power calculations
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws InvalidAmount if result exceeds uint96 max
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -94,16 +161,67 @@ function calculateVotingPower(uint256 amount, uint256 lockTime) external pure re
 
 ### _calculateVotingPower
 
+Internal function to calculate voting power with overflow protection
+
+*Calculates voting power based on amount and lock time with overflow protection*
+
+**Notes:**
+- security: Prevents overflow in voting power calculations
+
+- validation: Input validation handled by calling function
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws InvalidAmount if result exceeds uint96 max
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function _calculateVotingPower(uint256 amount, uint256 lockTime) internal pure returns (uint256);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Amount of QTI tokens to lock|
+|`lockTime`|`uint256`|Duration to lock tokens|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|votingPower Calculated voting power|
+
 
 ### calculateCurrentVotingPower
 
 Calculate current voting power with linear decay
 
 *Calculates current voting power with linear decay over time*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -132,6 +250,23 @@ Calculate unlock time with proper validation
 
 *Calculates new unlock time based on current timestamp and lock duration*
 
+**Notes:**
+- security: Prevents timestamp overflow in unlock time calculations
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws InvalidTime if result exceeds uint32 max
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function calculateUnlockTime(uint256 currentTimestamp, uint256 lockTime, uint256 existingUnlockTime)
@@ -156,6 +291,27 @@ function calculateUnlockTime(uint256 currentTimestamp, uint256 lockTime, uint256
 
 ### _calculateUnlockTime
 
+Internal function to calculate unlock time with proper validation
+
+*Calculates new unlock time based on current timestamp and lock duration*
+
+**Notes:**
+- security: Prevents timestamp overflow in unlock time calculations
+
+- validation: Input validation handled by calling function
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws InvalidTime if result exceeds uint32 max
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function _calculateUnlockTime(uint256 currentTimestamp, uint256 lockTime, uint256 existingUnlockTime)
@@ -163,12 +319,43 @@ function _calculateUnlockTime(uint256 currentTimestamp, uint256 lockTime, uint25
     pure
     returns (uint256 newUnlockTime);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`currentTimestamp`|`uint256`|Current timestamp for calculation|
+|`lockTime`|`uint256`|Duration to lock tokens|
+|`existingUnlockTime`|`uint256`|Existing unlock time if already locked|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newUnlockTime`|`uint256`|Calculated unlock time|
+
 
 ### validateAndCalculateTotalAmount
 
 Validate all amounts and lock times, returns total amount
 
 *Ensures all amounts and lock times are valid and calculates total amount*
+
+**Notes:**
+- security: Prevents invalid amounts and lock times from being processed
+
+- validation: Validates amounts are positive and lock times are within bounds
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws various validation errors for invalid inputs
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -196,6 +383,23 @@ function validateAndCalculateTotalAmount(uint256[] calldata amounts, uint256[] c
 Process batch locks and calculate totals
 
 *Processes batch lock operations and calculates total voting power and amounts*
+
+**Notes:**
+- security: Prevents overflow in batch calculations
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -241,6 +445,23 @@ Update lock info with overflow checks
 
 *Updates user's lock information with new amounts and times*
 
+**Notes:**
+- security: Prevents overflow in lock info updates
+
+- validation: Validates amounts and times are within bounds
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Throws InvalidAmount if values exceed uint96 max
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function updateLockInfo(uint256 totalNewAmount, uint256 newUnlockTime, uint256 totalNewVotingPower, uint256 lockTime)
@@ -269,6 +490,23 @@ function updateLockInfo(uint256 totalNewAmount, uint256 newUnlockTime, uint256 t
 Calculate decentralization level based on time elapsed
 
 *Calculates decentralization level based on elapsed time since start*
+
+**Notes:**
+- security: No security implications - pure calculation function
+
+- validation: Input validation handled by calling contract
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: No errors thrown - pure function
+
+- reentrancy: Not applicable - pure function
+
+- access: Public function
+
+- oracle: No oracle dependencies
 
 
 ```solidity

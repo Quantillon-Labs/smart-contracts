@@ -41,9 +41,9 @@ jobs:
           # Set environment variables for Foundry
           export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
           
-          # Set additional environment variables to reduce complexity
-          export FOUNDRY_COMPILER_OPTIMIZER=false
-          export FOUNDRY_COMPILER_VIA_IR=false
+          # Set additional environment variables
+          export FOUNDRY_COMPILER_OPTIMIZER=true
+          export FOUNDRY_COMPILER_VIA_IR=true
           
           echo "Environment variables set:"
           echo "FOUNDRY_DISABLE_NIGHTLY_WARNING=$FOUNDRY_DISABLE_NIGHTLY_WARNING"
@@ -61,82 +61,16 @@ jobs:
           # Generate and build documentation
           echo "Generating documentation..."
           
-          # Strategy 1: Try with maximum stack size and reduced complexity
-          echo "Attempting with maximum stack size and reduced complexity..."
-          ulimit -s unlimited
-          
-          # Try to build contracts first with minimal settings
-          echo "Building contracts with minimal settings..."
-          if timeout 300 forge build --optimize --optimizer-runs 1; then
-              echo "Contracts built successfully, now generating docs..."
-              if timeout 300 forge doc --out docs --build; then
-                  echo "Documentation generated successfully with unlimited stack size"
-              else
-                  echo "Unlimited stack size failed, trying with large fixed size..."
-                  # Strategy 2: Try with very large stack size
-                  ulimit -s 131072
-                  if timeout 300 forge doc --out docs --build; then
-                      echo "Documentation generated successfully with large stack size"
-                  else
-                      echo "Large stack size failed, trying step-by-step approach..."
-                      # Strategy 3: Generate docs without build, then build separately
-                      ulimit -s 131072
-                      if timeout 300 forge doc --out docs; then
-                          echo "Docs generated, now building..."
-                          if timeout 300 forge doc --build; then
-                              echo "Documentation built successfully with step-by-step approach"
-                          else
-                              echo "Build step failed, trying minimal approach..."
-                              # Strategy 4: Try with minimal optimization
-                              timeout 300 forge doc --out docs
-                              echo "Minimal documentation generated"
-                          fi
-                      else
-                          echo "All strategies failed, trying with different compiler settings..."
-                          # Strategy 5: Try with different compiler settings
-                          timeout 300 env FOUNDRY_COMPILER_OPTIMIZER=false forge doc --out docs
-                          echo "Documentation generated with disabled optimizer"
-                      fi
-                  fi
-              fi
+          # Main strategy: Try with IR compilation enabled
+          echo "Attempting documentation generation with IR compilation..."
+          if timeout 300 forge doc --out docs --build; then
+              echo "Documentation generated successfully"
           else
-              echo "Contract build failed or timed out, trying alternative approach..."
-              # Strategy 6: Try building with no optimization at all
-              if timeout 300 env FOUNDRY_COMPILER_OPTIMIZER=false FOUNDRY_COMPILER_VIA_IR=false forge build; then
-                  if timeout 300 forge doc --out docs --build; then
-                      echo "Documentation generated with no optimization"
-                  else
-                      echo "Stack overflow detected, trying alternative documentation approach..."
-                      # Strategy 7: Handle stack overflow with minimal documentation generation
-                      if timeout 300 forge doc --out docs --no-build; then
-                          echo "Documentation generated without build step"
-                      else
-                          echo "Stack overflow persists, trying with reduced complexity..."
-                          # Strategy 8: Try with specific contract selection to reduce complexity
-                          if timeout 300 forge doc --out docs --no-build --contracts src/core/QuantillonVault.sol; then
-                              echo "Documentation generated for core contracts only"
-                          else
-                              echo "All strategies failed, creating minimal documentation..."
-                              # Strategy 9: Create minimal documentation manually
-                              mkdir -p docs/book
-                              echo "<!DOCTYPE html><html><head><title>Quantillon Protocol Documentation</title></head><body><h1>Quantillon Protocol</h1><p>Documentation generation failed due to stack overflow. Please check the contract complexity.</p></body></html>" > docs/book/index.html
-                              echo "Minimal documentation created"
-                          fi
-                      fi
-                  fi
-              else
-                  echo "All strategies failed, trying final fallback..."
-                  # Strategy 10: Try with minimal forge doc command
-                  if timeout 300 forge doc --out docs --no-build; then
-                      echo "Documentation generated without build step"
-                  else
-                      echo "All strategies failed, creating minimal documentation..."
-                      # Strategy 11: Create minimal documentation manually
-                      mkdir -p docs/book
-                      echo "<!DOCTYPE html><html><head><title>Quantillon Protocol Documentation</title></head><body><h1>Quantillon Protocol</h1><p>Documentation generation failed due to stack overflow. Please check the contract complexity.</p></body></html>" > docs/book/index.html
-                      echo "Minimal documentation created"
-                  fi
-              fi
+              echo "Documentation generation failed, creating fallback..."
+              # Fallback: Create minimal documentation
+              mkdir -p docs/book
+              echo "<!DOCTYPE html><html><head><title>Quantillon Protocol Documentation</title></head><body><h1>Quantillon Protocol</h1><p>Documentation generation failed. Please check the contract complexity or try building locally.</p></body></html>" > docs/book/index.html
+              echo "Fallback documentation created"
           fi
           
           # Restore the original remote URL

@@ -63,7 +63,7 @@ jobs:
           
           # Main strategy: Try with IR compilation enabled
           echo "Attempting documentation generation with IR compilation..."
-          if timeout 300 forge doc --out docs --build; then
+          if timeout 600 forge doc src --out docs --build; then
               echo "Documentation generated successfully"
           else
               echo "Documentation generation failed, creating fallback..."

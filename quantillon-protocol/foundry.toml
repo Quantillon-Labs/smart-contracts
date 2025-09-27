@@ -26,6 +26,12 @@ base_sepolia = "https://sepolia.base.org"
 ethereum = "https://eth.llamarpc.com"
 arbitrum = "https://arb1.arbitrum.io/rpc"
 
+[profile.docs]
+optimizer = false
+via_ir = false
+solc_version = "0.8.24"
+evm_version = "paris"
+
 [doc]
 out = "docs"
 include = ["src/**"]

@@ -26,7 +26,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
 
       - name: Build contracts (optional but recommended)
         run: |
@@ -34,21 +34,11 @@ jobs:
           forge build --sizes
 
       - name: Generate docs with correct GitHub URLs
+        env:
+          RUST_MIN_STACK: 50331648      
         run: |
           cd quantillon-protocol
           rm -rf docs
-          
-          # Set environment variables for Foundry
-          export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
-          
-          # Set additional environment variables
-          export FOUNDRY_COMPILER_OPTIMIZER=true
-          export FOUNDRY_COMPILER_VIA_IR=true
-          
-          echo "Environment variables set:"
-          echo "FOUNDRY_DISABLE_NIGHTLY_WARNING=$FOUNDRY_DISABLE_NIGHTLY_WARNING"
-          echo "FOUNDRY_COMPILER_OPTIMIZER=$FOUNDRY_COMPILER_OPTIMIZER"
-          echo "FOUNDRY_COMPILER_VIA_IR=$FOUNDRY_COMPILER_VIA_IR"
           
           # Store the original remote URL
           ORIGINAL_REMOTE=$(git remote get-url origin)
@@ -63,7 +53,7 @@ jobs:
           
           # Main strategy: Try with IR compilation enabled
           echo "Attempting documentation generation with IR compilation..."
-          if timeout 600 forge doc src --out docs --build; then
+          if timeout 600 forge doc -p docs --out docs --build -vv; then
               echo "Documentation generated successfully"
           else
               echo "Documentation generation failed, creating fallback..."

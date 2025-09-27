@@ -18,6 +18,7 @@ import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
 import {IUserPool} from "../interfaces/IUserPool.sol";
+import {FeeCollector} from "./FeeCollector.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
@@ -481,7 +482,10 @@ contract QuantillonVault is
         
         // Transfer fee to fee collector (if fee > 0)
         if (fee > 0) {
-            usdc.safeTransfer(feeCollector, fee);
+            // Approve FeeCollector to pull the fee
+            usdc.safeIncreaseAllowance(feeCollector, fee);
+            // Call FeeCollector to collect the fee with proper tracking
+            FeeCollector(feeCollector).collectFees(address(usdc), fee, "minting");
         }
         
         qeuro.mint(msg.sender, qeuroToMint);

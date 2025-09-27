@@ -5,12 +5,6 @@
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -26,8 +20,8 @@ SARIF_FILE="$OUTPUT_DIR/mythril-report-$TIMESTAMP.sarif"
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-echo -e "${BLUE}🔍 QUANTILLON PROTOCOL - MYTHRIL SECURITY ANALYSIS${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
+echo -e " QUANTILLON PROTOCOL - MYTHRIL SECURITY ANALYSIS"
+echo -e "═══════════════════════════════════════════════════════════════════"
 echo -e "Generated: $(date)"
 echo -e "Tool: Mythril Symbolic Execution Engine"
 echo -e "Project: Quantillon Protocol Smart Contracts"
@@ -35,12 +29,12 @@ echo ""
 
 # Check if Mythril is installed
 if ! command -v myth &> /dev/null; then
-    echo -e "${RED}❌ Mythril is not installed!${NC}"
-    echo -e "${YELLOW}📦 Installing Mythril using pipx...${NC}"
+    echo -e " Mythril is not installed!"
+    echo -e "📦 Installing Mythril using pipx..."
     
     # Check if pipx is available
     if ! command -v pipx &> /dev/null; then
-        echo -e "${YELLOW}📦 Installing pipx first...${NC}"
+        echo -e "📦 Installing pipx first..."
         sudo apt update && sudo apt install -y pipx
         pipx ensurepath
         export PATH="$PATH:/home/$USER/.local/bin"
@@ -50,23 +44,23 @@ if ! command -v myth &> /dev/null; then
     pipx install mythril
     
     if [ $? -ne 0 ]; then
-        echo -e "${YELLOW}⚠️  pipx failed, trying pip3 --user...${NC}"
+        echo -e "  pipx failed, trying pip3 --user..."
         pip3 install --user mythril
         
         if [ $? -ne 0 ]; then
-            echo -e "${RED}❌ Failed to install Mythril. Please install manually:${NC}"
-            echo -e "${YELLOW}   pipx install mythril${NC}"
-            echo -e "${YELLOW}   or: pip3 install --user mythril${NC}"
-            echo -e "${YELLOW}   or: pip3 install --break-system-packages mythril${NC}"
+            echo -e " Failed to install Mythril. Please install manually:"
+            echo -e "   pipx install mythril"
+            echo -e "   or: pip3 install --user mythril"
+            echo -e "   or: pip3 install --break-system-packages mythril"
             exit 1
         fi
     fi
     
-    echo -e "${GREEN}✅ Mythril installed successfully!${NC}"
+    echo -e " Mythril installed successfully!"
 fi
 
-echo -e "${BLUE}📊 EXECUTIVE SUMMARY${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "📊 EXECUTIVE SUMMARY"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Initialize counters
 TOTAL_CONTRACTS=0
@@ -87,7 +81,7 @@ CORE_CONTRACTS=(
     "src/libraries/TimeProviderLibrary.sol:TimeProviderLibrary"
 )
 
-echo -e "${YELLOW}🎯 Analyzing Core Contracts...${NC}"
+echo -e "🎯 Analyzing Core Contracts..."
 echo ""
 
 # Analyze each core contract
@@ -95,8 +89,8 @@ for contract in "${CORE_CONTRACTS[@]}"; do
     contract_name=$(echo "$contract" | cut -d':' -f2)
     contract_file=$(echo "$contract" | cut -d':' -f1)
     
-    echo -e "${BLUE}📋 Analyzing: $contract_name${NC}"
-    echo -e "${BLUE}   File: $contract_file${NC}"
+    echo -e " Analyzing: $contract_name"
+    echo -e "   File: $contract_file"
     
     TOTAL_CONTRACTS=$((TOTAL_CONTRACTS + 1))
     
@@ -121,28 +115,28 @@ for contract in "${CORE_CONTRACTS[@]}"; do
         if [ "$issues_count" -gt 0 ]; then
             VULNERABLE_CONTRACTS=$((VULNERABLE_CONTRACTS + 1))
             TOTAL_ISSUES=$((TOTAL_ISSUES + issues_count))
-            echo -e "${RED}   ⚠️  Found $issues_count potential issues${NC}"
+            echo -e "     Found $issues_count potential issues"
         else
-            echo -e "${GREEN}   ✅ No issues found${NC}"
+            echo -e "    No issues found"
         fi
     else
-        echo -e "${YELLOW}   ⚠️  Analysis failed or timed out${NC}"
+        echo -e "     Analysis failed or timed out"
     fi
     
     echo ""
 done
 
 # Generate comprehensive report
-echo -e "${BLUE}📊 ANALYSIS RESULTS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "📊 ANALYSIS RESULTS"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "📈 Total Contracts Analyzed: $TOTAL_CONTRACTS"
 echo -e "🔴 Contracts with Issues: $VULNERABLE_CONTRACTS"
-echo -e "⚠️  Total Issues Found: $TOTAL_ISSUES"
+echo -e "  Total Issues Found: $TOTAL_ISSUES"
 echo ""
 
 # Detailed vulnerability breakdown
-echo -e "${BLUE}🔍 VULNERABILITY BREAKDOWN${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e " VULNERABILITY BREAKDOWN"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Count different types of vulnerabilities
 declare -A vuln_types
@@ -169,15 +163,15 @@ for contract in "${CORE_CONTRACTS[@]}"; do
 done
 
 # Display severity breakdown
-echo -e "${YELLOW}📊 Severity Distribution:${NC}"
+echo -e "📊 Severity Distribution:"
 for severity in "High" "Medium" "Low" "Informational"; do
     count=${vuln_severities["$severity"]:-0}
     if [ "$count" -gt 0 ]; then
         case $severity in
             "High") echo -e "   🔴 High Priority: $count" ;;
-            "Medium") echo -e "   🟡 Medium Priority: $count" ;;
-            "Low") echo -e "   🟢 Low Priority: $count" ;;
-            "Informational") echo -e "   ℹ️  Informational: $count" ;;
+            "Medium") echo -e "    Medium Priority: $count" ;;
+            "Low") echo -e "    Low Priority: $count" ;;
+            "Informational") echo -e "     Informational: $count" ;;
         esac
     fi
 done
@@ -185,8 +179,8 @@ done
 echo ""
 
 # Detailed findings
-echo -e "${BLUE}🔍 DETAILED FINDINGS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e " DETAILED FINDINGS"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 for contract in "${CORE_CONTRACTS[@]}"; do
     contract_name=$(echo "$contract" | cut -d':' -f2)
@@ -201,7 +195,7 @@ for contract in "${CORE_CONTRACTS[@]}"; do
         fi
         
         if [ "$issues_count" -gt 0 ]; then
-            echo -e "${YELLOW}📋 $contract_name:${NC}"
+            echo -e " $contract_name:"
             
             jq -r '.issues[]? | "   \(.severity): \(.title) - \(.description)"' "$json_file" 2>/dev/null | while read -r line; do
                 if [ -n "$line" ]; then
@@ -214,14 +208,14 @@ for contract in "${CORE_CONTRACTS[@]}"; do
 done
 
 # Recommendations
-echo -e "${BLUE}💡 RECOMMENDATIONS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e " RECOMMENDATIONS"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if [ "$TOTAL_ISSUES" -eq 0 ]; then
-    echo -e "${GREEN}✅ No security issues detected by Mythril!${NC}"
-    echo -e "${GREEN}   Your contracts appear to be secure from common vulnerabilities.${NC}"
+    echo -e " No security issues detected by Mythril!"
+    echo -e "   Your contracts appear to be secure from common vulnerabilities."
 else
-    echo -e "${YELLOW}⚠️  Security issues detected. Recommendations:${NC}"
+    echo -e "  Security issues detected. Recommendations:"
     echo -e "   1. Review all High and Medium priority issues immediately"
     echo -e "   2. Consider implementing additional security measures"
     echo -e "   3. Run additional security tools (Slither, Echidna)"
@@ -232,11 +226,11 @@ fi
 echo ""
 
 # File locations
-echo -e "${BLUE}📁 REPORT FILES${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "📄 Individual contract reports: $OUTPUT_DIR/mythril-*.json"
+echo -e "📁 REPORT FILES"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e " Individual contract reports: $OUTPUT_DIR/mythril-*.json"
 echo -e "📊 Summary report: $REPORT_FILE"
-echo -e "🔍 SARIF report: $SARIF_FILE"
+echo -e " SARIF report: $SARIF_FILE"
 
 # Save summary to file
 {
@@ -254,5 +248,5 @@ echo -e "🔍 SARIF report: $SARIF_FILE"
 } > "$REPORT_FILE"
 
 echo ""
-echo -e "${GREEN}🎯 Mythril analysis complete!${NC}"
-echo -e "${GREEN}   Reports saved to: $OUTPUT_DIR${NC}"
+echo -e "🎯 Mythril analysis complete!"
+echo -e "   Reports saved to: $OUTPUT_DIR"

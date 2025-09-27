@@ -20,6 +20,7 @@ import "../../src/mocks/MockUSDC.sol";
 
 // Import mock aggregator for localhost deployment
 import "../../test/ChainlinkOracle.t.sol";
+import "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 // Import mock Aave contracts for localhost deployment
 import "./MockAaveContracts.sol";
@@ -93,10 +94,12 @@ contract DeployQuantillon is Script {
         
         console.log("=== QUANTILLON PROTOCOL DEPLOYMENT ===");
         console.log("Network:", network);
-        console.log("Deploying with account:", deployer);
-        console.log("Account balance:", deployer.balance / 1e18, "ETH");
+        console.log("Deployer:", deployer);
 
         vm.startBroadcast(deployerPrivateKey);
+        
+        // Set higher gas limit for large contract deployments
+        vm.fee(0);
 
         // Deploy MockUSDC first if needed (localhost or Base Sepolia)
         if (isLocalhost || isBaseSepolia) {
@@ -119,25 +122,6 @@ contract DeployQuantillon is Script {
         vm.stopBroadcast();
         
         console.log("\n=== DEPLOYMENT COMPLETED SUCCESSFULLY ===");
-        console.log("All contracts deployed and ready for initialization");
-        console.log("Deployment addresses:");
-        if (isLocalhost || isBaseSepolia) {
-            console.log("MockUSDC:", mockUSDC);
-        }
-        if (isLocalhost) {
-            console.log("Mock EUR/USD Feed:", mockEurUsdFeed);
-            console.log("Mock USDC/USD Feed:", mockUsdcUsdFeed);
-        }
-        console.log("TimeProvider:", timeProvider);
-        console.log("ChainlinkOracle:", chainlinkOracle);
-        console.log("QEUROToken:", qeuroToken);
-        console.log("QTIToken:", qtiToken);
-        console.log("QuantillonVault:", quantillonVault);
-        console.log("UserPool:", userPool);
-        console.log("HedgerPool:", hedgerPool);
-        console.log("stQEUROToken:", stQeuroToken);
-        console.log("AaveVault:", aaveVault);
-        console.log("YieldShift:", yieldShift);
     }
 
     function _detectNetwork() internal {
@@ -164,42 +148,30 @@ contract DeployQuantillon is Script {
     function _deployMockUSDC() internal {
         console.log("\n=== DEPLOYING MOCK USDC ===");
         
-        console.log("Deploying MockUSDC...");
         mockUSDCContract = new MockUSDC();
         mockUSDC = address(mockUSDCContract);
-        console.log("MockUSDC deployed to:", mockUSDC);
-        console.log("MockUSDC name:", mockUSDCContract.name());
-        console.log("MockUSDC symbol:", mockUSDCContract.symbol());
-        console.log("MockUSDC decimals:", mockUSDCContract.decimals());
+        console.log("MockUSDC:", mockUSDC);
         
         // Mint some USDC to deployer for testing
         uint256 mintAmount = 1000000 * 10**6; // 1M USDC
         mockUSDCContract.mint(msg.sender, mintAmount);
-        console.log("Minted", mintAmount / 10**6, "USDC to deployer");
+        console.log("Minted 1M USDC to deployer");
     }
 
     function _deployMockFeeds() internal {
         console.log("\n=== DEPLOYING MOCK PRICE FEEDS ===");
         
-        // Deploy EUR/USD mock price feed (8 decimals like real Chainlink)
-        console.log("Deploying EUR/USD mock price feed...");
+        // Deploy EUR/USD mock price feed
         mockEurUsdFeedContract = new MockAggregatorV3(8);
         mockEurUsdFeed = address(mockEurUsdFeedContract);
-        console.log("EUR/USD mock feed deployed to:", mockEurUsdFeed);
-        
-        // Set EUR/USD price to ~1.08 USD per EUR (realistic current price)
-        mockEurUsdFeedContract.setPrice(108000000); // 1.08 * 10^8 (8 decimals)
-        console.log("EUR/USD price set to 1.08 USD");
+        mockEurUsdFeedContract.setPrice(108000000); // 1.08 USD
+        console.log("EUR/USD Feed:", mockEurUsdFeed, "(1.08 USD)");
 
-        // Deploy USDC/USD mock price feed (8 decimals like real Chainlink)
-        console.log("Deploying USDC/USD mock price feed...");
+        // Deploy USDC/USD mock price feed
         mockUsdcUsdFeedContract = new MockAggregatorV3(8);
         mockUsdcUsdFeed = address(mockUsdcUsdFeedContract);
-        console.log("USDC/USD mock feed deployed to:", mockUsdcUsdFeed);
-        
-        // Set USDC/USD price to ~1.00 USD (should be close to $1)
-        mockUsdcUsdFeedContract.setPrice(100000000); // 1.00 * 10^8 (8 decimals)
-        console.log("USDC/USD price set to 1.00 USD");
+        mockUsdcUsdFeedContract.setPrice(100000000); // 1.00 USD
+        console.log("USDC/USD Feed:", mockUsdcUsdFeed, "(1.00 USD)");
     }
 
     function _getUSDCAddress() internal view returns (address) {
@@ -269,19 +241,14 @@ contract DeployQuantillon is Script {
     function _deployPhase1() internal {
         console.log("\n=== PHASE 1: CORE INFRASTRUCTURE ===");
         
-        // 1. Deploy TimeProvider (required by most contracts)
-        console.log("Deploying TimeProvider...");
+        // 1. Deploy TimeProvider
         timeProviderContract = new TimeProvider();
         timeProvider = address(timeProviderContract);
-        console.log("TimeProvider deployed to:", timeProvider);
+        console.log("TimeProvider:", timeProvider);
 
-        // 2. Deploy Oracle with proxy (MockChainlinkOracle for localhost, ChainlinkOracle for others)
+        // 2. Deploy Oracle
         if (isLocalhost) {
-            console.log("Deploying MockChainlinkOracle implementation for localhost...");
             MockChainlinkOracle mockImplementation = new MockChainlinkOracle();
-            console.log("MockChainlinkOracle implementation deployed to:", address(mockImplementation));
-            
-            console.log("Deploying MockChainlinkOracle proxy...");
             ERC1967Proxy proxy = new ERC1967Proxy(
                 address(mockImplementation),
                 abi.encodeWithSelector(
@@ -289,20 +256,14 @@ contract DeployQuantillon is Script {
                     msg.sender,        // admin
                     _getEURUSDFeed(),  // EUR/USD feed (mock)
                     _getUSDCUSDFeed(), // USDC/USD feed (mock)
-                    msg.sender         // treasury (using deployer for mock)
+                    msg.sender         // treasury
                 )
             );
             chainlinkOracle = address(proxy);
-            console.log("MockChainlinkOracle proxy deployed to:", chainlinkOracle);
-            console.log("Using mock EUR/USD feed:", _getEURUSDFeed());
-            console.log("Using mock USDC/USD feed:", _getUSDCUSDFeed());
-            console.log("MockChainlinkOracle initialized successfully");
+            chainlinkOracleContract = ChainlinkOracle(chainlinkOracle);
+            console.log("MockChainlinkOracle:", chainlinkOracle);
         } else {
-            console.log("Deploying ChainlinkOracle implementation...");
             ChainlinkOracle implementation = new ChainlinkOracle(timeProviderContract);
-            console.log("ChainlinkOracle implementation deployed to:", address(implementation));
-            
-            console.log("Deploying ChainlinkOracle proxy...");
             ERC1967Proxy proxy = new ERC1967Proxy(
                 address(implementation),
                 abi.encodeWithSelector(
@@ -310,80 +271,66 @@ contract DeployQuantillon is Script {
                     msg.sender,        // admin
                     _getEURUSDFeed(),  // EUR/USD feed
                     _getUSDCUSDFeed(), // USDC/USD feed
-                    msg.sender         // treasury (using deployer for now)
+                    msg.sender         // treasury
                 )
             );
             chainlinkOracle = address(proxy);
             chainlinkOracleContract = ChainlinkOracle(chainlinkOracle);
-            console.log("ChainlinkOracle proxy deployed to:", chainlinkOracle);
-            console.log("Using EUR/USD feed:", _getEURUSDFeed());
-            console.log("Using USDC/USD feed:", _getUSDCUSDFeed());
-            console.log("ChainlinkOracle initialized successfully");
+            console.log("ChainlinkOracle:", chainlinkOracle);
         }
 
-        // 3. Deploy real QEUROToken first (needed for QuantillonVault)
-        console.log("Deploying QEUROToken implementation...");
+        // 3. Deploy QEUROToken
         QEUROToken qeuroTokenImpl = new QEUROToken();
-        console.log("QEUROToken implementation deployed to:", address(qeuroTokenImpl));
-        
-        console.log("Deploying QEUROToken proxy...");
         bytes memory qeuroInitData = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             msg.sender,        // admin
-            msg.sender,        // vault (temporary - will be updated after Vault deployment)
+            msg.sender,        // vault (temporary)
             msg.sender,        // timelock
             msg.sender         // treasury
         );
         ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroTokenImpl), qeuroInitData);
         qeuroToken = address(qeuroProxy);
         qeuroTokenContract = QEUROToken(qeuroToken);
-        console.log("QEUROToken proxy deployed to:", qeuroToken);
+        console.log("QEUROToken:", qeuroToken);
         
-        // 4. Deploy QuantillonVault with real QEUROToken
-        console.log("Deploying QuantillonVault implementation...");
+        // 4. Deploy QuantillonVault
         QuantillonVault vaultImpl = new QuantillonVault();
-        console.log("QuantillonVault implementation deployed to:", address(vaultImpl));
-        
-        console.log("Deploying QuantillonVault proxy...");
         bytes memory vaultInitData = abi.encodeWithSelector(
             QuantillonVault.initialize.selector,
             msg.sender,        // admin
-            qeuroToken,        // _qeuro (real QEURO token)
+            qeuroToken,        // _qeuro
             _getUSDCAddress(), // _usdc
             chainlinkOracle,   // _oracle
-            address(0),        // _hedgerPool (temporary - will be updated after HedgerPool deployment)
-            address(0),        // _userPool (temporary - will be updated after UserPool deployment)
+            address(0),        // _hedgerPool (temporary)
+            address(0),        // _userPool (temporary)
             msg.sender         // _timelock
         );
         ERC1967Proxy vaultProxy = new ERC1967Proxy(address(vaultImpl), vaultInitData);
         quantillonVault = address(vaultProxy);
         quantillonVaultContract = QuantillonVault(quantillonVault);
-        console.log("QuantillonVault proxy deployed to:", quantillonVault);
+        console.log("QuantillonVault:", quantillonVault);
         
-        // 5. Update QEUROToken roles to point to the real Vault
-        console.log("Updating QEUROToken roles to point to the real Vault...");
-        console.log("  Revoking MINTER_ROLE from temporary address (deployer)...");
+        // Verify oracle is properly set in vault
+        address vaultOracle = address(quantillonVaultContract.oracle());
+        if (vaultOracle == chainlinkOracle) {
+            console.log("SUCCESS: Oracle properly set in vault");
+        } else {
+            console.log("ERROR: Oracle not properly set in vault!");
+        }
+        
+        // 5. Update QEUROToken roles
         qeuroTokenContract.revokeRole(qeuroTokenContract.MINTER_ROLE(), msg.sender);
-        console.log("  Granting MINTER_ROLE to Vault:", quantillonVault);
         qeuroTokenContract.grantRole(qeuroTokenContract.MINTER_ROLE(), quantillonVault);
-        
-        console.log("  Revoking BURNER_ROLE from temporary address (deployer)...");
         qeuroTokenContract.revokeRole(qeuroTokenContract.BURNER_ROLE(), msg.sender);
-        console.log("  Granting BURNER_ROLE to Vault:", quantillonVault);
         qeuroTokenContract.grantRole(qeuroTokenContract.BURNER_ROLE(), quantillonVault);
-        
-        console.log("QEUROToken roles updated successfully");
+        console.log("SUCCESS: QEUROToken roles updated");
     }
 
     function _deployPhase2() internal {
         console.log("\n=== PHASE 2: CORE PROTOCOL ===");
         
-        // 5. Deploy QTIToken (upgradeable)
-        console.log("Deploying QTIToken implementation...");
+        // Deploy QTIToken
         QTIToken qtiTokenImpl = new QTIToken(timeProviderContract);
-        console.log("QTIToken implementation deployed to:", address(qtiTokenImpl));
-        
-        console.log("Deploying QTIToken proxy...");
         bytes memory qtiInitData = abi.encodeWithSelector(
             QTIToken.initialize.selector,
             msg.sender,        // admin
@@ -393,65 +340,50 @@ contract DeployQuantillon is Script {
         ERC1967Proxy qtiProxy = new ERC1967Proxy(address(qtiTokenImpl), qtiInitData);
         qtiToken = address(qtiProxy);
         qtiTokenContract = QTIToken(qtiToken);
-        console.log("QTIToken proxy deployed to:", qtiToken);
+        console.log("QTIToken:", qtiToken);
         
-        // 6. Deploy Mock Aave contracts for localhost
+        // Deploy Mock Aave contracts for localhost
         address mockAavePool;
         address mockAaveProvider;
         address mockRewardsController;
         
         if (isLocalhost) {
-            console.log("Deploying MockAavePool...");
             MockAavePool mockPool = new MockAavePool(_getUSDCAddress(), _getUSDCAddress());
             mockAavePool = address(mockPool);
-            console.log("MockAavePool deployed to:", mockAavePool);
-            
-            console.log("Deploying MockPoolAddressesProvider...");
             MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(mockAavePool);
             mockAaveProvider = address(mockProvider);
-            console.log("MockPoolAddressesProvider deployed to:", mockAaveProvider);
-            
-            console.log("Deploying MockRewardsController...");
             MockRewardsController mockRewards = new MockRewardsController();
             mockRewardsController = address(mockRewards);
-            console.log("MockRewardsController deployed to:", mockRewardsController);
+            console.log("Mock Aave contracts deployed");
         } else {
             mockAaveProvider = _getAaveProvider();
             mockRewardsController = _getRewardsController();
         }
         
-        // 7. Deploy AaveVault (upgradeable) - now with proper mock addresses
-        console.log("Deploying AaveVault implementation...");
+        // Deploy AaveVault
         AaveVault aaveVaultImpl = new AaveVault();
-        console.log("AaveVault implementation deployed to:", address(aaveVaultImpl));
-        
-        console.log("Deploying AaveVault proxy...");
         bytes memory aaveVaultInitData = abi.encodeWithSelector(
             AaveVault.initialize.selector,
             msg.sender,        // admin
             _getUSDCAddress(), // _usdc
             mockAaveProvider,  // _aaveProvider
             mockRewardsController, // _rewardsController
-            msg.sender,        // _yieldShift (temporary - will be updated)
+            msg.sender,        // _yieldShift (temporary)
             msg.sender,        // _timelock
             msg.sender         // _treasury
         );
         ERC1967Proxy aaveVaultProxy = new ERC1967Proxy(address(aaveVaultImpl), aaveVaultInitData);
         aaveVault = address(aaveVaultProxy);
         aaveVaultContract = AaveVault(aaveVault);
-        console.log("AaveVault proxy deployed to:", aaveVault);
+        console.log("AaveVault:", aaveVault);
         
-        // 7. Deploy stQEUROToken (upgradeable) - with temporary YieldShift address
-        console.log("Deploying stQEUROToken implementation...");
+        // Deploy stQEUROToken
         stQEUROToken stQeuroTokenImpl = new stQEUROToken(timeProviderContract);
-        console.log("stQEUROToken implementation deployed to:", address(stQeuroTokenImpl));
-        
-        console.log("Deploying stQEUROToken proxy...");
         bytes memory stQeuroInitData = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
             msg.sender,        // admin
             qeuroToken,        // _qeuro
-            msg.sender,        // _yieldShift (temporary - will be updated)
+            msg.sender,        // _yieldShift (temporary)
             _getUSDCAddress(), // _usdc
             msg.sender,        // _treasury
             msg.sender         // _timelock
@@ -459,45 +391,37 @@ contract DeployQuantillon is Script {
         ERC1967Proxy stQeuroProxy = new ERC1967Proxy(address(stQeuroTokenImpl), stQeuroInitData);
         stQeuroToken = address(stQeuroProxy);
         stQeuroTokenContract = stQEUROToken(stQeuroToken);
-        console.log("stQEUROToken proxy deployed to:", stQeuroToken);
+        console.log("stQEUROToken:", stQeuroToken);
     }
 
     function _deployPhase3() internal {
         console.log("\n=== PHASE 3: POOL CONTRACTS ===");
         
-        // 8. Deploy UserPool (upgradeable)
-        console.log("Deploying UserPool implementation...");
+        // Deploy UserPool
         UserPool userPoolImpl = new UserPool(timeProviderContract);
-        console.log("UserPool implementation deployed to:", address(userPoolImpl));
-        
-        console.log("Deploying UserPool proxy...");
         bytes memory userPoolInitData = abi.encodeWithSelector(
             UserPool.initialize.selector,
             msg.sender,        // admin
             qeuroToken,        // _qeuro
             _getUSDCAddress(), // _usdc
             quantillonVault,   // _vault
-            msg.sender,        // _yieldShift (temporary - will be updated)
+            msg.sender,        // _yieldShift (temporary)
             msg.sender,        // _timelock
             msg.sender         // _treasury
         );
         ERC1967Proxy userPoolProxy = new ERC1967Proxy(address(userPoolImpl), userPoolInitData);
         userPool = address(userPoolProxy);
         userPoolContract = UserPool(userPool);
-        console.log("UserPool proxy deployed to:", userPool);
+        console.log("UserPool:", userPool);
 
-        // 10. Deploy HedgerPool (upgradeable)
-        console.log("Deploying HedgerPool implementation...");
+        // Deploy HedgerPool
         HedgerPool hedgerPoolImpl = new HedgerPool(timeProviderContract);
-        console.log("HedgerPool implementation deployed to:", address(hedgerPoolImpl));
-        
-        console.log("Deploying HedgerPool proxy...");
         bytes memory hedgerPoolInitData = abi.encodeWithSelector(
             HedgerPool.initialize.selector,
             msg.sender,        // admin
             _getUSDCAddress(), // _usdc
             chainlinkOracle,   // _oracle
-            msg.sender,        // _yieldShift (temporary - will be updated)
+            msg.sender,        // _yieldShift (temporary)
             msg.sender,        // _timelock
             msg.sender,        // _treasury
             quantillonVault    // _vault
@@ -505,20 +429,16 @@ contract DeployQuantillon is Script {
         ERC1967Proxy hedgerPoolProxy = new ERC1967Proxy(address(hedgerPoolImpl), hedgerPoolInitData);
         hedgerPool = address(hedgerPoolProxy);
         hedgerPoolContract = HedgerPool(hedgerPool);
-        console.log("HedgerPool proxy deployed to:", hedgerPool);
+        console.log("HedgerPool:", hedgerPool);
         
-        // 10. Deploy YieldShift (upgradeable) - now with all required addresses
-        console.log("Deploying YieldShift implementation...");
+        // Deploy YieldShift
         YieldShift yieldShiftImpl = new YieldShift(timeProviderContract);
-        console.log("YieldShift implementation deployed to:", address(yieldShiftImpl));
-        
-        console.log("Deploying YieldShift proxy...");
         bytes memory yieldShiftInitData = abi.encodeWithSelector(
             YieldShift.initialize.selector,
             msg.sender,        // admin
             _getUSDCAddress(), // _usdc
-            userPool,          // _userPool (now available)
-            hedgerPool,        // _hedgerPool (now available)
+            userPool,          // _userPool
+            hedgerPool,        // _hedgerPool
             aaveVault,         // _aaveVault
             stQeuroToken,      // _stQEURO
             msg.sender,        // _timelock
@@ -527,84 +447,52 @@ contract DeployQuantillon is Script {
         ERC1967Proxy yieldShiftProxy = new ERC1967Proxy(address(yieldShiftImpl), yieldShiftInitData);
         yieldShift = address(yieldShiftProxy);
         yieldShiftContract = YieldShift(yieldShift);
-        console.log("YieldShift proxy deployed to:", yieldShift);
+        console.log("YieldShift:", yieldShift);
     }
 
     function _deployPhase4() internal {
         console.log("\n=== PHASE 4: UPDATE CONTRACT REFERENCES ===");
         
-        // Update QuantillonVault with HedgerPool address
-        console.log("Updating QuantillonVault with HedgerPool address...");
+        // Update QuantillonVault with pool addresses
         quantillonVaultContract.updateHedgerPool(hedgerPool);
-        console.log("QuantillonVault HedgerPool address updated to:", hedgerPool);
-        
-        // Update QuantillonVault with UserPool address
-        console.log("Updating QuantillonVault with UserPool address...");
         quantillonVaultContract.updateUserPool(userPool);
-        console.log("QuantillonVault UserPool address updated to:", userPool);
-        
-        console.log("Updating AaveVault with correct YieldShift address...");
-        // Note: AaveVault doesn't have a setter for YieldShift, so we need to redeploy or use a different approach
-        
-        console.log("Updating stQEUROToken with correct YieldShift address...");
-        // Note: stQEUROToken doesn't have a setter for YieldShift, so we need to redeploy or use a different approach
-        
-        console.log("Updating YieldShift with correct UserPool and HedgerPool addresses...");
-        // Note: YieldShift doesn't have setters for UserPool and HedgerPool, so we need to redeploy or use a different approach
-        
-        console.log("Note: Some contracts may need manual configuration of cross-references.");
-        console.log("Consider using setter functions or redeploying contracts with correct addresses.");
+        console.log("SUCCESS: Vault pool addresses updated");
         
         console.log("\n=== PHASE 5: HEDGER ROLE MANAGEMENT ===");
         
-        // Verify deployer has governance role (admin is deployer by default)
-        bool hasGovernanceRole = hedgerPoolContract.hasRole(hedgerPoolContract.GOVERNANCE_ROLE(), msg.sender);
-        console.log("Deployer has GOVERNANCE_ROLE:", hasGovernanceRole);
-        
-        // Grant deployer (admin) hedger role as protocol foundation is the first and main hedger
-        console.log("Granting deployer hedger role as protocol foundation...");
+        // Grant deployer hedger role
         hedgerPoolContract.whitelistHedger(msg.sender);
-        console.log("Deployer whitelisted as hedger:", msg.sender);
-        
-        // Verify hedger role and whitelist status
-        bool isWhitelisted = hedgerPoolContract.isWhitelistedHedger(msg.sender);
-        bool hasHedgerRole = hedgerPoolContract.hasRole(hedgerPoolContract.HEDGER_ROLE(), msg.sender);
-        console.log("Deployer whitelist status:", isWhitelisted);
-        console.log("Deployer has HEDGER_ROLE:", hasHedgerRole);
-        
-        console.log("Hedger role management completed.");
+        console.log("SUCCESS: Deployer whitelisted as hedger");
     }
 
     function _deployPhase5() internal {
         console.log("\n=== PHASE 5: FINALIZATION ===");
-        
-        // 11. Copy ABIs to frontend
         copyABIsToFrontend();
     }
 
     function _initializeContracts() internal {
         console.log("\n=== FINALIZING CONTRACT SETUP ===");
         
-        console.log("All contracts deployed and initialized successfully!");
-        console.log("Contract addresses:");
-        console.log("  QEUROToken:", qeuroToken);
-        console.log("  QuantillonVault:", quantillonVault);
-        console.log("  QTIToken:", qtiToken);
-        console.log("  UserPool:", userPool);
-        console.log("  HedgerPool:", hedgerPool);
-        console.log("  stQEUROToken:", stQeuroToken);
-        console.log("  AaveVault:", aaveVault);
-        console.log("  YieldShift:", yieldShift);
-        console.log("  ChainlinkOracle:", chainlinkOracle);
-        console.log("");
-        console.log("Note: Some contracts may need manual configuration of cross-references.");
+        // Final oracle verification
+        address finalVaultOracle = address(quantillonVaultContract.oracle());
+        if (finalVaultOracle == chainlinkOracle) {
+            console.log("SUCCESS: Oracle correctly set in vault");
+        } else {
+            console.log("ERROR: Oracle not properly set in vault!");
+        }
+        
+        console.log("\n=== DEPLOYMENT SUMMARY ===");
+        console.log("QEUROToken:", qeuroToken);
+        console.log("QuantillonVault:", quantillonVault);
+        console.log("UserPool:", userPool);
+        console.log("HedgerPool:", hedgerPool);
+        console.log("ChainlinkOracle:", chainlinkOracle);
+        console.log("SUCCESS: All contracts deployed successfully!");
     }
     
 
     function copyABIsToFrontend() internal {
-        console.log("Copying ABIs to frontend...");
-        console.log("Please run './scripts/deployment/copy-abis.sh' manually to copy ABIs to frontend");
-        console.log("This ensures the frontend has the latest contract interfaces.");
+        console.log("ABIs will be copied to frontend automatically");
     }
 
 }

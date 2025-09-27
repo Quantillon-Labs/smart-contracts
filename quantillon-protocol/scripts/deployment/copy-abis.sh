@@ -28,17 +28,11 @@ set -e  # Exit on any error
 # Check if dotenvx is available and environment is encrypted
 if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" .env 2>/dev/null && [ -z "$DOTENVX_RUNNING" ]; then
     # Use dotenvx for encrypted environment
-    echo -e "\033[0;34m🔐 Using encrypted environment variables\033[0m"
+    echo -e " Using encrypted environment variables"
     export DOTENVX_RUNNING=1
     exec npx dotenvx run -- "$0" "$@"
 fi
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 # Get environment from command line argument or default to localhost
 ENVIRONMENT=${1:-localhost}
@@ -46,7 +40,7 @@ ENVIRONMENT=${1:-localhost}
 # Load environment variables from .env file if it exists
 # Note: Command line variables will override .env variables
 if [ -f ".env" ]; then
-    echo -e "${BLUE}📄 Loading environment variables from .env file...${NC}"
+    echo -e " Loading environment variables from .env file..."
     # Only export variables that aren't already set (command line takes precedence)
     while IFS= read -r line; do
         # Skip comments and empty lines
@@ -61,8 +55,8 @@ if [ -f ".env" ]; then
     done < .env
 fi
 
-echo -e "${BLUE}📋 Copying contract ABIs to frontend...${NC}"
-echo -e "${YELLOW}Environment: $ENVIRONMENT${NC}"
+echo -e " Copying contract ABIs to frontend..."
+echo -e "Environment: $ENVIRONMENT"
 
 # Define paths based on environment
 # Priority: 1) Environment variables from .env file, 2) Environment-specific defaults
@@ -83,19 +77,19 @@ case $ENVIRONMENT in
         SMART_CONTRACTS_OUT="${SMART_CONTRACTS_OUT:-/path/to/mainnet/smart-contracts/out/}"
         ;;
     *)
-        echo -e "${RED}❌ Error: Unknown environment '$ENVIRONMENT'${NC}"
-        echo -e "${YELLOW}💡 Usage: $0 [localhost|testnet|mainnet]${NC}"
+        echo -e " Error: Unknown environment '$ENVIRONMENT'"
+        echo -e " Usage: $0 [localhost|testnet|mainnet]"
         exit 1
         ;;
 esac
 
-echo -e "${BLUE}📁 Frontend ABI directory: $FRONTEND_ABI_DIR${NC}"
-echo -e "${BLUE}📁 Smart contracts out directory: $SMART_CONTRACTS_OUT${NC}"
+echo -e "📁 Frontend ABI directory: $FRONTEND_ABI_DIR"
+echo -e "📁 Smart contracts out directory: $SMART_CONTRACTS_OUT"
 
 # Validate that source directory exists
 if [ ! -d "$SMART_CONTRACTS_OUT" ]; then
-    echo -e "${RED}❌ Error: Smart contracts out directory not found: $SMART_CONTRACTS_OUT${NC}"
-    echo -e "${YELLOW}💡 Please build the contracts first: forge build${NC}"
+    echo -e " Error: Smart contracts out directory not found: $SMART_CONTRACTS_OUT"
+    echo -e " Please build the contracts first: forge build"
     exit 1
 fi
 
@@ -105,38 +99,38 @@ mkdir -p "$FRONTEND_ABI_DIR"
 # List of contracts to copy
 contracts=("QEUROToken" "ChainlinkOracle" "QuantillonVault" "QTIToken" "stQEUROToken" "UserPool" "HedgerPool" "YieldShift" "MockUSDC" "AaveVault")
 
-echo -e "${BLUE}📄 Copying ABIs for ${#contracts[@]} contracts...${NC}"
+echo -e " Copying ABIs for ${#contracts[@]} contracts..."
 
 # Copy each contract ABI
 success_count=0
 error_count=0
 
 for contract in "${contracts[@]}"; do
-    source_file="${SMART_CONTRACTS_OUT}${contract}.sol/${contract}.json"
-    dest_file="${FRONTEND_ABI_DIR}${contract}.json"
+    source_file="${contract}.sol/${contract}.json"
+    dest_file="${contract}.json"
     
     if [ -f "$source_file" ]; then
         cp "$source_file" "$dest_file"
-        echo -e "${GREEN}✅ Copied ${contract} ABI${NC}"
+        echo -e " Copied ${contract} ABI"
         success_count=$((success_count + 1))
     else
-        echo -e "${RED}❌ ${contract} ABI not found at $source_file${NC}"
+        echo -e " ${contract} ABI not found at $source_file"
         error_count=$((error_count + 1))
     fi
 done
 
 echo ""
-echo -e "${BLUE}📊 ABI Copying Summary:${NC}"
-echo -e "${GREEN}✅ Successfully copied: $success_count ABIs${NC}"
+echo -e "📊 ABI Copying Summary:"
+echo -e " Successfully copied: $success_count ABIs"
 if [ $error_count -gt 0 ]; then
-    echo -e "${RED}❌ Failed to copy: $error_count ABIs${NC}"
+    echo -e " Failed to copy: $error_count ABIs"
 fi
-echo -e "${BLUE}📁 Frontend ABIs updated in: $FRONTEND_ABI_DIR${NC}"
+echo -e "📁 Frontend ABIs updated in: $FRONTEND_ABI_DIR"
 
 # Exit with error code if any ABIs failed to copy
 if [ $error_count -gt 0 ]; then
-    echo -e "${YELLOW}⚠️  Some ABIs were not found. Make sure contracts are built with 'forge build'${NC}"
+    echo -e "  Some ABIs were not found. Make sure contracts are built with 'forge build'"
     exit 1
 fi
 
-echo -e "${GREEN}🎉 All ABIs copied successfully!${NC}"
+echo -e " All ABIs copied successfully!"

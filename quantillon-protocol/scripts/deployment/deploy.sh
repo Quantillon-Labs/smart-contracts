@@ -18,14 +18,6 @@
 
 set -e  # Exit on any error
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
 
 # =============================================================================
 # CONFIGURATION
@@ -51,25 +43,25 @@ declare -A NETWORKS=(
 # =============================================================================
 
 show_help() {
-    echo -e "${BLUE}🚀 Quantillon Protocol - Unified Deployment Script${NC}"
+    echo -e " Quantillon Protocol - Unified Deployment Script"
     echo "=============================================================="
     echo ""
-    echo -e "${CYAN}Usage:${NC}"
+    echo -e "Usage:"
     echo "  $0 [environment] [options]"
     echo ""
-    echo -e "${CYAN}Environments:${NC}"
+    echo -e "Environments:"
     echo "  localhost     - Deploy to local Anvil (development)"
     echo "  base-sepolia  - Deploy to Base Sepolia (testnet)"
     echo "  base          - Deploy to Base Mainnet (production)"
     echo ""
-    echo -e "${CYAN}Options:${NC}"
+    echo -e "Options:"
     echo "  --with-mocks     - Deploy mock contracts (localhost only)"
     echo "  --verify         - Verify contracts on block explorer"
     echo "  --production     - Use production deployment script"
     echo "  --dry-run        - Simulate deployment without broadcasting"
     echo "  --help           - Show this help message"
     echo ""
-    echo -e "${CYAN}Examples:${NC}"
+    echo -e "Examples:"
     echo "  $0 localhost --with-mocks"
     echo "  $0 base-sepolia --verify"
     echo "  $0 base --production --verify"
@@ -77,23 +69,23 @@ show_help() {
 }
 
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    echo -e "  $1"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e " $1"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "  $1"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e " $1"
 }
 
 log_step() {
-    echo -e "${PURPLE}🔧 $1${NC}"
+    echo -e "🔧 $1"
 }
 
 # =============================================================================
@@ -327,7 +319,7 @@ main() {
         post_deployment
     fi
 
-    log_success "🎉 Deployment process completed successfully!"
+    log_success " Deployment process completed successfully!"
 }
 
 # Run main function

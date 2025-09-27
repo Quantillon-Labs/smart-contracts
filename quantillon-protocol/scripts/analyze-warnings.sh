@@ -6,25 +6,17 @@
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
 
 # Configuration
 
 # Load environment variables using shared utility
 source "$(dirname "${BASH_SOURCE[0]}")/utils/load-env.sh"
 setup_environment
-BUILD_OUTPUT_FILE="${RESULTS_DIR}/build-output.log"
-WARNINGS_DIR="${RESULTS_DIR}/warnings-analysis"
+BUILD_OUTPUT_FILE="/build-output.log"
+WARNINGS_DIR="/warnings-analysis"
 
-echo -e "${BLUE}🔍 Quantillon Protocol - Build Warnings Analysis${NC}"
-echo -e "${BLUE}================================================${NC}"
+echo -e " Quantillon Protocol - Build Warnings Analysis"
+echo -e "================================================"
 
 # Create warnings analysis directory
 mkdir -p "$WARNINGS_DIR"
@@ -42,11 +34,11 @@ extract_warnings() {
     local output_file="$2"
     local description="$3"
     
-    echo -e "${CYAN}📋 Extracting $description...${NC}"
+    echo -e " Extracting $description..."
     grep -A 3 "Warning ($warning_type)" "$BUILD_OUTPUT_FILE" > "$output_file" 2>/dev/null || touch "$output_file"
     
     local count=$(count_warnings "$warning_type")
-    echo -e "   ${GREEN}✓${NC} Found $count $description"
+    echo -e "   ✓ Found $count $description"
 }
 
 # Function to generate summary
@@ -65,7 +57,7 @@ generate_summary() {
     echo "• Solver/CHC Warnings: Multiple (non-critical)" >> "$summary_file"
     echo "" >> "$summary_file"
     
-    echo "💡 RECOMMENDATIONS:" >> "$summary_file"
+    echo " RECOMMENDATIONS:" >> "$summary_file"
     echo "1. Priority 1: Fix unused variables in production files" >> "$summary_file"
     echo "2. Priority 2: Fix unused parameters in production files" >> "$summary_file"
     echo "3. Priority 3: Optimize function mutability for gas efficiency" >> "$summary_file"
@@ -74,16 +66,16 @@ generate_summary() {
 
 # Function to display results
 display_results() {
-    echo -e "\n${GREEN}✅ Analysis Complete!${NC}"
-    echo -e "${BLUE}📁 Results saved to: $WARNINGS_DIR/${NC}"
+    echo -e "\n Analysis Complete!"
+    echo -e "📁 Results saved to: $WARNINGS_DIR/"
     echo ""
-    echo -e "${YELLOW}📊 Quick Summary:${NC}"
+    echo -e "📊 Quick Summary:"
     echo -e "   • Unused Variables: $(count_warnings 2072) warnings"
     echo -e "   • Unused Parameters: $(count_warnings 5667) warnings"
     echo -e "   • Function Mutability: $(count_warnings 2018) warnings"
     echo -e "   • Solver/CHC: Multiple (non-critical)"
     echo ""
-    echo -e "${PURPLE}💡 View detailed results:${NC}"
+    echo -e " View detailed results:"
     echo -e "   cat $WARNINGS_DIR/warnings-summary.log"
 }
 
@@ -91,12 +83,12 @@ display_results() {
 main() {
     # Check if build output exists
     if [ ! -f "$BUILD_OUTPUT_FILE" ]; then
-        echo -e "${RED}❌ Error: $BUILD_OUTPUT_FILE not found!${NC}"
-        echo -e "${YELLOW}💡 Run 'make build' first to generate build output${NC}"
+        echo -e " Error: $BUILD_OUTPUT_FILE not found!"
+        echo -e " Run 'make build' first to generate build output"
         exit 1
     fi
     
-    echo -e "${YELLOW}📊 Analyzing build warnings...${NC}"
+    echo -e "📊 Analyzing build warnings..."
     
     # Extract different types of warnings
     extract_warnings "2072" "$WARNINGS_DIR/warnings-unused-variables.log" "unused variable warnings"
@@ -105,13 +97,13 @@ main() {
     extract_warnings "8158\|9134\|7649" "$WARNINGS_DIR/warnings-solver.log" "solver/CHC warnings"
     
     # Generate comprehensive summary
-    echo -e "${CYAN}📋 Generating summary...${NC}"
+    echo -e " Generating summary..."
     generate_summary
     
     # Display results
     display_results
     
-    echo -e "${GREEN}🎉 Warning analysis complete!${NC}"
+    echo -e " Warning analysis complete!"
 }
 
 # Run main function

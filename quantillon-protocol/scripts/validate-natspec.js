@@ -61,7 +61,7 @@ function loadEnvironmentVariables() {
         
         return envVars;
     } catch (error) {
-        console.warn('⚠️  Warning: Could not load environment variables with dotenvx:', error.message);
+        console.warn('  Warning: Could not load environment variables with dotenvx:', error.message);
         console.warn('   Falling back to process.env');
         return process.env;
     }
@@ -343,9 +343,9 @@ function scanDirectory(dirPath) {
     const fullPath = path.isAbsolute(dirPath) ? dirPath : path.join(PROJECT_ROOT, dirPath);
     
     if (!fs.existsSync(fullPath)) {
-        console.error(`❌ ERROR: Directory ${dirPath} does not exist`);
+        console.error(` ERROR: Directory ${dirPath} does not exist`);
         console.error(`   Full path: ${fullPath}`);
-        console.error(`   Project root: ${PROJECT_ROOT}`);
+        console.error(`   Project root: `);
         console.error(`   This is a critical path error - validation cannot continue`);
         process.exit(1);
     }
@@ -374,23 +374,23 @@ function scanDirectory(dirPath) {
  * @return Formatted report string
  */
 function generateContractReport(contractPath, result) {
-    let report = `\n📄 ${contractPath}\n`;
+    let report = `\n ${contractPath}\n`;
     report += `   Coverage: ${result.coverage}% (${result.documentedFunctions}/${result.totalFunctions} functions)\n`;
     
     if (result.error) {
-        report += `   ❌ Error: ${result.error}\n`;
+        report += `    Error: ${result.error}\n`;
         return report;
     }
     
     if (result.missingFunctions.length > 0) {
-        report += `   ❌ Missing Documentation (${result.missingFunctions.length}):\n`;
+        report += `    Missing Documentation (${result.missingFunctions.length}):\n`;
         result.missingFunctions.forEach(func => {
             report += `      - ${func.name} (line ${func.location.start.line})\n`;
         });
     }
     
     if (result.incompleteFunctions.length > 0) {
-        report += `   ⚠️  Incomplete Documentation (${result.incompleteFunctions.length}):\n`;
+        report += `     Incomplete Documentation (${result.incompleteFunctions.length}):\n`;
         result.incompleteFunctions.forEach(func => {
             report += `      - ${func.name} (line ${func.location.start.line})\n`;
             if (func.missing.length > 0) {
@@ -403,7 +403,7 @@ function generateContractReport(contractPath, result) {
     }
     
     if (result.missing === 0) {
-        report += `   ✅ All functions properly documented!\n`;
+        report += `    All functions properly documented!\n`;
     }
     
     return report;
@@ -421,7 +421,7 @@ function generateContractReport(contractPath, result) {
 function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented, overallCoverage, outputFile) {
     let output = '';
     
-    output += '🔍 Quantillon Protocol NatSpec Validation\n';
+    output += ' Quantillon Protocol NatSpec Validation\n';
     output += '='.repeat(60) + '\n\n';
     
     // Summary section
@@ -434,7 +434,7 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
     output += `Missing Documentation: ${totalFunctions - totalDocumented}\n\n`;
     
     // Detailed reports section
-    output += '📋 DETAILED REPORTS\n';
+    output += ' DETAILED REPORTS\n';
     output += '='.repeat(60) + '\n';
     
     for (const { file, result } of reports) {
@@ -442,12 +442,12 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
     }
     
     // Recommendations section
-    output += '\n💡 RECOMMENDATIONS\n';
+    output += '\n RECOMMENDATIONS\n';
     output += '='.repeat(60) + '\n';
     
     if (overallCoverage < 100) {
-        output += '❌ Some functions are missing NatSpec documentation.\n';
-        output += '📝 Required tags for complete documentation:\n';
+        output += ' Some functions are missing NatSpec documentation.\n';
+        output += ' Required tags for complete documentation:\n';
         CONFIG.requiredTags.forEach(tag => {
             output += `   - ${tag}\n`;
         });
@@ -458,21 +458,21 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
         output += '   4. Add @return for each return value\n';
         output += '   5. Add all @custom tags for security and validation\n';
     } else {
-        output += '✅ All functions have complete NatSpec documentation!\n';
+        output += ' All functions have complete NatSpec documentation!\n';
     }
     
     // Write to file
     fs.writeFileSync(outputFile, output);
-    console.log(`📄 Results written to: ${outputFile}`);
+    console.log(` Results written to: ${outputFile}`);
 }
 
 /**
  * @notice Main validation function
  */
 function main() {
-    console.log('🔍 Quantillon Protocol NatSpec Validation\n');
+    console.log(' Quantillon Protocol NatSpec Validation\n');
     console.log('=' .repeat(60));
-    console.log(`📁 Project Root: ${PROJECT_ROOT}`);
+    console.log(`📁 Project Root: `);
     console.log(`📁 Script Directory: ${__dirname}`);
     console.log('');
     
@@ -498,7 +498,7 @@ function main() {
     
     // Check if any files were found
     if (totalFiles === 0) {
-        console.error('❌ ERROR: No Solidity files found in any configured directories');
+        console.error(' ERROR: No Solidity files found in any configured directories');
         console.error('   This indicates a critical path configuration error');
         console.error('   Configured directories:', CONFIG.directories.join(', '));
         process.exit(1);
@@ -519,7 +519,7 @@ function main() {
     console.log(`Missing Documentation: ${totalFunctions - totalDocumented}`);
     
     // Generate detailed reports
-    console.log('\n📋 DETAILED REPORTS');
+    console.log('\n DETAILED REPORTS');
     console.log('=' .repeat(60));
     
     for (const { file, result } of reports) {
@@ -535,12 +535,12 @@ function main() {
     writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented, overallCoverage, outputFile);
     
     // Generate recommendations
-    console.log('\n💡 RECOMMENDATIONS');
+    console.log('\n RECOMMENDATIONS');
     console.log('=' .repeat(60));
     
     if (overallCoverage < 100) {
-        console.log('❌ Some functions are missing NatSpec documentation.');
-        console.log('📝 Required tags for complete documentation:');
+        console.log(' Some functions are missing NatSpec documentation.');
+        console.log(' Required tags for complete documentation:');
         CONFIG.requiredTags.forEach(tag => {
             console.log(`   - ${tag}`);
         });
@@ -551,15 +551,15 @@ function main() {
         console.log('   4. Add @return for each return value');
         console.log('   5. Add all @custom tags for security and validation');
     } else {
-        console.log('✅ All functions have complete NatSpec documentation!');
+        console.log(' All functions have complete NatSpec documentation!');
     }
     
     // Report status without failing the build
     if (overallCoverage < 100) {
-        console.log('\n⚠️  Validation complete - incomplete documentation detected');
-        console.log(`📄 Check ${ENV.RESULTS_DIR || 'scripts/results'}/natspec-validation-report.txt for detailed results`);
+        console.log('\n  Validation complete - incomplete documentation detected');
+        console.log(` Check ${ENV.RESULTS_DIR || 'scripts/results'}/natspec-validation-report.txt for detailed results`);
     } else {
-        console.log('\n✅ Validation complete - all functions documented');
+        console.log('\n Validation complete - all functions documented');
     }
     
     // Always exit successfully to not break CI/CD pipelines

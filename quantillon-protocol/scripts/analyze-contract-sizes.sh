@@ -5,12 +5,6 @@
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,8 +23,8 @@ EIP170_LIMIT=24576
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-echo -e "${BLUE}🔍 QUANTILLON PROTOCOL - CONTRACT SIZE ANALYSIS${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
+echo -e " QUANTILLON PROTOCOL - CONTRACT SIZE ANALYSIS"
+echo -e "═══════════════════════════════════════════════════════════════════"
 echo -e "Generated: $(date)"
 echo -e "EIP-170 Limit: $EIP170_LIMIT bytes (24KB)"
 echo -e "Project: Quantillon Protocol Smart Contracts"
@@ -95,8 +89,8 @@ declare -a safe_contracts=()
 total_size=0
 contract_count=0
 
-echo -e "${BLUE}📊 ANALYZING CORE SMART CONTRACTS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "📊 ANALYZING CORE SMART CONTRACTS"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Analyze each contract
 for contract_info in "${core_contracts[@]}"; do
@@ -116,86 +110,86 @@ for contract_info in "${core_contracts[@]}"; do
         # Categorize contracts
         if [ $size -gt $EIP170_LIMIT ]; then
             critical_contracts+=("$contract_name:$size:$percentage")
-            echo -e "${RED}❌ $contract_name${NC} - $formatted_size ($percentage of limit) - ${RED}EXCEEDS LIMIT${NC}"
+            echo -e " $contract_name - $formatted_size ($percentage of limit) - EXCEEDS LIMIT"
         elif [ $size -gt $((EIP170_LIMIT * 80 / 100)) ]; then
             warning_contracts+=("$contract_name:$size:$percentage")
-            echo -e "${YELLOW}⚠️  $contract_name${NC} - $formatted_size ($percentage of limit) - ${YELLOW}WARNING${NC}"
+            echo -e "  $contract_name - $formatted_size ($percentage of limit) - WARNING"
         else
             safe_contracts+=("$contract_name:$size:$percentage")
-            echo -e "${GREEN}✅ $contract_name${NC} - $formatted_size ($percentage of limit) - ${GREEN}SAFE${NC}"
+            echo -e " $contract_name - $formatted_size ($percentage of limit) - SAFE"
         fi
     else
-        echo -e "${BLUE}ℹ️  $contract_name${NC} - Not found or no bytecode"
+        echo -e "  $contract_name - Not found or no bytecode"
     fi
 done
 
 echo ""
 
 # Generate summary statistics
-echo -e "${BLUE}📈 SUMMARY STATISTICS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "📈 SUMMARY STATISTICS"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "Total Contracts Analyzed: $contract_count"
 echo -e "Total Combined Size: $(format_size $total_size)"
 echo -e "Average Contract Size: $(format_size $((total_size / contract_count)))"
 echo ""
 
 # Critical contracts section
-echo -e "${BLUE}🚨 CRITICAL CONTRACTS (Exceed EIP-170 Limit)${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e " CRITICAL CONTRACTS (Exceed EIP-170 Limit)"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ ${#critical_contracts[@]} -eq 0 ]; then
-    echo -e "${GREEN}✅ No contracts exceed the EIP-170 limit!${NC}"
+    echo -e " No contracts exceed the EIP-170 limit!"
 else
     for contract_info in "${critical_contracts[@]}"; do
         contract_name=$(echo "$contract_info" | cut -d':' -f1)
         size=$(echo "$contract_info" | cut -d':' -f2)
         percentage=$(echo "$contract_info" | cut -d':' -f3)
         formatted_size=$(format_size $size)
-        echo -e "${RED}❌ $contract_name${NC} - $formatted_size ($percentage of limit)"
+        echo -e " $contract_name - $formatted_size ($percentage of limit)"
     done
 fi
 
 echo ""
 
 # Warning contracts section
-echo -e "${BLUE}⚠️  WARNING CONTRACTS (80%+ of EIP-170 Limit)${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  WARNING CONTRACTS (80%+ of EIP-170 Limit)"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ ${#warning_contracts[@]} -eq 0 ]; then
-    echo -e "${GREEN}✅ No contracts in warning zone!${NC}"
+    echo -e " No contracts in warning zone!"
 else
     for contract_info in "${warning_contracts[@]}"; do
         contract_name=$(echo "$contract_info" | cut -d':' -f1)
         size=$(echo "$contract_info" | cut -d':' -f2)
         percentage=$(echo "$contract_info" | cut -d':' -f3)
         formatted_size=$(format_size $size)
-        echo -e "${YELLOW}⚠️  $contract_name${NC} - $formatted_size ($percentage of limit)"
+        echo -e "  $contract_name - $formatted_size ($percentage of limit)"
     done
 fi
 
 echo ""
 
 # Safe contracts section
-echo -e "${BLUE}✅ SAFE CONTRACTS (Under 80% of EIP-170 Limit)${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e " SAFE CONTRACTS (Under 80% of EIP-170 Limit)"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ ${#safe_contracts[@]} -eq 0 ]; then
-    echo -e "${BLUE}ℹ️  No contracts in safe zone${NC}"
+    echo -e "  No contracts in safe zone"
 else
     for contract_info in "${safe_contracts[@]}"; do
         contract_name=$(echo "$contract_info" | cut -d':' -f1)
         size=$(echo "$contract_info" | cut -d':' -f2)
         percentage=$(echo "$contract_info" | cut -d':' -f3)
         formatted_size=$(format_size $size)
-        echo -e "${GREEN}✅ $contract_name${NC} - $formatted_size ($percentage of limit)"
+        echo -e " $contract_name - $formatted_size ($percentage of limit)"
     done
 fi
 
 echo ""
 
 # Recommendations section
-echo -e "${BLUE}💡 RECOMMENDATIONS${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e " RECOMMENDATIONS"
+echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if [ ${#critical_contracts[@]} -gt 0 ]; then
-    echo -e "${RED}🔴 CRITICAL:${NC} Contracts exceeding EIP-170 limit must be refactored:"
+    echo -e "🔴 CRITICAL: Contracts exceeding EIP-170 limit must be refactored:"
     echo -e "   • Split large contracts into smaller modules"
     echo -e "   • Move complex logic to libraries"
     echo -e "   • Use proxy patterns for upgradeability"
@@ -204,7 +198,7 @@ if [ ${#critical_contracts[@]} -gt 0 ]; then
 fi
 
 if [ ${#warning_contracts[@]} -gt 0 ]; then
-    echo -e "${YELLOW}🟡 WARNING:${NC} Contracts approaching limit should be monitored:"
+    echo -e " WARNING: Contracts approaching limit should be monitored:"
     echo -e "   • Consider refactoring before adding new features"
     echo -e "   • Optimize existing code"
     echo -e "   • Move non-critical functions to libraries"
@@ -212,7 +206,7 @@ if [ ${#warning_contracts[@]} -gt 0 ]; then
 fi
 
 if [ ${#critical_contracts[@]} -eq 0 ] && [ ${#warning_contracts[@]} -eq 0 ]; then
-    echo -e "${GREEN}✅ All contracts are within safe limits!${NC}"
+    echo -e " All contracts are within safe limits!"
     echo -e "   • Continue monitoring as you add features"
     echo -e "   • Consider size optimization for gas efficiency"
 fi
@@ -285,15 +279,15 @@ fi
 } > "$SUMMARY_FILE"
 
 echo ""
-echo -e "${GREEN}🎯 Contract size analysis complete!${NC}"
-echo -e "${GREEN}   Detailed report: $REPORT_FILE${NC}"
-echo -e "${GREEN}   Summary report: $SUMMARY_FILE${NC}"
+echo -e "🎯 Contract size analysis complete!"
+echo -e "   Detailed report: $REPORT_FILE"
+echo -e "   Summary report: $SUMMARY_FILE"
 
 # Exit with error code if critical contracts found
 if [ ${#critical_contracts[@]} -gt 0 ]; then
-    echo -e "${RED}❌ Analysis failed: ${#critical_contracts[@]} contracts exceed EIP-170 limit${NC}"
+    echo -e " Analysis failed: ${#critical_contracts[@]} contracts exceed EIP-170 limit"
     exit 1
 else
-    echo -e "${GREEN}✅ All contracts within EIP-170 limits${NC}"
+    echo -e " All contracts within EIP-170 limits"
     exit 0
 fi

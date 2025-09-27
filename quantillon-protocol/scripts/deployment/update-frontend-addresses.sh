@@ -20,22 +20,16 @@ set -e  # Exit on any error
 # Check if dotenvx is available and environment is encrypted
 if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" .env 2>/dev/null && [ -z "$DOTENVX_RUNNING" ]; then
     # Use dotenvx for encrypted environment
-    echo -e "\033[0;34m🔐 Using encrypted environment variables\033[0m"
+    echo -e " Using encrypted environment variables"
     export DOTENVX_RUNNING=1
     exec npx dotenvx run -- "$0" "$@"
 fi
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 # Load environment variables from .env file if it exists
 # Note: Command line variables will override .env variables
 if [ -f ".env" ]; then
-    echo -e "${BLUE}📄 Loading environment variables from .env file...${NC}"
+    echo -e " Loading environment variables from .env file..."
     # Only export variables that aren't already set (command line takes precedence)
     while IFS= read -r line; do
         # Skip comments and empty lines
@@ -50,12 +44,12 @@ if [ -f ".env" ]; then
     done < .env
 fi
 
-echo -e "${BLUE}📋 Updating frontend addresses.json with latest deployment...${NC}"
+echo -e " Updating frontend addresses.json with latest deployment..."
 
 # Define paths - use .env variables if available, otherwise defaults
 FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-../../../quantillon-dapp/src/config/addresses.json}"
 
-echo -e "${BLUE}📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE${NC}"
+echo -e "📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE"
 
 # Detect which network was deployed (check for broadcast files)
 LOCALHOST_BROADCAST="./broadcast/DeployQuantillon.s.sol/31337/run-latest.json"
@@ -65,24 +59,24 @@ if [ -f "$LOCALHOST_BROADCAST" ]; then
     BROADCAST_FILE="$LOCALHOST_BROADCAST"
     NETWORK="localhost"
     CHAIN_ID="31337"
-    echo -e "${GREEN}📡 Detected localhost deployment${NC}"
+    echo -e "📡 Detected localhost deployment"
 elif [ -f "$BASE_SEPOLIA_BROADCAST" ]; then
     BROADCAST_FILE="$BASE_SEPOLIA_BROADCAST"
     NETWORK="base-sepolia"
     CHAIN_ID="84532"
-    echo -e "${GREEN}📡 Detected Base Sepolia deployment${NC}"
+    echo -e "📡 Detected Base Sepolia deployment"
 else
-    echo -e "${RED}❌ No deployment broadcast file found${NC}"
-    echo -e "${YELLOW}💡 Please run deployment first:${NC}"
-    echo -e "${YELLOW}   make deploy-localhost (for localhost)${NC}"
-    echo -e "${YELLOW}   make deploy-base-sepolia (for Base Sepolia)${NC}"
+    echo -e " No deployment broadcast file found"
+    echo -e " Please run deployment first:"
+    echo -e "   make deploy-localhost (for localhost)"
+    echo -e "   make deploy-base-sepolia (for Base Sepolia)"
     exit 1
 fi
 
-echo -e "${BLUE}📄 Using broadcast file: $BROADCAST_FILE${NC}"
+echo -e " Using broadcast file: $BROADCAST_FILE"
 
 # Extract addresses using jq
-echo -e "${BLUE}📋 Extracting deployment addresses...${NC}"
+echo -e " Extracting deployment addresses..."
 
 # Function to get proxy address for a given implementation address
 get_proxy_address() {
@@ -111,7 +105,7 @@ AAVE_VAULT_IMPL=$(jq -r '.transactions[] | select(.contractName == "AaveVault") 
 TIME_PROVIDER_IMPL=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$BROADCAST_FILE" | head -1)
 
 # Get proxy addresses for upgradeable contracts
-echo -e "${BLUE}🔍 Finding proxy addresses for upgradeable contracts...${NC}"
+echo -e " Finding proxy addresses for upgradeable contracts..."
 CHAINLINK_ORACLE=$(get_proxy_address "$CHAINLINK_ORACLE_IMPL")
 QEURO_TOKEN=$(get_proxy_address "$QEURO_TOKEN_IMPL")
 QUANTILLON_VAULT=$(get_proxy_address "$QUANTILLON_VAULT_IMPL")
@@ -127,25 +121,25 @@ MOCK_USDC="$MOCK_USDC_IMPL"
 TIME_PROVIDER="$TIME_PROVIDER_IMPL"
 
 # Validate that all proxy addresses were found
-echo -e "${BLUE}🔍 Validating proxy addresses...${NC}"
+echo -e " Validating proxy addresses..."
 if [ "$CHAINLINK_ORACLE" = "null" ] || [ -z "$CHAINLINK_ORACLE" ]; then
-    echo -e "${RED}❌ Failed to find ChainlinkOracle proxy address${NC}"
+    echo -e " Failed to find ChainlinkOracle proxy address"
     exit 1
 fi
 if [ "$QEURO_TOKEN" = "null" ] || [ -z "$QEURO_TOKEN" ]; then
-    echo -e "${RED}❌ Failed to find QEUROToken proxy address${NC}"
+    echo -e " Failed to find QEUROToken proxy address"
     exit 1
 fi
 if [ "$QUANTILLON_VAULT" = "null" ] || [ -z "$QUANTILLON_VAULT" ]; then
-    echo -e "${RED}❌ Failed to find QuantillonVault proxy address${NC}"
+    echo -e " Failed to find QuantillonVault proxy address"
     exit 1
 fi
 if [ "$USER_POOL" = "null" ] || [ -z "$USER_POOL" ]; then
-    echo -e "${RED}❌ Failed to find UserPool proxy address${NC}"
+    echo -e " Failed to find UserPool proxy address"
     exit 1
 fi
 
-echo -e "${GREEN}✅ All proxy addresses found successfully${NC}"
+echo -e " All proxy addresses found successfully"
 
 # Extract mock price feed addresses
 MOCK_EUR_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$BROADCAST_FILE" | head -1)
@@ -153,12 +147,12 @@ MOCK_USDC_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregator
 
 # Fallback for MockUSDC if not found
 if [ "$MOCK_USDC" = "null" ] || [ -z "$MOCK_USDC" ]; then
-    echo -e "${YELLOW}⚠️  MockUSDC not found in deployment, using placeholder address${NC}"
+    echo -e "  MockUSDC not found in deployment, using placeholder address"
     MOCK_USDC="0x0000000000000000000000000000000000000000"
 fi
 
 # Create updated addresses.json
-echo -e "${BLUE}📝 Creating updated addresses.json...${NC}"
+echo -e " Creating updated addresses.json..."
 cat > "$FRONTEND_ADDRESSES_FILE" << EOF
 {
   "$CHAIN_ID": {
@@ -215,26 +209,26 @@ cat > "$FRONTEND_ADDRESSES_FILE" << EOF
 }
 EOF
 
-echo -e "${GREEN}✅ Frontend addresses.json updated successfully!${NC}"
+echo -e " Frontend addresses.json updated successfully!"
 echo ""
-echo -e "${BLUE}📄 Updated addresses for $NETWORK (using proxy addresses for upgradeable contracts):${NC}"
-echo -e "${GREEN}   MockUSDC: $MOCK_USDC${NC}"
-echo -e "${GREEN}   QEUROToken (proxy): $QEURO_TOKEN${NC}"
-echo -e "${GREEN}   QuantillonVault (proxy): $QUANTILLON_VAULT${NC}"
-echo -e "${GREEN}   QTIToken (proxy): $QTI_TOKEN${NC}"
-echo -e "${GREEN}   stQEUROToken (proxy): $STQEURO_TOKEN${NC}"
-echo -e "${GREEN}   ChainlinkOracle (proxy): $CHAINLINK_ORACLE${NC}"
-echo -e "${GREEN}   UserPool (proxy): $USER_POOL${NC}"
-echo -e "${GREEN}   HedgerPool (proxy): $HEDGER_POOL${NC}"
-echo -e "${GREEN}   YieldShift (proxy): $YIELD_SHIFT${NC}"
-echo -e "${GREEN}   AaveVault (proxy): $AAVE_VAULT${NC}"
-echo -e "${GREEN}   TimeProvider: $TIME_PROVIDER${NC}"
+echo -e " Updated addresses for $NETWORK (using proxy addresses for upgradeable contracts):"
+echo -e "   MockUSDC: $MOCK_USDC"
+echo -e "   QEUROToken (proxy): $QEURO_TOKEN"
+echo -e "   QuantillonVault (proxy): $QUANTILLON_VAULT"
+echo -e "   QTIToken (proxy): $QTI_TOKEN"
+echo -e "   stQEUROToken (proxy): $STQEURO_TOKEN"
+echo -e "   ChainlinkOracle (proxy): $CHAINLINK_ORACLE"
+echo -e "   UserPool (proxy): $USER_POOL"
+echo -e "   HedgerPool (proxy): $HEDGER_POOL"
+echo -e "   YieldShift (proxy): $YIELD_SHIFT"
+echo -e "   AaveVault (proxy): $AAVE_VAULT"
+echo -e "   TimeProvider: $TIME_PROVIDER"
 echo ""
-echo -e "${BLUE}📋 Implementation addresses (for reference):${NC}"
-echo -e "${YELLOW}   QEUROToken impl: $QEURO_TOKEN_IMPL${NC}"
-echo -e "${YELLOW}   QuantillonVault impl: $QUANTILLON_VAULT_IMPL${NC}"
-echo -e "${YELLOW}   UserPool impl: $USER_POOL_IMPL${NC}"
-echo -e "${YELLOW}   ChainlinkOracle impl: $CHAINLINK_ORACLE_IMPL${NC}"
+echo -e " Implementation addresses (for reference):"
+echo -e "   QEUROToken impl: $QEURO_TOKEN_IMPL"
+echo -e "   QuantillonVault impl: $QUANTILLON_VAULT_IMPL"
+echo -e "   UserPool impl: $USER_POOL_IMPL"
+echo -e "   ChainlinkOracle impl: $CHAINLINK_ORACLE_IMPL"
 echo ""
-echo -e "${BLUE}📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE${NC}"
-echo -e "${GREEN}🎉 Addresses update completed!${NC}"
+echo -e "📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE"
+echo -e " Addresses update completed!"

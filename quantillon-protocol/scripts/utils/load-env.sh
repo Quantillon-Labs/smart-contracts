@@ -4,16 +4,10 @@
 # Shared utility for loading encrypted environment variables using dotenvx
 # Usage: source scripts/utils/load-env.sh
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 # Function to load environment variables from .env file using dotenvx
 load_environment_variables() {
-    echo "🔐 Loading environment variables from .env file..."
+    echo "Loading environment variables from .env file..."
     
     if command -v dotenvx >/dev/null 2>&1; then
         # Use dotenvx to decrypt and load environment variables
@@ -28,9 +22,9 @@ load_environment_variables() {
                 export "$line"
             fi
         done < <(dotenvx decrypt --stdout)
-        echo "✅ Environment variables loaded successfully with dotenvx"
+        echo " Environment variables loaded successfully with dotenvx"
     else
-        echo "⚠️  dotenvx not found, falling back to direct .env loading"
+        echo "  dotenvx not found, falling back to direct .env loading"
         if [ -f ".env" ]; then
             # Fallback: load .env file directly (without decryption)
             set -a

@@ -6,29 +6,24 @@
 set -e
 
 # Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m'
 
 print_header() {
-    echo -e "${BLUE}================================${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}================================${NC}"
+    echo -e "================================"
+    echo -e "$1"
+    echo -e "================================"
 }
 
 print_section() {
-    echo -e "\n${YELLOW}$1${NC}"
-    echo -e "${YELLOW}$(printf '%.0s-' {1..${#1}})${NC}"
+    echo -e "\n$1"
+    echo -e "$(printf '%.0s-' {1..${#1}})"
 }
 
 print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e " $1"
 }
 
 print_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e " $1"
 }
 
 # Function to show usage
@@ -192,7 +187,7 @@ if [ -n "$OUTPUT_FILE" ]; then
 fi
 
 echo ""
-echo "💡 Tips for gas optimization:"
+echo " Tips for gas optimization:"
 echo "  - Use 'immutable' for constructor-set variables"
 echo "  - Use 'constant' for compile-time constants"
 echo "  - Pack structs efficiently"

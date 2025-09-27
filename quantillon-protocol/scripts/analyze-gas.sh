@@ -5,14 +5,6 @@
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
 
 # Configuration
 
@@ -20,38 +12,37 @@ NC='\033[0m' # No Color
 source "$(dirname "${BASH_SOURCE[0]}")/utils/load-env.sh"
 setup_environment
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-OUTPUT_DIR="${RESULTS_DIR}/gas-analysis"
-TEXT_REPORT_FILE="${OUTPUT_DIR}/gas-analysis-${TIMESTAMP}.txt"
+OUTPUT_DIR="/gas-analysis"
+TEXT_REPORT_FILE="/gas-analysis-.txt"
 
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
 
-# Function to print colored output
 print_header() {
-    echo -e "${BLUE}================================${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}================================${NC}"
+    echo -e "================================"
+    echo -e "$1"
+    echo -e "================================"
 }
 
 print_section() {
-    echo -e "\n${CYAN}$1${NC}"
-    echo -e "${CYAN}$(printf '%.0s-' {1..${#1}})${NC}"
+    echo -e "\n$1"
+    echo -e "$(printf '%.0s-' {1..${#1}})"
 }
 
 print_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e " $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    echo -e "  $1"
 }
 
 print_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e " $1"
 }
 
 print_info() {
-    echo -e "${PURPLE}ℹ️  $1${NC}"
+    echo -e "  $1"
 }
 
 # Function to check if command exists
@@ -118,10 +109,10 @@ fi
 print_section "Building Contracts"
 if forge build > /dev/null 2>&1; then
     print_success "Contracts built successfully"
-    generate_report "BUILD STATUS\n------------\n✅ Contracts compiled successfully\n\n"
+    generate_report "BUILD STATUS\n------------\n Contracts compiled successfully\n\n"
 else
     print_error "Failed to build contracts"
-    generate_report "BUILD STATUS\n------------\n❌ Contract compilation failed\n\n"
+    generate_report "BUILD STATUS\n------------\n Contract compilation failed\n\n"
     exit 1
 fi
 
@@ -145,7 +136,7 @@ else
         generate_report "FORGE GAS REPORT (Fallback)\n---------------------------\n$(echo "$FALLBACK_GAS_REPORT" | head -50)\n\n"
     else
         print_warning "All gas report generation failed"
-        generate_report "FORGE GAS REPORT\n---------------\n⚠️ Failed to generate gas report (both primary and fallback methods failed)\n\n"
+        generate_report "FORGE GAS REPORT\n---------------\n Failed to generate gas report (both primary and fallback methods failed)\n\n"
     fi
 fi
 
@@ -158,10 +149,10 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     STATE_OPTIMIZATIONS=$($SLITHER_CMD . --detect constable-states,immutable-states 2>/dev/null | grep -E "(should be constant|should be immutable)" || echo "")
     if [ -n "$STATE_OPTIMIZATIONS" ]; then
         print_warning "Found state variable optimization opportunities"
-        generate_report "STATE VARIABLE OPTIMIZATIONS\n---------------------------\n⚠️ Found optimization opportunities:\n$STATE_OPTIMIZATIONS\n\n"
+        generate_report "STATE VARIABLE OPTIMIZATIONS\n---------------------------\n Found optimization opportunities:\n$STATE_OPTIMIZATIONS\n\n"
     else
         print_success "No state variable optimizations needed"
-        generate_report "STATE VARIABLE OPTIMIZATIONS\n---------------------------\n✅ No optimizations needed\n\n"
+        generate_report "STATE VARIABLE OPTIMIZATIONS\n---------------------------\n No optimizations needed\n\n"
     fi
     
     # Function visibility optimizations
@@ -169,10 +160,10 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     VISIBILITY_OPTIMIZATIONS=$($SLITHER_CMD . --detect external-function 2>/dev/null | grep -E "should be declared external" || echo "")
     if [ -n "$VISIBILITY_OPTIMIZATIONS" ]; then
         print_warning "Found function visibility optimization opportunities"
-        generate_report "FUNCTION VISIBILITY OPTIMIZATIONS\n--------------------------------\n⚠️ Found optimization opportunities:\n$VISIBILITY_OPTIMIZATIONS\n\n"
+        generate_report "FUNCTION VISIBILITY OPTIMIZATIONS\n--------------------------------\n Found optimization opportunities:\n$VISIBILITY_OPTIMIZATIONS\n\n"
     else
         print_success "No function visibility optimizations needed"
-        generate_report "FUNCTION VISIBILITY OPTIMIZATIONS\n--------------------------------\n✅ No optimizations needed\n\n"
+        generate_report "FUNCTION VISIBILITY OPTIMIZATIONS\n--------------------------------\n No optimizations needed\n\n"
     fi
     
     # Unused code detection
@@ -180,10 +171,10 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     UNUSED_CODE=$($SLITHER_CMD . --detect dead-code,unused-state 2>/dev/null | grep -E "(is never used|Dead code)" || echo "")
     if [ -n "$UNUSED_CODE" ]; then
         print_warning "Found unused code"
-        generate_report "UNUSED CODE DETECTION\n-------------------\n⚠️ Found unused code:\n$UNUSED_CODE\n\n"
+        generate_report "UNUSED CODE DETECTION\n-------------------\n Found unused code:\n$UNUSED_CODE\n\n"
     else
         print_success "No unused code found"
-        generate_report "UNUSED CODE DETECTION\n-------------------\n✅ No unused code found\n\n"
+        generate_report "UNUSED CODE DETECTION\n-------------------\n No unused code found\n\n"
     fi
     
     # Expensive operations in loops
@@ -191,10 +182,10 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     COSTLY_LOOPS=$($SLITHER_CMD . --detect costly-loop 2>/dev/null | grep -E "has costly operations inside a loop" || echo "")
     if [ -n "$COSTLY_LOOPS" ]; then
         print_warning "Found expensive operations in loops"
-        generate_report "COSTLY LOOP OPERATIONS\n--------------------\n⚠️ Found costly operations:\n$COSTLY_LOOPS\n\n"
+        generate_report "COSTLY LOOP OPERATIONS\n--------------------\n Found costly operations:\n$COSTLY_LOOPS\n\n"
     else
         print_success "No expensive operations in loops found"
-        generate_report "COSTLY LOOP OPERATIONS\n--------------------\n✅ No expensive operations in loops found\n\n"
+        generate_report "COSTLY LOOP OPERATIONS\n--------------------\n No expensive operations in loops found\n\n"
     fi
     
     # Storage layout analysis
@@ -214,7 +205,7 @@ if [ "$SLITHER_AVAILABLE" = true ]; then
     fi
 else
     print_warning "Skipping Slither analysis (not available)"
-    generate_report "SLITHER ANALYSIS\n---------------\n⚠️ Slither not available - analysis skipped\n\n"
+    generate_report "SLITHER ANALYSIS\n---------------\n Slither not available - analysis skipped\n\n"
 fi
 
 # 4. Contract Size Analysis
@@ -234,16 +225,16 @@ if [ -n "$CONTRACT_SIZES" ] && [ "$CONTRACT_SIZES" != "Failed to get contract si
     if [ -n "$LARGE_CONTRACTS" ]; then
         print_warning "Found large contracts (>20KB):"
         echo "$LARGE_CONTRACTS"
-        generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n⚠️ Large contracts found (>20KB):\n$LARGE_CONTRACTS\n\n"
+        generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n Large contracts found (>20KB):\n$LARGE_CONTRACTS\n\n"
     else
         print_success "All contracts are within reasonable size limits"
-        generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n✅ All contracts are within reasonable size limits\n\n"
+        generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n All contracts are within reasonable size limits\n\n"
     fi
     
     generate_report "Detailed Contract Sizes:\n$CONTRACT_SIZES\n\n"
 else
     print_warning "Contract size analysis failed (forge build --sizes crashed or timed out)"
-    generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n⚠️ Failed to analyze contract sizes (forge build --sizes crashed or timed out)\n\n"
+    generate_report "CONTRACT SIZE ANALYSIS\n----------------------\n Failed to analyze contract sizes (forge build --sizes crashed or timed out)\n\n"
 fi
 
 # 5. Gas Usage by Function - Analyze Real Quantillon Protocol Functions
@@ -302,7 +293,7 @@ if [ "$OVERALL_GAS_USAGE" != "Failed to generate overall gas report" ]; then
     generate_report "OVERALL GAS USAGE SUMMARY\n-------------------------\n$(echo "$OVERALL_GAS_USAGE" | head -30)\n\n"
 else
     print_warning "Overall gas analysis failed"
-    generate_report "OVERALL GAS USAGE SUMMARY\n-------------------------\n⚠️ Failed to generate overall gas usage report\n\n"
+    generate_report "OVERALL GAS USAGE SUMMARY\n-------------------------\n Failed to generate overall gas usage report\n\n"
 fi
 
 # 6. Generate summary
@@ -344,25 +335,25 @@ generate_report "SUMMARY\n=======\n- State variable optimizations: $STATE_ISSUES
 
 if [ $TOTAL_ISSUES -eq 0 ]; then
     print_success "No gas optimization issues found!"
-    generate_report "CONCLUSION\n==========\n✅ Excellent! No gas optimization issues were found in the analysis.\n\n"
+    generate_report "CONCLUSION\n==========\n Excellent! No gas optimization issues were found in the analysis.\n\n"
 else
     print_warning "Found $TOTAL_ISSUES gas optimization opportunities"
-    generate_report "CONCLUSION\n==========\n⚠️ $TOTAL_ISSUES gas optimization opportunities were found.\n\n"
+    generate_report "CONCLUSION\n==========\n $TOTAL_ISSUES gas optimization opportunities were found.\n\n"
 fi
 
 # 7. Cleanup
 
 print_header "Analysis Complete"
-echo "📄 Gas analysis report saved to: $TEXT_REPORT_FILE"
+echo " Gas analysis report saved to: $TEXT_REPORT_FILE"
 echo ""
 
 if [ $TOTAL_ISSUES -gt 0 ]; then
-    echo -e "${YELLOW}💡 Tip: Review the analysis results for gas optimization opportunities.${NC}"
+    echo -e " Tip: Review the analysis results for gas optimization opportunities."
 else
-    echo -e "${GREEN}🎉 Great job! Your contracts are already well-optimized for gas usage.${NC}"
+    echo -e " Great job! Your contracts are already well-optimized for gas usage."
 fi
 
 echo ""
-echo -e "${BLUE}To view the report:${NC}"
-echo -e "${BLUE}  cat $TEXT_REPORT_FILE${NC}"
+echo -e "To view the report:"
+echo -e "  cat $TEXT_REPORT_FILE"
 echo ""

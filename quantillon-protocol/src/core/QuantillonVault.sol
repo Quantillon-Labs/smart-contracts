@@ -567,7 +567,7 @@ contract QuantillonVault is
         // Transfer fee to fee collector (if fee > 0)
         if (fee > 0) {
             // Approve FeeCollector to pull the fee
-            usdc.safeIncreaseAllowance(feeCollector, fee);
+            usdc.approve(feeCollector, fee);
             // Call FeeCollector to collect the fee with proper tracking
             FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
         }

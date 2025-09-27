@@ -157,6 +157,10 @@ contract QuantillonVault is
     /// @notice Treasury address for ETH recovery
     /// @dev SECURITY: Only this address can receive ETH from recoverETH function
     address public treasury;
+    
+    /// @notice Fee collector contract for protocol fees
+    /// @dev Centralized fee collection and distribution
+    address public feeCollector;
 
     // Protocol parameters (configurable by governance)
     
@@ -351,7 +355,8 @@ contract QuantillonVault is
         address _oracle,
         address _hedgerPool,
         address _userPool,
-        address _timelock
+        address _timelock,
+        address _feeCollector
     ) public initializer {
         // Validation of critical parameters
         require(admin != address(0), "Vault: Admin cannot be zero");
@@ -360,6 +365,7 @@ contract QuantillonVault is
         require(_oracle != address(0), "Vault: Oracle cannot be zero");
         // Note: HedgerPool and UserPool can be zero during initialization, but must be set before minting
         require(_timelock != address(0), "Vault: Timelock cannot be zero");
+        require(_feeCollector != address(0), "Vault: FeeCollector cannot be zero");
 
         // Initialization of security modules
         __ReentrancyGuard_init();     // Reentrancy protection
@@ -384,6 +390,7 @@ contract QuantillonVault is
             userPool = IUserPool(_userPool);
         }
         treasury = _timelock; // Set treasury to timelock
+        feeCollector = _feeCollector; // Set fee collector
 
         // Default protocol parameters
         mintFee = 1e15;                 // 0.1% mint fee
@@ -459,7 +466,7 @@ contract QuantillonVault is
 
         // EFFECTS - All state updates before any external calls
         unchecked {
-            totalUsdcHeld += netAmount;
+            totalUsdcHeld += usdcAmount;
             totalMinted += qeuroToMint;
         }
         
@@ -469,7 +476,14 @@ contract QuantillonVault is
         _updatePriceTimestamp(isValid);
 
         // INTERACTIONS - All external calls after state updates
-        usdc.safeTransferFrom(msg.sender, address(this), netAmount);
+        // Transfer full amount to vault
+        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
+        
+        // Transfer fee to fee collector (if fee > 0)
+        if (fee > 0) {
+            usdc.safeTransfer(feeCollector, fee);
+        }
+        
         qeuro.mint(msg.sender, qeuroToMint);
 
         emit QEUROminted(msg.sender, usdcAmount, qeuroToMint);
@@ -799,6 +813,14 @@ contract QuantillonVault is
         require(_userPool != address(0), "Vault: UserPool cannot be zero");
         userPool = IUserPool(_userPool);
         emit ParametersUpdated("userPool", 0, 0);
+    }
+    
+    /// @notice Updates the fee collector address
+    /// @param _feeCollector New fee collector address
+    function updateFeeCollector(address _feeCollector) external onlyRole(GOVERNANCE_ROLE) {
+        require(_feeCollector != address(0), "Vault: FeeCollector cannot be zero");
+        feeCollector = _feeCollector;
+        emit ParametersUpdated("feeCollector", 0, 0);
     }
     
     /**

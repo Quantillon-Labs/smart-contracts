@@ -16,6 +16,7 @@ import "../../src/core/HedgerPool.sol";
 import "../../src/core/stQEUROToken.sol";
 import "../../src/core/vaults/AaveVault.sol";
 import "../../src/core/yieldmanagement/YieldShift.sol";
+import "../../src/core/FeeCollector.sol";
 import "../../src/mocks/MockUSDC.sol";
 
 // Import mock aggregator for localhost deployment
@@ -45,6 +46,7 @@ contract DeployQuantillon is Script {
     address public stQeuroToken;
     address public aaveVault;
     address public yieldShift;
+    address public feeCollector;
     address public mockUSDC;
     
     // Mock feed addresses (for localhost)
@@ -57,6 +59,7 @@ contract DeployQuantillon is Script {
     QEUROToken public qeuroTokenContract;
     QTIToken public qtiTokenContract;
     QuantillonVault public quantillonVaultContract;
+    FeeCollector public feeCollectorContract;
     UserPool public userPoolContract;
     HedgerPool public hedgerPoolContract;
     stQEUROToken public stQeuroTokenContract;
@@ -293,7 +296,21 @@ contract DeployQuantillon is Script {
         qeuroTokenContract = QEUROToken(qeuroToken);
         console.log("QEUROToken:", qeuroToken);
         
-        // 4. Deploy QuantillonVault
+        // 4. Deploy FeeCollector
+        FeeCollector feeCollectorImpl = new FeeCollector();
+        bytes memory feeCollectorInitData = abi.encodeWithSelector(
+            FeeCollector.initialize.selector,
+            msg.sender,        // admin
+            msg.sender,        // treasury (same as admin for now)
+            msg.sender,        // devFund (same as admin for now)
+            msg.sender         // communityFund (same as admin for now)
+        );
+        ERC1967Proxy feeCollectorProxy = new ERC1967Proxy(address(feeCollectorImpl), feeCollectorInitData);
+        feeCollector = address(feeCollectorProxy);
+        feeCollectorContract = FeeCollector(feeCollector);
+        console.log("FeeCollector:", feeCollector);
+        
+        // 5. Deploy QuantillonVault
         QuantillonVault vaultImpl = new QuantillonVault();
         bytes memory vaultInitData = abi.encodeWithSelector(
             QuantillonVault.initialize.selector,
@@ -303,7 +320,8 @@ contract DeployQuantillon is Script {
             chainlinkOracle,   // _oracle
             address(0),        // _hedgerPool (temporary)
             address(0),        // _userPool (temporary)
-            msg.sender         // _timelock
+            msg.sender,        // _timelock
+            feeCollector       // _feeCollector
         );
         ERC1967Proxy vaultProxy = new ERC1967Proxy(address(vaultImpl), vaultInitData);
         quantillonVault = address(vaultProxy);
@@ -484,6 +502,7 @@ contract DeployQuantillon is Script {
         console.log("\n=== DEPLOYMENT SUMMARY ===");
         console.log("QEUROToken:", qeuroToken);
         console.log("QuantillonVault:", quantillonVault);
+        console.log("FeeCollector:", feeCollector);
         console.log("UserPool:", userPool);
         console.log("HedgerPool:", hedgerPool);
         console.log("ChainlinkOracle:", chainlinkOracle);

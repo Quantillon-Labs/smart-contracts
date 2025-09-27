@@ -475,11 +475,11 @@ contract UserPool is
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
         
-        // Approve vault to spend USDC
-        usdc.safeIncreaseAllowance(address(vault), netAmount);
+        // Approve vault to spend USDC (approve full amount, vault handles fees internally)
+        usdc.safeIncreaseAllowance(address(vault), usdcAmount);
         
         // EXTERNAL CALL - vault.mintQEURO() (INTERACTIONS)
-        vault.mintQEURO(netAmount, minQeuroOut);
+        vault.mintQEURO(usdcAmount, minQeuroOut);
         
         // Calculate actual minted amount
         uint256 qeuroAfter = qeuro.balanceOf(address(this));

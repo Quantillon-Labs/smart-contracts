@@ -191,7 +191,8 @@ contract QuantillonVaultTestSuite is Test {
             mockOracle,
             mockHedgerPool,
             address(0x8), // mock UserPool address
-            mockTimelock // mock timelock address (also used as treasury)
+            mockTimelock, // mock timelock address (also used as treasury)
+            address(0x999) // mock fee collector address
         );
         vault = QuantillonVault(address(new ERC1967Proxy(address(vaultImplementation), vaultInitData)));
         
@@ -437,7 +438,7 @@ contract QuantillonVaultTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        vault.initialize(admin, address(qeuroToken), mockUSDC, mockOracle, mockHedgerPool, address(0x8), address(0x789));
+        vault.initialize(admin, address(qeuroToken), mockUSDC, mockOracle, mockHedgerPool, address(0x8), address(0x789), address(0x999));
     }
     
     // =============================================================================

@@ -467,7 +467,7 @@ contract QuantillonVault is
 
         // EFFECTS - All state updates before any external calls
         unchecked {
-            totalUsdcHeld += usdcAmount;
+            totalUsdcHeld += netAmount;  // ✅ FIXED: Add net amount after fee, not full amount
             totalMinted += qeuroToMint;
         }
         
@@ -563,6 +563,14 @@ contract QuantillonVault is
         // INTERACTIONS - All external calls after state updates
         qeuro.burn(msg.sender, qeuroAmount);
         usdc.safeTransfer(msg.sender, netUsdcToReturn);
+        
+        // Transfer fee to fee collector (if fee > 0)
+        if (fee > 0) {
+            // Approve FeeCollector to pull the fee
+            usdc.safeIncreaseAllowance(feeCollector, fee);
+            // Call FeeCollector to collect the fee with proper tracking
+            FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
+        }
 
         emit QEURORedeemed(msg.sender, qeuroAmount, netUsdcToReturn);
     }

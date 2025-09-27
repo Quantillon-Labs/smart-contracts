@@ -459,7 +459,7 @@ contract QuantillonVault is
 
         // EFFECTS - All state updates before any external calls
         unchecked {
-            totalUsdcHeld += usdcAmount;
+            totalUsdcHeld += netAmount;
             totalMinted += qeuroToMint;
         }
         
@@ -469,7 +469,7 @@ contract QuantillonVault is
         _updatePriceTimestamp(isValid);
 
         // INTERACTIONS - All external calls after state updates
-        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
+        usdc.safeTransferFrom(msg.sender, address(this), netAmount);
         qeuro.mint(msg.sender, qeuroToMint);
 
         emit QEUROminted(msg.sender, usdcAmount, qeuroToMint);

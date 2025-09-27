@@ -106,8 +106,8 @@ success_count=0
 error_count=0
 
 for contract in "${contracts[@]}"; do
-    source_file="${contract}.sol/${contract}.json"
-    dest_file="${contract}.json"
+    source_file="$SMART_CONTRACTS_OUT/${contract}.sol/${contract}.json"
+    dest_file="$FRONTEND_ABI_DIR/${contract}.json"
     
     if [ -f "$source_file" ]; then
         cp "$source_file" "$dest_file"

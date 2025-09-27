@@ -28,15 +28,12 @@ jobs:
         with:
           version: nightly
 
-      - name: Show tool versions
+      - name: Build contracts (optional but recommended)
         run: |
-          forge --version
-          anvil --version
-          cast --version
+          cd quantillon-protocol
+          forge build --sizes
 
       - name: Generate docs with correct GitHub URLs
-        env:
-          RUST_MIN_STACK: 33554432
         run: |
           cd quantillon-protocol
           rm -rf docs

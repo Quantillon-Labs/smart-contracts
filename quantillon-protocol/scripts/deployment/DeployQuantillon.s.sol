@@ -476,6 +476,10 @@ contract DeployQuantillon is Script {
         quantillonVaultContract.updateUserPool(userPool);
         console.log("SUCCESS: Vault pool addresses updated");
         
+        // Authorize QuantillonVault as fee source in FeeCollector
+        feeCollectorContract.authorizeFeeSource(quantillonVault);
+        console.log("SUCCESS: QuantillonVault authorized as fee source");
+        
         console.log("\n=== PHASE 5: HEDGER ROLE MANAGEMENT ===");
         
         // Grant deployer hedger role

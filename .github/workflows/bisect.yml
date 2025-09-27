@@ -16,14 +16,14 @@ jobs:
       matrix:
         part: [ "core", "tokens", "staking", "governance", "interfaces", "libraries", "oracle", "utils", "mocks" ]
     env:
-      FOUNDRY_PROFILE: docs       # use your lightweight docs profile from Foundry.toml
-      RUST_MIN_STACK: 50331648    # 48 MB; raise/lower as needed
+      FOUNDRY_PROFILE: docs
+      RUST_MIN_STACK: 50331648
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive    # in case you vendor libs under lib/
+          submodules: recursive
 
       - name: Install Foundry (stable)
         uses: foundry-rs/foundry-toolchain@v1
@@ -39,7 +39,6 @@ jobs:
       - name: Install dependencies (forge install)
         working-directory: quantillon-protocol
         run: |
-          # Pin to your local versions (adjust if you use different tags)
           forge install --no-commit \
             openzeppelin/openzeppelin-contracts@v5.0.2 \
             openzeppelin/openzeppelin-contracts-upgradeable@v5.0.2 \
@@ -55,18 +54,18 @@ jobs:
         working-directory: quantillon-protocol
         run: |
           PART="${{ matrix.part }}"
-          cat > foundry.docs.toml <<EOF
-[profile.docs]
-optimizer = false
-via_ir = false
-solc_version = "0.8.24"
-evm_version = "paris"
-
-[doc]
-out = "docs"
-include = ["src/${PART}/**"]
-ignore  = ["lib/**","test/**","script/**","scripts/**","node_modules/**"]
-EOF
+          printf '%s\n' \
+            '[profile.docs]' \
+            'optimizer = false' \
+            'via_ir = false' \
+            'solc_version = "0.8.24"' \
+            'evm_version = "paris"' \
+            '' \
+            '[doc]' \
+            'out = "docs"' \
+            "include = [\"src/${PART}/**\"]" \
+            'ignore  = ["lib/**","test/**","script/**","scripts/**","node_modules/**"]' \
+            > foundry.docs.toml
           echo "config_path=$PWD/foundry.docs.toml" >> "$GITHUB_OUTPUT"
 
       - name: Run forge doc for src/${{ matrix.part }}/**
@@ -78,14 +77,13 @@ EOF
           rm -rf docs
           echo "=== Running docs for src/${{ matrix.part }}/** ==="
           set -o pipefail
-          forge doc --out docs --build -vv | tee forge-doc-${{ matrix.part }}.log
+          forge doc --out docs --build -vv | tee "forge-doc-${{ matrix.part }}.log"
 
-      - name: Archive docs (if any)
-        if: always()    # collect artifacts even on failure
+      - name: Upload artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: docs-${{ matrix.part }}
           path: |
             quantillon-protocol/docs/**
             quantillon-protocol/forge-doc-${{ matrix.part }}.log
-          if-no-files-found: warn

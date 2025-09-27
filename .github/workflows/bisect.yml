@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies (forge install)
         working-directory: quantillon-protocol
         run: |
-          forge install --no-commit \
+          forge install \
             openzeppelin/openzeppelin-contracts@v5.0.2 \
             openzeppelin/openzeppelin-contracts-upgradeable@v5.0.2 \
             foundry-rs/forge-std@v1.9.5 \

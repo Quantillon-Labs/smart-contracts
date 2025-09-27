@@ -1,0 +1,36 @@
+name: Forge Docs Bisect (folders)
+on: workflow_dispatch
+
+jobs:
+  bisect:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [core, interfaces, libraries, mocks, oracle]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with: { version: stable }
+
+      - name: Install deps
+        run: forge install --no-commit
+
+      - name: Generate docs for matrix part
+        env:
+          RUST_MIN_STACK: 33554432
+        run: |
+          cat > foundry.docs.toml <<'TOML'
+[profile.docs]
+optimizer = false
+via_ir = false
+solc_version = "0.8.24"
+evm_version = "paris"
+
+[doc]
+out = "docs"
+include = ["src/__PART__/**"]
+ignore  = ["lib/**","test/**","scripts/**","node_modules/**"]
+TOML
+          sed -i "s|__PART__|${{ matrix.part }}|g" foundry.docs.toml
+          FOUNDRY_CONFIG=$PWD/foundry.docs.toml forge doc -p docs --out docs --build -vv

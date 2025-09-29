@@ -1,5 +1,5 @@
 # UserPoolStakingLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/03f8f2db069e4fe5f129cc3e28526efe7b1f6f49/src/libraries/UserPoolStakingLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/71cd41fc9aa7c18638af4654e656fb0dc6b6d493/src/libraries/UserPoolStakingLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -9,7 +9,7 @@ Staking and reward calculation functions for UserPool to reduce contract size
 *Extracted from UserPool to reduce bytecode size and improve maintainability*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -63,21 +63,21 @@ Calculates staking rewards for a user
 *Internal function to calculate rewards based on stake duration and APY*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling function
+- Input validation handled by calling function
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -108,21 +108,21 @@ Public wrapper for calculateStakingRewards
 *Public interface for calculating staking rewards*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -153,21 +153,21 @@ Calculates total staking rewards for a user
 *Calculates total rewards across all active stakes for a user*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -198,21 +198,21 @@ Validates stake parameters
 *Ensures stake parameters are within acceptable bounds*
 
 **Notes:**
-- security: Prevents invalid stake parameters from being processed
+- Prevents invalid stake parameters from being processed
 
-- validation: Validates amounts, durations, and user limits
+- Validates amounts, durations, and user limits
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws various validation errors for invalid inputs
+- Throws various validation errors for invalid inputs
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -236,21 +236,21 @@ Validates unstake parameters
 *Ensures unstake operations meet minimum requirements*
 
 **Notes:**
-- security: Prevents premature unstaking and enforces cooldowns
+- Prevents premature unstaking and enforces cooldowns
 
-- validation: Validates stake status and timing requirements
+- Validates stake status and timing requirements
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws various validation errors for invalid unstake attempts
+- Throws various validation errors for invalid unstake attempts
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -271,21 +271,21 @@ Calculates unstake penalty
 *Calculates penalty based on stake duration to discourage early unstaking*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -315,21 +315,21 @@ Calculates deposit APY based on pool metrics
 *Adjusts deposit APY based on staking ratio to incentivize optimal behavior*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -360,21 +360,21 @@ Calculates staking APY based on pool metrics
 *Adjusts staking APY based on staking ratio to incentivize optimal behavior*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -405,21 +405,21 @@ Calculates fee for deposit/withdrawal
 *Adjusts fees based on pool utilization to manage liquidity*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -450,21 +450,21 @@ Calculates pool metrics
 *Packs pool metrics into a single uint256 for gas efficiency*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -495,21 +495,21 @@ Unpacks pool metrics
 *Unpacks pool metrics from a single uint256 for gas efficiency*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

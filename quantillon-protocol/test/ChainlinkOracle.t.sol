@@ -6,7 +6,7 @@ import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
  * @title MockAggregatorV3
@@ -793,7 +793,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 newMaxPrice = 150 * 1e16;
         
         vm.prank(oracleManager);
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         oracle.updatePriceBounds(newMinPrice, newMaxPrice);
     }
     
@@ -814,7 +814,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 newMaxPrice = 100 * 1e16;
         
         vm.prank(oracleManager);
-        vm.expectRevert(ErrorLibrary.InvalidCondition.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
         oracle.updatePriceBounds(newMinPrice, newMaxPrice);
     }
     
@@ -835,7 +835,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 newMaxPrice = 15 * 1e18; // 15 USD (too high)
         
         vm.prank(oracleManager);
-        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
+        vm.expectRevert(CommonErrorLibrary.AboveLimit.selector);
         oracle.updatePriceBounds(newMinPrice, newMaxPrice);
     }
     
@@ -877,7 +877,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 newTolerance = 1500; // 15% (too high)
         
         vm.prank(oracleManager);
-        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
+        vm.expectRevert(CommonErrorLibrary.AboveLimit.selector);
         oracle.updateUsdcTolerance(newTolerance);
     }
     
@@ -921,7 +921,7 @@ contract ChainlinkOracleTestSuite is Test {
         MockAggregatorV3 newUsdcUsdFeed = new MockAggregatorV3(8);
         
         vm.prank(oracleManager);
-        vm.expectRevert(ErrorLibrary.InvalidOracle.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidOracle.selector);
         oracle.updatePriceFeeds(address(0), address(newUsdcUsdFeed));
     }
 
@@ -969,7 +969,7 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(CommonErrorLibrary.CannotRecoverOwnToken.selector);
         oracle.recoverToken(address(oracle), 1000e18);
     }
     
@@ -1042,7 +1042,7 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
         oracle.recoverETH();
     }
 

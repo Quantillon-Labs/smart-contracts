@@ -5,7 +5,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 
 /**
@@ -593,7 +593,7 @@ contract YieldShiftTestSuite is Test {
             admin
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData);
     }
     
@@ -634,7 +634,7 @@ contract YieldShiftTestSuite is Test {
             admin
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData);
     }
 
@@ -740,7 +740,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.authorizeYieldSource(yieldManager, keccak256("test_source"));
         
         vm.prank(yieldManager);
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         yieldShift.addYield(0, keccak256("test_source"));
     }
 
@@ -979,7 +979,7 @@ contract YieldShiftTestSuite is Test {
         
         // Try to claim before holding period
         vm.prank(user);
-        vm.expectRevert(ErrorLibrary.HoldingPeriodNotMet.selector);
+        vm.expectRevert(CommonErrorLibrary.HoldingPeriodNotMet.selector);
         yieldShift.claimUserYield(user);
     }
     
@@ -1010,7 +1010,7 @@ contract YieldShiftTestSuite is Test {
         
         // Try to claim by unauthorized address
         vm.prank(hedger);
-        vm.expectRevert(ErrorLibrary.NotAuthorized.selector);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         yieldShift.claimUserYield(user);
     }
 
@@ -1160,22 +1160,22 @@ contract YieldShiftTestSuite is Test {
     function test_Governance_SetYieldShiftParametersInvalid_Revert() public {
         // Test base shift too high
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.InvalidYieldShift.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
         yieldShift.setYieldShiftParameters(15000, 9500, 200);
         
         // Test max shift too high
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.InvalidYieldShift.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
         yieldShift.setYieldShiftParameters(6000, 15000, 200);
         
         // Test max shift less than base shift
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.InvalidShiftRange.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidShiftRange.selector);
         yieldShift.setYieldShiftParameters(6000, 4000, 200);
         
         // Test adjustment speed too high
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.AdjustmentSpeedTooHigh.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
         yieldShift.setYieldShiftParameters(6000, 9500, 1500);
     }
     
@@ -1217,12 +1217,12 @@ contract YieldShiftTestSuite is Test {
     function test_Governance_SetTargetPoolRatioInvalid_Revert() public {
         // Test zero target ratio
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.InvalidRatio.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
         yieldShift.setTargetPoolRatio(0);
         
         // Test target ratio too high
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.TargetRatioTooHigh.selector);
+        vm.expectRevert(CommonErrorLibrary.AboveLimit.selector);
         yieldShift.setTargetPoolRatio(60000);
     }
 
@@ -1299,7 +1299,7 @@ contract YieldShiftTestSuite is Test {
         uint256 excessiveAmount = 1000000 * 1e6; // 1M USDC (more than available)
         
         vm.prank(emergencyRole);
-        vm.expectRevert(ErrorLibrary.InsufficientYield.selector);
+        vm.expectRevert(CommonErrorLibrary.InsufficientYield.selector);
         yieldShift.emergencyYieldDistribution(excessiveAmount, 0);
     }
     
@@ -1800,7 +1800,7 @@ contract YieldShiftTestSuite is Test {
     function test_User_UpdateLastDepositTimeUnauthorized_Revert() public {
         // Try to update last deposit time by unauthorized caller
         vm.prank(user);
-        vm.expectRevert(ErrorLibrary.NotAuthorized.selector);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         yieldShift.updateLastDepositTime(user);
     }
 
@@ -2011,7 +2011,7 @@ contract YieldShiftTestSuite is Test {
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(CommonErrorLibrary.CannotRecoverOwnToken.selector);
         yieldShift.recoverToken(address(yieldShift), 1000e18);
     }
 
@@ -2129,7 +2129,7 @@ contract YieldShiftTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
         yieldShift.recoverETH();
     }
 

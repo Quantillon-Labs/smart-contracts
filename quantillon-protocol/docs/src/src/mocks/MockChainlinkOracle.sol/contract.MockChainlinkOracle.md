@@ -1,5 +1,5 @@
 # MockChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/03f8f2db069e4fe5f129cc3e28526efe7b1f6f49/src/mocks/MockChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/71cd41fc9aa7c18638af4654e656fb0dc6b6d493/src/mocks/MockChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -122,7 +122,7 @@ bool public circuitBreakerTriggered;
 ### constructor
 
 **Note:**
-oz-upgrades-unsafe-allow: constructor
+constructor
 
 
 ```solidity

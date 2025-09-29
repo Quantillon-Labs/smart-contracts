@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {ErrorLibrary} from "./ErrorLibrary.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 
 /**
  * @title TimeProvider
@@ -72,17 +72,17 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
     
     /// @notice Ensures the contract is not in emergency mode
     modifier whenNotEmergency() {
-        if (emergencyMode) revert ErrorLibrary.EmergencyModeActive();
+        if (emergencyMode) revert CommonErrorLibrary.EmergencyModeActive();
         _;
     }
     
     /// @notice Ensures the time offset is within allowed bounds
     modifier validTimeOffset(int256 offset) {
         if (offset > 0 && uint256(offset) > MAX_TIME_OFFSET) {
-            revert ErrorLibrary.InvalidAmount();
+            revert CommonErrorLibrary.InvalidAmount();
         }
         if (offset < 0 && uint256(-offset) > MAX_TIME_OFFSET) {
-            revert ErrorLibrary.InvalidAmount();
+            revert CommonErrorLibrary.InvalidAmount();
         }
         _;
     }
@@ -129,9 +129,9 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         __AccessControl_init();
         __UUPSUpgradeable_init();
         
-        if (admin == address(0)) revert ErrorLibrary.ZeroAddress();
-        if (governance == address(0)) revert ErrorLibrary.ZeroAddress();
-        if (emergency == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (admin == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (governance == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (emergency == address(0)) revert CommonErrorLibrary.ZeroAddress();
         
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, governance);
@@ -289,7 +289,7 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         uint256 advancement, 
         string calldata reason
     ) external onlyRole(GOVERNANCE_ROLE) whenNotEmergency {
-        if (advancement == 0) revert ErrorLibrary.InvalidAmount();
+        if (advancement == 0) revert CommonErrorLibrary.InvalidAmount();
         
         int256 newOffset;
         if (timeOffset >= 0) {
@@ -304,7 +304,7 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         }
         
         if (newOffset > 0 && uint256(newOffset) > MAX_TIME_OFFSET) {
-            revert ErrorLibrary.InvalidAmount();
+            revert CommonErrorLibrary.InvalidAmount();
         }
         
         int256 oldOffset = timeOffset;
@@ -463,7 +463,7 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) view {
         // Additional upgrade validation can be added here
-        if (newImplementation == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (newImplementation == address(0)) revert CommonErrorLibrary.ZeroAddress();
     }
     
 }

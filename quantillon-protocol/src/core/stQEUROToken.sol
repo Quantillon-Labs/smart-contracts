@@ -16,8 +16,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
-import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
-import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
+import {TokenErrorLibrary} from "../libraries/TokenErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
@@ -277,7 +277,7 @@ contract stQEUROToken is
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(TimeProvider _TIME_PROVIDER) {
-        if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (address(_TIME_PROVIDER) == address(0)) revert TokenErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
         // Disables initialization on the implementation for security
         _disableInitializers();
@@ -330,7 +330,7 @@ contract stQEUROToken is
         yieldShift = IYieldShift(_yieldShift);
         usdc = IERC20(_usdc);
         require(_treasury != address(0), "Treasury cannot be zero address");
-        ValidationLibrary.validateTreasuryAddress(_treasury);
+        CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
@@ -447,7 +447,7 @@ contract stQEUROToken is
         whenNotPaused 
         returns (uint256[] memory stQEUROAmounts) 
     {
-        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
         stQEUROAmounts = new uint256[](qeuroAmounts.length);
         uint256 totalQeuroAmount = 0;
@@ -508,7 +508,7 @@ contract stQEUROToken is
         whenNotPaused 
         returns (uint256[] memory qeuroAmounts) 
     {
-        if (stQEUROAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (stQEUROAmounts.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
         qeuroAmounts = new uint256[](stQEUROAmounts.length);
         uint256 totalStQEUROAmount = 0;
@@ -577,8 +577,8 @@ contract stQEUROToken is
         whenNotPaused
         returns (bool)
     {
-        if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
-        if (recipients.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (recipients.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
 
         uint256 length = recipients.length;
@@ -885,7 +885,7 @@ contract stQEUROToken is
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        if (_treasury == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (_treasury == address(0)) revert TokenErrorLibrary.ZeroAddress();
         treasury = _treasury;
     }
 

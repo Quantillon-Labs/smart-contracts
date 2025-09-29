@@ -4,7 +4,8 @@ pragma solidity 0.8.24;
 import {Test, console2} from "forge-std/Test.sol";
 import {AaveVault} from "../src/core/vaults/AaveVault.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {VaultErrorLibrary} from "../src/libraries/VaultErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 
 /**
@@ -827,7 +828,7 @@ contract AaveVaultTestSuite is Test {
             admin
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(VaultErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData);
     }
     
@@ -857,7 +858,7 @@ contract AaveVaultTestSuite is Test {
             admin
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(VaultErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData);
     }
 
@@ -935,7 +936,7 @@ contract AaveVaultTestSuite is Test {
      */
     function test_AaveIntegration_DeployToAaveZeroAmount_Revert() public {
         vm.prank(vaultManager);
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(VaultErrorLibrary.InvalidAmount.selector);
         aaveVault.deployToAave(0);
     }
     
@@ -958,7 +959,7 @@ contract AaveVaultTestSuite is Test {
         usdc.approve(address(aaveVault), excessiveAmount);
         
         vm.prank(vaultManager);
-        vm.expectRevert(ErrorLibrary.WouldExceedLimit.selector);
+        vm.expectRevert(VaultErrorLibrary.WouldExceedLimit.selector);
         aaveVault.deployToAave(excessiveAmount);
     }
     
@@ -1102,7 +1103,7 @@ contract AaveVaultTestSuite is Test {
         aUSDC.mint(address(aaveVault), 500 * 1e6); // 500 USDC yield (below 1000 threshold)
         
         vm.prank(vaultManager);
-        vm.expectRevert(ErrorLibrary.BelowThreshold.selector);
+        vm.expectRevert(VaultErrorLibrary.BelowThreshold.selector);
         aaveVault.harvestAaveYield();
     }
     
@@ -1400,7 +1401,7 @@ contract AaveVaultTestSuite is Test {
         uint256 excessiveExposure = 2000000000 * 1e6; // 2B USDC (exceeds 1B limit)
         
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.ConfigValueTooHigh.selector);
+        vm.expectRevert(VaultErrorLibrary.ConfigValueTooHigh.selector);
         aaveVault.setMaxAaveExposure(excessiveExposure);
     }
     
@@ -1517,12 +1518,12 @@ contract AaveVaultTestSuite is Test {
     function test_Configuration_UpdateParametersInvalid_Revert() public {
         // Test yield fee too high
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.FeeTooHigh.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
         aaveVault.updateAaveParameters(1000 * 1e6, 2500, 500); // 25% fee
         
         // Test rebalance threshold too high
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.InvalidThreshold.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
         aaveVault.updateAaveParameters(1000 * 1e6, 1000, 2500); // 25% threshold
     }
     
@@ -1844,7 +1845,7 @@ contract AaveVaultTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(VaultErrorLibrary.NoETHToRecover.selector);
         aaveVault.recoverETH();
     }
 }

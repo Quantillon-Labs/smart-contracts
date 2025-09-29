@@ -3,9 +3,9 @@ pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ErrorLibrary} from "./ErrorLibrary.sol";
+import {HedgerPoolErrorLibrary} from "./HedgerPoolErrorLibrary.sol";
 import {VaultMath} from "./VaultMath.sol";
-import {ValidationLibrary} from "./ValidationLibrary.sol";
+import {HedgerPoolValidationLibrary} from "./HedgerPoolValidationLibrary.sol";
 
 /**
  * @title HedgerPoolLogicLibrary
@@ -87,9 +87,9 @@ library HedgerPoolLogicLibrary {
         uint256 marginRatio
     ) {
         // Validate basic parameters first
-        ValidationLibrary.validatePositiveAmount(usdcAmount);
-        ValidationLibrary.validateLeverage(leverage, maxLeverage);
-        ValidationLibrary.validatePositionCount(activePositionCount, maxPositionsPerHedger);
+        HedgerPoolValidationLibrary.validatePositiveAmount(usdcAmount);
+        HedgerPoolValidationLibrary.validateLeverage(leverage, maxLeverage);
+        HedgerPoolValidationLibrary.validatePositionCount(activePositionCount, maxPositionsPerHedger);
 
         // Calculate basic values
         fee = usdcAmount.percentageOf(entryFee);
@@ -98,15 +98,15 @@ library HedgerPoolLogicLibrary {
         marginRatio = netMargin.mulDiv(10000, positionSize);
         
         // Validate calculated values
-        ValidationLibrary.validateMarginRatio(marginRatio, minMarginRatio);
-        ValidationLibrary.validateMaxMarginRatio(marginRatio, maxMarginRatio);
+        HedgerPoolValidationLibrary.validateMarginRatio(marginRatio, minMarginRatio);
+        HedgerPoolValidationLibrary.validateMaxMarginRatio(marginRatio, maxMarginRatio);
 
         // Final validation with all parameters
-        ValidationLibrary.validatePositionParams(
+        HedgerPoolValidationLibrary.validatePositionParams(
             netMargin, positionSize, eurUsdPrice, leverage,
             maxMargin, maxPositionSize, maxEntryPrice, maxLeverageValue
         );
-        ValidationLibrary.validateTimestamp(currentTime);
+        HedgerPoolValidationLibrary.validateTimestamp(currentTime);
     }
 
 
@@ -231,7 +231,7 @@ library HedgerPoolLogicLibrary {
             .mulDiv(timeElapsed, 365 days);
         
         newPendingRewards = currentPendingRewards + reward;
-        if (newPendingRewards < currentPendingRewards) revert ErrorLibrary.RewardOverflow();
+        if (newPendingRewards < currentPendingRewards) revert HedgerPoolErrorLibrary.RewardOverflow();
         
         newLastRewardBlock = currentBlock;
     }
@@ -267,17 +267,17 @@ library HedgerPoolLogicLibrary {
         if (isAddition) {
             newMargin = currentMargin + amount;
         } else {
-            if (currentMargin < amount) revert ErrorLibrary.InsufficientMargin();
+            if (currentMargin < amount) revert HedgerPoolErrorLibrary.InsufficientMargin();
             newMargin = currentMargin - amount;
         }
         
         newMarginRatio = newMargin.mulDiv(10000, positionSize);
         
         if (!isAddition) {
-            ValidationLibrary.validateMarginRatio(newMarginRatio, minMarginRatio);
+            HedgerPoolValidationLibrary.validateMarginRatio(newMarginRatio, minMarginRatio);
         }
         
-        ValidationLibrary.validateNewMargin(newMargin, maxMargin);
+        HedgerPoolValidationLibrary.validateNewMargin(newMargin, maxMargin);
     }
 
     /**

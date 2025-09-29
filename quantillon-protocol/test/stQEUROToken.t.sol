@@ -7,7 +7,7 @@ import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {TokenErrorLibrary} from "../src/libraries/TokenErrorLibrary.sol";
 
 /**
  * @title stQEUROTokenTestSuite
@@ -279,7 +279,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidAdmin.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidAdmin.selector);
         new ERC1967Proxy(address(testImplementation), initData1);
         
         // Test with zero QEURO
@@ -293,7 +293,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData2);
         
         // Test with zero YieldShift
@@ -307,7 +307,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData3);
         
         // Test with zero USDC
@@ -321,7 +321,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidToken.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData4);
         
         // Test with zero treasury
@@ -335,7 +335,7 @@ contract stQEUROTokenTestSuite is Test {
             mockTimelock
         );
         
-        vm.expectRevert(ErrorLibrary.InvalidTreasury.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidTreasury.selector);
         new ERC1967Proxy(address(testImplementation), initData5);
     }
     
@@ -407,7 +407,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Staking_StakeZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
         stQEURO.stake(0);
     }
     
@@ -427,7 +427,7 @@ contract stQEUROTokenTestSuite is Test {
         uint256 tooMuch = INITIAL_QEURO_AMOUNT + 1;
         
         vm.prank(user1);
-        vm.expectRevert(ErrorLibrary.InsufficientBalance.selector);
+        vm.expectRevert(TokenErrorLibrary.InsufficientBalance.selector);
         stQEURO.stake(tooMuch);
     }
     
@@ -640,7 +640,7 @@ contract stQEUROTokenTestSuite is Test {
         }
 
         vm.prank(user1);
-        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
         stQEURO.batchStake(amounts);
     }
 
@@ -665,7 +665,7 @@ contract stQEUROTokenTestSuite is Test {
         }
 
         vm.prank(user1);
-        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
         stQEURO.batchUnstake(amounts);
     }
 
@@ -692,7 +692,7 @@ contract stQEUROTokenTestSuite is Test {
         }
 
         vm.prank(user1);
-        vm.expectRevert(ErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
         stQEURO.batchTransfer(recipients, amounts);
     }
 
@@ -797,7 +797,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Unstaking_UnstakeZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
         stQEURO.unstake(0);
     }
     
@@ -817,7 +817,7 @@ contract stQEUROTokenTestSuite is Test {
         uint256 tooMuch = STAKE_AMOUNT + 1;
         
         vm.prank(user1);
-        vm.expectRevert(ErrorLibrary.InsufficientBalance.selector);
+        vm.expectRevert(TokenErrorLibrary.InsufficientBalance.selector);
         stQEURO.unstake(tooMuch);
     }
     
@@ -930,7 +930,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Yield_DistributeZeroYield_Revert() public {
         vm.prank(yieldManager);
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
         stQEURO.distributeYield(0);
     }
     
@@ -948,7 +948,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Yield_DistributeYieldNoSupply_Revert() public {
         vm.prank(yieldManager);
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
         stQEURO.distributeYield(YIELD_AMOUNT);
     }
     
@@ -1510,12 +1510,12 @@ contract stQEUROTokenTestSuite is Test {
     function test_Admin_UpdateYieldParametersInvalidValues_Revert() public {
         // Test yield fee too high
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
+        vm.expectRevert(TokenErrorLibrary.AboveLimit.selector);
         stQEURO.updateYieldParameters(2500, 500e6, 2 hours); // 25% fee
         
         // Test update frequency too long
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.AboveLimit.selector);
+        vm.expectRevert(TokenErrorLibrary.AboveLimit.selector);
         stQEURO.updateYieldParameters(500, 500e6, 25 hours); // 25 hours
     }
     
@@ -1554,7 +1554,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_Admin_UpdateTreasuryToZero_Revert() public {
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.InvalidTreasury.selector);
+        vm.expectRevert(TokenErrorLibrary.InvalidTreasury.selector);
         stQEURO.updateTreasury(address(0));
     }
     
@@ -1653,7 +1653,7 @@ contract stQEUROTokenTestSuite is Test {
         uint256 amount = 1000e18;
         
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(TokenErrorLibrary.CannotRecoverOwnToken.selector);
         stQEURO.recoverToken(address(stQEURO), amount);
     }
     

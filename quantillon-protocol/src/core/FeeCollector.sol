@@ -7,7 +7,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 
 /**
@@ -178,9 +178,9 @@ contract FeeCollector is
         _grantRole(EMERGENCY_ROLE, _admin);
         
         // Set fund addresses (explicit zero checks for Slither)
-        if (_treasury == address(0)) revert ErrorLibrary.ZeroAddress();
-        if (_devFund == address(0)) revert ErrorLibrary.ZeroAddress();
-        if (_communityFund == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_devFund == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_communityFund == address(0)) revert CommonErrorLibrary.ZeroAddress();
         
         treasury = _treasury;
         devFund = _devFund;
@@ -222,8 +222,8 @@ contract FeeCollector is
         uint256 amount,
         string calldata sourceType
     ) external onlyFeeSource whenNotPaused nonReentrant {
-        if (token == address(0)) revert ErrorLibrary.ZeroAddress();
-        if (amount == 0) revert ErrorLibrary.InvalidAmount();
+        if (token == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
         
         // Transfer tokens from caller to this contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -251,7 +251,7 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies
      */
     function collectETHFees(string calldata sourceType) external payable onlyFeeSource whenNotPaused nonReentrant {
-        if (msg.value == 0) revert ErrorLibrary.InvalidAmount();
+        if (msg.value == 0) revert CommonErrorLibrary.InvalidAmount();
         
         // ETH is tracked as address(0)
         totalFeesCollected[address(0)] += msg.value;
@@ -283,7 +283,7 @@ contract FeeCollector is
     function distributeFees(address token) external onlyRole(TREASURY_ROLE) whenNotPaused nonReentrant {
         uint256 balance = token == address(0) ? address(this).balance : IERC20(token).balanceOf(address(this));
         
-        if (balance <= 0) revert ErrorLibrary.InsufficientBalance();
+        if (balance <= 0) revert CommonErrorLibrary.InsufficientBalance();
         
         // Calculate and distribute amounts
         (uint256 treasuryAmount, uint256 devFundAmount, uint256 communityAmount) = _calculateDistributionAmounts(balance);
@@ -406,22 +406,22 @@ contract FeeCollector is
      */
     function _secureETHTransfer(address recipient, uint256 amount) internal {
         // Validate amount (must be greater than zero)
-        if (amount <= 0) revert ErrorLibrary.InvalidAmount();
+        if (amount <= 0) revert CommonErrorLibrary.InvalidAmount();
         
         // Validate recipient is one of the authorized fund addresses
         if (recipient != treasury && recipient != devFund && recipient != communityFund) {
-            revert ErrorLibrary.InvalidAddress();
+            revert CommonErrorLibrary.InvalidAddress();
         }
         
         // Additional runtime validation for security
-        if (recipient == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (recipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
         
         // Validate recipient is not a contract (additional security check)
         uint256 codeSize;
         assembly {
             codeSize := extcodesize(recipient)
         }
-        if (codeSize > 0) revert ErrorLibrary.InvalidAddress();
+        if (codeSize > 0) revert CommonErrorLibrary.InvalidAddress();
         
         // slither-disable-next-line arbitrary-send-eth
         // Recipient is validated to be one of the authorized fund addresses (treasury, devFund, communityFund)
@@ -429,7 +429,7 @@ contract FeeCollector is
         // Only governance role can update these addresses, providing additional security
         // This is not an arbitrary send as recipient is restricted to pre-authorized fund addresses
         (bool success, ) = recipient.call{value: amount}("");
-        if (!success) revert ErrorLibrary.ETHTransferFailed();
+        if (!success) revert CommonErrorLibrary.ETHTransferFailed();
     }
 
     /**
@@ -493,7 +493,7 @@ contract FeeCollector is
         uint256 _communityRatio
     ) external onlyRole(GOVERNANCE_ROLE) {
         if (_treasuryRatio + _devFundRatio + _communityRatio != 10000) {
-            revert ErrorLibrary.InvalidRatio();
+            revert CommonErrorLibrary.InvalidRatio();
         }
         
         treasuryRatio = _treasuryRatio;
@@ -537,9 +537,9 @@ contract FeeCollector is
         CommonValidationLibrary.validateNotContract(_communityFund, "communityFund");
         
         // Explicit zero checks for Slither (redundant but satisfies static analysis)
-        if (_treasury == address(0)) revert ErrorLibrary.ZeroAddress();
-        if (_devFund == address(0)) revert ErrorLibrary.ZeroAddress();
-        if (_communityFund == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_devFund == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_communityFund == address(0)) revert CommonErrorLibrary.ZeroAddress();
         
         treasury = _treasury;
         devFund = _devFund;
@@ -563,7 +563,7 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies
      */
     function authorizeFeeSource(address feeSource) external onlyRole(GOVERNANCE_ROLE) {
-        if (feeSource == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (feeSource == address(0)) revert CommonErrorLibrary.ZeroAddress();
         _grantRole(TREASURY_ROLE, feeSource);
     }
     
@@ -641,7 +641,7 @@ contract FeeCollector is
     function emergencyWithdraw(address token) external onlyRole(EMERGENCY_ROLE) {
         uint256 balance = token == address(0) ? address(this).balance : IERC20(token).balanceOf(address(this));
         
-        if (balance <= 0) revert ErrorLibrary.InsufficientBalance();
+        if (balance <= 0) revert CommonErrorLibrary.InsufficientBalance();
         
         if (token == address(0)) {
             _secureETHTransfer(treasury, balance);

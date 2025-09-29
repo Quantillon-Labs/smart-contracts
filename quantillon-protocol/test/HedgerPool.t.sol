@@ -8,7 +8,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.sol";
 
 /**
  * @title HedgerPoolTestSuite
@@ -378,7 +378,7 @@ contract HedgerPoolTestSuite is Test {
             address(0x999) // Mock vault address
         );
         
-        vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero USDC
@@ -404,7 +404,7 @@ contract HedgerPoolTestSuite is Test {
             address(0x999) // Mock vault address
         );
         
-        vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation2), initData2);
         
         // Test with zero oracle
@@ -430,7 +430,7 @@ contract HedgerPoolTestSuite is Test {
             address(0x999) // Mock vault address
         );
         
-        vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation3), initData3);
         
         // Test with zero YieldShift
@@ -456,7 +456,7 @@ contract HedgerPoolTestSuite is Test {
             address(0x999) // Mock vault address
         );
         
-        vm.expectRevert(abi.encodeWithSelector(ErrorLibrary.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation4), initData4);
     }
     
@@ -588,7 +588,7 @@ contract HedgerPoolTestSuite is Test {
         _whitelistHedger(hedger1);
         
         vm.prank(hedger1);
-        vm.expectRevert(ErrorLibrary.LeverageTooHigh.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.LeverageTooHigh.selector);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, excessiveLeverage);
     }
     
@@ -683,7 +683,7 @@ contract HedgerPoolTestSuite is Test {
         _whitelistHedger(hedger1);
         
         vm.prank(hedger1);
-        vm.expectRevert(ErrorLibrary.MarginRatioTooHigh.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.MarginRatioTooHigh.selector);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, belowMinLeverage);
     }
     
@@ -768,7 +768,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Position_CloseNonExistentPosition_Revert() public {
         vm.prank(hedger1);
-        vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.PositionOwnerMismatch.selector);
         hedgerPool.exitHedgePosition(999);
     }
     
@@ -792,7 +792,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Try to close by different user
         vm.prank(hedger2);
-        vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.PositionOwnerMismatch.selector);
         hedgerPool.exitHedgePosition(positionId);
     }
 
@@ -986,7 +986,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Margin_AddMarginToNonExistentPosition_Revert() public {
         vm.prank(hedger1);
-        vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.PositionOwnerMismatch.selector);
         hedgerPool.addMargin(999, 1000 * 1e6);
     }
     
@@ -1010,7 +1010,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Try to add margin by different user
         vm.prank(hedger2);
-        vm.expectRevert(ErrorLibrary.PositionOwnerMismatch.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.PositionOwnerMismatch.selector);
         hedgerPool.addMargin(positionId, 1000 * 1e6);
     }
     
@@ -1069,7 +1069,7 @@ contract HedgerPoolTestSuite is Test {
         // Try to remove too much margin
         uint256 tooMuchMargin = MARGIN_AMOUNT * 9 / 10; // Remove 90% of margin
         vm.prank(hedger1);
-        vm.expectRevert(ErrorLibrary.MarginRatioTooLow.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.MarginRatioTooLow.selector);
         hedgerPool.removeMargin(positionId, tooMuchMargin);
     }
 
@@ -1171,7 +1171,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Try to liquidate healthy position
         vm.prank(liquidator);
-        vm.expectRevert(ErrorLibrary.NoValidCommitment.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.NoValidCommitment.selector);
         hedgerPool.liquidateHedger(hedger1, positionId, bytes32(0));
     }
 
@@ -2014,7 +2014,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.CannotRecoverOwnToken.selector);
         hedgerPool.recoverToken(address(hedgerPool), 1000e18);
     }
 
@@ -2133,7 +2133,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.NoETHToRecover.selector);
         hedgerPool.recoverETH();
     }
 
@@ -2506,7 +2506,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Try to whitelist again - should revert
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.AlreadyWhitelisted.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.AlreadyWhitelisted.selector);
         hedgerPool.whitelistHedger(hedger1);
     }
 
@@ -2524,7 +2524,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_HedgerWhitelist_WhitelistHedger_ZeroAddress_Revert() public {
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.InvalidAddress.selector);
         hedgerPool.whitelistHedger(address(0));
     }
 
@@ -2592,7 +2592,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_HedgerWhitelist_RemoveHedger_NotWhitelisted_Revert() public {
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
         hedgerPool.removeHedger(hedger1);
     }
 
@@ -2610,7 +2610,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_HedgerWhitelist_RemoveHedger_ZeroAddress_Revert() public {
         vm.prank(governance);
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.InvalidAddress.selector);
         hedgerPool.removeHedger(address(0));
     }
 
@@ -2745,7 +2745,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Open position should revert (hedger is not whitelisted)
         vm.prank(freshHedger);
-        vm.expectRevert(ErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
     }
 
@@ -2821,7 +2821,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Open position should revert (hedger is not whitelisted)
         vm.prank(freshHedger);
-        vm.expectRevert(ErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
     }
 
@@ -3330,7 +3330,7 @@ contract HedgerPoolPositionClosureTest is Test {
         // Try to close the position - should fail because it would reduce
         // collateralization ratio from 110% to 105%, which is at the minimum
         vm.startPrank(hedger);
-        vm.expectRevert(ErrorLibrary.PositionClosureRestricted.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.PositionClosureRestricted.selector);
         hedgerPool.exitHedgePosition(positionId);
         vm.stopPrank();
     }
@@ -3476,7 +3476,7 @@ contract HedgerPoolPositionClosureTest is Test {
     function testPositionClosureRestrictedErrorExists() public pure {
         // Test that the PositionClosureRestricted error is properly defined
         // This test verifies the error selector is correct
-        bytes4 expectedSelector = ErrorLibrary.PositionClosureRestricted.selector;
+        bytes4 expectedSelector = HedgerPoolErrorLibrary.PositionClosureRestricted.selector;
         assertTrue(expectedSelector != bytes4(0));
     }
 }

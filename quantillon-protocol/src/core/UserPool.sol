@@ -17,8 +17,7 @@ import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
-import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
-import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
@@ -430,7 +429,7 @@ contract UserPool is
      * @custom:oracle No oracle dependencies
      */
     constructor(TimeProvider _TIME_PROVIDER) {
-        if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (address(_TIME_PROVIDER) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
@@ -488,7 +487,7 @@ contract UserPool is
         oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
         require(_treasury != address(0), "Treasury cannot be zero address");
-        ValidationLibrary.validateTreasuryAddress(_treasury);
+        // Treasury validation handled by CommonValidationLibrary
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
@@ -513,88 +512,10 @@ contract UserPool is
     // =============================================================================
 
     /**
-     * @notice Deposit USDC to mint QEURO and join user pool
-     * @dev This function allows users to deposit USDC and receive QEURO.
-     *      It includes a deposit fee and handles the minting process.
-     * @param usdcAmount Amount of USDC to deposit (6 decimals)
-     * @param minQeuroOut Minimum amount of QEURO to receive (18 decimals)
-     * @return qeuroMinted Amount of QEURO minted (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Public access
-     * @custom:oracle No oracle dependencies
-     */
-    function deposit(uint256 usdcAmount, uint256 minQeuroOut) 
-        external 
-        nonReentrant 
-        whenNotPaused 
-        returns (uint256 qeuroMinted) 
-    {
-        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
-
-        // Calculate deposit fee
-        // GAS OPTIMIZATION: Cache storage read
-        uint256 depositFee_ = depositFee;
-        uint256 fee = usdcAmount.percentageOf(depositFee_);
-        uint256 netAmount = usdcAmount - fee;
-
-        // CHECKS & EFFECTS: Transfer USDC and update state before external calls
-        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
-        UserInfo storage user = userInfo[msg.sender];
-        if (!hasDeposited[msg.sender]) {
-            hasDeposited[msg.sender] = true;
-            totalUsers++;
-        }
-        
-        user.depositHistory += uint96(usdcAmount);
-        // Note: user.qeuroBalance is not updated since QEURO goes to user's wallet
-        
-        // Track deposit with oracle ratio for analytics
-        totalUserDeposits += usdcAmount;
-        
-        // Store expected balance before external call
-        uint256 qeuroBefore = qeuro.balanceOf(address(this));
-        
-        // Approve vault to spend USDC (approve net amount after fee deduction)
-        usdc.safeIncreaseAllowance(address(vault), netAmount);
-        
-        // EXTERNAL CALL - vault.mintQEURO() (INTERACTIONS)
-        vault.mintQEURO(netAmount, minQeuroOut);
-        
-        // Calculate actual minted amount
-        uint256 qeuroAfter = qeuro.balanceOf(address(this));
-        qeuroMinted = qeuroAfter - qeuroBefore;
-        
-        // Transfer QEURO to user immediately after minting
-        IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
-
-        // Track detailed deposit information with oracle ratio
-        uint64 currentTime = uint64(TIME_PROVIDER.currentTime());
-        uint32 oracleRatio = _getOracleRatioScaled();
-        uint32 currentBlock = uint32(block.number);
-        
-        userDeposits[msg.sender].push(UserDepositInfo({
-            usdcAmount: uint128(usdcAmount),
-            qeuroReceived: uint128(qeuroMinted),
-            timestamp: currentTime,
-            oracleRatio: oracleRatio,
-            blockNumber: currentBlock
-        }));
-
-        emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, currentTime);
-        emit UserDepositTracked(msg.sender, usdcAmount, qeuroMinted, oracleRatio, currentTime, currentBlock);
-    }
-
-    /**
-     * @notice Batch deposit USDC to mint QEURO for multiple amounts
-     * @dev This function allows users to make multiple deposits in one transaction.
-     *      Each deposit includes a fee and handles the minting process.
-     * @param usdcAmounts Array of USDC amounts to deposit (6 decimals)
-     * @param minQeuroOuts Array of minimum QEURO amounts to receive (18 decimals)
+     * @notice Deposit USDC to mint QEURO (unified single/batch function)
+     * @dev Handles both single deposits and batch deposits in one function
+     * @param usdcAmounts Array of USDC amounts to deposit (6 decimals) - use [amount] for single
+     * @param minQeuroOuts Array of minimum QEURO amounts to receive (18 decimals) - use [amount] for single
      * @return qeuroMintedAmounts Array of QEURO amounts minted (18 decimals)
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -605,16 +526,16 @@ contract UserPool is
      * @custom:access Public access
      * @custom:oracle No oracle dependencies
      */
-     // slither-disable-next-line calls-loop
-    function batchDeposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts)
+    function deposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts)
         external
         nonReentrant
         whenNotPaused
         flashLoanProtection
         returns (uint256[] memory qeuroMintedAmounts)
     {
-        if (usdcAmounts.length != minQeuroOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
-        if (usdcAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (usdcAmounts.length != minQeuroOuts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (usdcAmounts.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
+        if (usdcAmounts.length == 0) revert CommonErrorLibrary.EmptyArray();
         
         // Cache timestamp to avoid external calls in loop
         uint256 currentTime = TIME_PROVIDER.currentTime();
@@ -622,7 +543,7 @@ contract UserPool is
         qeuroMintedAmounts = new uint256[](usdcAmounts.length);
         
         // Validate amounts and transfer USDC
-        _validateAndTransferUsdc(usdcAmounts);
+        _validateAndTransferTokens(usdcAmounts, usdc, true);
         
         // Initialize user info
         _initializeUserIfNeeded();
@@ -634,40 +555,46 @@ contract UserPool is
         _updateUserAndPoolState(usdcAmounts, minQeuroOuts, totalNetAmount);
         
         // Process vault operations AFTER state updates
-        // slither-disable-next-line calls-loop
         _processVaultMinting(netAmounts, minQeuroOuts, qeuroMintedAmounts);
         
         // Transfer QEURO to users and emit events
         _transferQeuroAndEmitEvents(usdcAmounts, qeuroMintedAmounts, currentTime);
     }
 
+
     /**
-     * @notice Internal function to validate amounts and transfer USDC
-     * @param usdcAmounts Array of USDC amounts to validate and transfer (6 decimals)
-     * @return totalUsdcAmount Total USDC amount transferred (6 decimals)
-     * @dev Validates all amounts are positive and transfers total USDC from user
+     * @notice Internal function to validate amounts and transfer tokens (unified validation)
+     * @param amounts Array of amounts to validate and transfer
+     * @param token Token to transfer (usdc or qeuro)
+     * @param isFromUser Whether to transfer from user (true) or to user (false)
+     * @return totalAmount Total amount transferred
+     * @dev Unified validation and transfer function to reduce code duplication
      * @custom:security Validates all amounts > 0 before transfer
      * @custom:validation Validates each amount in array is positive
-     * @custom:state-changes Transfers USDC from msg.sender to contract
+     * @custom:state-changes Transfers tokens from/to msg.sender
      * @custom:events No events emitted - handled by calling function
      * @custom:errors Throws if any amount is 0
      * @custom:reentrancy Not protected - internal function only
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
-    function _validateAndTransferUsdc(uint256[] calldata usdcAmounts) internal returns (uint256 totalUsdcAmount) {
+    function _validateAndTransferTokens(uint256[] calldata amounts, IERC20 token, bool isFromUser) internal returns (uint256 totalAmount) {
         // Pre-validate amounts and calculate total
-        for (uint256 i = 0; i < usdcAmounts.length; i++) {
-            CommonValidationLibrary.validatePositiveAmount(usdcAmounts[i]);
-            totalUsdcAmount += usdcAmounts[i];
+        for (uint256 i = 0; i < amounts.length; i++) {
+            CommonValidationLibrary.validatePositiveAmount(amounts[i]);
+            totalAmount += amounts[i];
         }
         
-        // Transfer total USDC from user FIRST
-        usdc.safeTransferFrom(msg.sender, address(this), totalUsdcAmount);
+        // Transfer tokens
+        if (isFromUser) {
+            token.safeTransferFrom(msg.sender, address(this), totalAmount);
+        } else {
+            token.safeTransfer(msg.sender, totalAmount);
+        }
     }
 
     /**
-     * @notice Internal function to initialize user if needed
+     * @notice Internal function to initialize user if needed (consolidated)
      * @dev Initializes user tracking if they haven't deposited before
      * @custom:security Updates hasDeposited mapping and totalUsers counter
      * @custom:validation No input validation required
@@ -752,10 +679,16 @@ contract UserPool is
         // Single vault call instead of multiple calls in loop
         vault.mintQEURO(totalNetAmount, totalMinQeuroOut);
         
-        // Calculate individual amounts after single minting
+        // Get oracle price once to avoid external calls in loop
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "UserPool: Invalid oracle price");
+        
+        // Calculate individual amounts locally to avoid external calls in loop
         for (uint256 i = 0; i < netAmounts.length; i++) {
-            // Use the minimum expected amount as the actual minted amount
-            qeuroMintedAmounts[i] = minQeuroOuts[i];
+            // Calculate QEURO amount using the same formula as vault.calculateMintAmount
+            // Formula: qeuroAmount = netAmount.mulDiv(1e30, eurUsdPrice)
+            uint256 qeuroAmount = netAmounts[i].mulDiv(1e30, eurUsdPrice);
+            qeuroMintedAmounts[i] = qeuroAmount;
         }
     }
 
@@ -843,88 +776,10 @@ contract UserPool is
     }
 
     /**
-     * @notice Withdraw USDC by burning QEURO
-     * @dev This function allows users to withdraw their QEURO and receive USDC.
-     *      It includes a withdrawal fee and handles the redemption process.
-     * @param qeuroAmount Amount of QEURO to burn (18 decimals)
-     * @param minUsdcOut Minimum amount of USDC to receive (6 decimals)
-     * @return usdcReceived Amount of USDC received (6 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Public access
-     * @custom:oracle No oracle dependencies
-     * @custom:security No flash loan protection needed - user-initiated operation
-     */
-    function withdraw(uint256 qeuroAmount, uint256 minUsdcOut) 
-        external 
-        nonReentrant 
-        whenNotPaused 
-        returns (uint256 usdcReceived) 
-    {
-        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
-        
-        // Note: No need to check user.qeuroBalance since QEURO is held in user's wallet
-        // The user must have QEURO in their wallet to call this function
-        
-        // Calculate withdrawal fee for user
-        uint256 withdrawalFee_ = withdrawalFee;
-        
-        // Note: We don't update totalDeposits during withdrawal because:
-        // 1. The vault handles all USDC reserves (including hedger collateral)
-        // 2. totalDeposits represents original user deposits, not current redemption amounts
-        // 3. Oracle rate changes make it impossible to accurately track original deposit amounts
-        // 4. The vault's totalUsdcHeld is the single source of truth for available USDC
-        // 5. Hedger collateral is automatically available through the vault for redemptions
-
-        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
-        
-        // Store balance before redemption
-        uint256 usdcBefore = usdc.balanceOf(address(this));
-        
-        // Redeem USDC through vault
-        vault.redeemQEURO(qeuroAmount, minUsdcOut);
-        
-        // Calculate actual received amount
-        uint256 usdcAfter = usdc.balanceOf(address(this));
-        usdcReceived = usdcAfter - usdcBefore;
-
-        // Calculate actual withdrawal fee and net amount
-        uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
-        uint256 netAmount = usdcReceived - fee;
-
-        // Track withdrawal with oracle ratio for analytics
-        totalUserWithdrawals += qeuroAmount;
-
-        // Transfer USDC to user
-        usdc.safeTransfer(msg.sender, netAmount);
-
-        // Track detailed withdrawal information with oracle ratio
-        uint64 currentTime = uint64(TIME_PROVIDER.currentTime());
-        uint32 oracleRatio = _getOracleRatioScaled();
-        uint32 currentBlock = uint32(block.number);
-        
-        userWithdrawals[msg.sender].push(UserWithdrawalInfo({
-            qeuroAmount: uint128(qeuroAmount),
-            usdcReceived: uint128(netAmount),
-            timestamp: currentTime,
-            oracleRatio: oracleRatio,
-            blockNumber: currentBlock
-        }));
-
-        emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, currentTime);
-        emit UserWithdrawalTracked(msg.sender, qeuroAmount, netAmount, oracleRatio, currentTime, currentBlock);
-    }
-
-    /**
-     * @notice Batch withdraw USDC by burning QEURO for multiple amounts
-     * @dev This function allows users to make multiple withdrawals in one transaction.
-     *      Each withdrawal includes a fee and handles the redemption process.
-     * @param qeuroAmounts Array of QEURO amounts to burn (18 decimals)
-     * @param minUsdcOuts Array of minimum USDC amounts to receive (6 decimals)
+     * @notice Withdraw USDC by burning QEURO (unified single/batch function)
+     * @dev Handles both single withdrawals and batch withdrawals in one function
+     * @param qeuroAmounts Array of QEURO amounts to burn (18 decimals) - use [amount] for single
+     * @param minUsdcOuts Array of minimum USDC amounts to receive (6 decimals) - use [amount] for single
      * @return usdcReceivedAmounts Array of USDC amounts received (6 decimals)
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -935,15 +790,15 @@ contract UserPool is
      * @custom:access Public access
      * @custom:oracle No oracle dependencies
      */
-    // slither-disable-next-line calls-loop
-    function batchWithdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
+    function withdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts)
         external
         nonReentrant
         whenNotPaused
         returns (uint256[] memory usdcReceivedAmounts)
     {
-        if (qeuroAmounts.length != minUsdcOuts.length) revert ErrorLibrary.ArrayLengthMismatch();
-        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (qeuroAmounts.length != minUsdcOuts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
+        if (qeuroAmounts.length == 0) revert CommonErrorLibrary.EmptyArray();
         
         uint256 currentTime = TIME_PROVIDER.currentTime();
         usdcReceivedAmounts = new uint256[](qeuroAmounts.length);
@@ -954,6 +809,7 @@ contract UserPool is
         // Final transfers and events
         _executeBatchTransfers(qeuroAmounts, usdcReceivedAmounts, currentTime);
     }
+
     
     /**
      * @notice Validates and processes batch withdrawal
@@ -1001,8 +857,8 @@ contract UserPool is
         // Note: We don't update totalDeposits during batch withdrawal for the same reasons
         // as single withdrawal - oracle rate changes make accurate tracking impossible
         
-        // Transfer QEURO tokens
-        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
+        // Transfer QEURO tokens using unified function
+        _validateAndTransferTokens(qeuroAmounts, IERC20(address(qeuro)), true);
         
         // Process vault redemptions
         _processVaultRedemptions(qeuroAmounts, minUsdcOuts, usdcReceivedAmounts, withdrawalFee_);
@@ -1111,9 +967,9 @@ contract UserPool is
     // =============================================================================
 
     /**
-     * @notice Stakes QEURO tokens to earn enhanced staking rewards
-     * @dev Updates pending rewards before staking and requires minimum stake amount
-     * @param qeuroAmount The amount of QEURO tokens to stake (18 decimals)
+     * @notice Stakes QEURO tokens (unified single/batch function)
+     * @dev Handles both single stakes and batch stakes in one function
+     * @param qeuroAmounts Array of QEURO amounts to stake (18 decimals) - use [amount] for single
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables
@@ -1123,47 +979,9 @@ contract UserPool is
      * @custom:access Public access
      * @custom:oracle No oracle dependencies
      */
-    function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused {
-        // GAS OPTIMIZATION: Cache storage read
-        uint256 minStakeAmount_ = minStakeAmount;
-        CommonValidationLibrary.validateMinAmount(qeuroAmount, minStakeAmount_);
-        
-        // Cache timestamp to avoid external calls
-        uint256 currentTime = TIME_PROVIDER.currentTime();
-        
-        UserInfo storage user = userInfo[msg.sender];
-        
-        // Update pending rewards before staking
-        _updatePendingRewards(msg.sender, currentTime);
-        
-
-        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
-        
-        // Update user staking info
-        user.stakedAmount += uint128(qeuroAmount);
-        user.lastStakeTime = uint64(TIME_PROVIDER.currentTime());
-        
-        // Update pool totals
-        totalStakes += qeuroAmount;
-
-        emit QEUROStaked(msg.sender, qeuroAmount, TIME_PROVIDER.currentTime());
-    }
-
-    /**
-     * @notice Stakes multiple amounts of QEURO tokens in a single transaction
-     * @dev More gas-efficient than multiple individual stake calls. Each stake must meet minimum requirements.
-     * @param qeuroAmounts Array of QEURO amounts to stake (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Public access
-     * @custom:oracle No oracle dependencies
-     */
-    function batchStake(uint256[] calldata qeuroAmounts) external nonReentrant whenNotPaused {
-        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+    function stake(uint256[] calldata qeuroAmounts) external nonReentrant whenNotPaused {
+        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
+        if (qeuroAmounts.length == 0) revert CommonErrorLibrary.EmptyArray();
         
         // Cache timestamp to avoid external calls
         uint256 currentTime = TIME_PROVIDER.currentTime();
@@ -1171,7 +989,6 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         uint256 totalQeuroAmount = 0;
         
-
         uint256 minStakeAmount_ = minStakeAmount;
         
         // Pre-validate amounts and calculate total
@@ -1183,8 +1000,8 @@ contract UserPool is
         // Update pending rewards before staking (once for the batch)
         _updatePendingRewards(msg.sender, currentTime);
         
-        // Transfer total QEURO from user FIRST
-        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
+        // Transfer total QEURO from user using unified function
+        _validateAndTransferTokens(qeuroAmounts, IERC20(address(qeuro)), true);
         
         uint64 currentTimestamp = uint64(currentTime);
         
@@ -1201,6 +1018,7 @@ contract UserPool is
             emit QEUROStaked(msg.sender, qeuroAmount, currentTimestamp);
         }
     }
+
 
     /**
      * @notice Requests to unstake QEURO tokens (starts unstaking cooldown period)
@@ -1319,7 +1137,7 @@ contract UserPool is
         onlyRole(GOVERNANCE_ROLE)
         returns (uint256[] memory rewardAmounts) 
     {
-        if (users.length > MAX_REWARD_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (users.length > MAX_REWARD_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         rewardAmounts = new uint256[](users.length);
         
@@ -1460,157 +1278,16 @@ contract UserPool is
     // =============================================================================
 
     /**
-     * @notice Get the total deposits of a specific user
-     * @dev Returns the cumulative deposit history for a user in USDC equivalent
-     * @param user Address of the user to query
-     * @return uint256 Total deposits of the user in USDC equivalent (6 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getUserDeposits(address user) external view returns (uint256) {
-        return userInfo[user].depositHistory;
-    }
-
-    /**
-     * @notice Get the current staked amount of a specific user
-     * @dev Returns the current amount of QEURO staked by a user
-     * @param user Address of the user to query
-     * @return uint256 Current staked amount of the user in QEURO (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getUserStakes(address user) external view returns (uint256) {
-        return userInfo[user].stakedAmount;
-    }
-
-    /**
-     * @notice Get the total pending rewards for a specific user
-     * @dev Calculates and returns the total pending rewards for a user including
-     *      both staking rewards and yield-based rewards
-     * @param user Address of the user to query
-     * @return uint256 Total pending rewards of the user in QEURO (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getUserPendingRewards(address user) external view returns (uint256) {
-        UserInfo storage userdata = userInfo[user];
-        
-        if (userdata.stakedAmount == 0) return userdata.pendingRewards;
-        
-        // Calculate additional rewards since last update using block-based calculations
-        uint256 currentBlock = block.number;
-        uint256 lastRewardBlock = userLastRewardBlock[user];
-        
-        if (lastRewardBlock < 1) {
-            return userdata.pendingRewards;
-        }
-        
-        uint256 blocksElapsed = currentBlock - lastRewardBlock;
-        uint256 timeElapsed = blocksElapsed * 12; // seconds
-        
-        // Sanity check: cap time elapsed to prevent manipulation
-        if (timeElapsed > MAX_REWARD_PERIOD) {
-            timeElapsed = MAX_REWARD_PERIOD;
-        }
-        
-        uint256 stakingReward = uint256(userdata.stakedAmount)
-            .mulDiv(stakingAPY, 10000)
-            .mulDiv(timeElapsed, 365 days);
-        
-        uint256 yieldReward = uint256(userdata.stakedAmount)
-            .mulDiv(accumulatedYieldPerShare, 1e18);
-        
-        return uint256(userdata.pendingRewards) + stakingReward + yieldReward;
-    }
-
-    /**
-     * @notice Get detailed information about a user's pool status
-     * @dev Returns comprehensive user information including balances, stakes, and rewards
+     * @notice Get comprehensive user information (consolidated view function)
+     * @dev Returns all user-related data in one call to reduce contract size
      * @param user Address of the user to query
      * @return qeuroBalance QEURO balance of the user (18 decimals)
      * @return stakedAmount Current staked amount of the user (18 decimals)
      * @return pendingRewards Total pending rewards of the user (18 decimals)
      * @return depositHistory Total historical deposits of the user (6 decimals)
      * @return lastStakeTime Timestamp of the user's last staking action
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getUserInfo(address user) external view returns (
-        uint256 qeuroBalance,
-        uint256 stakedAmount,
-        uint256 pendingRewards,
-        uint256 depositHistory,
-        uint256 lastStakeTime
-    ) {
-        UserInfo storage userdata = userInfo[user];
-        return (
-            userdata.qeuroBalance,
-            userdata.stakedAmount,
-            this.getUserPendingRewards(user),
-            userdata.depositHistory,
-            userdata.lastStakeTime
-        );
-    }
-
-    /**
-     * @notice Get the total deposits across all users in the pool
-     * @dev Returns the cumulative total of all USDC deposits made to the pool
-     * @return uint256 Total USDC equivalent deposits (6 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    /**
-     * @notice Get the current QEURO total supply (replaces totalDeposits tracking)
-     * @dev Returns the current QEURO total supply which represents net minted QEURO
-     * @return uint256 Current QEURO total supply (18 decimals)
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public access
-     * @custom:oracle No oracle dependencies
-     */
-    function getTotalDeposits() external view returns (uint256) {
-        return totalUserDeposits;
-    }
-    
-    /**
-     * @notice Get the total QEURO withdrawals across all users
-     * @return Total withdrawals in QEURO (18 decimals)
-     * @dev Used for analytics and supply tracking
-     * @dev Returns the sum of all user withdrawals in QEURO
+     * @return unstakeAmount Amount being unstaked (18 decimals)
+     * @return unstakeRequestTime Timestamp when unstaking was requested
      * @custom:security No security implications (view function)
      * @custom:validation No validation required
      * @custom:state-changes No state changes (view function)
@@ -1620,8 +1297,76 @@ contract UserPool is
      * @custom:access Public (anyone can call)
      * @custom:oracle No oracle dependencies
      */
-    function getTotalWithdrawals() external view returns (uint256) {
-        return totalUserWithdrawals;
+    function getUserInfo(address user) external view returns (
+        uint256 qeuroBalance,
+        uint256 stakedAmount,
+        uint256 pendingRewards,
+        uint256 depositHistory,
+        uint256 lastStakeTime,
+        uint256 unstakeAmount,
+        uint256 unstakeRequestTime
+    ) {
+        UserInfo storage userdata = userInfo[user];
+        
+        // Calculate pending rewards
+        uint256 calculatedPendingRewards = userdata.pendingRewards;
+        if (userdata.stakedAmount > 0) {
+            uint256 currentBlock = block.number;
+            uint256 lastRewardBlock = userLastRewardBlock[user];
+            
+            if (lastRewardBlock >= 1) {
+                uint256 blocksElapsed = currentBlock - lastRewardBlock;
+                uint256 timeElapsed = blocksElapsed * 12; // seconds
+                
+                if (timeElapsed > MAX_REWARD_PERIOD) {
+                    timeElapsed = MAX_REWARD_PERIOD;
+                }
+                
+                uint256 stakingReward = uint256(userdata.stakedAmount)
+                    .mulDiv(stakingAPY, 10000)
+                    .mulDiv(timeElapsed, 365 days);
+                
+                uint256 yieldReward = uint256(userdata.stakedAmount)
+                    .mulDiv(accumulatedYieldPerShare, 1e18);
+                
+                calculatedPendingRewards += stakingReward + yieldReward;
+            }
+        }
+        
+        return (
+            userdata.qeuroBalance,
+            userdata.stakedAmount,
+            calculatedPendingRewards,
+            userdata.depositHistory,
+            userdata.lastStakeTime,
+            userdata.unstakeAmount,
+            userdata.unstakeRequestTime
+        );
+    }
+
+    /**
+     * @notice Get comprehensive pool totals (consolidated view function)
+     * @dev Returns all pool totals in one call to reduce contract size
+     * @return totalDeposits Total USDC deposits (6 decimals)
+     * @return totalWithdrawals Total QEURO withdrawals (18 decimals)
+     * @return totalStakes_ Total QEURO staked (18 decimals)
+     * @return totalUsers_ Total number of users
+     * @custom:security No security implications (view function)
+     * @custom:validation No validation required
+     * @custom:state-changes No state changes (view function)
+     * @custom:events No events (view function)
+     * @custom:errors No custom errors
+     * @custom:reentrancy No external calls, safe
+     * @custom:access Public (anyone can call)
+     * @custom:oracle No oracle dependencies
+     */
+    function getPoolTotals() external view returns (
+        uint256 totalDeposits,
+        uint256 totalWithdrawals,
+        uint256 totalStakes_,
+        uint256 totalUsers_
+    ) {
+        return (totalUserDeposits, totalUserWithdrawals, totalStakes, totalUsers);
     }
     
     /**
@@ -1777,37 +1522,34 @@ contract UserPool is
     }
 
     /**
-     * @notice Get the current Staking APY
-     * @dev Returns the current annual percentage yield for staking QEURO
-     * @return uint256 Staking APY in basis points
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Get comprehensive pool configuration (consolidated view function)
+     * @dev Returns all pool configuration parameters in one call to reduce contract size
+     * @return stakingAPY_ Current staking APY in basis points
+     * @return depositAPY_ Current deposit APY in basis points
+     * @return minStakeAmount_ Current minimum stake amount (18 decimals)
+     * @return unstakingCooldown_ Current unstaking cooldown period (seconds)
+     * @return depositFee_ Current deposit fee (basis points)
+     * @return withdrawalFee_ Current withdrawal fee (basis points)
+     * @return performanceFee_ Current performance fee (basis points)
+     * @custom:security No security implications (view function)
+     * @custom:validation No validation required
+     * @custom:state-changes No state changes (view function)
+     * @custom:events No events (view function)
+     * @custom:errors No custom errors
+     * @custom:reentrancy No external calls, safe
+     * @custom:access Public (anyone can call)
+     * @custom:oracle No oracle dependencies
      */
-    function getStakingAPY() external view returns (uint256) {
-        return stakingAPY;
-    }
-
-    /**
-     * @notice Get the current Deposit APY
-     * @dev Returns the current annual percentage yield for depositing USDC
-     * @return uint256 Deposit APY in basis points
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getDepositAPY() external view returns (uint256) {
-        return depositAPY;
+    function getPoolConfiguration() external view returns (
+        uint256 stakingAPY_,
+        uint256 depositAPY_,
+        uint256 minStakeAmount_,
+        uint256 unstakingCooldown_,
+        uint256 depositFee_,
+        uint256 withdrawalFee_,
+        uint256 performanceFee_
+    ) {
+        return (stakingAPY, depositAPY, minStakeAmount, unstakingCooldown, depositFee, withdrawalFee, performanceFee);
     }
 
     /**
@@ -1963,32 +1705,6 @@ contract UserPool is
         _unpause();
     }
 
-    /**
-     * @notice Get the current configuration parameters of the user pool
-     * @dev Returns all current pool configuration parameters including fees and limits
-     * @return minStakeAmount_ Current minimum stake amount (18 decimals)
-     * @return unstakingCooldown_ Current unstaking cooldown period (seconds)
-     * @return depositFee_ Current deposit fee (basis points)
-     * @return withdrawalFee_ Current withdrawal fee (basis points)
-     * @return performanceFee_ Current performance fee (basis points)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getPoolConfig() external view returns (
-        uint256 minStakeAmount_,
-        uint256 unstakingCooldown_,
-        uint256 depositFee_,
-        uint256 withdrawalFee_,
-        uint256 performanceFee_
-    ) {
-        return (minStakeAmount, unstakingCooldown, depositFee, withdrawalFee, performanceFee);
-    }
 
     /**
      * @notice Check if the user pool is currently active (not paused)

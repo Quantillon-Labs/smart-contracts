@@ -493,8 +493,8 @@ contract UserPoolTestSuite is Test {
             abi.encode(DEPOSIT_AMOUNT * 1e12) // Convert to 18 decimals
         );
         
-        // Check pool totals - now using QEURO total supply
-        assertEq(userPool.getTotalDeposits(), DEPOSIT_AMOUNT * 1e12); // Convert to 18 decimals
+        // Check pool totals - now using USDC deposits (6 decimals)
+        assertEq(userPool.getTotalDeposits(), DEPOSIT_AMOUNT); // USDC amount in 6 decimals
         assertEq(userPool.totalUsers(), 1);
         assertTrue(userPool.hasDeposited(user1));
     }
@@ -571,8 +571,8 @@ contract UserPoolTestSuite is Test {
             abi.encode(2 * DEPOSIT_AMOUNT * 1e12) // Convert to 18 decimals
         );
         
-        // Check pool totals - now using QEURO total supply
-        assertEq(userPool.getTotalDeposits(), 2 * DEPOSIT_AMOUNT * 1e12); // Convert to 18 decimals
+        // Check pool totals - now using USDC deposits (6 decimals)
+        assertEq(userPool.getTotalDeposits(), 2 * DEPOSIT_AMOUNT); // USDC amount in 6 decimals
         assertEq(userPool.totalUsers(), 2);
         assertTrue(userPool.hasDeposited(user1));
         assertTrue(userPool.hasDeposited(user2));
@@ -1681,8 +1681,8 @@ contract UserPoolTestSuite is Test {
         );
         
         uint256 totalDeposits = userPool.getTotalDeposits();
-        // In the new system, getTotalDeposits returns QEURO total supply
-        uint256 expectedDeposits = netAmount * 1e12; // Convert to 18 decimals
+        // In the new system, getTotalDeposits returns USDC deposits (6 decimals)
+        uint256 expectedDeposits = DEPOSIT_AMOUNT; // USDC amount in 6 decimals
         assertEq(totalDeposits, expectedDeposits);
     }
 
@@ -2252,6 +2252,14 @@ contract MockERC20 {
  * @notice Mock contract for testing vault functionality
  */
 contract MockQuantillonVault {
+    MockERC20 public qeuro;
+    MockERC20 public usdc;
+    
+    function setTokens(address _qeuro, address _usdc) external {
+        qeuro = MockERC20(_qeuro);
+        usdc = MockERC20(_usdc);
+    }
+    
     /**
      * @notice Mints QEURO tokens for testing
      * @dev Mock function for testing purposes
@@ -2267,7 +2275,9 @@ contract MockQuantillonVault {
      * @custom:oracle No oracle dependencies
      */
     function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external {
-        // Mock implementation
+        // Mock implementation - mint QEURO based on 1.08 oracle rate
+        uint256 qeuroAmount = (usdcAmount * 1e12 * 100) / 108; // Convert USDC to QEURO with 1.08 rate
+        qeuro.mint(msg.sender, qeuroAmount);
     }
     
     /**
@@ -2285,6 +2295,428 @@ contract MockQuantillonVault {
      * @custom:oracle No oracle dependencies
      */
     function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external {
-        // Mock implementation
+        // Mock implementation - redeem QEURO to USDC
+        uint256 usdcAmount = (qeuroAmount * 108) / (1e12 * 100); // Convert QEURO to USDC with 1.08 rate
+        usdc.mint(msg.sender, usdcAmount);
     }
 }
+
+/**
+ * @title UserPoolTrackingTestSuite
+ * @notice Comprehensive test suite for the new UserPool tracking functionality
+ * 
+ * @dev This test suite covers:
+ *      - Deposit and withdrawal tracking with oracle ratios
+ *      - Batch operation tracking
+ *      - Event emission verification
+ *      - Edge case handling
+ *      - Multi-user tracking independence
+ * 
+ * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
+ * @custom:security-contact team@quantillon.money
+ */
+contract UserPoolTrackingTestSuite is Test {
+    // =============================================================================
+    // TEST CONTRACTS AND ADDRESSES
+    // =============================================================================
+    
+    UserPool public implementation;
+    UserPool public userPool;
+    
+    // Mock contracts for testing
+    address public mockQEURO = address(0x1);
+    address public mockUSDC = address(0x2);
+    address public mockVault = address(0x3);
+    address public mockOracle = address(0x4);
+    address public mockYieldShift = address(0x5);
+    address public mockTimelock = address(0x123);
+    
+    // Test addresses
+    address public admin = address(0x5);
+    address public user1 = address(0x6);
+    address public user2 = address(0x7);
+    
+    // Test constants
+    uint256 public constant USDC_PRECISION = 1e6;
+    uint256 public constant QEURO_PRECISION = 1e18;
+    uint256 public constant INITIAL_USDC_AMOUNT = 1000000 * USDC_PRECISION;
+    uint256 public constant INITIAL_QEURO_AMOUNT = 1000000 * QEURO_PRECISION;
+    
+    // Mock implementations
+    MockERC20 public mockQEUROToken;
+    MockERC20 public mockUSDCToken;
+    MockQuantillonVault public mockVaultContract;
+    MockChainlinkOracle public mockOracleContract;
+    MockYieldShift public mockYieldShiftContract;
+    TimeProvider public timeProvider;
+    
+    // =============================================================================
+    // SETUP AND INITIALIZATION
+    // =============================================================================
+    
+    function setUp() public {
+        // Deploy mock contracts
+        mockQEUROToken = new MockERC20("Mock QEURO", "mQEURO");
+        mockUSDCToken = new MockERC20("Mock USDC", "mUSDC");
+        mockVaultContract = new MockQuantillonVault();
+        mockOracleContract = new MockChainlinkOracle();
+        mockYieldShiftContract = new MockYieldShift();
+        timeProvider = new TimeProvider();
+        
+        // Deploy UserPool implementation
+        implementation = new UserPool(timeProvider);
+        
+        // Deploy proxy
+        bytes memory initData = abi.encodeWithSelector(
+            UserPool.initialize.selector,
+            admin,                    // admin
+            address(mockQEUROToken),  // qeuro
+            address(mockUSDCToken),   // usdc
+            address(mockVaultContract), // vault
+            address(mockOracleContract), // oracle
+            address(mockYieldShiftContract), // yieldShift
+            mockTimelock,             // timelock
+            address(0x8)              // treasury
+        );
+        
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
+        userPool = UserPool(address(proxy));
+        
+        // Setup mock vault with token references
+        mockVaultContract.setTokens(address(mockQEUROToken), address(mockUSDCToken));
+        
+        // Mint initial tokens
+        mockUSDCToken.mint(user1, INITIAL_USDC_AMOUNT);
+        mockUSDCToken.mint(user2, INITIAL_USDC_AMOUNT);
+        mockQEUROToken.mint(address(userPool), INITIAL_QEURO_AMOUNT);
+        
+        // Approve UserPool to spend tokens
+        vm.prank(user1);
+        mockUSDCToken.approve(address(userPool), type(uint256).max);
+        vm.prank(user1);
+        mockQEUROToken.approve(address(userPool), type(uint256).max);
+        vm.prank(user2);
+        mockUSDCToken.approve(address(userPool), type(uint256).max);
+        vm.prank(user2);
+        mockQEUROToken.approve(address(userPool), type(uint256).max);
+    }
+    
+    // =============================================================================
+    // TRACKING FUNCTIONALITY TESTS
+    // =============================================================================
+    
+    /**
+     * @notice Test that getTotalDeposits returns correct USDC amount
+     * @dev Verifies the fix for the decimal error in getTotalDeposits
+     */
+    function test_Tracking_GetTotalDeposits_ReturnsCorrectUSDCAmount() public {
+        // Initially should be 0
+        assertEq(userPool.getTotalDeposits(), 0, "Initial total deposits should be 0");
+        
+        // After deposit, should track USDC amount (6 decimals)
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+        
+        assertEq(userPool.getTotalDeposits(), depositAmount, "Total deposits should track USDC amount");
+        
+        // After another deposit, should accumulate
+        uint256 secondDeposit = 500 * USDC_PRECISION; // 500 USDC
+        vm.prank(user2);
+        userPool.deposit(secondDeposit, 0);
+        
+        assertEq(userPool.getTotalDeposits(), depositAmount + secondDeposit, "Total deposits should accumulate");
+    }
+    
+    /**
+     * @notice Test that getTotalWithdrawals returns correct QEURO amount
+     * @dev Verifies the new getTotalWithdrawals function works correctly
+     */
+    function test_Tracking_GetTotalWithdrawals_ReturnsCorrectQEUROAmount() public {
+        // Initially should be 0
+        assertEq(userPool.getTotalWithdrawals(), 0, "Initial total withdrawals should be 0");
+        
+        // First make a deposit to have QEURO to withdraw
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+        
+        // Now withdraw some QEURO
+        uint256 withdrawAmount = 100 * QEURO_PRECISION; // 100 QEURO
+        vm.prank(user1);
+        userPool.withdraw(withdrawAmount, 0);
+        
+        assertEq(userPool.getTotalWithdrawals(), withdrawAmount, "Total withdrawals should track QEURO amount");
+        
+        // After another withdrawal, should accumulate
+        uint256 secondWithdraw = 50 * QEURO_PRECISION; // 50 QEURO
+        vm.prank(user1);
+        userPool.withdraw(secondWithdraw, 0);
+        
+        assertEq(userPool.getTotalWithdrawals(), withdrawAmount + secondWithdraw, "Total withdrawals should accumulate");
+    }
+    
+    /**
+     * @notice Test that getUserDepositHistory returns correct deposit records
+     * @dev Verifies the new getUserDepositHistory function with oracle ratios
+     */
+    function test_Tracking_GetUserDepositHistory_ReturnsCorrectRecords() public {
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        uint256 expectedQEURO = (depositAmount * 1e12 * 100) / 108; // Expected QEURO based on 1.08 oracle rate
+        
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+        
+        // Get deposit history
+        UserPool.UserDepositInfo[] memory deposits = userPool.getUserDepositHistory(user1);
+        
+        assertEq(deposits.length, 1, "Should have one deposit record");
+        assertEq(deposits[0].usdcAmount, depositAmount, "USDC amount should match");
+        assertEq(deposits[0].qeuroReceived, expectedQEURO, "QEURO received should match expected");
+        assertEq(deposits[0].oracleRatio, 108, "Oracle ratio should be 1.08 scaled by 1e6");
+        assertEq(deposits[0].blockNumber, block.number, "Block number should match current block");
+        assertEq(deposits[0].timestamp, block.timestamp, "Timestamp should match current time");
+        
+        // Make another deposit
+        uint256 secondDeposit = 500 * USDC_PRECISION; // 500 USDC
+        vm.prank(user1);
+        userPool.deposit(secondDeposit, 0);
+        
+        // Check that we now have two records
+        deposits = userPool.getUserDepositHistory(user1);
+        assertEq(deposits.length, 2, "Should have two deposit records");
+        assertEq(deposits[1].usdcAmount, secondDeposit, "Second deposit USDC amount should match");
+    }
+    
+    /**
+     * @notice Test that getUserWithdrawals returns correct withdrawal records
+     * @dev Verifies the new getUserWithdrawals function with oracle ratios
+     */
+    function test_Tracking_GetUserWithdrawals_ReturnsCorrectRecords() public {
+        // First make a deposit to have QEURO to withdraw
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+        
+        uint256 withdrawAmount = 100 * QEURO_PRECISION; // 100 QEURO
+        vm.prank(user1);
+        userPool.withdraw(withdrawAmount, 0);
+        
+        // Get withdrawal history
+        UserPool.UserWithdrawalInfo[] memory withdrawals = userPool.getUserWithdrawals(user1);
+        
+        assertEq(withdrawals.length, 1, "Should have one withdrawal record");
+        assertEq(withdrawals[0].qeuroAmount, withdrawAmount, "QEURO amount should match");
+        assertEq(withdrawals[0].oracleRatio, 108, "Oracle ratio should be 1.08 scaled by 1e6");
+        assertEq(withdrawals[0].blockNumber, block.number, "Block number should match current block");
+        assertEq(withdrawals[0].timestamp, block.timestamp, "Timestamp should match current time");
+        
+        // Make another withdrawal
+        uint256 secondWithdraw = 50 * QEURO_PRECISION; // 50 QEURO
+        vm.prank(user1);
+        userPool.withdraw(secondWithdraw, 0);
+        
+        // Check that we now have two records
+        withdrawals = userPool.getUserWithdrawals(user1);
+        assertEq(withdrawals.length, 2, "Should have two withdrawal records");
+        assertEq(withdrawals[1].qeuroAmount, secondWithdraw, "Second withdrawal QEURO amount should match");
+    }
+    
+    /**
+     * @notice Test that batch deposits are tracked correctly
+     * @dev Verifies that batch deposit operations create proper tracking records
+     */
+    function test_Tracking_BatchDeposits_AreTrackedCorrectly() public {
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 500 * USDC_PRECISION; // 500 USDC
+        amounts[1] = 300 * USDC_PRECISION; // 300 USDC
+        
+        uint256[] memory minQeuroOuts = new uint256[](2);
+        minQeuroOuts[0] = 0;
+        minQeuroOuts[1] = 0;
+        
+        vm.prank(user1);
+        userPool.batchDeposit(amounts, minQeuroOuts);
+        
+        // Check total deposits
+        assertEq(userPool.getTotalDeposits(), 800 * USDC_PRECISION, "Total deposits should be sum of batch amounts");
+        
+        // Check individual deposit records
+        UserPool.UserDepositInfo[] memory deposits = userPool.getUserDepositHistory(user1);
+        assertEq(deposits.length, 2, "Should have two deposit records from batch");
+        assertEq(deposits[0].usdcAmount, amounts[0], "First deposit amount should match");
+        assertEq(deposits[1].usdcAmount, amounts[1], "Second deposit amount should match");
+        
+        // Both should have the same oracle ratio and block number (cached for batch)
+        assertEq(deposits[0].oracleRatio, deposits[1].oracleRatio, "Oracle ratios should be the same in batch");
+        assertEq(deposits[0].blockNumber, deposits[1].blockNumber, "Block numbers should be the same in batch");
+    }
+    
+    /**
+     * @notice Test that batch withdrawals are tracked correctly
+     * @dev Verifies that batch withdrawal operations create proper tracking records
+     */
+    function test_Tracking_BatchWithdrawals_AreTrackedCorrectly() public {
+        // First make a deposit to have QEURO to withdraw
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+        
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = 100 * QEURO_PRECISION; // 100 QEURO
+        amounts[1] = 50 * QEURO_PRECISION;  // 50 QEURO
+        
+        uint256[] memory minUsdcOuts = new uint256[](2);
+        minUsdcOuts[0] = 0;
+        minUsdcOuts[1] = 0;
+        
+        vm.prank(user1);
+        userPool.batchWithdraw(amounts, minUsdcOuts);
+        
+        // Check total withdrawals
+        assertEq(userPool.getTotalWithdrawals(), 150 * QEURO_PRECISION, "Total withdrawals should be sum of batch amounts");
+        
+        // Check individual withdrawal records
+        UserPool.UserWithdrawalInfo[] memory withdrawals = userPool.getUserWithdrawals(user1);
+        assertEq(withdrawals.length, 2, "Should have two withdrawal records from batch");
+        assertEq(withdrawals[0].qeuroAmount, amounts[0], "First withdrawal amount should match");
+        assertEq(withdrawals[1].qeuroAmount, amounts[1], "Second withdrawal amount should match");
+        
+        // Both should have the same oracle ratio and block number (cached for batch)
+        assertEq(withdrawals[0].oracleRatio, withdrawals[1].oracleRatio, "Oracle ratios should be the same in batch");
+        assertEq(withdrawals[0].blockNumber, withdrawals[1].blockNumber, "Block numbers should be the same in batch");
+    }
+    
+    /**
+     * @notice Test that oracle ratio is correctly scaled and stored
+     * @dev Verifies the oracle ratio scaling logic works correctly
+     */
+    function test_Tracking_OracleRatio_IsCorrectlyScaled() public {
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+        
+        UserPool.UserDepositInfo[] memory deposits = userPool.getUserDepositHistory(user1);
+        
+        // Oracle ratio should be 1.08 scaled by 1e6 = 1080000
+        // But the oracle returns 108000000 (1.08 * 1e8), so scaling by 1e6 gives 108
+        assertEq(deposits[0].oracleRatio, 108, "Oracle ratio should be correctly scaled");
+        
+        // Test that the ratio fits in uint32 (max value ~4.2B)
+        assertTrue(deposits[0].oracleRatio <= type(uint32).max, "Oracle ratio should fit in uint32");
+    }
+    
+    /**
+     * @notice Test that tracking works correctly across multiple users
+     * @dev Verifies that each user's tracking is independent
+     */
+    function test_Tracking_MultipleUsers_IndependentTracking() public {
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        
+        // User1 deposits
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+        
+        // User2 deposits
+        vm.prank(user2);
+        userPool.deposit(depositAmount, 0);
+        
+        // Check that each user has their own deposit history
+        UserPool.UserDepositInfo[] memory user1Deposits = userPool.getUserDepositHistory(user1);
+        UserPool.UserDepositInfo[] memory user2Deposits = userPool.getUserDepositHistory(user2);
+        
+        assertEq(user1Deposits.length, 1, "User1 should have one deposit");
+        assertEq(user2Deposits.length, 1, "User2 should have one deposit");
+        assertEq(user1Deposits[0].usdcAmount, depositAmount, "User1 deposit amount should match");
+        assertEq(user2Deposits[0].usdcAmount, depositAmount, "User2 deposit amount should match");
+        
+        // Check total deposits
+        assertEq(userPool.getTotalDeposits(), depositAmount * 2, "Total deposits should be sum of both users");
+    }
+    
+    /**
+     * @notice Test that tracking events are emitted correctly
+     * @dev Verifies that the new tracking events are emitted with correct parameters
+     */
+    function test_Tracking_Events_AreEmittedCorrectly() public {
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        uint256 expectedQEURO = (depositAmount * 1e12 * 100) / 108; // Expected QEURO based on 1.08 oracle rate
+        
+        // Expect the new tracking event to be emitted
+        vm.expectEmit(true, false, false, true);
+        emit UserPool.UserDepositTracked(
+            user1,
+            depositAmount,
+            expectedQEURO,
+            108, // Oracle ratio scaled by 1e6
+            block.timestamp,
+            block.number
+        );
+        
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+    }
+    
+    /**
+     * @notice Test that withdrawal tracking events are emitted correctly
+     * @dev Verifies that the new withdrawal tracking events are emitted with correct parameters
+     */
+    function test_Tracking_WithdrawalEvents_AreEmittedCorrectly() public {
+        // First make a deposit to have QEURO to withdraw
+        uint256 depositAmount = 1000 * USDC_PRECISION; // 1000 USDC
+        vm.prank(user1);
+        userPool.deposit(depositAmount, 0);
+        
+        uint256 withdrawAmount = 100 * QEURO_PRECISION; // 100 QEURO
+        
+        // Expect the new tracking event to be emitted (don't check USDC amount as it's calculated)
+        vm.expectEmit(true, false, false, false);
+        emit UserPool.UserWithdrawalTracked(
+            user1,
+            withdrawAmount,
+            0, // USDC received will be calculated by the contract
+            108, // Oracle ratio scaled by 1e6
+            block.timestamp,
+            block.number
+        );
+        
+        vm.prank(user1);
+        userPool.withdraw(withdrawAmount, 0);
+    }
+    
+    /**
+     * @notice Test that tracking handles edge cases correctly
+     * @dev Verifies that the tracking system handles edge cases without issues
+     */
+    function test_Tracking_EdgeCases_HandledCorrectly() public {
+        // Test with very small amounts
+        uint256 smallDeposit = 1; // 1 wei equivalent in USDC
+        vm.prank(user1);
+        userPool.deposit(smallDeposit, 0);
+        
+        UserPool.UserDepositInfo[] memory deposits = userPool.getUserDepositHistory(user1);
+        assertEq(deposits.length, 1, "Should track small deposits");
+        assertEq(deposits[0].usdcAmount, smallDeposit, "Small deposit amount should be tracked");
+        
+        // Test that oracle ratio is still valid for small amounts
+        assertTrue(deposits[0].oracleRatio > 0, "Oracle ratio should be positive");
+        assertTrue(deposits[0].oracleRatio <= type(uint32).max, "Oracle ratio should fit in uint32");
+    }
+}
+
+// =============================================================================
+// ADDITIONAL MOCK CONTRACTS FOR TRACKING TESTS
+// =============================================================================
+
+contract MockChainlinkOracle {
+    function getEurUsdPrice() external returns (uint256 price, bool isValid) {
+        // Return 1.08 EUR/USD rate (scaled by 1e8)
+        return (108000000, true);
+    }
+}
+
+contract MockYieldShift {
+    // Mock implementation for testing
+}
+

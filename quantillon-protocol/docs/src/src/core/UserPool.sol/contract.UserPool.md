@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/84573e20d663003e9e5ffbb3e1ac29ca4b399f78/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/03f8f2db069e4fe5f129cc3e28526efe7b1f6f49/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -359,6 +359,58 @@ Total yield distributed to users
 
 ```solidity
 uint256 public totalYieldDistributed;
+```
+
+
+### totalUserDeposits
+Total USDC deposits across all users (in USDC decimals - 6)
+
+*Tracks the sum of all USDC deposits made by users*
+
+*Used for protocol analytics and collateralization calculations*
+
+
+```solidity
+uint256 public totalUserDeposits;
+```
+
+
+### totalUserWithdrawals
+Total QEURO withdrawals across all users (in QEURO decimals - 18)
+
+*Tracks the sum of all QEURO withdrawals made by users*
+
+*Used for protocol analytics and supply tracking*
+
+
+```solidity
+uint256 public totalUserWithdrawals;
+```
+
+
+### userDeposits
+User deposit tracking with oracle ratios
+
+*Maps user addresses to their deposit history with oracle ratios*
+
+*Used for detailed analytics and audit trails*
+
+
+```solidity
+mapping(address => UserDepositInfo[]) public userDeposits;
+```
+
+
+### userWithdrawals
+User withdrawal tracking with oracle ratios
+
+*Maps user addresses to their withdrawal history with oracle ratios*
+
+*Used for detailed analytics and audit trails*
+
+
+```solidity
+mapping(address => UserWithdrawalInfo[]) public userWithdrawals;
 ```
 
 
@@ -1552,32 +1604,26 @@ function getTotalDeposits() external view returns (uint256);
 
 ### getTotalWithdrawals
 
-Get the total USDC equivalent withdrawals across all users
+Get the total QEURO withdrawals across all users
 
-Get the current QEURO total supply (replaces totalWithdrawals tracking)
+*Used for analytics and supply tracking*
 
-*Used for analytics and cash flow monitoring*
-
-*Returns the current QEURO total supply which represents net minted QEURO*
+*Returns the sum of all user withdrawals in QEURO*
 
 **Notes:**
-- access: Public access
+- security: No security implications (view function)
 
-- oracle: No oracle dependencies
+- validation: No validation required
 
-- security: No security validations required - view function
+- state-changes: No state changes (view function)
 
-- validation: No input validation required - view function
+- events: No events (view function)
 
-- state-changes: No state changes - view function only
+- errors: No custom errors
 
-- events: No events emitted
+- reentrancy: No external calls, safe
 
-- errors: No errors thrown
-
-- reentrancy: Not applicable - view function
-
-- access: Public access
+- access: Public (anyone can call)
 
 - oracle: No oracle dependencies
 
@@ -1589,16 +1635,144 @@ function getTotalWithdrawals() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|Total withdrawals in USDC equivalent (6 decimals)|
+|`<none>`|`uint256`|Total withdrawals in QEURO (18 decimals)|
+
+
+### getUserDepositHistory
+
+Get user deposit history with oracle ratios
+
+*Used for detailed analytics and audit trails*
+
+*Returns complete deposit history with oracle ratios*
+
+**Notes:**
+- security: No security implications (view function)
+
+- validation: No validation required
+
+- state-changes: No state changes (view function)
+
+- events: No events (view function)
+
+- errors: No custom errors
+
+- reentrancy: No external calls, safe
+
+- access: Public (anyone can call)
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function getUserDepositHistory(address user) external view returns (UserDepositInfo[] memory);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`UserDepositInfo[]`|Array of UserDepositInfo structs containing deposit history|
+
+
+### getUserWithdrawals
+
+Get user withdrawal history with oracle ratios
+
+*Used for detailed analytics and audit trails*
+
+*Returns complete withdrawal history with oracle ratios*
+
+**Notes:**
+- security: No security implications (view function)
+
+- validation: No validation required
+
+- state-changes: No state changes (view function)
+
+- events: No events (view function)
+
+- errors: No custom errors
+
+- reentrancy: No external calls, safe
+
+- access: Public (anyone can call)
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function getUserWithdrawals(address user) external view returns (UserWithdrawalInfo[] memory);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`UserWithdrawalInfo[]`|Array of UserWithdrawalInfo structs containing withdrawal history|
+
+
+### _getOracleRatioScaled
+
+Get current oracle ratio scaled by 1e6 for storage efficiency
+
+*Used internally for tracking oracle ratios in deposit/withdrawal records*
+
+*Scaled to fit in uint32 for gas efficiency*
+
+**Notes:**
+- security: No security implications (view function)
+
+- validation: No validation required
+
+- state-changes: No state changes (view function)
+
+- events: No events (view function)
+
+- errors: No custom errors
+
+- reentrancy: No external calls, safe
+
+- access: Internal function
+
+- oracle: Depends on oracle for current EUR/USD rate
+
+
+```solidity
+function _getOracleRatioScaled() internal returns (uint32);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint32`|Oracle ratio scaled by 1e6 (e.g., 1.08 becomes 1080000)|
 
 
 ### getTotalStakes
 
+Get the total USDC equivalent withdrawals across all users
+
 Get the total QEURO staked across all users
+
+*Used for analytics and cash flow monitoring*
 
 *Returns the total amount of QEURO currently staked in the pool*
 
 **Notes:**
+- access: Public access
+
+- oracle: No oracle dependencies
+
 - security: Validates input parameters and enforces security checks
 
 - validation: Validates input parameters and business logic constraints
@@ -1623,7 +1797,7 @@ function getTotalStakes() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|uint256 Total QEURO staked (18 decimals)|
+|`<none>`|`uint256`|Total withdrawals in USDC equivalent (6 decimals)|
 
 
 ### getPoolMetrics
@@ -2166,6 +2340,58 @@ event UserWithdrawal(address indexed user, uint256 qeuroBurned, uint256 usdcRece
 |`usdcReceived`|`uint256`|Amount of USDC received (6 decimals)|
 |`timestamp`|`uint256`|Timestamp of the withdrawal|
 
+### UserDepositTracked
+Emitted when a user deposit is tracked with oracle ratio
+
+
+```solidity
+event UserDepositTracked(
+    address indexed user,
+    uint256 usdcAmount,
+    uint256 qeuroReceived,
+    uint256 oracleRatio,
+    uint256 timestamp,
+    uint256 blockNumber
+);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user who deposited|
+|`usdcAmount`|`uint256`|USDC amount deposited (6 decimals)|
+|`qeuroReceived`|`uint256`|QEURO amount received (18 decimals)|
+|`oracleRatio`|`uint256`|Oracle ratio at time of deposit (scaled by 1e6)|
+|`timestamp`|`uint256`|Block timestamp when deposit was made|
+|`blockNumber`|`uint256`|Block number when deposit was made|
+
+### UserWithdrawalTracked
+Emitted when a user withdrawal is tracked with oracle ratio
+
+
+```solidity
+event UserWithdrawalTracked(
+    address indexed user,
+    uint256 qeuroAmount,
+    uint256 usdcReceived,
+    uint256 oracleRatio,
+    uint256 timestamp,
+    uint256 blockNumber
+);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user who withdrew|
+|`qeuroAmount`|`uint256`|QEURO amount withdrawn (18 decimals)|
+|`usdcReceived`|`uint256`|USDC amount received (6 decimals)|
+|`oracleRatio`|`uint256`|Oracle ratio at time of withdrawal (scaled by 1e6)|
+|`timestamp`|`uint256`|Block timestamp when withdrawal was made|
+|`blockNumber`|`uint256`|Block number when withdrawal was made|
+
 ### QEUROStaked
 Emitted when a user stakes QEURO
 
@@ -2291,6 +2517,42 @@ struct UserInfo {
     uint96 depositHistory;
     uint64 lastStakeTime;
     uint64 unstakeRequestTime;
+}
+```
+
+### UserDepositInfo
+User deposit information with oracle ratio tracking
+
+*Stores individual deposit records with oracle ratios for detailed analytics*
+
+*Used for audit trails and historical analysis*
+
+
+```solidity
+struct UserDepositInfo {
+    uint128 usdcAmount;
+    uint128 qeuroReceived;
+    uint64 timestamp;
+    uint32 oracleRatio;
+    uint32 blockNumber;
+}
+```
+
+### UserWithdrawalInfo
+User withdrawal information with oracle ratio tracking
+
+*Stores individual withdrawal records with oracle ratios for detailed analytics*
+
+*Used for audit trails and historical analysis*
+
+
+```solidity
+struct UserWithdrawalInfo {
+    uint128 qeuroAmount;
+    uint128 usdcReceived;
+    uint64 timestamp;
+    uint32 oracleRatio;
+    uint32 blockNumber;
 }
 ```
 

@@ -97,7 +97,7 @@ fi
 mkdir -p "$FRONTEND_ABI_DIR"
 
 # List of contracts to copy
-contracts=("QEUROToken" "ChainlinkOracle" "QuantillonVault" "QTIToken" "stQEUROToken" "UserPool" "HedgerPool" "YieldShift" "MockUSDC" "AaveVault")
+contracts=("QEUROToken" "ChainlinkOracle" "QuantillonVault" "QTIToken" "stQEUROToken" "UserPool" "HedgerPool" "YieldShift" "MockUSDC" "AaveVault" "FeeCollector")
 
 echo -e " Copying ABIs for ${#contracts[@]} contracts..."
 

@@ -1,5 +1,5 @@
 # QTITokenGovernanceLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/libraries/QTITokenGovernanceLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/84573e20d663003e9e5ffbb3e1ac29ca4b399f78/src/libraries/QTITokenGovernanceLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -45,21 +45,21 @@ Calculate voting power multiplier based on lock time
 *Calculates linear multiplier from 1x to 4x based on lock duration*
 
 **Notes:**
-- No security implications - pure calculation function
+- security: No security implications - pure calculation function
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -85,21 +85,21 @@ Internal function to calculate voting power multiplier
 *Calculates linear multiplier from 1x to 4x based on lock duration*
 
 **Notes:**
-- No security implications - pure calculation function
+- security: No security implications - pure calculation function
 
-- Input validation handled by calling function
+- validation: Input validation handled by calling function
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -125,21 +125,21 @@ Calculate voting power with overflow protection
 *Calculates voting power based on amount and lock time with overflow protection*
 
 **Notes:**
-- Prevents overflow in voting power calculations
+- security: Prevents overflow in voting power calculations
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAmount if result exceeds uint96 max
+- errors: Throws InvalidAmount if result exceeds uint96 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -166,21 +166,21 @@ Internal function to calculate voting power with overflow protection
 *Calculates voting power based on amount and lock time with overflow protection*
 
 **Notes:**
-- Prevents overflow in voting power calculations
+- security: Prevents overflow in voting power calculations
 
-- Input validation handled by calling function
+- validation: Input validation handled by calling function
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAmount if result exceeds uint96 max
+- errors: Throws InvalidAmount if result exceeds uint96 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -207,21 +207,21 @@ Calculate current voting power with linear decay
 *Calculates current voting power with linear decay over time*
 
 **Notes:**
-- No security implications - pure calculation function
+- security: No security implications - pure calculation function
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -251,21 +251,21 @@ Calculate unlock time with proper validation
 *Calculates new unlock time based on current timestamp and lock duration*
 
 **Notes:**
-- Prevents timestamp overflow in unlock time calculations
+- security: Prevents timestamp overflow in unlock time calculations
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidTime if result exceeds uint32 max
+- errors: Throws InvalidTime if result exceeds uint32 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -296,21 +296,21 @@ Internal function to calculate unlock time with proper validation
 *Calculates new unlock time based on current timestamp and lock duration*
 
 **Notes:**
-- Prevents timestamp overflow in unlock time calculations
+- security: Prevents timestamp overflow in unlock time calculations
 
-- Input validation handled by calling function
+- validation: Input validation handled by calling function
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidTime if result exceeds uint32 max
+- errors: Throws InvalidTime if result exceeds uint32 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -341,21 +341,21 @@ Validate all amounts and lock times, returns total amount
 *Ensures all amounts and lock times are valid and calculates total amount*
 
 **Notes:**
-- Prevents invalid amounts and lock times from being processed
+- security: Prevents invalid amounts and lock times from being processed
 
-- Validates amounts are positive and lock times are within bounds
+- validation: Validates amounts are positive and lock times are within bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws various validation errors for invalid inputs
+- errors: Throws various validation errors for invalid inputs
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -385,21 +385,21 @@ Process batch locks and calculate totals
 *Processes batch lock operations and calculates total voting power and amounts*
 
 **Notes:**
-- Prevents overflow in batch calculations
+- security: Prevents overflow in batch calculations
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -446,21 +446,21 @@ Update lock info with overflow checks
 *Updates user's lock information with new amounts and times*
 
 **Notes:**
-- Prevents overflow in lock info updates
+- security: Prevents overflow in lock info updates
 
-- Validates amounts and times are within bounds
+- validation: Validates amounts and times are within bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAmount if values exceed uint96 max
+- errors: Throws InvalidAmount if values exceed uint96 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -492,21 +492,21 @@ Calculate decentralization level based on time elapsed
 *Calculates decentralization level based on elapsed time since start*
 
 **Notes:**
-- No security implications - pure calculation function
+- security: No security implications - pure calculation function
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

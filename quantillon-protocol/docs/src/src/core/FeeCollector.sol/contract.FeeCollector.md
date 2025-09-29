@@ -1,5 +1,5 @@
 # FeeCollector
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/core/FeeCollector.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/84573e20d663003e9e5ffbb3e1ac29ca4b399f78/src/core/FeeCollector.sol)
 
 **Inherits:**
 AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable
@@ -25,7 +25,7 @@ Centralized fee collection and distribution contract for Quantillon Protocol
 - Upgradeable via UUPS proxy*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -152,21 +152,21 @@ Initializes the FeeCollector contract
 *Sets up roles, fund addresses, and default fee distribution ratios*
 
 **Notes:**
-- Protected by initializer modifier
+- security: Protected by initializer modifier
 
-- Validates that all addresses are non-zero
+- validation: Validates that all addresses are non-zero
 
-- Sets up roles, fund addresses, and default ratios
+- state-changes: Sets up roles, fund addresses, and default ratios
 
-- Emits role grant events and FundAddressesUpdated event
+- events: Emits role grant events and FundAddressesUpdated event
 
-- Throws ZeroAddress if any address is zero
+- errors: Throws ZeroAddress if any address is zero
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Can only be called once during initialization
+- access: Can only be called once during initialization
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -193,23 +193,23 @@ Collects fees from protocol contracts
 *Emits FeesCollected event for transparency and analytics*
 
 **Notes:**
-- Protected by onlyFeeSource modifier and reentrancy guard
+- security: Protected by onlyFeeSource modifier and reentrancy guard
 
-- Validates token address and amount parameters
+- validation: Validates token address and amount parameters
 
-- Updates totalFeesCollected and feeCollectionCount mappings
+- state-changes: Updates totalFeesCollected and feeCollectionCount mappings
 
-- Emits FeesCollected event with collection details
+- events: Emits FeesCollected event with collection details
 
-- Throws InvalidAmount if amount is zero
+- errors: Throws InvalidAmount if amount is zero
 
-- Throws ZeroAddress if token address is zero
+- errors: Throws ZeroAddress if token address is zero
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to authorized fee sources only
+- access: Restricted to authorized fee sources only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -239,21 +239,21 @@ Collects ETH fees from protocol contracts
 *Emits FeesCollected event for transparency and analytics*
 
 **Notes:**
-- Protected by onlyFeeSource modifier and reentrancy guard
+- security: Protected by onlyFeeSource modifier and reentrancy guard
 
-- Validates that msg.value is greater than zero
+- validation: Validates that msg.value is greater than zero
 
-- Updates totalFeesCollected and feeCollectionCount for address(0)
+- state-changes: Updates totalFeesCollected and feeCollectionCount for address(0)
 
-- Emits FeesCollected event with ETH collection details
+- events: Emits FeesCollected event with ETH collection details
 
-- Throws InvalidAmount if msg.value is zero
+- errors: Throws InvalidAmount if msg.value is zero
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to authorized fee sources only
+- access: Restricted to authorized fee sources only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -279,21 +279,21 @@ Distributes collected fees according to configured ratios
 *Emits FeesDistributed event for transparency*
 
 **Notes:**
-- Protected by TREASURY_ROLE and reentrancy guard
+- security: Protected by TREASURY_ROLE and reentrancy guard
 
-- Validates that contract has sufficient balance
+- validation: Validates that contract has sufficient balance
 
-- Updates totalFeesDistributed and transfers tokens to fund addresses
+- state-changes: Updates totalFeesDistributed and transfers tokens to fund addresses
 
-- Emits FeesDistributed event with distribution details
+- events: Emits FeesDistributed event with distribution details
 
-- Throws InsufficientBalance if contract balance is zero
+- errors: Throws InsufficientBalance if contract balance is zero
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to TREASURY_ROLE only
+- access: Restricted to TREASURY_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -313,21 +313,21 @@ Calculate distribution amounts with rounding protection
 *Internal function to reduce cyclomatic complexity*
 
 **Notes:**
-- No external calls, pure calculation function
+- security: No external calls, pure calculation function
 
-- Balance must be non-zero for meaningful distribution
+- validation: Balance must be non-zero for meaningful distribution
 
-- No state changes, view function
+- state-changes: No state changes, view function
 
-- No events emitted
+- events: No events emitted
 
-- No custom errors, uses SafeMath for overflow protection
+- errors: No custom errors, uses SafeMath for overflow protection
 
-- No reentrancy risk, view function
+- reentrancy: No reentrancy risk, view function
 
-- Internal function, no access control needed
+- access: Internal function, no access control needed
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -358,21 +358,21 @@ Execute transfers for ETH or ERC20 tokens
 *Internal function to reduce cyclomatic complexity*
 
 **Notes:**
-- Delegates to specific transfer functions with proper validation
+- security: Delegates to specific transfer functions with proper validation
 
-- Amounts must be non-zero for transfers to execute
+- validation: Amounts must be non-zero for transfers to execute
 
-- Updates token balances through transfers
+- state-changes: Updates token balances through transfers
 
-- No direct events, delegated functions emit events
+- events: No direct events, delegated functions emit events
 
-- May revert on transfer failures
+- errors: May revert on transfer failures
 
-- Protected by internal function design
+- reentrancy: Protected by internal function design
 
-- Internal function, no access control needed
+- access: Internal function, no access control needed
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -396,21 +396,21 @@ Execute ETH transfers
 *Internal function to reduce cyclomatic complexity*
 
 **Notes:**
-- Uses secure ETH transfer with address validation
+- security: Uses secure ETH transfer with address validation
 
-- Amounts must be non-zero for transfers to execute
+- validation: Amounts must be non-zero for transfers to execute
 
-- Reduces contract ETH balance, increases recipient balances
+- state-changes: Reduces contract ETH balance, increases recipient balances
 
-- No direct events emitted
+- events: No direct events emitted
 
-- Reverts with ETHTransferFailed on call failure
+- errors: Reverts with ETHTransferFailed on call failure
 
-- Protected by internal function design and address validation
+- reentrancy: Protected by internal function design and address validation
 
-- Internal function, no access control needed
+- access: Internal function, no access control needed
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -432,21 +432,21 @@ Secure ETH transfer with comprehensive validation
 *Validates recipient address against whitelist and performs secure ETH transfer*
 
 **Notes:**
-- Validates recipient against known fund addresses
+- security: Validates recipient against known fund addresses
 
-- Ensures recipient is valid and amount is positive
+- validation: Ensures recipient is valid and amount is positive
 
-- Transfers ETH from contract to recipient
+- state-changes: Transfers ETH from contract to recipient
 
-- No events emitted
+- events: No events emitted
 
-- Reverts with ETHTransferFailed on transfer failure
+- errors: Reverts with ETHTransferFailed on transfer failure
 
-- Protected by address validation and call pattern
+- reentrancy: Protected by address validation and call pattern
 
-- Internal function, no access control needed
+- access: Internal function, no access control needed
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -467,21 +467,21 @@ Execute ERC20 token transfers
 *Internal function to reduce cyclomatic complexity*
 
 **Notes:**
-- Uses safeTransfer for ERC20 tokens with proper error handling
+- security: Uses safeTransfer for ERC20 tokens with proper error handling
 
-- Amounts must be non-zero for transfers to execute
+- validation: Amounts must be non-zero for transfers to execute
 
-- Reduces contract token balance, increases recipient balances
+- state-changes: Reduces contract token balance, increases recipient balances
 
-- No direct events emitted
+- events: No direct events emitted
 
-- May revert on transfer failures from ERC20 contract
+- errors: May revert on transfer failures from ERC20 contract
 
-- Protected by internal function design and safeTransfer
+- reentrancy: Protected by internal function design and safeTransfer
 
-- Internal function, no access control needed
+- access: Internal function, no access control needed
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -511,21 +511,21 @@ Updates fee distribution ratios
 *Emits FeeRatiosUpdated event for transparency*
 
 **Notes:**
-- Protected by GOVERNANCE_ROLE
+- security: Protected by GOVERNANCE_ROLE
 
-- Validates that ratios sum to exactly 10000
+- validation: Validates that ratios sum to exactly 10000
 
-- Updates treasuryRatio, devFundRatio, and communityRatio
+- state-changes: Updates treasuryRatio, devFundRatio, and communityRatio
 
-- Emits FeeRatiosUpdated event with new ratios
+- events: Emits FeeRatiosUpdated event with new ratios
 
-- Throws InvalidRatio if ratios don't sum to 10000
+- errors: Throws InvalidRatio if ratios don't sum to 10000
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Restricted to GOVERNANCE_ROLE only
+- access: Restricted to GOVERNANCE_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -555,21 +555,21 @@ Updates fund addresses for fee distribution
 *Emits FundAddressesUpdated event for transparency*
 
 **Notes:**
-- Protected by GOVERNANCE_ROLE
+- security: Protected by GOVERNANCE_ROLE
 
-- Validates that all addresses are non-zero
+- validation: Validates that all addresses are non-zero
 
-- Updates treasury, devFund, and communityFund addresses
+- state-changes: Updates treasury, devFund, and communityFund addresses
 
-- Emits FundAddressesUpdated event with new addresses
+- events: Emits FundAddressesUpdated event with new addresses
 
-- Throws ZeroAddress if any address is zero
+- errors: Throws ZeroAddress if any address is zero
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Restricted to GOVERNANCE_ROLE only
+- access: Restricted to GOVERNANCE_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -595,21 +595,21 @@ Authorizes a contract to collect fees
 *Only governance role can call this function*
 
 **Notes:**
-- Protected by GOVERNANCE_ROLE
+- security: Protected by GOVERNANCE_ROLE
 
-- Validates that feeSource is not zero address
+- validation: Validates that feeSource is not zero address
 
-- Grants TREASURY_ROLE to feeSource
+- state-changes: Grants TREASURY_ROLE to feeSource
 
-- Emits RoleGranted event for TREASURY_ROLE
+- events: Emits RoleGranted event for TREASURY_ROLE
 
-- Throws ZeroAddress if feeSource is zero
+- errors: Throws ZeroAddress if feeSource is zero
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Restricted to GOVERNANCE_ROLE only
+- access: Restricted to GOVERNANCE_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -631,21 +631,21 @@ Revokes fee collection authorization
 *Only governance role can call this function*
 
 **Notes:**
-- Protected by GOVERNANCE_ROLE
+- security: Protected by GOVERNANCE_ROLE
 
-- No validation required (can revoke from any address)
+- validation: No validation required (can revoke from any address)
 
-- Revokes TREASURY_ROLE from feeSource
+- state-changes: Revokes TREASURY_ROLE from feeSource
 
-- Emits RoleRevoked event for TREASURY_ROLE
+- events: Emits RoleRevoked event for TREASURY_ROLE
 
-- No custom errors
+- errors: No custom errors
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Restricted to GOVERNANCE_ROLE only
+- access: Restricted to GOVERNANCE_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -667,21 +667,21 @@ Pauses fee collection and distribution
 *Only emergency role can call this function*
 
 **Notes:**
-- Protected by EMERGENCY_ROLE
+- security: Protected by EMERGENCY_ROLE
 
-- No validation required
+- validation: No validation required
 
-- Sets paused state to true
+- state-changes: Sets paused state to true
 
-- Emits Paused event
+- events: Emits Paused event
 
-- No custom errors
+- errors: No custom errors
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Restricted to EMERGENCY_ROLE only
+- access: Restricted to EMERGENCY_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -697,21 +697,21 @@ Unpauses fee collection and distribution
 *Only emergency role can call this function*
 
 **Notes:**
-- Protected by EMERGENCY_ROLE
+- security: Protected by EMERGENCY_ROLE
 
-- No validation required
+- validation: No validation required
 
-- Sets paused state to false
+- state-changes: Sets paused state to false
 
-- Emits Unpaused event
+- events: Emits Unpaused event
 
-- No custom errors
+- errors: No custom errors
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Restricted to EMERGENCY_ROLE only
+- access: Restricted to EMERGENCY_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -727,23 +727,23 @@ Emergency withdrawal of all tokens (only in extreme circumstances)
 *Only emergency role can call this function*
 
 **Notes:**
-- Protected by EMERGENCY_ROLE
+- security: Protected by EMERGENCY_ROLE
 
-- Validates that contract has sufficient balance
+- validation: Validates that contract has sufficient balance
 
-- Transfers all tokens to treasury address
+- state-changes: Transfers all tokens to treasury address
 
-- No custom events (uses standard transfer events)
+- events: No custom events (uses standard transfer events)
 
-- Throws InsufficientBalance if contract balance is zero
+- errors: Throws InsufficientBalance if contract balance is zero
 
-- Throws ETHTransferFailed if ETH transfer fails
+- errors: Throws ETHTransferFailed if ETH transfer fails
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Restricted to EMERGENCY_ROLE only
+- access: Restricted to EMERGENCY_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -763,21 +763,21 @@ Returns the current balance of a token
 *Returns the current balance of the specified token held by this contract*
 
 **Notes:**
-- No security implications (view function)
+- security: No security implications (view function)
 
-- No validation required
+- validation: No validation required
 
-- No state changes (view function)
+- state-changes: No state changes (view function)
 
-- No events (view function)
+- events: No events (view function)
 
-- No custom errors
+- errors: No custom errors
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Public (anyone can call)
+- access: Public (anyone can call)
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -803,21 +803,21 @@ Returns fee collection statistics for a token
 *Returns comprehensive statistics about fee collection and distribution for a specific token*
 
 **Notes:**
-- No security implications (view function)
+- security: No security implications (view function)
 
-- No validation required
+- validation: No validation required
 
-- No state changes (view function)
+- state-changes: No state changes (view function)
 
-- No events (view function)
+- events: No events (view function)
 
-- No custom errors
+- errors: No custom errors
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Public (anyone can call)
+- access: Public (anyone can call)
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -849,21 +849,21 @@ Checks if an address is authorized to collect fees
 *Returns whether the specified address has permission to collect fees*
 
 **Notes:**
-- No security implications (view function)
+- security: No security implications (view function)
 
-- No validation required
+- validation: No validation required
 
-- No state changes (view function)
+- state-changes: No state changes (view function)
 
-- No events (view function)
+- events: No events (view function)
 
-- No custom errors
+- errors: No custom errors
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Public (anyone can call)
+- access: Public (anyone can call)
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -889,21 +889,21 @@ Internal function to check if an address is authorized to collect fees
 *Internal helper function to check TREASURY_ROLE for fee collection authorization*
 
 **Notes:**
-- Internal function, no direct security implications
+- security: Internal function, no direct security implications
 
-- No validation required
+- validation: No validation required
 
-- No state changes (view function)
+- state-changes: No state changes (view function)
 
-- No events (internal function)
+- events: No events (internal function)
 
-- No custom errors
+- errors: No custom errors
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Internal function only
+- access: Internal function only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -931,21 +931,21 @@ Authorizes upgrades (only governance)
 *Only governance role can authorize upgrades*
 
 **Notes:**
-- Protected by GOVERNANCE_ROLE
+- security: Protected by GOVERNANCE_ROLE
 
-- No validation required (OpenZeppelin handles this)
+- validation: No validation required (OpenZeppelin handles this)
 
-- No state changes (authorization only)
+- state-changes: No state changes (authorization only)
 
-- No custom events (OpenZeppelin handles upgrade events)
+- events: No custom events (OpenZeppelin handles upgrade events)
 
-- No custom errors
+- errors: No custom errors
 
-- No external calls, safe
+- reentrancy: No external calls, safe
 
-- Restricted to GOVERNANCE_ROLE only
+- access: Restricted to GOVERNANCE_ROLE only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

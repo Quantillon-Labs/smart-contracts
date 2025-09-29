@@ -1,5 +1,5 @@
 # ErrorLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/libraries/ErrorLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/84573e20d663003e9e5ffbb3e1ac29ca4b399f78/src/libraries/ErrorLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -13,7 +13,7 @@ Custom errors for Quantillon Protocol
 - Supports governance, vault, yield, and liquidation operations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Errors

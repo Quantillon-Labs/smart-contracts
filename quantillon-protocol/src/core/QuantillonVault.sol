@@ -12,6 +12,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
 
 // Internal interfaces of the Quantillon protocol
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
@@ -334,6 +335,7 @@ contract QuantillonVault is
      * @param _hedgerPool Address of the HedgerPool contract
      * @param _userPool Address of the UserPool contract
      * @param _timelock Address of the timelock contract
+     * @param _feeCollector Address of the fee collector contract
      * 
      * @dev This function configures:
      *      1. Access roles
@@ -567,7 +569,8 @@ contract QuantillonVault is
         // Transfer fee to fee collector (if fee > 0)
         if (fee > 0) {
             // Approve FeeCollector to pull the fee
-            usdc.approve(feeCollector, fee);
+            bool success = usdc.approve(feeCollector, fee);
+            if (!success) revert ErrorLibrary.TokenTransferFailed();
             // Call FeeCollector to collect the fee with proper tracking
             FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
         }
@@ -827,8 +830,19 @@ contract QuantillonVault is
         emit ParametersUpdated("userPool", 0, 0);
     }
     
-    /// @notice Updates the fee collector address
-    /// @param _feeCollector New fee collector address
+    /**
+     * @notice Updates the fee collector address
+     * @dev Only governance role can update the fee collector address
+     * @param _feeCollector New fee collector address
+     * @custom:security Validates address is not zero before updating
+     * @custom:validation Ensures _feeCollector is not address(0)
+     * @custom:state-changes Updates feeCollector state variable
+     * @custom:events Emits ParametersUpdated event
+     * @custom:errors Reverts if _feeCollector is address(0)
+     * @custom:reentrancy No reentrancy risk, simple state update
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function updateFeeCollector(address _feeCollector) external onlyRole(GOVERNANCE_ROLE) {
         require(_feeCollector != address(0), "Vault: FeeCollector cannot be zero");
         feeCollector = _feeCollector;
@@ -1008,26 +1022,33 @@ contract QuantillonVault is
      * @custom:access Public - anyone can check collateralization ratio
      * @custom:oracle No oracle dependencies
      */
-    function getProtocolCollateralizationRatio() public view returns (uint256 ratio) {
+    function getProtocolCollateralizationRatio() public returns (uint256 ratio) {
         // Check if both HedgerPool and UserPool are set
         if (address(hedgerPool) == address(0) || address(userPool) == address(0)) {
             return 0;
         }
         
-        // Get user deposits from UserPool (A in the formula)
-        uint256 userDeposits = userPool.totalDeposits();
+        // Get current QEURO supply (A in the formula) - represents current user deposits
+        uint256 currentQeuroSupply = qeuro.totalSupply();
         
         // Get hedger deposits from HedgerPool (B in the formula)
         uint256 hedgerDeposits = hedgerPool.totalMargin();
         
-        // If no user deposits, return 0
-        if (userDeposits == 0) {
+        // If no QEURO supply, we can't calculate a meaningful ratio
+        // Return 0 to indicate no user deposits yet
+        if (currentQeuroSupply == 0) {
             return 0;
         }
         
+        // Convert QEURO supply to current USDC equivalent for accurate calculation
+        (uint256 currentRate, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Vault: Invalid oracle rate");
+        
+        uint256 currentUsdcEquivalent = currentQeuroSupply.mulDiv(currentRate, 1e18) / 1e12;
+        
         // Calculate ratio: ((A + B) / A) * 100
         // Using basis points (multiply by 10000 instead of 100)
-        ratio = ((userDeposits + hedgerDeposits) * 10000) / userDeposits;
+        ratio = ((currentUsdcEquivalent + hedgerDeposits) * 10000) / currentUsdcEquivalent;
         
         return ratio;
     }
@@ -1045,7 +1066,14 @@ contract QuantillonVault is
      * @custom:access Public - anyone can check minting status
      * @custom:oracle No oracle dependencies
      */
-    function canMint() public view returns (bool) {
+    function canMint() public returns (bool) {
+        uint256 currentQeuroSupply = qeuro.totalSupply();
+        
+        // Allow minting if there's no QEURO supply yet (first mint)
+        if (currentQeuroSupply == 0) {
+            return true;
+        }
+        
         uint256 currentRatio = getProtocolCollateralizationRatio();
         return currentRatio >= minCollateralizationRatioForMinting;
     }
@@ -1063,7 +1091,7 @@ contract QuantillonVault is
      * @custom:access Public - anyone can check liquidation status
      * @custom:oracle No oracle dependencies
      */
-    function shouldTriggerLiquidation() public view returns (bool shouldLiquidate) {
+    function shouldTriggerLiquidation() public returns (bool shouldLiquidate) {
         uint256 currentRatio = getProtocolCollateralizationRatio();
         return currentRatio < criticalCollateralizationRatio;
     }

@@ -885,6 +885,7 @@ contract stQEUROToken is
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        if (_treasury == address(0)) revert ErrorLibrary.ZeroAddress();
         treasury = _treasury;
     }
 

@@ -3,6 +3,7 @@
 # Contents
 - [vaults](/src/core/vaults)
 - [yieldmanagement](/src/core/yieldmanagement)
+- [FeeCollector](FeeCollector.sol/contract.FeeCollector.md)
 - [HedgerPool](HedgerPool.sol/contract.HedgerPool.md)
 - [QEUROToken](QEUROToken.sol/contract.QEUROToken.md)
 - [QTIToken](QTIToken.sol/contract.QTIToken.md)

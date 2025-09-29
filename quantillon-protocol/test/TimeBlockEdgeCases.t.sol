@@ -92,7 +92,7 @@ contract TimeBlockEdgeCases is Test {
         // Deploy UserPool with mock dependencies
         UserPool userPoolImpl = new UserPool(timeProvider);
         userPool = UserPool(address(new ERC1967Proxy(address(userPoolImpl), "")));
-        userPool.initialize(admin, address(0x1), address(0x2), address(0x3), address(0x4), address(0x5), treasury);
+        userPool.initialize(admin, address(0x1), address(0x2), address(0x3), address(0x4), address(0x5), address(0x6), treasury);
         
         // Deploy QTIToken with mock dependencies
         QTIToken qtiTokenImpl = new QTIToken(timeProvider);

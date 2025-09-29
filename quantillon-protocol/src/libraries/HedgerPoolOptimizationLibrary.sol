@@ -228,6 +228,18 @@ library HedgerPoolOptimizationLibrary {
     /**
      * @notice Gets protocol collateralization data
      * @dev Internal function to reduce stack depth
+     * @param vaultAddress Address of the vault contract
+     * @return isCollateralized Whether protocol is currently collateralized
+     * @return currentTotalMargin Current total margin in the protocol
+     * @return minCollateralizationRatio Minimum collateralization ratio for minting
+     * @custom:security Uses staticcall for safe external contract interaction
+     * @custom:validation Validates call success and data length before decoding
+     * @custom:state-changes No state changes, view function
+     * @custom:events No events emitted
+     * @custom:errors Returns default values on call failures
+     * @custom:reentrancy No reentrancy risk, view function
+     * @custom:access Internal function, no access control needed
+     * @custom:oracle No oracle dependencies
      */
     function _getProtocolData(address vaultAddress) internal view returns (bool isCollateralized, uint256 currentTotalMargin, uint256 minCollateralizationRatio) {
         // Get current protocol collateralization status
@@ -249,6 +261,16 @@ library HedgerPoolOptimizationLibrary {
     /**
      * @notice Checks if QEURO has been minted
      * @dev Internal function to reduce stack depth
+     * @param vaultAddress Address of the vault contract
+     * @return hasMinted Whether QEURO has been minted (totalSupply > 0)
+     * @custom:security Uses staticcall for safe external contract interaction
+     * @custom:validation Validates call success and data length before decoding
+     * @custom:state-changes No state changes, view function
+     * @custom:events No events emitted
+     * @custom:errors Returns false on call failures
+     * @custom:reentrancy No reentrancy risk, view function
+     * @custom:access Internal function, no access control needed
+     * @custom:oracle No oracle dependencies
      */
     function _hasQEUROMinted(address vaultAddress) internal view returns (bool hasMinted) {
         // Get QEURO address
@@ -273,6 +295,19 @@ library HedgerPoolOptimizationLibrary {
     /**
      * @notice Validates closure with user deposits
      * @dev Internal function to reduce stack depth
+     * @param vaultAddress Address of the vault contract
+     * @param positionMargin Margin for the position being closed
+     * @param currentTotalMargin Current total margin in the protocol
+     * @param minCollateralizationRatio Minimum collateralization ratio for minting
+     * @return isValid Whether the position can be safely closed
+     * @custom:security Validates protocol remains collateralized after closure
+     * @custom:validation Ensures closure doesn't violate collateralization requirements
+     * @custom:state-changes No state changes, view function
+     * @custom:events No events emitted
+     * @custom:errors No custom errors, returns boolean result
+     * @custom:reentrancy No reentrancy risk, view function
+     * @custom:access Internal function, no access control needed
+     * @custom:oracle No oracle dependencies
      */
     function _validateClosureWithUserDeposits(
         address vaultAddress,

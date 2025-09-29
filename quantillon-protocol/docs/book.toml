@@ -6,7 +6,7 @@ title = ""
 no-section-label = true
 additional-js = ["solidity.min.js"]
 additional-css = ["book.css"]
-git-repository-url = "https://github.com/Quantillon-Labs/smart-contracts"
+git-repository-url = "https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol"
 
 [output.html.fold]
 enable = true

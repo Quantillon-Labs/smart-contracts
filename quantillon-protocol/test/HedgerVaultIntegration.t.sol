@@ -122,7 +122,8 @@ contract HedgerVaultIntegrationTest is Test {
             address(oracle),
             address(0x789), // mock hedger pool address (will be updated)
             address(0), // UserPool (not needed for this test)
-            admin // timelock
+            admin, // timelock
+            address(0x999) // feeCollector
         );
         vault = QuantillonVault(address(new ERC1967Proxy(address(vaultImpl), vaultInitData)));
         
@@ -149,6 +150,13 @@ contract HedgerVaultIntegrationTest is Test {
         qeuro.grantRole(keccak256("MINTER_ROLE"), address(vault));
         vm.prank(admin);
         qeuro.grantRole(keccak256("BURNER_ROLE"), address(vault));
+        
+        // Mock FeeCollector.collectFees calls
+        vm.mockCall(
+            address(0x999), // feeCollector address
+            abi.encodeWithSelector(bytes4(keccak256("collectFees(address,uint256,string)"))),
+            abi.encode()
+        );
         
         // Setup test environment
         _setupTestEnvironment();

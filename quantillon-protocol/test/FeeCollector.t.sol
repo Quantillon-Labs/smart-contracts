@@ -55,6 +55,18 @@ contract FeeCollectorTest is Test {
     // SETUP
     // =============================================================================
     
+    /**
+     * @notice Set up test environment for FeeCollector tests
+     * @dev Initializes contracts, addresses, and test parameters
+     * @custom:security Sets up mock contracts and test addresses
+     * @custom:validation Validates contract deployment and initialization
+     * @custom:state-changes Deploys contracts and sets up test state
+     * @custom:events No events emitted during setup
+     * @custom:errors No custom errors expected during setup
+     * @custom:reentrancy No reentrancy risk during setup
+     * @custom:access Public function for test setup
+     * @custom:oracle No oracle dependencies
+     */
     function setUp() public {
         // Set up addresses
         admin = address(0x1);
@@ -100,8 +112,16 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test successful initialization
      * @dev Verifies that the contract initializes with correct parameters
+     * @custom:security Validates contract state after initialization
+     * @custom:validation Checks all initialization parameters are set correctly
+     * @custom:state-changes No state changes, view function
+     * @custom:events No events emitted
+     * @custom:errors No custom errors expected
+     * @custom:reentrancy No reentrancy risk, view function
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
      */
-    function test_Initialization_Success() public {
+    function test_Initialization_Success() public view {
         assertEq(feeCollector.treasury(), treasury);
         assertEq(feeCollector.devFund(), devFund);
         assertEq(feeCollector.communityFund(), communityFund);
@@ -117,12 +137,20 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test initialization with zero addresses
      * @dev Verifies that initialization fails with zero addresses
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
      */
     function test_Initialization_ZeroAddresses() public {
         FeeCollector newImpl = new FeeCollector();
         
         // Test zero admin
-        vm.expectRevert(ErrorLibrary.ZeroAddress.selector);
+        vm.expectRevert(ErrorLibrary.InvalidAdmin.selector);
         bytes memory initData1 = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
             address(0),
@@ -133,7 +161,7 @@ contract FeeCollectorTest is Test {
         new ERC1967Proxy(address(newImpl), initData1);
         
         // Test zero treasury
-        vm.expectRevert(ErrorLibrary.ZeroAddress.selector);
+        vm.expectRevert(ErrorLibrary.InvalidTreasury.selector);
         bytes memory initData2 = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
             admin,
@@ -144,7 +172,7 @@ contract FeeCollectorTest is Test {
         new ERC1967Proxy(address(newImpl), initData2);
         
         // Test zero devFund
-        vm.expectRevert(ErrorLibrary.ZeroAddress.selector);
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         bytes memory initData3 = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
             admin,
@@ -155,7 +183,7 @@ contract FeeCollectorTest is Test {
         new ERC1967Proxy(address(newImpl), initData3);
         
         // Test zero communityFund
-        vm.expectRevert(ErrorLibrary.ZeroAddress.selector);
+        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
         bytes memory initData4 = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
             admin,
@@ -173,6 +201,14 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test successful fee collection from authorized source
      * @dev Verifies that authorized sources can collect fees
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
      */
     function test_CollectFees_Success() public {
         uint256 feeAmount = 1000e6;
@@ -193,6 +229,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee collection from unauthorized source
      * @dev Verifies that unauthorized sources cannot collect fees
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_CollectFees_UnauthorizedSource() public {
         uint256 feeAmount = 1000e6;
@@ -208,6 +253,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee collection with zero amount
      * @dev Verifies that zero amount collection fails
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_CollectFees_ZeroAmount() public {
         vm.startPrank(feeSource);
@@ -219,6 +273,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee collection with zero token address
      * @dev Verifies that zero token address collection fails
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_CollectFees_ZeroTokenAddress() public {
         vm.startPrank(feeSource);
@@ -230,6 +293,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test ETH fee collection
      * @dev Verifies that ETH fees can be collected
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_CollectETHFees_Success() public {
         uint256 ethAmount = 1 ether;
@@ -251,6 +323,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test multiple fee collections
      * @dev Verifies that multiple fee collections accumulate correctly
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_CollectFees_MultipleCollections() public {
         uint256 feeAmount1 = 1000e6;
@@ -275,6 +356,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test successful fee distribution
      * @dev Verifies that fees are distributed according to configured ratios
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_DistributeFees_Success() public {
         uint256 totalFees = 10000e6;
@@ -308,6 +398,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee distribution with zero balance
      * @dev Verifies that distribution fails with zero balance
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_DistributeFees_ZeroBalance() public {
         vm.startPrank(treasury);
@@ -319,6 +418,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee distribution by unauthorized user
      * @dev Verifies that only treasury role can distribute fees
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_DistributeFees_UnauthorizedUser() public {
         uint256 totalFees = 10000e6;
@@ -339,6 +447,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test ETH fee distribution
      * @dev Verifies that ETH fees can be distributed
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_DistributeETHFees_Success() public {
         uint256 totalFees = 1 ether;
@@ -375,6 +492,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee ratio updates
      * @dev Verifies that governance can update fee distribution ratios
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_UpdateFeeRatios_Success() public {
         uint256 newTreasuryRatio = 5000;
@@ -395,6 +521,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee ratio updates with invalid ratios
      * @dev Verifies that ratios must sum to 10000 (100%)
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_UpdateFeeRatios_InvalidRatios() public {
         vm.startPrank(admin);
@@ -406,6 +541,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee ratio updates by unauthorized user
      * @dev Verifies that only governance can update ratios
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_UpdateFeeRatios_UnauthorizedUser() public {
         vm.startPrank(unauthorizedUser);
@@ -417,6 +561,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fund address updates
      * @dev Verifies that governance can update fund addresses
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_UpdateFundAddresses_Success() public {
         address newTreasury = address(0x10);
@@ -437,10 +590,19 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fund address updates with zero addresses
      * @dev Verifies that zero addresses are rejected
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_UpdateFundAddresses_ZeroAddresses() public {
         vm.startPrank(admin);
-        vm.expectRevert(ErrorLibrary.ZeroAddress.selector);
+        vm.expectRevert(ErrorLibrary.InvalidTreasury.selector);
         feeCollector.updateFundAddresses(address(0), devFund, communityFund);
         vm.stopPrank();
     }
@@ -448,6 +610,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee source authorization
      * @dev Verifies that governance can authorize fee sources
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_AuthorizeFeeSource_Success() public {
         address newFeeSource = address(0x20);
@@ -463,6 +634,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee source revocation
      * @dev Verifies that governance can revoke fee source authorization
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_RevokeFeeSource_Success() public {
         vm.startPrank(admin);
@@ -480,6 +660,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test pause functionality
      * @dev Verifies that emergency role can pause the contract
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_Pause_Success() public {
         vm.startPrank(admin);
@@ -492,6 +681,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test unpause functionality
      * @dev Verifies that emergency role can unpause the contract
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_Unpause_Success() public {
         // Pause first
@@ -506,6 +704,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee collection when paused
      * @dev Verifies that fee collection is blocked when paused
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_CollectFees_WhenPaused() public {
         vm.startPrank(admin);
@@ -522,6 +729,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test emergency withdrawal
      * @dev Verifies that emergency role can withdraw all tokens
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_EmergencyWithdraw_Success() public {
         uint256 totalFees = 10000e6;
@@ -546,6 +762,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test emergency withdrawal with zero balance
      * @dev Verifies that emergency withdrawal fails with zero balance
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_EmergencyWithdraw_ZeroBalance() public {
         vm.startPrank(admin);
@@ -561,6 +786,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test getBalance function
      * @dev Verifies that getBalance returns correct token balance
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_GetBalance_Success() public {
         uint256 feeAmount = 1000e6;
@@ -577,6 +811,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test getFeeStats function
      * @dev Verifies that getFeeStats returns correct statistics
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_GetFeeStats_Success() public {
         uint256 feeAmount = 1000e6;
@@ -599,8 +842,17 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test isAuthorizedFeeSource function
      * @dev Verifies that isAuthorizedFeeSource returns correct authorization status
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
-    function test_IsAuthorizedFeeSource_Success() public {
+    function test_IsAuthorizedFeeSource_Success() public view {
         assertTrue(feeCollector.isAuthorizedFeeSource(feeSource));
         assertTrue(feeCollector.isAuthorizedFeeSource(treasury));
         assertTrue(feeCollector.isAuthorizedFeeSource(admin));
@@ -614,6 +866,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test fee distribution with rounding
      * @dev Verifies that fee distribution handles rounding correctly
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_DistributeFees_Rounding() public {
         uint256 totalFees = 10001e6; // Odd number to test rounding
@@ -640,6 +901,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test multiple token fee collection
      * @dev Verifies that different tokens are tracked separately
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_MultipleTokenFeeCollection() public {
         // Deploy another mock token
@@ -667,6 +937,15 @@ contract FeeCollectorTest is Test {
     /**
      * @notice Test upgrade authorization
      * @dev Verifies that only governance can authorize upgrades
+     * @custom:security Test function with controlled environment
+     * @custom:validation Validates expected behavior and edge cases
+     * @custom:state-changes May modify test state for assertions
+     * @custom:events May emit events for testing purposes
+     * @custom:errors May test error conditions and custom errors
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     * /
      */
     function test_UpgradeAuthorization() public {
         FeeCollector newImpl = new FeeCollector();

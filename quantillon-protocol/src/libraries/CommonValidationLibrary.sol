@@ -238,4 +238,28 @@ library CommonValidationLibrary {
             revert ErrorLibrary.InsufficientBalance();
         }
     }
+
+    /**
+     * @notice Validates that an address is not a contract (for security)
+     * @dev Prevents sending funds to potentially malicious contracts
+     * @param addr The address to validate
+     * @param errorType The type of error to throw if validation fails
+     * @custom:security Prevents arbitrary-send vulnerabilities
+     * @custom:validation Ensures address is not a contract
+     * @custom:state-changes No state changes - pure function
+     * @custom:events No events emitted
+     * @custom:errors Throws InvalidAddress if address is a contract
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal library function
+     * @custom:oracle No oracle dependencies
+     */
+    function validateNotContract(address addr, string memory errorType) internal view {
+        if (addr.code.length > 0) {
+            if (keccak256(bytes(errorType)) == keccak256("treasury")) {
+                revert ErrorLibrary.InvalidTreasury();
+            } else {
+                revert ErrorLibrary.InvalidAddress();
+            }
+        }
+    }
 }

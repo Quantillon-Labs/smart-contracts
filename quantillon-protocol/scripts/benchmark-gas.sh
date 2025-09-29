@@ -6,24 +6,29 @@
 set -e
 
 # Colors
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m'
 
 print_header() {
-    echo -e "================================"
-    echo -e "$1"
-    echo -e "================================"
+    echo -e "${BLUE}================================${NC}"
+    echo -e "${BLUE}$1${NC}"
+    echo -e "${BLUE}================================${NC}"
 }
 
 print_section() {
-    echo -e "\n$1"
-    echo -e "$(printf '%.0s-' {1..${#1}})"
+    echo -e "\n${YELLOW}$1${NC}"
+    echo -e "${YELLOW}$(printf '%.0s-' {1..${#1}})${NC}"
 }
 
 print_success() {
-    echo -e " $1"
+    echo -e "${GREEN}✅ $1${NC}"
 }
 
 print_error() {
-    echo -e " $1"
+    echo -e "${RED}❌ $1${NC}"
 }
 
 # Function to show usage

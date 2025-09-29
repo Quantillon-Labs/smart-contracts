@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ErrorLibrary} from "./ErrorLibrary.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 import {TreasuryRecoveryLibrary} from "./TreasuryRecoveryLibrary.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
@@ -42,7 +42,7 @@ library AdminFunctionsLibrary {
         AccessControlUpgradeable accessControl = AccessControlUpgradeable(contractInstance);
         
         if (!accessControl.hasRole(adminRole, msg.sender)) {
-            revert ErrorLibrary.NotAuthorized();
+            revert CommonErrorLibrary.NotAuthorized();
         }
         
         emit ETHRecovered(treasury, contractInstance.balance);
@@ -76,7 +76,7 @@ library AdminFunctionsLibrary {
         AccessControlUpgradeable accessControl = AccessControlUpgradeable(contractInstance);
         
         if (!accessControl.hasRole(adminRole, msg.sender)) {
-            revert ErrorLibrary.NotAuthorized();
+            revert CommonErrorLibrary.NotAuthorized();
         }
         
         TreasuryRecoveryLibrary.recoverToken(token, amount, contractInstance, treasury);

@@ -10,9 +10,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IYieldShift} from "../../interfaces/IYieldShift.sol";
 import {VaultMath} from "../../libraries/VaultMath.sol";
-import {ErrorLibrary} from "../../libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../../libraries/CommonErrorLibrary.sol";
+import {VaultErrorLibrary} from "../../libraries/VaultErrorLibrary.sol";
 import {AccessControlLibrary} from "../../libraries/AccessControlLibrary.sol";
-import {ValidationLibrary} from "../../libraries/ValidationLibrary.sol";
 import {CommonValidationLibrary} from "../../libraries/CommonValidationLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../../libraries/TreasuryRecoveryLibrary.sol";
 import {SecureUpgradeable} from "../SecureUpgradeable.sol";
@@ -219,7 +219,7 @@ contract AaveVault is
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
     using AccessControlLibrary for AccessControlUpgradeable;
-    using ValidationLibrary for uint256;
+    using CommonValidationLibrary for uint256;
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant VAULT_MANAGER_ROLE = keccak256("VAULT_MANAGER_ROLE");
@@ -322,7 +322,7 @@ contract AaveVault is
         rewardsController = IRewardsController(_rewardsController);
         yieldShift = IYieldShift(_yieldShift);
         require(_treasury != address(0), "Treasury cannot be zero address");
-        ValidationLibrary.validateTreasuryAddress(_treasury);
+        CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
@@ -360,13 +360,13 @@ contract AaveVault is
         returns (uint256 aTokensReceived) 
     {
         AccessControlLibrary.onlyVaultManager(this);
-        ValidationLibrary.validatePositiveAmount(amount);
+        CommonValidationLibrary.validatePositiveAmount(amount);
         
-        if (emergencyMode) revert ErrorLibrary.EmergencyModeActive();
+        if (emergencyMode) revert VaultErrorLibrary.EmergencyModeActive();
         
         uint256 newTotalDeposit = principalDeposited + amount;
-        if (newTotalDeposit > maxAaveExposure) revert ErrorLibrary.WouldExceedLimit();
-        if (!_isAaveHealthy()) revert ErrorLibrary.AavePoolNotHealthy();
+        if (newTotalDeposit > maxAaveExposure) revert VaultErrorLibrary.WouldExceedLimit();
+        if (!_isAaveHealthy()) revert VaultErrorLibrary.AavePoolNotHealthy();
         
         uint256 balanceBefore = aUSDC.balanceOf(address(this));
         
@@ -382,7 +382,7 @@ contract AaveVault is
         aTokensReceived = balanceAfter - balanceBefore;
         
         if (principalDeposited > maxAaveExposure) {
-            revert ErrorLibrary.WouldExceedLimit();
+            revert VaultErrorLibrary.WouldExceedLimit();
         }
         
         emit DeployedToAave("deploy", amount, aTokensReceived, balanceAfter);
@@ -408,7 +408,7 @@ contract AaveVault is
         returns (uint256 usdcWithdrawn) 
     {
         AccessControlLibrary.onlyVaultManager(this);
-        ValidationLibrary.validatePositiveAmount(amount);
+        CommonValidationLibrary.validatePositiveAmount(amount);
         
         uint256 aaveBalance = aUSDC.balanceOf(address(this));
         uint256 withdrawAmount = _validateAndCalculateWithdrawAmount(amount, aaveBalance);
@@ -445,14 +445,14 @@ contract AaveVault is
         uint256 amount, 
         uint256 aaveBalance
     ) internal pure returns (uint256 withdrawAmount) {
-        if (aaveBalance < 1) revert ErrorLibrary.InsufficientBalance();
+        if (aaveBalance < 1) revert VaultErrorLibrary.InsufficientBalance();
         
         withdrawAmount = amount;
         if (amount == type(uint256).max) {
             withdrawAmount = aaveBalance;
         }
         
-        if (withdrawAmount > aaveBalance) revert ErrorLibrary.InsufficientBalance();
+        if (withdrawAmount > aaveBalance) revert VaultErrorLibrary.InsufficientBalance();
     }
     
     /**
@@ -473,7 +473,7 @@ contract AaveVault is
         if (!emergencyMode) {
             uint256 remainingBalance = aaveBalance - withdrawAmount;
             uint256 minBalance = principalDeposited.mulDiv(rebalanceThreshold, 10000);
-            if (remainingBalance < minBalance) revert ErrorLibrary.WouldBreachMinimum();
+            if (remainingBalance < minBalance) revert VaultErrorLibrary.WouldBreachMinimum();
         }
     }
     
@@ -495,7 +495,7 @@ contract AaveVault is
         
         if (expectedPrincipalWithdrawn > 0) {
             if (principalDeposited < expectedPrincipalWithdrawn) {
-                revert ErrorLibrary.InvalidAmount();
+                revert VaultErrorLibrary.InvalidAmount();
             }
         }
     }
@@ -563,14 +563,14 @@ contract AaveVault is
         
         // Strict validation - ensure actual received matches returned amount
         if (actualReceived != usdcWithdrawn) {
-            revert ErrorLibrary.ExcessiveSlippage();
+            revert VaultErrorLibrary.ExcessiveSlippage();
         }
         
         // Validate slippage tolerance
         if (originalAmount != type(uint256).max) {
-            ValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 100);
+            CommonValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 100);
         } else {
-            ValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 500);
+            CommonValidationLibrary.validateSlippage(actualReceived, withdrawAmount, 500);
         }
     }
     
@@ -628,7 +628,7 @@ contract AaveVault is
         AccessControlLibrary.onlyVaultManager(this);
         
         uint256 availableYield = getAvailableYield();
-        ValidationLibrary.validateThresholdValue(availableYield, harvestThreshold);
+        CommonValidationLibrary.validateThresholdValue(availableYield, harvestThreshold);
         
         uint256 protocolFee = availableYield.mulDiv(yieldFee, 10000);
         uint256 netYield = availableYield - protocolFee;
@@ -649,10 +649,10 @@ contract AaveVault is
             
             // Verify actual received matches returned amount
             if (actualYieldReceived != withdrawn) {
-                revert ErrorLibrary.ExcessiveSlippage();
+                revert VaultErrorLibrary.ExcessiveSlippage();
             }
             
-            ValidationLibrary.validateSlippage(actualYieldReceived, availableYield, 100);
+            CommonValidationLibrary.validateSlippage(actualYieldReceived, availableYield, 100);
             
         } catch Error(string memory reason) {
             revert(string(abi.encodePacked("Aave yield harvest failed: ", reason)));
@@ -974,8 +974,8 @@ contract AaveVault is
      */
     function setMaxAaveExposure(uint256 _maxExposure) external {
         AccessControlLibrary.onlyGovernance(this);
-        ValidationLibrary.validatePositiveAmount(_maxExposure);
-        if (_maxExposure > 1_000_000_000e6) revert ErrorLibrary.ConfigValueTooHigh();
+        CommonValidationLibrary.validatePositiveAmount(_maxExposure);
+        if (_maxExposure > 1_000_000_000e6) revert VaultErrorLibrary.ConfigValueTooHigh();
         
         emit AaveParameterUpdated("maxAaveExposure", maxAaveExposure, _maxExposure);
         maxAaveExposure = _maxExposure;
@@ -1019,7 +1019,7 @@ contract AaveVault is
                 
                 // Verify actual received matches returned amount
                 if (actualReceived != withdrawn) {
-                    revert ErrorLibrary.ExcessiveSlippage();
+                    revert VaultErrorLibrary.ExcessiveSlippage();
                 }
                 
             } catch Error(string memory reason) {
@@ -1096,8 +1096,8 @@ contract AaveVault is
         uint256 newRebalanceThreshold
     ) external {
         AccessControlLibrary.onlyGovernance(this);
-        ValidationLibrary.validateFee(newYieldFee, 2000);
-        ValidationLibrary.validateThreshold(newRebalanceThreshold, 2000);
+        CommonValidationLibrary.validateFee(newYieldFee, 2000);
+        CommonValidationLibrary.validateThreshold(newRebalanceThreshold, 2000);
         
         harvestThreshold = newHarvestThreshold;
         yieldFee = newYieldFee;

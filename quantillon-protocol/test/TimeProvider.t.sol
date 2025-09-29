@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract TimeProviderTest is Test {
@@ -275,11 +275,11 @@ contract TimeProviderTest is Test {
         vm.startPrank(governance);
         
         // Test exceeding positive maximum
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         timeProvider.setTimeOffset(int256(MAX_TIME_OFFSET) + 1, "Too positive");
         
         // Test exceeding negative maximum
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         timeProvider.setTimeOffset(-int256(MAX_TIME_OFFSET) - 1, "Too negative");
         
         vm.stopPrank();
@@ -371,7 +371,7 @@ contract TimeProviderTest is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_AdvanceTime_ZeroAmount() public {
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         vm.prank(governance);
         timeProvider.advanceTime(0, "Zero advancement");
     }
@@ -478,10 +478,10 @@ contract TimeProviderTest is Test {
         
         vm.startPrank(governance);
         
-        vm.expectRevert(ErrorLibrary.EmergencyModeActive.selector);
+        vm.expectRevert(CommonErrorLibrary.EmergencyModeActive.selector);
         timeProvider.setTimeOffset(1000, "Should fail");
         
-        vm.expectRevert(ErrorLibrary.EmergencyModeActive.selector);
+        vm.expectRevert(CommonErrorLibrary.EmergencyModeActive.selector);
         timeProvider.advanceTime(1000, "Should fail");
         
         // resetTime() is allowed during emergency mode (it's a governance function)

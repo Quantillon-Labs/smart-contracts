@@ -61,7 +61,7 @@ function loadEnvironmentVariables() {
         
         return envVars;
     } catch (error) {
-        console.warn('  Warning: Could not load environment variables with dotenvx:', error.message);
+        console.warn('⚠️  Warning: Could not load environment variables with dotenvx:', error.message);
         console.warn('   Falling back to process.env');
         return process.env;
     }
@@ -343,7 +343,7 @@ function scanDirectory(dirPath) {
     const fullPath = path.isAbsolute(dirPath) ? dirPath : path.join(PROJECT_ROOT, dirPath);
     
     if (!fs.existsSync(fullPath)) {
-        console.error(` ERROR: Directory ${dirPath} does not exist`);
+        console.error(`❌ ERROR: Directory ${dirPath} does not exist`);
         console.error(`   Full path: ${fullPath}`);
         console.error(`   Project root: `);
         console.error(`   This is a critical path error - validation cannot continue`);
@@ -463,14 +463,14 @@ function writeResultsToFile(reports, totalFiles, totalFunctions, totalDocumented
     
     // Write to file
     fs.writeFileSync(outputFile, output);
-    console.log(` Results written to: ${outputFile}`);
+    console.log(`📄 Results written to: ${outputFile}`);
 }
 
 /**
  * @notice Main validation function
  */
 function main() {
-    console.log(' Quantillon Protocol NatSpec Validation\n');
+    console.log('🔍 Quantillon Protocol NatSpec Validation\n');
     console.log('=' .repeat(60));
     console.log(`📁 Project Root: `);
     console.log(`📁 Script Directory: ${__dirname}`);

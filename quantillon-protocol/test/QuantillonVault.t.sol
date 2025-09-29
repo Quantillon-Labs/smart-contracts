@@ -11,7 +11,7 @@ import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {IHedgerPool} from "../src/interfaces/IHedgerPool.sol";
 import {IUserPool} from "../src/interfaces/IUserPool.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {VaultErrorLibrary} from "../src/libraries/VaultErrorLibrary.sol";
 
 /**
  * @title MockToken
@@ -1362,7 +1362,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(VaultErrorLibrary.CannotRecoverOwnToken.selector);
         vault.recoverToken(address(vault), 1000 * 1e18);
     }
     
@@ -1503,7 +1503,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoETHAvailable_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(ErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(VaultErrorLibrary.NoETHToRecover.selector);
         vault.recoverETH();
     }
     

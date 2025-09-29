@@ -12,9 +12,10 @@ import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
-import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
+import {HedgerPoolValidationLibrary} from "../libraries/HedgerPoolValidationLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
-import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
@@ -40,7 +41,7 @@ contract HedgerPool is
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
     using AccessControlLibrary for AccessControlUpgradeable;
-    using ValidationLibrary for uint256;
+    using HedgerPoolValidationLibrary for uint256;
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
@@ -142,16 +143,16 @@ contract HedgerPool is
         _;
         uint256 balanceAfter = usdc.balanceOf(address(this));
         if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0))
-            revert ErrorLibrary.FlashLoanAttackDetected();
+            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
     }
 
     modifier secureNonReentrant() {
-        if (paused()) revert ErrorLibrary.NotPaused();
+        if (paused()) revert HedgerPoolErrorLibrary.NotPaused();
         uint256 balanceBefore = usdc.balanceOf(address(this));
         _;
         uint256 balanceAfter = usdc.balanceOf(address(this));
         if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0))
-            revert ErrorLibrary.FlashLoanAttackDetected();
+            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
     }
 
     /**
@@ -168,7 +169,7 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     constructor(TimeProvider _TIME_PROVIDER) {
-        if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (address(_TIME_PROVIDER) == address(0)) revert HedgerPoolErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
@@ -282,7 +283,7 @@ contract HedgerPool is
     {
         // CHECKS
         if (hedgerWhitelistEnabled && !isWhitelistedHedger[msg.sender]) {
-            revert ErrorLibrary.NotWhitelisted();
+            revert HedgerPoolErrorLibrary.NotWhitelisted();
         }
         
         uint256 currentTime = TIME_PROVIDER.currentTime();
@@ -386,8 +387,8 @@ contract HedgerPool is
         returns (int256 pnl) 
     {
         HedgePosition storage position = positions[positionId];
-        ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
-        ValidationLibrary.validatePositionActive(position.isActive);
+        HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
+        HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
         // Check if closing this position would cause protocol undercollateralization
         _validatePositionClosureSafety(positionId, position.margin);
@@ -469,13 +470,13 @@ contract HedgerPool is
      */
     function addMargin(uint256 positionId, uint256 amount) external flashLoanProtection {
         HedgePosition storage position = positions[positionId];
-        ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
-        ValidationLibrary.validatePositionActive(position.isActive);
-        ValidationLibrary.validatePositiveAmount(amount);
-        ValidationLibrary.validateLiquidationCooldown(lastLiquidationAttempt[msg.sender], LIQUIDATION_COOLDOWN);
+        HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
+        HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
+        HedgerPoolValidationLibrary.validatePositiveAmount(amount);
+        HedgerPoolValidationLibrary.validateLiquidationCooldown(lastLiquidationAttempt[msg.sender], LIQUIDATION_COOLDOWN);
         
         if (hasPendingLiquidation[msg.sender][positionId]) {
-            revert ErrorLibrary.PendingLiquidationCommitment();
+            revert HedgerPoolErrorLibrary.PendingLiquidationCommitment();
         }
 
         uint256 fee = amount.percentageOf(coreParams.marginFee);
@@ -532,9 +533,9 @@ contract HedgerPool is
      */
     function removeMargin(uint256 positionId, uint256 amount) external flashLoanProtection {
         HedgePosition storage position = positions[positionId];
-        ValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
-        ValidationLibrary.validatePositionActive(position.isActive);
-        ValidationLibrary.validatePositiveAmount(amount);
+        HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
+        HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
+        HedgerPoolValidationLibrary.validatePositiveAmount(amount);
 
         (uint256 newMargin, uint256 newMarginRatio) = HedgerPoolLogicLibrary.validateMarginOperation(
             uint256(position.margin), amount, false, coreParams.minMarginRatio, 
@@ -573,12 +574,12 @@ contract HedgerPool is
     function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external {
         _validateRole(LIQUIDATOR_ROLE);
         AccessControlLibrary.validateAddress(hedger);
-        if (positionId == 0) revert ErrorLibrary.InvalidPosition();
+        if (positionId == 0) revert HedgerPoolErrorLibrary.InvalidPosition();
         
         bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
             hedger, positionId, salt, msg.sender
         );
-        ValidationLibrary.validateCommitmentNotExists(liquidationCommitments[commitment]);
+        HedgerPoolValidationLibrary.validateCommitmentNotExists(liquidationCommitments[commitment]);
         
         liquidationCommitments[commitment] = true;
         liquidationCommitmentTimes[commitment] = block.number;
@@ -622,13 +623,13 @@ contract HedgerPool is
         _validateRole(LIQUIDATOR_ROLE);
         
         HedgePosition storage position = positions[positionId];
-        ValidationLibrary.validatePositionOwner(position.hedger, hedger);
-        ValidationLibrary.validatePositionActive(position.isActive);
+        HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, hedger);
+        HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
         bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
             hedger, positionId, salt, msg.sender
         );
-        ValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
+        HedgerPoolValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
         
         // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
         delete liquidationCommitments[commitment];
@@ -660,7 +661,7 @@ contract HedgerPool is
             uint256(position.entryPrice), currentPrice, coreParams.liquidationThreshold
         );
         
-        if (!liquidatable) revert ErrorLibrary.PositionNotLiquidatable();
+        if (!liquidatable) revert HedgerPoolErrorLibrary.PositionNotLiquidatable();
 
         liquidationReward = uint256(position.margin).percentageOf(coreParams.liquidationPenalty);
         uint256 remainingMargin = uint256(position.margin) - liquidationReward;
@@ -733,7 +734,7 @@ contract HedgerPool is
             
             if (yieldShiftRewards > 0) {
                 uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);
-                if (claimedAmount == 0) revert ErrorLibrary.YieldClaimFailed();
+                if (claimedAmount == 0) revert HedgerPoolErrorLibrary.YieldClaimFailed();
             }
             
             usdc.safeTransfer(hedger, totalRewards);
@@ -771,7 +772,7 @@ contract HedgerPool is
         returns (uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 currentPrice, uint256 leverage, uint256 lastUpdateTime) 
     {
         HedgePosition storage position = positions[positionId];
-        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
+        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
         
         uint256 oraclePrice = _getValidOraclePrice();
         
@@ -802,7 +803,7 @@ contract HedgerPool is
      */
     function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256) {
         HedgePosition storage position = positions[positionId];
-        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
+        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
         
         if (position.positionSize == 0) return 0;
         return uint256(position.margin).mulDiv(10000, uint256(position.positionSize));
@@ -825,7 +826,7 @@ contract HedgerPool is
      */
     function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool) {
         HedgePosition storage position = positions[positionId];
-        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
+        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
         
         if (!position.isActive) return false;
         
@@ -876,10 +877,10 @@ contract HedgerPool is
         uint256 newLiquidationPenalty
     ) external {
         _validateRole(GOVERNANCE_ROLE);
-        if (newMinMarginRatio < 500) revert ErrorLibrary.ConfigValueTooLow();
-        if (newLiquidationThreshold >= newMinMarginRatio) revert ErrorLibrary.ConfigInvalid();
-        if (newMaxLeverage > 20) revert ErrorLibrary.ConfigValueTooHigh();
-        if (newLiquidationPenalty > 1000) revert ErrorLibrary.ConfigValueTooHigh();
+        if (newMinMarginRatio < 500) revert HedgerPoolErrorLibrary.ConfigValueTooLow();
+        if (newLiquidationThreshold >= newMinMarginRatio) revert HedgerPoolErrorLibrary.ConfigInvalid();
+        if (newMaxLeverage > 20) revert HedgerPoolErrorLibrary.ConfigValueTooHigh();
+        if (newLiquidationPenalty > 1000) revert HedgerPoolErrorLibrary.ConfigValueTooHigh();
 
         coreParams.minMarginRatio = uint64(newMinMarginRatio);
         coreParams.liquidationThreshold = uint64(newLiquidationThreshold);
@@ -903,7 +904,7 @@ contract HedgerPool is
      */
     function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external {
         _validateRole(GOVERNANCE_ROLE);
-        if (newEurRate > 2000 || newUsdRate > 2000) revert ErrorLibrary.ConfigValueTooHigh();
+        if (newEurRate > 2000 || newUsdRate > 2000) revert HedgerPoolErrorLibrary.ConfigValueTooHigh();
         
         coreParams.eurInterestRate = uint16(newEurRate);
         coreParams.usdInterestRate = uint16(newUsdRate);
@@ -926,9 +927,9 @@ contract HedgerPool is
      */
     function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external {
         _validateRole(GOVERNANCE_ROLE);
-        ValidationLibrary.validateFee(_entryFee, 100);
-        ValidationLibrary.validateFee(_exitFee, 100);
-        ValidationLibrary.validateFee(_marginFee, 50);
+        HedgerPoolValidationLibrary.validateFee(_entryFee, 100);
+        HedgerPoolValidationLibrary.validateFee(_exitFee, 100);
+        HedgerPoolValidationLibrary.validateFee(_marginFee, 50);
 
         coreParams.entryFee = uint16(_entryFee);
         coreParams.exitFee = uint16(_exitFee);
@@ -963,8 +964,8 @@ contract HedgerPool is
         _validateRole(EMERGENCY_ROLE);
         
         HedgePosition storage position = positions[positionId];
-        if (position.hedger != hedger) revert ErrorLibrary.InvalidHedger();
-        ValidationLibrary.validatePositionActive(position.isActive);
+        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
+        HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
         HedgerInfo storage hedgerInfo = hedgers[hedger];
         hedgerInfo.totalMargin -= uint128(position.margin);
@@ -1176,7 +1177,7 @@ contract HedgerPool is
         bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
             hedger, positionId, salt, msg.sender
         );
-        ValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
+        HedgerPoolValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
         
         delete liquidationCommitments[commitment];
         delete liquidationCommitmentTimes[commitment];
@@ -1234,7 +1235,7 @@ contract HedgerPool is
         _validateRole(GOVERNANCE_ROLE);
         require(_treasury != address(0), "Treasury cannot be zero address");
         AccessControlLibrary.validateAddress(_treasury);
-        ValidationLibrary.validateTreasuryAddress(_treasury);
+        HedgerPoolValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
@@ -1286,7 +1287,7 @@ contract HedgerPool is
         _validateRole(GOVERNANCE_ROLE);
         AccessControlLibrary.validateAddress(hedger);
         
-        if (isWhitelistedHedger[hedger]) revert ErrorLibrary.AlreadyWhitelisted();
+        if (isWhitelistedHedger[hedger]) revert HedgerPoolErrorLibrary.AlreadyWhitelisted();
         
         isWhitelistedHedger[hedger] = true;
         _grantRole(HEDGER_ROLE, hedger);
@@ -1320,7 +1321,7 @@ contract HedgerPool is
         _validateRole(GOVERNANCE_ROLE);
         AccessControlLibrary.validateAddress(hedger);
         
-        if (!isWhitelistedHedger[hedger]) revert ErrorLibrary.NotWhitelisted();
+        if (!isWhitelistedHedger[hedger]) revert HedgerPoolErrorLibrary.NotWhitelisted();
         
         isWhitelistedHedger[hedger] = false;
         _revokeRole(HEDGER_ROLE, hedger);
@@ -1370,7 +1371,7 @@ contract HedgerPool is
      */
     function _getValidOraclePrice() internal view returns (uint256) {
         (uint256 price, bool isValid) = HedgerPoolOptimizationLibrary.getValidOraclePrice(address(oracle));
-        if (!isValid) revert ErrorLibrary.InvalidOraclePrice();
+        if (!isValid) revert HedgerPoolErrorLibrary.InvalidOraclePrice();
         return price;
     }
 
@@ -1413,7 +1414,7 @@ contract HedgerPool is
             positionIndex,
             hedgers[hedger].positionIds
         );
-        if (!success) revert ErrorLibrary.PositionNotFound();
+        if (!success) revert HedgerPoolErrorLibrary.PositionNotFound();
     }
     
     /**
@@ -1552,7 +1553,7 @@ contract HedgerPool is
     function _validatePositionClosureSafety(uint256 /* positionId */, uint256 positionMargin) internal view {
         bool isValid = HedgerPoolOptimizationLibrary.validatePositionClosureSafety(positionMargin, address(vault));
         if (!isValid) {
-            revert ErrorLibrary.PositionClosureRestricted();
+            revert HedgerPoolErrorLibrary.PositionClosureRestricted();
         }
     }
 }

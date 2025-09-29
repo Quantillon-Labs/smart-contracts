@@ -12,7 +12,8 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
+import {VaultErrorLibrary} from "../libraries/VaultErrorLibrary.sol";
 
 // Internal interfaces of the Quantillon protocol
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
@@ -570,7 +571,7 @@ contract QuantillonVault is
         if (fee > 0) {
             // Approve FeeCollector to pull the fee
             bool success = usdc.approve(feeCollector, fee);
-            if (!success) revert ErrorLibrary.TokenTransferFailed();
+            if (!success) revert VaultErrorLibrary.TokenTransferFailed();
             // Call FeeCollector to collect the fee with proper tracking
             FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
         }

@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 import {FeeCollector} from "../src/core/FeeCollector.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 
@@ -150,7 +150,7 @@ contract FeeCollectorTest is Test {
         FeeCollector newImpl = new FeeCollector();
         
         // Test zero admin
-        vm.expectRevert(ErrorLibrary.InvalidAdmin.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAdmin.selector);
         bytes memory initData1 = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
             address(0),
@@ -161,7 +161,7 @@ contract FeeCollectorTest is Test {
         new ERC1967Proxy(address(newImpl), initData1);
         
         // Test zero treasury
-        vm.expectRevert(ErrorLibrary.InvalidTreasury.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidTreasury.selector);
         bytes memory initData2 = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
             admin,
@@ -172,7 +172,7 @@ contract FeeCollectorTest is Test {
         new ERC1967Proxy(address(newImpl), initData2);
         
         // Test zero devFund
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         bytes memory initData3 = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
             admin,
@@ -183,7 +183,7 @@ contract FeeCollectorTest is Test {
         new ERC1967Proxy(address(newImpl), initData3);
         
         // Test zero communityFund
-        vm.expectRevert(ErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         bytes memory initData4 = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
             admin,
@@ -265,7 +265,7 @@ contract FeeCollectorTest is Test {
      */
     function test_CollectFees_ZeroAmount() public {
         vm.startPrank(feeSource);
-        vm.expectRevert(ErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         feeCollector.collectFees(address(mockUSDC), 0, "minting");
         vm.stopPrank();
     }
@@ -285,7 +285,7 @@ contract FeeCollectorTest is Test {
      */
     function test_CollectFees_ZeroTokenAddress() public {
         vm.startPrank(feeSource);
-        vm.expectRevert(ErrorLibrary.ZeroAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         feeCollector.collectFees(address(0), 1000e6, "minting");
         vm.stopPrank();
     }
@@ -410,7 +410,7 @@ contract FeeCollectorTest is Test {
      */
     function test_DistributeFees_ZeroBalance() public {
         vm.startPrank(treasury);
-        vm.expectRevert(ErrorLibrary.InsufficientBalance.selector);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         feeCollector.distributeFees(address(mockUSDC));
         vm.stopPrank();
     }
@@ -533,7 +533,7 @@ contract FeeCollectorTest is Test {
      */
     function test_UpdateFeeRatios_InvalidRatios() public {
         vm.startPrank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidRatio.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidRatio.selector);
         feeCollector.updateFeeRatios(5000, 3000, 1000); // Sums to 9000, not 10000
         vm.stopPrank();
     }
@@ -602,7 +602,7 @@ contract FeeCollectorTest is Test {
      */
     function test_UpdateFundAddresses_ZeroAddresses() public {
         vm.startPrank(admin);
-        vm.expectRevert(ErrorLibrary.InvalidTreasury.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidTreasury.selector);
         feeCollector.updateFundAddresses(address(0), devFund, communityFund);
         vm.stopPrank();
     }
@@ -774,7 +774,7 @@ contract FeeCollectorTest is Test {
      */
     function test_EmergencyWithdraw_ZeroBalance() public {
         vm.startPrank(admin);
-        vm.expectRevert(ErrorLibrary.InsufficientBalance.selector);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         feeCollector.emergencyWithdraw(address(mockUSDC));
         vm.stopPrank();
     }

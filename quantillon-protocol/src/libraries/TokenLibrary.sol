@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {ErrorLibrary} from "./ErrorLibrary.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
+import {TokenErrorLibrary} from "./TokenErrorLibrary.sol";
 
 /**
  * @title TokenLibrary
@@ -32,9 +33,9 @@ library TokenLibrary {
      * @custom:oracle Requires fresh oracle price data
      */
     function validateMint(address to, uint256 amount, uint256 totalSupply, uint256 maxSupply) internal pure {
-        if (to == address(0)) revert ErrorLibrary.InvalidAddress();
-        if (amount == 0) revert ErrorLibrary.InvalidAmount();
-        if (totalSupply + amount > maxSupply) revert ErrorLibrary.WouldExceedLimit();
+        if (to == address(0)) revert TokenErrorLibrary.InvalidAddress();
+        if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
+        if (totalSupply + amount > maxSupply) revert TokenErrorLibrary.WouldExceedLimit();
     }
     
     /**
@@ -53,8 +54,8 @@ library TokenLibrary {
      * @custom:oracle Requires fresh oracle price data
      */
     function validateBurn(address from, uint256 amount, uint256 balance) internal pure {
-        if (from == address(0)) revert ErrorLibrary.InvalidAddress();
-        if (amount == 0) revert ErrorLibrary.InvalidAmount();
-        if (balance < amount) revert ErrorLibrary.InsufficientBalance();
+        if (from == address(0)) revert TokenErrorLibrary.InvalidAddress();
+        if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
+        if (balance < amount) revert TokenErrorLibrary.InsufficientBalance();
     }
 }

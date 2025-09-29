@@ -5,6 +5,12 @@
 
 set -e
 
+# Colors for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,8 +29,8 @@ EIP170_LIMIT=24576
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
 
-echo -e " QUANTILLON PROTOCOL - CONTRACT SIZE ANALYSIS"
-echo -e "═══════════════════════════════════════════════════════════════════"
+echo -e "${BLUE}🔍 QUANTILLON PROTOCOL - CONTRACT SIZE ANALYSIS${NC}"
+echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
 echo -e "Generated: $(date)"
 echo -e "EIP-170 Limit: $EIP170_LIMIT bytes (24KB)"
 echo -e "Project: Quantillon Protocol Smart Contracts"
@@ -89,8 +95,8 @@ declare -a safe_contracts=()
 total_size=0
 contract_count=0
 
-echo -e "📊 ANALYZING CORE SMART CONTRACTS"
-echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${BLUE}📊 ANALYZING CORE SMART CONTRACTS${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 # Analyze each contract
 for contract_info in "${core_contracts[@]}"; do

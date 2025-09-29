@@ -1,5 +1,5 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/03f8f2db069e4fe5f129cc3e28526efe7b1f6f49/src/core/HedgerPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/71cd41fc9aa7c18638af4654e656fb0dc6b6d493/src/core/HedgerPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -12,7 +12,7 @@ Optimized EUR/USD hedging pool for managing currency risk and providing yield
 *Optimized version with reduced contract size through library extraction and code consolidation*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -318,21 +318,21 @@ Initializes the HedgerPool contract with a time provider
 *Constructor that sets up the time provider and disables initializers for upgrade safety*
 
 **Notes:**
-- security: Validates that the time provider is not zero address
+- Validates that the time provider is not zero address
 
-- validation: Ensures TIME_PROVIDER is a valid contract address
+- Ensures TIME_PROVIDER is a valid contract address
 
-- state-changes: Sets TIME_PROVIDER and disables initializers
+- Sets TIME_PROVIDER and disables initializers
 
-- events: None
+- None
 
-- errors: Throws ZeroAddress if _TIME_PROVIDER is address(0)
+- Throws ZeroAddress if _TIME_PROVIDER is address(0)
 
-- reentrancy: Not applicable - constructor
+- Not applicable - constructor
 
-- access: Public constructor
+- Public constructor
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -356,21 +356,21 @@ Initializes the HedgerPool with contracts and parameters
 4. Security (pause, reentrancy, upgrades)*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Initializes all contract state variables
+- Initializes all contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by initializer modifier
+- Protected by initializer modifier
 
-- access: Restricted to initializer modifier
+- Restricted to initializer modifier
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -415,21 +415,21 @@ Opens a new hedge position for a hedger
 4. Oracle price validation*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates amount > 0, leverage within limits, hedger whitelist
+- Validates amount > 0, leverage within limits, hedger whitelist
 
-- state-changes: Creates new position, updates hedger stats, transfers USDC to vault
+- Creates new position, updates hedger stats, transfers USDC to vault
 
-- events: Emits HedgePositionOpened with position details
+- Emits HedgePositionOpened with position details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by secureNonReentrant modifier
+- Protected by secureNonReentrant modifier
 
-- access: Restricted to whitelisted hedgers (if whitelist enabled)
+- Restricted to whitelisted hedgers (if whitelist enabled)
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -470,21 +470,21 @@ Closes an existing hedge position
 3. Pause protection*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates position ownership, active status, and protocol safety
+- Validates position ownership, active status, and protocol safety
 
-- state-changes: Closes position, updates hedger stats, withdraws USDC from vault
+- Closes position, updates hedger stats, withdraws USDC from vault
 
-- events: Emits HedgePositionClosed with position details
+- Emits HedgePositionClosed with position details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by whenNotPaused modifier
+- Protected by whenNotPaused modifier
 
-- access: Restricted to position owner
+- Restricted to position owner
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -520,21 +520,21 @@ Adds additional margin to an existing hedge position
 3. Liquidation cooldown validation*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates position ownership, active status, positive amount, liquidation cooldown
+- Validates position ownership, active status, positive amount, liquidation cooldown
 
-- state-changes: Updates position margin, hedger stats, transfers USDC to vault
+- Updates position margin, hedger stats, transfers USDC to vault
 
-- events: Emits MarginAdded with position details
+- Emits MarginAdded with position details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by flashLoanProtection modifier
+- Protected by flashLoanProtection modifier
 
-- access: Restricted to position owner
+- Restricted to position owner
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -565,21 +565,21 @@ Removes margin from an existing hedge position
 3. Minimum margin ratio validation*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates position ownership, active status, positive amount, minimum margin ratio
+- Validates position ownership, active status, positive amount, minimum margin ratio
 
-- state-changes: Updates position margin, hedger stats, withdraws USDC from vault
+- Updates position margin, hedger stats, withdraws USDC from vault
 
-- events: Emits MarginUpdated with position details
+- Emits MarginUpdated with position details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by flashLoanProtection modifier
+- Protected by flashLoanProtection modifier
 
-- access: Restricted to position owner
+- Restricted to position owner
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -600,21 +600,21 @@ Commits to liquidating a hedger position with a salt for MEV protection
 *Creates a liquidation commitment that must be executed within a time window*
 
 **Notes:**
-- security: Requires LIQUIDATOR_ROLE, validates addresses and position ID
+- Requires LIQUIDATOR_ROLE, validates addresses and position ID
 
-- validation: Ensures hedger is valid address, positionId > 0, commitment doesn't exist
+- Ensures hedger is valid address, positionId > 0, commitment doesn't exist
 
-- state-changes: Sets liquidation commitment, timing, and pending liquidation flags
+- Sets liquidation commitment, timing, and pending liquidation flags
 
-- events: None (commitment phase)
+- None (commitment phase)
 
-- errors: Throws InvalidRole, InvalidAddress, InvalidPosition, or CommitmentExists
+- Throws InvalidRole, InvalidAddress, InvalidPosition, or CommitmentExists
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to LIQUIDATOR_ROLE
+- Restricted to LIQUIDATOR_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -646,21 +646,21 @@ Liquidates an undercollateralized hedge position
 3. Reentrancy protection*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates liquidator role, commitment, position ownership, active status
+- Validates liquidator role, commitment, position ownership, active status
 
-- state-changes: Liquidates position, updates hedger stats, withdraws USDC from vault
+- Liquidates position, updates hedger stats, withdraws USDC from vault
 
-- events: Emits HedgerLiquidated with liquidation details
+- Emits HedgerLiquidated with liquidation details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to LIQUIDATOR_ROLE
+- Restricted to LIQUIDATOR_ROLE
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -699,21 +699,21 @@ Claims hedging rewards for a hedger
 2. Reward calculation validation*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates hedger has active positions and rewards available
+- Validates hedger has active positions and rewards available
 
-- state-changes: Updates hedger reward tracking, transfers rewards
+- Updates hedger reward tracking, transfers rewards
 
-- events: Emits HedgingRewardsClaimed with reward details
+- Emits HedgingRewardsClaimed with reward details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to hedgers with active positions
+- Restricted to hedgers with active positions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -738,21 +738,21 @@ Retrieves detailed information about a specific hedger position
 *Returns position data including current oracle price for real-time calculations*
 
 **Notes:**
-- security: Validates that the caller owns the position
+- Validates that the caller owns the position
 
-- validation: Ensures position exists and hedger matches
+- Ensures position exists and hedger matches
 
-- state-changes: None (view function with oracle call)
+- None (view function with oracle call)
 
-- events: None
+- None
 
-- errors: Throws InvalidHedger if position doesn't belong to hedger
+- Throws InvalidHedger if position doesn't belong to hedger
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Public (anyone can query position data)
+- Public (anyone can query position data)
 
-- oracle: Calls _getValidOraclePrice() for current price
+- Calls _getValidOraclePrice() for current price
 
 
 ```solidity
@@ -794,21 +794,21 @@ Calculates the current margin ratio for a hedger position
 *Returns margin ratio as basis points (10000 = 100%)*
 
 **Notes:**
-- security: Validates that the caller owns the position
+- Validates that the caller owns the position
 
-- validation: Ensures position exists and hedger matches
+- Ensures position exists and hedger matches
 
-- state-changes: None (view function)
+- None (view function)
 
-- events: None
+- None
 
-- errors: Throws InvalidHedger if position doesn't belong to hedger
+- Throws InvalidHedger if position doesn't belong to hedger
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public (anyone can query margin ratio)
+- Public (anyone can query margin ratio)
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -835,21 +835,21 @@ Checks if a hedger position is eligible for liquidation
 *Uses current oracle price to determine if position is undercollateralized*
 
 **Notes:**
-- security: Validates that the caller owns the position
+- Validates that the caller owns the position
 
-- validation: Ensures position exists, is active, and hedger matches
+- Ensures position exists, is active, and hedger matches
 
-- state-changes: None (view function with oracle call)
+- None (view function with oracle call)
 
-- events: None
+- None
 
-- errors: Throws InvalidHedger if position doesn't belong to hedger
+- Throws InvalidHedger if position doesn't belong to hedger
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Public (anyone can check liquidation status)
+- Public (anyone can check liquidation status)
 
-- oracle: Calls _getValidOraclePrice() for current price comparison
+- Calls _getValidOraclePrice() for current price comparison
 
 
 ```solidity
@@ -876,21 +876,21 @@ Returns the total hedge exposure across all active positions
 *Provides aggregate exposure for risk management and monitoring*
 
 **Notes:**
-- security: No security validations required for view function
+- No security validations required for view function
 
-- validation: None required for view function
+- None required for view function
 
-- state-changes: None (view function)
+- None (view function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public (anyone can query total exposure)
+- Public (anyone can query total exposure)
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -910,21 +910,21 @@ Updates core hedging parameters for the protocol
 *Allows governance to adjust risk parameters for hedge positions*
 
 **Notes:**
-- security: Requires GOVERNANCE_ROLE, validates parameter ranges
+- Requires GOVERNANCE_ROLE, validates parameter ranges
 
-- validation: Ensures minMarginRatio >= 500, liquidationThreshold < minMarginRatio, maxLeverage <= 20, liquidationPenalty <= 1000
+- Ensures minMarginRatio >= 500, liquidationThreshold < minMarginRatio, maxLeverage <= 20, liquidationPenalty <= 1000
 
-- state-changes: Updates coreParams struct with new values
+- Updates coreParams struct with new values
 
-- events: None
+- None
 
-- errors: Throws InvalidRole, ConfigValueTooLow, ConfigInvalid, or ConfigValueTooHigh
+- Throws InvalidRole, ConfigValueTooLow, ConfigInvalid, or ConfigValueTooHigh
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -952,21 +952,21 @@ Updates interest rates for EUR and USD positions
 *Allows governance to adjust interest rates for yield calculations*
 
 **Notes:**
-- security: Requires GOVERNANCE_ROLE, validates rate limits
+- Requires GOVERNANCE_ROLE, validates rate limits
 
-- validation: Ensures both rates are <= 2000 basis points (20%)
+- Ensures both rates are <= 2000 basis points (20%)
 
-- state-changes: Updates coreParams with new interest rates
+- Updates coreParams with new interest rates
 
-- events: None
+- None
 
-- errors: Throws InvalidRole or ConfigValueTooHigh
+- Throws InvalidRole or ConfigValueTooHigh
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -987,21 +987,21 @@ Sets the fee structure for hedge positions
 *Allows governance to adjust fees for position entry, exit, and margin operations*
 
 **Notes:**
-- security: Requires GOVERNANCE_ROLE, validates fee limits
+- Requires GOVERNANCE_ROLE, validates fee limits
 
-- validation: Ensures entryFee <= 100, exitFee <= 100, marginFee <= 50
+- Ensures entryFee <= 100, exitFee <= 100, marginFee <= 50
 
-- state-changes: Updates coreParams with new fee values
+- Updates coreParams with new fee values
 
-- events: None
+- None
 
-- errors: Throws InvalidRole or InvalidFee
+- Throws InvalidRole or InvalidFee
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1031,21 +1031,21 @@ Emergency closure of a hedge position by governance
 2. Position ownership validation*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates emergency role, position ownership, active status
+- Validates emergency role, position ownership, active status
 
-- state-changes: Closes position, updates hedger stats, withdraws USDC from vault
+- Closes position, updates hedger stats, withdraws USDC from vault
 
-- events: Emits EmergencyPositionClosed with position details
+- Emits EmergencyPositionClosed with position details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Not protected - emergency function
+- Not protected - emergency function
 
-- access: Restricted to EMERGENCY_ROLE
+- Restricted to EMERGENCY_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1066,21 +1066,21 @@ Pauses all contract operations in case of emergency
 *Emergency function to halt all user interactions*
 
 **Notes:**
-- security: Requires EMERGENCY_ROLE
+- Requires EMERGENCY_ROLE
 
-- validation: None required
+- None required
 
-- state-changes: Sets contract to paused state
+- Sets contract to paused state
 
-- events: Emits Paused event
+- Emits Paused event
 
-- errors: Throws InvalidRole if caller lacks EMERGENCY_ROLE
+- Throws InvalidRole if caller lacks EMERGENCY_ROLE
 
-- reentrancy: Not applicable
+- Not applicable
 
-- access: Restricted to EMERGENCY_ROLE
+- Restricted to EMERGENCY_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1094,21 +1094,21 @@ Unpauses contract operations after emergency
 *Resumes normal contract functionality*
 
 **Notes:**
-- security: Requires EMERGENCY_ROLE
+- Requires EMERGENCY_ROLE
 
-- validation: None required
+- None required
 
-- state-changes: Sets contract to unpaused state
+- Sets contract to unpaused state
 
-- events: Emits Unpaused event
+- Emits Unpaused event
 
-- errors: Throws InvalidRole if caller lacks EMERGENCY_ROLE
+- Throws InvalidRole if caller lacks EMERGENCY_ROLE
 
-- reentrancy: Not applicable
+- Not applicable
 
-- access: Restricted to EMERGENCY_ROLE
+- Restricted to EMERGENCY_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1122,21 +1122,21 @@ Checks if a position has a pending liquidation commitment
 *Returns true if a liquidation commitment exists for the position*
 
 **Notes:**
-- security: No security validations required for view function
+- No security validations required for view function
 
-- validation: None required for view function
+- None required for view function
 
-- state-changes: None (view function)
+- None (view function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public (anyone can query commitment status)
+- Public (anyone can query commitment status)
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1163,21 +1163,21 @@ Returns the current hedging configuration parameters
 *Provides access to all core hedging parameters for external contracts*
 
 **Notes:**
-- security: No security validations required for view function
+- No security validations required for view function
 
-- validation: None required for view function
+- None required for view function
 
-- state-changes: None (view function)
+- None (view function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public (anyone can query configuration)
+- Public (anyone can query configuration)
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1212,21 +1212,21 @@ Returns the current margin fee rate
 *Provides the margin fee for margin operations*
 
 **Notes:**
-- security: No security validations required for view function
+- No security validations required for view function
 
-- validation: None required for view function
+- None required for view function
 
-- state-changes: None (view function)
+- None (view function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public (anyone can query margin fee)
+- Public (anyone can query margin fee)
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1246,21 +1246,21 @@ Returns the maximum allowed values for various parameters
 *Provides hard limits for position sizes, margins, and other constraints*
 
 **Notes:**
-- security: No security validations required for pure function
+- No security validations required for pure function
 
-- validation: None required for pure function
+- None required for pure function
 
-- state-changes: None (pure function)
+- None (pure function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public (anyone can query max values)
+- Public (anyone can query max values)
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1297,21 +1297,21 @@ Checks if hedging operations are currently active
 *Returns true if contract is not paused, false if paused*
 
 **Notes:**
-- security: No security validations required for view function
+- No security validations required for view function
 
-- validation: None required for view function
+- None required for view function
 
-- state-changes: None (view function)
+- None (view function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public (anyone can query hedging status)
+- Public (anyone can query hedging status)
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1331,21 +1331,21 @@ Clears expired liquidation commitments after cooldown period
 *Allows liquidators to clean up expired commitments*
 
 **Notes:**
-- security: Requires LIQUIDATOR_ROLE, checks cooldown period
+- Requires LIQUIDATOR_ROLE, checks cooldown period
 
-- validation: Ensures cooldown period has passed
+- Ensures cooldown period has passed
 
-- state-changes: Clears pending liquidation flag if expired
+- Clears pending liquidation flag if expired
 
-- events: None
+- None
 
-- errors: Throws InvalidRole if caller lacks LIQUIDATOR_ROLE
+- Throws InvalidRole if caller lacks LIQUIDATOR_ROLE
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to LIQUIDATOR_ROLE
+- Restricted to LIQUIDATOR_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1366,21 +1366,21 @@ Cancels a liquidation commitment before execution
 *Allows liquidators to cancel their own commitments*
 
 **Notes:**
-- security: Requires LIQUIDATOR_ROLE, validates commitment exists
+- Requires LIQUIDATOR_ROLE, validates commitment exists
 
-- validation: Ensures commitment exists and belongs to caller
+- Ensures commitment exists and belongs to caller
 
-- state-changes: Deletes commitment data and clears pending liquidation flag
+- Deletes commitment data and clears pending liquidation flag
 
-- events: None
+- None
 
-- errors: Throws InvalidRole or CommitmentNotFound
+- Throws InvalidRole or CommitmentNotFound
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to LIQUIDATOR_ROLE
+- Restricted to LIQUIDATOR_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1402,21 +1402,21 @@ Recovers accidentally sent tokens to the treasury
 *Emergency function to recover tokens sent to the contract*
 
 **Notes:**
-- security: Requires DEFAULT_ADMIN_ROLE
+- Requires DEFAULT_ADMIN_ROLE
 
-- validation: None required
+- None required
 
-- state-changes: Transfers tokens from contract to treasury
+- Transfers tokens from contract to treasury
 
-- events: None
+- None
 
-- errors: Throws InvalidRole if caller lacks DEFAULT_ADMIN_ROLE
+- Throws InvalidRole if caller lacks DEFAULT_ADMIN_ROLE
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1437,21 +1437,21 @@ Recovers accidentally sent ETH to the treasury
 *Emergency function to recover ETH sent to the contract*
 
 **Notes:**
-- security: Requires DEFAULT_ADMIN_ROLE
+- Requires DEFAULT_ADMIN_ROLE
 
-- validation: None required
+- None required
 
-- state-changes: Transfers ETH from contract to treasury
+- Transfers ETH from contract to treasury
 
-- events: Emits ETHRecovered event
+- Emits ETHRecovered event
 
-- errors: Throws InvalidRole if caller lacks DEFAULT_ADMIN_ROLE
+- Throws InvalidRole if caller lacks DEFAULT_ADMIN_ROLE
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1465,21 +1465,21 @@ Updates the treasury address for fee collection
 *Allows governance to change the treasury address*
 
 **Notes:**
-- security: Requires GOVERNANCE_ROLE, validates address
+- Requires GOVERNANCE_ROLE, validates address
 
-- validation: Ensures treasury is not zero address and passes validation
+- Ensures treasury is not zero address and passes validation
 
-- state-changes: Updates treasury address
+- Updates treasury address
 
-- events: Emits TreasuryUpdated event
+- Emits TreasuryUpdated event
 
-- errors: Throws InvalidRole, InvalidAddress, or zero address error
+- Throws InvalidRole, InvalidAddress, or zero address error
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1499,21 +1499,21 @@ Updates the vault address for USDC management
 *Allows governance to change the vault contract address*
 
 **Notes:**
-- security: Requires GOVERNANCE_ROLE, validates address
+- Requires GOVERNANCE_ROLE, validates address
 
-- validation: Ensures vault is not zero address
+- Ensures vault is not zero address
 
-- state-changes: Updates vault address
+- Updates vault address
 
-- events: Emits VaultUpdated event
+- Emits VaultUpdated event
 
-- errors: Throws InvalidRole or InvalidAddress
+- Throws InvalidRole or InvalidAddress
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1540,21 +1540,21 @@ Whitelists a hedger address for position opening
 2. Address validation*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates governance role, hedger address, not already whitelisted
+- Validates governance role, hedger address, not already whitelisted
 
-- state-changes: Adds hedger to whitelist, grants HEDGER_ROLE
+- Adds hedger to whitelist, grants HEDGER_ROLE
 
-- events: Emits HedgerWhitelisted with hedger and caller details
+- Emits HedgerWhitelisted with hedger and caller details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Not protected - governance function
+- Not protected - governance function
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1581,21 +1581,21 @@ Removes a hedger from the whitelist
 2. Address validation*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates governance role, hedger address, currently whitelisted
+- Validates governance role, hedger address, currently whitelisted
 
-- state-changes: Removes hedger from whitelist, revokes HEDGER_ROLE
+- Removes hedger from whitelist, revokes HEDGER_ROLE
 
-- events: Emits HedgerRemoved with hedger and caller details
+- Emits HedgerRemoved with hedger and caller details
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Not protected - governance function
+- Not protected - governance function
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1622,21 +1622,21 @@ Toggles the hedger whitelist mode on/off
 *When disabled: Any address can open positions*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates governance role
+- Validates governance role
 
-- state-changes: Updates hedgerWhitelistEnabled state
+- Updates hedgerWhitelistEnabled state
 
-- events: Emits HedgerWhitelistModeToggled with new state and caller
+- Emits HedgerWhitelistModeToggled with new state and caller
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Not protected - governance function
+- Not protected - governance function
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1656,21 +1656,21 @@ Gets a valid EUR/USD price from the oracle
 *Internal function to fetch and validate oracle price*
 
 **Notes:**
-- security: Validates oracle price is valid
+- Validates oracle price is valid
 
-- validation: Validates oracle price is valid
+- Validates oracle price is valid
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidOraclePrice if price is invalid
+- Throws InvalidOraclePrice if price is invalid
 
-- reentrancy: Not protected - internal function
+- Not protected - internal function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1690,21 +1690,21 @@ Validates that the caller has the required role
 *Internal function to check role-based access control*
 
 **Notes:**
-- security: Validates caller has the specified role
+- Validates caller has the specified role
 
-- validation: Checks role against AccessControlLibrary
+- Checks role against AccessControlLibrary
 
-- state-changes: None (view function)
+- None (view function)
 
-- events: None
+- None
 
-- errors: Throws InvalidRole if caller lacks required role
+- Throws InvalidRole if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function
+- Internal function
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1724,21 +1724,21 @@ Removes a position from the hedger's position arrays
 *Internal function to maintain position tracking arrays*
 
 **Notes:**
-- security: Validates position exists before removal
+- Validates position exists before removal
 
-- validation: Ensures position exists in hedger's array
+- Ensures position exists in hedger's array
 
-- state-changes: Removes position from arrays and updates indices
+- Removes position from arrays and updates indices
 
-- events: None
+- None
 
-- errors: Throws PositionNotFound if position doesn't exist
+- Throws PositionNotFound if position doesn't exist
 
-- reentrancy: Not applicable - internal function
+- Not applicable - internal function
 
-- access: Internal function
+- Internal function
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1759,21 +1759,21 @@ Packs position open data into a single bytes32 for gas efficiency
 *Encodes position size, margin, leverage, and entry price into a compact format*
 
 **Notes:**
-- security: No security validations required for pure function
+- No security validations required for pure function
 
-- validation: None required for pure function
+- None required for pure function
 
-- state-changes: None (pure function)
+- None (pure function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: Uses provided entryPrice parameter
+- Uses provided entryPrice parameter
 
 
 ```solidity
@@ -1805,21 +1805,21 @@ Packs position close data into a single bytes32 for gas efficiency
 *Encodes exit price, PnL, and timestamp into a compact format*
 
 **Notes:**
-- security: No security validations required for pure function
+- No security validations required for pure function
 
-- validation: None required for pure function
+- None required for pure function
 
-- state-changes: None (pure function)
+- None (pure function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1847,21 +1847,21 @@ Packs margin data into a single bytes32 for gas efficiency
 *Encodes margin amount, new margin ratio, and operation type*
 
 **Notes:**
-- security: No security validations required for pure function
+- No security validations required for pure function
 
-- validation: None required for pure function
+- None required for pure function
 
-- state-changes: None (pure function)
+- None (pure function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1889,21 +1889,21 @@ Packs liquidation data into a single bytes32 for gas efficiency
 *Encodes liquidation reward and remaining margin*
 
 **Notes:**
-- security: No security validations required for pure function
+- No security validations required for pure function
 
-- validation: None required for pure function
+- None required for pure function
 
-- state-changes: None (pure function)
+- None (pure function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1930,21 +1930,21 @@ Packs reward data into a single bytes32 for gas efficiency
 *Encodes interest differential, yield shift rewards, and total rewards*
 
 **Notes:**
-- security: No security validations required for pure function
+- No security validations required for pure function
 
-- validation: None required for pure function
+- None required for pure function
 
-- state-changes: None (pure function)
+- None (pure function)
 
-- events: None
+- None
 
-- errors: None
+- None
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1975,21 +1975,21 @@ Validates that closing a position won't cause protocol undercollateralization
 *Checks if closing the position would make the protocol undercollateralized for QEURO minting*
 
 **Notes:**
-- security: Validates protocol collateralization status
+- Validates protocol collateralization status
 
-- validation: Checks vault collateralization ratio
+- Checks vault collateralization ratio
 
-- state-changes: No state changes - validation only
+- No state changes - validation only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws PositionClosureRestricted if closure would cause undercollateralization
+- Throws PositionClosureRestricted if closure would cause undercollateralization
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

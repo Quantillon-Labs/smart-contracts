@@ -13,9 +13,9 @@ import {IHedgerPool} from "../../interfaces/IHedgerPool.sol";
 import {IAaveVault} from "../../interfaces/IAaveVault.sol";
 import {IstQEURO} from "../../interfaces/IstQEURO.sol";
 import {VaultMath} from "../../libraries/VaultMath.sol";
-import {ErrorLibrary} from "../../libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../../libraries/CommonErrorLibrary.sol";
+import {YieldValidationLibrary} from "../../libraries/YieldValidationLibrary.sol";
 import {AccessControlLibrary} from "../../libraries/AccessControlLibrary.sol";
-import {ValidationLibrary} from "../../libraries/ValidationLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../../libraries/TreasuryRecoveryLibrary.sol";
 import {TimeProvider} from "../../libraries/TimeProviderLibrary.sol";
 import {YieldShiftCalculationLibrary} from "../../libraries/YieldShiftCalculationLibrary.sol";
@@ -106,7 +106,7 @@ contract YieldShift is
     using SafeERC20 for IERC20;
     using VaultMath for uint256;
     using AccessControlLibrary for AccessControlUpgradeable;
-    using ValidationLibrary for uint256;
+    using YieldValidationLibrary for uint256;
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
@@ -216,7 +216,7 @@ contract YieldShift is
      * @custom:oracle No oracle dependencies
      */
     constructor(TimeProvider _TIME_PROVIDER) {
-        if (address(_TIME_PROVIDER) == address(0)) revert ErrorLibrary.ZeroAddress();
+        if (address(_TIME_PROVIDER) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
@@ -275,7 +275,7 @@ contract YieldShift is
         aaveVault = IAaveVault(_aaveVault);
         stQEURO = IstQEURO(_stQEURO);
         require(_treasury != address(0), "Treasury cannot be zero address");
-        ValidationLibrary.validateTreasuryAddress(_treasury);
+        YieldValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
 
@@ -366,7 +366,7 @@ contract YieldShift is
             "Unauthorized yield source"
         );
         
-        ValidationLibrary.validatePositiveAmount(yieldAmount);
+        YieldValidationLibrary.validatePositiveAmount(yieldAmount);
         
         // Verify USDC was actually received
         uint256 balanceBefore = usdc.balanceOf(address(this));
@@ -418,7 +418,7 @@ contract YieldShift is
         returns (uint256 yieldAmount) 
     {
         if (msg.sender != user && msg.sender != address(userPool)) {
-            revert ErrorLibrary.NotAuthorized();
+            revert CommonErrorLibrary.NotAuthorized();
         }
         
         yieldAmount = userPendingYield[user];
@@ -426,10 +426,10 @@ contract YieldShift is
         if (yieldAmount > 0) {
             // Check holding period
             if (TIME_PROVIDER.currentTime() < lastDepositTime[user] + MIN_HOLDING_PERIOD) {
-                revert ErrorLibrary.HoldingPeriodNotMet();
+                revert CommonErrorLibrary.HoldingPeriodNotMet();
             }
             
-            if (userYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
+            if (userYieldPool < yieldAmount) revert CommonErrorLibrary.InsufficientYield();
             
             userPendingYield[user] = 0;
             userLastClaim[user] = TIME_PROVIDER.currentTime();
@@ -462,13 +462,13 @@ contract YieldShift is
         returns (uint256 yieldAmount) 
     {
         if (msg.sender != hedger && msg.sender != address(hedgerPool)) {
-            revert ErrorLibrary.NotAuthorized();
+            revert CommonErrorLibrary.NotAuthorized();
         }
         
         yieldAmount = hedgerPendingYield[hedger];
         
         if (yieldAmount > 0) {
-            if (hedgerYieldPool < yieldAmount) revert ErrorLibrary.InsufficientYield();
+            if (hedgerYieldPool < yieldAmount) revert CommonErrorLibrary.InsufficientYield();
             
             hedgerPendingYield[hedger] = 0;
             hedgerLastClaim[hedger] = TIME_PROVIDER.currentTime();
@@ -634,7 +634,7 @@ contract YieldShift is
      */
     function updateLastDepositTime(address user) external {
         if (msg.sender != address(userPool) && msg.sender != address(hedgerPool)) {
-            revert ErrorLibrary.NotAuthorized();
+            revert CommonErrorLibrary.NotAuthorized();
         }
         lastDepositTime[user] = TIME_PROVIDER.currentTime();
     }
@@ -1034,10 +1034,10 @@ contract YieldShift is
         uint256 _adjustmentSpeed
     ) external {
         AccessControlLibrary.onlyGovernance(this);
-        ValidationLibrary.validateYieldShift(_baseYieldShift);
-        ValidationLibrary.validateYieldShift(_maxYieldShift);
-        if (_maxYieldShift < _baseYieldShift) revert ErrorLibrary.InvalidShiftRange();
-        ValidationLibrary.validateAdjustmentSpeed(_adjustmentSpeed, 1000);
+        YieldValidationLibrary.validateYieldShift(_baseYieldShift);
+        YieldValidationLibrary.validateYieldShift(_maxYieldShift);
+        if (_maxYieldShift < _baseYieldShift) revert CommonErrorLibrary.InvalidShiftRange();
+        YieldValidationLibrary.validateAdjustmentSpeed(_adjustmentSpeed, 1000);
 
         baseYieldShift = _baseYieldShift;
         maxYieldShift = _maxYieldShift;
@@ -1061,7 +1061,7 @@ contract YieldShift is
      */
     function setTargetPoolRatio(uint256 _targetPoolRatio) external {
         AccessControlLibrary.onlyGovernance(this);
-        ValidationLibrary.validateTargetRatio(_targetPoolRatio, 50000);
+        YieldValidationLibrary.validateTargetRatio(_targetPoolRatio, 50000);
         
         targetPoolRatio = _targetPoolRatio;
     }
@@ -1156,8 +1156,8 @@ contract YieldShift is
      */
     function emergencyYieldDistribution(uint256 userAmount, uint256 hedgerAmount) external {
         AccessControlLibrary.onlyEmergencyRole(this);
-        if (userAmount > userYieldPool) revert ErrorLibrary.InsufficientYield();
-        if (hedgerAmount > hedgerYieldPool) revert ErrorLibrary.InsufficientYield();
+        if (userAmount > userYieldPool) revert CommonErrorLibrary.InsufficientYield();
+        if (hedgerAmount > hedgerYieldPool) revert CommonErrorLibrary.InsufficientYield();
         
         if (userAmount > 0) {
             userYieldPool -= userAmount;

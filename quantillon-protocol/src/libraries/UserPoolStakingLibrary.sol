@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {VaultMath} from "./VaultMath.sol";
-import {ErrorLibrary} from "./ErrorLibrary.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 
 /**
  * @title UserPoolStakingLibrary
@@ -156,24 +156,24 @@ library UserPoolStakingLibrary {
         UserStakingData memory userStakingData
     ) external pure {
         if (amount < MIN_STAKE_AMOUNT) {
-            revert ErrorLibrary.InsufficientBalance();
+            revert CommonErrorLibrary.InsufficientBalance();
         }
         
         if (amount > MAX_STAKE_AMOUNT) {
-            revert ErrorLibrary.AboveLimit();
+            revert CommonErrorLibrary.AboveLimit();
         }
         
         if (duration < MIN_STAKE_DURATION) {
-            revert ErrorLibrary.HoldingPeriodNotMet();
+            revert CommonErrorLibrary.HoldingPeriodNotMet();
         }
         
         if (duration > MAX_STAKE_DURATION) {
-            revert ErrorLibrary.AboveLimit();
+            revert CommonErrorLibrary.AboveLimit();
         }
         
         // Check if user has too many active stakes
         if (userStakingData.activeStakes >= 10) {
-            revert ErrorLibrary.TooManyPositions();
+            revert CommonErrorLibrary.TooManyPositions();
         }
     }
 
@@ -196,18 +196,18 @@ library UserPoolStakingLibrary {
         uint256 currentTime
     ) external pure {
         if (!stakeInfo.isActive) {
-            revert ErrorLibrary.PositionNotActive();
+            revert CommonErrorLibrary.PositionNotActive();
         }
         
         // Check minimum stake duration
         uint256 stakeDuration = currentTime - stakeInfo.startTime;
         if (stakeDuration < MIN_STAKE_DURATION) {
-            revert ErrorLibrary.HoldingPeriodNotMet();
+            revert CommonErrorLibrary.HoldingPeriodNotMet();
         }
         
         // Check unstake cooldown
         if (currentTime - stakeInfo.lastRewardClaim < UNSTAKE_COOLDOWN) {
-            revert ErrorLibrary.LiquidationCooldown();
+            revert CommonErrorLibrary.LiquidationCooldown();
         }
     }
 

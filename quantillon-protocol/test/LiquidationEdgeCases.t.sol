@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
-import {ErrorLibrary} from "../src/libraries/ErrorLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
@@ -372,7 +372,7 @@ contract LiquidationEdgeCases is Test {
         
         // Attempt to directly manipulate position (should fail due to access control)
         // This should fail because flashLoanAttacker is not whitelisted as a hedger
-        vm.expectRevert(ErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
         hedgerPool.enterHedgePosition(1000 * USDC_PRECISION, 2 * PRECISION / PRECISION);
         
         vm.stopPrank();
@@ -527,7 +527,7 @@ contract LiquidationEdgeCases is Test {
         hedgerPool.commitLiquidation(hedger, 1, bytes32(0));
         
         // Try to execute immediately (should fail due to position not liquidatable)
-        // vm.expectRevert(ErrorLibrary.PositionNotLiquidatable.selector);
+        // vm.expectRevert(HedgerPoolErrorLibrary.PositionNotLiquidatable.selector);
         // hedgerPool.liquidateHedger(hedger, 1, bytes32(0)); // Commented out due to margin ratio issues
         
         vm.stopPrank();
@@ -801,7 +801,7 @@ contract LiquidationEdgeCases is Test {
         
         // Try to commit again (should fail)
         vm.startPrank(liquidator);
-        vm.expectRevert(ErrorLibrary.CommitmentAlreadyExists.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.CommitmentAlreadyExists.selector);
         hedgerPool.commitLiquidation(hedger, 1, bytes32(0));
         vm.stopPrank();
     }
@@ -904,7 +904,7 @@ contract LiquidationEdgeCases is Test {
         vm.startPrank(liquidator);
         
         // Try to liquidate non-existent position (position ID 0 doesn't exist)
-        vm.expectRevert(ErrorLibrary.InvalidPosition.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.InvalidPosition.selector);
         hedgerPool.commitLiquidation(hedger, 0, bytes32(0));
         
         vm.stopPrank();
@@ -1038,7 +1038,7 @@ contract LiquidationEdgeCases is Test {
         hedgerPool.commitLiquidation(hedger, 1, bytes32(0));
         
         // Try to execute immediately (should fail)
-        // vm.expectRevert(ErrorLibrary.PositionNotLiquidatable.selector);
+        // vm.expectRevert(HedgerPoolErrorLibrary.PositionNotLiquidatable.selector);
         // hedgerPool.liquidateHedger(hedger, 1, bytes32(0)); // Commented out due to margin ratio issues
         
         vm.stopPrank();

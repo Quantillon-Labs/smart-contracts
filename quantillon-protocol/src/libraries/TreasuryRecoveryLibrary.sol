@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ErrorLibrary} from "./ErrorLibrary.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -43,9 +43,9 @@ library TreasuryRecoveryLibrary {
         address contractAddress,
         address treasury
     ) external {
-        if (token == contractAddress) revert ErrorLibrary.CannotRecoverOwnToken();
+        if (token == contractAddress) revert CommonErrorLibrary.CannotRecoverOwnToken();
         
-        if (treasury == address(0)) revert ErrorLibrary.InvalidAddress();
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
         
         IERC20(token).safeTransfer(treasury, amount);
     }
@@ -71,14 +71,14 @@ library TreasuryRecoveryLibrary {
         address treasury
     ) external {
         // This prevents arbitrary ETH transfers that could be exploited
-        if (treasury == address(0)) revert ErrorLibrary.InvalidAddress();
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
         
         uint256 balance = address(this).balance;
-        if (balance < 1) revert ErrorLibrary.NoETHToRecover();
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
         
         // transfer() has 2300 gas stipend which can fail with complex receive/fallback logic
         (bool success, ) = treasury.call{value: balance}("");
-        if (!success) revert ErrorLibrary.ETHTransferFailed();
+        if (!success) revert CommonErrorLibrary.ETHTransferFailed();
         
         // Note: Individual contracts should emit their own events for better tracking
     }

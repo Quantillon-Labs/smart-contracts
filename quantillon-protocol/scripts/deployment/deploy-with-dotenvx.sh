@@ -5,13 +5,19 @@
 
 set -e  # Exit on any error
 
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-echo -e " Quantillon Protocol - Secure Deployment"
+echo -e "${BLUE}🔐 Quantillon Protocol - Secure Deployment${NC}"
 echo "======================================================"
 
 # Check if .env.keys exists
 if [ ! -f ".env.keys" ]; then
-    echo -e " Error: .env.keys file not found"
+    echo -e "${RED}❌ Error: .env.keys file not found${NC}"
     echo -e " Please ensure you have the decryption key for your encrypted .env file"
     echo -e "   The .env.keys file should contain your DOTENV_PRIVATE_KEY"
     exit 1

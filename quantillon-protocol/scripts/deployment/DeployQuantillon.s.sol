@@ -95,7 +95,7 @@ contract DeployQuantillon is Script {
         // Detect network
         _detectNetwork();
         
-        console.log("=== QUANTILLON PROTOCOL DEPLOYMENT ===");
+        console.log("🚀 === QUANTILLON PROTOCOL DEPLOYMENT ===");
         console.log("Network:", network);
         console.log("Deployer:", deployer);
 
@@ -124,7 +124,7 @@ contract DeployQuantillon is Script {
 
         vm.stopBroadcast();
         
-        console.log("\n=== DEPLOYMENT COMPLETED SUCCESSFULLY ===");
+        console.log("\n✅ === DEPLOYMENT COMPLETED SUCCESSFULLY ===");
     }
 
     function _detectNetwork() internal {
@@ -149,7 +149,7 @@ contract DeployQuantillon is Script {
     }
 
     function _deployMockUSDC() internal {
-        console.log("\n=== DEPLOYING MOCK USDC ===");
+        console.log("\n🔧 === DEPLOYING MOCK USDC ===");
         
         mockUSDCContract = new MockUSDC();
         mockUSDC = address(mockUSDCContract);

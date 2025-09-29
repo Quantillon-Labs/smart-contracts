@@ -24,9 +24,10 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 
 // Custom libraries for bytecode reduction
-import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
+import {TokenErrorLibrary} from "../libraries/TokenErrorLibrary.sol";
+import {TokenValidationLibrary} from "../libraries/TokenValidationLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
-import {ValidationLibrary} from "../libraries/ValidationLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {TokenLibrary} from "../libraries/TokenLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
@@ -71,7 +72,7 @@ contract QEUROToken is
 {
     using SafeERC20 for IERC20;
     using AccessControlLibrary for AccessControlUpgradeable;
-    using ValidationLibrary for uint256;
+    using TokenValidationLibrary for uint256;
     using TokenLibrary for address;
 
     // =============================================================================
@@ -368,7 +369,7 @@ contract QEUROToken is
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
         require(_treasury != address(0), "Treasury cannot be zero address");
-        ValidationLibrary.validateTreasuryAddress(_treasury);
+        TokenValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
     }
@@ -415,19 +416,19 @@ contract QEUROToken is
         whenNotPaused            // Not in pause mode
     {
         // Emergency killswitch check - prevents minting when protocol lacks collateral
-        if (mintingKillswitch) revert ErrorLibrary.MintingDisabled();
+        if (mintingKillswitch) revert TokenErrorLibrary.MintingDisabled();
         
         // Strict parameter validation
         TokenLibrary.validateMint(to, amount, totalSupply(), maxSupply);
         
         // Blacklist check
-        if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
+        if (isBlacklisted[to]) revert TokenErrorLibrary.BlacklistedAddress();
         
         // Whitelist check (if enabled)
         // GAS OPTIMIZATION: Cache storage read
         bool whitelistEnabled_ = whitelistEnabled;
         if (whitelistEnabled_ && !isWhitelisted[to]) {
-            revert ErrorLibrary.NotWhitelisted();
+            revert TokenErrorLibrary.NotWhitelisted();
         }
 
         // Rate limiting check
@@ -468,10 +469,10 @@ contract QEUROToken is
         flashLoanProtection
     {
         // Emergency killswitch check - prevents batch minting when protocol lacks collateral
-        if (mintingKillswitch) revert ErrorLibrary.MintingDisabled();
+        if (mintingKillswitch) revert TokenErrorLibrary.MintingDisabled();
         
-        if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
-        if (recipients.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (recipients.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
         uint256 totalAmount = 0;
         
@@ -480,18 +481,18 @@ contract QEUROToken is
             address to = recipients[i];
             uint256 amount = amounts[i];
             
-            if (to == address(0)) revert ErrorLibrary.InvalidAddress();
-            if (amount == 0) revert ErrorLibrary.InvalidAmount();
+            if (to == address(0)) revert TokenErrorLibrary.InvalidAddress();
+            if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
             
-            if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
-            if (whitelistEnabled && !isWhitelisted[to]) revert ErrorLibrary.NotWhitelisted();
+            if (isBlacklisted[to]) revert TokenErrorLibrary.BlacklistedAddress();
+            if (whitelistEnabled && !isWhitelisted[to]) revert TokenErrorLibrary.NotWhitelisted();
             
             // Accumulate total to check supply cap and rate limits once
             totalAmount = totalAmount + amount;
         }
         
         // Supply cap verification for the whole batch
-        if (totalSupply() + totalAmount > maxSupply) revert ErrorLibrary.WouldExceedLimit();
+        if (totalSupply() + totalAmount > maxSupply) revert TokenErrorLibrary.WouldExceedLimit();
 
         // Rate limiting for the whole batch
         _checkAndUpdateMintRateLimit(totalAmount);
@@ -576,8 +577,8 @@ contract QEUROToken is
         whenNotPaused
         flashLoanProtection
     {
-        if (froms.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
-        if (froms.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (froms.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
+        if (froms.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
         uint256 totalAmount = 0;
         
@@ -586,9 +587,9 @@ contract QEUROToken is
             address from = froms[i];
             uint256 amount = amounts[i];
             
-            if (from == address(0)) revert ErrorLibrary.InvalidAddress();
-            if (amount == 0) revert ErrorLibrary.InvalidAmount();
-            if (balanceOf(from) < amount) revert ErrorLibrary.InsufficientBalance();
+            if (from == address(0)) revert TokenErrorLibrary.InvalidAddress();
+            if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
+            if (balanceOf(from) < amount) revert TokenErrorLibrary.InsufficientBalance();
             
             // Accumulate total to check rate limits once
             totalAmount = totalAmount + amount;
@@ -641,7 +642,7 @@ contract QEUROToken is
 
         // Check if the new amount would exceed the rate limit
         if (rateLimitInfo.currentHourMinted + amount > rateLimitCaps.mint) {
-            revert ErrorLibrary.RateLimitExceeded();
+            revert TokenErrorLibrary.RateLimitExceeded();
         }
 
         // Update the current hour minted amount - OPTIMIZED: Use unchecked for safe arithmetic
@@ -681,7 +682,7 @@ contract QEUROToken is
 
         // Check if the new amount would exceed the rate limit
         if (rateLimitInfo.currentHourBurned + amount > rateLimitCaps.burn) {
-            revert ErrorLibrary.RateLimitExceeded();
+            revert TokenErrorLibrary.RateLimitExceeded();
         }
 
         // Update the current hour burned amount - OPTIMIZED: Use unchecked for safe arithmetic
@@ -715,10 +716,10 @@ contract QEUROToken is
         external 
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
-        ValidationLibrary.validatePositiveAmount(newMintLimit);
-        ValidationLibrary.validatePositiveAmount(newBurnLimit);
-        if (newMintLimit > MAX_RATE_LIMIT) revert ErrorLibrary.RateLimitTooHigh();
-        if (newBurnLimit > MAX_RATE_LIMIT) revert ErrorLibrary.RateLimitTooHigh();
+        TokenValidationLibrary.validatePositiveAmount(newMintLimit);
+        TokenValidationLibrary.validatePositiveAmount(newBurnLimit);
+        if (newMintLimit > MAX_RATE_LIMIT) revert TokenErrorLibrary.RateLimitTooHigh();
+        if (newBurnLimit > MAX_RATE_LIMIT) revert TokenErrorLibrary.RateLimitTooHigh();
 
         rateLimitCaps = RateLimitCaps(uint128(newMintLimit), uint128(newBurnLimit));
 
@@ -755,7 +756,7 @@ contract QEUROToken is
         onlyRole(COMPLIANCE_ROLE) 
     {
         AccessControlLibrary.validateAddress(account);
-        if (isBlacklisted[account]) revert ErrorLibrary.AlreadyBlacklisted();
+        if (isBlacklisted[account]) revert TokenErrorLibrary.AlreadyBlacklisted();
         
         isBlacklisted[account] = true;
         emit AddressBlacklisted(account, reason);
@@ -784,7 +785,7 @@ contract QEUROToken is
         external 
         onlyRole(COMPLIANCE_ROLE) 
     {
-        if (!isBlacklisted[account]) revert ErrorLibrary.NotBlacklisted();
+        if (!isBlacklisted[account]) revert TokenErrorLibrary.NotBlacklisted();
         
         isBlacklisted[account] = false;
         emit AddressUnblacklisted(account);
@@ -815,7 +816,7 @@ contract QEUROToken is
         onlyRole(COMPLIANCE_ROLE) 
     {
         AccessControlLibrary.validateAddress(account);
-        if (isWhitelisted[account]) revert ErrorLibrary.AlreadyWhitelisted();
+        if (isWhitelisted[account]) revert TokenErrorLibrary.AlreadyWhitelisted();
         
         isWhitelisted[account] = true;
         emit AddressWhitelisted(account);
@@ -844,7 +845,7 @@ contract QEUROToken is
         external 
         onlyRole(COMPLIANCE_ROLE) 
     {
-        if (!isWhitelisted[account]) revert ErrorLibrary.NotWhitelisted();
+        if (!isWhitelisted[account]) revert TokenErrorLibrary.NotWhitelisted();
         
         isWhitelisted[account] = false;
         emit AddressUnwhitelisted(account);
@@ -894,13 +895,13 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
-        if (accounts.length != reasons.length) revert ErrorLibrary.ArrayLengthMismatch();
-        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (accounts.length != reasons.length) revert TokenErrorLibrary.ArrayLengthMismatch();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
             AccessControlLibrary.validateAddress(account);
-            if (isBlacklisted[account]) revert ErrorLibrary.AlreadyBlacklisted();
+            if (isBlacklisted[account]) revert TokenErrorLibrary.AlreadyBlacklisted();
             
             isBlacklisted[account] = true;
             emit AddressBlacklisted(account, reasons[i]);
@@ -924,11 +925,11 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
-        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
-            if (!isBlacklisted[account]) revert ErrorLibrary.NotBlacklisted();
+            if (!isBlacklisted[account]) revert TokenErrorLibrary.NotBlacklisted();
             
             isBlacklisted[account] = false;
             emit AddressUnblacklisted(account);
@@ -952,12 +953,12 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
-        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
             AccessControlLibrary.validateAddress(account);
-            if (isWhitelisted[account]) revert ErrorLibrary.AlreadyWhitelisted();
+            if (isWhitelisted[account]) revert TokenErrorLibrary.AlreadyWhitelisted();
             
             isWhitelisted[account] = true;
             emit AddressWhitelisted(account);
@@ -981,11 +982,11 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
-        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
-            if (!isWhitelisted[account]) revert ErrorLibrary.NotWhitelisted();
+            if (!isWhitelisted[account]) revert TokenErrorLibrary.NotWhitelisted();
             
             isWhitelisted[account] = false;
             emit AddressUnwhitelisted(account);
@@ -1020,8 +1021,8 @@ contract QEUROToken is
         external 
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
-        ValidationLibrary.validatePositiveAmount(newPrecision);
-        if (newPrecision > PRECISION) revert ErrorLibrary.PrecisionTooHigh();
+        TokenValidationLibrary.validatePositiveAmount(newPrecision);
+        if (newPrecision > PRECISION) revert TokenErrorLibrary.PrecisionTooHigh();
 
         uint256 oldPrecision = minPricePrecision;
         minPricePrecision = newPrecision;
@@ -1055,8 +1056,8 @@ contract QEUROToken is
         pure 
         returns (uint256) 
     {
-        if (feedDecimals > 18) revert ErrorLibrary.TooManyDecimals();
-        ValidationLibrary.validatePositiveAmount(price);
+        if (feedDecimals > 18) revert TokenErrorLibrary.TooManyDecimals();
+        TokenValidationLibrary.validatePositiveAmount(price);
 
         if (feedDecimals == 18) {
             return price;
@@ -1353,8 +1354,8 @@ contract QEUROToken is
         whenNotPaused
         returns (bool)
     {
-        if (recipients.length != amounts.length) revert ErrorLibrary.ArrayLengthMismatch();
-        if (recipients.length > MAX_BATCH_SIZE) revert ErrorLibrary.BatchSizeTooLarge();
+        if (recipients.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
         
 
         uint256 length = recipients.length;
@@ -1365,13 +1366,13 @@ contract QEUROToken is
             address to = recipients[i];
             uint256 amount = amounts[i];
             
-            if (to == address(0)) revert ErrorLibrary.InvalidAddress();
-            if (amount == 0) revert ErrorLibrary.InvalidAmount();
+            if (to == address(0)) revert TokenErrorLibrary.InvalidAddress();
+            if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
             
             // Check compliance (blacklist/whitelist) per recipient
-            if (isBlacklisted[sender]) revert ErrorLibrary.BlacklistedAddress();
-            if (isBlacklisted[to]) revert ErrorLibrary.BlacklistedAddress();
-            if (whitelistEnabled && !isWhitelisted[to]) revert ErrorLibrary.NotWhitelisted();
+            if (isBlacklisted[sender]) revert TokenErrorLibrary.BlacklistedAddress();
+            if (isBlacklisted[to]) revert TokenErrorLibrary.BlacklistedAddress();
+            if (whitelistEnabled && !isWhitelisted[to]) revert TokenErrorLibrary.NotWhitelisted();
             
             unchecked { ++i; }
         }
@@ -1420,15 +1421,15 @@ contract QEUROToken is
     ) internal override whenNotPaused {
         // Blacklist checks (skip for mint operations)
         if (from != address(0) && isBlacklisted[from]) {
-            revert ErrorLibrary.BlacklistedAddress();
+            revert TokenErrorLibrary.BlacklistedAddress();
         }
         if (to != address(0) && isBlacklisted[to]) {
-            revert ErrorLibrary.BlacklistedAddress();
+            revert TokenErrorLibrary.BlacklistedAddress();
         }
 
         // Whitelist checks (if enabled, skip for burn operations)
         if (whitelistEnabled && to != address(0) && !isWhitelisted[to]) {
-            revert ErrorLibrary.NotWhitelisted();
+            revert TokenErrorLibrary.NotWhitelisted();
         }
 
         super._update(from, to, amount);
@@ -1522,8 +1523,8 @@ contract QEUROToken is
         external 
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
-        if (newMaxSupply < totalSupply()) revert ErrorLibrary.NewCapBelowCurrentSupply();
-        ValidationLibrary.validatePositiveAmount(newMaxSupply);
+        if (newMaxSupply < totalSupply()) revert TokenErrorLibrary.NewCapBelowCurrentSupply();
+        TokenValidationLibrary.validatePositiveAmount(newMaxSupply);
         
         uint256 oldCap = maxSupply;
         maxSupply = newMaxSupply;
@@ -1547,7 +1548,7 @@ contract QEUROToken is
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_treasury != address(0), "Treasury cannot be zero address");
         AccessControlLibrary.validateAddress(_treasury);
-        ValidationLibrary.validateTreasuryAddress(_treasury);
+        TokenValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);

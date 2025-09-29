@@ -2,7 +2,7 @@
 pragma solidity 0.8.24;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {ErrorLibrary} from "./ErrorLibrary.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 
 /**
  * @title AccessControlLibrary
@@ -33,7 +33,7 @@ library AccessControlLibrary {
      */
     function onlyGovernance(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("GOVERNANCE_ROLE"), msg.sender)) {
-            revert ErrorLibrary.NotGovernance();
+            revert CommonErrorLibrary.NotGovernance();
         }
     }
     
@@ -52,7 +52,7 @@ library AccessControlLibrary {
      */
     function onlyVaultManager(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("VAULT_MANAGER_ROLE"), msg.sender)) {
-            revert ErrorLibrary.NotVaultManager();
+            revert CommonErrorLibrary.NotVaultManager();
         }
     }
     
@@ -71,7 +71,7 @@ library AccessControlLibrary {
      */
     function onlyEmergencyRole(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("EMERGENCY_ROLE"), msg.sender)) {
-            revert ErrorLibrary.NotEmergencyRole();
+            revert CommonErrorLibrary.NotEmergencyRole();
         }
     }
     
@@ -90,7 +90,7 @@ library AccessControlLibrary {
      */
     function onlyLiquidatorRole(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("LIQUIDATOR_ROLE"), msg.sender)) {
-            revert ErrorLibrary.NotLiquidatorRole();
+            revert CommonErrorLibrary.NotLiquidatorRole();
         }
     }
     
@@ -109,7 +109,7 @@ library AccessControlLibrary {
      */
     function onlyYieldManager(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("YIELD_MANAGER_ROLE"), msg.sender)) {
-            revert ErrorLibrary.NotYieldManager();
+            revert CommonErrorLibrary.NotYieldManager();
         }
     }
     
@@ -128,7 +128,7 @@ library AccessControlLibrary {
      */
     function onlyAdmin(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(accessControl.DEFAULT_ADMIN_ROLE(), msg.sender)) {
-            revert ErrorLibrary.NotAdmin();
+            revert CommonErrorLibrary.NotAdmin();
         }
     }
     
@@ -147,7 +147,7 @@ library AccessControlLibrary {
      */
     function validateAddress(address addr) internal pure {
         if (addr == address(0)) {
-            revert ErrorLibrary.InvalidAddress();
+            revert CommonErrorLibrary.InvalidAddress();
         }
     }
     
@@ -166,7 +166,7 @@ library AccessControlLibrary {
      */
     function validateAmount(uint256 amount) internal pure {
         if (amount == 0) {
-            revert ErrorLibrary.InvalidAmount();
+            revert CommonErrorLibrary.InvalidAmount();
         }
     }
     
@@ -185,7 +185,7 @@ library AccessControlLibrary {
      */
     function validatePositiveAmount(uint256 amount) internal pure {
         if (amount <= 0) {
-            revert ErrorLibrary.InvalidAmount();
+            revert CommonErrorLibrary.InvalidAmount();
         }
     }
 }

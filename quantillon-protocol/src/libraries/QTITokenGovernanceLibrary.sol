@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ErrorLibrary} from "./ErrorLibrary.sol";
-import {ValidationLibrary} from "./ValidationLibrary.sol";
+import {GovernanceErrorLibrary} from "./GovernanceErrorLibrary.sol";
+import {CommonValidationLibrary} from "./CommonValidationLibrary.sol";
 
 /**
  * @title QTITokenGovernanceLibrary
@@ -119,7 +119,7 @@ library QTITokenGovernanceLibrary {
     function _calculateVotingPower(uint256 amount, uint256 lockTime) internal pure returns (uint256) {
         uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
         uint256 newVotingPower = amount * multiplier / 1e18;
-        if (newVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+        if (newVotingPower > type(uint96).max) revert GovernanceErrorLibrary.InvalidAmount();
         return newVotingPower;
     }
     
@@ -215,12 +215,12 @@ library QTITokenGovernanceLibrary {
         uint256 existingUnlockTime
     ) internal pure returns (uint256 newUnlockTime) {
         newUnlockTime = currentTimestamp + lockTime;
-        if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
+        if (newUnlockTime > type(uint32).max) revert GovernanceErrorLibrary.InvalidTime();
         
         // If already locked, extend the lock time
         if (existingUnlockTime > currentTimestamp) {
             newUnlockTime = existingUnlockTime + lockTime;
-            if (newUnlockTime > type(uint32).max) revert ErrorLibrary.InvalidTime();
+            if (newUnlockTime > type(uint32).max) revert GovernanceErrorLibrary.InvalidTime();
         }
     }
     
@@ -248,11 +248,11 @@ library QTITokenGovernanceLibrary {
         uint256[] calldata lockTimes
     ) external pure returns (uint256 totalAmount) {
         for (uint256 i = 0; i < amounts.length; i++) {
-            ValidationLibrary.validatePositiveAmount(amounts[i]);
-            if (lockTimes[i] < MIN_LOCK_TIME) revert ErrorLibrary.LockTimeTooShort();
-            if (lockTimes[i] > MAX_LOCK_TIME) revert ErrorLibrary.LockTimeTooLong();
-            if (amounts[i] > type(uint96).max) revert ErrorLibrary.InvalidAmount();
-            if (lockTimes[i] > type(uint32).max) revert ErrorLibrary.InvalidTime();
+            CommonValidationLibrary.validatePositiveAmount(amounts[i]);
+            if (lockTimes[i] < MIN_LOCK_TIME) revert GovernanceErrorLibrary.LockTimeTooShort();
+            if (lockTimes[i] > MAX_LOCK_TIME) revert GovernanceErrorLibrary.LockTimeTooLong();
+            if (amounts[i] > type(uint96).max) revert GovernanceErrorLibrary.InvalidAmount();
+            if (lockTimes[i] > type(uint32).max) revert GovernanceErrorLibrary.InvalidTime();
             
             totalAmount += amounts[i];
         }
@@ -337,8 +337,8 @@ library QTITokenGovernanceLibrary {
         uint256 totalNewVotingPower,
         uint256 lockTime
     ) external pure returns (LockInfo memory updatedLockInfo) {
-        if (totalNewAmount > type(uint96).max) revert ErrorLibrary.InvalidAmount();
-        if (totalNewVotingPower > type(uint96).max) revert ErrorLibrary.InvalidAmount();
+        if (totalNewAmount > type(uint96).max) revert GovernanceErrorLibrary.InvalidAmount();
+        if (totalNewVotingPower > type(uint96).max) revert GovernanceErrorLibrary.InvalidAmount();
         
         updatedLockInfo.amount = uint96(totalNewAmount);
         updatedLockInfo.unlockTime = uint32(newUnlockTime);

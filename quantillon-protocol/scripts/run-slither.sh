@@ -6,7 +6,7 @@
 # Ensure we're in the project root directory
 cd "$(dirname "$0")/.."
 
-echo " Running Enhanced Slither Security Analysis..."
+echo "🔍 Running Enhanced Slither Security Analysis..."
 echo ""
 
 # Load environment variables using the shared utility
@@ -37,18 +37,18 @@ echo "📁 Slither output directory: $SLITHER_DIR"
 mkdir -p "$SLITHER_DIR"
 
 # Run Slither analysis with checklist output for detailed findings
-echo " Running Slither analysis..."
+echo "🚀 Running Slither analysis..."
 slither . --config-file slither.config.json --exclude-dependencies --show-ignored-findings --checklist 2>&1 | tee slither-temp-output.txt
 SLITHER_EXIT_CODE=${PIPESTATUS[0]}
 
 # Generate JSON and SARIF reports
-echo " Generating JSON and SARIF reports..."
+echo "📄 Generating JSON and SARIF reports..."
 slither . --config-file slither.config.json --exclude-dependencies --json $SLITHER_DIR/slither-report.json
 slither . --config-file slither.config.json --exclude-dependencies --sarif $SLITHER_DIR/slither-report.sarif
 
 # Check exit code
 if [ $SLITHER_EXIT_CODE -eq 0 ]; then
-    echo " Slither analysis completed successfully"
+    echo "✅ Slither analysis completed successfully"
 else
     echo "  Slither analysis found issues - check the output below"
 fi

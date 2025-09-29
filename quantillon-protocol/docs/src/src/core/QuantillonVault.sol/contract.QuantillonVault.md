@@ -1,5 +1,5 @@
 # QuantillonVault
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6f51834bbb45cbccb2f6587da1af65b757119112/src/core/QuantillonVault.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/core/QuantillonVault.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -194,6 +194,17 @@ address public treasury;
 ```
 
 
+### feeCollector
+Fee collector contract for protocol fees
+
+*Centralized fee collection and distribution*
+
+
+```solidity
+address public feeCollector;
+```
+
+
 ### mintFee
 Protocol fee charged on minting QEURO (in basis points)
 
@@ -383,7 +394,8 @@ function initialize(
     address _oracle,
     address _hedgerPool,
     address _userPool,
-    address _timelock
+    address _timelock,
+    address _feeCollector
 ) public initializer;
 ```
 **Parameters**
@@ -397,6 +409,7 @@ function initialize(
 |`_hedgerPool`|`address`|Address of the HedgerPool contract|
 |`_userPool`|`address`|Address of the UserPool contract|
 |`_timelock`|`address`|Address of the timelock contract|
+|`_feeCollector`|`address`|Address of the fee collector contract|
 
 
 ### mintQEURO
@@ -816,6 +829,40 @@ function updateUserPool(address _userPool) external onlyRole(GOVERNANCE_ROLE);
 |`_userPool`|`address`|New UserPool address|
 
 
+### updateFeeCollector
+
+Updates the fee collector address
+
+*Only governance role can update the fee collector address*
+
+**Notes:**
+- Validates address is not zero before updating
+
+- Ensures _feeCollector is not address(0)
+
+- Updates feeCollector state variable
+
+- Emits ParametersUpdated event
+
+- Reverts if _feeCollector is address(0)
+
+- No reentrancy risk, simple state update
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function updateFeeCollector(address _feeCollector) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_feeCollector`|`address`|New fee collector address|
+
+
 ### updatePriceProtectionParams
 
 Updates price deviation protection parameters
@@ -1060,7 +1107,7 @@ Calculates the current protocol collateralization ratio
 
 
 ```solidity
-function getProtocolCollateralizationRatio() public view returns (uint256 ratio);
+function getProtocolCollateralizationRatio() public returns (uint256 ratio);
 ```
 **Returns**
 
@@ -1094,7 +1141,7 @@ Checks if minting is allowed based on current collateralization ratio
 
 
 ```solidity
-function canMint() public view returns (bool);
+function canMint() public returns (bool);
 ```
 **Returns**
 
@@ -1128,7 +1175,7 @@ Checks if liquidation should be triggered based on current collateralization rat
 
 
 ```solidity
-function shouldTriggerLiquidation() public view returns (bool shouldLiquidate);
+function shouldTriggerLiquidation() public returns (bool shouldLiquidate);
 ```
 **Returns**
 

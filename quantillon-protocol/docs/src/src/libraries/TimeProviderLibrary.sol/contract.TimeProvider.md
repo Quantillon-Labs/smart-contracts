@@ -1,5 +1,5 @@
 # TimeProvider
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6f51834bbb45cbccb2f6587da1af65b757119112/src/libraries/TimeProviderLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/libraries/TimeProviderLibrary.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, UUPSUpgradeable

@@ -423,6 +423,7 @@ contract DeployQuantillon is Script {
             qeuroToken,        // _qeuro
             _getUSDCAddress(), // _usdc
             quantillonVault,   // _vault
+            chainlinkOracle,   // _oracle
             msg.sender,        // _yieldShift (temporary)
             msg.sender,        // _timelock
             msg.sender         // _treasury

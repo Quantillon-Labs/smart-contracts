@@ -9,31 +9,9 @@ cd "$(dirname "$0")/.."
 echo " Running Enhanced Slither Security Analysis..."
 echo ""
 
-# Load environment variables from .env file using dotenvx
-echo " Loading environment variables from .env file..."
-if command -v dotenvx >/dev/null 2>&1; then
-    # Use dotenvx to decrypt and load environment variables
-    # Parse the output and export only our project-specific variables
-    while IFS= read -r line; do
-        # Skip comments and empty lines
-        if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "$line" ]]; then
-            continue
-        fi
-        # Check if line contains a variable we want to load
-        if [[ "$line" =~ ^(RESULTS_DIR|BASESCAN_API_KEY|PRIVATE_KEY|FRONTEND_ABI_DIR|FRONTEND_ADDRESSES_FILE|SMART_CONTRACTS_OUT|MULTISIG_WALLET|NETWORK)= ]]; then
-            export "$line"
-        fi
-    done < <(dotenvx decrypt --stdout)
-    echo " Environment variables loaded successfully with dotenvx"
-else
-    echo "  dotenvx not found, falling back to direct .env loading"
-    if [ -f ".env" ]; then
-        # Fallback: load .env file directly (without decryption)
-        set -a
-        source .env
-        set +a
-    fi
-fi
+# Load environment variables using the shared utility
+source "$(dirname "$0")/utils/load-env.sh"
+setup_environment
 
 # Check if Python virtual environment exists
 if [ ! -d "venv" ]; then
@@ -50,11 +28,9 @@ echo "📥 Installing Slither dependencies..."
 pip install -r requirements.txt
 
 # Configuration
-RESULTS_DIR="${RESULTS_DIR:-scripts/results}"
 SLITHER_DIR="$RESULTS_DIR/slither"
 
-# Debug: Show the RESULTS_DIR being used
-echo "📁 Using RESULTS_DIR: $RESULTS_DIR"
+# Debug: Show the Slither output directory
 echo "📁 Slither output directory: $SLITHER_DIR"
 
 # Create results directory
@@ -217,9 +193,9 @@ fi
 
 cat >> $SLITHER_DIR/slither-report.txt << EOF
 🔴 High Priority Issues: $HIGH_ISSUES
- Medium Priority Issues: $MEDIUM_ISSUES  
- Low Priority Issues: $LOW_ISSUES
-  Informational Issues: $INFO_ISSUES
+🟡 Medium Priority Issues: $MEDIUM_ISSUES  
+🟢 Low Priority Issues: $LOW_ISSUES
+ℹ️ Informational Issues: $INFO_ISSUES
 
  CRITICAL FINDINGS (High Priority)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

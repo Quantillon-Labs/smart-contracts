@@ -1333,6 +1333,7 @@ contract QTIToken is
         AccessControlLibrary.validateAddress(_treasury);
         ValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        if (_treasury == address(0)) revert ErrorLibrary.ZeroAddress();
         treasury = _treasury;
     }
 

@@ -12,8 +12,13 @@ set -e
 # Load environment variables using shared utility
 source "$(dirname "${BASH_SOURCE[0]}")/utils/load-env.sh"
 setup_environment
-BUILD_OUTPUT_FILE="/build-output.log"
-WARNINGS_DIR="/warnings-analysis"
+
+# Set up paths relative to project root
+SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+RESULTS_DIR="${RESULTS_DIR:-scripts/results}"
+BUILD_OUTPUT_FILE="$PROJECT_ROOT/$RESULTS_DIR/build-output.log"
+WARNINGS_DIR="$PROJECT_ROOT/$RESULTS_DIR/warnings-analysis"
 
 echo -e " Quantillon Protocol - Build Warnings Analysis"
 echo -e "================================================"

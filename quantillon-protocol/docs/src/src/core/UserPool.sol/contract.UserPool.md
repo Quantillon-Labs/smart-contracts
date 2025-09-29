@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6f51834bbb45cbccb2f6587da1af65b757119112/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -134,6 +134,17 @@ IQuantillonVault public vault;
 ```
 
 
+### oracle
+Chainlink Oracle for EUR/USD price feeds
+
+*Used for converting QEURO supply to USDC equivalent in analytics*
+
+
+```solidity
+IChainlinkOracle public oracle;
+```
+
+
 ### yieldShift
 Yield shift mechanism for yield management
 
@@ -257,19 +268,6 @@ Fee charged on yield distributions (in basis points)
 
 ```solidity
 uint256 public performanceFee;
-```
-
-
-### totalDeposits
-Total USDC equivalent deposits across all users
-
-*Sum of all user deposits converted to USDC equivalent*
-
-*Used for pool analytics and risk management*
-
-
-```solidity
-uint256 public totalDeposits;
 ```
 
 
@@ -474,7 +472,7 @@ Initializes the UserPool contract
 
 - Restricted to initializer modifier
 
-- No oracle dependencies
+- Requires oracle for analytics functions
 
 
 ```solidity
@@ -483,6 +481,7 @@ function initialize(
     address _qeuro,
     address _usdc,
     address _vault,
+    address _oracle,
     address _yieldShift,
     address _timelock,
     address _treasury
@@ -496,6 +495,7 @@ function initialize(
 |`_qeuro`|`address`|Address of the QEURO token contract|
 |`_usdc`|`address`|Address of the USDC token contract|
 |`_vault`|`address`|Address of the QuantillonVault contract|
+|`_oracle`|`address`|Address of the Chainlink Oracle contract|
 |`_yieldShift`|`address`|Address of the YieldShift contract|
 |`_timelock`|`address`|Address of the timelock contract|
 |`_treasury`|`address`|Address of the treasury contract|
@@ -771,11 +771,7 @@ Internal function to update user and pool state
 
 
 ```solidity
-function _updateUserAndPoolState(
-    uint256[] calldata usdcAmounts,
-    uint256[] calldata minQeuroOuts,
-    uint256 totalNetAmount
-) internal;
+function _updateUserAndPoolState(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts, uint256) internal;
 ```
 **Parameters**
 
@@ -783,7 +779,7 @@ function _updateUserAndPoolState(
 |----|----|-----------|
 |`usdcAmounts`|`uint256[]`|Array of USDC amounts (6 decimals)|
 |`minQeuroOuts`|`uint256[]`|Array of minimum QEURO outputs (18 decimals)|
-|`totalNetAmount`|`uint256`|Total net amount (6 decimals)|
+|`<none>`|`uint256`||
 
 
 ### _transferQeuroAndEmitEvents
@@ -1504,7 +1500,11 @@ function getUserInfo(address user)
 
 Get the total deposits across all users in the pool
 
+Get the current QEURO total supply (replaces totalDeposits tracking)
+
 *Returns the cumulative total of all USDC deposits made to the pool*
+
+*Returns the current QEURO total supply which represents net minted QEURO*
 
 **Notes:**
 - Validates input parameters and enforces security checks
@@ -1523,6 +1523,22 @@ Get the total deposits across all users in the pool
 
 - Requires fresh oracle price data
 
+- No security validations required - view function
+
+- No input validation required - view function
+
+- No state changes - view function only
+
+- No events emitted
+
+- No errors thrown
+
+- Not applicable - view function
+
+- Public access
+
+- No oracle dependencies
+
 
 ```solidity
 function getTotalDeposits() external view returns (uint256);
@@ -1532,6 +1548,48 @@ function getTotalDeposits() external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|uint256 Total USDC equivalent deposits (6 decimals)|
+
+
+### getTotalWithdrawals
+
+Get the total USDC equivalent withdrawals across all users
+
+Get the current QEURO total supply (replaces totalWithdrawals tracking)
+
+*Used for analytics and cash flow monitoring*
+
+*Returns the current QEURO total supply which represents net minted QEURO*
+
+**Notes:**
+- Public access
+
+- No oracle dependencies
+
+- No security validations required - view function
+
+- No input validation required - view function
+
+- No state changes - view function only
+
+- No events emitted
+
+- No errors thrown
+
+- Not applicable - view function
+
+- Public access
+
+- No oracle dependencies
+
+
+```solidity
+function getTotalWithdrawals() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Total withdrawals in USDC equivalent (6 decimals)|
 
 
 ### getTotalStakes
@@ -1606,6 +1664,45 @@ function getPoolMetrics()
 |`averageDeposit`|`uint256`|Average deposit amount per user (6 decimals)|
 |`stakingRatio`|`uint256`|Ratio of total staked QEURO to total deposits (basis points)|
 |`poolTVL`|`uint256`|Total value locked in the pool (6 decimals)|
+
+
+### getPoolAnalytics
+
+Get comprehensive pool analytics using QEURO total supply
+
+*Uses QEURO total supply for accurate analytics instead of misleading USDC tracking*
+
+**Notes:**
+- No external calls except oracle, read-only function
+
+- Oracle price validation with fallback to zero
+
+- No state changes, view-like function
+
+- No events emitted
+
+- No custom errors, handles oracle failures gracefully
+
+- No reentrancy risk, read-only operations
+
+- Public access
+
+- Requires fresh oracle price data for USDC equivalent
+
+
+```solidity
+function getPoolAnalytics()
+    external
+    returns (uint256 currentQeuroSupply, uint256 usdcEquivalentAtCurrentRate, uint256 totalUsers_, uint256 totalStakes_);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`currentQeuroSupply`|`uint256`|Current QEURO total supply (net minted QEURO)|
+|`usdcEquivalentAtCurrentRate`|`uint256`|Current USDC equivalent of QEURO supply|
+|`totalUsers_`|`uint256`|Total number of users|
+|`totalStakes_`|`uint256`|Total QEURO staked|
 
 
 ### getStakingAPY

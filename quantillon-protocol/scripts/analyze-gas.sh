@@ -12,8 +12,8 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/utils/load-env.sh"
 setup_environment
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-OUTPUT_DIR="/gas-analysis"
-TEXT_REPORT_FILE="/gas-analysis-.txt"
+OUTPUT_DIR="$RESULTS_DIR/gas-analysis"
+TEXT_REPORT_FILE="$OUTPUT_DIR/gas-analysis-$TIMESTAMP.txt"
 
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"

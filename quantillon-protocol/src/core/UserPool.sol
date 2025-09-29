@@ -14,6 +14,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
+import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {ErrorLibrary} from "../libraries/ErrorLibrary.sol";
@@ -132,6 +133,10 @@ contract UserPool is
     /// @dev Should be the official QuantillonVault contract
     IQuantillonVault public vault;
     
+    /// @notice Chainlink Oracle for EUR/USD price feeds
+    /// @dev Used for converting QEURO supply to USDC equivalent in analytics
+    IChainlinkOracle public oracle;
+    
     /// @notice Yield shift mechanism for yield management
     /// @dev Handles yield distribution and management
     /// @dev Used for yield calculations and distributions
@@ -183,11 +188,6 @@ contract UserPool is
     uint256 public performanceFee;          // Performance fee in basis points
 
     // Pool state variables
-    /// @notice Total USDC equivalent deposits across all users
-    /// @dev Sum of all user deposits converted to USDC equivalent
-    /// @dev Used for pool analytics and risk management
-    uint256 public totalDeposits;           // Total USDC equivalent deposits
-    
     /// @notice Total QEURO staked across all users
     /// @dev Sum of all staked QEURO amounts
     /// @dev Used for yield distribution calculations
@@ -363,6 +363,7 @@ contract UserPool is
      * @param _qeuro Address of the QEURO token contract
      * @param _usdc Address of the USDC token contract
      * @param _vault Address of the QuantillonVault contract
+     * @param _oracle Address of the Chainlink Oracle contract
      * @param _yieldShift Address of the YieldShift contract
      * @param _timelock Address of the timelock contract
      * @param _treasury Address of the treasury contract
@@ -374,13 +375,14 @@ contract UserPool is
      * @custom:errors Throws custom errors for invalid conditions
      * @custom:reentrancy Protected by reentrancy guard
      * @custom:access Restricted to initializer modifier
-     * @custom:oracle No oracle dependencies
+     * @custom:oracle Requires oracle for analytics functions
      */
     function initialize(
         address admin,
         address _qeuro,
         address _usdc,
         address _vault,
+        address _oracle,
         address _yieldShift,
         address _timelock,
         address _treasury
@@ -389,6 +391,7 @@ contract UserPool is
         CommonValidationLibrary.validateNonZeroAddress(_qeuro, "token");
         CommonValidationLibrary.validateNonZeroAddress(_usdc, "token");
         CommonValidationLibrary.validateNonZeroAddress(_vault, "vault");
+        CommonValidationLibrary.validateNonZeroAddress(_oracle, "oracle");
         CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
 
@@ -404,6 +407,7 @@ contract UserPool is
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         vault = IQuantillonVault(_vault);
+        oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
         require(_treasury != address(0), "Treasury cannot be zero address");
         ValidationLibrary.validateTreasuryAddress(_treasury);
@@ -469,17 +473,17 @@ contract UserPool is
         }
         
         user.depositHistory += uint96(usdcAmount);
-        totalDeposits += netAmount;
         // Note: user.qeuroBalance is not updated since QEURO goes to user's wallet
+        // Note: No need to track totalDeposits - use qeuro.totalSupply() instead
         
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
         
-        // Approve vault to spend USDC (approve full amount, vault handles fees internally)
-        usdc.safeIncreaseAllowance(address(vault), usdcAmount);
+        // Approve vault to spend USDC (approve net amount after fee deduction)
+        usdc.safeIncreaseAllowance(address(vault), netAmount);
         
         // EXTERNAL CALL - vault.mintQEURO() (INTERACTIONS)
-        vault.mintQEURO(usdcAmount, minQeuroOut);
+        vault.mintQEURO(netAmount, minQeuroOut);
         
         // Calculate actual minted amount
         uint256 qeuroAfter = qeuro.balanceOf(address(this));
@@ -665,7 +669,6 @@ contract UserPool is
      * @notice Internal function to update user and pool state
      * @param usdcAmounts Array of USDC amounts (6 decimals)
      * @param minQeuroOuts Array of minimum QEURO outputs (18 decimals)
-     * @param totalNetAmount Total net amount (6 decimals)
      * @dev Updates user and pool state before external calls for reentrancy protection
      * @custom:security Updates state before external calls (CEI pattern)
      * @custom:validation No input validation required - parameters pre-validated
@@ -679,7 +682,7 @@ contract UserPool is
     function _updateUserAndPoolState(
         uint256[] calldata usdcAmounts,
         uint256[] calldata minQeuroOuts,
-        uint256 totalNetAmount
+        uint256 /* totalNetAmount */
     ) internal {
         UserInfo storage user = userInfo[msg.sender];
         
@@ -696,8 +699,7 @@ contract UserPool is
         user.depositHistory += uint96(totalUserDeposits);
         // Note: user.qeuroBalance is not updated since QEURO goes to user's wallet
         
-        // Update pool totals once (single update outside loop)  
-        totalDeposits += totalNetAmount;
+        // Note: No need to track totalDeposits - use qeuro.totalSupply() instead
     }
 
     /**
@@ -759,11 +761,15 @@ contract UserPool is
         // Note: No need to check user.qeuroBalance since QEURO is held in user's wallet
         // The user must have QEURO in their wallet to call this function
         
-        // Calculate conservative estimate for totalDeposits update
+        // Calculate withdrawal fee for user
         uint256 withdrawalFee_ = withdrawalFee;
-        uint256 estimatedFee = minUsdcOut.percentageOf(withdrawalFee_);
-        uint256 estimatedNetAmount = minUsdcOut - estimatedFee;
-        totalDeposits -= estimatedNetAmount;
+        
+        // Note: We don't update totalDeposits during withdrawal because:
+        // 1. The vault handles all USDC reserves (including hedger collateral)
+        // 2. totalDeposits represents original user deposits, not current redemption amounts
+        // 3. Oracle rate changes make it impossible to accurately track original deposit amounts
+        // 4. The vault's totalUsdcHeld is the single source of truth for available USDC
+        // 5. Hedger collateral is automatically available through the vault for redemptions
 
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
         
@@ -780,6 +786,8 @@ contract UserPool is
         // Calculate actual withdrawal fee and net amount
         uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
         uint256 netAmount = usdcReceived - fee;
+
+        // Note: No need to track totalWithdrawals - use qeuro.totalSupply() instead
 
         // Transfer USDC to user
         usdc.safeTransfer(msg.sender, netAmount);
@@ -866,7 +874,8 @@ contract UserPool is
             totalEstimatedNetAmount += minUsdcOuts[i] - estimatedFee;
             unchecked { ++i; }
         }
-        totalDeposits -= totalEstimatedNetAmount;
+        // Note: We don't update totalDeposits during batch withdrawal for the same reasons
+        // as single withdrawal - oracle rate changes make accurate tracking impossible
         
         // Transfer QEURO tokens
         IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
@@ -942,12 +951,16 @@ contract UserPool is
         uint256 currentTime
     ) internal {
         uint256 length = qeuroAmounts.length;
+        uint256 totalWithdrawn = 0;
         
         for (uint256 i = 0; i < length;) {
             usdc.safeTransfer(msg.sender, usdcReceivedAmounts[i]);
+            totalWithdrawn += usdcReceivedAmounts[i];
             emit UserWithdrawal(msg.sender, qeuroAmounts[i], usdcReceivedAmounts[i], currentTime);
             unchecked { ++i; }
         }
+        
+        // Note: No need to track totalWithdrawals - use qeuro.totalSupply() instead
     }
 
     // =============================================================================
@@ -1433,8 +1446,45 @@ contract UserPool is
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
+    /**
+     * @notice Get the current QEURO total supply (replaces totalDeposits tracking)
+     * @dev Returns the current QEURO total supply which represents net minted QEURO
+     * @return uint256 Current QEURO total supply (18 decimals)
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
+     */
     function getTotalDeposits() external view returns (uint256) {
-        return totalDeposits;
+        return qeuro.totalSupply();
+    }
+
+    /**
+     * @notice Get the total USDC equivalent withdrawals across all users
+     * @return Total withdrawals in USDC equivalent (6 decimals)
+     * @dev Used for analytics and cash flow monitoring
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Get the current QEURO total supply (replaces totalWithdrawals tracking)
+     * @dev Returns the current QEURO total supply which represents net minted QEURO
+     * @return uint256 Current QEURO total supply (18 decimals)
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access
+     * @custom:oracle No oracle dependencies
+     */
+    function getTotalWithdrawals() external view returns (uint256) {
+        return qeuro.totalSupply();
     }
 
     /**
@@ -1476,13 +1526,49 @@ contract UserPool is
         uint256 stakingRatio,
         uint256 poolTVL
     ) {
-        // Use library for metrics calculation
-        uint256 metrics = UserPoolStakingLibrary.calculatePoolMetrics(
-            totalDeposits, totalStakes, totalUsers
-        );
+        // Use QEURO total supply instead of totalDeposits for accurate metrics
+        uint256 currentQeuroSupply = qeuro.totalSupply();
         
-        (stakingRatio, averageDeposit, totalUsers_) = UserPoolStakingLibrary.unpackPoolMetrics(metrics);
-        poolTVL = totalDeposits;
+        // Calculate metrics directly (library bit-packing doesn't work with large QEURO values)
+        totalUsers_ = totalUsers;
+        averageDeposit = totalUsers > 0 ? currentQeuroSupply / totalUsers : 0;
+        stakingRatio = currentQeuroSupply > 0 ? (totalStakes * 10000) / currentQeuroSupply : 0;
+        poolTVL = currentQeuroSupply;
+    }
+
+    /**
+     * @notice Get comprehensive pool analytics using QEURO total supply
+     * @return currentQeuroSupply Current QEURO total supply (net minted QEURO)
+     * @return usdcEquivalentAtCurrentRate Current USDC equivalent of QEURO supply
+     * @return totalUsers_ Total number of users
+     * @return totalStakes_ Total QEURO staked
+     * @dev Uses QEURO total supply for accurate analytics instead of misleading USDC tracking
+     * @custom:security No external calls except oracle, read-only function
+     * @custom:validation Oracle price validation with fallback to zero
+     * @custom:state-changes No state changes, view-like function
+     * @custom:events No events emitted
+     * @custom:errors No custom errors, handles oracle failures gracefully
+     * @custom:reentrancy No reentrancy risk, read-only operations
+     * @custom:access Public access
+     * @custom:oracle Requires fresh oracle price data for USDC equivalent
+     */
+    function getPoolAnalytics() external returns (
+        uint256 currentQeuroSupply,
+        uint256 usdcEquivalentAtCurrentRate,
+        uint256 totalUsers_,
+        uint256 totalStakes_
+    ) {
+        currentQeuroSupply = qeuro.totalSupply();
+        totalUsers_ = totalUsers;
+        totalStakes_ = totalStakes;
+        
+        // Convert QEURO supply to current USDC equivalent
+        (uint256 currentRate, bool isValid) = oracle.getEurUsdPrice();
+        if (isValid) {
+            usdcEquivalentAtCurrentRate = currentQeuroSupply.mulDiv(currentRate, 1e18) / 1e12;
+        } else {
+            usdcEquivalentAtCurrentRate = 0;
+        }
     }
 
     /**

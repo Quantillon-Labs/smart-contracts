@@ -1,5 +1,5 @@
 # HedgerPoolOptimizationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6f51834bbb45cbccb2f6587da1af65b757119112/src/libraries/HedgerPoolOptimizationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/libraries/HedgerPoolOptimizationLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -311,6 +311,23 @@ Gets protocol collateralization data
 
 *Internal function to reduce stack depth*
 
+**Notes:**
+- Uses staticcall for safe external contract interaction
+
+- Validates call success and data length before decoding
+
+- No state changes, view function
+
+- No events emitted
+
+- Returns default values on call failures
+
+- No reentrancy risk, view function
+
+- Internal function, no access control needed
+
+- No oracle dependencies
+
 
 ```solidity
 function _getProtocolData(address vaultAddress)
@@ -318,6 +335,20 @@ function _getProtocolData(address vaultAddress)
     view
     returns (bool isCollateralized, uint256 currentTotalMargin, uint256 minCollateralizationRatio);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultAddress`|`address`|Address of the vault contract|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`isCollateralized`|`bool`|Whether protocol is currently collateralized|
+|`currentTotalMargin`|`uint256`|Current total margin in the protocol|
+|`minCollateralizationRatio`|`uint256`|Minimum collateralization ratio for minting|
+
 
 ### _hasQEUROMinted
 
@@ -325,16 +356,62 @@ Checks if QEURO has been minted
 
 *Internal function to reduce stack depth*
 
+**Notes:**
+- Uses staticcall for safe external contract interaction
+
+- Validates call success and data length before decoding
+
+- No state changes, view function
+
+- No events emitted
+
+- Returns false on call failures
+
+- No reentrancy risk, view function
+
+- Internal function, no access control needed
+
+- No oracle dependencies
+
 
 ```solidity
 function _hasQEUROMinted(address vaultAddress) internal view returns (bool hasMinted);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultAddress`|`address`|Address of the vault contract|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hasMinted`|`bool`|Whether QEURO has been minted (totalSupply > 0)|
+
 
 ### _validateClosureWithUserDeposits
 
 Validates closure with user deposits
 
 *Internal function to reduce stack depth*
+
+**Notes:**
+- Validates protocol remains collateralized after closure
+
+- Ensures closure doesn't violate collateralization requirements
+
+- No state changes, view function
+
+- No events emitted
+
+- No custom errors, returns boolean result
+
+- No reentrancy risk, view function
+
+- Internal function, no access control needed
+
+- No oracle dependencies
 
 
 ```solidity
@@ -345,6 +422,21 @@ function _validateClosureWithUserDeposits(
     uint256 minCollateralizationRatio
 ) internal view returns (bool isValid);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultAddress`|`address`|Address of the vault contract|
+|`positionMargin`|`uint256`|Margin for the position being closed|
+|`currentTotalMargin`|`uint256`|Current total margin in the protocol|
+|`minCollateralizationRatio`|`uint256`|Minimum collateralization ratio for minting|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`isValid`|`bool`|Whether the position can be safely closed|
+
 
 ### removePositionFromArrays
 

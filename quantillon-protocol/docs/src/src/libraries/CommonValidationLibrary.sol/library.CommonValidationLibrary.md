@@ -1,5 +1,5 @@
 # CommonValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/blob/6f51834bbb45cbccb2f6587da1af65b757119112/src/libraries/CommonValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/libraries/CommonValidationLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -364,5 +364,40 @@ function validateSufficientBalance(uint256 balance, uint256 requiredAmount) inte
 |----|----|-----------|
 |`balance`|`uint256`|The current balance|
 |`requiredAmount`|`uint256`|The required amount|
+
+
+### validateNotContract
+
+Validates that an address is not a contract (for security)
+
+*Prevents sending funds to potentially malicious contracts*
+
+**Notes:**
+- Prevents arbitrary-send vulnerabilities
+
+- Ensures address is not a contract
+
+- No state changes - pure function
+
+- No events emitted
+
+- Throws InvalidAddress if address is a contract
+
+- Not applicable - pure function
+
+- Internal library function
+
+- No oracle dependencies
+
+
+```solidity
+function validateNotContract(address addr, string memory errorType) internal view;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`addr`|`address`|The address to validate|
+|`errorType`|`string`|The type of error to throw if validation fails|
 
 

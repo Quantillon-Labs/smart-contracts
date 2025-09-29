@@ -216,6 +216,28 @@ contract UserPool is
         uint64 unstakeRequestTime;          // Timestamp when unstaking was requested (until year 2554)
     }
     
+    /// @notice User deposit information with oracle ratio tracking
+    /// @dev Stores individual deposit records with oracle ratios for detailed analytics
+    /// @dev Used for audit trails and historical analysis
+    struct UserDepositInfo {
+        uint128 usdcAmount;                 // USDC amount deposited (6 decimals, max ~340B USDC)
+        uint128 qeuroReceived;              // QEURO amount received (18 decimals, max ~340B QEURO)
+        uint64 timestamp;                   // Block timestamp when deposit was made (until year 2554)
+        uint32 oracleRatio;                 // Oracle ratio at time of deposit (scaled by 1e6, max ~4.2B)
+        uint32 blockNumber;                 // Block number when deposit was made (until year 2106)
+    }
+    
+    /// @notice User withdrawal information with oracle ratio tracking
+    /// @dev Stores individual withdrawal records with oracle ratios for detailed analytics
+    /// @dev Used for audit trails and historical analysis
+    struct UserWithdrawalInfo {
+        uint128 qeuroAmount;                // QEURO amount withdrawn (18 decimals, max ~340B QEURO)
+        uint128 usdcReceived;               // USDC amount received (6 decimals, max ~340B USDC)
+        uint64 timestamp;                   // Block timestamp when withdrawal was made (until year 2554)
+        uint32 oracleRatio;                 // Oracle ratio at time of withdrawal (scaled by 1e6, max ~4.2B)
+        uint32 blockNumber;                 // Block number when withdrawal was made (until year 2106)
+    }
+    
     // Storage mappings
     /// @notice User information by address
     /// @dev Maps user addresses to their detailed information
@@ -242,6 +264,30 @@ contract UserPool is
     /// @dev Sum of all yield distributed to users
     /// @dev Used for protocol analytics and governance
     uint256 public totalYieldDistributed;       // Total yield distributed to users
+
+    // =============================================================================
+    // DEPOSIT AND WITHDRAWAL TRACKING - Enhanced analytics and tracking
+    // =============================================================================
+    
+    /// @notice Total USDC deposits across all users (in USDC decimals - 6)
+    /// @dev Tracks the sum of all USDC deposits made by users
+    /// @dev Used for protocol analytics and collateralization calculations
+    uint256 public totalUserDeposits;           // Total USDC deposits (6 decimals)
+    
+    /// @notice Total QEURO withdrawals across all users (in QEURO decimals - 18)
+    /// @dev Tracks the sum of all QEURO withdrawals made by users
+    /// @dev Used for protocol analytics and supply tracking
+    uint256 public totalUserWithdrawals;        // Total QEURO withdrawals (18 decimals)
+    
+    /// @notice User deposit tracking with oracle ratios
+    /// @dev Maps user addresses to their deposit history with oracle ratios
+    /// @dev Used for detailed analytics and audit trails
+    mapping(address => UserDepositInfo[]) public userDeposits;
+    
+    /// @notice User withdrawal tracking with oracle ratios
+    /// @dev Maps user addresses to their withdrawal history with oracle ratios
+    /// @dev Used for detailed analytics and audit trails
+    mapping(address => UserWithdrawalInfo[]) public userWithdrawals;
 
     // Block-based tracking to prevent timestamp manipulation
     mapping(address => uint256) public userLastRewardBlock;
@@ -275,6 +321,38 @@ contract UserPool is
     /// @param timestamp Timestamp of the withdrawal
     /// @dev Indexed parameters allow efficient filtering of events
     event UserWithdrawal(address indexed user, uint256 qeuroBurned, uint256 usdcReceived, uint256 timestamp);
+    
+    /// @notice Emitted when a user deposit is tracked with oracle ratio
+    /// @param user Address of the user who deposited
+    /// @param usdcAmount USDC amount deposited (6 decimals)
+    /// @param qeuroReceived QEURO amount received (18 decimals)
+    /// @param oracleRatio Oracle ratio at time of deposit (scaled by 1e6)
+    /// @param timestamp Block timestamp when deposit was made
+    /// @param blockNumber Block number when deposit was made
+    event UserDepositTracked(
+        address indexed user, 
+        uint256 usdcAmount, 
+        uint256 qeuroReceived, 
+        uint256 oracleRatio, 
+        uint256 timestamp, 
+        uint256 blockNumber
+    );
+    
+    /// @notice Emitted when a user withdrawal is tracked with oracle ratio
+    /// @param user Address of the user who withdrew
+    /// @param qeuroAmount QEURO amount withdrawn (18 decimals)
+    /// @param usdcReceived USDC amount received (6 decimals)
+    /// @param oracleRatio Oracle ratio at time of withdrawal (scaled by 1e6)
+    /// @param timestamp Block timestamp when withdrawal was made
+    /// @param blockNumber Block number when withdrawal was made
+    event UserWithdrawalTracked(
+        address indexed user, 
+        uint256 qeuroAmount, 
+        uint256 usdcReceived, 
+        uint256 oracleRatio, 
+        uint256 timestamp, 
+        uint256 blockNumber
+    );
     
     /// @notice Emitted when a user stakes QEURO
     /// @param user Address of the user who staked
@@ -474,7 +552,9 @@ contract UserPool is
         
         user.depositHistory += uint96(usdcAmount);
         // Note: user.qeuroBalance is not updated since QEURO goes to user's wallet
-        // Note: No need to track totalDeposits - use qeuro.totalSupply() instead
+        
+        // Track deposit with oracle ratio for analytics
+        totalUserDeposits += usdcAmount;
         
         // Store expected balance before external call
         uint256 qeuroBefore = qeuro.balanceOf(address(this));
@@ -492,7 +572,21 @@ contract UserPool is
         // Transfer QEURO to user immediately after minting
         IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
-        emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, TIME_PROVIDER.currentTime());
+        // Track detailed deposit information with oracle ratio
+        uint64 currentTime = uint64(TIME_PROVIDER.currentTime());
+        uint32 oracleRatio = _getOracleRatioScaled();
+        uint32 currentBlock = uint32(block.number);
+        
+        userDeposits[msg.sender].push(UserDepositInfo({
+            usdcAmount: uint128(usdcAmount),
+            qeuroReceived: uint128(qeuroMinted),
+            timestamp: currentTime,
+            oracleRatio: oracleRatio,
+            blockNumber: currentBlock
+        }));
+
+        emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, currentTime);
+        emit UserDepositTracked(msg.sender, usdcAmount, qeuroMinted, oracleRatio, currentTime, currentBlock);
     }
 
     /**
@@ -687,19 +781,20 @@ contract UserPool is
         UserInfo storage user = userInfo[msg.sender];
         
         // Calculate totals for batch updates
-        uint256 totalUserDeposits = 0;
+        uint256 totalUsdcAmount = 0;
         uint256 totalQeuroToMint = 0;
         
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
-            totalUserDeposits += usdcAmounts[i];
+            totalUsdcAmount += usdcAmounts[i];
             totalQeuroToMint += minQeuroOuts[i];
         }
         
         // Update user state once (single update outside loop)
-        user.depositHistory += uint96(totalUserDeposits);
+        user.depositHistory += uint96(totalUsdcAmount);
         // Note: user.qeuroBalance is not updated since QEURO goes to user's wallet
         
-        // Note: No need to track totalDeposits - use qeuro.totalSupply() instead
+        // Track total deposits for analytics
+        totalUserDeposits += totalUsdcAmount;
     }
 
     /**
@@ -722,6 +817,10 @@ contract UserPool is
         uint256[] memory qeuroMintedAmounts,
         uint256 currentTime
     ) internal {
+        // Cache oracle ratio and block number for all deposits in this batch
+        uint32 oracleRatio = _getOracleRatioScaled();
+        uint32 currentBlock = uint32(block.number);
+        
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 qeuroMinted = qeuroMintedAmounts[i];
@@ -729,7 +828,17 @@ contract UserPool is
             // Transfer QEURO to user
             IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
+            // Track detailed deposit information with oracle ratio
+            userDeposits[msg.sender].push(UserDepositInfo({
+                usdcAmount: uint128(usdcAmount),
+                qeuroReceived: uint128(qeuroMinted),
+                timestamp: uint64(currentTime),
+                oracleRatio: oracleRatio,
+                blockNumber: currentBlock
+            }));
+
             emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, currentTime);
+            emit UserDepositTracked(msg.sender, usdcAmount, qeuroMinted, oracleRatio, currentTime, currentBlock);
         }
     }
 
@@ -787,12 +896,27 @@ contract UserPool is
         uint256 fee = usdcReceived.percentageOf(withdrawalFee_);
         uint256 netAmount = usdcReceived - fee;
 
-        // Note: No need to track totalWithdrawals - use qeuro.totalSupply() instead
+        // Track withdrawal with oracle ratio for analytics
+        totalUserWithdrawals += qeuroAmount;
 
         // Transfer USDC to user
         usdc.safeTransfer(msg.sender, netAmount);
 
-        emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, TIME_PROVIDER.currentTime());
+        // Track detailed withdrawal information with oracle ratio
+        uint64 currentTime = uint64(TIME_PROVIDER.currentTime());
+        uint32 oracleRatio = _getOracleRatioScaled();
+        uint32 currentBlock = uint32(block.number);
+        
+        userWithdrawals[msg.sender].push(UserWithdrawalInfo({
+            qeuroAmount: uint128(qeuroAmount),
+            usdcReceived: uint128(netAmount),
+            timestamp: currentTime,
+            oracleRatio: oracleRatio,
+            blockNumber: currentBlock
+        }));
+
+        emit UserWithdrawal(msg.sender, qeuroAmount, netAmount, currentTime);
+        emit UserWithdrawalTracked(msg.sender, qeuroAmount, netAmount, oracleRatio, currentTime, currentBlock);
     }
 
     /**
@@ -953,14 +1077,33 @@ contract UserPool is
         uint256 length = qeuroAmounts.length;
         uint256 totalWithdrawn = 0;
         
+        // Cache oracle ratio and block number for all withdrawals in this batch
+        uint32 oracleRatio = _getOracleRatioScaled();
+        uint32 currentBlock = uint32(block.number);
+        
         for (uint256 i = 0; i < length;) {
             usdc.safeTransfer(msg.sender, usdcReceivedAmounts[i]);
             totalWithdrawn += usdcReceivedAmounts[i];
+            
+            // Track detailed withdrawal information with oracle ratio
+            userWithdrawals[msg.sender].push(UserWithdrawalInfo({
+                qeuroAmount: uint128(qeuroAmounts[i]),
+                usdcReceived: uint128(usdcReceivedAmounts[i]),
+                timestamp: uint64(currentTime),
+                oracleRatio: oracleRatio,
+                blockNumber: currentBlock
+            }));
+            
             emit UserWithdrawal(msg.sender, qeuroAmounts[i], usdcReceivedAmounts[i], currentTime);
+            emit UserWithdrawalTracked(msg.sender, qeuroAmounts[i], usdcReceivedAmounts[i], oracleRatio, currentTime, currentBlock);
             unchecked { ++i; }
         }
         
-        // Note: No need to track totalWithdrawals - use qeuro.totalSupply() instead
+        // Track total withdrawals for analytics
+        for (uint256 i = 0; i < length;) {
+            totalUserWithdrawals += qeuroAmounts[i];
+            unchecked { ++i; }
+        }
     }
 
     // =============================================================================
@@ -1460,7 +1603,85 @@ contract UserPool is
      * @custom:oracle No oracle dependencies
      */
     function getTotalDeposits() external view returns (uint256) {
-        return qeuro.totalSupply();
+        return totalUserDeposits;
+    }
+    
+    /**
+     * @notice Get the total QEURO withdrawals across all users
+     * @return Total withdrawals in QEURO (18 decimals)
+     * @dev Used for analytics and supply tracking
+     * @dev Returns the sum of all user withdrawals in QEURO
+     * @custom:security No security implications (view function)
+     * @custom:validation No validation required
+     * @custom:state-changes No state changes (view function)
+     * @custom:events No events (view function)
+     * @custom:errors No custom errors
+     * @custom:reentrancy No external calls, safe
+     * @custom:access Public (anyone can call)
+     * @custom:oracle No oracle dependencies
+     */
+    function getTotalWithdrawals() external view returns (uint256) {
+        return totalUserWithdrawals;
+    }
+    
+    /**
+     * @notice Get user deposit history with oracle ratios
+     * @param user Address of the user
+     * @return Array of UserDepositInfo structs containing deposit history
+     * @dev Used for detailed analytics and audit trails
+     * @dev Returns complete deposit history with oracle ratios
+     * @custom:security No security implications (view function)
+     * @custom:validation No validation required
+     * @custom:state-changes No state changes (view function)
+     * @custom:events No events (view function)
+     * @custom:errors No custom errors
+     * @custom:reentrancy No external calls, safe
+     * @custom:access Public (anyone can call)
+     * @custom:oracle No oracle dependencies
+     */
+    function getUserDepositHistory(address user) external view returns (UserDepositInfo[] memory) {
+        return userDeposits[user];
+    }
+    
+    /**
+     * @notice Get user withdrawal history with oracle ratios
+     * @param user Address of the user
+     * @return Array of UserWithdrawalInfo structs containing withdrawal history
+     * @dev Used for detailed analytics and audit trails
+     * @dev Returns complete withdrawal history with oracle ratios
+     * @custom:security No security implications (view function)
+     * @custom:validation No validation required
+     * @custom:state-changes No state changes (view function)
+     * @custom:events No events (view function)
+     * @custom:errors No custom errors
+     * @custom:reentrancy No external calls, safe
+     * @custom:access Public (anyone can call)
+     * @custom:oracle No oracle dependencies
+     */
+    function getUserWithdrawals(address user) external view returns (UserWithdrawalInfo[] memory) {
+        return userWithdrawals[user];
+    }
+    
+    /**
+     * @notice Get current oracle ratio scaled by 1e6 for storage efficiency
+     * @return Oracle ratio scaled by 1e6 (e.g., 1.08 becomes 1080000)
+     * @dev Used internally for tracking oracle ratios in deposit/withdrawal records
+     * @dev Scaled to fit in uint32 for gas efficiency
+     * @custom:security No security implications (view function)
+     * @custom:validation No validation required
+     * @custom:state-changes No state changes (view function)
+     * @custom:events No events (view function)
+     * @custom:errors No custom errors
+     * @custom:reentrancy No external calls, safe
+     * @custom:access Internal function
+     * @custom:oracle Depends on oracle for current EUR/USD rate
+     */
+    function _getOracleRatioScaled() internal returns (uint32) {
+        (uint256 oraclePrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Oracle price is invalid");
+        // Scale by 1e6 to fit in uint32 (max value ~4.2B)
+        // Oracle price is in 8 decimals, so we scale by 1e6 to get 2 decimals precision
+        return uint32(oraclePrice / 1e6);
     }
 
     /**
@@ -1470,22 +1691,6 @@ contract UserPool is
      * @custom:access Public access
      * @custom:oracle No oracle dependencies
      */
-    /**
-     * @notice Get the current QEURO total supply (replaces totalWithdrawals tracking)
-     * @dev Returns the current QEURO total supply which represents net minted QEURO
-     * @return uint256 Current QEURO total supply (18 decimals)
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public access
-     * @custom:oracle No oracle dependencies
-     */
-    function getTotalWithdrawals() external view returns (uint256) {
-        return qeuro.totalSupply();
-    }
 
     /**
      * @notice Get the total QEURO staked across all users

@@ -1,5 +1,5 @@
 # MockUSDC
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/mocks/MockUSDC.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/84573e20d663003e9e5ffbb3e1ac29ca4b399f78/src/mocks/MockUSDC.sol)
 
 **Inherits:**
 ERC20, Ownable

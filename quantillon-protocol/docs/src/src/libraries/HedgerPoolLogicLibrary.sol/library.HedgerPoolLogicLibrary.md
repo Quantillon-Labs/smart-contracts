@@ -1,5 +1,5 @@
 # HedgerPoolLogicLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/d29e599f54c502dc53514fc1959eef42e6ef819c/src/libraries/HedgerPoolLogicLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/84573e20d663003e9e5ffbb3e1ac29ca4b399f78/src/libraries/HedgerPoolLogicLibrary.sol)
 
 Logic functions for HedgerPool to reduce contract size
 
@@ -12,21 +12,21 @@ Validates position parameters and calculates derived values
 *Validates all position constraints and calculates fee, margin, and position size*
 
 **Notes:**
-- Validates all position constraints and limits
+- security: Validates all position constraints and limits
 
-- Ensures amounts, leverage, and ratios are within limits
+- validation: Ensures amounts, leverage, and ratios are within limits
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- Throws various validation errors if constraints not met
+- errors: Throws various validation errors if constraints not met
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Uses provided eurUsdPrice parameter
+- oracle: Uses provided eurUsdPrice parameter
 
 
 ```solidity
@@ -83,21 +83,21 @@ Calculates profit or loss for a hedge position
 *Computes PnL based on price movement from entry to current price*
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function
+- access: Internal function
 
-- Uses provided currentPrice parameter
+- oracle: Uses provided currentPrice parameter
 
 
 ```solidity
@@ -125,21 +125,21 @@ Determines if a position is eligible for liquidation
 *Checks if position margin ratio is below liquidation threshold*
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Uses provided currentPrice parameter
+- oracle: Uses provided currentPrice parameter
 
 
 ```solidity
@@ -175,21 +175,21 @@ Calculates reward updates for hedgers based on interest rate differentials
 *Computes new pending rewards based on time elapsed and interest rates*
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity
@@ -230,21 +230,21 @@ Validates margin operations and calculates new margin values
 *Validates margin addition/removal and calculates resulting margin ratio*
 
 **Notes:**
-- Validates margin constraints and limits
+- security: Validates margin constraints and limits
 
-- Ensures margin operations are within limits
+- validation: Ensures margin operations are within limits
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- Throws InsufficientMargin or validation errors
+- errors: Throws InsufficientMargin or validation errors
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity
@@ -283,21 +283,21 @@ Generates a unique liquidation commitment hash
 *Creates a commitment hash for MEV protection in liquidation process*
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity

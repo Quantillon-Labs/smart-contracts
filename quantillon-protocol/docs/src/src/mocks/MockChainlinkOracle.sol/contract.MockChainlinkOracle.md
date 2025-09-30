@@ -1,5 +1,5 @@
 # MockChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/8526548ebebe4cec60f21492516bc5894f11137e/src/mocks/MockChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7c4e5be1f7b1fc3955a4236956d159ceba9afc3e/src/mocks/MockChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -153,7 +153,7 @@ Gets the current EUR/USD price with validation and auto-updates lastValidEurUsdP
 
 
 ```solidity
-function getEurUsdPrice() external override returns (uint256 price, bool isValid);
+function getEurUsdPrice() external view override returns (uint256 price, bool isValid);
 ```
 **Returns**
 

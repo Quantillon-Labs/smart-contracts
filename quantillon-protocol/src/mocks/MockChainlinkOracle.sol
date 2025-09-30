@@ -100,7 +100,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      * @return price EUR/USD price in 18 decimals
      * @return isValid True if price is valid and fresh
      */
-    function getEurUsdPrice() external override returns (uint256 price, bool isValid) {
+    function getEurUsdPrice() external view override returns (uint256 price, bool isValid) {
         // If circuit breaker is active or contract is paused, use the last valid price
         if (circuitBreakerTriggered || paused()) {
             return (lastValidEurUsdPrice, false);
@@ -121,13 +121,6 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // Circuit breaker bounds check
         isValid = price >= MIN_EUR_USD_PRICE && price <= MAX_EUR_USD_PRICE;
 
-        // For mock oracle, always update lastValidEurUsdPrice to enable step-by-step changes
-        // This allows gradual price changes without hitting deviation limits
-        if (isValid) {
-            lastValidEurUsdPrice = price;
-            lastPriceUpdateBlock = block.number;
-        }
-        
         return (price, isValid);
     }
     

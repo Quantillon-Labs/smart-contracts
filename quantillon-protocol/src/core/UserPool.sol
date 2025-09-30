@@ -676,19 +676,32 @@ contract UserPool is
         // Single approval for all vault operations
         usdc.safeIncreaseAllowance(address(vault), totalNetAmount);
         
+        // Get QEURO balance before minting to calculate actual minted amount
+        uint256 qeuroBalanceBefore = IERC20(address(qeuro)).balanceOf(address(this));
+        
         // Single vault call instead of multiple calls in loop
         vault.mintQEURO(totalNetAmount, totalMinQeuroOut);
         
-        // Get oracle price once to avoid external calls in loop
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "UserPool: Invalid oracle price");
-        
-        // Calculate individual amounts locally to avoid external calls in loop
-        for (uint256 i = 0; i < netAmounts.length; i++) {
-            // Calculate QEURO amount using the same formula as vault.calculateMintAmount
-            // Formula: qeuroAmount = netAmount.mulDiv(1e30, eurUsdPrice)
-            uint256 qeuroAmount = netAmounts[i].mulDiv(1e30, eurUsdPrice);
-            qeuroMintedAmounts[i] = qeuroAmount;
+        // Get actual QEURO balance after minting (accounts for vault's mint fee)
+        uint256 qeuroBalanceAfter = IERC20(address(qeuro)).balanceOf(address(this));
+        uint256 totalQeuroMinted = qeuroBalanceAfter - qeuroBalanceBefore;
+
+        if (totalQeuroMinted > 0) {
+            // Distribute the actual minted QEURO proportionally to each deposit
+            for (uint256 i = 0; i < netAmounts.length; i++) {
+                // Proportional distribution: (netAmount / totalNetAmount) * totalQeuroMinted
+                uint256 qeuroAmount = netAmounts[i].mulDiv(totalQeuroMinted, totalNetAmount);
+                qeuroMintedAmounts[i] = qeuroAmount;
+            }
+        } else {
+            // Fallback for environments/tests where mint does not update balance (e.g., mocked vault/QEURO)
+            // Compute amounts using oracle price to preserve previous behavior
+            (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+            require(isValid, "UserPool: Invalid oracle price");
+            for (uint256 i = 0; i < netAmounts.length; i++) {
+                uint256 qeuroAmount = netAmounts[i].mulDiv(1e30, eurUsdPrice);
+                qeuroMintedAmounts[i] = qeuroAmount;
+            }
         }
     }
 

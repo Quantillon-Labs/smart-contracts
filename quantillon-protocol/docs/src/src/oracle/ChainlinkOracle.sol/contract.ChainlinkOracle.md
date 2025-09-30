@@ -1,5 +1,5 @@
 # ChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/8526548ebebe4cec60f21492516bc5894f11137e/src/oracle/ChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7c4e5be1f7b1fc3955a4236956d159ceba9afc3e/src/oracle/ChainlinkOracle.sol)
 
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable

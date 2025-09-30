@@ -1173,7 +1173,7 @@ contract UserPoolTestSuite is Test {
         vm.roll(block.number + 365 days / 12); // Advance blocks (assuming 12 second blocks)
         
         // Check pending rewards
-        (, , uint256 pendingRewards, , , , ) = userPool.getUserInfo(user1);
+        userPool.getUserInfo(user1); // Intentionally discard return values
         // For now, accept that rewards might be 0 due to precision issues
         // TODO: Investigate reward calculation precision issues
     }
@@ -2444,7 +2444,6 @@ contract MockQuantillonVault {
      * @notice Mints QEURO tokens for testing
      * @dev Mock function for testing purposes
      * @param usdcAmount The amount of USDC to use for minting
-     * @param minQeuroOut The minimum QEURO expected
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
      * @custom:state-changes No state changes - mock implementation
@@ -2454,7 +2453,7 @@ contract MockQuantillonVault {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external {
+    function mintQEURO(uint256 usdcAmount, uint256 /* minQeuroOut */) external {
         // Mock implementation - mint QEURO based on 1.08 oracle rate
         // Use the same calculation as UserPool: (usdcAmount * 1e30) / eurUsdPrice
         uint256 qeuroAmount = (usdcAmount * 1e30) / 108000000; // Convert USDC to QEURO with 1.08 rate
@@ -2465,7 +2464,6 @@ contract MockQuantillonVault {
      * @notice Redeems QEURO tokens for testing
      * @dev Mock function for testing purposes
      * @param qeuroAmount The amount of QEURO to redeem
-     * @param minUsdcOut The minimum USDC expected
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
      * @custom:state-changes No state changes - mock implementation
@@ -2475,7 +2473,7 @@ contract MockQuantillonVault {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external {
+    function redeemQEURO(uint256 qeuroAmount, uint256 /* minUsdcOut */) external {
         // Mock implementation - redeem QEURO to USDC
         uint256 usdcAmount = (qeuroAmount * 108) / (1e12 * 100); // Convert QEURO to USDC with 1.08 rate
         usdc.mint(msg.sender, usdcAmount);
@@ -3144,7 +3142,7 @@ contract MockChainlinkOracle {
      * @custom:access Public - test mock
      * @custom:oracle Returns mock oracle price data
      */
-    function getEurUsdPrice() external returns (uint256 price, bool isValid) {
+    function getEurUsdPrice() external pure returns (uint256 price, bool isValid) {
         // Return 1.08 EUR/USD rate (scaled by 1e8 to match Chainlink format)
         return (108000000, true);
     }

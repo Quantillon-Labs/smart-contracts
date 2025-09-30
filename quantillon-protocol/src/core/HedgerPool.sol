@@ -272,7 +272,7 @@ contract HedgerPool is
      * @custom:state-changes Creates new position, updates hedger stats, transfers USDC to vault
      * @custom:events Emits HedgePositionOpened with position details
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by secureNonReentrant modifier
+     * @custom:reentrancy Protected by secureNonReentrant modifier and proper CEI pattern
      * @custom:access Restricted to whitelisted hedgers (if whitelist enabled)
      * @custom:oracle Requires fresh oracle price data
      */
@@ -339,16 +339,17 @@ contract HedgerPool is
         totalMargin += netMargin;
         totalExposure += positionSize;
         
-        // Emit event with actual values before external calls
+        // INTERACTIONS - All external calls after state updates
+        usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
+        vault.addHedgerDeposit(usdcAmount);
+        
+        // Emit event after all external calls to prevent reentrancy issues
+        // This follows the Checks-Effects-Interactions pattern properly
         emit HedgePositionOpened(
             msg.sender, 
             positionId, 
             _packPositionOpenData(positionSize, netMargin, leverage, eurUsdPrice)
         );
-        
-        // INTERACTIONS - All external calls after state updates
-        usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
-        vault.addHedgerDeposit(usdcAmount);
         
         // Validate margin ratio meets minimum requirements
         assert(marginRatio >= coreParams.minMarginRatio);

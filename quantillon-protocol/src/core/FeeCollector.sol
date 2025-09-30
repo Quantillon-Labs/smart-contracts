@@ -395,7 +395,11 @@ contract FeeCollector is
      * @dev Validates recipient address against whitelist and performs secure ETH transfer
      * @param recipient Address to receive ETH (must be treasury, devFund, or communityFund)
      * @param amount Amount of ETH to transfer
-     * @custom:security Validates recipient against known fund addresses
+     * @custom:security Multiple validation layers prevent arbitrary sends:
+     *                  - Recipient must be one of three pre-authorized fund addresses
+     *                  - Addresses are validated to be non-zero and non-contract
+     *                  - Only GOVERNANCE_ROLE can update these addresses
+     *                  - This is NOT an arbitrary send as recipient is strictly controlled
      * @custom:validation Ensures recipient is valid and amount is positive
      * @custom:state-changes Transfers ETH from contract to recipient
      * @custom:events No events emitted
@@ -409,6 +413,7 @@ contract FeeCollector is
         if (amount <= 0) revert CommonErrorLibrary.InvalidAmount();
         
         // Validate recipient is one of the authorized fund addresses
+        // This is the primary security check that prevents arbitrary sends
         if (recipient != treasury && recipient != devFund && recipient != communityFund) {
             revert CommonErrorLibrary.InvalidAddress();
         }
@@ -423,11 +428,14 @@ contract FeeCollector is
         }
         if (codeSize > 0) revert CommonErrorLibrary.InvalidAddress();
         
-        // slither-disable-next-line arbitrary-send-eth
-        // Recipient is validated to be one of the authorized fund addresses (treasury, devFund, communityFund)
-        // These addresses are validated during initialization and updates via CommonValidationLibrary.validateNotContract()
-        // Only governance role can update these addresses, providing additional security
-        // This is not an arbitrary send as recipient is restricted to pre-authorized fund addresses
+        // slither-disable-next-line arbitrary-send
+        // SECURITY: This is NOT an arbitrary send. The recipient is strictly validated:
+        // 1. Must be one of three pre-authorized fund addresses: treasury, devFund, or communityFund
+        // 2. These addresses are validated during initialization and updates via CommonValidationLibrary.validateNotContract()
+        // 3. Only GOVERNANCE_ROLE can update these addresses, providing additional security
+        // 4. Addresses are validated to be non-zero and non-contract addresses
+        // 5. The recipient parameter is not user-controlled - it's restricted to these three specific addresses
+        // This is a controlled transfer to pre-authorized, validated fund addresses only
         (bool success, ) = recipient.call{value: amount}("");
         if (!success) revert CommonErrorLibrary.ETHTransferFailed();
     }

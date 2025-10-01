@@ -1,5 +1,5 @@
 # AccessControlLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7c4e5be1f7b1fc3955a4236956d159ceba9afc3e/src/libraries/AccessControlLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f9a7c7e7bd97a7fc653d32916c250f14c6d3c674/src/libraries/AccessControlLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -13,7 +13,7 @@ Access control functions for Quantillon Protocol
 - Provides standardized error handling for access control*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -24,21 +24,21 @@ Ensures the caller has governance role
 *Reverts with NotGovernance if caller lacks GOVERNANCE_ROLE*
 
 **Notes:**
-- security: Validates caller has GOVERNANCE_ROLE before allowing access
+- Validates caller has GOVERNANCE_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotGovernance if caller lacks required role
+- Throws NotGovernance if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -58,21 +58,21 @@ Ensures the caller has vault manager role
 *Reverts with NotVaultManager if caller lacks VAULT_MANAGER_ROLE*
 
 **Notes:**
-- security: Validates caller has VAULT_MANAGER_ROLE before allowing access
+- Validates caller has VAULT_MANAGER_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotVaultManager if caller lacks required role
+- Throws NotVaultManager if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -92,21 +92,21 @@ Ensures the caller has emergency role
 *Reverts with NotEmergencyRole if caller lacks EMERGENCY_ROLE*
 
 **Notes:**
-- security: Validates caller has EMERGENCY_ROLE before allowing access
+- Validates caller has EMERGENCY_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotEmergencyRole if caller lacks required role
+- Throws NotEmergencyRole if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -126,21 +126,21 @@ Ensures the caller has liquidator role
 *Reverts with NotLiquidatorRole if caller lacks LIQUIDATOR_ROLE*
 
 **Notes:**
-- security: Validates caller has LIQUIDATOR_ROLE before allowing access
+- Validates caller has LIQUIDATOR_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotLiquidatorRole if caller lacks required role
+- Throws NotLiquidatorRole if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -160,21 +160,21 @@ Ensures the caller has yield manager role
 *Reverts with NotYieldManager if caller lacks YIELD_MANAGER_ROLE*
 
 **Notes:**
-- security: Validates caller has YIELD_MANAGER_ROLE before allowing access
+- Validates caller has YIELD_MANAGER_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotYieldManager if caller lacks required role
+- Throws NotYieldManager if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -194,21 +194,21 @@ Ensures the caller has admin role
 *Reverts with NotAdmin if caller lacks DEFAULT_ADMIN_ROLE*
 
 **Notes:**
-- security: Validates caller has DEFAULT_ADMIN_ROLE before allowing access
+- Validates caller has DEFAULT_ADMIN_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotAdmin if caller lacks required role
+- Throws NotAdmin if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -228,21 +228,21 @@ Validates that an address is not the zero address
 *Reverts with InvalidAddress if address is zero*
 
 **Notes:**
-- security: Prevents zero address usage which could cause loss of funds
+- Prevents zero address usage which could cause loss of funds
 
-- validation: Validates addr != address(0)
+- Validates addr != address(0)
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidAddress if address is zero
+- Throws InvalidAddress if address is zero
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -262,21 +262,21 @@ Validates that an amount is not zero
 *Reverts with InvalidAmount if amount is zero*
 
 **Notes:**
-- security: Prevents zero amount operations which could cause unexpected behavior
+- Prevents zero amount operations which could cause unexpected behavior
 
-- validation: Validates amount > 0
+- Validates amount > 0
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidAmount if amount is zero
+- Throws InvalidAmount if amount is zero
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -296,21 +296,21 @@ Validates that an amount is positive (> 0)
 *Reverts with InvalidAmount if amount is zero or negative*
 
 **Notes:**
-- security: Prevents zero or negative amount operations which could cause unexpected behavior
+- Prevents zero or negative amount operations which could cause unexpected behavior
 
-- validation: Validates amount > 0
+- Validates amount > 0
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidAmount if amount is zero or negative
+- Throws InvalidAmount if amount is zero or negative
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

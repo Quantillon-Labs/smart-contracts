@@ -1,5 +1,5 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7c4e5be1f7b1fc3955a4236956d159ceba9afc3e/src/core/UserPool.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f9a7c7e7bd97a7fc653d32916c250f14c6d3c674/src/core/UserPool.sol)
 
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
@@ -65,7 +65,7 @@ Manages QEURO user deposits, staking, and yield distribution
 - Vault math library for calculations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -476,21 +476,21 @@ Constructor for UserPool contract
 *Sets up the time provider and disables initializers for security*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Disables initializers
+- Disables initializers
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -510,21 +510,21 @@ Initializes the UserPool contract
 *Initializes the UserPool with all required contracts and default parameters*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Initializes all contract state variables
+- Initializes all contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to initializer modifier
+- Restricted to initializer modifier
 
-- oracle: Requires oracle for analytics functions
+- Requires oracle for analytics functions
 
 
 ```solidity
@@ -560,21 +560,21 @@ Deposit USDC to mint QEURO (unified single/batch function)
 *Handles both single deposits and batch deposits in one function*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Public access
+- Public access
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -606,21 +606,21 @@ Internal function to validate amounts and transfer tokens (unified validation)
 *Unified validation and transfer function to reduce code duplication*
 
 **Notes:**
-- security: Validates all amounts > 0 before transfer
+- Validates all amounts > 0 before transfer
 
-- validation: Validates each amount in array is positive
+- Validates each amount in array is positive
 
-- state-changes: Transfers tokens from/to msg.sender
+- Transfers tokens from/to msg.sender
 
-- events: No events emitted - handled by calling function
+- No events emitted - handled by calling function
 
-- errors: Throws if any amount is 0
+- Throws if any amount is 0
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -650,21 +650,21 @@ Internal function to initialize user if needed (consolidated)
 *Initializes user tracking if they haven't deposited before*
 
 **Notes:**
-- security: Updates hasDeposited mapping and totalUsers counter
+- Updates hasDeposited mapping and totalUsers counter
 
-- validation: No input validation required
+- No input validation required
 
-- state-changes: Updates hasDeposited[msg.sender] and totalUsers
+- Updates hasDeposited[msg.sender] and totalUsers
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -678,21 +678,21 @@ Internal function to calculate net amounts after fees
 *Calculates net amounts by subtracting deposit fees from each USDC amount*
 
 **Notes:**
-- security: Uses cached depositFee to prevent reentrancy
+- Uses cached depositFee to prevent reentrancy
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -722,21 +722,21 @@ Internal function to process vault minting operations
 *Processes vault minting operations with single vault call to avoid external calls in loop*
 
 **Notes:**
-- security: Uses single approval and single vault call to minimize external calls
+- Uses single approval and single vault call to minimize external calls
 
-- validation: No input validation required - parameters pre-validated
+- No input validation required - parameters pre-validated
 
-- state-changes: Updates qeuroMintedAmounts array with minted amounts
+- Updates qeuroMintedAmounts array with minted amounts
 
-- events: No events emitted - handled by calling function
+- No events emitted - handled by calling function
 
-- errors: Throws if vault.mintQEURO fails
+- Throws if vault.mintQEURO fails
 
-- reentrancy: Protected by nonReentrant modifier on calling function
+- Protected by nonReentrant modifier on calling function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -762,21 +762,21 @@ Internal function to update user and pool state
 *Updates user and pool state before external calls for reentrancy protection*
 
 **Notes:**
-- security: Updates state before external calls (CEI pattern)
+- Updates state before external calls (CEI pattern)
 
-- validation: No input validation required - parameters pre-validated
+- No input validation required - parameters pre-validated
 
-- state-changes: Updates user.depositHistory, totalDeposits
+- Updates user.depositHistory, totalDeposits
 
-- events: No events emitted - handled by calling function
+- No events emitted - handled by calling function
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -798,21 +798,21 @@ Internal function to transfer QEURO and emit events
 *Transfers QEURO to users and emits UserDeposit events*
 
 **Notes:**
-- security: Uses SafeERC20 for secure token transfers
+- Uses SafeERC20 for secure token transfers
 
-- validation: No input validation required - parameters pre-validated
+- No input validation required - parameters pre-validated
 
-- state-changes: Transfers QEURO tokens to msg.sender
+- Transfers QEURO tokens to msg.sender
 
-- events: Emits UserDeposit event for each transfer
+- Emits UserDeposit event for each transfer
 
-- errors: Throws if QEURO transfer fails
+- Throws if QEURO transfer fails
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -838,21 +838,21 @@ Withdraw USDC by burning QEURO (unified single/batch function)
 *Handles both single withdrawals and batch withdrawals in one function*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Public access
+- Public access
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -883,21 +883,21 @@ Validates and processes batch withdrawal
 *Internal helper to reduce stack depth*
 
 **Notes:**
-- security: Validates amounts and user balances to prevent over-withdrawal
+- Validates amounts and user balances to prevent over-withdrawal
 
-- validation: Validates all amounts are positive and user has sufficient balance
+- Validates all amounts are positive and user has sufficient balance
 
-- state-changes: Updates user balance and processes withdrawal calculations
+- Updates user balance and processes withdrawal calculations
 
-- events: No events emitted - internal helper function
+- No events emitted - internal helper function
 
-- errors: Throws "Amount must be positive" if any amount is zero
+- Throws "Amount must be positive" if any amount is zero
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -925,21 +925,21 @@ Processes vault redemptions for batch withdrawal
 *OPTIMIZATION: Uses single vault call with total amounts to avoid external calls in loop*
 
 **Notes:**
-- security: Validates vault redemption amounts and minimum outputs
+- Validates vault redemption amounts and minimum outputs
 
-- validation: Validates all amounts are positive and within limits
+- Validates all amounts are positive and within limits
 
-- state-changes: Processes vault redemptions and updates received amounts
+- Processes vault redemptions and updates received amounts
 
-- events: No events emitted - internal helper function
+- No events emitted - internal helper function
 
-- errors: Throws validation errors if amounts are invalid
+- Throws validation errors if amounts are invalid
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -967,21 +967,21 @@ Executes final transfers and emits events for batch withdrawal
 *Internal helper to reduce stack depth*
 
 **Notes:**
-- security: Executes final token transfers and emits withdrawal events
+- Executes final token transfers and emits withdrawal events
 
-- validation: Validates all amounts are positive before transfer
+- Validates all amounts are positive before transfer
 
-- state-changes: Burns QEURO tokens and transfers USDC to user
+- Burns QEURO tokens and transfers USDC to user
 
-- events: Emits Withdrawal event for each withdrawal
+- Emits Withdrawal event for each withdrawal
 
-- errors: Throws transfer errors if token operations fail
+- Throws transfer errors if token operations fail
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1007,21 +1007,21 @@ Stakes QEURO tokens (unified single/batch function)
 *Handles both single stakes and batch stakes in one function*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Public access
+- Public access
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1041,21 +1041,21 @@ Requests to unstake QEURO tokens (starts unstaking cooldown period)
 *Begins the unstaking process with a cooldown period before tokens can be withdrawn*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Public access
+- Public access
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1076,21 +1076,21 @@ Complete unstaking after cooldown period
 after the cooldown period has passed.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Public access
+- Public access
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1105,21 +1105,21 @@ Claim staking rewards
 It calculates and transfers the rewards based on their staked amount.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1140,21 +1140,21 @@ Batch claim staking rewards for multiple users (admin function)
 Useful for protocol-wide reward distributions or automated reward processing.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1184,21 +1184,21 @@ Distribute yield to stakers (called by YieldShift contract)
 *This function is deprecated - yield now goes to stQEURO*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1220,21 +1220,21 @@ for a given user based on their staked amount and the current APY.
 Uses block-based calculations to prevent timestamp manipulation.*
 
 **Notes:**
-- security: Uses block-based calculations to prevent timestamp manipulation
+- Uses block-based calculations to prevent timestamp manipulation
 
-- validation: Validates user has staked amount > 0
+- Validates user has staked amount > 0
 
-- state-changes: Updates user.pendingRewards, user.lastStakeTime, userLastRewardBlock
+- Updates user.pendingRewards, user.lastStakeTime, userLastRewardBlock
 
-- events: No events emitted - handled by calling function
+- No events emitted - handled by calling function
 
-- errors: No errors thrown - safe arithmetic used
+- No errors thrown - safe arithmetic used
 
-- reentrancy: Not protected - internal function only
+- Not protected - internal function only
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1255,21 +1255,21 @@ Get comprehensive user information (consolidated view function)
 *Returns all user-related data in one call to reduce contract size*
 
 **Notes:**
-- security: No security implications (view function)
+- No security implications (view function)
 
-- validation: No validation required
+- No validation required
 
-- state-changes: No state changes (view function)
+- No state changes (view function)
 
-- events: No events (view function)
+- No events (view function)
 
-- errors: No custom errors
+- No custom errors
 
-- reentrancy: No external calls, safe
+- No external calls, safe
 
-- access: Public (anyone can call)
+- Public (anyone can call)
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1312,21 +1312,21 @@ Get comprehensive pool totals (consolidated view function)
 *Returns all pool totals in one call to reduce contract size*
 
 **Notes:**
-- security: No security implications (view function)
+- No security implications (view function)
 
-- validation: No validation required
+- No validation required
 
-- state-changes: No state changes (view function)
+- No state changes (view function)
 
-- events: No events (view function)
+- No events (view function)
 
-- errors: No custom errors
+- No custom errors
 
-- reentrancy: No external calls, safe
+- No external calls, safe
 
-- access: Public (anyone can call)
+- Public (anyone can call)
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1354,21 +1354,21 @@ Get user deposit history with oracle ratios
 *Returns complete deposit history with oracle ratios*
 
 **Notes:**
-- security: No security implications (view function)
+- No security implications (view function)
 
-- validation: No validation required
+- No validation required
 
-- state-changes: No state changes (view function)
+- No state changes (view function)
 
-- events: No events (view function)
+- No events (view function)
 
-- errors: No custom errors
+- No custom errors
 
-- reentrancy: No external calls, safe
+- No external calls, safe
 
-- access: Public (anyone can call)
+- Public (anyone can call)
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1396,21 +1396,21 @@ Get user withdrawal history with oracle ratios
 *Returns complete withdrawal history with oracle ratios*
 
 **Notes:**
-- security: No security implications (view function)
+- No security implications (view function)
 
-- validation: No validation required
+- No validation required
 
-- state-changes: No state changes (view function)
+- No state changes (view function)
 
-- events: No events (view function)
+- No events (view function)
 
-- errors: No custom errors
+- No custom errors
 
-- reentrancy: No external calls, safe
+- No external calls, safe
 
-- access: Public (anyone can call)
+- Public (anyone can call)
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1438,21 +1438,21 @@ Get current oracle ratio scaled by 1e6 for storage efficiency
 *Scaled to fit in uint32 for gas efficiency*
 
 **Notes:**
-- security: No security implications (view function)
+- No security implications (view function)
 
-- validation: No validation required
+- No validation required
 
-- state-changes: No state changes (view function)
+- No state changes (view function)
 
-- events: No events (view function)
+- No events (view function)
 
-- errors: No custom errors
+- No custom errors
 
-- reentrancy: No external calls, safe
+- No external calls, safe
 
-- access: Internal function
+- Internal function
 
-- oracle: Depends on oracle for current EUR/USD rate
+- Depends on oracle for current EUR/USD rate
 
 
 ```solidity
@@ -1476,25 +1476,25 @@ Get the total QEURO staked across all users
 *Returns the total amount of QEURO currently staked in the pool*
 
 **Notes:**
-- access: Public access
+- Public access
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1514,21 +1514,21 @@ Get various metrics about the user pool
 *Returns comprehensive pool statistics including user count, averages, and ratios*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1554,21 +1554,21 @@ Get comprehensive pool analytics using QEURO total supply
 *Uses QEURO total supply for accurate analytics instead of misleading USDC tracking*
 
 **Notes:**
-- security: No external calls except oracle, read-only function
+- No external calls except oracle, read-only function
 
-- validation: Oracle price validation with fallback to zero
+- Oracle price validation with fallback to zero
 
-- state-changes: No state changes, view-like function
+- No state changes, view-like function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No custom errors, handles oracle failures gracefully
+- No custom errors, handles oracle failures gracefully
 
-- reentrancy: No reentrancy risk, read-only operations
+- No reentrancy risk, read-only operations
 
-- access: Public access
+- Public access
 
-- oracle: Requires fresh oracle price data for USDC equivalent
+- Requires fresh oracle price data for USDC equivalent
 
 
 ```solidity
@@ -1593,21 +1593,21 @@ Get comprehensive pool configuration (consolidated view function)
 *Returns all pool configuration parameters in one call to reduce contract size*
 
 **Notes:**
-- security: No security implications (view function)
+- No security implications (view function)
 
-- validation: No validation required
+- No validation required
 
-- state-changes: No state changes (view function)
+- No state changes (view function)
 
-- events: No events (view function)
+- No events (view function)
 
-- errors: No custom errors
+- No custom errors
 
-- reentrancy: No external calls, safe
+- No external calls, safe
 
-- access: Public (anyone can call)
+- Public (anyone can call)
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1644,21 +1644,21 @@ Calculate projected rewards for a given QEURO amount and duration
 *Calculates the expected rewards for staking a specific amount for a given duration*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1685,21 +1685,21 @@ Update the parameters for staking (APY, min stake, cooldown)
 *This function is restricted to governance roles.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1723,21 +1723,21 @@ Set the fees for deposits, withdrawals, and performance
 *This function is restricted to governance roles.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1762,21 +1762,21 @@ Emergency unstake for a specific user (restricted to emergency roles)
 staked QEURO needs to be forcibly unstaked.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1797,21 +1797,21 @@ Pause the user pool (restricted to emergency roles)
 a protocol-wide emergency or vulnerability.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1826,21 +1826,21 @@ Unpause the user pool (restricted to emergency roles)
 an emergency pause.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1854,21 +1854,21 @@ Check if the user pool is currently active (not paused)
 *Returns the current pause status of the pool*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1888,21 +1888,21 @@ Recover accidentally sent tokens to treasury only
 *Recovers accidentally sent ERC20 tokens to the treasury address*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1923,21 +1923,21 @@ Recover ETH to treasury address only
 *SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity

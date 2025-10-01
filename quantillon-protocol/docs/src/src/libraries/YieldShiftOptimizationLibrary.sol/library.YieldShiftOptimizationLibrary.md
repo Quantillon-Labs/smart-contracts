@@ -1,5 +1,5 @@
 # YieldShiftOptimizationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7c4e5be1f7b1fc3955a4236956d159ceba9afc3e/src/libraries/YieldShiftOptimizationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f9a7c7e7bd97a7fc653d32916c250f14c6d3c674/src/libraries/YieldShiftOptimizationLibrary.sol)
 
 **Author:**
 Quantillon Labs
@@ -46,21 +46,21 @@ Get current pool metrics
 *Returns current pool sizes and ratio for yield shift calculations*
 
 **Notes:**
-- security: No security implications - view function
+- No security implications - view function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - view function
+- No state changes - view function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - view function
+- No errors thrown - view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -92,21 +92,21 @@ Get eligible pool metrics that only count deposits meeting holding period requir
 *SECURITY: Prevents flash deposit attacks by excluding recent deposits from yield calculations*
 
 **Notes:**
-- security: Prevents flash deposit attacks by excluding recent deposits
+- Prevents flash deposit attacks by excluding recent deposits
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - view function
+- No state changes - view function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - view function
+- No errors thrown - view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -142,21 +142,21 @@ Calculate eligible user pool size excluding recent deposits
 *Only counts deposits older than MIN_HOLDING_PERIOD*
 
 **Notes:**
-- security: Prevents flash deposit attacks by excluding recent deposits
+- Prevents flash deposit attacks by excluding recent deposits
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -187,21 +187,21 @@ Internal function to calculate eligible user pool size
 *Only counts deposits older than MIN_HOLDING_PERIOD*
 
 **Notes:**
-- security: Prevents flash deposit attacks by excluding recent deposits
+- Prevents flash deposit attacks by excluding recent deposits
 
-- validation: Input validation handled by calling function
+- Input validation handled by calling function
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -232,21 +232,21 @@ Calculate eligible hedger pool size excluding recent deposits
 *Only counts deposits older than MIN_HOLDING_PERIOD*
 
 **Notes:**
-- security: Prevents flash deposit attacks by excluding recent deposits
+- Prevents flash deposit attacks by excluding recent deposits
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -277,21 +277,21 @@ Internal function to calculate eligible hedger pool size
 *Only counts deposits older than MIN_HOLDING_PERIOD*
 
 **Notes:**
-- security: Prevents flash deposit attacks by excluding recent deposits
+- Prevents flash deposit attacks by excluding recent deposits
 
-- validation: Input validation handled by calling function
+- Input validation handled by calling function
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -322,21 +322,21 @@ Calculate holding period discount based on recent deposit activity
 *Returns a percentage (in basis points) representing eligible deposits*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -366,21 +366,21 @@ Internal function to calculate holding period discount
 *Returns a percentage (in basis points) representing eligible deposits*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling function
+- Input validation handled by calling function
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function
+- Internal function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -410,21 +410,21 @@ Get time weighted average of pool history
 *Calculates time weighted average of pool history over a specified period*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -456,21 +456,21 @@ Add pool snapshot to history
 *Adds a pool snapshot to the history array with size management*
 
 **Notes:**
-- security: No security implications - pure function
+- No security implications - pure function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -502,21 +502,21 @@ Calculate user allocation from current yield shift
 *Calculates user allocation based on current yield shift percentage*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -547,21 +547,21 @@ Calculate hedger allocation from current yield shift
 *Calculates hedger allocation based on current yield shift percentage*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -592,21 +592,21 @@ Check if a value is within tolerance of a target value
 *Checks if a value is within the specified tolerance of a target*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -634,21 +634,21 @@ Calculate historical yield shift metrics
 *Calculates statistical metrics for yield shift history*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

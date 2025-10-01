@@ -1,5 +1,5 @@
 # AdminFunctionsLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f9a7c7e7bd97a7fc653d32916c250f14c6d3c674/src/libraries/AdminFunctionsLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5aee937988a17532c1c3fcdcebf45d2f03a0c08d/src/libraries/AdminFunctionsLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -13,7 +13,7 @@ Library for rarely used admin functions to reduce contract size
 - Uses custom errors for gas efficiency*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -24,21 +24,21 @@ Recover ETH to treasury address
 *Emergency function to recover ETH sent to the contract*
 
 **Notes:**
-- Requires admin role
+- security: Requires admin role
 
-- None required
+- validation: None required
 
-- Transfers ETH from contract to treasury
+- state-changes: Transfers ETH from contract to treasury
 
-- Emits ETHRecovered event
+- events: Emits ETHRecovered event
 
-- Throws NotAuthorized if caller lacks admin role
+- errors: Throws NotAuthorized if caller lacks admin role
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to admin role
+- access: Restricted to admin role
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity
@@ -60,21 +60,21 @@ Recover tokens to treasury address
 *Emergency function to recover ERC20 tokens sent to the contract*
 
 **Notes:**
-- Requires admin role
+- security: Requires admin role
 
-- None required
+- validation: None required
 
-- Transfers tokens from contract to treasury
+- state-changes: Transfers tokens from contract to treasury
 
-- Emits TokenRecovered event
+- events: Emits TokenRecovered event
 
-- Throws NotAuthorized if caller lacks admin role
+- errors: Throws NotAuthorized if caller lacks admin role
 
-- Not protected - library handles reentrancy
+- reentrancy: Not protected - library handles reentrancy
 
-- Restricted to admin role
+- access: Restricted to admin role
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity

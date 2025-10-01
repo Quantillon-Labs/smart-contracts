@@ -1,5 +1,5 @@
 # YieldShiftCalculationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7c4e5be1f7b1fc3955a4236956d159ceba9afc3e/src/libraries/YieldShiftCalculationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f9a7c7e7bd97a7fc653d32916c250f14c6d3c674/src/libraries/YieldShiftCalculationLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -9,7 +9,7 @@ Calculation functions for YieldShift to reduce contract size
 *Extracted from YieldShift to reduce bytecode size*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -20,21 +20,21 @@ Calculates optimal yield shift based on pool ratio
 *Calculates optimal yield shift to balance user and hedger pools*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -68,21 +68,21 @@ Applies gradual adjustment to yield shift
 *Gradually adjusts yield shift to prevent sudden changes*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -113,21 +113,21 @@ Calculates user allocation percentage
 *Calculates user allocation based on yield shift percentage*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -153,21 +153,21 @@ Calculates hedger allocation percentage
 *Calculates hedger allocation based on yield shift percentage*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -193,21 +193,21 @@ Calculates TWAP for pool sizes
 *Calculates time-weighted average price for pool sizes*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -237,21 +237,21 @@ Calculates yield distribution amounts
 *Calculates yield distribution between users and hedgers*
 
 **Notes:**
-- security: No security implications - pure calculation function
+- No security implications - pure calculation function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -283,21 +283,21 @@ Validates yield shift parameters
 *Ensures yield shift parameters are within valid bounds*
 
 **Notes:**
-- security: Prevents invalid yield shift parameters
+- Prevents invalid yield shift parameters
 
-- validation: Validates all parameters are within acceptable bounds
+- Validates all parameters are within acceptable bounds
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws require statements for invalid parameters
+- Throws require statements for invalid parameters
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

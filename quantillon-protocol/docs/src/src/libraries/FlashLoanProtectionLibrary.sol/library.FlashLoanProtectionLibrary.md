@@ -1,5 +1,5 @@
 # FlashLoanProtectionLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/7c4e5be1f7b1fc3955a4236956d159ceba9afc3e/src/libraries/FlashLoanProtectionLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f9a7c7e7bd97a7fc653d32916c250f14c6d3c674/src/libraries/FlashLoanProtectionLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -20,7 +20,7 @@ by monitoring balance changes during function execution.*
 - Validation that balances don't decrease unexpectedly*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -33,21 +33,21 @@ Currently used by all contract modifiers to prevent flash loan attacks.
 A maxDecrease of 0 means no decrease is allowed (strict protection).*
 
 **Notes:**
-- security: Prevents flash loan attacks by validating balance changes
+- Prevents flash loan attacks by validating balance changes
 
-- validation: Validates balance changes are within acceptable limits
+- Validates balance changes are within acceptable limits
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No custom errors thrown
+- No custom errors thrown
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

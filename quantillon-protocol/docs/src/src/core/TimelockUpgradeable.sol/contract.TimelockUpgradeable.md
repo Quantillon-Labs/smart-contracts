@@ -1,5 +1,5 @@
 # TimelockUpgradeable
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f9a7c7e7bd97a7fc653d32916c250f14c6d3c674/src/core/TimelockUpgradeable.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5aee937988a17532c1c3fcdcebf45d2f03a0c08d/src/core/TimelockUpgradeable.sol)
 
 **Inherits:**
 Initializable, AccessControlUpgradeable, PausableUpgradeable
@@ -12,7 +12,7 @@ Secure upgrade mechanism with timelock and multi-sig requirements
 *Replaces unrestricted upgrade capability with governance-controlled upgrades*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -175,21 +175,21 @@ Initializes the timelock contract with admin privileges
 *Sets up access control roles and pausability. Can only be called once.*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to initializer modifier
+- access: Restricted to initializer modifier
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -209,21 +209,21 @@ Propose an upgrade with timelock
 *Proposes an upgrade with timelock delay and multi-sig approval requirements*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to UPGRADE_PROPOSER_ROLE
+- access: Restricted to UPGRADE_PROPOSER_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -247,21 +247,21 @@ Approve a pending upgrade (multi-sig signer only)
 *Allows multi-sig signers to approve pending upgrades*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to multi-sig signers
+- access: Restricted to multi-sig signers
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -281,21 +281,21 @@ Revoke approval for a pending upgrade
 *Allows multi-sig signers to revoke their approval for pending upgrades*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to multi-sig signers
+- access: Restricted to multi-sig signers
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -315,21 +315,21 @@ Execute an upgrade after timelock and multi-sig approval
 *Executes an upgrade after timelock delay and sufficient multi-sig approvals*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to UPGRADE_EXECUTOR_ROLE
+- access: Restricted to UPGRADE_EXECUTOR_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -349,21 +349,21 @@ Cancel a pending upgrade (only proposer or admin)
 *Allows proposer or admin to cancel pending upgrades*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to proposer or admin
+- access: Restricted to proposer or admin
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -383,21 +383,21 @@ Emergency upgrade (bypasses timelock, requires emergency mode)
 *Performs emergency upgrade bypassing timelock and multi-sig requirements*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to emergency upgrader role
+- access: Restricted to emergency upgrader role
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -418,21 +418,21 @@ Add a multi-sig signer
 *Adds a new multi-sig signer to the timelock system*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to MULTISIG_MANAGER_ROLE
+- access: Restricted to MULTISIG_MANAGER_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -452,21 +452,21 @@ Remove a multi-sig signer
 *Removes a multi-sig signer from the timelock system*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to MULTISIG_MANAGER_ROLE
+- access: Restricted to MULTISIG_MANAGER_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -486,21 +486,21 @@ Toggle emergency mode
 *Toggles emergency mode for emergency upgrades*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to EMERGENCY_UPGRADER_ROLE
+- access: Restricted to EMERGENCY_UPGRADER_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -521,21 +521,21 @@ Get pending upgrade details
 *Returns pending upgrade details for a given implementation*
 
 **Notes:**
-- No security checks needed
+- security: No security checks needed
 
-- No validation needed
+- validation: No validation needed
 
-- No state changes
+- state-changes: No state changes
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -561,21 +561,21 @@ Check if an upgrade can be executed
 *Checks if an upgrade can be executed based on timelock and approval requirements*
 
 **Notes:**
-- No security checks needed
+- security: No security checks needed
 
-- No validation needed
+- validation: No validation needed
 
-- No state changes
+- state-changes: No state changes
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -601,21 +601,21 @@ Get upgrade approval status for a signer
 *Returns whether a signer has approved a specific upgrade*
 
 **Notes:**
-- No security checks needed
+- security: No security checks needed
 
-- No validation needed
+- validation: No validation needed
 
-- No state changes
+- state-changes: No state changes
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -642,21 +642,21 @@ Get all multi-sig signers
 *Returns array of all multi-sig signer addresses*
 
 **Notes:**
-- No security checks needed
+- security: No security checks needed
 
-- No validation needed
+- validation: No validation needed
 
-- No state changes
+- state-changes: No state changes
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -676,21 +676,21 @@ Clear all approvals for an implementation
 *Clears all approvals for a specific implementation*
 
 **Notes:**
-- No security checks needed
+- security: No security checks needed
 
-- No validation needed
+- validation: No validation needed
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -710,21 +710,21 @@ Clear all approvals from a specific signer
 *Clears all approvals from a specific signer*
 
 **Notes:**
-- No security checks needed
+- security: No security checks needed
 
-- No validation needed
+- validation: No validation needed
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -744,21 +744,21 @@ Add a multisig signer (internal)
 *Adds a multisig signer internally*
 
 **Notes:**
-- No security checks needed
+- security: No security checks needed
 
-- No validation needed
+- validation: No validation needed
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -778,21 +778,21 @@ Pause the timelock contract
 *Pauses the timelock contract*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -806,21 +806,21 @@ Unpause the timelock contract
 *Unpauses the timelock contract*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -834,21 +834,21 @@ Constructor for TimelockUpgradeable contract
 *Sets up the time provider and disables initializers for security*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Disables initializers
+- state-changes: Disables initializers
 
-- No events emitted
+- events: No events emitted
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

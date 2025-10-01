@@ -1,5 +1,5 @@
 # YieldValidationLibrary
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/f9a7c7e7bd97a7fc653d32916c250f14c6d3c674/src/libraries/YieldValidationLibrary.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5aee937988a17532c1c3fcdcebf45d2f03a0c08d/src/libraries/YieldValidationLibrary.sol)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
@@ -13,7 +13,7 @@ Yield-specific validation functions for Quantillon Protocol
 - Yield distribution validations*
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -24,21 +24,21 @@ Validates yield shift percentage (0-100%)
 *Ensures yield shift is within valid range of 0-10000 basis points*
 
 **Notes:**
-- Prevents invalid yield shifts that could destabilize yield distribution
+- security: Prevents invalid yield shifts that could destabilize yield distribution
 
-- Ensures yield shift is within valid percentage range
+- validation: Ensures yield shift is within valid percentage range
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter if shift exceeds 100%
+- errors: Throws InvalidParameter if shift exceeds 100%
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -58,21 +58,21 @@ Validates adjustment speed for yield shift mechanisms
 *Prevents excessively fast adjustments that could destabilize the system*
 
 **Notes:**
-- Prevents rapid adjustments that could destabilize yield mechanisms
+- security: Prevents rapid adjustments that could destabilize yield mechanisms
 
-- Ensures adjustment speed stays within safe bounds
+- validation: Ensures adjustment speed stays within safe bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter if speed exceeds maximum
+- errors: Throws InvalidParameter if speed exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -93,21 +93,21 @@ Validates target ratio for yield distribution mechanisms
 *Ensures ratio is positive and within acceptable bounds*
 
 **Notes:**
-- Prevents invalid ratios that could break yield distribution
+- security: Prevents invalid ratios that could break yield distribution
 
-- Ensures ratio is positive and within acceptable bounds
+- validation: Ensures ratio is positive and within acceptable bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter or AboveLimit based on validation
+- errors: Throws InvalidParameter or AboveLimit based on validation
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -128,21 +128,21 @@ Validates slippage protection for token swaps/trades
 *Ensures received amount is within acceptable tolerance of expected*
 
 **Notes:**
-- Prevents excessive slippage attacks in yield operations
+- security: Prevents excessive slippage attacks in yield operations
 
-- Ensures received amount meets minimum expectations
+- validation: Ensures received amount meets minimum expectations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws ExcessiveSlippage if slippage exceeds tolerance
+- errors: Throws ExcessiveSlippage if slippage exceeds tolerance
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -164,21 +164,21 @@ Validates treasury address is not zero address
 *Prevents setting treasury to zero address which could cause loss of funds*
 
 **Notes:**
-- Prevents loss of funds by ensuring treasury is properly set
+- security: Prevents loss of funds by ensuring treasury is properly set
 
-- Ensures treasury address is valid for fund operations
+- validation: Ensures treasury address is valid for fund operations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws ZeroAddress if treasury is zero address
+- errors: Throws ZeroAddress if treasury is zero address
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -198,21 +198,21 @@ Validates that an amount is positive (greater than zero)
 *Essential for token amounts, deposits, withdrawals, etc.*
 
 **Notes:**
-- Prevents zero-amount operations that could cause issues
+- security: Prevents zero-amount operations that could cause issues
 
-- Ensures amount is positive for meaningful operations
+- validation: Ensures amount is positive for meaningful operations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAmount if amount is zero
+- errors: Throws InvalidAmount if amount is zero
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

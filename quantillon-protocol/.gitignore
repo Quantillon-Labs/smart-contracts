@@ -13,19 +13,7 @@
 # Dotenvx encrypted environment files
 .env.keys
 .env.keys.*
-.env.encrypted
-.env.encrypted.*
-
-# Backup environment files
-.env.backup
-.env.backup.*
-.env.old
-.env.orig
-
-# Environment file variations
-.envrc
-.env.example.local
-.env.template
+.env.unencrypted
 
 # =============================================================================
 # 🔑 PRIVATE KEYS & CREDENTIALS

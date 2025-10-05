@@ -51,16 +51,140 @@ echo -e " Deployment script found: $DEPLOYMENT_SCRIPT"
 # Create deployments directory if it doesn't exist
 mkdir -p "$RESULTS_DIR"
 
-# Deploy contracts
+# Deploy contracts in phases to respect per-tx gas cap
 echo -e " Deploying contracts to Base Sepolia..."
 echo "======================================================"
 
-if forge script "$DEPLOYMENT_SCRIPT" --rpc-url "$RPC_URL" --broadcast --verify; then
-    echo -e " Deployment completed successfully!"
-else
-    echo -e " Deployment failed!"
-    exit 1
-fi
+# Use dotenvx environment to run forge with decrypted env vars (mirrors localhost script behavior)
+# Force legacy txs and explicit gas price to respect per-tx gas cap
+# Allow overriding GAS_PRICE via env (e.g., GAS_PRICE=0.25gwei)
+GAS_PRICE_ARG=${GAS_PRICE:-0.20gwei}
+
+refresh_broadcast() {
+    local dir="broadcast/DeployQuantillon.s.sol"
+    if [ -d "$dir" ]; then
+        # most recent run-latest.json by mtime
+        LATEST_RUN=$(find "$dir" -type f -name "run-latest.json" -printf '%T@ %p\n' | sort -nr | awk 'NR==1{print $2}')
+    else
+        LATEST_RUN=""
+    fi
+}
+
+# Resolve latest known address for a given contract name across all recent broadcasts
+get_addr() {
+    local name="$1"
+    local dir="broadcast/DeployQuantillon.s.sol"
+    local found=""
+    if [ -d "$dir" ]; then
+        # search most-recent JSONs first
+        while IFS= read -r json; do
+            addr=$(jq -r ".transactions[] | select(.contractName == \"$name\") | .contractAddress" "$json" 2>/dev/null | tail -1)
+            if [ -n "$addr" ] && [ "$addr" != "null" ]; then
+                found="$addr"; break
+            fi
+        done < <(find "$dir" -type f -name "*.json" -printf '%T@ %p\n' | sort -nr | awk '{print $2}')
+    fi
+    echo "$found"
+}
+
+# Set a VAR to latest non-empty address for CONTRACT if found (do not overwrite with empty)
+set_if_present() {
+    local varname="$1"; shift
+    local contract="$1"
+    local val
+    val=$(get_addr "$contract")
+    if [ -n "$val" ] && [ "$val" != "null" ]; then
+        eval "$varname=$val"
+    fi
+}
+
+run_phase() {
+    PHASE_NAME="$1"
+    shift
+    echo -e " Running $PHASE_NAME..."
+    # Pass phase flags as env var prefixes before the command
+    if USE_PHASE1=$USE_PHASE1_FLAG USE_PHASE2=$USE_PHASE2_FLAG USE_PHASE3=$USE_PHASE3_FLAG USE_PHASE4=$USE_PHASE4_FLAG USE_PHASE5=$USE_PHASE5_FLAG \
+       TIME_PROVIDER="$TIME_PROVIDER_VAL" CHAINLINK_ORACLE="$CHAINLINK_ORACLE_VAL" QEURO_TOKEN="$QEURO_TOKEN_VAL" FEE_COLLECTOR="$FEE_COLLECTOR_VAL" QUANTILLON_VAULT="$QUANTILLON_VAULT_VAL" \
+       USER_POOL="$USER_POOL_VAL" HEDGER_POOL="$HEDGER_POOL_VAL" STQEURO_TOKEN="$STQEURO_TOKEN_VAL" AAVE_VAULT="$AAVE_VAULT_VAL" YIELDSHIFT="$YIELDSHIFT_VAL" \
+       npx dotenvx run -- forge script "$DEPLOYMENT_SCRIPT" --rpc-url "$RPC_URL" --legacy --with-gas-price "$GAS_PRICE_ARG" --gas-limit 25000000 --broadcast; then
+        echo -e " $PHASE_NAME completed"
+    else
+        echo -e " $PHASE_NAME failed"
+        exit 1
+    fi
+}
+
+# Phase 1
+USE_PHASE1_FLAG=true; USE_PHASE2_FLAG=false; USE_PHASE3_FLAG=false; USE_PHASE4_FLAG=false; USE_PHASE5_FLAG=false
+TIME_PROVIDER_VAL=""; CHAINLINK_ORACLE_VAL=""; QEURO_TOKEN_VAL=""; FEE_COLLECTOR_VAL=""; QUANTILLON_VAULT_VAL=""; USER_POOL_VAL=""; HEDGER_POOL_VAL=""; STQEURO_TOKEN_VAL=""; AAVE_VAULT_VAL=""; YIELDSHIFT_VAL=""
+run_phase "Phase 1"
+refresh_broadcast
+# Persist core addresses snapshot from Phase 1 to a session file to avoid overwrites by later runs
+PHASE_FILE="$RESULTS_DIR/phase-addresses.json"
+mkdir -p "$RESULTS_DIR"
+CORE_TIME_PROVIDER=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+CORE_ORACLE=$(jq -r '.transactions[] | select(.contractName == "ChainlinkOracle" or .contractName == "MockChainlinkOracle") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+CORE_QEURO=$(jq -r '.transactions[] | select(.contractName == "QEUROToken") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+CORE_FEE_COLLECTOR=$(jq -r '.transactions[] | select(.contractName == "FeeCollector") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+CORE_VAULT=$(jq -r '.transactions[] | select(.contractName == "QuantillonVault") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+cat > "$PHASE_FILE" <<EOF
+{
+  "TimeProvider": "$CORE_TIME_PROVIDER",
+  "ChainlinkOracle": "$CORE_ORACLE",
+  "QEUROToken": "$CORE_QEURO",
+  "FeeCollector": "$CORE_FEE_COLLECTOR",
+  "QuantillonVault": "$CORE_VAULT"
+}
+EOF
+
+# Phase 2
+USE_PHASE1_FLAG=false; USE_PHASE2_FLAG=true; USE_PHASE3_FLAG=false; USE_PHASE4_FLAG=false; USE_PHASE5_FLAG=false
+# Inject addresses from Phase 1 snapshot (never blank them accidentally)
+TIME_PROVIDER_VAL=$(jq -r '.TimeProvider' "$PHASE_FILE")
+CHAINLINK_ORACLE_VAL=$(jq -r '.ChainlinkOracle' "$PHASE_FILE")
+QEURO_TOKEN_VAL=$(jq -r '.QEUROToken' "$PHASE_FILE")
+FEE_COLLECTOR_VAL=$(jq -r '.FeeCollector' "$PHASE_FILE")
+QUANTILLON_VAULT_VAL=$(jq -r '.QuantillonVault' "$PHASE_FILE")
+run_phase "Phase 2"
+refresh_broadcast
+# Append Phase 2 outputs to snapshot
+PH2_STQ=$(jq -r '.transactions[] | select(.contractName == "stQEUROToken") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+PH2_AAVE=$(jq -r '.transactions[] | select(.contractName == "AaveVault") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+jq --arg st "$PH2_STQ" --arg av "$PH2_AAVE" '. + {"stQEUROToken": $st, "AaveVault": $av}' "$PHASE_FILE" > "$PHASE_FILE.tmp" && mv "$PHASE_FILE.tmp" "$PHASE_FILE"
+
+# Phase 3
+USE_PHASE1_FLAG=false; USE_PHASE2_FLAG=false; USE_PHASE3_FLAG=true; USE_PHASE4_FLAG=false; USE_PHASE5_FLAG=false
+USER_POOL_VAL=""; HEDGER_POOL_VAL=""; STQEURO_TOKEN_VAL=$(jq -r '.stQEUROToken' "$PHASE_FILE") ; AAVE_VAULT_VAL=$(jq -r '.AaveVault' "$PHASE_FILE")
+run_phase "Phase 3"
+refresh_broadcast
+# Append Phase 3 outputs to snapshot
+PH3_USER=$(jq -r '.transactions[] | select(.contractName == "UserPool") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+PH3_HEDGER=$(jq -r '.transactions[] | select(.contractName == "HedgerPool") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+PH3_YIELD=$(jq -r '.transactions[] | select(.contractName == "YieldShift") | .contractAddress' "$LATEST_RUN" 2>/dev/null || echo "")
+jq --arg up "$PH3_USER" --arg hp "$PH3_HEDGER" --arg ys "$PH3_YIELD" '. + {"UserPool": $up, "HedgerPool": $hp, "YieldShift": $ys}' "$PHASE_FILE" > "$PHASE_FILE.tmp" && mv "$PHASE_FILE.tmp" "$PHASE_FILE"
+
+# Phase 4
+USE_PHASE1_FLAG=false; USE_PHASE2_FLAG=false; USE_PHASE3_FLAG=false; USE_PHASE4_FLAG=true; USE_PHASE5_FLAG=false
+# Pull everything from snapshot
+TIME_PROVIDER_VAL=$(jq -r '.TimeProvider' "$PHASE_FILE")
+CHAINLINK_ORACLE_VAL=$(jq -r '.ChainlinkOracle' "$PHASE_FILE")
+QEURO_TOKEN_VAL=$(jq -r '.QEUROToken' "$PHASE_FILE")
+FEE_COLLECTOR_VAL=$(jq -r '.FeeCollector' "$PHASE_FILE")
+QUANTILLON_VAULT_VAL=$(jq -r '.QuantillonVault' "$PHASE_FILE")
+USER_POOL_VAL=$(jq -r '.UserPool' "$PHASE_FILE")
+HEDGER_POOL_VAL=$(jq -r '.HedgerPool' "$PHASE_FILE")
+run_phase "Phase 4"
+
+# Phase 5
+USE_PHASE1_FLAG=false; USE_PHASE2_FLAG=false; USE_PHASE3_FLAG=false; USE_PHASE4_FLAG=false; USE_PHASE5_FLAG=true
+# Capture core + YieldShift from snapshot
+TIME_PROVIDER_VAL=$(jq -r '.TimeProvider' "$PHASE_FILE")
+CHAINLINK_ORACLE_VAL=$(jq -r '.ChainlinkOracle' "$PHASE_FILE")
+QEURO_TOKEN_VAL=$(jq -r '.QEUROToken' "$PHASE_FILE")
+FEE_COLLECTOR_VAL=$(jq -r '.FeeCollector' "$PHASE_FILE")
+QUANTILLON_VAULT_VAL=$(jq -r '.QuantillonVault' "$PHASE_FILE")
+YIELDSHIFT_VAL=$(jq -r '.YieldShift' "$PHASE_FILE")
+run_phase "Phase 5"
 
 # Get the latest deployment addresses from broadcast files
 echo -e " Extracting deployment addresses..."
@@ -145,3 +269,31 @@ echo "   Explorer: https://sepolia.basescan.org/"
 echo ""
 echo -e "💰 Get testnet ETH:"
 echo "   https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet"
+
+# Automatically update frontend with new ABIs and addresses (mirrors localhost script behavior)
+echo ""
+echo "Updating frontend with new ABIs and addresses..."
+echo ""
+
+# Copy ABIs to frontend
+echo "Copying contract ABIs to frontend..."
+if ./scripts/deployment/copy-abis.sh; then
+    echo "ABIs copied successfully!"
+else
+    echo "Failed to copy ABIs"
+    exit 1
+fi
+
+echo ""
+
+# Update frontend addresses
+echo "Updating frontend addresses..."
+if ./scripts/deployment/update-frontend-addresses.sh; then
+    echo "Frontend addresses updated successfully!"
+else
+    echo "Failed to update frontend addresses"
+    exit 1
+fi
+
+echo ""
+echo "Frontend integration completed!"

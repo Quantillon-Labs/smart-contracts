@@ -75,6 +75,15 @@ contract DeployQuantillon is Script {
     string public network;
     bool public isLocalhost;
     bool public isBaseSepolia;
+    address public deployerEOA; // persist deployer across helper calls
+    bool public useMockOracle; // allow using mock oracle on testnets
+    bool public useMockAave;   // allow using mock Aave on testnets
+    // Phase gating via env for gas-capped networks
+    bool public usePhase1; // core infra (time provider, oracle, qeuro, fee collector, vault, roles)
+    bool public usePhase2; // core protocol (qti, aave vault, stqeuro)
+    bool public usePhase3; // pools (user, hedger, yieldshift)
+    bool public usePhase4; // update references and role wiring
+    bool public usePhase5; // finalization and summary
     
     // Mock addresses for localhost (replace with real addresses for testnet/mainnet)
     address constant MOCK_EUR_USD_FEED = 0x1234567890123456789012345678901234567890;
@@ -82,18 +91,29 @@ contract DeployQuantillon is Script {
     address constant MOCK_AAVE_POOL = 0x4567890123456789012345678901234567890123;
     
     // Base Sepolia addresses (real addresses for testnet)
-    // Note: These are placeholder addresses - update with actual Base Sepolia addresses
-    address constant BASE_SEPOLIA_EUR_USD_FEED = 0x0000000000000000000000000000000000000001; // EUR/USD on Base Sepolia
-    address constant BASE_SEPOLIA_USDC_USD_FEED = 0x0000000000000000000000000000000000000002; // USDC/USD on Base Sepolia
-    address constant BASE_SEPOLIA_USDC_TOKEN = 0x0000000000000000000000000000000000000003; // USDC on Base Sepolia
-    address constant BASE_SEPOLIA_AAVE_POOL = 0x0000000000000000000000000000000000000004; // Aave Pool on Base Sepolia
+    // Source: scripts/deployment/deploy-base-sepolia.sh externalAddresses mapping
+    address constant BASE_SEPOLIA_EUR_USD_FEED = 0x443c8906D15c131C52463a8384dcC0c65DcE3A96; // EUR/USD on Base Sepolia
+    address constant BASE_SEPOLIA_USDC_USD_FEED = 0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1; // USDC/USD on Base Sepolia
+    address constant BASE_SEPOLIA_USDC_TOKEN = 0x036CbD53842c5426634e7929541eC2318f3dCF7e; // USDC on Base Sepolia
+    address constant BASE_SEPOLIA_AAVE_POOL = 0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951; // Aave Pool on Base Sepolia
 
     function run() external {
         uint256 deployerPrivateKey = vm.envOr("PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80));
         address deployer = vm.addr(deployerPrivateKey);
+        deployerEOA = deployer;
         
         // Detect network
         _detectNetwork();
+        // Allow forcing mock oracle on testnets via env (defaults to true for safety)
+        useMockOracle = vm.envOr("USE_MOCK_ORACLE", true);
+        // Allow forcing mock Aave on testnets via env (defaults to true for safety)
+        useMockAave = vm.envOr("USE_MOCK_AAVE", true);
+        // Phase gating (defaults to true so single run keeps existing behavior)
+        usePhase1 = vm.envOr("USE_PHASE1", true);
+        usePhase2 = vm.envOr("USE_PHASE2", true);
+        usePhase3 = vm.envOr("USE_PHASE3", true);
+        usePhase4 = vm.envOr("USE_PHASE4", true);
+        usePhase5 = vm.envOr("USE_PHASE5", true);
         
         console.log(unicode"🚀 === QUANTILLON PROTOCOL DEPLOYMENT ===");
         console.log("Network:", network);
@@ -103,28 +123,69 @@ contract DeployQuantillon is Script {
         
         // Set higher gas limit for large contract deployments
         vm.fee(0);
+        // Load env-provided addresses when running phased executions
+        _loadEnvOverrides();
 
-        // Deploy MockUSDC first if needed (localhost or Base Sepolia)
-        if (isLocalhost || isBaseSepolia) {
-            _deployMockUSDC();
+        // Phase 1: prerequisites and core infra
+        if (usePhase1) {
+            if (isLocalhost || isBaseSepolia) {
+                _deployMockUSDC();
+            }
+            if (isLocalhost || (isBaseSepolia && useMockOracle)) {
+                _deployMockFeeds();
+            }
+            _deployPhase1();
         }
 
-        // Deploy mock feeds first if on localhost
-        if (isLocalhost) {
-            _deployMockFeeds();
+        // Phase 2: core protocol
+        if (usePhase2) {
+            _deployPhase2();
         }
 
-        // Deploy all contracts in phases
-        _deployPhase1();
-        _deployPhase2();
-        _deployPhase3();
-        _deployPhase4();
-        _deployPhase5();
-        _initializeContracts();
+        // Phase 3: pools
+        if (usePhase3) {
+            _deployPhase3();
+        }
+
+        // Phase 4: references
+        if (usePhase4) {
+            _deployPhase4();
+        }
+
+        // Phase 5: finalization
+        if (usePhase5) {
+            _deployPhase5();
+            _initializeContracts();
+        }
 
         vm.stopBroadcast();
         
         console.log(unicode"\n✅ === DEPLOYMENT COMPLETED SUCCESSFULLY ===");
+    }
+
+    function _loadEnvOverrides() private {
+        // Use env overrides if provided to stitch phases across separate runs
+        address a;
+        a = vm.envOr("TIME_PROVIDER", address(0));
+        if (a != address(0)) { timeProvider = a; timeProviderContract = TimeProvider(a); }
+        a = vm.envOr("CHAINLINK_ORACLE", address(0));
+        if (a != address(0)) { chainlinkOracle = a; chainlinkOracleContract = ChainlinkOracle(a); }
+        a = vm.envOr("QEURO_TOKEN", address(0));
+        if (a != address(0)) { qeuroToken = a; qeuroTokenContract = QEUROToken(a); }
+        a = vm.envOr("FEE_COLLECTOR", address(0));
+        if (a != address(0)) { feeCollector = a; feeCollectorContract = FeeCollector(a); }
+        a = vm.envOr("QUANTILLON_VAULT", address(0));
+        if (a != address(0)) { quantillonVault = a; quantillonVaultContract = QuantillonVault(a); }
+        a = vm.envOr("USER_POOL", address(0));
+        if (a != address(0)) { userPool = a; userPoolContract = UserPool(a); }
+        a = vm.envOr("HEDGER_POOL", address(0));
+        if (a != address(0)) { hedgerPool = a; hedgerPoolContract = HedgerPool(a); }
+        a = vm.envOr("STQEURO_TOKEN", address(0));
+        if (a != address(0)) { stQeuroToken = a; stQeuroTokenContract = stQEUROToken(a); }
+        a = vm.envOr("AAVE_VAULT", address(0));
+        if (a != address(0)) { aaveVault = a; aaveVaultContract = AaveVault(a); }
+        a = vm.envOr("YIELDSHIFT", address(0));
+        if (a != address(0)) { yieldShift = a; yieldShiftContract = YieldShift(a); }
     }
 
     function _detectNetwork() internal {
@@ -250,16 +311,16 @@ contract DeployQuantillon is Script {
         console.log("TimeProvider:", timeProvider);
 
         // 2. Deploy Oracle
-        if (isLocalhost) {
+        if (isLocalhost || (isBaseSepolia && useMockOracle)) {
             MockChainlinkOracle mockImplementation = new MockChainlinkOracle();
             ERC1967Proxy proxy = new ERC1967Proxy(
                 address(mockImplementation),
                 abi.encodeWithSelector(
                     MockChainlinkOracle.initialize.selector,
-                    msg.sender,        // admin
+                    deployerEOA,        // admin
                     _getEURUSDFeed(),  // EUR/USD feed (mock)
                     _getUSDCUSDFeed(), // USDC/USD feed (mock)
-                    msg.sender         // treasury
+                    deployerEOA         // treasury
                 )
             );
             chainlinkOracle = address(proxy);
@@ -271,10 +332,10 @@ contract DeployQuantillon is Script {
                 address(implementation),
                 abi.encodeWithSelector(
                     ChainlinkOracle.initialize.selector,
-                    msg.sender,        // admin
+                    deployerEOA,        // admin
                     _getEURUSDFeed(),  // EUR/USD feed
                     _getUSDCUSDFeed(), // USDC/USD feed
-                    msg.sender         // treasury
+                    deployerEOA         // treasury
                 )
             );
             chainlinkOracle = address(proxy);
@@ -286,10 +347,10 @@ contract DeployQuantillon is Script {
         QEUROToken qeuroTokenImpl = new QEUROToken();
         bytes memory qeuroInitData = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
-            msg.sender,        // admin
-            msg.sender,        // vault (temporary)
-            msg.sender,        // timelock
-            msg.sender         // treasury
+            deployerEOA,        // admin
+            deployerEOA,        // vault (temporary)
+            deployerEOA,        // timelock
+            deployerEOA         // treasury
         );
         ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroTokenImpl), qeuroInitData);
         qeuroToken = address(qeuroProxy);
@@ -300,10 +361,10 @@ contract DeployQuantillon is Script {
         FeeCollector feeCollectorImpl = new FeeCollector();
         bytes memory feeCollectorInitData = abi.encodeWithSelector(
             FeeCollector.initialize.selector,
-            msg.sender,        // admin
-            msg.sender,        // treasury (same as admin for now)
-            msg.sender,        // devFund (same as admin for now)
-            msg.sender         // communityFund (same as admin for now)
+            deployerEOA,        // admin
+            deployerEOA,        // treasury (same as admin for now)
+            deployerEOA,        // devFund (same as admin for now)
+            deployerEOA         // communityFund (same as admin for now)
         );
         ERC1967Proxy feeCollectorProxy = new ERC1967Proxy(address(feeCollectorImpl), feeCollectorInitData);
         feeCollector = address(feeCollectorProxy);
@@ -314,13 +375,13 @@ contract DeployQuantillon is Script {
         QuantillonVault vaultImpl = new QuantillonVault();
         bytes memory vaultInitData = abi.encodeWithSelector(
             QuantillonVault.initialize.selector,
-            msg.sender,        // admin
+            deployerEOA,        // admin
             qeuroToken,        // _qeuro
             _getUSDCAddress(), // _usdc
             chainlinkOracle,   // _oracle
             address(0),        // _hedgerPool (temporary)
             address(0),        // _userPool (temporary)
-            msg.sender,        // _timelock
+            deployerEOA,        // _timelock
             feeCollector       // _feeCollector
         );
         ERC1967Proxy vaultProxy = new ERC1967Proxy(address(vaultImpl), vaultInitData);
@@ -337,9 +398,9 @@ contract DeployQuantillon is Script {
         }
         
         // 5. Update QEUROToken roles
-        qeuroTokenContract.revokeRole(qeuroTokenContract.MINTER_ROLE(), msg.sender);
+        qeuroTokenContract.revokeRole(qeuroTokenContract.MINTER_ROLE(), deployerEOA);
         qeuroTokenContract.grantRole(qeuroTokenContract.MINTER_ROLE(), quantillonVault);
-        qeuroTokenContract.revokeRole(qeuroTokenContract.BURNER_ROLE(), msg.sender);
+        qeuroTokenContract.revokeRole(qeuroTokenContract.BURNER_ROLE(), deployerEOA);
         qeuroTokenContract.grantRole(qeuroTokenContract.BURNER_ROLE(), quantillonVault);
         console.log("SUCCESS: QEUROToken roles updated");
     }
@@ -351,9 +412,9 @@ contract DeployQuantillon is Script {
         QTIToken qtiTokenImpl = new QTIToken(timeProviderContract);
         bytes memory qtiInitData = abi.encodeWithSelector(
             QTIToken.initialize.selector,
-            msg.sender,        // admin
-            msg.sender,        // treasury
-            msg.sender         // timelock
+            deployerEOA,        // admin
+            deployerEOA,        // treasury
+            deployerEOA         // timelock
         );
         ERC1967Proxy qtiProxy = new ERC1967Proxy(address(qtiTokenImpl), qtiInitData);
         qtiToken = address(qtiProxy);
@@ -365,7 +426,7 @@ contract DeployQuantillon is Script {
         address mockAaveProvider;
         address mockRewardsController;
         
-        if (isLocalhost) {
+        if (isLocalhost || (isBaseSepolia && useMockAave)) {
             MockAavePool mockPool = new MockAavePool(_getUSDCAddress(), _getUSDCAddress());
             mockAavePool = address(mockPool);
             MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(mockAavePool);
@@ -382,13 +443,13 @@ contract DeployQuantillon is Script {
         AaveVault aaveVaultImpl = new AaveVault();
         bytes memory aaveVaultInitData = abi.encodeWithSelector(
             AaveVault.initialize.selector,
-            msg.sender,        // admin
+            deployerEOA,        // admin
             _getUSDCAddress(), // _usdc
             mockAaveProvider,  // _aaveProvider
             mockRewardsController, // _rewardsController
-            msg.sender,        // _yieldShift (temporary)
-            msg.sender,        // _timelock
-            msg.sender         // _treasury
+            deployerEOA,        // _yieldShift (temporary)
+            deployerEOA,        // _timelock
+            deployerEOA         // _treasury
         );
         ERC1967Proxy aaveVaultProxy = new ERC1967Proxy(address(aaveVaultImpl), aaveVaultInitData);
         aaveVault = address(aaveVaultProxy);
@@ -399,12 +460,12 @@ contract DeployQuantillon is Script {
         stQEUROToken stQeuroTokenImpl = new stQEUROToken(timeProviderContract);
         bytes memory stQeuroInitData = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
-            msg.sender,        // admin
+            deployerEOA,        // admin
             qeuroToken,        // _qeuro
-            msg.sender,        // _yieldShift (temporary)
+            deployerEOA,        // _yieldShift (temporary)
             _getUSDCAddress(), // _usdc
-            msg.sender,        // _treasury
-            msg.sender         // _timelock
+            deployerEOA,        // _treasury
+            deployerEOA         // _timelock
         );
         ERC1967Proxy stQeuroProxy = new ERC1967Proxy(address(stQeuroTokenImpl), stQeuroInitData);
         stQeuroToken = address(stQeuroProxy);
@@ -419,14 +480,14 @@ contract DeployQuantillon is Script {
         UserPool userPoolImpl = new UserPool(timeProviderContract);
         bytes memory userPoolInitData = abi.encodeWithSelector(
             UserPool.initialize.selector,
-            msg.sender,        // admin
+            deployerEOA,        // admin
             qeuroToken,        // _qeuro
             _getUSDCAddress(), // _usdc
             quantillonVault,   // _vault
             chainlinkOracle,   // _oracle
-            msg.sender,        // _yieldShift (temporary)
-            msg.sender,        // _timelock
-            msg.sender         // _treasury
+            deployerEOA,        // _yieldShift (temporary)
+            deployerEOA,        // _timelock
+            deployerEOA         // _treasury
         );
         ERC1967Proxy userPoolProxy = new ERC1967Proxy(address(userPoolImpl), userPoolInitData);
         userPool = address(userPoolProxy);
@@ -437,12 +498,12 @@ contract DeployQuantillon is Script {
         HedgerPool hedgerPoolImpl = new HedgerPool(timeProviderContract);
         bytes memory hedgerPoolInitData = abi.encodeWithSelector(
             HedgerPool.initialize.selector,
-            msg.sender,        // admin
+            deployerEOA,        // admin
             _getUSDCAddress(), // _usdc
             chainlinkOracle,   // _oracle
-            msg.sender,        // _yieldShift (temporary)
-            msg.sender,        // _timelock
-            msg.sender,        // _treasury
+            deployerEOA,        // _yieldShift (temporary)
+            deployerEOA,        // _timelock
+            deployerEOA,        // _treasury
             quantillonVault    // _vault
         );
         ERC1967Proxy hedgerPoolProxy = new ERC1967Proxy(address(hedgerPoolImpl), hedgerPoolInitData);
@@ -454,14 +515,14 @@ contract DeployQuantillon is Script {
         YieldShift yieldShiftImpl = new YieldShift(timeProviderContract);
         bytes memory yieldShiftInitData = abi.encodeWithSelector(
             YieldShift.initialize.selector,
-            msg.sender,        // admin
+            deployerEOA,        // admin
             _getUSDCAddress(), // _usdc
             userPool,          // _userPool
             hedgerPool,        // _hedgerPool
             aaveVault,         // _aaveVault
             stQeuroToken,      // _stQEURO
-            msg.sender,        // _timelock
-            msg.sender         // _treasury
+            deployerEOA,        // _timelock
+            deployerEOA         // _treasury
         );
         ERC1967Proxy yieldShiftProxy = new ERC1967Proxy(address(yieldShiftImpl), yieldShiftInitData);
         yieldShift = address(yieldShiftProxy);
@@ -472,6 +533,12 @@ contract DeployQuantillon is Script {
     function _deployPhase4() internal {
         console.log("\n=== PHASE 4: UPDATE CONTRACT REFERENCES ===");
         
+        // Ensure deployer has governance rights on the vault in phased runs
+        // This is idempotent and safe across reruns
+        try quantillonVaultContract.grantRole(quantillonVaultContract.GOVERNANCE_ROLE(), msg.sender) {
+            // no-op
+        } catch {}
+
         // Update QuantillonVault with pool addresses
         quantillonVaultContract.updateHedgerPool(hedgerPool);
         quantillonVaultContract.updateUserPool(userPool);

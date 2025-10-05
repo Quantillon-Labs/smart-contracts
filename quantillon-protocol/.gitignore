@@ -13,7 +13,7 @@
 # Dotenvx encrypted environment files
 .env.keys
 .env.keys.*
-.env.unencrypted
+.env*.unencrypted
 
 # =============================================================================
 # 🔑 PRIVATE KEYS & CREDENTIALS

@@ -2,7 +2,7 @@
 
 # Script to update frontend addresses.json with latest deployment
 # 
-# Usage: ./scripts/deployment/update-frontend-addresses.sh
+# Usage: ./scripts/deployment/update-frontend-addresses.sh [environment]
 #
 # Configuration:
 #   The script automatically loads environment variables from .env file if present.
@@ -24,19 +24,22 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Determine which env file to use (honor ENV_FILE if provided)
+EFFECTIVE_ENV_FILE="${ENV_FILE:-.env}"
+
 # Check if dotenvx is available and environment is encrypted
-if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" .env 2>/dev/null && [ -z "$DOTENVX_RUNNING" ]; then
+if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" "$EFFECTIVE_ENV_FILE" 2>/dev/null && [ -z "$DOTENVX_RUNNING" ]; then
     # Use dotenvx for encrypted environment
     echo -e " Using encrypted environment variables"
     export DOTENVX_RUNNING=1
-    exec npx dotenvx run -- "$0" "$@"
+    exec npx dotenvx run --env-file="$EFFECTIVE_ENV_FILE" -- "$0" "$@"
 fi
 
 
-# Load environment variables from .env file if it exists
+# Load environment variables from env file if it exists
 # Note: Command line variables will override .env variables
-if [ -f ".env" ]; then
-    echo -e " Loading environment variables from .env file..."
+if [ -f "$EFFECTIVE_ENV_FILE" ]; then
+    echo -e " Loading environment variables from $EFFECTIVE_ENV_FILE file..."
     # Only export variables that aren't already set (command line takes precedence)
     while IFS= read -r line; do
         # Skip comments and empty lines
@@ -48,13 +51,33 @@ if [ -f ".env" ]; then
                 export "${var_name}=${var_value}"
             fi
         fi
-    done < .env
+    done < "$EFFECTIVE_ENV_FILE"
 fi
 
 echo -e " Updating frontend addresses.json with latest deployment..."
 
-# Define paths - use .env variables if available, otherwise defaults
-FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-../../../quantillon-dapp/src/config/addresses.json}"
+# Get environment from command line argument or default to localhost
+ENVIRONMENT=${1:-localhost}
+echo -e "Environment: $ENVIRONMENT"
+
+# Define paths based on environment
+# Priority: 1) Environment variables from env file, 2) Environment-specific defaults
+case $ENVIRONMENT in
+    "localhost")
+        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-../../../quantillon-dapp/src/config/addresses.json}"
+        ;;
+    "base-sepolia")
+        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-/path/to/testnet/frontend/src/config/addresses.json}"
+        ;;
+    "base")
+        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-/path/to/mainnet/frontend/src/config/addresses.json}"
+        ;;
+    *)
+        echo -e " Error: Unknown environment '$ENVIRONMENT'"
+        echo -e " Usage: $0 [localhost|base-sepolia|base]"
+        exit 1
+        ;;
+esac
 
 echo -e "📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE"
 

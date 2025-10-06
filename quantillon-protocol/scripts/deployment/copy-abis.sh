@@ -32,22 +32,25 @@ NC='\033[0m' # No Color
 
 set -e  # Exit on any error
 
+# Determine which env file to use (honor ENV_FILE if provided)
+EFFECTIVE_ENV_FILE="${ENV_FILE:-.env}"
+
 # Check if dotenvx is available and environment is encrypted
-if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" .env 2>/dev/null && [ -z "$DOTENVX_RUNNING" ]; then
+if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" "$EFFECTIVE_ENV_FILE" 2>/dev/null && [ -z "$DOTENVX_RUNNING" ]; then
     # Use dotenvx for encrypted environment
     echo -e " Using encrypted environment variables"
     export DOTENVX_RUNNING=1
-    exec npx dotenvx run -- "$0" "$@"
+    exec npx dotenvx run --env-file="$EFFECTIVE_ENV_FILE" -- "$0" "$@"
 fi
 
 
 # Get environment from command line argument or default to localhost
 ENVIRONMENT=${1:-localhost}
 
-# Load environment variables from .env file if it exists
+# Load environment variables from env file if it exists
 # Note: Command line variables will override .env variables
-if [ -f ".env" ]; then
-    echo -e " Loading environment variables from .env file..."
+if [ -f "$EFFECTIVE_ENV_FILE" ]; then
+    echo -e " Loading environment variables from $EFFECTIVE_ENV_FILE file..."
     # Only export variables that aren't already set (command line takes precedence)
     while IFS= read -r line; do
         # Skip comments and empty lines
@@ -59,7 +62,7 @@ if [ -f ".env" ]; then
                 export "${var_name}=${var_value}"
             fi
         fi
-    done < .env
+    done < "$EFFECTIVE_ENV_FILE"
 fi
 
 echo -e " Copying contract ABIs to frontend..."
@@ -73,12 +76,12 @@ case $ENVIRONMENT in
         FRONTEND_ABI_DIR="${FRONTEND_ABI_DIR:-../../../quantillon-dapp/src/lib/contracts/abis/}"
         SMART_CONTRACTS_OUT="${SMART_CONTRACTS_OUT:-./out/}"
         ;;
-    "testnet")
+    "base-sepolia")
         # Testnet paths - use .env variables if available, otherwise placeholders
         FRONTEND_ABI_DIR="${FRONTEND_ABI_DIR:-/path/to/testnet/frontend/src/lib/contracts/abis/}"
         SMART_CONTRACTS_OUT="${SMART_CONTRACTS_OUT:-/path/to/testnet/smart-contracts/out/}"
         ;;
-    "mainnet")
+    "base")
         # Mainnet paths - use .env variables if available, otherwise placeholders
         FRONTEND_ABI_DIR="${FRONTEND_ABI_DIR:-/path/to/mainnet/frontend/src/lib/contracts/abis/}"
         SMART_CONTRACTS_OUT="${SMART_CONTRACTS_OUT:-/path/to/mainnet/smart-contracts/out/}"

@@ -38,6 +38,7 @@ VERIFY=false
 PRODUCTION=false
 DRY_RUN=false
 DEPLOYMENT_SCRIPT=""
+ENV_FILE=""
 
 # Network configurations
 declare -A NETWORKS=(
@@ -62,16 +63,44 @@ show_help() {
     echo "  base-sepolia  - Deploy to Base Sepolia (testnet)"
     echo "  base          - Deploy to Base Mainnet (production)"
     echo ""
+    echo -e "Environment Files:"
+    echo "  The script automatically selects environment files:"
+    echo "  - .env.localhost    - For localhost deployments"
+    echo "  - .env.base-sepolia - For Base Sepolia deployments"
+    echo "  - .env.base         - For Base mainnet deployments"
+    echo "  - .env              - Fallback default file"
+    echo ""
     echo -e "Options:"
-    echo "  --with-mocks     - Deploy mock contracts (localhost only)"
-    echo "  --verify         - Verify contracts on block explorer"
-    echo "  --production     - Use production deployment script"
+    echo "  --with-mocks     - Deploy mock contracts (localhost & testnet only)"
+    echo "  --verify         - Verify contracts on block explorer (testnet & production only)"
+    echo "  --production     - Use production deployment script with UUPS proxies & multisig"
     echo "  --dry-run        - Simulate deployment without broadcasting"
     echo "  --help           - Show this help message"
     echo ""
     echo -e "Examples:"
     echo "  $0 localhost --with-mocks"
     echo "  $0 base-sepolia --verify"
+    echo "  $0 base --production --verify"
+    echo ""
+    echo -e "Environment vs Production Flag:"
+    echo "  'base' environment = Deploy to Base mainnet network"
+    echo "  '--production' flag = Use production deployment script (UUPS proxies + multisig)"
+    echo "  You can combine them: $0 base --production --verify"
+    echo ""
+    echo -e "Environment Setup:"
+    echo "  # For localhost deployment"
+    echo "  cp .env.localhost.unencrypted .env.localhost"
+    echo "  npx dotenvx encrypt -f .env.localhost.unencrypted --stdout > .env.localhost"
+    echo "  $0 localhost --with-mocks"
+    echo ""
+    echo "  # For testnet deployment"
+    echo "  cp .env.base-sepolia.unencrypted .env.base-sepolia"
+    echo "  npx dotenvx encrypt -f .env.base-sepolia.unencrypted --stdout > .env.base-sepolia"
+    echo "  $0 base-sepolia --verify"
+    echo ""
+    echo "  # For production deployment"
+    echo "  cp .env.base.unencrypted .env.base"
+    echo "  npx dotenvx encrypt -f .env.base.unencrypted --stdout > .env.base"
     echo "  $0 base --production --verify"
     echo ""
 }
@@ -112,6 +141,20 @@ validate_environment() {
         log_info "Available environments: ${!NETWORKS[@]}"
         exit 1
     fi
+
+    # Validate --verify flag usage
+    if [ "$VERIFY" = true ] && [ "$ENVIRONMENT" = "localhost" ]; then
+        log_warning "Contract verification is not supported for localhost environment"
+        log_info "Ignoring --verify flag for $ENVIRONMENT"
+        VERIFY=false
+    fi
+
+    # Validate --with-mocks flag usage
+    if [ "$WITH_MOCKS" = true ] && [ "$ENVIRONMENT" = "base" ]; then
+        log_warning "Mock contracts are not supported for production environment"
+        log_info "Ignoring --with-mocks flag for $ENVIRONMENT"
+        WITH_MOCKS=false
+    fi
 }
 
 # =============================================================================
@@ -121,6 +164,33 @@ validate_environment() {
 validate_security() {
     log_step "Validating security configuration..."
     
+    # Determine environment file to use
+    local network_env_file=".env.${ENVIRONMENT}"
+    local network_env_unencrypted=".env.${ENVIRONMENT}.unencrypted"
+    local default_env_file=".env"
+    
+    # Check for unencrypted network-specific file first, then fallback to default
+    if [ -f "$network_env_unencrypted" ]; then
+        log_info "Found unencrypted environment file: $network_env_unencrypted"
+        log_info "Encrypting environment file to: $network_env_file"
+        npx dotenvx encrypt -f "$network_env_unencrypted" --stdout > "$network_env_file"
+        if [ $? -eq 0 ]; then
+            ENV_FILE="$network_env_file"
+            log_success "Environment file encrypted successfully: $ENV_FILE"
+        else
+            log_error "Failed to encrypt environment file"
+            exit 1
+        fi
+    elif [ -f "$default_env_file" ]; then
+        ENV_FILE="$default_env_file"
+        log_info "Using default environment file: $ENV_FILE"
+    else
+        log_error "No environment file found"
+        log_info "Expected files: $network_env_file, $network_env_unencrypted, or $default_env_file"
+        log_info "Please create an environment file for your network"
+        exit 1
+    fi
+    
     # Check if .env.keys exists
     if [ ! -f ".env.keys" ]; then
         log_error ".env.keys file not found"
@@ -129,10 +199,10 @@ validate_security() {
         exit 1
     fi
 
-    # Check if .env is encrypted
-    if ! grep -q "DOTENV_PUBLIC_KEY" .env; then
-        log_warning ".env file doesn't appear to be encrypted"
-        log_info "Consider running: npx dotenvx encrypt .env"
+    # Check if selected .env file is encrypted
+    if ! grep -q "DOTENV_PUBLIC_KEY" "$ENV_FILE"; then
+        log_warning "Environment file $ENV_FILE doesn't appear to be encrypted"
+        log_info "Consider running: npx dotenvx encrypt $ENV_FILE"
     fi
 
     log_success "Security validation passed"
@@ -202,7 +272,7 @@ select_deployment_script() {
 # =============================================================================
 
 deploy_mocks() {
-    if [ "$WITH_MOCKS" = true ] && [ "$ENVIRONMENT" = "localhost" ]; then
+    if [ "$WITH_MOCKS" = true ] && ([ "$ENVIRONMENT" = "localhost" ] || [ "$ENVIRONMENT" = "base-sepolia" ]); then
         log_step "Deploying mock contracts..."
         
         # Get network configuration
@@ -211,15 +281,15 @@ deploy_mocks() {
         
         # Deploy MockUSDC
         log_info "Deploying MockUSDC..."
-        npx dotenvx run -- forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
+        npx dotenvx run --env-file="$ENV_FILE" -- forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
         
         # Deploy Mock Feeds
         log_info "Deploying Mock Price Feeds..."
-        npx dotenvx run -- forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
+        npx dotenvx run --env-file="$ENV_FILE" -- forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
         
         log_success "Mock contracts deployed"
-    elif [ "$WITH_MOCKS" = true ] && [ "$ENVIRONMENT" != "localhost" ]; then
-        log_warning "Mock contracts are only supported for localhost environment"
+    elif [ "$WITH_MOCKS" = true ] && [ "$ENVIRONMENT" = "base" ]; then
+        log_warning "Mock contracts are not supported for production environment"
         log_info "Ignoring --with-mocks flag for $ENVIRONMENT"
     fi
 }
@@ -247,11 +317,12 @@ run_deployment() {
         forge_cmd="$forge_cmd --verify"
     fi
 
-    # Run deployment with dotenvx
+    # Run deployment with dotenvx using the selected environment file
     log_info "Running: $forge_cmd"
+    log_info "Using environment file: $ENV_FILE"
     echo "=============================================================="
     
-    npx dotenvx run -- $forge_cmd
+    npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd
     
     echo "=============================================================="
     log_success "Deployment completed successfully!"
@@ -266,11 +337,11 @@ post_deployment() {
     
     # Copy ABIs to frontend
     log_info "Copying ABIs to frontend..."
-    ./scripts/deployment/copy-abis.sh "$ENVIRONMENT"
+    ENV_FILE="$ENV_FILE" ./scripts/deployment/copy-abis.sh "$ENVIRONMENT"
     
     # Update frontend addresses
     log_info "Updating frontend addresses..."
-    ./scripts/deployment/update-frontend-addresses.sh
+    ENV_FILE="$ENV_FILE" ./scripts/deployment/update-frontend-addresses.sh "$ENVIRONMENT"
     
     log_success "Post-deployment tasks completed"
 }

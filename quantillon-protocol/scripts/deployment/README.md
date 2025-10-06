@@ -37,19 +37,22 @@ The new unified deployment script handles all environments with built-in securit
 | `--dry-run` | Simulate deployment without broadcasting | `./deploy.sh localhost --dry-run` |
 | `--help` | Show help message | `./deploy.sh --help` |
 
-## 🎯 Quick Start
+## 🎯 Quick Start (per-network encrypted env files)
 
-### 1. Environment Setup
+### 1. Environment Setup (per network)
 
 ```bash
-# Copy environment template
-cp .env.example .env
+# Localhost
+cp .env.localhost.unencrypted .env.localhost.unencrypted  # ensure it exists and fill values
+npx dotenvx encrypt -f .env.localhost.unencrypted --stdout > .env.localhost
 
-# Fill in your values
-# Edit .env with your actual API keys, private keys, etc.
+# Base Sepolia
+cp .env.base-sepolia.unencrypted .env.base-sepolia.unencrypted  # ensure it exists and fill values
+npx dotenvx encrypt -f .env.base-sepolia.unencrypted --stdout > .env.base-sepolia
 
-# Encrypt environment variables
-npx dotenvx encrypt .env
+# Base mainnet
+cp .env.base.unencrypted .env.base.unencrypted  # ensure it exists and fill values
+npx dotenvx encrypt -f .env.base.unencrypted --stdout > .env.base
 ```
 
 ### 2. Deploy to Localhost
@@ -97,26 +100,33 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 
 ## 🔐 Security Implementation
 
-### Environment Variable Encryption
+### Environment Variable Encryption (per network)
 
 The protocol uses [Dotenvx](https://dotenvx.com/) for enterprise-grade security:
 
 ```bash
-# Encrypt environment file
-npx dotenvx encrypt .env
+# Encrypt localhost env → writes encrypted content to stdout, redirect to .env.localhost
+npx dotenvx encrypt -f .env.localhost.unencrypted --stdout > .env.localhost
 
-# This creates:
-# - .env (encrypted with public key)
-# - .env.keys (private decryption key - NEVER commit)
+# Encrypt Base Sepolia env
+npx dotenvx encrypt -f .env.base-sepolia.unencrypted --stdout > .env.base-sepolia
+
+# Encrypt Base mainnet env
+npx dotenvx encrypt -f .env.base.unencrypted --stdout > .env.base
+
+# Decryption keys live in .env.keys (NEVER commit)
 ```
 
 ### File Structure
 
 ```
-.env                 # Encrypted environment variables (safe to commit)
-.env.keys           # Private decryption key (NEVER commit - in .gitignore)
-.env.example        # Template for new developers
-.env.backup         # Backup of original unencrypted file
+.env.localhost                 # Encrypted env for localhost (safe to commit)
+.env.base-sepolia              # Encrypted env for Base Sepolia (safe to commit)
+.env.base                      # Encrypted env for Base mainnet (safe to commit)
+.env.localhost.unencrypted     # Unencrypted source for localhost (DO NOT commit)
+.env.base-sepolia.unencrypted  # Unencrypted source for Base Sepolia (DO NOT commit)
+.env.base.unencrypted          # Unencrypted source for Base mainnet (DO NOT commit)
+.env.keys                      # Private decryption key (NEVER commit - in .gitignore)
 ```
 
 ### Security Benefits
@@ -147,15 +157,14 @@ forge test
 ### Team Collaboration
 
 ```bash
-# 1. Share encrypted .env file (safe to commit)
-git add .env
-git commit -m "Update encrypted environment variables"
+# 1. Share encrypted per-network env files (safe to commit)
+git add .env.localhost .env.base-sepolia .env.base
+git commit -m "Update encrypted env files"
 
-# 2. Each developer needs their own .env.keys file
-# (Never commit this file - it's in .gitignore)
+# 2. Each developer needs their own .env.keys file (never commit)
 
-# 3. Developers can decrypt and use
-npx dotenvx run -- forge script DeployQuantillon.s.sol --rpc-url localhost
+# 3. Use a specific env file when running commands
+npx dotenvx run --env-file=.env.localhost -- forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545
 ```
 
 ## 📊 Deployment Examples
@@ -203,8 +212,8 @@ npx dotenvx run -- forge script DeployQuantillon.s.sol --rpc-url localhost
 ```bash
 # Error: .env.keys file not found
 # Solution: Ensure you have the decryption key
-# Get it from another team member or re-encrypt
-npx dotenvx encrypt .env
+# Get it from another team member or re-encrypt a per-network file
+npx dotenvx encrypt -f .env.localhost.unencrypted --stdout > .env.localhost
 ```
 
 #### Environment variables not loading
@@ -222,6 +231,14 @@ curl -X POST -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
   https://sepolia.base.org
 ```
+
+### Helper scripts env usage
+Both helper scripts honor the same env file passed by `deploy.sh`:
+
+- `copy-abis.sh` is executed as `ENV_FILE=".env.<env>" ./scripts/deployment/copy-abis.sh <environment>`
+- `update-frontend-addresses.sh` is executed as `ENV_FILE=".env.<env>" ./scripts/deployment/update-frontend-addresses.sh <environment>`
+
+They will re-exec under `dotenvx` with `--env-file=$ENV_FILE` and load variables from that file.
 
 ### Getting Help
 

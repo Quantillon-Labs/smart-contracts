@@ -338,7 +338,7 @@ run_deployment() {
         
         log_info "Phase B: Core Protocol"
         echo "=============================================================="
-        env TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_b
+        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_b
         echo "=============================================================="
         
         # Extract B addresses
@@ -366,7 +366,7 @@ run_deployment() {
         
         log_info "Phase C: UserPool + HedgerPool"
         echo "=============================================================="
-        env TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_c
+        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_c
         echo "=============================================================="
         
         # Extract C addresses
@@ -390,7 +390,7 @@ run_deployment() {
         
         log_info "Phase D: YieldShift + Wiring"
         echo "=============================================================="
-        env TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" QTI_TOKEN="$QTI_TOKEN" AAVE_VAULT="$AAVE_VAULT" STQEURO_TOKEN="$STQEURO_TOKEN" USER_POOL="$USER_POOL" HEDGER_POOL="$HEDGER_POOL" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_d
+        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" QTI_TOKEN="$QTI_TOKEN" AAVE_VAULT="$AAVE_VAULT" STQEURO_TOKEN="$STQEURO_TOKEN" USER_POOL="$USER_POOL" HEDGER_POOL="$HEDGER_POOL" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_d
         echo "=============================================================="
     
     log_success "Deployment completed successfully!"

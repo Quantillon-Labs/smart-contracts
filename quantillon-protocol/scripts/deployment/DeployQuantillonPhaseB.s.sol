@@ -73,6 +73,23 @@ contract DeployQuantillonPhaseB is Script {
         } else if (isBaseSepolia) {
             aaveProvider = BASE_SEPOLIA_AAVE_PROVIDER;
             aaveRewardsController = BASE_SEPOLIA_AAVE_REWARDS;
+            // Fallback to mocks if these addresses are not contracts on Base Sepolia
+            address provider = aaveProvider;
+            address rewards = aaveRewardsController;
+            uint256 sizeProvider;
+            uint256 sizeRewards;
+            assembly {
+                sizeProvider := extcodesize(provider)
+                sizeRewards := extcodesize(rewards)
+            }
+            if (sizeProvider == 0 || sizeRewards == 0) {
+                console.log("Base Sepolia Aave addresses not contracts, falling back to mocks");
+                MockAavePool mockPool = new MockAavePool(usdc, usdc);
+                MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(address(mockPool));
+                MockRewardsController mockRewards = new MockRewardsController();
+                aaveProvider = address(mockProvider);
+                aaveRewardsController = address(mockRewards);
+            }
         }
     }
 

@@ -60,6 +60,7 @@ artifacts/
 /broadcast/*/31337/
 /broadcast/**/dry-run/
 /broadcast/**/run-latest.json
+/broadcast/**/run-*.json
 
 # Deployment logs
 deployments/

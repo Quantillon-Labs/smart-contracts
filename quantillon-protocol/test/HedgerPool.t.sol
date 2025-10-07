@@ -407,57 +407,11 @@ contract HedgerPoolTestSuite is Test {
         vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation2), initData2);
         
-        // Test with zero oracle
-        TimeProvider timeProviderImpl4 = new TimeProvider();
-        bytes memory timeProviderInitData4 = abi.encodeWithSelector(
-            TimeProvider.initialize.selector,
-            admin,
-            admin,
-            admin
-        );
-        ERC1967Proxy timeProviderProxy4 = new ERC1967Proxy(address(timeProviderImpl4), timeProviderInitData4);
-        TimeProvider timeProvider4 = TimeProvider(address(timeProviderProxy4));
+        // Test with zero oracle - NOW ALLOWED for phased deployment
+        // Oracle can be set later via updateOracle() governance setter
         
-        HedgerPool newImplementation3 = new HedgerPool(timeProvider4);
-        bytes memory initData3 = abi.encodeWithSelector(
-            HedgerPool.initialize.selector,
-            admin,
-            mockUSDC,
-            address(0),
-            mockYieldShift,
-            mockTimelock,
-            admin,
-            address(0x999) // Mock vault address
-        );
-        
-        vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
-        new ERC1967Proxy(address(newImplementation3), initData3);
-        
-        // Test with zero YieldShift
-        TimeProvider timeProviderImpl5 = new TimeProvider();
-        bytes memory timeProviderInitData5 = abi.encodeWithSelector(
-            TimeProvider.initialize.selector,
-            admin,
-            admin,
-            admin
-        );
-        ERC1967Proxy timeProviderProxy5 = new ERC1967Proxy(address(timeProviderImpl5), timeProviderInitData5);
-        TimeProvider timeProvider5 = TimeProvider(address(timeProviderProxy5));
-        
-        HedgerPool newImplementation4 = new HedgerPool(timeProvider5);
-        bytes memory initData4 = abi.encodeWithSelector(
-            HedgerPool.initialize.selector,
-            admin,
-            mockUSDC,
-            mockOracle,
-            address(0),
-            mockTimelock,
-            admin,
-            address(0x999) // Mock vault address
-        );
-        
-        vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
-        new ERC1967Proxy(address(newImplementation4), initData4);
+        // Test with zero YieldShift - NOW ALLOWED for phased deployment
+        // YieldShift can be set later via updateYieldShift() governance setter
     }
     
     /**

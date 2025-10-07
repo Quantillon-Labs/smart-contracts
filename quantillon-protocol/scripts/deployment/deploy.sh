@@ -35,9 +35,7 @@ NC='\033[0m' # No Color
 ENVIRONMENT=""
 WITH_MOCKS=false
 VERIFY=false
-PRODUCTION=false
 DRY_RUN=false
-DEPLOYMENT_SCRIPT=""
 ENV_FILE=""
 
 # Network configurations
@@ -72,20 +70,18 @@ show_help() {
     echo ""
     echo -e "Options:"
     echo "  --with-mocks     - Deploy mock contracts (localhost & testnet only)"
-    echo "  --verify         - Verify contracts on block explorer (testnet & production only)"
-    echo "  --production     - Use production deployment script with UUPS proxies & multisig"
+    echo "  --verify         - Verify contracts on block explorer (testnet & mainnet)"
     echo "  --dry-run        - Simulate deployment without broadcasting"
     echo "  --help           - Show this help message"
     echo ""
     echo -e "Examples:"
     echo "  $0 localhost --with-mocks"
-    echo "  $0 base-sepolia --verify"
-    echo "  $0 base --production --verify"
+    echo "  $0 base-sepolia --with-mocks --verify"
+    echo "  $0 base --verify"
     echo ""
-    echo -e "Environment vs Production Flag:"
-    echo "  'base' environment = Deploy to Base mainnet network"
-    echo "  '--production' flag = Use production deployment script (UUPS proxies + multisig)"
-    echo "  You can combine them: $0 base --production --verify"
+    echo -e "Deployment Method:"
+    echo "  All deployments use multi-phase atomic deployment (A→B→C→D)"
+    echo "  Each phase stays within the 24.9M gas limit per transaction"
     echo ""
     echo -e "Environment Setup:"
     echo "  # For localhost deployment"
@@ -98,10 +94,10 @@ show_help() {
     echo "  npx dotenvx encrypt -f .env.base-sepolia.unencrypted --stdout > .env.base-sepolia"
     echo "  $0 base-sepolia --verify"
     echo ""
-    echo "  # For production deployment"
+    echo "  # For Base mainnet deployment"
     echo "  cp .env.base.unencrypted .env.base"
     echo "  npx dotenvx encrypt -f .env.base.unencrypted --stdout > .env.base"
-    echo "  $0 base --production --verify"
+    echo "  $0 base --verify"
     echo ""
 }
 
@@ -249,22 +245,10 @@ validate_network() {
 
 select_deployment_script() {
     log_step "Selecting deployment script..."
-
-    if [ "$PRODUCTION" = true ]; then
-        DEPLOYMENT_SCRIPT="scripts/deployment/DeployProduction.s.sol"
-        log_info "Using production deployment script"
-    else
-        DEPLOYMENT_SCRIPT="scripts/deployment/DeployQuantillon.s.sol"
-        log_info "Using standard deployment script"
-    fi
-
-    # Check if deployment script exists
-    if [ ! -f "$DEPLOYMENT_SCRIPT" ]; then
-        log_error "Deployment script not found: $DEPLOYMENT_SCRIPT"
-        exit 1
-    fi
-
-    log_success "Deployment script: $DEPLOYMENT_SCRIPT"
+    # Always use multi-phase deployment (A→B→C→D)
+    # No single script file; phases are handled in run_deployment()
+    log_info "Using multi-phase deployment (A→B→C→D)"
+    log_success "Deployment: 4 atomic phases"
 }
 
 # =============================================================================
@@ -306,25 +290,109 @@ run_deployment() {
 
     log_step "Starting deployment to $network_name..."
 
-    # Build forge command
-    local forge_cmd="forge script $DEPLOYMENT_SCRIPT --rpc-url $rpc_url"
-    
-    if [ "$DRY_RUN" = false ]; then
-        forge_cmd="$forge_cmd --broadcast"
-    fi
-    
-    if [ "$VERIFY" = true ]; then
-        forge_cmd="$forge_cmd --verify"
-    fi
+    local effective_gas_limit="${GAS_LIMIT:-24900000}"
+    local effective_profile="${FOUNDRY_PROFILE:-default}"
+    export FOUNDRY_PROFILE="$effective_profile"
 
-    # Run deployment with dotenvx using the selected environment file
-    log_info "Running: $forge_cmd"
-    log_info "Using environment file: $ENV_FILE"
-    echo "=============================================================="
+    # Always use multi-phase deployment (A→B→C→D) - only method that fits gas cap
+    log_info "Running split-phase deployment (A → B → C → D)..."
+        
+        # Phase A: Core infrastructure
+        local phase_a_script="scripts/deployment/DeployQuantillonPhaseA.s.sol"
+        local forge_cmd_a1="forge script $phase_a_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
+        if [ "$DRY_RUN" = false ]; then forge_cmd_a1="$forge_cmd_a1 --broadcast"; fi
+        if [ "$VERIFY" = true ]; then forge_cmd_a1="$forge_cmd_a1 --verify"; fi
+        
+        log_info "Phase A: Core Infrastructure"
+        echo "=============================================================="
+        if [ "$WITH_MOCKS" = true ]; then
+            env WITH_MOCKS=true npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_a1
+        else
+            env WITH_MOCKS=false npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_a1
+        fi
+        echo "=============================================================="
+        
+        # Extract A1 addresses
+        local phase_a_broadcast="./broadcast/DeployQuantillonPhaseA.s.sol/${chain_id}/run-latest.json"
+        if [ ! -f "$phase_a_broadcast" ]; then
+            log_error "Phase A broadcast not found"
+            exit 1
+        fi
+        
+        # Export A1 addresses for A2 (unique proxies preserving creation order)
+        export TIME_PROVIDER=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$phase_a_broadcast" | head -1)
+        export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$phase_a_broadcast" | head -1)
+        PROXIES_A=($(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy" and .transactionType == "CREATE") | .contractAddress' "$phase_a_broadcast"))
+        export CHAINLINK_ORACLE="${PROXIES_A[0]}"
+        export QEURO_TOKEN="${PROXIES_A[1]}"
+        export FEE_COLLECTOR="${PROXIES_A[2]}"
+        export QUANTILLON_VAULT="${PROXIES_A[3]}"
+        
+        log_info "Phase A completed. Starting B..."
+        
+        # Phase B: Core protocol
+        local phase_b_script="scripts/deployment/DeployQuantillonPhaseB.s.sol"
+        local forge_cmd_b="forge script $phase_b_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
+        if [ "$DRY_RUN" = false ]; then forge_cmd_b="$forge_cmd_b --broadcast"; fi
+        if [ "$VERIFY" = true ]; then forge_cmd_b="$forge_cmd_b --verify"; fi
+        
+        log_info "Phase B: Core Protocol"
+        echo "=============================================================="
+        env TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_b
+        echo "=============================================================="
+        
+        # Extract B addresses
+        local phase_b_broadcast="./broadcast/DeployQuantillonPhaseB.s.sol/${chain_id}/run-latest.json"
+        if [ ! -f "$phase_b_broadcast" ]; then
+            log_error "Phase B broadcast not found"
+            exit 1
+        fi
+        
+        PROXIES_B=($(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy" and .transactionType == "CREATE") | .contractAddress' "$phase_b_broadcast"))
+        export QTI_TOKEN="${PROXIES_B[0]}"
+        export AAVE_VAULT="${PROXIES_B[1]}"
+        export STQEURO_TOKEN="${PROXIES_B[2]}"
+        
+        log_info "Phase B completed. Starting C..."
+        
+        # Re-export USDC from the mock deployment before A3
+        export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "./broadcast/DeployMockUSDC.s.sol/$chain_id/run-latest.json" | head -1)
+        
+        # Phase C: UserPool, HedgerPool
+        local phase_c_script="scripts/deployment/DeployQuantillonPhaseC.s.sol"
+        local forge_cmd_c="forge script $phase_c_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
+        if [ "$DRY_RUN" = false ]; then forge_cmd_c="$forge_cmd_c --broadcast"; fi
+        if [ "$VERIFY" = true ]; then forge_cmd_c="$forge_cmd_c --verify"; fi
+        
+        log_info "Phase C: UserPool + HedgerPool"
+        echo "=============================================================="
+        env TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_c
+        echo "=============================================================="
+        
+        # Extract C addresses
+        local phase_c_broadcast="./broadcast/DeployQuantillonPhaseC.s.sol/${chain_id}/run-latest.json"
+        if [ ! -f "$phase_c_broadcast" ]; then
+            log_error "Phase C broadcast not found"
+            exit 1
+        fi
+        
+        PROXIES_C=($(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy" and .transactionType == "CREATE") | .contractAddress' "$phase_c_broadcast"))
+        export USER_POOL="${PROXIES_C[0]}"
+        export HEDGER_POOL="${PROXIES_C[1]}"
+        
+        log_info "Phase C completed. Starting D..."
+        
+        # Phase D: YieldShift + wiring
+        local phase_d_script="scripts/deployment/DeployQuantillonPhaseD.s.sol"
+        local forge_cmd_d="forge script $phase_d_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
+        if [ "$DRY_RUN" = false ]; then forge_cmd_d="$forge_cmd_d --broadcast"; fi
+        if [ "$VERIFY" = true ]; then forge_cmd_d="$forge_cmd_d --verify"; fi
+        
+        log_info "Phase D: YieldShift + Wiring"
+        echo "=============================================================="
+        env TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" QTI_TOKEN="$QTI_TOKEN" AAVE_VAULT="$AAVE_VAULT" STQEURO_TOKEN="$STQEURO_TOKEN" USER_POOL="$USER_POOL" HEDGER_POOL="$HEDGER_POOL" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_d
+        echo "=============================================================="
     
-    npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd
-    
-    echo "=============================================================="
     log_success "Deployment completed successfully!"
 }
 
@@ -335,13 +403,13 @@ run_deployment() {
 post_deployment() {
     log_step "Running post-deployment tasks..."
     
-    # Copy ABIs to frontend
+    # Copy ABIs to frontend (multi-phase deployment)
     log_info "Copying ABIs to frontend..."
-    ENV_FILE="$ENV_FILE" ./scripts/deployment/copy-abis.sh "$ENVIRONMENT"
+    ENV_FILE="$ENV_FILE" PHASED=true ./scripts/deployment/copy-abis.sh "$ENVIRONMENT" --phased
     
-    # Update frontend addresses
+    # Update frontend addresses (multi-phase address updater merges all broadcasts)
     log_info "Updating frontend addresses..."
-    ENV_FILE="$ENV_FILE" ./scripts/deployment/update-frontend-addresses.sh "$ENVIRONMENT"
+    ENV_FILE="$ENV_FILE" PHASED=true ./scripts/deployment/update-frontend-addresses.sh "$ENVIRONMENT" --phased
     
     log_success "Post-deployment tasks completed"
 }
@@ -364,10 +432,6 @@ main() {
                 ;;
             --verify)
                 VERIFY=true
-                shift
-                ;;
-            --production)
-                PRODUCTION=true
                 shift
                 ;;
             --dry-run)

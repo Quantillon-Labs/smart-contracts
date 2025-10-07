@@ -56,17 +56,17 @@ The new **`deploy.sh`** script provides a unified interface for all deployments:
 
 | Script | Purpose | Description |
 |--------|---------|-------------|
-| `copy-abis.sh` | ABI copying | Copies contract ABIs to frontend after deployment |
-| `update-frontend-addresses.sh` | Address updates | Updates frontend with deployed contract addresses |
+| `copy-abis.sh` | ABI copying | Copies contract ABIs to frontend after deployment (supports `--phased`) |
+| `update-frontend-addresses.sh` | Address updates | Updates frontend with deployed contract addresses (supports `--phased`) |
 
 ### Usage Examples
 
 ```bash
-# Copy ABIs to frontend
-./scripts/deployment/copy-abis.sh
+# Copy ABIs to frontend (phased)
+./scripts/deployment/copy-abis.sh localhost --phased
 
-# Update frontend addresses
-./scripts/deployment/update-frontend-addresses.sh
+# Update frontend addresses (phased)
+./scripts/deployment/update-frontend-addresses.sh localhost --phased
 ```
 
 ## 🔐 Environment Setup

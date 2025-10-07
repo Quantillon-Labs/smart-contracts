@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import "forge-std/Script.sol";
+import "forge-std/console.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
+import "../../src/libraries/TimeProviderLibrary.sol";
+import "../../src/core/QuantillonVault.sol";
+import "../../src/core/UserPool.sol";
+import "../../src/core/HedgerPool.sol";
+import "../../src/core/FeeCollector.sol";
+import "../../src/core/yieldmanagement/YieldShift.sol";
+
+contract DeployQuantillonPhaseD is Script {
+    QuantillonVault public quantillonVault;
+    UserPool public userPool;
+    HedgerPool public hedgerPool;
+    FeeCollector public feeCollector;
+    YieldShift public yieldShift;
+    TimeProvider public timeProvider;
+    address public stQeuroToken;
+    address public aaveVault;
+
+    address public deployerEOA;
+    address public usdc;
+
+    function run() external {
+        uint256 pk = vm.envUint("PRIVATE_KEY");
+        deployerEOA = vm.addr(pk);
+
+        // Read Phase A deployed addresses from env
+        address tpAddr = vm.envAddress("TIME_PROVIDER");
+        address oracleAddr = vm.envAddress("CHAINLINK_ORACLE");
+        address qeuroAddr = vm.envAddress("QEURO_TOKEN");
+        address feeAddr = vm.envAddress("FEE_COLLECTOR");
+        address vaultAddr = vm.envAddress("QUANTILLON_VAULT");
+        address qtiAddr = vm.envAddress("QTI_TOKEN");
+        address aaveAddr = vm.envAddress("AAVE_VAULT");
+        stQeuroToken = vm.envAddress("STQEURO_TOKEN");
+        address upAddr = vm.envAddress("USER_POOL");
+        address hpAddr = vm.envAddress("HEDGER_POOL");
+        usdc = vm.envAddress("USDC");
+        aaveVault = vm.envAddress("AAVE_VAULT");
+
+        timeProvider = TimeProvider(tpAddr);
+        quantillonVault = QuantillonVault(vaultAddr);
+        userPool = UserPool(upAddr);
+        hedgerPool = HedgerPool(hpAddr);
+        feeCollector = FeeCollector(feeAddr);
+
+        console.log("Phase B: YieldShift + Wiring");
+
+        vm.startBroadcast(pk);
+
+        // Deploy full YieldShift (now in separate script with own gas budget)
+        if (address(yieldShift) == address(0)) {
+            YieldShift impl = new YieldShift(timeProvider);
+            ERC1967Proxy proxy = new ERC1967Proxy(address(impl), bytes(""));
+            yieldShift = YieldShift(address(proxy));
+            console.log("YieldShift Proxy:", address(yieldShift));
+            yieldShift.initialize(deployerEOA, usdc, address(0), address(0), address(0), address(0), deployerEOA, deployerEOA);
+            yieldShift.updateUserPool(address(userPool));
+            yieldShift.updateHedgerPool(address(hedgerPool));
+            yieldShift.updateAaveVault(aaveVault);
+            yieldShift.updateStQEURO(stQeuroToken);
+            yieldShift.bootstrapDefaults();
+            hedgerPool.updateYieldShift(address(yieldShift));
+        }
+
+        // Wire vault/pools
+        quantillonVault.updateHedgerPool(address(hedgerPool));
+        quantillonVault.updateUserPool(address(userPool));
+        feeCollector.authorizeFeeSource(address(quantillonVault));
+        hedgerPool.whitelistHedger(deployerEOA);
+
+        vm.stopBroadcast();
+        console.log("\nPhase B Complete. YieldShift:", address(yieldShift));
+    }
+}
+

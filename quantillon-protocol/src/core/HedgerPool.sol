@@ -210,8 +210,9 @@ contract HedgerPool is
     ) public initializer {
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(_usdc);
-        AccessControlLibrary.validateAddress(_oracle);
-        AccessControlLibrary.validateAddress(_yieldShift);
+        // Oracle and YieldShift can be zero during phased deployment, set via setters later
+        if (_oracle != address(0)) AccessControlLibrary.validateAddress(_oracle);
+        if (_yieldShift != address(0)) AccessControlLibrary.validateAddress(_yieldShift);
         AccessControlLibrary.validateAddress(_timelock);
         AccessControlLibrary.validateAddress(_treasury);
         AccessControlLibrary.validateAddress(_vault);
@@ -1260,6 +1261,28 @@ contract HedgerPool is
         AccessControlLibrary.validateAddress(_vault);
         vault = IQuantillonVault(_vault);
         emit VaultUpdated(_vault);
+    }
+
+    /**
+     * @notice Updates the oracle address
+     * @dev Governance-only setter to allow phased wiring after minimal initialization
+     * @param _oracle New oracle address
+     */
+    function updateOracle(address _oracle) external {
+        _validateRole(GOVERNANCE_ROLE);
+        AccessControlLibrary.validateAddress(_oracle);
+        oracle = IChainlinkOracle(_oracle);
+    }
+
+    /**
+     * @notice Updates the YieldShift address
+     * @dev Governance-only setter to allow phased wiring after minimal initialization
+     * @param _yieldShift New YieldShift address
+     */
+    function updateYieldShift(address _yieldShift) external {
+        _validateRole(GOVERNANCE_ROLE);
+        AccessControlLibrary.validateAddress(_yieldShift);
+        yieldShift = IYieldShift(_yieldShift);
     }
 
     /**

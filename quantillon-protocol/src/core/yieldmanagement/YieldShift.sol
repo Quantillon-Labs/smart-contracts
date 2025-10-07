@@ -251,13 +251,9 @@ contract YieldShift is
         address _timelock,
         address _treasury
     ) public initializer {
+        // Minimal initializer: only core guards/roles + USDC and optional references
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(_usdc);
-        AccessControlLibrary.validateAddress(_userPool);
-        AccessControlLibrary.validateAddress(_hedgerPool);
-        AccessControlLibrary.validateAddress(_aaveVault);
-        AccessControlLibrary.validateAddress(_stQEURO);
-        AccessControlLibrary.validateAddress(_treasury);
 
         __ReentrancyGuard_init();
         __AccessControl_init();
@@ -270,36 +266,53 @@ contract YieldShift is
         _grantRole(EMERGENCY_ROLE, admin);
 
         usdc = IERC20(_usdc);
-        userPool = IUserPool(_userPool);
-        hedgerPool = IHedgerPool(_hedgerPool);
-        aaveVault = IAaveVault(_aaveVault);
-        stQEURO = IstQEURO(_stQEURO);
-        require(_treasury != address(0), "Treasury cannot be zero address");
-        YieldValidationLibrary.validateTreasuryAddress(_treasury);
-        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        treasury = _treasury;
 
+        // Optional references may be zero during phased deploy; wire later via governance setters
+        if (_userPool != address(0)) {
+            AccessControlLibrary.validateAddress(_userPool);
+            userPool = IUserPool(_userPool);
+        }
+        if (_hedgerPool != address(0)) {
+            AccessControlLibrary.validateAddress(_hedgerPool);
+            hedgerPool = IHedgerPool(_hedgerPool);
+        }
+        if (_aaveVault != address(0)) {
+            AccessControlLibrary.validateAddress(_aaveVault);
+            aaveVault = IAaveVault(_aaveVault);
+        }
+        if (_stQEURO != address(0)) {
+            AccessControlLibrary.validateAddress(_stQEURO);
+            stQEURO = IstQEURO(_stQEURO);
+        }
+        if (_treasury != address(0)) {
+            YieldValidationLibrary.validateTreasuryAddress(_treasury);
+            CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+            treasury = _treasury;
+        }
+
+        // Scalar defaults only; defer arrays/history and authorizations to a separate bootstrap tx
         baseYieldShift = 5000;
         maxYieldShift = 9000;
         adjustmentSpeed = 100;
         targetPoolRatio = 10000;
         currentYieldShift = baseYieldShift;
         lastUpdateTime = TIME_PROVIDER.currentTime();
+    }
 
-        // Initialize arrays to prevent uninitialized state variable warnings
+    /**
+     * @notice Governance bootstrap to set initial histories and source metadata after minimal init
+     */
+    function bootstrapDefaults() external {
+        AccessControlLibrary.onlyGovernance(this);
+        // Initialize arrays lazily to cut initializer gas
         _recordPoolSnapshot();
-        
-        // Initialize yieldShiftHistory with initial snapshot
         yieldShiftHistory.push(YieldShiftSnapshot({
             yieldShift: uint128(currentYieldShift),
             timestamp: uint64(TIME_PROVIDER.currentTime())
         }));
-
         yieldSourceNames.push(keccak256("aave"));
         yieldSourceNames.push(keccak256("fees"));
         yieldSourceNames.push(keccak256("interest_differential"));
-        
-        // Authorize the contract itself for known yield sources
         authorizedYieldSources[address(this)] = true;
         sourceToYieldType[address(this)] = keccak256("aave");
     }
@@ -1114,6 +1127,33 @@ contract YieldShift is
         sourceToYieldType[source] = bytes32(0);
         
         emit YieldSourceRevoked(source);
+    }
+
+    /**
+     * @notice Governance-only setters to wire references post-initialization (phased deploy)
+     */
+    function updateUserPool(address _userPool) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(_userPool);
+        userPool = IUserPool(_userPool);
+    }
+
+    function updateHedgerPool(address _hedgerPool) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(_hedgerPool);
+        hedgerPool = IHedgerPool(_hedgerPool);
+    }
+
+    function updateAaveVault(address _aaveVault) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(_aaveVault);
+        aaveVault = IAaveVault(_aaveVault);
+    }
+
+    function updateStQEURO(address _stQEURO) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(_stQEURO);
+        stQEURO = IstQEURO(_stQEURO);
     }
 
     /**

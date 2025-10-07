@@ -56,9 +56,37 @@ fi
 
 echo -e " Updating frontend addresses.json with latest deployment..."
 
-# Get environment from command line argument or default to localhost
-ENVIRONMENT=${1:-localhost}
+# Get flags and environment from args
+PHASED_FLAG=false
+ARG_ENV=""
+for arg in "$@"; do
+    case "$arg" in
+        --phased)
+            PHASED_FLAG=true
+            shift
+            ;;
+        localhost|base-sepolia|base)
+            ARG_ENV="$arg"
+            shift
+            ;;
+        *)
+            ;;
+    esac
+done
+
+# Allow PHASED to be provided via environment variable too
+if [ "${PHASED:-}" = "true" ]; then
+    PHASED_FLAG=true
+fi
+
+# Environment (default localhost)
+ENVIRONMENT=${ARG_ENV:-localhost}
 echo -e "Environment: $ENVIRONMENT"
+echo -e "Phased mode: $PHASED_FLAG"
+
+# Allow override of phase script name for split-phase deployments
+PHASE_SCRIPT_NAME="${PHASE_SCRIPT:-DeployQuantillonPhased.s.sol}"
+echo -e "Phase script: $PHASE_SCRIPT_NAME"
 
 # Define paths based on environment
 # Priority: 1) Environment variables from env file, 2) Environment-specific defaults
@@ -82,57 +110,129 @@ esac
 echo -e "📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE"
 
 # Detect which network was deployed (check for broadcast files)
-LOCALHOST_BROADCAST="./broadcast/DeployQuantillon.s.sol/31337/run-latest.json"
-BASE_SEPOLIA_BROADCAST="./broadcast/DeployQuantillon.s.sol/84532/run-latest.json"
-
-if [ -f "$LOCALHOST_BROADCAST" ]; then
-    BROADCAST_FILE="$LOCALHOST_BROADCAST"
-    NETWORK="localhost"
-    CHAIN_ID="31337"
-    echo -e "📡 Detected localhost deployment"
-elif [ -f "$BASE_SEPOLIA_BROADCAST" ]; then
-    BROADCAST_FILE="$BASE_SEPOLIA_BROADCAST"
-    NETWORK="base-sepolia"
-    CHAIN_ID="84532"
-    echo -e "📡 Detected Base Sepolia deployment"
+# For multi-phase deployments, check all phase broadcast files
+BROADCAST_FILES=()
+if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased.s.sol" ]; then
+    # Multi-phase deployment: check A1, A2, A3, B
+    if [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/31337/run-latest.json" ]; then
+        CHAIN_ID="31337"
+        NETWORK="localhost"
+        BROADCAST_FILES=(
+            "./broadcast/DeployQuantillonPhaseA.s.sol/31337/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseB.s.sol/31337/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseC.s.sol/31337/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseD.s.sol/31337/run-latest.json"
+            "./broadcast/DeployMockUSDC.s.sol/31337/run-latest.json"
+        )
+        echo -e "📡 Detected localhost multi-phase deployment"
+    elif [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/84532/run-latest.json" ]; then
+        CHAIN_ID="84532"
+        NETWORK="base-sepolia"
+        BROADCAST_FILES=(
+            "./broadcast/DeployQuantillonPhaseA.s.sol/84532/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseB.s.sol/84532/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseC.s.sol/84532/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseD.s.sol/84532/run-latest.json"
+            "./broadcast/DeployMockUSDC.s.sol/84532/run-latest.json"
+        )
+        echo -e "📡 Detected Base Sepolia multi-phase deployment"
+    else
+        echo -e " No multi-phase deployment broadcast files found"
+        exit 1
+    fi
+elif [ "$PHASED_FLAG" = true ]; then
+    # Single-phase phased deployment
+    LOCALHOST_BROADCAST="./broadcast/${PHASE_SCRIPT_NAME}/31337/run-latest.json"
+    BASE_SEPOLIA_BROADCAST="./broadcast/${PHASE_SCRIPT_NAME}/84532/run-latest.json"
+    if [ -f "$LOCALHOST_BROADCAST" ]; then
+        BROADCAST_FILES=("$LOCALHOST_BROADCAST")
+        NETWORK="localhost"
+        CHAIN_ID="31337"
+        echo -e "📡 Detected localhost deployment"
+    elif [ -f "$BASE_SEPOLIA_BROADCAST" ]; then
+        BROADCAST_FILES=("$BASE_SEPOLIA_BROADCAST")
+        NETWORK="base-sepolia"
+        CHAIN_ID="84532"
+        echo -e "📡 Detected Base Sepolia deployment"
+    else
+        echo -e " No deployment broadcast file found"
+        exit 1
+    fi
 else
-    echo -e " No deployment broadcast file found"
-    echo -e " Please run deployment first:"
-    echo -e "   make deploy-localhost (for localhost)"
-    echo -e "   make deploy-base-sepolia (for Base Sepolia)"
-    exit 1
+    # Non-phased deployment
+    LOCALHOST_BROADCAST="./broadcast/DeployQuantillon.s.sol/31337/run-latest.json"
+    BASE_SEPOLIA_BROADCAST="./broadcast/DeployQuantillon.s.sol/84532/run-latest.json"
+    if [ -f "$LOCALHOST_BROADCAST" ]; then
+        BROADCAST_FILES=("$LOCALHOST_BROADCAST")
+        NETWORK="localhost"
+        CHAIN_ID="31337"
+        echo -e "📡 Detected localhost deployment"
+    elif [ -f "$BASE_SEPOLIA_BROADCAST" ]; then
+        BROADCAST_FILES=("$BASE_SEPOLIA_BROADCAST")
+        NETWORK="base-sepolia"
+        CHAIN_ID="84532"
+        echo -e "📡 Detected Base Sepolia deployment"
+    else
+        echo -e " No deployment broadcast file found"
+        exit 1
+    fi
 fi
 
-echo -e " Using broadcast file: $BROADCAST_FILE"
+echo -e " Using broadcast files: ${BROADCAST_FILES[@]}"
 
 # Extract addresses using jq
 echo -e " Extracting deployment addresses..."
+
+# Function to search for contract across all broadcast files
+find_contract() {
+    local contract_name="$1"
+    for broadcast_file in "${BROADCAST_FILES[@]}"; do
+        if [ -f "$broadcast_file" ]; then
+            local result=$(jq -r ".transactions[] | select(.contractName == \"$contract_name\") | .contractAddress" "$broadcast_file" | head -1)
+            if [ -n "$result" ] && [ "$result" != "null" ]; then
+                echo "$result"
+                return
+            fi
+        fi
+    done
+    echo ""
+}
 
 # Function to get proxy address for a given implementation address
 get_proxy_address() {
     local impl_address="$1"
     # Convert to lowercase for case-insensitive comparison
     local impl_lower=$(echo "$impl_address" | tr '[:upper:]' '[:lower:]')
-    jq -r --arg impl "$impl_lower" '.transactions[] | select(.contractName == "ERC1967Proxy" and .arguments[0] != null and (.arguments[0] | ascii_downcase) == $impl) | .contractAddress' "$BROADCAST_FILE" | head -1
+    for broadcast_file in "${BROADCAST_FILES[@]}"; do
+        if [ -f "$broadcast_file" ]; then
+            local result=$(jq -r --arg impl "$impl_lower" '.transactions[] | select(.contractName == "ERC1967Proxy" and .arguments[0] != null and (.arguments[0] | ascii_downcase) == $impl) | .contractAddress' "$broadcast_file" | head -1)
+            if [ -n "$result" ] && [ "$result" != "null" ]; then
+                echo "$result"
+                return
+            fi
+        fi
+    done
+    echo ""
 }
 
 # Extract implementation addresses first
-MOCK_USDC_IMPL=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$BROADCAST_FILE" | head -1)
-QEURO_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "QEUROToken") | .contractAddress' "$BROADCAST_FILE" | tail -1)  # Get the real QEURO token (last one)
-QUANTILLON_VAULT_IMPL=$(jq -r '.transactions[] | select(.contractName == "QuantillonVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
-QTI_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "QTIToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
-STQEURO_TOKEN_IMPL=$(jq -r '.transactions[] | select(.contractName == "stQEUROToken") | .contractAddress' "$BROADCAST_FILE" | head -1)
+MOCK_USDC_IMPL=$(find_contract "MockUSDC")
+QEURO_TOKEN_IMPL=$(find_contract "QEUROToken")
+QUANTILLON_VAULT_IMPL=$(find_contract "QuantillonVault")
+QTI_TOKEN_IMPL=$(find_contract "QTIToken")
+STQEURO_TOKEN_IMPL=$(find_contract "stQEUROToken")
+FEE_COLLECTOR_IMPL=$(find_contract "FeeCollector")
 # Handle different oracle contract names based on network
 if [ "$NETWORK" = "localhost" ]; then
-    CHAINLINK_ORACLE_IMPL=$(jq -r '.transactions[] | select(.contractName == "MockChainlinkOracle") | .contractAddress' "$BROADCAST_FILE" | head -1)
+    CHAINLINK_ORACLE_IMPL=$(find_contract "MockChainlinkOracle")
 else
-    CHAINLINK_ORACLE_IMPL=$(jq -r '.transactions[] | select(.contractName == "ChainlinkOracle") | .contractAddress' "$BROADCAST_FILE" | head -1)
+    CHAINLINK_ORACLE_IMPL=$(find_contract "ChainlinkOracle")
 fi
-USER_POOL_IMPL=$(jq -r '.transactions[] | select(.contractName == "UserPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
-HEDGER_POOL_IMPL=$(jq -r '.transactions[] | select(.contractName == "HedgerPool") | .contractAddress' "$BROADCAST_FILE" | head -1)
-YIELD_SHIFT_IMPL=$(jq -r '.transactions[] | select(.contractName == "YieldShift") | .contractAddress' "$BROADCAST_FILE" | head -1)
-AAVE_VAULT_IMPL=$(jq -r '.transactions[] | select(.contractName == "AaveVault") | .contractAddress' "$BROADCAST_FILE" | head -1)
-TIME_PROVIDER_IMPL=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$BROADCAST_FILE" | head -1)
+USER_POOL_IMPL=$(find_contract "UserPool")
+HEDGER_POOL_IMPL=$(find_contract "HedgerPool")
+YIELD_SHIFT_IMPL=$(find_contract "YieldShift")
+AAVE_VAULT_IMPL=$(find_contract "AaveVault")
+TIME_PROVIDER_IMPL=$(find_contract "TimeProvider")
 
 # Get proxy addresses for upgradeable contracts
 echo -e " Finding proxy addresses for upgradeable contracts..."
@@ -141,6 +241,7 @@ QEURO_TOKEN=$(get_proxy_address "$QEURO_TOKEN_IMPL")
 QUANTILLON_VAULT=$(get_proxy_address "$QUANTILLON_VAULT_IMPL")
 QTI_TOKEN=$(get_proxy_address "$QTI_TOKEN_IMPL")
 STQEURO_TOKEN=$(get_proxy_address "$STQEURO_TOKEN_IMPL")
+FEE_COLLECTOR=$(get_proxy_address "$FEE_COLLECTOR_IMPL")
 USER_POOL=$(get_proxy_address "$USER_POOL_IMPL")
 HEDGER_POOL=$(get_proxy_address "$HEDGER_POOL_IMPL")
 YIELD_SHIFT=$(get_proxy_address "$YIELD_SHIFT_IMPL")
@@ -171,9 +272,17 @@ fi
 
 echo -e " All proxy addresses found successfully"
 
-# Extract mock price feed addresses
-MOCK_EUR_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$BROADCAST_FILE" | head -1)
-MOCK_USDC_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$BROADCAST_FILE" | tail -1)
+# Extract mock price feed addresses (search across all broadcast files)
+MOCK_EUR_USD=$(find_contract "MockAggregatorV3" | head -1)
+# For USDC/USD feed, we need the second MockAggregatorV3
+for broadcast_file in "${BROADCAST_FILES[@]}"; do
+    if [ -f "$broadcast_file" ]; then
+        MOCK_USDC_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$broadcast_file" | tail -1)
+        if [ -n "$MOCK_USDC_USD" ] && [ "$MOCK_USDC_USD" != "null" ]; then
+            break
+        fi
+    fi
+done
 
 # Fallback for MockUSDC if not found
 if [ "$MOCK_USDC" = "null" ] || [ -z "$MOCK_USDC" ]; then
@@ -189,21 +298,20 @@ cat > "$FRONTEND_ADDRESSES_FILE" << EOF
     "name": "$(if [ "$NETWORK" = "localhost" ]; then echo "Anvil Localhost"; else echo "Base Sepolia"; fi)",
     "isTestnet": true,
     "contracts": {
-      "QEUROToken": "$QEURO_TOKEN",
-      "QuantillonVault": "$QUANTILLON_VAULT",
-      "QTIToken": "$QTI_TOKEN",
-      "stQEUROToken": "$STQEURO_TOKEN",
+      "TimeProvider": "$TIME_PROVIDER",
       "ChainlinkOracle": "$CHAINLINK_ORACLE",
       "MockChainlinkOracle": "$CHAINLINK_ORACLE",
+      "QEUROToken": "$QEURO_TOKEN",
+      "FeeCollector": "$FEE_COLLECTOR",
+      "QuantillonVault": "$QUANTILLON_VAULT",
+      "QTIToken": "$QTI_TOKEN",
+      "AaveVault": "$AAVE_VAULT",
+      "stQEUROToken": "$STQEURO_TOKEN",
       "UserPool": "$USER_POOL",
       "HedgerPool": "$HEDGER_POOL",
       "YieldShift": "$YIELD_SHIFT",
-      "AaveVault": "$AAVE_VAULT",
-      "TimeProvider": "$TIME_PROVIDER",
       "USDC": "$MOCK_USDC",
-      "MockUSDC": "$MOCK_USDC",
-      "MockEURUSD": "$MOCK_EUR_USD",
-      "MockUSDCUSD": "$MOCK_USDC_USD"
+      "MockUSDC": "$MOCK_USDC"
     }
   },
   "84532": {

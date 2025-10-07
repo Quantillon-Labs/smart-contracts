@@ -44,8 +44,31 @@ if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" "$EFFECTIVE_ENV_FILE" 2>/de
 fi
 
 
-# Get environment from command line argument or default to localhost
-ENVIRONMENT=${1:-localhost}
+# Parse flags and environment
+PHASED_FLAG=false
+ARG_ENV=""
+for arg in "$@"; do
+    case "$arg" in
+        --phased)
+            PHASED_FLAG=true
+            shift
+            ;;
+        localhost|base-sepolia|base)
+            ARG_ENV="$arg"
+            shift
+            ;;
+        *)
+            ;;
+    esac
+done
+
+# Allow PHASED via env var
+if [ "${PHASED:-}" = "true" ]; then
+    PHASED_FLAG=true
+fi
+
+# Get environment from args or default
+ENVIRONMENT=${ARG_ENV:-localhost}
 
 # Load environment variables from env file if it exists
 # Note: Command line variables will override .env variables
@@ -67,6 +90,7 @@ fi
 
 echo -e " Copying contract ABIs to frontend..."
 echo -e "Environment: $ENVIRONMENT"
+echo -e "Phased mode: $PHASED_FLAG"
 
 # Define paths based on environment
 # Priority: 1) Environment variables from .env file, 2) Environment-specific defaults

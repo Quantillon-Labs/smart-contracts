@@ -35,7 +35,64 @@ The new unified deployment script handles all environments with built-in securit
 | `--verify` | Verify contracts on block explorer | `./deploy.sh base-sepolia --verify` |
 | `--production` | Use production deployment script | `./deploy.sh base --production` |
 | `--dry-run` | Simulate deployment without broadcasting | `./deploy.sh localhost --dry-run` |
+| `--phased` | Use phased/atomic deployment (default on) | `./deploy.sh localhost --phased` |
 | `--help` | Show help message | `./deploy.sh --help` |
+
+### 🔄 Multi-Phase Deployment
+
+The default phased deployment splits the process into 4 atomic phases (A→B→C→D) to stay within the 24.9M gas limit per transaction on Base Sepolia/Mainnet. Each phase is optimized to fit comfortably under the limit with safety margins.
+
+#### Phase Structure
+
+| Phase | Gas Used | Contracts Deployed | Purpose |
+|-------|----------|-------------------|---------|
+| **Phase A** | ~17M | TimeProvider, ChainlinkOracle, QEUROToken, FeeCollector, QuantillonVault | Core infrastructure & vault |
+| **Phase B** | ~16M | QTIToken, AaveVault, stQEUROToken | Token layer & yield integration |
+| **Phase C** | ~11M | UserPool, HedgerPool | Pool layer for users & hedgers |
+| **Phase D** | ~7M | YieldShift + wiring | Yield management & integrations |
+
+#### How It Works
+
+1. **Automatic Phase Execution**: Running `./deploy.sh` automatically executes all 4 phases in sequence
+2. **Address Passing**: Deployed contract addresses are automatically extracted and passed between phases via environment variables
+3. **Minimal Initialization**: Contract `initialize()` functions are kept minimal; complex wiring happens in separate transactions
+4. **Governance Setters**: Contracts include governance-only setters (`updateOracle`, `updateYieldShift`, etc.) for post-deployment wiring
+5. **Broadcast Merging**: The frontend address updater (`update-frontend-addresses.sh`) automatically merges all 4 phase broadcasts
+
+#### Key Features for Gas Optimization
+
+- **24.9M gas cap enforced** on all environments (including localhost) to prevent surprises on testnet
+- **Minimal initializers**: Optional parameters (like `yieldShift`) can be zero during init and set later via governance setters
+- **Separate wiring transactions**: Role grants, vault pool updates, and fee source authorizations happen in atomic Phase D transactions
+- **Contract splitting**: Heavy contracts like `YieldShift` remain intact but deploy in isolated phases
+
+#### Why Not Split Further?
+
+All phases are well under the limit with 8-13M gas headroom. Splitting to 1-contract-per-script would:
+- Require 12+ separate script runs (very slow on testnets)
+- Add complexity in address passing between many scripts
+- Provide no additional safety benefit
+
+Current structure balances **speed, safety, and maintainability**.
+
+#### Contract Modifications for Phased Deployment
+
+To support minimal initialization and post-deployment wiring, the following governance-only setters were added:
+
+**UserPool:**
+- `updateYieldShift(address)` - Set YieldShift address after Phase D deployment
+
+**HedgerPool:**
+- `updateOracle(address)` - Set Oracle address post-deployment
+- `updateYieldShift(address)` - Set YieldShift address after Phase D deployment
+
+**YieldShift:**
+- `updateUserPool(address)` - Wire UserPool after Phase C
+- `updateHedgerPool(address)` - Wire HedgerPool after Phase C  
+- `updateAaveVault(address)` - Wire AaveVault after Phase B
+- `updateStQEURO(address)` - Wire stQEURO after Phase B
+
+These setters allow contracts to be deployed with minimal initialization (only critical addresses), then wired together in separate atomic transactions during Phase D.
 
 ## 🎯 Quick Start (per-network encrypted env files)
 
@@ -85,18 +142,25 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 
 | Script | Purpose | Environment | Security |
 |--------|---------|-------------|----------|
-| **`deploy.sh`** | **🚀 UNIFIED DEPLOYMENT** - Universal deployment script | All networks | ✅ Encrypted |
-| `DeployProduction.s.sol` | Production deployment with multisig | Mainnet/Testnet | ✅ Encrypted |
-| `DeployQuantillon.s.sol` | Standard deployment | All networks | ✅ Encrypted |
+| **`deploy.sh`** | **🚀 UNIFIED DEPLOYMENT** - Orchestrates multi-phase deployment | All networks | ✅ Encrypted |
 | `DeployMockUSDC.s.sol` | Mock USDC deployment | Localhost/Testnet | ✅ Encrypted |
-| `DeployMockFeeds.s.sol` | Mock price feeds deployment | Localhost | ✅ Encrypted |
+| `DeployMockFeeds.s.sol` | Mock price feeds deployment | Localhost/Testnet | ✅ Encrypted |
+
+### Phase Scripts (A→B→C→D)
+
+| Script | Phase | Contracts | Gas | Notes |
+|--------|-------|-----------|-----|-------|
+| `DeployQuantillonPhaseA.s.sol` | A | TimeProvider, Oracle, QEURO, FeeCollector, Vault | ~17M | Core infrastructure |
+| `DeployQuantillonPhaseB.s.sol` | B | QTI, AaveVault, stQEURO | ~16M | Token layer |
+| `DeployQuantillonPhaseC.s.sol` | C | UserPool, HedgerPool | ~11M | Pool layer |
+| `DeployQuantillonPhaseD.s.sol` | D | YieldShift + wiring | ~7M | Yield & integrations |
 
 ### Utility Scripts
 
 | Script | Purpose | Description |
 |--------|---------|-------------|
-| `copy-abis.sh` | ABI copying | Copies contract ABIs to frontend |
-| `update-frontend-addresses.sh` | Address updates | Updates frontend with deployed addresses |
+| `copy-abis.sh` | ABI copying | Copies contract ABIs to frontend (supports `--phased`) |
+| `update-frontend-addresses.sh` | Address updates | Merges addresses from all phase broadcasts and updates frontend `addresses.json` |
 
 ## 🔐 Security Implementation
 
@@ -235,8 +299,10 @@ curl -X POST -H "Content-Type: application/json" \
 ### Helper scripts env usage
 Both helper scripts honor the same env file passed by `deploy.sh`:
 
-- `copy-abis.sh` is executed as `ENV_FILE=".env.<env>" ./scripts/deployment/copy-abis.sh <environment>`
-- `update-frontend-addresses.sh` is executed as `ENV_FILE=".env.<env>" ./scripts/deployment/update-frontend-addresses.sh <environment>`
+- `copy-abis.sh` is executed as `ENV_FILE=".env.<env>" ./scripts/deployment/copy-abis.sh <environment> [--phased]`
+- `update-frontend-addresses.sh` is executed as `ENV_FILE=".env.<env>" ./scripts/deployment/update-frontend-addresses.sh <environment> [--phased]`
+
+When `--phased` (or `PHASED=true`) is set, address extraction reads broadcast files under `broadcast/DeployQuantillonPhased.s.sol/...`; otherwise it reads `broadcast/DeployQuantillon.s.sol/...`.
 
 They will re-exec under `dotenvx` with `--env-file=$ENV_FILE` and load variables from that file.
 

@@ -410,7 +410,8 @@ contract UserPoolTestSuite is Test {
         vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
         new ERC1967Proxy(address(testImplementation), initData4);
         
-        // Test with zero YieldShift
+        // Test with zero YieldShift - NOW ALLOWED for phased deployment
+        // YieldShift can be set later via updateYieldShift() governance setter
         bytes memory initData5 = abi.encodeWithSelector(
             UserPool.initialize.selector,
             admin,
@@ -423,10 +424,11 @@ contract UserPoolTestSuite is Test {
             admin
         );
         
-        vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
-        new ERC1967Proxy(address(testImplementation), initData5);
+        // This should now succeed (zero yieldShift is allowed)
+        ERC1967Proxy proxyWithZeroYieldShift = new ERC1967Proxy(address(testImplementation), initData5);
+        assertTrue(address(proxyWithZeroYieldShift) != address(0), "UserPool should initialize with zero yieldShift");
         
-        // Test with zero oracle
+        // Test with zero oracle - should still revert (oracle is required)
         bytes memory initData6 = abi.encodeWithSelector(
             UserPool.initialize.selector,
             admin,

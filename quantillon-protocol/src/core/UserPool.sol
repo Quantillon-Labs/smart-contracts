@@ -469,7 +469,10 @@ contract UserPool is
         CommonValidationLibrary.validateNonZeroAddress(_usdc, "token");
         CommonValidationLibrary.validateNonZeroAddress(_vault, "vault");
         CommonValidationLibrary.validateNonZeroAddress(_oracle, "oracle");
-        CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
+        // YieldShift can be zero during phased deployment, set via updateYieldShift later
+        if (_yieldShift != address(0)) {
+            CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
+        }
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
 
         __ReentrancyGuard_init();
@@ -1652,6 +1655,18 @@ contract UserPool is
         depositFee = _depositFee;
         withdrawalFee = _withdrawalFee;
         performanceFee = _performanceFee;
+    }
+
+    /**
+     * @notice Updates the YieldShift contract address
+     * @dev Governance-only setter for phased deployment wiring
+     * @param _yieldShift New YieldShift contract address
+     * @custom:security Validates address and restricts to governance role
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     */
+    function updateYieldShift(address _yieldShift) external onlyRole(GOVERNANCE_ROLE) {
+        CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
+        yieldShift = IYieldShift(_yieldShift);
     }
 
     // =============================================================================

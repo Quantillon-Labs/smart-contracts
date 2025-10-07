@@ -95,7 +95,26 @@ make slither
 
 ## 🚀 Deployment
 
-### 🔐 Secure Deployment (Recommended)
+### 🔐 Multi-Phase Deployment Strategy
+
+The protocol uses a **4-phase atomic deployment** (A→B→C→D) to stay within Base Sepolia/Mainnet's 24.9M gas limit per transaction:
+
+| Phase | Gas | Contracts | Purpose |
+|-------|-----|-----------|---------|
+| **A** | ~17M | TimeProvider, Oracle, QEURO, FeeCollector, Vault | Core infrastructure |
+| **B** | ~16M | QTI, AaveVault, stQEURO | Token layer |
+| **C** | ~11M | UserPool, HedgerPool | Pool layer |
+| **D** | ~7M | YieldShift + wiring | Yield management |
+
+**Key Features:**
+- ✅ All phases well under 24.9M limit (8-13M gas headroom)
+- ✅ Automatic address passing between phases
+- ✅ Minimal initialization with governance setters for post-deployment wiring
+- ✅ Frontend address updater merges all phase broadcasts automatically
+
+See [Deployment Guide](scripts/deployment/README.md) for complete details.
+
+### 🔐 Secure Deployment with Dotenvx (Recommended)
 
 The protocol uses [Dotenvx](https://dotenvx.com/) for enterprise-grade environment variable encryption:
 

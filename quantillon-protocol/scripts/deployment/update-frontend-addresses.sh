@@ -112,9 +112,31 @@ echo -e "📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE"
 # Detect which network was deployed (check for broadcast files)
 # For multi-phase deployments, check all phase broadcast files
 BROADCAST_FILES=()
+
+# Determine target network based on argument or auto-detect
+if [ "$ARG_ENV" = "base-sepolia" ] || [ "$ARG_ENV" = "base" ]; then
+    TARGET_CHAIN_ID="84532"
+    TARGET_NETWORK="base-sepolia"
+elif [ "$ARG_ENV" = "localhost" ]; then
+    TARGET_CHAIN_ID="31337"
+    TARGET_NETWORK="localhost"
+else
+    # Auto-detect based on available files
+    if [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/84532/run-latest.json" ]; then
+        TARGET_CHAIN_ID="84532"
+        TARGET_NETWORK="base-sepolia"
+    elif [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/31337/run-latest.json" ]; then
+        TARGET_CHAIN_ID="31337"
+        TARGET_NETWORK="localhost"
+    else
+        echo -e " No deployment broadcast files found"
+        exit 1
+    fi
+fi
+
 if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased.s.sol" ]; then
-    # Multi-phase deployment: check A1, A2, A3, B
-    if [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/31337/run-latest.json" ]; then
+    # Multi-phase deployment: check A, B, C, D
+    if [ "$TARGET_CHAIN_ID" = "31337" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/31337/run-latest.json" ]; then
         CHAIN_ID="31337"
         NETWORK="localhost"
         BROADCAST_FILES=(
@@ -125,7 +147,7 @@ if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased
             "./broadcast/DeployMockUSDC.s.sol/31337/run-latest.json"
         )
         echo -e "📡 Detected localhost multi-phase deployment"
-    elif [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/84532/run-latest.json" ]; then
+    elif [ "$TARGET_CHAIN_ID" = "84532" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/84532/run-latest.json" ]; then
         CHAIN_ID="84532"
         NETWORK="base-sepolia"
         BROADCAST_FILES=(
@@ -137,9 +159,21 @@ if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased
         )
         echo -e "📡 Detected Base Sepolia multi-phase deployment"
     else
-        echo -e " No multi-phase deployment broadcast files found"
+        echo -e " No multi-phase deployment broadcast files found for $TARGET_NETWORK"
         exit 1
     fi
+elif [ "$PHASED_FLAG" = true ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/$TARGET_CHAIN_ID/run-latest.json" ]; then
+    # Multi-phase deployment: check A, B, C, D (fallback detection)
+    CHAIN_ID="$TARGET_CHAIN_ID"
+    NETWORK="$TARGET_NETWORK"
+    BROADCAST_FILES=(
+        "./broadcast/DeployQuantillonPhaseA.s.sol/$TARGET_CHAIN_ID/run-latest.json"
+        "./broadcast/DeployQuantillonPhaseB.s.sol/$TARGET_CHAIN_ID/run-latest.json"
+        "./broadcast/DeployQuantillonPhaseC.s.sol/$TARGET_CHAIN_ID/run-latest.json"
+        "./broadcast/DeployQuantillonPhaseD.s.sol/$TARGET_CHAIN_ID/run-latest.json"
+        "./broadcast/DeployMockUSDC.s.sol/$TARGET_CHAIN_ID/run-latest.json"
+    )
+    echo -e "📡 Detected $TARGET_NETWORK multi-phase deployment (fallback)"
 elif [ "$PHASED_FLAG" = true ]; then
     # Single-phase phased deployment
     LOCALHOST_BROADCAST="./broadcast/${PHASE_SCRIPT_NAME}/31337/run-latest.json"

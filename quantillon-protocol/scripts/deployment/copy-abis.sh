@@ -79,7 +79,8 @@ if [ -f "$EFFECTIVE_ENV_FILE" ]; then
         # Skip comments and empty lines
         if [[ ! "$line" =~ ^[[:space:]]*# ]] && [[ -n "$line" ]]; then
             var_name=$(echo "$line" | cut -d'=' -f1)
-            if [[ -z "${!var_name}" ]]; then
+            # Skip variables with hyphens or other invalid characters for bash
+            if [[ "$var_name" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]] && [[ -z "${!var_name}" ]]; then
                 # Remove quotes from the value if present
                 var_value=$(echo "$line" | cut -d'=' -f2- | sed 's/^"//;s/"$//')
                 export "${var_name}=${var_value}"

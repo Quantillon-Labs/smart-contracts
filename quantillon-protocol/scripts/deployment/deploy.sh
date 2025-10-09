@@ -322,11 +322,31 @@ run_deployment() {
         # Export A1 addresses for A2 (unique proxies preserving creation order)
         export TIME_PROVIDER=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$phase_a_broadcast" | head -1)
         export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$phase_a_broadcast" | head -1)
+        
+        # Debug: Log the extracted addresses
+        log_info "Extracted addresses from Phase A:"
+        log_info "TIME_PROVIDER: $TIME_PROVIDER"
+        log_info "USDC: $USDC"
         PROXIES_A=($(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy" and .transactionType == "CREATE") | .contractAddress' "$phase_a_broadcast"))
+        
+        # Debug: Log the PROXIES_A array
+        log_info "PROXIES_A array contents:"
+        for i in "${!PROXIES_A[@]}"; do
+            log_info "PROXIES_A[$i]: ${PROXIES_A[$i]}"
+        done
+        
         export CHAINLINK_ORACLE="${PROXIES_A[0]}"
         export QEURO_TOKEN="${PROXIES_A[1]}"
         export FEE_COLLECTOR="${PROXIES_A[2]}"
         export QUANTILLON_VAULT="${PROXIES_A[3]}"
+        
+        # If QuantillonVault is not in the proxy array, extract it directly
+        if [ -z "$QUANTILLON_VAULT" ] || [ "$QUANTILLON_VAULT" = "null" ]; then
+            # Extract the QuantillonVault proxy address from the broadcast file
+            # Look for the ERC1967Proxy that was created for QuantillonVault
+            export QUANTILLON_VAULT=$(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy") | .contractAddress' "$phase_a_broadcast" | tail -1)
+            log_info "Extracted QuantillonVault directly: $QUANTILLON_VAULT"
+        fi
         
         log_info "Phase A completed. Starting B..."
         

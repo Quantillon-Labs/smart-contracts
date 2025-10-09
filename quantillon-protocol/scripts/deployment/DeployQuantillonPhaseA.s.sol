@@ -115,8 +115,11 @@ contract DeployQuantillonPhaseA is Script {
     function _deployOraclePhased() internal {
         if (address(chainlinkOracle) == address(0)) {
             if (isLocalhost) {
-                // For localhost, use MockChainlinkOracle directly
-                chainlinkOracle = ChainlinkOracle(address(new MockChainlinkOracle()));
+                // For localhost, use MockChainlinkOracle as a proxy (it's upgradeable)
+                MockChainlinkOracle impl = new MockChainlinkOracle();
+                ERC1967Proxy proxy = new ERC1967Proxy(address(impl), bytes(""));
+                chainlinkOracle = ChainlinkOracle(address(proxy));
+                chainlinkOracle.initialize(deployerEOA, eurUsdFeed, usdcUsdFeed, deployerEOA);
                 console.log("Oracle Proxy:", address(chainlinkOracle));
             } else {
                 // For other networks, use ChainlinkOracle proxy
@@ -156,6 +159,12 @@ contract DeployQuantillonPhaseA is Script {
             quantillonVault = QuantillonVault(address(proxy));
             quantillonVault.initialize(deployerEOA, address(qeuroToken), usdc, address(chainlinkOracle), address(0), address(0), deployerEOA, address(feeCollector));
             console.log("Vault Proxy:", address(quantillonVault));
+            
+            // Debug: Check roles after initialization
+            console.log("Checking roles after QuantillonVault initialization:");
+            console.log("Deployer address:", deployerEOA);
+            console.log("Has DEFAULT_ADMIN_ROLE:", quantillonVault.hasRole(quantillonVault.DEFAULT_ADMIN_ROLE(), deployerEOA));
+            console.log("Has GOVERNANCE_ROLE:", quantillonVault.hasRole(quantillonVault.GOVERNANCE_ROLE(), deployerEOA));
         }
     }
 

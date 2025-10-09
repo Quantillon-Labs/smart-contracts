@@ -50,6 +50,8 @@ contract DeployQuantillonPhaseD is Script {
         feeCollector = FeeCollector(feeAddr);
 
         console.log("Phase B: YieldShift + Wiring");
+        console.log("Debug: QuantillonVault address from env:", address(quantillonVault));
+        console.log("Debug: HedgerPool address from env:", address(hedgerPool));
 
         vm.startBroadcast(pk);
 

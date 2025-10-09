@@ -90,8 +90,8 @@ show_help() {
     echo "  $0 localhost --with-mocks"
     echo ""
     echo "  # For testnet deployment"
-    echo "  cp .env.base-sepolia.unencrypted .env.base-sepolia"
-    echo "  npx dotenvx encrypt -f .env.base-sepolia.unencrypted --stdout > .env.base-sepolia"
+    echo "  cp .env.base_sepolia.unencrypted .env.base-sepolia"
+    echo "  npx dotenvx encrypt -f .env.base_sepolia.unencrypted --stdout > .env.base-sepolia"
     echo "  $0 base-sepolia --verify"
     echo ""
     echo "  # For Base mainnet deployment"
@@ -162,7 +162,7 @@ validate_security() {
     
     # Determine environment file to use
     local network_env_file=".env.${ENVIRONMENT}"
-    local network_env_unencrypted=".env.${ENVIRONMENT}.unencrypted"
+    local network_env_unencrypted=".env.$(echo ${ENVIRONMENT} | tr '-' '_').unencrypted"
     local default_env_file=".env"
     
     # Check for unencrypted network-specific file first, then fallback to default

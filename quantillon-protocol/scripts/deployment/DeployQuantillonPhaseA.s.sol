@@ -66,7 +66,8 @@ contract DeployQuantillonPhaseA is Script {
 
     function _selectExternalAddresses() internal {
         bool withMocks = vm.envOr("WITH_MOCKS", false);
-        if (isLocalhost || withMocks) {
+        console.log("WITH_MOCKS environment variable:", withMocks);
+        if (isLocalhost) {
             MockUSDC mock = new MockUSDC();
             usdc = address(mock);
             MockAggregatorV3 eur = new MockAggregatorV3(8);
@@ -76,9 +77,31 @@ contract DeployQuantillonPhaseA is Script {
             usdcFeed.setPrice(100000000);
             usdcUsdFeed = address(usdcFeed);
         } else if (isBaseSepolia) {
-            usdc = BASE_SEPOLIA_USDC_TOKEN;
-            eurUsdFeed = BASE_SEPOLIA_EUR_USD_FEED;
-            usdcUsdFeed = BASE_SEPOLIA_USDC_USD_FEED;
+            console.log("Base Sepolia deployment detected");
+            // For Base Sepolia, use the same logic as localhost
+            if (withMocks) {
+                console.log("Using MockChainlinkOracle for Base Sepolia");
+                // Deploy mock oracle for Base Sepolia testing
+                MockChainlinkOracle mockOracle = new MockChainlinkOracle();
+                
+                // Deploy mock feeds
+                MockAggregatorV3 eurFeed = new MockAggregatorV3(8);
+                eurFeed.setPrice(108000000);
+                MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
+                usdcFeed.setPrice(100000000);
+                
+                MockUSDC mock = new MockUSDC();
+                usdc = address(mock);
+                eurUsdFeed = address(eurFeed);
+                usdcUsdFeed = address(usdcFeed);
+            } else {
+                console.log("Using real Chainlink feeds for Base Sepolia");
+                console.log("withMocks was false, using real feeds");
+                // Use real Chainlink feeds
+                usdc = BASE_SEPOLIA_USDC_TOKEN;
+                eurUsdFeed = BASE_SEPOLIA_EUR_USD_FEED;
+                usdcUsdFeed = BASE_SEPOLIA_USDC_USD_FEED;
+            }
         }
     }
 
@@ -91,11 +114,18 @@ contract DeployQuantillonPhaseA is Script {
 
     function _deployOraclePhased() internal {
         if (address(chainlinkOracle) == address(0)) {
-            address impl = isLocalhost ? address(new MockChainlinkOracle()) : address(new ChainlinkOracle(timeProvider));
-            ERC1967Proxy proxy = new ERC1967Proxy(impl, bytes(""));
-            chainlinkOracle = ChainlinkOracle(address(proxy));
-            ChainlinkOracle(address(chainlinkOracle)).initialize(deployerEOA, eurUsdFeed, usdcUsdFeed, deployerEOA);
-            console.log("Oracle Proxy:", address(chainlinkOracle));
+            if (isLocalhost) {
+                // For localhost, use MockChainlinkOracle directly
+                chainlinkOracle = ChainlinkOracle(address(new MockChainlinkOracle()));
+                console.log("Oracle Proxy:", address(chainlinkOracle));
+            } else {
+                // For other networks, use ChainlinkOracle proxy
+                address impl = address(new ChainlinkOracle(timeProvider));
+                ERC1967Proxy proxy = new ERC1967Proxy(impl, bytes(""));
+                chainlinkOracle = ChainlinkOracle(address(proxy));
+                ChainlinkOracle(address(chainlinkOracle)).initialize(deployerEOA, eurUsdFeed, usdcUsdFeed, deployerEOA);
+                console.log("Oracle Proxy:", address(chainlinkOracle));
+            }
         }
     }
 

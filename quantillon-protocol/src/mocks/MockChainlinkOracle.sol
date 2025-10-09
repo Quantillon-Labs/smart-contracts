@@ -415,4 +415,65 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // For mock, we just emit an event or do nothing
     }
     
+    /**
+     * @notice Set the EUR/USD price for testing purposes
+     * @dev Only available in mock oracle for testing
+     * @param _price The new EUR/USD price in 18 decimals
+     */
+    function setPrice(uint256 _price) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_price > 0, "Price must be positive");
+        require(_price >= MIN_EUR_USD_PRICE && _price <= MAX_EUR_USD_PRICE, "Price out of bounds");
+        
+        lastValidEurUsdPrice = _price;
+        lastPriceUpdateBlock = block.number;
+        
+        emit PriceDeviationDetected(_price, lastValidEurUsdPrice, 0, block.number);
+    }
+    
+    /**
+     * @notice Set the USDC/USD price for testing purposes
+     * @dev Only available in mock oracle for testing
+     * @param _price The new USDC/USD price in 18 decimals
+     */
+    function setUsdcUsdPrice(uint256 _price) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_price > 0, "Price must be positive");
+        require(_price >= MIN_USDC_USD_PRICE && _price <= MAX_USDC_USD_PRICE, "Price out of bounds");
+        
+        lastValidUsdcUsdPrice = _price;
+        lastPriceUpdateBlock = block.number;
+        
+        emit PriceDeviationDetected(_price, lastValidUsdcUsdPrice, 0, block.number);
+    }
+    
+    /**
+     * @notice Set both EUR/USD and USDC/USD prices for testing purposes
+     * @dev Only available in mock oracle for testing
+     * @param _eurUsdPrice The new EUR/USD price in 18 decimals
+     * @param _usdcUsdPrice The new USDC/USD price in 18 decimals
+     */
+    function setPrices(uint256 _eurUsdPrice, uint256 _usdcUsdPrice) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_eurUsdPrice > 0, "EUR/USD price must be positive");
+        require(_usdcUsdPrice > 0, "USDC/USD price must be positive");
+        require(_eurUsdPrice >= MIN_EUR_USD_PRICE && _eurUsdPrice <= MAX_EUR_USD_PRICE, "EUR/USD price out of bounds");
+        require(_usdcUsdPrice >= MIN_USDC_USD_PRICE && _usdcUsdPrice <= MAX_USDC_USD_PRICE, "USDC/USD price out of bounds");
+        
+        lastValidEurUsdPrice = _eurUsdPrice;
+        lastValidUsdcUsdPrice = _usdcUsdPrice;
+        lastPriceUpdateBlock = block.number;
+        
+        emit PriceDeviationDetected(_eurUsdPrice, lastValidEurUsdPrice, 0, block.number);
+    }
+    
+    /**
+     * @notice Set the updated timestamp for testing purposes
+     * @dev Only available in mock oracle for testing
+     * @param _updatedAt The new timestamp
+     */
+    function setUpdatedAt(uint256 _updatedAt) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_updatedAt > 0, "Timestamp must be positive");
+        // This is a mock function - in reality, the timestamp comes from the underlying feeds
+        // We'll just update the block number to trigger a refresh
+        lastPriceUpdateBlock = block.number;
+    }
+    
 }

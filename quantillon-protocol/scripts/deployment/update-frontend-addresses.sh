@@ -250,7 +250,24 @@ get_proxy_address() {
 }
 
 # Extract implementation addresses first
-MOCK_USDC_IMPL=$(find_contract "MockUSDC")
+# Prioritize MockUSDC from DeployMockUSDC.s.sol to avoid conflicts with Phase A deployment
+MOCK_USDC_IMPL=""
+for broadcast_file in "${BROADCAST_FILES[@]}"; do
+    if [[ "$broadcast_file" == *"DeployMockUSDC.s.sol"* ]]; then
+        if [ -f "$broadcast_file" ]; then
+            MOCK_USDC_IMPL=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$broadcast_file" | head -1)
+            if [ -n "$MOCK_USDC_IMPL" ] && [ "$MOCK_USDC_IMPL" != "null" ]; then
+                echo "Found MockUSDC from DeployMockUSDC.s.sol: $MOCK_USDC_IMPL"
+                break
+            fi
+        fi
+    fi
+done
+
+# Fallback to searching all broadcast files if not found in DeployMockUSDC.s.sol
+if [ -z "$MOCK_USDC_IMPL" ] || [ "$MOCK_USDC_IMPL" = "null" ]; then
+    MOCK_USDC_IMPL=$(find_contract "MockUSDC")
+fi
 QEURO_TOKEN_IMPL=$(find_contract "QEUROToken")
 QUANTILLON_VAULT_IMPL=$(find_contract "QuantillonVault")
 QTI_TOKEN_IMPL=$(find_contract "QTIToken")

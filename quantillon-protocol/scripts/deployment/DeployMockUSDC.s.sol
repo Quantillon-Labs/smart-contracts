@@ -30,13 +30,5 @@ contract DeployMockUSDC is Script {
         console.log("MockUSDC decimals:", mockUSDC.decimals());
         console.log("Deployer USDC balance:", mockUSDC.balanceOf(deployer));
         
-        // Copy ABI to frontend
-        copyUSDCABIToFrontend();
-    }
-    
-    function copyUSDCABIToFrontend() internal {
-        console.log("Copying MockUSDC ABI to frontend...");
-        console.log("Please run './scripts/deployment/copy-abis.sh' manually to copy ABIs to frontend");
-        console.log("This ensures the frontend has the latest contract interfaces.");
     }
 }

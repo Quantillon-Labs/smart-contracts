@@ -305,10 +305,18 @@ run_deployment() {
         
         log_info "Phase A: Core Infrastructure"
         echo "=============================================================="
+        
+        # Extract USDC from DeployMockUSDC if it exists (for localhost/testnet with mocks)
+        local mock_usdc_broadcast="./broadcast/DeployMockUSDC.s.sol/${chain_id}/run-latest.json"
+        if [ -f "$mock_usdc_broadcast" ]; then
+            export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$mock_usdc_broadcast" | head -1)
+            log_info "Using USDC from DeployMockUSDC: $USDC"
+        fi
+        
         if [ "$WITH_MOCKS" = true ]; then
-            env WITH_MOCKS=true npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_a1
+            env WITH_MOCKS=true USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_a1
         else
-            env WITH_MOCKS=false npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_a1
+            env WITH_MOCKS=false USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_a1
         fi
         echo "=============================================================="
         
@@ -321,7 +329,7 @@ run_deployment() {
         
         # Export A1 addresses for A2 (unique proxies preserving creation order)
         export TIME_PROVIDER=$(jq -r '.transactions[] | select(.contractName == "TimeProvider") | .contractAddress' "$phase_a_broadcast" | head -1)
-        export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$phase_a_broadcast" | head -1)
+        # USDC is already set from DeployMockUSDC step, no need to extract from Phase A
         
         # Debug: Log the extracted addresses
         log_info "Extracted addresses from Phase A:"

@@ -11,7 +11,6 @@ import "../../src/mocks/MockChainlinkOracle.sol";
 import "../../src/core/QEUROToken.sol";
 import "../../src/core/QuantillonVault.sol";
 import "../../src/core/FeeCollector.sol";
-import "../../src/mocks/MockUSDC.sol";
 import "../../test/ChainlinkOracle.t.sol";
 
 contract DeployQuantillonPhaseA is Script {
@@ -68,8 +67,9 @@ contract DeployQuantillonPhaseA is Script {
         bool withMocks = vm.envOr("WITH_MOCKS", false);
         console.log("WITH_MOCKS environment variable:", withMocks);
         if (isLocalhost) {
-            MockUSDC mock = new MockUSDC();
-            usdc = address(mock);
+            // USDC must be provided via environment (from DeployMockUSDC.s.sol)
+            usdc = vm.envAddress("USDC");
+            console.log("Using USDC from environment:", usdc);
             MockAggregatorV3 eur = new MockAggregatorV3(8);
             eur.setPrice(108000000);
             eurUsdFeed = address(eur);
@@ -90,8 +90,9 @@ contract DeployQuantillonPhaseA is Script {
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
                 usdcFeed.setPrice(100000000);
                 
-                MockUSDC mock = new MockUSDC();
-                usdc = address(mock);
+                // USDC must be provided via environment (from DeployMockUSDC.s.sol)
+                usdc = vm.envAddress("USDC");
+                console.log("Using USDC from environment:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
             } else {

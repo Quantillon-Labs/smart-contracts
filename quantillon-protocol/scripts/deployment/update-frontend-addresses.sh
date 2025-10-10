@@ -276,8 +276,10 @@ FEE_COLLECTOR_IMPL=$(find_contract "FeeCollector")
 # Handle different oracle contract names based on network
 if [ "$NETWORK" = "localhost" ]; then
     CHAINLINK_ORACLE_IMPL=$(find_contract "MockChainlinkOracle")
+    MOCK_CHAINLINK_ORACLE_IMPL=$(find_contract "MockChainlinkOracle")
 else
     CHAINLINK_ORACLE_IMPL=$(find_contract "ChainlinkOracle")
+    MOCK_CHAINLINK_ORACLE_IMPL=""
 fi
 USER_POOL_IMPL=$(find_contract "UserPool")
 HEDGER_POOL_IMPL=$(find_contract "HedgerPool")
@@ -324,16 +326,26 @@ fi
 echo -e " All proxy addresses found successfully"
 
 # Extract mock price feed addresses (search across all broadcast files)
-MOCK_EUR_USD=$(find_contract "MockAggregatorV3" | head -1)
-# For USDC/USD feed, we need the second MockAggregatorV3
+# Get all MockAggregatorV3 contracts
+MOCK_AGGREGATORS=()
 for broadcast_file in "${BROADCAST_FILES[@]}"; do
     if [ -f "$broadcast_file" ]; then
-        MOCK_USDC_USD=$(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$broadcast_file" | tail -1)
-        if [ -n "$MOCK_USDC_USD" ] && [ "$MOCK_USDC_USD" != "null" ]; then
-            break
-        fi
+        while IFS= read -r addr; do
+            if [ -n "$addr" ] && [ "$addr" != "null" ]; then
+                MOCK_AGGREGATORS+=("$addr")
+            fi
+        done < <(jq -r '.transactions[] | select(.contractName == "MockAggregatorV3") | .contractAddress' "$broadcast_file")
     fi
 done
+
+# Assign the first two MockAggregatorV3 contracts to EUR/USD and USDC/USD feeds
+if [ ${#MOCK_AGGREGATORS[@]} -ge 2 ]; then
+    MOCK_EUR_USD="${MOCK_AGGREGATORS[0]}"
+    MOCK_USDC_USD="${MOCK_AGGREGATORS[1]}"
+else
+    MOCK_EUR_USD=""
+    MOCK_USDC_USD=""
+fi
 
 # Fallback for MockUSDC if not found
 if [ "$MOCK_USDC" = "null" ] || [ -z "$MOCK_USDC" ]; then
@@ -362,7 +374,9 @@ cat > "$FRONTEND_ADDRESSES_FILE" << EOF
       "HedgerPool": "$HEDGER_POOL",
       "YieldShift": "$YIELD_SHIFT",
       "USDC": "$MOCK_USDC",
-      "MockUSDC": "$MOCK_USDC"
+      "MockUSDC": "$MOCK_USDC",
+      "MockEURUSD": "$MOCK_EUR_USD",
+      "MockUSDCUSD": "$MOCK_USDC_USD"
     }
   }
 }

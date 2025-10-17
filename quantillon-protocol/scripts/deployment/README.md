@@ -100,15 +100,12 @@ These setters allow contracts to be deployed with minimal initialization (only c
 
 ```bash
 # Localhost
-cp .env.localhost .env  # ensure it exists and fill values
 cp .env.localhost .env
 
 # Base Sepolia
-cp .env.base-sepolia .env  # ensure it exists and fill values
 cp .env.base-sepolia .env
 
 # Base mainnet
-cp .env.base .env  # ensure it exists and fill values
 cp .env.base .env
 ```
 
@@ -169,16 +166,10 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 The protocol uses standard environment variables for enterprise-grade security:
 
 ```bash
-# Encrypt localhost env → writes encrypted content to stdout, redirect to .env.localhost
+# Copy network-specific environment files to .env
 cp .env.localhost .env
-
-# Encrypt Base Sepolia env
-cp .env.base-sepolia .env
-
-# Encrypt Base mainnet env
+cp .env.base-sepolia .env  
 cp .env.base .env
-
-# Decryption keys live in .env.keys (NEVER commit)
 ```
 
 ### File Structure
@@ -274,9 +265,8 @@ forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhos
 
 #### Missing .env.keys file
 ```bash
-# Error: .env.keys file not found
-# Solution: Ensure you have the decryption key
-# Get it from another team member or re-encrypt a per-network file
+# Error: .env file not found
+# Solution: Copy the appropriate network environment file
 cp .env.localhost .env
 ```
 

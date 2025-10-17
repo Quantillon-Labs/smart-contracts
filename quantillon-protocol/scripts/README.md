@@ -90,7 +90,7 @@ cp .env.example .env
 .env                 # Encrypted environment variables (safe to commit)
 .env.keys           # Private decryption key (NEVER commit - in .gitignore)
 .env.example        # Template for new developers
-.env.backup         # Backup of original unencrypted file
+.env.backup         # Backup of original environment file
 ```
 
 ### 3. Security Validation

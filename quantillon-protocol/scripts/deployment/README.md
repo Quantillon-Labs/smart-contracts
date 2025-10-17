@@ -100,16 +100,16 @@ These setters allow contracts to be deployed with minimal initialization (only c
 
 ```bash
 # Localhost
-cp .env.localhost.unencrypted .env.localhost.unencrypted  # ensure it exists and fill values
-cp .env.localhost.unencrypted .env.localhost
+cp .env.localhost .env.localhost  # ensure it exists and fill values
+cp .env.localhost .env.localhost
 
 # Base Sepolia
-cp .env.base-sepolia.unencrypted .env.base-sepolia.unencrypted  # ensure it exists and fill values
-cp .env.base-sepolia.unencrypted .env.base-sepolia
+cp .env.base-sepolia .env.base-sepolia  # ensure it exists and fill values
+cp .env.base-sepolia .env.base-sepolia
 
 # Base mainnet
-cp .env.base.unencrypted .env.base.unencrypted  # ensure it exists and fill values
-cp .env.base.unencrypted .env.base
+cp .env.base .env.base  # ensure it exists and fill values
+cp .env.base .env.base
 ```
 
 ### 2. Deploy to Localhost
@@ -170,13 +170,13 @@ The protocol uses standard environment variables for enterprise-grade security:
 
 ```bash
 # Encrypt localhost env → writes encrypted content to stdout, redirect to .env.localhost
-cp .env.localhost.unencrypted .env.localhost
+cp .env.localhost .env.localhost
 
 # Encrypt Base Sepolia env
-cp .env.base-sepolia.unencrypted .env.base-sepolia
+cp .env.base-sepolia .env.base-sepolia
 
 # Encrypt Base mainnet env
-cp .env.base.unencrypted .env.base
+cp .env.base .env.base
 
 # Decryption keys live in .env.keys (NEVER commit)
 ```
@@ -187,9 +187,9 @@ cp .env.base.unencrypted .env.base
 .env.localhost                 # Encrypted env for localhost (safe to commit)
 .env.base-sepolia              # Encrypted env for Base Sepolia (safe to commit)
 .env.base                      # Encrypted env for Base mainnet (safe to commit)
-.env.localhost.unencrypted     # Unencrypted source for localhost (DO NOT commit)
-.env.base-sepolia.unencrypted  # Unencrypted source for Base Sepolia (DO NOT commit)
-.env.base.unencrypted          # Unencrypted source for Base mainnet (DO NOT commit)
+.env.localhost     # Environment file for localhost (DO NOT commit)
+.env.base-sepolia  # Environment file for Base Sepolia (DO NOT commit)
+.env.base          # Environment file for Base mainnet (DO NOT commit)
 .env.keys                      # Private decryption key (NEVER commit - in .gitignore)
 ```
 
@@ -277,7 +277,7 @@ forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhos
 # Error: .env.keys file not found
 # Solution: Ensure you have the decryption key
 # Get it from another team member or re-encrypt a per-network file
-cp .env.localhost.unencrypted .env.localhost
+cp .env.localhost .env.localhost
 ```
 
 #### Environment variables not loading

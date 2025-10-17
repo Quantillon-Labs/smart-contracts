@@ -162,19 +162,19 @@ validate_security() {
     
     # Determine environment file to use
     local network_env_file=".env.${ENVIRONMENT}"
-    local network_env_unencrypted=".env.$(echo ${ENVIRONMENT} | tr '-' '_').unencrypted"
+    local network_env_source=".env.$(echo ${ENVIRONMENT} | tr '-' '_')"
     local default_env_file=".env"
     
-    # Check for unencrypted network-specific file first, then fallback to default
-    if [ -f "$network_env_unencrypted" ]; then
-        log_info "Found unencrypted environment file: $network_env_unencrypted"
-        log_info "Encrypting environment file to: $network_env_file"
-        cp "$network_env_unencrypted" "$network_env_file"
+    # Check for network-specific file first, then fallback to default
+    if [ -f "$network_env_source" ]; then
+        log_info "Found environment file: $network_env_source"
+        log_info "Using environment file: $network_env_file"
+        cp "$network_env_source" "$network_env_file"
         if [ $? -eq 0 ]; then
             ENV_FILE="$network_env_file"
-            log_success "Environment file encrypted successfully: $ENV_FILE"
+            log_success "Environment file copied successfully: $ENV_FILE"
         else
-            log_error "Failed to encrypt environment file"
+            log_error "Failed to copy environment file"
             exit 1
         fi
     elif [ -f "$default_env_file" ]; then
@@ -182,7 +182,7 @@ validate_security() {
         log_info "Using default environment file: $ENV_FILE"
     else
         log_error "No environment file found"
-        log_info "Expected files: $network_env_file, $network_env_unencrypted, or $default_env_file"
+        log_info "Expected files: $network_env_file, $network_env_source, or $default_env_file"
         log_info "Please create an environment file for your network"
         exit 1
     fi

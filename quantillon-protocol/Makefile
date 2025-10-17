@@ -1,5 +1,5 @@
 # Quantillon Protocol - Development Makefile
-# Integrates Foundry commands with Slither security analysis and dotenvx encryption
+# Integrates Foundry commands with Slither security analysis
 
 .PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings analyze-contract-sizes deploy-localhost deploy-base-sepolia deploy-base setup-env encrypt-env benchmark-gas
 
@@ -13,8 +13,6 @@ help:
 	@echo ""
 	@echo "🔐 Environment Management:"
 	@echo "  make setup-env     - Set up environment from template"
-	@echo "  make encrypt-env   - Encrypt environment variables with dotenvx"
-	@echo "  make decrypt-test  - Test environment variable decryption"
 	@echo ""
 	@echo "📦 Build & Compile:"
 	@echo "  make build      - Compile all contracts"
@@ -59,7 +57,7 @@ help:
 	@echo "  make deploy-secure-base-sepolia - Deploy to Base Sepolia with security checks"
 	@echo "  make deploy-secure-base         - Deploy to Base mainnet with security checks"
 	@echo ""
-	@echo "📝 Note: All deployments use encrypted environment variables with dotenvx"
+	@echo "📝 Note: All deployments use standard environment variables"
 
 # Environment setup
 setup-env:
@@ -72,25 +70,6 @@ setup-env:
 		echo "⚠️  .env already exists, skipping template copy"; \
 	fi
 
-# Encrypt environment variables
-encrypt-env:
-	@echo "🔐 Encrypting environment variables with dotenvx..."
-	@if [ ! -f .env ]; then \
-		echo "❌ .env file not found. Run 'make setup-env' first"; \
-		exit 1; \
-	fi
-	@npx dotenvx encrypt .env
-	@echo "✅ Environment variables encrypted successfully"
-	@echo "🔑 Private key saved to .env.keys (NEVER commit this file)"
-
-# Test environment decryption
-decrypt-test:
-	@echo "🔍 Testing environment variable decryption..."
-	@if [ ! -f .env.keys ]; then \
-		echo "❌ .env.keys file not found. Run 'make encrypt-env' first"; \
-		exit 1; \
-	fi
-	@npx dotenvx run -- echo "✅ Environment decryption working"
 
 # Build contracts
 build:
@@ -166,7 +145,6 @@ install:
 	@echo "📦 Installing Slither dependencies..."
 	python3 -m venv venv
 	./venv/bin/pip install -r requirements.txt
-	@echo "📦 Installing dotenvx..."
 	npm install
 
 # Generate HTML documentation

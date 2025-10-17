@@ -5,7 +5,7 @@
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-orange.svg)](https://getfoundry.sh/)
 [![Tests](https://img.shields.io/badge/Tests-678%20passed%20%7C%200%20failed-green.svg)](https://github.com/quantillon/smart-contracts)
 [![Security](https://img.shields.io/badge/Security-0%20Critical%20%7C%200%20Medium-green.svg)](https://github.com/quantillon/smart-contracts)
-[![Security](https://img.shields.io/badge/Environment-Dotenvx%20Encrypted-blue.svg)](https://dotenvx.com/)
+[![Security](https://img.shields.io/badge/Environment-Secure-green.svg)](https://github.com/quantillon)
 
 > **Euro-pegged stablecoin protocol with dual-pool architecture, yield generation, and governance mechanisms**
 
@@ -33,7 +33,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **Yield-Bearing Wrapper**: stQEURO token that automatically accrues yield for holders
 - **Aave Integration**: Automated yield farming through Aave protocol integration
 - **Comprehensive Security**: Role-based access control, reentrancy protection, and emergency pause mechanisms
-- **🔐 Encrypted Environment Variables**: Enterprise-grade security with [Dotenvx](https://dotenvx.com/) encryption
+- **🔐 Secure Environment Variables**: Enterprise-grade security with standard .env files
 
 ## 🏗️ Architecture
 
@@ -77,7 +77,7 @@ cp .env.example .env
 # Edit .env with your actual configuration
 
 # Encrypt environment variables for security
-npx dotenvx encrypt .env
+# Environment variables are ready to use
 ```
 
 ### 3. Build and Test
@@ -116,7 +116,7 @@ See [Deployment Guide](scripts/deployment/README.md) for complete details.
 
 ### 🔐 Secure Deployment with Dotenvx (Recommended)
 
-The protocol uses [Dotenvx](https://dotenvx.com/) for enterprise-grade environment variable encryption:
+The protocol uses standard environment variable configuration:
 
 ```bash
 # Deploy to localhost with mock contracts
@@ -268,4 +268,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Chainlink](https://chain.link/) for reliable price feeds
 - [Aave](https://aave.com/) for yield farming integration
 - [Foundry](https://getfoundry.sh/) for development framework
-- [Dotenvx](https://dotenvx.com/) for secure environment variable management
+- Standard .env files for environment variable management

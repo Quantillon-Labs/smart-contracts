@@ -27,13 +27,7 @@ NC='\033[0m' # No Color
 # Determine which env file to use (honor ENV_FILE if provided)
 EFFECTIVE_ENV_FILE="${ENV_FILE:-.env}"
 
-# Check if dotenvx is available and environment is encrypted
-if [ -f ".env.keys" ] && grep -q "DOTENV_PUBLIC_KEY" "$EFFECTIVE_ENV_FILE" 2>/dev/null && [ -z "$DOTENVX_RUNNING" ]; then
-    # Use dotenvx for encrypted environment
-    echo -e " Using encrypted environment variables"
-    export DOTENVX_RUNNING=1
-    exec npx dotenvx run --env-file="$EFFECTIVE_ENV_FILE" -- "$0" "$@"
-fi
+# Load environment variables directly
 
 
 # Load environment variables from env file if it exists

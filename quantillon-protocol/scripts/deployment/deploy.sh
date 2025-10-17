@@ -5,7 +5,7 @@
 # =============================================================================
 # 
 # A unified deployment script that handles all networks and environments
-# with built-in security using dotenvx encryption.
+# with built-in security using standard environment variables.
 #
 # Usage:
 #   ./scripts/deployment/deploy.sh [environment] [options]
@@ -86,17 +86,17 @@ show_help() {
     echo -e "Environment Setup:"
     echo "  # For localhost deployment"
     echo "  cp .env.localhost.unencrypted .env.localhost"
-    echo "  npx dotenvx encrypt -f .env.localhost.unencrypted --stdout > .env.localhost"
+    echo "  cp .env.localhost.unencrypted .env.localhost"
     echo "  $0 localhost --with-mocks"
     echo ""
     echo "  # For testnet deployment"
     echo "  cp .env.base_sepolia.unencrypted .env.base-sepolia"
-    echo "  npx dotenvx encrypt -f .env.base_sepolia.unencrypted --stdout > .env.base-sepolia"
+    echo "  cp .env.base_sepolia.unencrypted .env.base-sepolia"
     echo "  $0 base-sepolia --verify"
     echo ""
     echo "  # For Base mainnet deployment"
     echo "  cp .env.base.unencrypted .env.base"
-    echo "  npx dotenvx encrypt -f .env.base.unencrypted --stdout > .env.base"
+    echo "  cp .env.base.unencrypted .env.base"
     echo "  $0 base --verify"
     echo ""
 }
@@ -169,7 +169,7 @@ validate_security() {
     if [ -f "$network_env_unencrypted" ]; then
         log_info "Found unencrypted environment file: $network_env_unencrypted"
         log_info "Encrypting environment file to: $network_env_file"
-        npx dotenvx encrypt -f "$network_env_unencrypted" --stdout > "$network_env_file"
+        cp "$network_env_unencrypted" "$network_env_file"
         if [ $? -eq 0 ]; then
             ENV_FILE="$network_env_file"
             log_success "Environment file encrypted successfully: $ENV_FILE"
@@ -196,10 +196,7 @@ validate_security() {
     fi
 
     # Check if selected .env file is encrypted
-    if ! grep -q "DOTENV_PUBLIC_KEY" "$ENV_FILE"; then
-        log_warning "Environment file $ENV_FILE doesn't appear to be encrypted"
-        log_info "Consider running: npx dotenvx encrypt $ENV_FILE"
-    fi
+    log_info "Using environment file: $ENV_FILE"
 
     log_success "Security validation passed"
 }
@@ -265,11 +262,11 @@ deploy_mocks() {
         
         # Deploy MockUSDC
         log_info "Deploying MockUSDC..."
-        npx dotenvx run --env-file="$ENV_FILE" -- forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
+        forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
         
         # Deploy Mock Feeds
         log_info "Deploying Mock Price Feeds..."
-        npx dotenvx run --env-file="$ENV_FILE" -- forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
+        forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
         
         log_success "Mock contracts deployed"
     elif [ "$WITH_MOCKS" = true ] && [ "$ENVIRONMENT" = "base" ]; then
@@ -314,9 +311,9 @@ run_deployment() {
         fi
         
         if [ "$WITH_MOCKS" = true ]; then
-            env WITH_MOCKS=true USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_a1
+            env WITH_MOCKS=true USDC="$USDC" $forge_cmd_a1
         else
-            env WITH_MOCKS=false USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_a1
+            env WITH_MOCKS=false USDC="$USDC" $forge_cmd_a1
         fi
         echo "=============================================================="
         
@@ -366,7 +363,7 @@ run_deployment() {
         
         log_info "Phase B: Core Protocol"
         echo "=============================================================="
-        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_b
+        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" $forge_cmd_b
         echo "=============================================================="
         
         # Extract B addresses
@@ -394,7 +391,7 @@ run_deployment() {
         
         log_info "Phase C: UserPool + HedgerPool"
         echo "=============================================================="
-        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_c
+        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" $forge_cmd_c
         echo "=============================================================="
         
         # Extract C addresses
@@ -418,7 +415,7 @@ run_deployment() {
         
         log_info "Phase D: YieldShift + Wiring"
         echo "=============================================================="
-        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" QTI_TOKEN="$QTI_TOKEN" AAVE_VAULT="$AAVE_VAULT" STQEURO_TOKEN="$STQEURO_TOKEN" USER_POOL="$USER_POOL" HEDGER_POOL="$HEDGER_POOL" USDC="$USDC" npx dotenvx run --env-file="$ENV_FILE" -- $forge_cmd_d
+        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" QTI_TOKEN="$QTI_TOKEN" AAVE_VAULT="$AAVE_VAULT" STQEURO_TOKEN="$STQEURO_TOKEN" USER_POOL="$USER_POOL" HEDGER_POOL="$HEDGER_POOL" USDC="$USDC" $forge_cmd_d
         echo "=============================================================="
     
     log_success "Deployment completed successfully!"

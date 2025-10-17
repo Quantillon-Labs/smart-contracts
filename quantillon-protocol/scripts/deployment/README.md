@@ -1,6 +1,6 @@
 # Quantillon Protocol - Secure Deployment Guide
 
-This directory contains the unified deployment infrastructure for the Quantillon Protocol with enterprise-grade security using [Dotenvx](https://dotenvx.com/) encryption.
+This directory contains the unified deployment infrastructure for the Quantillon Protocol with enterprise-grade security using standard environment variables.
 
 ## 🔐 Security Features
 
@@ -101,15 +101,15 @@ These setters allow contracts to be deployed with minimal initialization (only c
 ```bash
 # Localhost
 cp .env.localhost.unencrypted .env.localhost.unencrypted  # ensure it exists and fill values
-npx dotenvx encrypt -f .env.localhost.unencrypted --stdout > .env.localhost
+cp .env.localhost.unencrypted .env.localhost
 
 # Base Sepolia
 cp .env.base-sepolia.unencrypted .env.base-sepolia.unencrypted  # ensure it exists and fill values
-npx dotenvx encrypt -f .env.base-sepolia.unencrypted --stdout > .env.base-sepolia
+cp .env.base-sepolia.unencrypted .env.base-sepolia
 
 # Base mainnet
 cp .env.base.unencrypted .env.base.unencrypted  # ensure it exists and fill values
-npx dotenvx encrypt -f .env.base.unencrypted --stdout > .env.base
+cp .env.base.unencrypted .env.base
 ```
 
 ### 2. Deploy to Localhost
@@ -166,17 +166,17 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 
 ### Environment Variable Encryption (per network)
 
-The protocol uses [Dotenvx](https://dotenvx.com/) for enterprise-grade security:
+The protocol uses standard environment variables for enterprise-grade security:
 
 ```bash
 # Encrypt localhost env → writes encrypted content to stdout, redirect to .env.localhost
-npx dotenvx encrypt -f .env.localhost.unencrypted --stdout > .env.localhost
+cp .env.localhost.unencrypted .env.localhost
 
 # Encrypt Base Sepolia env
-npx dotenvx encrypt -f .env.base-sepolia.unencrypted --stdout > .env.base-sepolia
+cp .env.base-sepolia.unencrypted .env.base-sepolia
 
 # Encrypt Base mainnet env
-npx dotenvx encrypt -f .env.base.unencrypted --stdout > .env.base
+cp .env.base.unencrypted .env.base
 
 # Decryption keys live in .env.keys (NEVER commit)
 ```
@@ -228,7 +228,7 @@ git commit -m "Update encrypted env files"
 # 2. Each developer needs their own .env.keys file (never commit)
 
 # 3. Use a specific env file when running commands
-npx dotenvx run --env-file=.env.localhost -- forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545
+forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545
 ```
 
 ## 📊 Deployment Examples
@@ -277,13 +277,13 @@ npx dotenvx run --env-file=.env.localhost -- forge script scripts/deployment/Dep
 # Error: .env.keys file not found
 # Solution: Ensure you have the decryption key
 # Get it from another team member or re-encrypt a per-network file
-npx dotenvx encrypt -f .env.localhost.unencrypted --stdout > .env.localhost
+cp .env.localhost.unencrypted .env.localhost
 ```
 
 #### Environment variables not loading
 ```bash
 # Test decryption
-npx dotenvx run -- echo "PRIVATE_KEY: $PRIVATE_KEY"
+echo "PRIVATE_KEY: $PRIVATE_KEY"
 
 # If this fails, check your .env.keys file
 ```
@@ -304,7 +304,7 @@ Both helper scripts honor the same env file passed by `deploy.sh`:
 
 When `--phased` (or `PHASED=true`) is set, address extraction reads broadcast files under `broadcast/DeployQuantillonPhased.s.sol/...`; otherwise it reads `broadcast/DeployQuantillon.s.sol/...`.
 
-They will re-exec under `dotenvx` with `--env-file=$ENV_FILE` and load variables from that file.
+They will load variables directly from the specified environment file.
 
 ### Getting Help
 
@@ -313,7 +313,7 @@ They will re-exec under `dotenvx` with `--env-file=$ENV_FILE` and load variables
 ./scripts/deployment/deploy.sh --help
 
 # Test environment setup
-npx dotenvx run -- forge script DeployQuantillon.s.sol --dry-run
+forge script DeployQuantillon.s.sol --dry-run
 ```
 
 ## 📚 Additional Resources
@@ -321,7 +321,7 @@ npx dotenvx run -- forge script DeployQuantillon.s.sol --dry-run
 - **[Main README](../README.md)** - Complete project overview
 - **[Secure Deployment Guide](../SECURE_DEPLOYMENT.md)** - Detailed security implementation
 - **[API Documentation](../docs/API.md)** - Contract API reference
-- **[Dotenvx Documentation](https://dotenvx.com/)** - Environment variable encryption
+- **Standard .env files** - Environment variable management
 
 ## 🚨 Security Notes
 

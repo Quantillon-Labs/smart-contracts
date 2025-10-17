@@ -12,6 +12,7 @@
 
 # Dotenvx encrypted environment files
 .env*
+.env
 
 # =============================================================================
 # 🔑 PRIVATE KEYS & CREDENTIALS
@@ -196,3 +197,8 @@ build-output.log
 # 3. Update this .gitignore to prevent future accidents
 #
 # =============================================================================
+
+# Environment files
+.env
+.env.*
+!.env.example

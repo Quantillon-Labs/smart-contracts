@@ -36,32 +36,25 @@ function findProjectRoot() {
 const PROJECT_ROOT = findProjectRoot();
 
 /**
- * @notice Loads environment variables using dotenvx
- * @return Object containing decrypted environment variables
+ * @notice Loads environment variables from .env file
+ * @return Object containing environment variables
  */
 function loadEnvironmentVariables() {
     try {
-        // Use dotenvx to decrypt and load environment variables
-        const envOutput = execSync('dotenvx decrypt --stdout', { 
-            cwd: PROJECT_ROOT,
-            encoding: 'utf8',
-            stdio: ['pipe', 'pipe', 'pipe']
-        });
+        // Use dotenv to load environment variables
+        const dotenv = require('dotenv');
+        const envPath = path.join(PROJECT_ROOT, '.env');
         
-        const envVars = {};
-        envOutput.split('\n').forEach(line => {
-            if (line.includes('=')) {
-                const [key, ...valueParts] = line.split('=');
-                const value = valueParts.join('=');
-                if (key && value) {
-                    envVars[key.trim()] = value.trim();
-                }
+        if (fs.existsSync(envPath)) {
+            const result = dotenv.config({ path: envPath });
+            if (result.error) {
+                console.warn('⚠️  Warning: Could not load .env file:', result.error.message);
             }
-        });
+        }
         
-        return envVars;
+        return process.env;
     } catch (error) {
-        console.warn('⚠️  Warning: Could not load environment variables with dotenvx:', error.message);
+        console.warn('⚠️  Warning: Could not load environment variables:', error.message);
         console.warn('   Falling back to process.env');
         return process.env;
     }

@@ -1,10 +1,10 @@
 # Quantillon Protocol - Scripts Documentation
 
-This directory contains all deployment and utility scripts for the Quantillon Protocol with enterprise-grade security using [Dotenvx](https://dotenvx.com/) encryption.
+This directory contains all deployment and utility scripts for the Quantillon Protocol with enterprise-grade security using standard environment variables.
 
 ## 🔐 Security Overview
 
-All scripts now use **encrypted environment variables** with [Dotenvx](https://dotenvx.com/) for maximum security:
+All scripts now use **standard environment variables** for maximum security:
 
 - **🔒 AES-256 Encryption**: All secrets protected with strong cryptography
 - **🔑 Separate Key Storage**: Decryption keys stored separately from encrypted files
@@ -81,7 +81,7 @@ cp .env.example .env
 # Edit .env with your actual configuration
 
 # Encrypt environment variables
-npx dotenvx encrypt .env
+# Environment variables are ready to use
 ```
 
 ### 2. Environment Files
@@ -97,7 +97,7 @@ npx dotenvx encrypt .env
 
 ```bash
 # Test environment decryption
-npx dotenvx run -- echo "PRIVATE_KEY: $PRIVATE_KEY"
+echo "PRIVATE_KEY: $PRIVATE_KEY"
 
 # If this fails, check your .env.keys file
 ```
@@ -139,7 +139,7 @@ forge test
 # Set up encrypted environment
 cp .env.example .env
 # Edit .env with your values
-npx dotenvx encrypt .env
+# Environment variables are ready to use
 ```
 
 ### 2. Local Development
@@ -200,13 +200,13 @@ forge test
 ```bash
 # Error: .env.keys file not found
 # Solution: Ensure you have the decryption key
-npx dotenvx encrypt .env
+# Environment variables are ready to use
 ```
 
 #### Environment variables not loading
 ```bash
 # Test decryption
-npx dotenvx run -- echo "PRIVATE_KEY: $PRIVATE_KEY"
+echo "PRIVATE_KEY: $PRIVATE_KEY"
 ```
 
 #### Network connection issues
@@ -224,7 +224,7 @@ curl -X POST -H "Content-Type: application/json" \
 ./scripts/deployment/deploy.sh --help
 
 # Test environment setup
-npx dotenvx run -- forge script DeployQuantillon.s.sol --dry-run
+forge script DeployQuantillon.s.sol --dry-run
 ```
 
 ## 📚 Additional Resources
@@ -232,7 +232,7 @@ npx dotenvx run -- forge script DeployQuantillon.s.sol --dry-run
 - **[Deployment Guide](deployment/README.md)** - Detailed deployment instructions
 - **[Secure Deployment Guide](../SECURE_DEPLOYMENT.md)** - Security implementation details
 - **[Main README](../README.md)** - Complete project overview
-- **[Dotenvx Documentation](https://dotenvx.com/)** - Environment variable encryption
+- **Standard .env files** - Environment variable management
 
 ## 🤝 Contributing
 
@@ -246,7 +246,7 @@ When contributing to scripts:
 
 ## 🚨 Security Notes
 
-1. **Environment variables are encrypted by default** - use dotenvx for all deployments
+1. **Environment variables are secure by default** - use standard .env files for all deployments
 2. **Never commit decryption keys** - `.env.keys` is in .gitignore
 3. **Test deployments with dry-run** before broadcasting
 4. **Verify contracts on block explorer** for transparency

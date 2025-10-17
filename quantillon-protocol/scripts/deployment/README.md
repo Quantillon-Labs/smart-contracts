@@ -181,7 +181,6 @@ cp .env.base .env
 .env.localhost     # Environment file for localhost (DO NOT commit)
 .env.base-sepolia  # Environment file for Base Sepolia (DO NOT commit)
 .env.base          # Environment file for Base mainnet (DO NOT commit)
-.env.keys                      # Private decryption key (NEVER commit - in .gitignore)
 ```
 
 ### Security Benefits
@@ -216,7 +215,7 @@ forge test
 git add .env.localhost .env.base-sepolia .env.base
 git commit -m "Update encrypted env files"
 
-# 2. Each developer needs their own .env.keys file (never commit)
+# 2. Each developer needs their own environment files
 
 # 3. Use a specific env file when running commands
 forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545
@@ -263,7 +262,7 @@ forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhos
 
 ### Common Issues
 
-#### Missing .env.keys file
+#### Missing environment file
 ```bash
 # Error: .env file not found
 # Solution: Copy the appropriate network environment file
@@ -275,7 +274,7 @@ cp .env.localhost .env
 # Test decryption
 echo "PRIVATE_KEY: $PRIVATE_KEY"
 
-# If this fails, check your .env.keys file
+# If this fails, check your environment file
 ```
 
 #### Network connection issues
@@ -315,8 +314,8 @@ forge script DeployQuantillon.s.sol --dry-run
 
 ## 🚨 Security Notes
 
-1. **Never commit `.env.keys`** - it's in .gitignore for security
-2. **Each developer needs their own `.env.keys`** file
+1. **Never commit `.env` files** - they're in .gitignore for security
+2. **Each developer needs their own environment files**
 3. **The encrypted `.env` file can be safely shared** with the team
 4. **For production, use secure key management** (AWS Secrets Manager, etc.)
 5. **Rotate keys regularly** for enhanced security

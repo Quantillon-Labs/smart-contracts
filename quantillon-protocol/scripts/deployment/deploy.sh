@@ -184,15 +184,7 @@ validate_security() {
         exit 1
     fi
     
-    # Check if .env.keys exists
-    if [ ! -f ".env.keys" ]; then
-        log_error ".env.keys file not found"
-        log_info "Please ensure you have the decryption key for your encrypted .env file"
-        log_info "The .env.keys file should contain your DOTENV_PRIVATE_KEY"
-        exit 1
-    fi
-
-    # Check if selected .env file is encrypted
+    # Validate environment file exists and is readable
     log_info "Using environment file: $ENV_FILE"
 
     log_success "Security validation passed"

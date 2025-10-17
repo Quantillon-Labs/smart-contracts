@@ -88,7 +88,6 @@ cp .env.example .env
 
 ```
 .env                 # Encrypted environment variables (safe to commit)
-.env.keys           # Private decryption key (NEVER commit - in .gitignore)
 .env.example        # Template for new developers
 .env.backup         # Backup of original environment file
 ```
@@ -99,7 +98,7 @@ cp .env.example .env
 # Test environment decryption
 echo "PRIVATE_KEY: $PRIVATE_KEY"
 
-# If this fails, check your .env.keys file
+# If this fails, check your environment file
 ```
 
 ## 📋 Quick Start Guide
@@ -179,8 +178,8 @@ forge test
 
 ### Environment Variables
 
-- **Never commit `.env.keys`** - it's in .gitignore for security
-- **Each developer needs their own `.env.keys`** file
+- **Never commit `.env` files** - they're in .gitignore for security
+- **Each developer needs their own environment files**
 - **The encrypted `.env` file can be safely shared** with the team
 - **For production, use secure key management** (AWS Secrets Manager, etc.)
 
@@ -196,7 +195,7 @@ forge test
 
 ### Common Issues
 
-#### Missing .env.keys file
+#### Missing environment file
 ```bash
 # Error: .env.keys file not found
 # Solution: Ensure you have the decryption key
@@ -247,7 +246,7 @@ When contributing to scripts:
 ## 🚨 Security Notes
 
 1. **Environment variables are secure by default** - use standard .env files for all deployments
-2. **Never commit decryption keys** - `.env.keys` is in .gitignore
+2. **Never commit environment files** - `.env` files are in .gitignore
 3. **Test deployments with dry-run** before broadcasting
 4. **Verify contracts on block explorer** for transparency
 5. **Use secure key management** for production deployments

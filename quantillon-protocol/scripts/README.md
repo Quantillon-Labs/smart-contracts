@@ -197,8 +197,8 @@ forge test
 
 #### Missing environment file
 ```bash
-# Error: .env.keys file not found
-# Solution: Ensure you have the decryption key
+# Error: .env file not found
+# Solution: Ensure you have the environment file
 # Environment variables are ready to use
 ```
 

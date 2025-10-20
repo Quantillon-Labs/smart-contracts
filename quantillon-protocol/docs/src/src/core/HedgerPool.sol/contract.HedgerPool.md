@@ -1,6 +1,4 @@
 # HedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5aee937988a17532c1c3fcdcebf45d2f03a0c08d/src/core/HedgerPool.sol)
-
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
@@ -1524,6 +1522,40 @@ function updateVault(address _vault) external;
 |Name|Type|Description|
 |----|----|-----------|
 |`_vault`|`address`|New vault address for USDC operations|
+
+
+### updateOracle
+
+Updates the oracle address
+
+*Governance-only setter to allow phased wiring after minimal initialization*
+
+
+```solidity
+function updateOracle(address _oracle) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_oracle`|`address`|New oracle address|
+
+
+### updateYieldShift
+
+Updates the YieldShift address
+
+*Governance-only setter to allow phased wiring after minimal initialization*
+
+
+```solidity
+function updateYieldShift(address _yieldShift) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_yieldShift`|`address`|New YieldShift address|
 
 
 ### whitelistHedger

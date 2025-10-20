@@ -20,7 +20,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **[Quick Start Guide](docs/Quick-Start.md)** - Get started quickly with integration examples
 - **[Integration Examples](docs/Integration-Examples.md)** - Comprehensive integration examples and patterns
 - **[Deployment Guide](scripts/deployment/README.md)** - Complete deployment instructions and procedures
-- **[Secure Deployment Guide](SECURE_DEPLOYMENT.md)** - Dotenvx security implementation guide
+- **[Secure Deployment Guide](SECURE_DEPLOYMENT.md)** - Environment and operational security practices
 - **[Documentation Hub](docs/README.md)** - Comprehensive documentation overview
 
 ### 🎯 Key Features
@@ -76,7 +76,6 @@ cp .env.example .env
 # Fill in your values (API keys, private keys, etc.)
 # Edit .env with your actual configuration
 
-# Encrypt environment variables for security
 # Environment variables are ready to use
 ```
 
@@ -95,7 +94,26 @@ make slither
 
 ## 🚀 Deployment
 
-### 🔐 Secure Deployment (Recommended)
+### 🔐 Multi-Phase Deployment Strategy
+
+The protocol uses a **4-phase atomic deployment** (A→B→C→D) to stay within Base Sepolia/Mainnet's 24.9M gas limit per transaction:
+
+| Phase | Gas | Contracts | Purpose |
+|-------|-----|-----------|---------|
+| **A** | ~17M | TimeProvider, Oracle, QEURO, FeeCollector, Vault | Core infrastructure |
+| **B** | ~16M | QTI, AaveVault, stQEURO | Token layer |
+| **C** | ~11M | UserPool, HedgerPool | Pool layer |
+| **D** | ~7M | YieldShift + wiring | Yield management |
+
+**Key Features:**
+- ✅ All phases well under 24.9M limit (8-13M gas headroom)
+- ✅ Automatic address passing between phases
+- ✅ Minimal initialization with governance setters for post-deployment wiring
+- ✅ Frontend address updater merges all phase broadcasts automatically
+
+See [Deployment Guide](scripts/deployment/README.md) for complete details.
+
+### 🔐 Secure Deployment
 
 The protocol uses standard environment variable configuration:
 
@@ -120,7 +138,7 @@ The protocol uses standard environment variable configuration:
 
 ### 🔧 Deployment Features
 
-- **🔐 Encrypted Environment Variables**: All secrets protected with AES-256 encryption
+- **🔐 Secure Environment Variables**: Manage secrets with standard `.env` files (never commit them)
 - **🌐 Multi-Network Support**: Localhost, Base Sepolia, and Base Mainnet
 - **🎭 Mock Contract Handling**: Automatic mock deployment for localhost
 - **✅ Contract Verification**: Automatic verification on block explorers
@@ -129,10 +147,8 @@ The protocol uses standard environment variable configuration:
 
 ### 🛡️ Security Features
 
-- **Dotenvx Encryption**: Environment variables encrypted with AES-256 and elliptic curve cryptography
-- **Separate Key Storage**: Decryption keys stored separately from encrypted files
-- **Safe to Commit**: Encrypted `.env` files can be safely committed to version control
-- **Team Collaboration**: Shared encrypted environment files with individual decryption keys
+- **Environment Variables**: Use standard `.env` files (never commit them)
+- **Secret Management**: Prefer a secret manager for production (e.g., AWS Secrets Manager)
 
 ## 🧪 Testing
 
@@ -183,7 +199,7 @@ make validate-natspec
 - **Emergency Pause**: Circuit breakers for critical functions
 - **Input Validation**: Extensive parameter validation
 - **Overflow Protection**: Safe math operations throughout
-- **Encrypted Secrets**: Environment variables protected with enterprise-grade encryption
+- **Secret Handling**: Environment variables loaded from `.env` during development
 
 ## 📊 Development
 
@@ -230,7 +246,7 @@ make gas-analysis
 - Write comprehensive tests
 - Update documentation
 - Ensure security best practices
-- Use encrypted environment variables
+- Protect secrets; never commit `.env`
 
 ## 📄 License
 

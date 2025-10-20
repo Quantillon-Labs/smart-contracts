@@ -1,6 +1,4 @@
 # YieldShift
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5aee937988a17532c1c3fcdcebf45d2f03a0c08d/src/core/yieldmanagement/YieldShift.sol)
-
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
@@ -419,6 +417,15 @@ function initialize(
 |`_timelock`|`address`|Address of the timelock contract|
 |`_treasury`|`address`|Address of the treasury|
 
+
+### bootstrapDefaults
+
+Governance bootstrap to set initial histories and source metadata after minimal init
+
+
+```solidity
+function bootstrapDefaults() external;
+```
 
 ### updateYieldDistribution
 
@@ -1470,6 +1477,36 @@ function revokeYieldSource(address source) external;
 |----|----|-----------|
 |`source`|`address`|Address of the yield source to revoke|
 
+
+### updateUserPool
+
+Governance-only setters to wire references post-initialization (phased deploy)
+
+
+```solidity
+function updateUserPool(address _userPool) external;
+```
+
+### updateHedgerPool
+
+
+```solidity
+function updateHedgerPool(address _hedgerPool) external;
+```
+
+### updateAaveVault
+
+
+```solidity
+function updateAaveVault(address _aaveVault) external;
+```
+
+### updateStQEURO
+
+
+```solidity
+function updateStQEURO(address _stQEURO) external;
+```
 
 ### updateYieldAllocation
 

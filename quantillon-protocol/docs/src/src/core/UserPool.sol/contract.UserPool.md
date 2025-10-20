@@ -1,6 +1,4 @@
 # UserPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5aee937988a17532c1c3fcdcebf45d2f03a0c08d/src/core/UserPool.sol)
-
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
@@ -1752,6 +1750,28 @@ function setPoolFees(uint256 _depositFee, uint256 _withdrawalFee, uint256 _perfo
 |`_depositFee`|`uint256`|New deposit fee in basis points|
 |`_withdrawalFee`|`uint256`|New withdrawal fee in basis points|
 |`_performanceFee`|`uint256`|New performance fee in basis points|
+
+
+### updateYieldShift
+
+Updates the YieldShift contract address
+
+*Governance-only setter for phased deployment wiring*
+
+**Notes:**
+- security: Validates address and restricts to governance role
+
+- access: Restricted to GOVERNANCE_ROLE
+
+
+```solidity
+function updateYieldShift(address _yieldShift) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_yieldShift`|`address`|New YieldShift contract address|
 
 
 ### emergencyUnstake

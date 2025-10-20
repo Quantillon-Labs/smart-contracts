@@ -163,9 +163,13 @@ validate_security() {
     local default_env_file=".env"
     
     # Check for network-specific file first, then fallback to default
-    if [ -f "$network_env_source" ]; then
+    if [ -f "$network_env_file" ]; then
+        log_info "Found environment file: $network_env_file"
+        ENV_FILE="$network_env_file"
+        log_success "Using environment file: $ENV_FILE"
+    elif [ -f "$network_env_source" ] && [ "$network_env_source" != "$network_env_file" ]; then
         log_info "Found environment file: $network_env_source"
-        log_info "Using environment file: $network_env_file"
+        log_info "Copying to: $network_env_file"
         cp "$network_env_source" "$network_env_file"
         if [ $? -eq 0 ]; then
             ENV_FILE="$network_env_file"

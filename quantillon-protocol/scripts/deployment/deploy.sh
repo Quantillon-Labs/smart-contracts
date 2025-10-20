@@ -191,6 +191,12 @@ validate_security() {
     # Validate environment file exists and is readable
     log_info "Using environment file: $ENV_FILE"
 
+    # Create symlink for Foundry to find the environment file
+    if [ -f "$ENV_FILE" ] && [ "$ENV_FILE" != ".env" ]; then
+        ln -sf "$ENV_FILE" .env
+        log_info "Created symlink: .env -> $ENV_FILE"
+    fi
+
     log_success "Security validation passed"
 }
 
@@ -255,11 +261,19 @@ deploy_mocks() {
         
         # Deploy MockUSDC
         log_info "Deploying MockUSDC..."
-        forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
+        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
+        else
+            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
+        fi
         
         # Deploy Mock Feeds
         log_info "Deploying Mock Price Feeds..."
-        forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
+        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
+        else
+            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
+        fi
         
         log_success "Mock contracts deployed"
     elif [ "$WITH_MOCKS" = true ] && [ "$ENVIRONMENT" = "base" ]; then
@@ -290,6 +304,9 @@ run_deployment() {
         # Phase A: Core infrastructure
         local phase_a_script="scripts/deployment/DeployQuantillonPhaseA.s.sol"
         local forge_cmd_a1="forge script $phase_a_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
+        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+            forge_cmd_a1="$forge_cmd_a1 --gas-price 2000000000"
+        fi
         if [ "$DRY_RUN" = false ]; then forge_cmd_a1="$forge_cmd_a1 --broadcast"; fi
         if [ "$VERIFY" = true ]; then forge_cmd_a1="$forge_cmd_a1 --verify"; fi
         
@@ -351,6 +368,9 @@ run_deployment() {
         # Phase B: Core protocol
         local phase_b_script="scripts/deployment/DeployQuantillonPhaseB.s.sol"
         local forge_cmd_b="forge script $phase_b_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
+        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+            forge_cmd_b="$forge_cmd_b --gas-price 2000000000"
+        fi
         if [ "$DRY_RUN" = false ]; then forge_cmd_b="$forge_cmd_b --broadcast"; fi
         if [ "$VERIFY" = true ]; then forge_cmd_b="$forge_cmd_b --verify"; fi
         
@@ -379,6 +399,9 @@ run_deployment() {
         # Phase C: UserPool, HedgerPool
         local phase_c_script="scripts/deployment/DeployQuantillonPhaseC.s.sol"
         local forge_cmd_c="forge script $phase_c_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
+        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+            forge_cmd_c="$forge_cmd_c --gas-price 2000000000"
+        fi
         if [ "$DRY_RUN" = false ]; then forge_cmd_c="$forge_cmd_c --broadcast"; fi
         if [ "$VERIFY" = true ]; then forge_cmd_c="$forge_cmd_c --verify"; fi
         
@@ -403,6 +426,9 @@ run_deployment() {
         # Phase D: YieldShift + wiring
         local phase_d_script="scripts/deployment/DeployQuantillonPhaseD.s.sol"
         local forge_cmd_d="forge script $phase_d_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
+        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+            forge_cmd_d="$forge_cmd_d --gas-price 2000000000"
+        fi
         if [ "$DRY_RUN" = false ]; then forge_cmd_d="$forge_cmd_d --broadcast"; fi
         if [ "$VERIFY" = true ]; then forge_cmd_d="$forge_cmd_d --verify"; fi
         

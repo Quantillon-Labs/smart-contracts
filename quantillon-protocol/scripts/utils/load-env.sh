@@ -11,18 +11,32 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Function to load environment variables from .env file
+# Function to load environment variables from appropriate .env file
 load_environment_variables() {
-    echo "🔐 Loading environment variables from .env file..."
+    echo "🔐 Loading environment variables..."
     
-    if [ -f ".env" ]; then
-        # Load .env file directly
+    # Determine which environment file to use
+    local network="${NETWORK:-localhost}"
+    local network_env_file=".env.${network}"
+    local default_env_file=".env"
+    
+    # Check for network-specific file first, then fallback to default
+    if [ -f "$network_env_file" ]; then
+        echo "📁 Using network-specific environment file: $network_env_file"
         set -a
-        source .env
+        source "$network_env_file"
+        set +a
+        echo "✅ Environment variables loaded successfully"
+    elif [ -f "$default_env_file" ]; then
+        echo "📁 Using default environment file: $default_env_file"
+        set -a
+        source "$default_env_file"
         set +a
         echo "✅ Environment variables loaded successfully"
     else
-        echo "❌ No .env file found"
+        echo "❌ No environment file found"
+        echo "Expected files: $network_env_file or $default_env_file"
+        echo "Please create an environment file for your network"
         return 1
     fi
 }

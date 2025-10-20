@@ -4,10 +4,9 @@ This directory contains the unified deployment infrastructure for the Quantillon
 
 ## 🔐 Security Features
 
-- **🔒 Encrypted Environment Variables**: All secrets protected with AES-256 encryption
-- **🔑 Separate Key Storage**: Decryption keys stored separately from encrypted files
-- **🛡️ Safe to Commit**: Encrypted `.env` files can be safely committed to version control
-- **👥 Team Collaboration**: Shared encrypted environment files with individual decryption keys
+- **Environment Variables**: Use standard `.env` files (never commit them)
+- **Secret Management**: Use a secret manager for production (e.g., AWS Secrets Manager)
+- **Team Collaboration**: Share values securely via organizational tooling
 
 ## 🚀 Unified Deployment Script
 
@@ -94,19 +93,19 @@ To support minimal initialization and post-deployment wiring, the following gove
 
 These setters allow contracts to be deployed with minimal initialization (only critical addresses), then wired together in separate atomic transactions during Phase D.
 
-## 🎯 Quick Start (per-network encrypted env files)
+## 🎯 Quick Start (per-network env files)
 
 ### 1. Environment Setup (per network)
 
 ```bash
-# Localhost
-cp .env.localhost .env
+# Localhost (recommended: use per-network file directly)
+cp .env.example .env.localhost && edit .env.localhost
 
 # Base Sepolia
-cp .env.base-sepolia .env
+cp .env.example .env.base-sepolia && edit .env.base-sepolia
 
 # Base mainnet
-cp .env.base .env
+cp .env.example .env.base && edit .env.base
 ```
 
 ### 2. Deploy to Localhost
@@ -161,34 +160,30 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 
 ## 🔐 Security Implementation
 
-### Environment Variable Encryption (per network)
+### Environment Variables (per network)
 
-The protocol uses standard environment variables for enterprise-grade security:
+The protocol uses standard environment variables:
 
 ```bash
-# Copy network-specific environment files to .env
-cp .env.localhost .env
-cp .env.base-sepolia .env  
-cp .env.base .env
+# Use per-network files directly (no encryption)
+# .env.localhost, .env.base-sepolia, .env.base
 ```
 
 ### File Structure
 
 ```
-.env.localhost                 # Encrypted env for localhost (safe to commit)
-.env.base-sepolia              # Encrypted env for Base Sepolia (safe to commit)
-.env.base                      # Encrypted env for Base mainnet (safe to commit)
 .env.localhost     # Environment file for localhost (DO NOT commit)
 .env.base-sepolia  # Environment file for Base Sepolia (DO NOT commit)
 .env.base          # Environment file for Base mainnet (DO NOT commit)
+.env.example       # Template
 ```
 
 ### Security Benefits
 
-- **AES-256 Encryption**: Each secret encrypted with unique ephemeral key
-- **Elliptic Curve Cryptography**: Secp256k1 for key management (same as Bitcoin)
-- **Separate Key Storage**: Encrypted file and decryption key stored separately
-- **Computationally Infeasible**: Breaking encryption requires brute-forcing both AES-256 and ECC
+- **Standard Environment Variables**: Use `.env` files for local development
+- **Secret Management**: Use a secret manager for production (AWS Secrets Manager, etc.)
+- **Never Commit Secrets**: Keep `.env` files out of version control
+- **Team Collaboration**: Share secrets securely via organizational tooling
 
 ## 🛠️ Development Workflow
 
@@ -211,14 +206,9 @@ forge test
 ### Team Collaboration
 
 ```bash
-# 1. Share encrypted per-network env files (safe to commit)
-git add .env.localhost .env.base-sepolia .env.base
-git commit -m "Update encrypted env files"
-
-# 2. Each developer needs their own environment files
-
-# 3. Use a specific env file when running commands
-forge script scripts/deployment/DeployQuantillon.s.sol --rpc-url http://localhost:8545
+# 1. Do NOT commit `.env*` files
+# 2. Share secrets via your organization's secret manager
+# 3. Each developer maintains their own `.env.<network>` files
 ```
 
 ## 📊 Deployment Examples
@@ -271,10 +261,8 @@ cp .env.localhost .env
 
 #### Environment variables not loading
 ```bash
-# Test decryption
-echo "PRIVATE_KEY: $PRIVATE_KEY"
-
-# If this fails, check your environment file
+# Print variables to verify
+set -o allexport; source .env.localhost; set +o allexport; env | grep -E 'PRIVATE_KEY|RPC_URL'
 ```
 
 #### Network connection issues
@@ -316,16 +304,15 @@ forge script DeployQuantillon.s.sol --dry-run
 
 1. **Never commit `.env` files** - they're in .gitignore for security
 2. **Each developer needs their own environment files**
-3. **The encrypted `.env` file can be safely shared** with the team
-4. **For production, use secure key management** (AWS Secrets Manager, etc.)
-5. **Rotate keys regularly** for enhanced security
+3. **For production, use secure key management** (AWS Secrets Manager, etc.)
+4. **Rotate keys regularly** for enhanced security
 
 ## 🤝 Contributing
 
 When contributing to deployment scripts:
 
 1. **Test with dry-run first**: `./deploy.sh localhost --dry-run`
-2. **Use encrypted environment variables**: Never commit plain text secrets
+2. **Protect secrets**: Never commit plain text secrets
 3. **Update documentation**: Keep this README current
 4. **Follow security best practices**: Use the unified deployment script
 5. **Test on testnet**: Always test on Base Sepolia before mainnet

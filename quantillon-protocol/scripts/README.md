@@ -4,12 +4,11 @@ This directory contains all deployment and utility scripts for the Quantillon Pr
 
 ## 🔐 Security Overview
 
-All scripts now use **standard environment variables** for maximum security:
+All scripts now use **standard environment variables**:
 
-- **🔒 AES-256 Encryption**: All secrets protected with strong cryptography
-- **🔑 Separate Key Storage**: Decryption keys stored separately from encrypted files
-- **🛡️ Safe to Commit**: Encrypted `.env` files can be safely committed to version control
-- **👥 Team Collaboration**: Shared encrypted environment files with individual decryption keys
+- **Never commit `.env` files**: Keep them in `.gitignore`
+- **Use a secret manager**: For shared/prod secrets (e.g., AWS Secrets Manager)
+- **Separate envs**: Use per-network `.env.localhost`, `.env.base-sepolia`, `.env.base` if desired
 
 ## 🚀 Deployment Scripts
 
@@ -40,15 +39,15 @@ The new **`deploy.sh`** script provides a unified interface for all deployments:
 
 ### Core Deployment Scripts
 
-| Script | Purpose | Environment | Security |
-|--------|---------|-------------|----------|
-| **`deploy.sh`** | **🚀 UNIFIED DEPLOYMENT** - Universal deployment script | All networks | ✅ Encrypted |
-| `DeployProduction.s.sol` | Production deployment with multisig governance | Mainnet/Testnet | ✅ Encrypted |
-| `DeployQuantillon.s.sol` | Standard deployment for all environments | All networks | ✅ Encrypted |
-| `DeployMockUSDC.s.sol` | Mock USDC token deployment | Localhost/Testnet | ✅ Encrypted |
-| `DeployMockFeeds.s.sol` | Mock Chainlink price feeds | Localhost | ✅ Encrypted |
-| `DeployOracleWithProxy.s.sol` | Oracle deployment with ERC1967 proxy | All networks | ✅ Encrypted |
-| `InitializeQuantillon.s.sol` | Contract initialization and role setup | All networks | ✅ Encrypted |
+| Script | Purpose | Environment |
+|--------|---------|-------------|
+| **`deploy.sh`** | **🚀 UNIFIED DEPLOYMENT** - Universal deployment script | All networks |
+| `DeployProduction.s.sol` | Production deployment with multisig governance | Mainnet/Testnet |
+| `DeployQuantillon.s.sol` | Standard deployment for all environments | All networks |
+| `DeployMockUSDC.s.sol` | Mock USDC token deployment | Localhost/Testnet |
+| `DeployMockFeeds.s.sol` | Mock Chainlink price feeds | Localhost |
+| `DeployOracleWithProxy.s.sol` | Oracle deployment with ERC1967 proxy | All networks |
+| `InitializeQuantillon.s.sol` | Contract initialization and role setup | All networks |
 
 ## 🛠️ Utility Scripts
 
@@ -80,25 +79,22 @@ cp .env.example .env
 # Fill in your values (API keys, private keys, etc.)
 # Edit .env with your actual configuration
 
-# Encrypt environment variables
 # Environment variables are ready to use
 ```
 
 ### 2. Environment Files
 
 ```
-.env                 # Encrypted environment variables (safe to commit)
-.env.example        # Template for new developers
-.env.backup         # Backup of original environment file
+.env                 # Local environment variables (DO NOT commit)
+.env.example         # Template for new developers
+.env.backup          # Optional backup of environment file
 ```
 
 ### 3. Security Validation
 
 ```bash
-# Test environment decryption
-echo "PRIVATE_KEY: $PRIVATE_KEY"
-
-# If this fails, check your environment file
+# Verify required variables are present
+grep -E 'PRIVATE_KEY|RPC_URL' .env
 ```
 
 ## 📋 Quick Start Guide
@@ -135,10 +131,9 @@ forge test
 ### 1. Environment Configuration
 
 ```bash
-# Set up encrypted environment
+# Set up environment
 cp .env.example .env
 # Edit .env with your values
-# Environment variables are ready to use
 ```
 
 ### 2. Local Development
@@ -178,14 +173,12 @@ forge test
 
 ### Environment Variables
 
-- **Never commit `.env` files** - they're in .gitignore for security
+- **Never commit `.env` files** - ensure `.env` is in `.gitignore`
 - **Each developer needs their own environment files**
-- **The encrypted `.env` file can be safely shared** with the team
 - **For production, use secure key management** (AWS Secrets Manager, etc.)
 
 ### Deployment Security
 
-- **Always use encrypted environment variables**
 - **Test on testnet before mainnet**
 - **Use dry-run for testing**: `./deploy.sh localhost --dry-run`
 - **Verify contracts on block explorer**
@@ -204,8 +197,8 @@ forge test
 
 #### Environment variables not loading
 ```bash
-# Test decryption
-echo "PRIVATE_KEY: $PRIVATE_KEY"
+# Print variables to verify
+set -o allexport; source .env; set +o allexport; env | grep -E 'PRIVATE_KEY|RPC_URL'
 ```
 
 #### Network connection issues
@@ -238,7 +231,7 @@ forge script DeployQuantillon.s.sol --dry-run
 When contributing to scripts:
 
 1. **Test with dry-run first**: `./deploy.sh localhost --dry-run`
-2. **Use encrypted environment variables**: Never commit plain text secrets
+2. **Protect secrets**: Never commit plain text secrets
 3. **Update documentation**: Keep this README current
 4. **Follow security best practices**: Use the unified deployment script
 5. **Test on testnet**: Always test on Base Sepolia before mainnet

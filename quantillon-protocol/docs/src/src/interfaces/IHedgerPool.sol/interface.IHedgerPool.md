@@ -1,6 +1,4 @@
 # IHedgerPool
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5aee937988a17532c1c3fcdcebf45d2f03a0c08d/src/interfaces/IHedgerPool.sol)
-
 Interface for the Quantillon HedgerPool contract
 
 *Provides EUR/USD hedging functionality with leverage and margin management*

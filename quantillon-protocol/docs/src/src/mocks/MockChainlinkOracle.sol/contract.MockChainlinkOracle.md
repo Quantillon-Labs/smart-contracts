@@ -1,6 +1,4 @@
 # MockChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/5aee937988a17532c1c3fcdcebf45d2f03a0c08d/src/mocks/MockChainlinkOracle.sol)
-
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
 
@@ -423,6 +421,75 @@ Mock implementation of recoverToken
 ```solidity
 function recoverToken(address token, uint256 amount) external view override onlyRole(DEFAULT_ADMIN_ROLE);
 ```
+
+### setPrice
+
+Set the EUR/USD price for testing purposes
+
+*Only available in mock oracle for testing*
+
+
+```solidity
+function setPrice(uint256 _price) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_price`|`uint256`|The new EUR/USD price in 18 decimals|
+
+
+### setUsdcUsdPrice
+
+Set the USDC/USD price for testing purposes
+
+*Only available in mock oracle for testing*
+
+
+```solidity
+function setUsdcUsdPrice(uint256 _price) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_price`|`uint256`|The new USDC/USD price in 18 decimals|
+
+
+### setPrices
+
+Set both EUR/USD and USDC/USD prices for testing purposes
+
+*Only available in mock oracle for testing*
+
+
+```solidity
+function setPrices(uint256 _eurUsdPrice, uint256 _usdcUsdPrice) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_eurUsdPrice`|`uint256`|The new EUR/USD price in 18 decimals|
+|`_usdcUsdPrice`|`uint256`|The new USDC/USD price in 18 decimals|
+
+
+### setUpdatedAt
+
+Set the updated timestamp for testing purposes
+
+*Only available in mock oracle for testing*
+
+
+```solidity
+function setUpdatedAt(uint256 _updatedAt) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_updatedAt`|`uint256`|The new timestamp|
+
 
 ## Events
 ### PriceDeviationDetected

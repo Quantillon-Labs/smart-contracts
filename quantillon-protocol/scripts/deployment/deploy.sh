@@ -453,7 +453,11 @@ post_deployment() {
     
     # Update frontend addresses (multi-phase address updater merges all broadcasts)
     log_info "Updating frontend addresses..."
-    ENV_FILE="$ENV_FILE" PHASED=true ./scripts/deployment/update-frontend-addresses.sh "$ENVIRONMENT" --phased
+    local frontend_update_cmd="ENV_FILE=\"$ENV_FILE\" PHASED=true ./scripts/deployment/update-frontend-addresses.sh \"$ENVIRONMENT\" --phased"
+    if [ "$WITH_MOCKS" = true ]; then
+        frontend_update_cmd="$frontend_update_cmd --with-mocks"
+    fi
+    eval "$frontend_update_cmd"
     
     log_success "Post-deployment tasks completed"
 }

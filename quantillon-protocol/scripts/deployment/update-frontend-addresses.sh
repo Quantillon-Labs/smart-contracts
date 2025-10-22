@@ -52,11 +52,16 @@ echo -e " Updating frontend addresses.json with latest deployment..."
 
 # Get flags and environment from args
 PHASED_FLAG=false
+WITH_MOCKS=false
 ARG_ENV=""
 for arg in "$@"; do
     case "$arg" in
         --phased)
             PHASED_FLAG=true
+            shift
+            ;;
+        --with-mocks)
+            WITH_MOCKS=true
             shift
             ;;
         localhost|base-sepolia|base)
@@ -347,6 +352,29 @@ if [ "$MOCK_USDC" = "null" ] || [ -z "$MOCK_USDC" ]; then
     MOCK_USDC="0x0000000000000000000000000000000000000000"
 fi
 
+# =============================================================================
+# REAL CONTRACT ADDRESSES (when not using mocks)
+# =============================================================================
+
+# Real contract addresses for Base Sepolia
+REAL_CHAINLINK_ORACLE="0x91D4a4C3D448c7f3CB477332B1c7D420a5810aC3"
+REAL_USDC="0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+
+# Determine which addresses to use based on --with-mocks flag
+if [ "$WITH_MOCKS" = true ]; then
+    echo -e " Using MOCK contract addresses"
+    FINAL_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"
+    FINAL_USDC="$MOCK_USDC"
+    FINAL_MOCK_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"
+    FINAL_MOCK_USDC="$MOCK_USDC"
+else
+    echo -e " Using REAL contract addresses"
+    FINAL_CHAINLINK_ORACLE="$REAL_CHAINLINK_ORACLE"
+    FINAL_USDC="$REAL_USDC"
+    FINAL_MOCK_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"  # Keep mock for fallback
+    FINAL_MOCK_USDC="$MOCK_USDC"  # Keep mock for fallback
+fi
+
 # Create updated addresses.json
 echo -e " Creating updated addresses.json..."
 cat > "$FRONTEND_ADDRESSES_FILE" << EOF
@@ -356,8 +384,8 @@ cat > "$FRONTEND_ADDRESSES_FILE" << EOF
     "isTestnet": true,
     "contracts": {
       "TimeProvider": "$TIME_PROVIDER",
-      "ChainlinkOracle": "$CHAINLINK_ORACLE",
-      "MockChainlinkOracle": "$CHAINLINK_ORACLE",
+      "ChainlinkOracle": "$FINAL_CHAINLINK_ORACLE",
+      "MockChainlinkOracle": "$FINAL_MOCK_CHAINLINK_ORACLE",
       "QEUROToken": "$QEURO_TOKEN",
       "FeeCollector": "$FEE_COLLECTOR",
       "QuantillonVault": "$QUANTILLON_VAULT",
@@ -367,8 +395,8 @@ cat > "$FRONTEND_ADDRESSES_FILE" << EOF
       "UserPool": "$USER_POOL",
       "HedgerPool": "$HEDGER_POOL",
       "YieldShift": "$YIELD_SHIFT",
-      "USDC": "$MOCK_USDC",
-      "MockUSDC": "$MOCK_USDC",
+      "USDC": "$FINAL_USDC",
+      "MockUSDC": "$FINAL_MOCK_USDC",
       "MockEURUSD": "$MOCK_EUR_USD",
       "MockUSDCUSD": "$MOCK_USDC_USD"
     }

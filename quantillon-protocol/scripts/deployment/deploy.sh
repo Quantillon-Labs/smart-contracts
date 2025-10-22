@@ -49,6 +49,30 @@ declare -A NETWORKS=(
 # HELPER FUNCTIONS
 # =============================================================================
 
+clean_deployment_artifacts() {
+    log_step "Cleaning deployment artifacts..."
+    
+    # Clean broadcast folder
+    if [ -d "broadcast" ]; then
+        log_info "Removing broadcast folder..."
+        rm -rf broadcast
+        log_success "Broadcast folder cleaned"
+    else
+        log_info "No broadcast folder found (clean state)"
+    fi
+    
+    # Clean cache folder
+    if [ -d "cache" ]; then
+        log_info "Removing cache folder..."
+        rm -rf cache
+        log_success "Cache folder cleaned"
+    else
+        log_info "No cache folder found (clean state)"
+    fi
+    
+    log_success "Deployment artifacts cleaned successfully"
+}
+
 show_help() {
     echo -e "${BLUE}🚀 Quantillon Protocol - Unified Deployment Script${NC}"
     echo "=============================================================="
@@ -500,6 +524,7 @@ main() {
 
     # Validate and execute
     validate_environment
+    clean_deployment_artifacts
     validate_security
     validate_network
     select_deployment_script

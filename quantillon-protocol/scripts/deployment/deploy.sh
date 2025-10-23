@@ -43,6 +43,8 @@ declare -A NETWORKS=(
     ["localhost"]="http://localhost:8545|31337|Anvil Localhost"
     ["base-sepolia"]="https://sepolia.base.org|84532|Base Sepolia"
     ["base"]="https://mainnet.base.org|8453|Base Mainnet"
+    ["ethereum-sepolia"]="https://ethereum-sepolia-rpc.publicnode.com|11155111|Ethereum Sepolia"
+    ["ethereum"]="https://ethereum-rpc.publicnode.com|1|Ethereum Mainnet"
 )
 
 # =============================================================================
@@ -81,16 +83,20 @@ show_help() {
     echo "  $0 [environment] [options]"
     echo ""
     echo -e "Environments:"
-    echo "  localhost     - Deploy to local Anvil (development)"
-    echo "  base-sepolia  - Deploy to Base Sepolia (testnet)"
-    echo "  base          - Deploy to Base Mainnet (production)"
+    echo "  localhost         - Deploy to local Anvil (development)"
+    echo "  base-sepolia      - Deploy to Base Sepolia (testnet)"
+    echo "  base              - Deploy to Base Mainnet (production)"
+    echo "  ethereum-sepolia  - Deploy to Ethereum Sepolia (testnet)"
+    echo "  ethereum          - Deploy to Ethereum Mainnet (production)"
     echo ""
     echo -e "Environment Files:"
     echo "  The script automatically selects environment files:"
-    echo "  - .env.localhost    - For localhost deployments"
-    echo "  - .env.base-sepolia - For Base Sepolia deployments"
-    echo "  - .env.base         - For Base mainnet deployments"
-    echo "  - .env              - Fallback default file"
+    echo "  - .env.localhost         - For localhost deployments"
+    echo "  - .env.base-sepolia      - For Base Sepolia deployments"
+    echo "  - .env.base              - For Base mainnet deployments"
+    echo "  - .env.ethereum-sepolia  - For Ethereum Sepolia deployments"
+    echo "  - .env.ethereum          - For Ethereum mainnet deployments"
+    echo "  - .env                   - Fallback default file"
     echo ""
     echo -e "Options:"
     echo "  --with-mocks     - Deploy mock contracts (localhost & testnet only)"
@@ -102,6 +108,8 @@ show_help() {
     echo "  $0 localhost --with-mocks"
     echo "  $0 base-sepolia --with-mocks --verify"
     echo "  $0 base --verify"
+    echo "  $0 ethereum-sepolia --with-mocks --verify"
+    echo "  $0 ethereum --verify"
     echo ""
     echo -e "Deployment Method:"
     echo "  All deployments use multi-phase atomic deployment (A→B→C→D)"
@@ -119,6 +127,14 @@ show_help() {
     echo "  # For Base mainnet deployment"
     echo "  cp .env.base .env"
     echo "  $0 base --verify"
+    echo ""
+    echo "  # For Ethereum Sepolia deployment"
+    echo "  cp .env.ethereum-sepolia .env"
+    echo "  $0 ethereum-sepolia --verify"
+    echo ""
+    echo "  # For Ethereum mainnet deployment"
+    echo "  cp .env.ethereum .env"
+    echo "  $0 ethereum --verify"
     echo ""
 }
 
@@ -167,7 +183,7 @@ validate_environment() {
     fi
 
     # Validate --with-mocks flag usage
-    if [ "$WITH_MOCKS" = true ] && [ "$ENVIRONMENT" = "base" ]; then
+    if [ "$WITH_MOCKS" = true ] && ([ "$ENVIRONMENT" = "base" ] || [ "$ENVIRONMENT" = "ethereum" ]); then
         log_warning "Mock contracts are not supported for production environment"
         log_info "Ignoring --with-mocks flag for $ENVIRONMENT"
         WITH_MOCKS=false
@@ -276,7 +292,7 @@ select_deployment_script() {
 # =============================================================================
 
 deploy_mocks() {
-    if [ "$WITH_MOCKS" = true ] && ([ "$ENVIRONMENT" = "localhost" ] || [ "$ENVIRONMENT" = "base-sepolia" ]); then
+    if [ "$WITH_MOCKS" = true ] && ([ "$ENVIRONMENT" = "localhost" ] || [ "$ENVIRONMENT" = "base-sepolia" ] || [ "$ENVIRONMENT" = "ethereum-sepolia" ]); then
         log_step "Deploying mock contracts..."
         
         # Get network configuration
@@ -287,6 +303,10 @@ deploy_mocks() {
         log_info "Deploying MockUSDC..."
         if [ "$ENVIRONMENT" = "base-sepolia" ]; then
             forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
+        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
+        elif [ "$ENVIRONMENT" = "ethereum" ]; then
+            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
         else
             forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
         fi
@@ -295,12 +315,16 @@ deploy_mocks() {
         log_info "Deploying Mock Price Feeds..."
         if [ "$ENVIRONMENT" = "base-sepolia" ]; then
             forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
+        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
+        elif [ "$ENVIRONMENT" = "ethereum" ]; then
+            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
         else
             forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
         fi
         
         log_success "Mock contracts deployed"
-    elif [ "$WITH_MOCKS" = true ] && [ "$ENVIRONMENT" = "base" ]; then
+    elif [ "$WITH_MOCKS" = true ] && ([ "$ENVIRONMENT" = "base" ] || [ "$ENVIRONMENT" = "ethereum" ]); then
         log_warning "Mock contracts are not supported for production environment"
         log_info "Ignoring --with-mocks flag for $ENVIRONMENT"
     fi
@@ -330,6 +354,10 @@ run_deployment() {
         local forge_cmd_a1="forge script $phase_a_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
         if [ "$ENVIRONMENT" = "base-sepolia" ]; then
             forge_cmd_a1="$forge_cmd_a1 --gas-price 2000000000"
+        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+            forge_cmd_a1="$forge_cmd_a1 --gas-price 20000000000"
+        elif [ "$ENVIRONMENT" = "ethereum" ]; then
+            forge_cmd_a1="$forge_cmd_a1 --gas-price 20000000000"
         fi
         if [ "$DRY_RUN" = false ]; then forge_cmd_a1="$forge_cmd_a1 --broadcast"; fi
         if [ "$VERIFY" = true ]; then forge_cmd_a1="$forge_cmd_a1 --verify"; fi
@@ -394,6 +422,10 @@ run_deployment() {
         local forge_cmd_b="forge script $phase_b_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
         if [ "$ENVIRONMENT" = "base-sepolia" ]; then
             forge_cmd_b="$forge_cmd_b --gas-price 2000000000"
+        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+            forge_cmd_b="$forge_cmd_b --gas-price 20000000000"
+        elif [ "$ENVIRONMENT" = "ethereum" ]; then
+            forge_cmd_b="$forge_cmd_b --gas-price 20000000000"
         fi
         if [ "$DRY_RUN" = false ]; then forge_cmd_b="$forge_cmd_b --broadcast"; fi
         if [ "$VERIFY" = true ]; then forge_cmd_b="$forge_cmd_b --verify"; fi
@@ -425,6 +457,10 @@ run_deployment() {
         local forge_cmd_c="forge script $phase_c_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
         if [ "$ENVIRONMENT" = "base-sepolia" ]; then
             forge_cmd_c="$forge_cmd_c --gas-price 2000000000"
+        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+            forge_cmd_c="$forge_cmd_c --gas-price 20000000000"
+        elif [ "$ENVIRONMENT" = "ethereum" ]; then
+            forge_cmd_c="$forge_cmd_c --gas-price 20000000000"
         fi
         if [ "$DRY_RUN" = false ]; then forge_cmd_c="$forge_cmd_c --broadcast"; fi
         if [ "$VERIFY" = true ]; then forge_cmd_c="$forge_cmd_c --verify"; fi
@@ -452,6 +488,10 @@ run_deployment() {
         local forge_cmd_d="forge script $phase_d_script --rpc-url $rpc_url --gas-limit $effective_gas_limit"
         if [ "$ENVIRONMENT" = "base-sepolia" ]; then
             forge_cmd_d="$forge_cmd_d --gas-price 2000000000"
+        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+            forge_cmd_d="$forge_cmd_d --gas-price 20000000000"
+        elif [ "$ENVIRONMENT" = "ethereum" ]; then
+            forge_cmd_d="$forge_cmd_d --gas-price 20000000000"
         fi
         if [ "$DRY_RUN" = false ]; then forge_cmd_d="$forge_cmd_d --broadcast"; fi
         if [ "$VERIFY" = true ]; then forge_cmd_d="$forge_cmd_d --verify"; fi
@@ -494,7 +534,7 @@ main() {
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
         case $1 in
-            localhost|base-sepolia|base)
+            localhost|base-sepolia|base|ethereum-sepolia|ethereum)
                 ENVIRONMENT="$1"
                 shift
                 ;;

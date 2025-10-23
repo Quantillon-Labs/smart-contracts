@@ -64,7 +64,7 @@ for arg in "$@"; do
             WITH_MOCKS=true
             shift
             ;;
-        localhost|base-sepolia|base)
+        localhost|base-sepolia|base|ethereum-sepolia|ethereum)
             ARG_ENV="$arg"
             shift
             ;;
@@ -94,14 +94,20 @@ case $ENVIRONMENT in
         FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-../../../quantillon-dapp/src/config/addresses.json}"
         ;;
     "base-sepolia")
-        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-/path/to/testnet/frontend/src/config/addresses.json}"
+        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-../../../quantillon-dapp/src/config/addresses.json}"
         ;;
     "base")
-        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-/path/to/mainnet/frontend/src/config/addresses.json}"
+        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-../../../quantillon-dapp/src/config/addresses.json}"
+        ;;
+    "ethereum-sepolia")
+        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-../../../quantillon-dapp/src/config/addresses.json}"
+        ;;
+    "ethereum")
+        FRONTEND_ADDRESSES_FILE="${FRONTEND_ADDRESSES_FILE:-../../../quantillon-dapp/src/config/addresses.json}"
         ;;
     *)
         echo -e " Error: Unknown environment '$ENVIRONMENT'"
-        echo -e " Usage: $0 [localhost|base-sepolia|base]"
+        echo -e " Usage: $0 [localhost|base-sepolia|base|ethereum-sepolia|ethereum]"
         exit 1
         ;;
 esac
@@ -113,9 +119,18 @@ echo -e "📁 Frontend addresses file: $FRONTEND_ADDRESSES_FILE"
 BROADCAST_FILES=()
 
 # Determine target network based on argument or auto-detect
-if [ "$ARG_ENV" = "base-sepolia" ] || [ "$ARG_ENV" = "base" ]; then
+if [ "$ARG_ENV" = "base-sepolia" ]; then
     TARGET_CHAIN_ID="84532"
     TARGET_NETWORK="base-sepolia"
+elif [ "$ARG_ENV" = "base" ]; then
+    TARGET_CHAIN_ID="8453"
+    TARGET_NETWORK="base"
+elif [ "$ARG_ENV" = "ethereum-sepolia" ]; then
+    TARGET_CHAIN_ID="11155111"
+    TARGET_NETWORK="ethereum-sepolia"
+elif [ "$ARG_ENV" = "ethereum" ]; then
+    TARGET_CHAIN_ID="1"
+    TARGET_NETWORK="ethereum"
 elif [ "$ARG_ENV" = "localhost" ]; then
     TARGET_CHAIN_ID="31337"
     TARGET_NETWORK="localhost"
@@ -124,6 +139,15 @@ else
     if [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/84532/run-latest.json" ]; then
         TARGET_CHAIN_ID="84532"
         TARGET_NETWORK="base-sepolia"
+    elif [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/8453/run-latest.json" ]; then
+        TARGET_CHAIN_ID="8453"
+        TARGET_NETWORK="base"
+    elif [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/11155111/run-latest.json" ]; then
+        TARGET_CHAIN_ID="11155111"
+        TARGET_NETWORK="ethereum-sepolia"
+    elif [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/1/run-latest.json" ]; then
+        TARGET_CHAIN_ID="1"
+        TARGET_NETWORK="ethereum"
     elif [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/31337/run-latest.json" ]; then
         TARGET_CHAIN_ID="31337"
         TARGET_NETWORK="localhost"
@@ -157,6 +181,39 @@ if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased
             "./broadcast/DeployMockUSDC.s.sol/84532/run-latest.json"
         )
         echo -e "📡 Detected Base Sepolia multi-phase deployment"
+    elif [ "$TARGET_CHAIN_ID" = "8453" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/8453/run-latest.json" ]; then
+        CHAIN_ID="8453"
+        NETWORK="base"
+        BROADCAST_FILES=(
+            "./broadcast/DeployQuantillonPhaseA.s.sol/8453/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseB.s.sol/8453/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseC.s.sol/8453/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseD.s.sol/8453/run-latest.json"
+            "./broadcast/DeployMockUSDC.s.sol/8453/run-latest.json"
+        )
+        echo -e "📡 Detected Base multi-phase deployment"
+    elif [ "$TARGET_CHAIN_ID" = "11155111" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/11155111/run-latest.json" ]; then
+        CHAIN_ID="11155111"
+        NETWORK="ethereum-sepolia"
+        BROADCAST_FILES=(
+            "./broadcast/DeployQuantillonPhaseA.s.sol/11155111/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseB.s.sol/11155111/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseC.s.sol/11155111/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseD.s.sol/11155111/run-latest.json"
+            "./broadcast/DeployMockUSDC.s.sol/11155111/run-latest.json"
+        )
+        echo -e "📡 Detected Ethereum Sepolia multi-phase deployment"
+    elif [ "$TARGET_CHAIN_ID" = "1" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/1/run-latest.json" ]; then
+        CHAIN_ID="1"
+        NETWORK="ethereum"
+        BROADCAST_FILES=(
+            "./broadcast/DeployQuantillonPhaseA.s.sol/1/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseB.s.sol/1/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseC.s.sol/1/run-latest.json"
+            "./broadcast/DeployQuantillonPhaseD.s.sol/1/run-latest.json"
+            "./broadcast/DeployMockUSDC.s.sol/1/run-latest.json"
+        )
+        echo -e "📡 Detected Ethereum multi-phase deployment"
     else
         echo -e " No multi-phase deployment broadcast files found for $TARGET_NETWORK"
         exit 1
@@ -380,8 +437,8 @@ echo -e " Creating updated addresses.json..."
 cat > "$FRONTEND_ADDRESSES_FILE" << EOF
 {
   "$CHAIN_ID": {
-    "name": "$(if [ "$NETWORK" = "localhost" ]; then echo "Anvil Localhost"; else echo "Base Sepolia"; fi)",
-    "isTestnet": true,
+    "name": "$(if [ "$NETWORK" = "localhost" ]; then echo "Anvil Localhost"; elif [ "$NETWORK" = "base-sepolia" ]; then echo "Base Sepolia"; elif [ "$NETWORK" = "base" ]; then echo "Base Mainnet"; elif [ "$NETWORK" = "ethereum-sepolia" ]; then echo "Ethereum Sepolia"; elif [ "$NETWORK" = "ethereum" ]; then echo "Ethereum Mainnet"; else echo "Unknown Network"; fi)",
+    "isTestnet": $(if [ "$NETWORK" = "localhost" ] || [ "$NETWORK" = "base-sepolia" ] || [ "$NETWORK" = "ethereum-sepolia" ]; then echo "true"; else echo "false"; fi),
     "contracts": {
       "TimeProvider": "$TIME_PROVIDER",
       "ChainlinkOracle": "$FINAL_CHAINLINK_ORACLE",

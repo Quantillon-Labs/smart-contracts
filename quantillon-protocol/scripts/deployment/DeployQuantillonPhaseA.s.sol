@@ -26,10 +26,18 @@ contract DeployQuantillonPhaseA is Script {
     address public usdcUsdFeed;
     bool public isLocalhost;
     bool public isBaseSepolia;
+    bool public isEthereumSepolia;
 
     address constant BASE_SEPOLIA_EUR_USD_FEED = 0x443c8906D15c131C52463a8384dcC0c65DcE3A96;
     address constant BASE_SEPOLIA_USDC_USD_FEED = 0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1;
     address constant BASE_SEPOLIA_USDC_TOKEN = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+    
+    // Ethereum Sepolia addresses (using mock addresses since real ones don't exist)
+    // Note: Ethereum Sepolia doesn't have official USDC or EUR/USD feeds
+    // These will be replaced with mock contracts during deployment
+    address constant ETHEREUM_SEPOLIA_EUR_USD_FEED = address(0);
+    address constant ETHEREUM_SEPOLIA_USDC_USD_FEED = address(0);
+    address constant ETHEREUM_SEPOLIA_USDC_TOKEN = address(0);
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -60,6 +68,7 @@ contract DeployQuantillonPhaseA is Script {
         uint256 cid = block.chainid;
         isLocalhost = (cid == 31337);
         isBaseSepolia = (cid == 84532);
+        isEthereumSepolia = (cid == 11155111);
         console.log("ChainId:", cid);
     }
 
@@ -103,6 +112,33 @@ contract DeployQuantillonPhaseA is Script {
                 eurUsdFeed = BASE_SEPOLIA_EUR_USD_FEED;
                 usdcUsdFeed = BASE_SEPOLIA_USDC_USD_FEED;
             }
+        } else if (isEthereumSepolia) {
+            console.log("Ethereum Sepolia deployment detected");
+            // For Ethereum Sepolia, use the same logic as Base Sepolia
+            if (withMocks) {
+                console.log("Using MockChainlinkOracle for Ethereum Sepolia");
+                // Deploy mock oracle for Ethereum Sepolia testing
+                MockChainlinkOracle mockOracle = new MockChainlinkOracle();
+                
+                // Deploy mock feeds
+                MockAggregatorV3 eurFeed = new MockAggregatorV3(8);
+                eurFeed.setPrice(108000000);
+                MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
+                usdcFeed.setPrice(100000000);
+                
+                // USDC must be provided via environment (from DeployMockUSDC.s.sol)
+                usdc = vm.envAddress("USDC");
+                console.log("Using USDC from environment:", usdc);
+                eurUsdFeed = address(eurFeed);
+                usdcUsdFeed = address(usdcFeed);
+            } else {
+                console.log("Using real Chainlink feeds for Ethereum Sepolia");
+                console.log("withMocks was false, using real feeds");
+                // Use real Chainlink feeds (same as Base Sepolia)
+                usdc = ETHEREUM_SEPOLIA_USDC_TOKEN;
+                eurUsdFeed = ETHEREUM_SEPOLIA_EUR_USD_FEED;
+                usdcUsdFeed = ETHEREUM_SEPOLIA_USDC_USD_FEED;
+            }
         }
     }
 
@@ -115,20 +151,21 @@ contract DeployQuantillonPhaseA is Script {
 
     function _deployOraclePhased() internal {
         if (address(chainlinkOracle) == address(0)) {
-            if (isLocalhost) {
-                // For localhost, use MockChainlinkOracle as a proxy (it's upgradeable)
+            bool withMocks = vm.envOr("WITH_MOCKS", false);
+            if (withMocks) {
+                // Use MockChainlinkOracle when WITH_MOCKS is true
                 MockChainlinkOracle impl = new MockChainlinkOracle();
                 ERC1967Proxy proxy = new ERC1967Proxy(address(impl), bytes(""));
                 chainlinkOracle = ChainlinkOracle(address(proxy));
                 chainlinkOracle.initialize(deployerEOA, eurUsdFeed, usdcUsdFeed, deployerEOA);
-                console.log("Oracle Proxy:", address(chainlinkOracle));
+                console.log("Mock Oracle Proxy:", address(chainlinkOracle));
             } else {
-                // For other networks, use ChainlinkOracle proxy
+                // Use real ChainlinkOracle when WITH_MOCKS is false
                 address impl = address(new ChainlinkOracle(timeProvider));
                 ERC1967Proxy proxy = new ERC1967Proxy(impl, bytes(""));
                 chainlinkOracle = ChainlinkOracle(address(proxy));
                 ChainlinkOracle(address(chainlinkOracle)).initialize(deployerEOA, eurUsdFeed, usdcUsdFeed, deployerEOA);
-                console.log("Oracle Proxy:", address(chainlinkOracle));
+                console.log("Real Oracle Proxy:", address(chainlinkOracle));
             }
         }
     }

@@ -25,9 +25,14 @@ contract DeployQuantillonPhaseB is Script {
     address public aaveRewardsController;
     bool public isLocalhost;
     bool public isBaseSepolia;
+    bool public isEthereumSepolia;
 
     address constant BASE_SEPOLIA_AAVE_PROVIDER = 0x012Bef543e50E6F4b5C79e6c5Adf0F31f659860c;
     address constant BASE_SEPOLIA_AAVE_REWARDS = 0x7794835f9E2eD8d4B8d4C4c0E4B8c4C8c0e4b8C4;
+    
+    // Ethereum Sepolia addresses
+    address constant ETHEREUM_SEPOLIA_AAVE_PROVIDER = 0x23688b717aa97e7b95b6e2b636f8216b9fe72003;
+    address constant ETHEREUM_SEPOLIA_AAVE_REWARDS = 0x034270a10e81d657d196864ebd57bf3abbdfefe0;
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -60,6 +65,7 @@ contract DeployQuantillonPhaseB is Script {
         uint256 cid = block.chainid;
         isLocalhost = (cid == 31337);
         isBaseSepolia = (cid == 84532);
+        isEthereumSepolia = (cid == 11155111);
     }
 
     function _selectAaveAddresses() internal {
@@ -84,6 +90,26 @@ contract DeployQuantillonPhaseB is Script {
             }
             if (sizeProvider == 0 || sizeRewards == 0) {
                 console.log("Base Sepolia Aave addresses not contracts, falling back to mocks");
+                MockAavePool mockPool = new MockAavePool(usdc, usdc);
+                MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(address(mockPool));
+                MockRewardsController mockRewards = new MockRewardsController();
+                aaveProvider = address(mockProvider);
+                aaveRewardsController = address(mockRewards);
+            }
+        } else if (isEthereumSepolia) {
+            aaveProvider = ETHEREUM_SEPOLIA_AAVE_PROVIDER;
+            aaveRewardsController = ETHEREUM_SEPOLIA_AAVE_REWARDS;
+            // Fallback to mocks if these addresses are not contracts on Ethereum Sepolia
+            address provider = aaveProvider;
+            address rewards = aaveRewardsController;
+            uint256 sizeProvider;
+            uint256 sizeRewards;
+            assembly {
+                sizeProvider := extcodesize(provider)
+                sizeRewards := extcodesize(rewards)
+            }
+            if (sizeProvider == 0 || sizeRewards == 0) {
+                console.log("Ethereum Sepolia Aave addresses not contracts, falling back to mocks");
                 MockAavePool mockPool = new MockAavePool(usdc, usdc);
                 MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(address(mockPool));
                 MockRewardsController mockRewards = new MockRewardsController();

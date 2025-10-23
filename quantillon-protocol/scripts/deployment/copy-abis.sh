@@ -47,7 +47,7 @@ for arg in "$@"; do
             PHASED_FLAG=true
             shift
             ;;
-        localhost|base-sepolia|base)
+        localhost|base-sepolia|base|ethereum-sepolia|ethereum)
             ARG_ENV="$arg"
             shift
             ;;
@@ -105,9 +105,19 @@ case $ENVIRONMENT in
         FRONTEND_ABI_DIR="${FRONTEND_ABI_DIR:-/path/to/mainnet/frontend/src/lib/contracts/abis/}"
         SMART_CONTRACTS_OUT="${SMART_CONTRACTS_OUT:-/path/to/mainnet/smart-contracts/out/}"
         ;;
+    "ethereum-sepolia")
+        # Ethereum Sepolia paths - use .env variables if available, otherwise placeholders
+        FRONTEND_ABI_DIR="${FRONTEND_ABI_DIR:-/path/to/ethereum-sepolia/frontend/src/lib/contracts/abis/}"
+        SMART_CONTRACTS_OUT="${SMART_CONTRACTS_OUT:-/path/to/ethereum-sepolia/smart-contracts/out/}"
+        ;;
+    "ethereum")
+        # Ethereum Mainnet paths - use .env variables if available, otherwise placeholders
+        FRONTEND_ABI_DIR="${FRONTEND_ABI_DIR:-/path/to/ethereum/frontend/src/lib/contracts/abis/}"
+        SMART_CONTRACTS_OUT="${SMART_CONTRACTS_OUT:-/path/to/ethereum/smart-contracts/out/}"
+        ;;
     *)
         echo -e " Error: Unknown environment '$ENVIRONMENT'"
-        echo -e " Usage: $0 [localhost|testnet|mainnet]"
+        echo -e " Usage: $0 [localhost|base-sepolia|base|ethereum-sepolia|ethereum]"
         exit 1
         ;;
 esac

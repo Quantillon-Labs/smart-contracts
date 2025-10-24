@@ -28,8 +28,8 @@ contract DeployQuantillonPhaseA is Script {
     bool public isBaseSepolia;
     bool public isEthereumSepolia;
 
-    address constant BASE_SEPOLIA_EUR_USD_FEED = 0x443c8906D15c131C52463a8384dcC0c65DcE3A96;
-    address constant BASE_SEPOLIA_USDC_USD_FEED = 0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1;
+    address constant BASE_SEPOLIA_EUR_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165; //TO UPDATE
+    address constant BASE_SEPOLIA_USDC_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165;
     address constant BASE_SEPOLIA_USDC_TOKEN = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     
     // Ethereum Sepolia addresses (using mock addresses since real ones don't exist)

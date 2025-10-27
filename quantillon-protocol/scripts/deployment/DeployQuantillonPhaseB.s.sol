@@ -31,8 +31,8 @@ contract DeployQuantillonPhaseB is Script {
     address constant BASE_SEPOLIA_AAVE_REWARDS = 0x7794835f9E2eD8d4B8d4C4c0E4B8c4C8c0e4b8C4;
     
     // Ethereum Sepolia addresses
-    address constant ETHEREUM_SEPOLIA_AAVE_PROVIDER = 0x23688b717aa97e7b95b6e2b636f8216b9fe72003;
-    address constant ETHEREUM_SEPOLIA_AAVE_REWARDS = 0x034270a10e81d657d196864ebd57bf3abbdfefe0;
+    address constant ETHEREUM_SEPOLIA_AAVE_PROVIDER = 0x23688b717AA97e7B95b6e2B636f8216B9Fe72003;
+    address constant ETHEREUM_SEPOLIA_AAVE_REWARDS = 0x034270A10E81d657D196864EBD57bf3ABBdFefe0;
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");

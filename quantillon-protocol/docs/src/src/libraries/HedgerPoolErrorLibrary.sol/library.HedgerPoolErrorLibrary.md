@@ -11,7 +11,7 @@ HedgerPool-specific errors for Quantillon Protocol
 - Margin and leverage validation errors*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Errors

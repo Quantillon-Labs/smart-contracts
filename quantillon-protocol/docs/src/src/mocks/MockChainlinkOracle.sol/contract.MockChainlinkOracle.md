@@ -120,7 +120,7 @@ bool public circuitBreakerTriggered;
 ### constructor
 
 **Note:**
-oz-upgrades-unsafe-allow: constructor
+constructor
 
 
 ```solidity

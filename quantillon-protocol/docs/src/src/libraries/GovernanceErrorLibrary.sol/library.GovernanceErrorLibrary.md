@@ -11,7 +11,7 @@ Governance-specific errors for QTIToken governance system
 - MEV protection errors*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Errors

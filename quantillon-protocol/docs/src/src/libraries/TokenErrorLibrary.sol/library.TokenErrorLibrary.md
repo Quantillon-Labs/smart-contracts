@@ -11,7 +11,7 @@ Token-specific errors for QEURO, QTI, and stQEURO tokens
 - Supply and cap management errors*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Errors

@@ -29,14 +29,10 @@ contract DeployQuantillonPhaseD is Script {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         deployerEOA = vm.addr(pk);
 
-        // Read Phase A deployed addresses from env
+        // Read Phase A, B, C deployed addresses from env
         address tpAddr = vm.envAddress("TIME_PROVIDER");
-        address oracleAddr = vm.envAddress("CHAINLINK_ORACLE");
-        address qeuroAddr = vm.envAddress("QEURO_TOKEN");
-        address feeAddr = vm.envAddress("FEE_COLLECTOR");
         address vaultAddr = vm.envAddress("QUANTILLON_VAULT");
-        address qtiAddr = vm.envAddress("QTI_TOKEN");
-        address aaveAddr = vm.envAddress("AAVE_VAULT");
+        address feeAddr = vm.envAddress("FEE_COLLECTOR");
         stQeuroToken = vm.envAddress("STQEURO_TOKEN");
         address upAddr = vm.envAddress("USER_POOL");
         address hpAddr = vm.envAddress("HEDGER_POOL");

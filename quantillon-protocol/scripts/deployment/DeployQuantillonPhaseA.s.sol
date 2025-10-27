@@ -90,10 +90,7 @@ contract DeployQuantillonPhaseA is Script {
             // For Base Sepolia, use the same logic as localhost
             if (withMocks) {
                 console.log("Using MockChainlinkOracle for Base Sepolia");
-                // Deploy mock oracle for Base Sepolia testing
-                MockChainlinkOracle mockOracle = new MockChainlinkOracle();
-                
-                // Deploy mock feeds
+                // Deploy mock feeds (oracle will be deployed in _deployOraclePhased)
                 MockAggregatorV3 eurFeed = new MockAggregatorV3(8);
                 eurFeed.setPrice(108000000);
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
@@ -117,10 +114,7 @@ contract DeployQuantillonPhaseA is Script {
             // For Ethereum Sepolia, use the same logic as Base Sepolia
             if (withMocks) {
                 console.log("Using MockChainlinkOracle for Ethereum Sepolia");
-                // Deploy mock oracle for Ethereum Sepolia testing
-                MockChainlinkOracle mockOracle = new MockChainlinkOracle();
-                
-                // Deploy mock feeds
+                // Deploy mock feeds (oracle will be deployed in _deployOraclePhased)
                 MockAggregatorV3 eurFeed = new MockAggregatorV3(8);
                 eurFeed.setPrice(108000000);
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);

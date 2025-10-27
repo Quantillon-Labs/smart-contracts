@@ -20,7 +20,7 @@ contract MockAavePool {
         return address(this);
     }
     
-    function getReserveData(address asset) external view returns (
+    function getReserveData(address /* asset */) external view returns (
         uint256 configuration,
         uint128 liquidityIndex,
         uint128 currentLiquidityRate,
@@ -103,7 +103,7 @@ contract MockRewardsController {
     
     function getUserRewards(
         address[] calldata assets,
-        address user
+        address /* user */
     ) external view returns (uint256[] memory) {
         uint256[] memory rewards = new uint256[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {

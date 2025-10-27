@@ -288,6 +288,34 @@ find_contract() {
     echo ""
 }
 
+# Function to find an implementation that is actually wrapped by a proxy
+find_proxied_contract() {
+    local contract_name="$1"
+    # Get all implementations of this contract type
+    for broadcast_file in "${BROADCAST_FILES[@]}"; do
+        if [ -f "$broadcast_file" ]; then
+            # Get all contract addresses of this type
+            while IFS= read -r impl_addr; do
+                if [ -n "$impl_addr" ] && [ "$impl_addr" != "null" ]; then
+                    # Check if there's a proxy wrapping this implementation
+                    local impl_lower=$(echo "$impl_addr" | tr '[:upper:]' '[:lower:]')
+                    for proxy_file in "${BROADCAST_FILES[@]}"; do
+                        if [ -f "$proxy_file" ]; then
+                            local proxy=$(jq -r --arg impl "$impl_lower" '.transactions[] | select(.contractName == "ERC1967Proxy" and .arguments[0] != null and (.arguments[0] | ascii_downcase) == $impl) | .contractAddress' "$proxy_file" | head -1)
+                            if [ -n "$proxy" ] && [ "$proxy" != "null" ]; then
+                                # Found an implementation with a proxy!
+                                echo "$impl_addr"
+                                return
+                            fi
+                        fi
+                    done
+                fi
+            done < <(jq -r ".transactions[] | select(.contractName == \"$contract_name\") | .contractAddress" "$broadcast_file")
+        fi
+    done
+    echo ""
+}
+
 # Function to get proxy address for a given implementation address
 get_proxy_address() {
     local impl_address="$1"
@@ -330,9 +358,9 @@ QTI_TOKEN_IMPL=$(find_contract "QTIToken")
 STQEURO_TOKEN_IMPL=$(find_contract "stQEUROToken")
 FEE_COLLECTOR_IMPL=$(find_contract "FeeCollector")
 # Handle different oracle contract names based on network and mock flag
-# Try both contract names and use whichever is found and proxied
-CHAINLINK_ORACLE_IMPL=$(find_contract "ChainlinkOracle")
-MOCK_CHAINLINK_ORACLE_IMPL=$(find_contract "MockChainlinkOracle")
+# Use find_proxied_contract to ensure we get the implementation that's actually wrapped by a proxy
+CHAINLINK_ORACLE_IMPL=$(find_proxied_contract "ChainlinkOracle")
+MOCK_CHAINLINK_ORACLE_IMPL=$(find_proxied_contract "MockChainlinkOracle")
 # If ChainlinkOracle not found, try MockChainlinkOracle as fallback
 if [ -z "$CHAINLINK_ORACLE_IMPL" ] || [ "$CHAINLINK_ORACLE_IMPL" = "null" ]; then
     CHAINLINK_ORACLE_IMPL="$MOCK_CHAINLINK_ORACLE_IMPL"

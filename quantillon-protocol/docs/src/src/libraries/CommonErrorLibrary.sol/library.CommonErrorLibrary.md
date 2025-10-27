@@ -11,7 +11,7 @@ Common errors used across multiple contracts in Quantillon Protocol
 - Used by 15+ contracts*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Errors

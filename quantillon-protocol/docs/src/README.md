@@ -15,13 +15,13 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 
 ## 📚 Documentation
 
-- **[API Documentation](docs/API.md)** - Complete API reference for all smart contracts
-- **[Technical Reference](docs/API-Reference.md)** - Detailed technical specifications and implementation details
-- **[Quick Start Guide](docs/Quick-Start.md)** - Get started quickly with integration examples
-- **[Integration Examples](docs/Integration-Examples.md)** - Comprehensive integration examples and patterns
-- **[Deployment Guide](scripts/deployment/README.md)** - Complete deployment instructions and procedures
-- **[Secure Deployment Guide](SECURE_DEPLOYMENT.md)** - Environment and operational security practices
-- **[Documentation Hub](docs/README.md)** - Comprehensive documentation overview
+- **[API Documentation](./docs/API.md)** - Complete API reference for all smart contracts
+- **[Technical Reference](./docs/API-Reference.md)** - Detailed technical specifications and implementation details
+- **[Quick Start Guide](./docs/Quick-Start.md)** - Get started quickly with integration examples
+- **[Integration Examples](./docs/Integration-Examples.md)** - Comprehensive integration examples and patterns
+- **[Deployment Guide](./scripts/deployment/README.md)** - Complete deployment instructions and procedures
+- **[Security Guide](./docs/Security.md)** - Security practices and considerations
+- **[Documentation Hub](./docs/README.md)** - Comprehensive documentation overview
 
 ### 🎯 Key Features
 
@@ -111,7 +111,7 @@ The protocol uses a **4-phase atomic deployment** (A→B→C→D) to stay within
 - ✅ Minimal initialization with governance setters for post-deployment wiring
 - ✅ Frontend address updater merges all phase broadcasts automatically
 
-See [Deployment Guide](scripts/deployment/README.md) for complete details.
+See [Deployment Guide](./scripts/deployment/README.md) for complete details.
 
 ### 🔐 Secure Deployment
 
@@ -250,7 +250,7 @@ make gas-analysis
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
 ## 🔗 Links
 

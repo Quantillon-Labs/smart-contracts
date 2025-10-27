@@ -11,7 +11,7 @@ Library for rarely used admin functions to reduce contract size
 - Uses custom errors for gas efficiency*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -22,21 +22,21 @@ Recover ETH to treasury address
 *Emergency function to recover ETH sent to the contract*
 
 **Notes:**
-- security: Requires admin role
+- Requires admin role
 
-- validation: None required
+- None required
 
-- state-changes: Transfers ETH from contract to treasury
+- Transfers ETH from contract to treasury
 
-- events: Emits ETHRecovered event
+- Emits ETHRecovered event
 
-- errors: Throws NotAuthorized if caller lacks admin role
+- Throws NotAuthorized if caller lacks admin role
 
-- reentrancy: Not protected - no external calls
+- Not protected - no external calls
 
-- access: Restricted to admin role
+- Restricted to admin role
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -58,21 +58,21 @@ Recover tokens to treasury address
 *Emergency function to recover ERC20 tokens sent to the contract*
 
 **Notes:**
-- security: Requires admin role
+- Requires admin role
 
-- validation: None required
+- None required
 
-- state-changes: Transfers tokens from contract to treasury
+- Transfers tokens from contract to treasury
 
-- events: Emits TokenRecovered event
+- Emits TokenRecovered event
 
-- errors: Throws NotAuthorized if caller lacks admin role
+- Throws NotAuthorized if caller lacks admin role
 
-- reentrancy: Not protected - library handles reentrancy
+- Not protected - library handles reentrancy
 
-- access: Restricted to admin role
+- Restricted to admin role
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity

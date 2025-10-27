@@ -11,7 +11,7 @@ Vault-specific errors for QuantillonVault and related operations
 - Yield distribution errors*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Errors

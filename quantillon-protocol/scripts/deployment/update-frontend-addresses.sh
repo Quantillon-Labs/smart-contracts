@@ -329,13 +329,13 @@ QUANTILLON_VAULT_IMPL=$(find_contract "QuantillonVault")
 QTI_TOKEN_IMPL=$(find_contract "QTIToken")
 STQEURO_TOKEN_IMPL=$(find_contract "stQEUROToken")
 FEE_COLLECTOR_IMPL=$(find_contract "FeeCollector")
-# Handle different oracle contract names based on network
-if [ "$NETWORK" = "localhost" ]; then
-    CHAINLINK_ORACLE_IMPL=$(find_contract "MockChainlinkOracle")
-    MOCK_CHAINLINK_ORACLE_IMPL=$(find_contract "MockChainlinkOracle")
-else
-    CHAINLINK_ORACLE_IMPL=$(find_contract "ChainlinkOracle")
-    MOCK_CHAINLINK_ORACLE_IMPL=""
+# Handle different oracle contract names based on network and mock flag
+# Try both contract names and use whichever is found and proxied
+CHAINLINK_ORACLE_IMPL=$(find_contract "ChainlinkOracle")
+MOCK_CHAINLINK_ORACLE_IMPL=$(find_contract "MockChainlinkOracle")
+# If ChainlinkOracle not found, try MockChainlinkOracle as fallback
+if [ -z "$CHAINLINK_ORACLE_IMPL" ] || [ "$CHAINLINK_ORACLE_IMPL" = "null" ]; then
+    CHAINLINK_ORACLE_IMPL="$MOCK_CHAINLINK_ORACLE_IMPL"
 fi
 USER_POOL_IMPL=$(find_contract "UserPool")
 HEDGER_POOL_IMPL=$(find_contract "HedgerPool")

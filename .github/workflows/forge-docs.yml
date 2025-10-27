@@ -64,6 +64,37 @@ jobs:
               echo "Fallback documentation created"
           fi
           
+          # Copy markdown documentation files to the book directory
+          echo "Copying markdown documentation files..."
+          if [ -f "docs/API.md" ]; then
+              cp docs/API.md docs/book/API.html
+              echo "API.md copied as API.html"
+          fi
+          if [ -f "docs/API-Reference.md" ]; then
+              cp docs/API-Reference.md docs/book/API-Reference.html
+              echo "API-Reference.md copied as API-Reference.html"
+          fi
+          if [ -f "docs/Quick-Start.md" ]; then
+              cp docs/Quick-Start.md docs/book/Quick-Start.html
+              echo "Quick-Start.md copied as Quick-Start.html"
+          fi
+          if [ -f "docs/Integration-Examples.md" ]; then
+              cp docs/Integration-Examples.md docs/book/Integration-Examples.html
+              echo "Integration-Examples.md copied as Integration-Examples.html"
+          fi
+          if [ -f "docs/Security.md" ]; then
+              cp docs/Security.md docs/book/Security.html
+              echo "Security.md copied as Security.html"
+          fi
+          if [ -f "docs/Architecture.md" ]; then
+              cp docs/Architecture.md docs/book/Architecture.html
+              echo "Architecture.md copied as Architecture.html"
+          fi
+          if [ -f "docs/Deployment.md" ]; then
+              cp docs/Deployment.md docs/book/Deployment.html
+              echo "Deployment.md copied as Deployment.html"
+          fi
+          
           # Restore the original remote URL
           echo "Restoring original remote URL..."
           git remote set-url origin "$ORIGINAL_REMOTE"

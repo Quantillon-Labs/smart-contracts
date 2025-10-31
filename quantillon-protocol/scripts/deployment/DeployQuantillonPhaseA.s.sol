@@ -32,12 +32,13 @@ contract DeployQuantillonPhaseA is Script {
     address constant BASE_SEPOLIA_USDC_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165;
     address constant BASE_SEPOLIA_USDC_TOKEN = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     
-    // Ethereum Sepolia addresses (using mock addresses since real ones don't exist)
-    // Note: Ethereum Sepolia doesn't have official USDC or EUR/USD feeds
-    // These will be replaced with mock contracts during deployment
-    address constant ETHEREUM_SEPOLIA_EUR_USD_FEED = address(0);
-    address constant ETHEREUM_SEPOLIA_USDC_USD_FEED = address(0);
-    address constant ETHEREUM_SEPOLIA_USDC_TOKEN = address(0);
+    // Ethereum Sepolia addresses
+    // EUR/USD feed is available on Ethereum Sepolia via Chainlink
+    address constant ETHEREUM_SEPOLIA_EUR_USD_FEED = 0x1a81afB8146aeFfCFc5E50e8479e826E7D55b910;
+    // USDC/USD feed and USDC token should be provided via environment variables
+    // if real addresses are needed, or will use mocks when --with-mocks flag is used
+    address constant ETHEREUM_SEPOLIA_USDC_USD_FEED = 0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E;
+    address constant ETHEREUM_SEPOLIA_USDC_TOKEN = 0x1c7d4b196cb0c7b01d743fbc6116a902379c7238;
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -111,7 +112,6 @@ contract DeployQuantillonPhaseA is Script {
             }
         } else if (isEthereumSepolia) {
             console.log("Ethereum Sepolia deployment detected");
-            // For Ethereum Sepolia, use the same logic as Base Sepolia
             if (withMocks) {
                 console.log("Using MockChainlinkOracle for Ethereum Sepolia");
                 // Deploy mock feeds (oracle will be deployed in _deployOraclePhased)
@@ -126,12 +126,32 @@ contract DeployQuantillonPhaseA is Script {
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
             } else {
-                console.log("Using real Chainlink feeds for Ethereum Sepolia");
-                console.log("withMocks was false, using real feeds");
-                // Use real Chainlink feeds (same as Base Sepolia)
-                usdc = ETHEREUM_SEPOLIA_USDC_TOKEN;
+                console.log("Using real Chainlink EUR/USD feed for Ethereum Sepolia");
+                // Use real Chainlink EUR/USD feed
                 eurUsdFeed = ETHEREUM_SEPOLIA_EUR_USD_FEED;
-                usdcUsdFeed = ETHEREUM_SEPOLIA_USDC_USD_FEED;
+                console.log("EUR/USD Feed:", eurUsdFeed);
+                
+                // For USDC/USD feed and USDC token, try environment variables first,
+                // then fall back to constants if available, otherwise deploy mocks
+                if (ETHEREUM_SEPOLIA_USDC_USD_FEED != address(0)) {
+                    usdcUsdFeed = ETHEREUM_SEPOLIA_USDC_USD_FEED;
+                    console.log("Using USDC/USD Feed from constant:", usdcUsdFeed);
+                } else {
+                    // Deploy mock for USDC/USD feed (not available on Ethereum Sepolia)
+                    console.log("USDC/USD feed not available, deploying mock");
+                    MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
+                    usdcFeed.setPrice(100000000);
+                    usdcUsdFeed = address(usdcFeed);
+                }
+                
+                if (ETHEREUM_SEPOLIA_USDC_TOKEN != address(0)) {
+                    usdc = ETHEREUM_SEPOLIA_USDC_TOKEN;
+                    console.log("Using USDC from constant:", usdc);
+                } else {
+                    // USDC must be provided via environment
+                    usdc = vm.envAddress("USDC");
+                    console.log("Using USDC from environment:", usdc);
+                }
             }
         }
     }

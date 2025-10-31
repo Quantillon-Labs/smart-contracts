@@ -42,7 +42,10 @@ contract DeployQuantillonPhaseD is Script {
         stQeuroToken = vm.envAddress("STQEURO_TOKEN");
         address upAddr = vm.envAddress("USER_POOL");
         address hpAddr = vm.envAddress("HEDGER_POOL");
-        usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+        usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+        if (usdc == address(0)) {
+            usdc = vm.envAddress("USDC");
+        }
         console.log("USDC:", usdc);
         aaveVault = vm.envAddress("AAVE_VAULT");
 

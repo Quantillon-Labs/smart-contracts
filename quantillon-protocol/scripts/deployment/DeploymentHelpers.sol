@@ -37,22 +37,22 @@ library DeploymentHelpers {
 
     /**
      * @notice Selects the appropriate USDC address based on network and mock flag
-     * @param vm Forge VM interface for environment variable access
+     * @param withMocks Whether deployment uses mocks
      * @param chainId Current chain ID
      * @return usdc The USDC token address to use
      */
-    function selectUSDCAddress(Vm vm, uint256 chainId) internal view returns (address usdc) {
+    function selectUSDCAddress(bool withMocks, uint256 chainId) internal view returns (address usdc) {
         (bool isLocalhost, bool isBaseSepolia, bool isEthereumSepolia) = detectNetwork(chainId);
-        bool withMocks = vm.envOr("WITH_MOCKS", false);
 
         if (isLocalhost) {
-            usdc = vm.envAddress("USDC");
+            // For localhost, still rely on env injection from deploy script
+            return address(0);
         } else if (isBaseSepolia) {
-            usdc = withMocks ? vm.envAddress("USDC") : BASE_SEPOLIA_USDC_TOKEN;
+            return withMocks ? address(0) : BASE_SEPOLIA_USDC_TOKEN;
         } else if (isEthereumSepolia) {
-            usdc = withMocks ? vm.envAddress("USDC") : ETHEREUM_SEPOLIA_USDC_TOKEN;
+            return withMocks ? address(0) : ETHEREUM_SEPOLIA_USDC_TOKEN;
         } else {
-            usdc = vm.envAddress("USDC");
+            return address(0);
         }
     }
 }

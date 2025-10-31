@@ -35,7 +35,10 @@ contract DeployQuantillonPhaseC is Script {
         chainlinkOracle = vm.envAddress("CHAINLINK_ORACLE");
         qeuroToken = vm.envAddress("QEURO_TOKEN");
         quantillonVault = vm.envAddress("QUANTILLON_VAULT");
-        usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+        usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+        if (usdc == address(0)) {
+            usdc = vm.envAddress("USDC");
+        }
         console.log("USDC:", usdc);
 
         console.log("Phase A3: UserPool, HedgerPool");

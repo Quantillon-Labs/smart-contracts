@@ -87,14 +87,14 @@ contract DeployQuantillonPhaseA is Script {
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
                 usdcFeed.setPrice(100000000);
                 
-                usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+                usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
                 console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
             } else {
                 console.log("Using real Chainlink feeds for Base Sepolia");
                 // Use real Chainlink feeds
-                usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+                usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
                 console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = BASE_SEPOLIA_EUR_USD_FEED;
                 usdcUsdFeed = BASE_SEPOLIA_USDC_USD_FEED;
@@ -109,7 +109,7 @@ contract DeployQuantillonPhaseA is Script {
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
                 usdcFeed.setPrice(100000000);
                 
-                usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+                usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
                 console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
@@ -132,7 +132,7 @@ contract DeployQuantillonPhaseA is Script {
                 }
                 
                 // Use shared helper for USDC selection
-                usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+                usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
                 console.log("Using USDC from helper:", usdc);
             }
         }

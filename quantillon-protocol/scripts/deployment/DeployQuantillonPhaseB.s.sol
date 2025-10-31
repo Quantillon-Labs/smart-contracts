@@ -45,8 +45,11 @@ contract DeployQuantillonPhaseB is Script {
         chainlinkOracle = vm.envAddress("CHAINLINK_ORACLE");
         qeuroToken = vm.envAddress("QEURO_TOKEN");
         
-        // Select USDC address using shared helper
-        usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+        // Select USDC address using shared helper; fall back to env when it returns 0
+        usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+        if (usdc == address(0)) {
+            usdc = vm.envAddress("USDC");
+        }
         console.log("USDC:", usdc);
 
         console.log("Phase A2: QTI, AaveVault, stQEURO");

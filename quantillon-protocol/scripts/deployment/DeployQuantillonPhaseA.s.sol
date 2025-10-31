@@ -38,7 +38,7 @@ contract DeployQuantillonPhaseA is Script {
     // USDC/USD feed and USDC token should be provided via environment variables
     // if real addresses are needed, or will use mocks when --with-mocks flag is used
     address constant ETHEREUM_SEPOLIA_USDC_USD_FEED = 0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E;
-    address constant ETHEREUM_SEPOLIA_USDC_TOKEN = 0x1c7d4b196cb0c7b01d743fbc6116a902379c7238;
+    address constant ETHEREUM_SEPOLIA_USDC_TOKEN = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");

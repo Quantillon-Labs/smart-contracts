@@ -69,7 +69,10 @@ contract DeployQuantillonPhaseA is Script {
         console.log("WITH_MOCKS environment variable:", withMocks);
         if (isLocalhost) {
             // USDC must be provided via environment (from DeployMockUSDC.s.sol)
-            usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+            usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+            if (usdc == address(0)) {
+                usdc = vm.envAddress("USDC");
+            }
             console.log("Using USDC from helper:", usdc);
             MockAggregatorV3 eur = new MockAggregatorV3(8);
             eur.setPrice(108000000);
@@ -88,6 +91,9 @@ contract DeployQuantillonPhaseA is Script {
                 usdcFeed.setPrice(100000000);
                 
                 usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+                if (usdc == address(0)) {
+                    usdc = vm.envAddress("USDC");
+                }
                 console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
@@ -95,6 +101,9 @@ contract DeployQuantillonPhaseA is Script {
                 console.log("Using real Chainlink feeds for Base Sepolia");
                 // Use real Chainlink feeds
                 usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+                if (usdc == address(0)) {
+                    usdc = vm.envAddress("USDC");
+                }
                 console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = BASE_SEPOLIA_EUR_USD_FEED;
                 usdcUsdFeed = BASE_SEPOLIA_USDC_USD_FEED;
@@ -110,6 +119,9 @@ contract DeployQuantillonPhaseA is Script {
                 usdcFeed.setPrice(100000000);
                 
                 usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+                if (usdc == address(0)) {
+                    usdc = vm.envAddress("USDC");
+                }
                 console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
@@ -133,6 +145,9 @@ contract DeployQuantillonPhaseA is Script {
                 
                 // Use shared helper for USDC selection
                 usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+                if (usdc == address(0)) {
+                    usdc = vm.envAddress("USDC");
+                }
                 console.log("Using USDC from helper:", usdc);
             }
         }

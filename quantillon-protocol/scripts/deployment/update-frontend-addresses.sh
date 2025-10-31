@@ -441,9 +441,24 @@ fi
 # REAL CONTRACT ADDRESSES (when not using mocks)
 # =============================================================================
 
-# Real contract addresses for Base Sepolia
-REAL_CHAINLINK_ORACLE="0x91D4a4C3D448c7f3CB477332B1c7D420a5810aC3"
-REAL_USDC="0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+# Network-specific USDC addresses (for when not using mocks)
+case "$NETWORK" in
+    "base-sepolia")
+        REAL_USDC="0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+        ;;
+    "ethereum-sepolia")
+        REAL_USDC="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        ;;
+    "base")
+        REAL_USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"  # Base Mainnet USDC
+        ;;
+    "ethereum")
+        REAL_USDC="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"  # Ethereum Mainnet USDC
+        ;;
+    *)
+        REAL_USDC="0x036CbD53842c5426634e7929541eC2318f3dCF7e"  # Default to Base Sepolia
+        ;;
+esac
 
 # Determine which addresses to use based on --with-mocks flag
 if [ "$WITH_MOCKS" = true ]; then
@@ -454,9 +469,10 @@ if [ "$WITH_MOCKS" = true ]; then
     FINAL_MOCK_USDC="$MOCK_USDC"
 else
     echo -e " Using REAL contract addresses"
-    FINAL_CHAINLINK_ORACLE="$REAL_CHAINLINK_ORACLE"
+    # Use the deployed ChainlinkOracle proxy address (not hardcoded)
+    FINAL_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"
     FINAL_USDC="$REAL_USDC"
-    FINAL_MOCK_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"  # Keep mock for fallback
+    FINAL_MOCK_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"  # Keep deployed oracle for fallback
     FINAL_MOCK_USDC="$MOCK_USDC"  # Keep mock for fallback
 fi
 

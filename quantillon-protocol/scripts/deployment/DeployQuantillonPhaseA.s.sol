@@ -12,6 +12,7 @@ import "../../src/core/QEUROToken.sol";
 import "../../src/core/QuantillonVault.sol";
 import "../../src/core/FeeCollector.sol";
 import "../../test/ChainlinkOracle.t.sol";
+import "./DeploymentHelpers.sol";
 
 contract DeployQuantillonPhaseA is Script {
     TimeProvider public timeProvider;
@@ -28,22 +29,19 @@ contract DeployQuantillonPhaseA is Script {
     bool public isBaseSepolia;
     bool public isEthereumSepolia;
 
+    // Oracle feed addresses (Phase A specific)
     address constant BASE_SEPOLIA_EUR_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165; //TO UPDATE
     address constant BASE_SEPOLIA_USDC_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165;
-    address constant BASE_SEPOLIA_USDC_TOKEN = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     
-    // Ethereum Sepolia addresses
-    // EUR/USD feed is available on Ethereum Sepolia via Chainlink
+    // Ethereum Sepolia oracle feed addresses
     address constant ETHEREUM_SEPOLIA_EUR_USD_FEED = 0x1a81afB8146aeFfCFc5E50e8479e826E7D55b910;
-    // USDC/USD feed and USDC token should be provided via environment variables
-    // if real addresses are needed, or will use mocks when --with-mocks flag is used
     address constant ETHEREUM_SEPOLIA_USDC_USD_FEED = 0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E;
-    address constant ETHEREUM_SEPOLIA_USDC_TOKEN = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         deployerEOA = vm.addr(pk);
-        _detectNetwork();
+        (isLocalhost, isBaseSepolia, isEthereumSepolia) = DeploymentHelpers.detectNetwork(block.chainid);
+        console.log("ChainId:", block.chainid);
         console.log("Phase A1: Core Infrastructure (TimeProvider, Oracle, QEURO, FeeCollector, Vault)");
 
         vm.startBroadcast(pk);
@@ -65,21 +63,14 @@ contract DeployQuantillonPhaseA is Script {
         console.log("QuantillonVault:", address(quantillonVault));
     }
 
-    function _detectNetwork() internal {
-        uint256 cid = block.chainid;
-        isLocalhost = (cid == 31337);
-        isBaseSepolia = (cid == 84532);
-        isEthereumSepolia = (cid == 11155111);
-        console.log("ChainId:", cid);
-    }
 
     function _selectExternalAddresses() internal {
         bool withMocks = vm.envOr("WITH_MOCKS", false);
         console.log("WITH_MOCKS environment variable:", withMocks);
         if (isLocalhost) {
             // USDC must be provided via environment (from DeployMockUSDC.s.sol)
-            usdc = vm.envAddress("USDC");
-            console.log("Using USDC from environment:", usdc);
+            usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+            console.log("Using USDC from helper:", usdc);
             MockAggregatorV3 eur = new MockAggregatorV3(8);
             eur.setPrice(108000000);
             eurUsdFeed = address(eur);
@@ -88,7 +79,6 @@ contract DeployQuantillonPhaseA is Script {
             usdcUsdFeed = address(usdcFeed);
         } else if (isBaseSepolia) {
             console.log("Base Sepolia deployment detected");
-            // For Base Sepolia, use the same logic as localhost
             if (withMocks) {
                 console.log("Using MockChainlinkOracle for Base Sepolia");
                 // Deploy mock feeds (oracle will be deployed in _deployOraclePhased)
@@ -97,16 +87,15 @@ contract DeployQuantillonPhaseA is Script {
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
                 usdcFeed.setPrice(100000000);
                 
-                // USDC must be provided via environment (from DeployMockUSDC.s.sol)
-                usdc = vm.envAddress("USDC");
-                console.log("Using USDC from environment:", usdc);
+                usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+                console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
             } else {
                 console.log("Using real Chainlink feeds for Base Sepolia");
-                console.log("withMocks was false, using real feeds");
                 // Use real Chainlink feeds
-                usdc = BASE_SEPOLIA_USDC_TOKEN;
+                usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+                console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = BASE_SEPOLIA_EUR_USD_FEED;
                 usdcUsdFeed = BASE_SEPOLIA_USDC_USD_FEED;
             }
@@ -120,9 +109,8 @@ contract DeployQuantillonPhaseA is Script {
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
                 usdcFeed.setPrice(100000000);
                 
-                // USDC must be provided via environment (from DeployMockUSDC.s.sol)
-                usdc = vm.envAddress("USDC");
-                console.log("Using USDC from environment:", usdc);
+                usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+                console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
             } else {
@@ -131,8 +119,7 @@ contract DeployQuantillonPhaseA is Script {
                 eurUsdFeed = ETHEREUM_SEPOLIA_EUR_USD_FEED;
                 console.log("EUR/USD Feed:", eurUsdFeed);
                 
-                // For USDC/USD feed and USDC token, try environment variables first,
-                // then fall back to constants if available, otherwise deploy mocks
+                // For USDC/USD feed, use constant if available, otherwise deploy mock
                 if (ETHEREUM_SEPOLIA_USDC_USD_FEED != address(0)) {
                     usdcUsdFeed = ETHEREUM_SEPOLIA_USDC_USD_FEED;
                     console.log("Using USDC/USD Feed from constant:", usdcUsdFeed);
@@ -144,14 +131,9 @@ contract DeployQuantillonPhaseA is Script {
                     usdcUsdFeed = address(usdcFeed);
                 }
                 
-                if (ETHEREUM_SEPOLIA_USDC_TOKEN != address(0)) {
-                    usdc = ETHEREUM_SEPOLIA_USDC_TOKEN;
-                    console.log("Using USDC from constant:", usdc);
-                } else {
-                    // USDC must be provided via environment
-                    usdc = vm.envAddress("USDC");
-                    console.log("Using USDC from environment:", usdc);
-                }
+                // Use shared helper for USDC selection
+                usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+                console.log("Using USDC from helper:", usdc);
             }
         }
     }

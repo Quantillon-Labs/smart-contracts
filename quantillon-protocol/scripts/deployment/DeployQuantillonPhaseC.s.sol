@@ -8,6 +8,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import "../../src/libraries/TimeProviderLibrary.sol";
 import "../../src/core/UserPool.sol";
 import "../../src/core/HedgerPool.sol";
+import "./DeploymentHelpers.sol";
 
 contract DeployQuantillonPhaseC is Script {
     TimeProvider public timeProvider;
@@ -20,16 +21,22 @@ contract DeployQuantillonPhaseC is Script {
     address public chainlinkOracle;
     address public quantillonVault;
 
+    bool public isLocalhost;
+    bool public isBaseSepolia;
+    bool public isEthereumSepolia;
+
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         deployerEOA = vm.addr(pk);
+        (isLocalhost, isBaseSepolia, isEthereumSepolia) = DeploymentHelpers.detectNetwork(block.chainid);
 
         // Load previous addresses
         timeProvider = TimeProvider(vm.envAddress("TIME_PROVIDER"));
         chainlinkOracle = vm.envAddress("CHAINLINK_ORACLE");
         qeuroToken = vm.envAddress("QEURO_TOKEN");
         quantillonVault = vm.envAddress("QUANTILLON_VAULT");
-        usdc = vm.envAddress("USDC");
+        usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+        console.log("USDC:", usdc);
 
         console.log("Phase A3: UserPool, HedgerPool");
 
@@ -43,6 +50,7 @@ contract DeployQuantillonPhaseC is Script {
         console.log("UserPool:", address(userPool));
         console.log("HedgerPool:", address(hedgerPool));
     }
+
 
     function _deployUserPoolPhased() internal {
         if (address(userPool) == address(0)) {

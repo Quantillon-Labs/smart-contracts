@@ -11,6 +11,7 @@ import "../../src/core/UserPool.sol";
 import "../../src/core/HedgerPool.sol";
 import "../../src/core/FeeCollector.sol";
 import "../../src/core/yieldmanagement/YieldShift.sol";
+import "./DeploymentHelpers.sol";
 
 contract DeployQuantillonPhaseD is Script {
     QuantillonVault public quantillonVault;
@@ -25,9 +26,14 @@ contract DeployQuantillonPhaseD is Script {
     address public deployerEOA;
     address public usdc;
 
+    bool public isLocalhost;
+    bool public isBaseSepolia;
+    bool public isEthereumSepolia;
+
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         deployerEOA = vm.addr(pk);
+        (isLocalhost, isBaseSepolia, isEthereumSepolia) = DeploymentHelpers.detectNetwork(block.chainid);
 
         // Read Phase A, B, C deployed addresses from env
         address tpAddr = vm.envAddress("TIME_PROVIDER");
@@ -36,7 +42,8 @@ contract DeployQuantillonPhaseD is Script {
         stQeuroToken = vm.envAddress("STQEURO_TOKEN");
         address upAddr = vm.envAddress("USER_POOL");
         address hpAddr = vm.envAddress("HEDGER_POOL");
-        usdc = vm.envAddress("USDC");
+        usdc = DeploymentHelpers.selectUSDCAddress(vm, block.chainid);
+        console.log("USDC:", usdc);
         aaveVault = vm.envAddress("AAVE_VAULT");
 
         timeProvider = TimeProvider(tpAddr);
@@ -75,5 +82,6 @@ contract DeployQuantillonPhaseD is Script {
         vm.stopBroadcast();
         console.log("\nPhase B Complete. YieldShift:", address(yieldShift));
     }
+
 }
 

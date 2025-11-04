@@ -32,10 +32,12 @@ contract DeployQuantillonPhaseA is Script {
     // Oracle feed addresses (Phase A specific)
     address constant BASE_SEPOLIA_EUR_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165; //TO UPDATE
     address constant BASE_SEPOLIA_USDC_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165;
+    address constant BASE_SEPOLIA_USDC_TOKEN = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     
-    // Ethereum Sepolia oracle feed addresses
+    // Ethereum Sepolia addresses
     address constant ETHEREUM_SEPOLIA_EUR_USD_FEED = 0x1a81afB8146aeFfCFc5E50e8479e826E7D55b910;
     address constant ETHEREUM_SEPOLIA_USDC_USD_FEED = 0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E;
+    address constant ETHEREUM_SEPOLIA_USDC_TOKEN = 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238;
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -126,8 +128,9 @@ contract DeployQuantillonPhaseA is Script {
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
             } else {
-                console.log("Using real Chainlink EUR/USD feed for Ethereum Sepolia");
-                // Use real Chainlink EUR/USD feed
+                console.log("Using real Chainlink feeds for Ethereum Sepolia");
+                // Use real Chainlink feeds
+                usdc = ETHEREUM_SEPOLIA_USDC_TOKEN;
                 eurUsdFeed = ETHEREUM_SEPOLIA_EUR_USD_FEED;
                 console.log("EUR/USD Feed:", eurUsdFeed);
                 

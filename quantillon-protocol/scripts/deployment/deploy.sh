@@ -365,11 +365,40 @@ run_deployment() {
         log_info "Phase A: Core Infrastructure"
         echo "=============================================================="
         
-        # Extract USDC from DeployMockUSDC if it exists (for localhost/testnet with mocks)
-        local mock_usdc_broadcast="./broadcast/DeployMockUSDC.s.sol/${chain_id}/run-latest.json"
-        if [ -f "$mock_usdc_broadcast" ]; then
-            export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$mock_usdc_broadcast" | head -1)
-            log_info "Using USDC from DeployMockUSDC: $USDC"
+        # Set USDC address based on deployment mode
+        if [ "$WITH_MOCKS" = true ]; then
+            # Extract USDC from DeployMockUSDC if it exists (for localhost/testnet with mocks)
+            local mock_usdc_broadcast="./broadcast/DeployMockUSDC.s.sol/${chain_id}/run-latest.json"
+            if [ -f "$mock_usdc_broadcast" ]; then
+                export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$mock_usdc_broadcast" | head -1)
+                log_info "Using USDC from DeployMockUSDC: $USDC"
+            fi
+        else
+            # Use real USDC addresses for each network
+            case "$ENVIRONMENT" in
+                "base-sepolia")
+                    export USDC="0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+                    log_info "Using real USDC for Base Sepolia: $USDC"
+                    ;;
+                "ethereum-sepolia")
+                    export USDC="0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+                    log_info "Using real USDC for Ethereum Sepolia: $USDC"
+                    ;;
+                "base")
+                    # TODO: Add Base mainnet USDC address when available
+                    log_error "Base mainnet USDC address not configured"
+                    exit 1
+                    ;;
+                "ethereum")
+                    # TODO: Add Ethereum mainnet USDC address when available
+                    log_error "Ethereum mainnet USDC address not configured"
+                    exit 1
+                    ;;
+                *)
+                    log_error "USDC address not configured for environment: $ENVIRONMENT"
+                    exit 1
+                    ;;
+            esac
         fi
         
         if [ "$WITH_MOCKS" = true ]; then
@@ -449,8 +478,15 @@ run_deployment() {
         
         log_info "Phase B completed. Starting C..."
         
-        # Re-export USDC from the mock deployment before A3
-        export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "./broadcast/DeployMockUSDC.s.sol/$chain_id/run-latest.json" | head -1)
+        # Re-export USDC from the mock deployment only if using mocks
+        # (USDC is already set correctly for non-mock deployments)
+        if [ "$WITH_MOCKS" = true ]; then
+            local mock_usdc_broadcast="./broadcast/DeployMockUSDC.s.sol/${chain_id}/run-latest.json"
+            if [ -f "$mock_usdc_broadcast" ]; then
+                export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$mock_usdc_broadcast" | head -1)
+                log_info "Re-exported USDC from DeployMockUSDC: $USDC"
+            fi
+        fi
         
         # Phase C: UserPool, HedgerPool
         local phase_c_script="scripts/deployment/DeployQuantillonPhaseC.s.sol"

@@ -168,6 +168,7 @@ if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased
             "./broadcast/DeployQuantillonPhaseC.s.sol/31337/run-latest.json"
             "./broadcast/DeployQuantillonPhaseD.s.sol/31337/run-latest.json"
             "./broadcast/DeployMockUSDC.s.sol/31337/run-latest.json"
+            "./broadcast/DeployMockFeeds.s.sol/31337/run-latest.json"
         )
         echo -e "📡 Detected localhost multi-phase deployment"
     elif [ "$TARGET_CHAIN_ID" = "84532" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/84532/run-latest.json" ]; then
@@ -179,6 +180,7 @@ if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased
             "./broadcast/DeployQuantillonPhaseC.s.sol/84532/run-latest.json"
             "./broadcast/DeployQuantillonPhaseD.s.sol/84532/run-latest.json"
             "./broadcast/DeployMockUSDC.s.sol/84532/run-latest.json"
+            "./broadcast/DeployMockFeeds.s.sol/84532/run-latest.json"
         )
         echo -e "📡 Detected Base Sepolia multi-phase deployment"
     elif [ "$TARGET_CHAIN_ID" = "8453" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/8453/run-latest.json" ]; then
@@ -190,6 +192,7 @@ if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased
             "./broadcast/DeployQuantillonPhaseC.s.sol/8453/run-latest.json"
             "./broadcast/DeployQuantillonPhaseD.s.sol/8453/run-latest.json"
             "./broadcast/DeployMockUSDC.s.sol/8453/run-latest.json"
+            "./broadcast/DeployMockFeeds.s.sol/8453/run-latest.json"
         )
         echo -e "📡 Detected Base multi-phase deployment"
     elif [ "$TARGET_CHAIN_ID" = "11155111" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/11155111/run-latest.json" ]; then
@@ -201,6 +204,7 @@ if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased
             "./broadcast/DeployQuantillonPhaseC.s.sol/11155111/run-latest.json"
             "./broadcast/DeployQuantillonPhaseD.s.sol/11155111/run-latest.json"
             "./broadcast/DeployMockUSDC.s.sol/11155111/run-latest.json"
+            "./broadcast/DeployMockFeeds.s.sol/11155111/run-latest.json"
         )
         echo -e "📡 Detected Ethereum Sepolia multi-phase deployment"
     elif [ "$TARGET_CHAIN_ID" = "1" ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol/1/run-latest.json" ]; then
@@ -212,6 +216,7 @@ if [ "$PHASED_FLAG" = true ] && [ "$PHASE_SCRIPT_NAME" = "DeployQuantillonPhased
             "./broadcast/DeployQuantillonPhaseC.s.sol/1/run-latest.json"
             "./broadcast/DeployQuantillonPhaseD.s.sol/1/run-latest.json"
             "./broadcast/DeployMockUSDC.s.sol/1/run-latest.json"
+            "./broadcast/DeployMockFeeds.s.sol/1/run-latest.json"
         )
         echo -e "📡 Detected Ethereum multi-phase deployment"
     else
@@ -228,6 +233,7 @@ elif [ "$PHASED_FLAG" = true ] && [ -f "./broadcast/DeployQuantillonPhaseA.s.sol
         "./broadcast/DeployQuantillonPhaseC.s.sol/$TARGET_CHAIN_ID/run-latest.json"
         "./broadcast/DeployQuantillonPhaseD.s.sol/$TARGET_CHAIN_ID/run-latest.json"
         "./broadcast/DeployMockUSDC.s.sol/$TARGET_CHAIN_ID/run-latest.json"
+        "./broadcast/DeployMockFeeds.s.sol/$TARGET_CHAIN_ID/run-latest.json"
     )
     echo -e "📡 Detected $TARGET_NETWORK multi-phase deployment (fallback)"
 elif [ "$PHASED_FLAG" = true ]; then
@@ -374,6 +380,15 @@ TIME_PROVIDER_IMPL=$(find_contract "TimeProvider")
 # Get proxy addresses for upgradeable contracts
 echo -e " Finding proxy addresses for upgradeable contracts..."
 CHAINLINK_ORACLE=$(get_proxy_address "$CHAINLINK_ORACLE_IMPL")
+# Get MockChainlinkOracle proxy address explicitly (may be same as ChainlinkOracle when using mocks)
+MOCK_CHAINLINK_ORACLE=$(get_proxy_address "$MOCK_CHAINLINK_ORACLE_IMPL")
+# If MockChainlinkOracle proxy not found but we have a MockChainlinkOracle impl, use ChainlinkOracle proxy
+if [ -z "$MOCK_CHAINLINK_ORACLE" ] || [ "$MOCK_CHAINLINK_ORACLE" = "null" ]; then
+    if [ -n "$MOCK_CHAINLINK_ORACLE_IMPL" ] && [ "$MOCK_CHAINLINK_ORACLE_IMPL" != "null" ]; then
+        # MockChainlinkOracle impl exists but no separate proxy, use ChainlinkOracle proxy (same when using mocks)
+        MOCK_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"
+    fi
+fi
 QEURO_TOKEN=$(get_proxy_address "$QEURO_TOKEN_IMPL")
 QUANTILLON_VAULT=$(get_proxy_address "$QUANTILLON_VAULT_IMPL")
 QTI_TOKEN=$(get_proxy_address "$QTI_TOKEN_IMPL")
@@ -460,20 +475,22 @@ case "$NETWORK" in
         ;;
 esac
 
-# Determine which addresses to use based on --with-mocks flag
+# Determine which addresses to use based on --with-mocks flag and network
 if [ "$WITH_MOCKS" = true ]; then
     echo -e " Using MOCK contract addresses"
     FINAL_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"
     FINAL_USDC="$MOCK_USDC"
-    FINAL_MOCK_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"
+    # When using mocks, MockChainlinkOracle proxy is the same as ChainlinkOracle proxy
+    FINAL_MOCK_CHAINLINK_ORACLE="${MOCK_CHAINLINK_ORACLE:-$CHAINLINK_ORACLE}"
     FINAL_MOCK_USDC="$MOCK_USDC"
 else
     echo -e " Using REAL contract addresses"
-    # Use the deployed ChainlinkOracle proxy address (not hardcoded)
+    # Use deployed oracle address (already extracted from broadcast, not hardcoded)
     FINAL_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"
     FINAL_USDC="$REAL_USDC"
-    FINAL_MOCK_CHAINLINK_ORACLE="$CHAINLINK_ORACLE"  # Keep deployed oracle for fallback
-    FINAL_MOCK_USDC="$MOCK_USDC"  # Keep mock for fallback
+    # Keep mock addresses for fallback when not using mocks
+    FINAL_MOCK_CHAINLINK_ORACLE="${MOCK_CHAINLINK_ORACLE:-$CHAINLINK_ORACLE}"
+    FINAL_MOCK_USDC="$MOCK_USDC"
 fi
 
 # Create updated addresses.json

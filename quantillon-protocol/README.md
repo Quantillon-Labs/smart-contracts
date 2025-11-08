@@ -125,7 +125,13 @@ The protocol uses standard environment variable configuration:
 ./scripts/deployment/deploy.sh base-sepolia --verify
 
 # Deploy to Base mainnet (production)
-./scripts/deployment/deploy.sh base --production --verify
+./scripts/deployment/deploy.sh base --verify
+
+# Deploy to Ethereum Sepolia testnet
+./scripts/deployment/deploy.sh ethereum-sepolia --with-mocks --verify
+
+# Deploy to Ethereum mainnet (production)
+./scripts/deployment/deploy.sh ethereum --verify
 ```
 
 ### 📋 Deployment Options
@@ -143,6 +149,7 @@ The protocol uses standard environment variable configuration:
 - **🎭 Mock Contract Handling**: Automatic mock deployment for localhost
 - **✅ Contract Verification**: Automatic verification on block explorers
 - **🧪 Dry-Run Capability**: Test deployments without broadcasting
+- **⚡ Smart Caching**: Compilation cache preserved by default for faster deployments (use `--clean-cache` to force full rebuild)
 - **📝 Post-Deployment Tasks**: Automatic ABI copying and address updates
 
 ### 🛡️ Security Features

@@ -138,15 +138,18 @@ The protocol uses standard environment variable configuration:
 
 | Environment | Command | Description |
 |-------------|---------|-------------|
-| **localhost** | `./scripts/deployment/deploy.sh localhost --with-mocks` | Development with Anvil and mock contracts |
+| **localhost** | `./scripts/deployment/deploy.sh localhost --with-mocks` | Development with all mock contracts |
+| **localhost** | `./scripts/deployment/deploy.sh localhost --with-mock-usdc` | Development with MockUSDC, real Chainlink feeds |
+| **localhost** | `./scripts/deployment/deploy.sh localhost --with-mock-oracle` | Development with Mock Oracle, real USDC |
+| **localhost** | `./scripts/deployment/deploy.sh localhost` | Development with no mocks (real contracts) |
 | **base-sepolia** | `./scripts/deployment/deploy.sh base-sepolia --verify` | Testnet deployment with contract verification |
-| **base** | `./scripts/deployment/deploy.sh base --production --verify` | Production deployment with multisig governance |
+| **base** | `./scripts/deployment/deploy.sh base --verify` | Production deployment with verification |
 
 ### 🔧 Deployment Features
 
 - **🔐 Secure Environment Variables**: Manage secrets with standard `.env` files (never commit them)
 - **🌐 Multi-Network Support**: Localhost, Base Sepolia, and Base Mainnet
-- **🎭 Mock Contract Handling**: Automatic mock deployment for localhost
+- **🎭 Granular Mock Control**: Choose which contracts to mock (`--with-mocks`, `--with-mock-usdc`, `--with-mock-oracle`)
 - **✅ Contract Verification**: Automatic verification on block explorers
 - **🧪 Dry-Run Capability**: Test deployments without broadcasting
 - **⚡ Smart Caching**: Compilation cache preserved by default for faster deployments (use `--clean-cache` to force full rebuild)

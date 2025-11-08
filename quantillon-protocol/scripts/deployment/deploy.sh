@@ -34,6 +34,8 @@ NC='\033[0m' # No Color
 # Default values
 ENVIRONMENT=""
 WITH_MOCKS=false
+WITH_MOCK_USDC=false
+WITH_MOCK_ORACLE=false
 VERIFY=false
 DRY_RUN=false
 ENV_FILE=""
@@ -105,18 +107,22 @@ show_help() {
     echo "  - .env                   - Fallback default file"
     echo ""
     echo -e "Options:"
-    echo "  --with-mocks     - Deploy mock contracts (localhost & testnet only)"
-    echo "  --verify         - Verify contracts on block explorer (testnet & mainnet)"
-    echo "  --dry-run        - Simulate deployment without broadcasting"
-    echo "  --clean-cache    - Force full recompilation by cleaning cache (slower)"
-    echo "  --help           - Show this help message"
+    echo "  --with-mocks        - Deploy all mock contracts (USDC + Oracle feeds)"
+    echo "  --with-mock-usdc    - Deploy mock USDC contract but use real Chainlink feeds"
+    echo "  --with-mock-oracle  - Deploy mock Oracle feeds but use real USDC"
+    echo "  (no mock flags)     - Use real USDC and real Chainlink feeds (no mocks)"
+    echo "  --verify            - Verify contracts on block explorer (testnet & mainnet)"
+    echo "  --dry-run           - Simulate deployment without broadcasting"
+    echo "  --clean-cache       - Force full recompilation by cleaning cache (slower)"
+    echo "  --help              - Show this help message"
     echo ""
     echo -e "Examples:"
-    echo "  $0 localhost --with-mocks"
+    echo "  $0 localhost --with-mocks              # All mocks (USDC + Oracle)"
+    echo "  $0 localhost --with-mock-usdc          # Mock USDC, real Oracle"
+    echo "  $0 localhost --with-mock-oracle        # Real USDC, mock Oracle"
+    echo "  $0 localhost                           # No mocks (real USDC + real Oracle)"
     echo "  $0 base-sepolia --with-mocks --verify"
     echo "  $0 base --verify"
-    echo "  $0 ethereum-sepolia --with-mocks --verify"
-    echo "  $0 ethereum --verify"
     echo ""
     echo -e "Deployment Method:"
     echo "  All deployments use multi-phase atomic deployment (A→B→C→D)"
@@ -189,11 +195,19 @@ validate_environment() {
         VERIFY=false
     fi
 
-    # Validate --with-mocks flag usage
-    if [ "$WITH_MOCKS" = true ] && ([ "$ENVIRONMENT" = "base" ] || [ "$ENVIRONMENT" = "ethereum" ]); then
+    # Validate mock flags usage
+    if ([ "$WITH_MOCKS" = true ] || [ "$WITH_MOCK_USDC" = true ] || [ "$WITH_MOCK_ORACLE" = true ]) && ([ "$ENVIRONMENT" = "base" ] || [ "$ENVIRONMENT" = "ethereum" ]); then
         log_warning "Mock contracts are not supported for production environment"
-        log_info "Ignoring --with-mocks flag for $ENVIRONMENT"
+        log_info "Ignoring mock flags for $ENVIRONMENT"
         WITH_MOCKS=false
+        WITH_MOCK_USDC=false
+        WITH_MOCK_ORACLE=false
+    fi
+    
+    # If --with-mocks is set, it implies both USDC and Oracle mocks
+    if [ "$WITH_MOCKS" = true ]; then
+        WITH_MOCK_USDC=true
+        WITH_MOCK_ORACLE=true
     fi
 }
 
@@ -299,41 +313,38 @@ select_deployment_script() {
 # =============================================================================
 
 deploy_mocks() {
-    if [ "$WITH_MOCKS" = true ] && ([ "$ENVIRONMENT" = "localhost" ] || [ "$ENVIRONMENT" = "base-sepolia" ] || [ "$ENVIRONMENT" = "ethereum-sepolia" ]); then
+    if ([ "$WITH_MOCK_USDC" = true ] || [ "$WITH_MOCK_ORACLE" = true ]) && ([ "$ENVIRONMENT" = "localhost" ] || [ "$ENVIRONMENT" = "base-sepolia" ] || [ "$ENVIRONMENT" = "ethereum-sepolia" ]); then
         log_step "Deploying mock contracts..."
         
         # Get network configuration
         local network_info="${NETWORKS[$ENVIRONMENT]}"
         local rpc_url=$(echo "$network_info" | cut -d'|' -f1)
         
-        # Deploy MockUSDC
-        log_info "Deploying MockUSDC..."
-        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
-            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
-        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
-            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
-        elif [ "$ENVIRONMENT" = "ethereum" ]; then
-            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
-        else
-            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
+        # Deploy MockUSDC if requested
+        if [ "$WITH_MOCK_USDC" = true ]; then
+            log_info "Deploying MockUSDC..."
+            if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+                forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
+            elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+                forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
+            else
+                forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
+            fi
         fi
         
-        # Deploy Mock Feeds
-        log_info "Deploying Mock Price Feeds..."
-        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
-            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
-        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
-            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
-        elif [ "$ENVIRONMENT" = "ethereum" ]; then
-            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
-        else
-            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
+        # Deploy Mock Feeds if requested
+        if [ "$WITH_MOCK_ORACLE" = true ]; then
+            log_info "Deploying Mock Price Feeds..."
+            if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+                forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
+            elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+                forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
+            else
+                forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
+            fi
         fi
         
         log_success "Mock contracts deployed"
-    elif [ "$WITH_MOCKS" = true ] && ([ "$ENVIRONMENT" = "base" ] || [ "$ENVIRONMENT" = "ethereum" ]); then
-        log_warning "Mock contracts are not supported for production environment"
-        log_info "Ignoring --with-mocks flag for $ENVIRONMENT"
     fi
 }
 
@@ -373,16 +384,21 @@ run_deployment() {
         echo "=============================================================="
         
         # Set USDC address based on deployment mode
-        if [ "$WITH_MOCKS" = true ]; then
+        if [ "$WITH_MOCK_USDC" = true ]; then
             # Extract USDC from DeployMockUSDC if it exists (for localhost/testnet with mocks)
             local mock_usdc_broadcast="./broadcast/DeployMockUSDC.s.sol/${chain_id}/run-latest.json"
             if [ -f "$mock_usdc_broadcast" ]; then
                 export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$mock_usdc_broadcast" | head -1)
-                log_info "Using USDC from DeployMockUSDC: $USDC"
+                log_info "Using MockUSDC from deployment: $USDC"
             fi
         else
             # Use real USDC addresses for each network
             case "$ENVIRONMENT" in
+                "localhost")
+                    # When forking Base mainnet, use Base mainnet USDC address
+                    export USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                    log_info "Using real USDC for localhost (Base mainnet fork): $USDC"
+                    ;;
                 "base-sepolia")
                     export USDC="0x036CbD53842c5426634e7929541eC2318f3dCF7e"
                     log_info "Using real USDC for Base Sepolia: $USDC"
@@ -392,14 +408,12 @@ run_deployment() {
                     log_info "Using real USDC for Ethereum Sepolia: $USDC"
                     ;;
                 "base")
-                    # TODO: Add Base mainnet USDC address when available
-                    log_error "Base mainnet USDC address not configured"
-                    exit 1
+                    export USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                    log_info "Using real USDC for Base mainnet: $USDC"
                     ;;
                 "ethereum")
-                    # TODO: Add Ethereum mainnet USDC address when available
-                    log_error "Ethereum mainnet USDC address not configured"
-                    exit 1
+                    export USDC="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+                    log_info "Using real USDC for Ethereum mainnet: $USDC"
                     ;;
                 *)
                     log_error "USDC address not configured for environment: $ENVIRONMENT"
@@ -408,11 +422,8 @@ run_deployment() {
             esac
         fi
         
-        if [ "$WITH_MOCKS" = true ]; then
-            env WITH_MOCKS=true USDC="$USDC" $forge_cmd_a1
-        else
-            env WITH_MOCKS=false USDC="$USDC" $forge_cmd_a1
-        fi
+        # Pass mock flags to deployment script
+        env WITH_MOCKS=$WITH_MOCKS WITH_MOCK_USDC=$WITH_MOCK_USDC WITH_MOCK_ORACLE=$WITH_MOCK_ORACLE USDC="$USDC" $forge_cmd_a1
         echo "=============================================================="
         
         # Extract A1 addresses
@@ -468,7 +479,7 @@ run_deployment() {
         
         log_info "Phase B: Core Protocol"
         echo "=============================================================="
-        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" $forge_cmd_b
+        env WITH_MOCKS=$WITH_MOCKS WITH_MOCK_USDC=$WITH_MOCK_USDC WITH_MOCK_ORACLE=$WITH_MOCK_ORACLE TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" $forge_cmd_b
         echo "=============================================================="
         
         # Extract B addresses
@@ -485,9 +496,9 @@ run_deployment() {
         
         log_info "Phase B completed. Starting C..."
         
-        # Re-export USDC from the mock deployment only if using mocks
+        # Re-export USDC from the mock deployment only if using mock USDC
         # (USDC is already set correctly for non-mock deployments)
-        if [ "$WITH_MOCKS" = true ]; then
+        if [ "$WITH_MOCK_USDC" = true ]; then
             local mock_usdc_broadcast="./broadcast/DeployMockUSDC.s.sol/${chain_id}/run-latest.json"
             if [ -f "$mock_usdc_broadcast" ]; then
                 export USDC=$(jq -r '.transactions[] | select(.contractName == "MockUSDC") | .contractAddress' "$mock_usdc_broadcast" | head -1)
@@ -510,7 +521,7 @@ run_deployment() {
         
         log_info "Phase C: UserPool + HedgerPool"
         echo "=============================================================="
-        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" $forge_cmd_c
+        env WITH_MOCKS=$WITH_MOCKS WITH_MOCK_USDC=$WITH_MOCK_USDC WITH_MOCK_ORACLE=$WITH_MOCK_ORACLE TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" QUANTILLON_VAULT="$QUANTILLON_VAULT" USDC="$USDC" $forge_cmd_c
         echo "=============================================================="
         
         # Extract C addresses
@@ -541,7 +552,7 @@ run_deployment() {
         
         log_info "Phase D: YieldShift + Wiring"
         echo "=============================================================="
-        env WITH_MOCKS=$WITH_MOCKS TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" QTI_TOKEN="$QTI_TOKEN" AAVE_VAULT="$AAVE_VAULT" STQEURO_TOKEN="$STQEURO_TOKEN" USER_POOL="$USER_POOL" HEDGER_POOL="$HEDGER_POOL" USDC="$USDC" $forge_cmd_d
+        env WITH_MOCKS=$WITH_MOCKS WITH_MOCK_USDC=$WITH_MOCK_USDC WITH_MOCK_ORACLE=$WITH_MOCK_ORACLE TIME_PROVIDER="$TIME_PROVIDER" CHAINLINK_ORACLE="$CHAINLINK_ORACLE" QEURO_TOKEN="$QEURO_TOKEN" FEE_COLLECTOR="$FEE_COLLECTOR" QUANTILLON_VAULT="$QUANTILLON_VAULT" QTI_TOKEN="$QTI_TOKEN" AAVE_VAULT="$AAVE_VAULT" STQEURO_TOKEN="$STQEURO_TOKEN" USER_POOL="$USER_POOL" HEDGER_POOL="$HEDGER_POOL" USDC="$USDC" $forge_cmd_d
         echo "=============================================================="
     
     log_success "Deployment completed successfully!"
@@ -561,7 +572,7 @@ post_deployment() {
     # Update frontend addresses (multi-phase address updater merges all broadcasts)
     log_info "Updating frontend addresses..."
     local frontend_update_cmd="ENV_FILE=\"$ENV_FILE\" PHASED=true ./scripts/deployment/update-frontend-addresses.sh \"$ENVIRONMENT\" --phased"
-    if [ "$WITH_MOCKS" = true ]; then
+    if [ "$WITH_MOCK_USDC" = true ]; then
         frontend_update_cmd="$frontend_update_cmd --with-mocks"
     fi
     eval "$frontend_update_cmd"
@@ -583,6 +594,14 @@ main() {
                 ;;
             --with-mocks)
                 WITH_MOCKS=true
+                shift
+                ;;
+            --with-mock-usdc)
+                WITH_MOCK_USDC=true
+                shift
+                ;;
+            --with-mock-oracle)
+                WITH_MOCK_ORACLE=true
                 shift
                 ;;
             --verify)

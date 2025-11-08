@@ -30,9 +30,15 @@ contract DeployQuantillonPhaseA is Script {
     bool public isEthereumSepolia;
 
     // Oracle feed addresses (Phase A specific)
+    // Base Sepolia
     address constant BASE_SEPOLIA_EUR_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165; //TO UPDATE
     address constant BASE_SEPOLIA_USDC_USD_FEED = 0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165;
     address constant BASE_SEPOLIA_USDC_TOKEN = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+    
+    // Base Mainnet
+    address constant BASE_MAINNET_EUR_USD_FEED = 0xc91D87E81faB8f93699ECf7Ee9B44D11e1D53F0F; // Chainlink EUR/USD on Base
+    address constant BASE_MAINNET_USDC_USD_FEED = 0x7e860098F58bBFC8648a4311b374B1D669a2bc6B; // Chainlink USDC/USD on Base
+    address constant BASE_MAINNET_USDC_TOKEN = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     
     // Ethereum Sepolia addresses
     address constant ETHEREUM_SEPOLIA_EUR_USD_FEED = 0x1a81afB8146aeFfCFc5E50e8479e826E7D55b910;
@@ -68,90 +74,114 @@ contract DeployQuantillonPhaseA is Script {
 
     function _selectExternalAddresses() internal {
         bool withMocks = vm.envOr("WITH_MOCKS", false);
-        console.log("WITH_MOCKS environment variable:", withMocks);
+        bool withMockUSDC = vm.envOr("WITH_MOCK_USDC", false);
+        bool withMockOracle = vm.envOr("WITH_MOCK_ORACLE", false);
+        
+        // If --with-mocks is set, it implies both
+        if (withMocks) {
+            withMockUSDC = true;
+            withMockOracle = true;
+        }
+        
+        console.log("WITH_MOCKS:", withMocks);
+        console.log("WITH_MOCK_USDC:", withMockUSDC);
+        console.log("WITH_MOCK_ORACLE:", withMockOracle);
+        
         if (isLocalhost) {
-            // USDC must be provided via environment (from DeployMockUSDC.s.sol)
-            usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
+            console.log("Localhost deployment detected");
+            // USDC must be provided via environment
+            usdc = DeploymentHelpers.selectUSDCAddress(withMockUSDC, block.chainid);
             if (usdc == address(0)) {
                 usdc = vm.envAddress("USDC");
             }
-            console.log("Using USDC from helper:", usdc);
-            MockAggregatorV3 eur = new MockAggregatorV3(8);
-            eur.setPrice(108000000);
-            eurUsdFeed = address(eur);
-            MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
-            usdcFeed.setPrice(100000000);
-            usdcUsdFeed = address(usdcFeed);
+            console.log("Using USDC:", usdc);
+            
+            if (withMockOracle) {
+                console.log("Using Mock Chainlink feeds for localhost");
+                // Deploy mock feeds
+                MockAggregatorV3 eur = new MockAggregatorV3(8);
+                eur.setPrice(108000000);
+                eurUsdFeed = address(eur);
+                MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
+                usdcFeed.setPrice(100000000);
+                usdcUsdFeed = address(usdcFeed);
+                console.log("EUR/USD Feed (mock):", eurUsdFeed);
+                console.log("USDC/USD Feed (mock):", usdcUsdFeed);
+            } else {
+                console.log("Using real Chainlink feeds for localhost (Base mainnet fork)");
+                // When forking Base mainnet, use real Chainlink feeds
+                // USDC is already set from environment variable above
+                eurUsdFeed = BASE_MAINNET_EUR_USD_FEED;
+                usdcUsdFeed = BASE_MAINNET_USDC_USD_FEED;
+                console.log("EUR/USD Feed (real):", eurUsdFeed);
+                console.log("USDC/USD Feed (real):", usdcUsdFeed);
+            }
         } else if (isBaseSepolia) {
             console.log("Base Sepolia deployment detected");
-            if (withMocks) {
-                console.log("Using MockChainlinkOracle for Base Sepolia");
-                // Deploy mock feeds (oracle will be deployed in _deployOraclePhased)
+            // Use granular mock flags for Base Sepolia
+            usdc = DeploymentHelpers.selectUSDCAddress(withMockUSDC, block.chainid);
+            if (usdc == address(0)) {
+                usdc = vm.envAddress("USDC");
+            }
+            console.log("Using USDC:", usdc);
+            
+            if (withMockOracle) {
+                console.log("Using Mock Chainlink feeds for Base Sepolia");
+                // Deploy mock feeds
                 MockAggregatorV3 eurFeed = new MockAggregatorV3(8);
                 eurFeed.setPrice(108000000);
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
                 usdcFeed.setPrice(100000000);
-                
-                usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
-                if (usdc == address(0)) {
-                    usdc = vm.envAddress("USDC");
-                }
-                console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
+                console.log("EUR/USD Feed (mock):", eurUsdFeed);
+                console.log("USDC/USD Feed (mock):", usdcUsdFeed);
             } else {
                 console.log("Using real Chainlink feeds for Base Sepolia");
                 // Use real Chainlink feeds
-                usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
-                if (usdc == address(0)) {
-                    usdc = vm.envAddress("USDC");
-                }
-                console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = BASE_SEPOLIA_EUR_USD_FEED;
                 usdcUsdFeed = BASE_SEPOLIA_USDC_USD_FEED;
+                console.log("EUR/USD Feed (real):", eurUsdFeed);
+                console.log("USDC/USD Feed (real):", usdcUsdFeed);
             }
         } else if (isEthereumSepolia) {
             console.log("Ethereum Sepolia deployment detected");
-            if (withMocks) {
-                console.log("Using MockChainlinkOracle for Ethereum Sepolia");
-                // Deploy mock feeds (oracle will be deployed in _deployOraclePhased)
+            // Use granular mock flags for Ethereum Sepolia
+            usdc = DeploymentHelpers.selectUSDCAddress(withMockUSDC, block.chainid);
+            if (usdc == address(0)) {
+                usdc = vm.envAddress("USDC");
+            }
+            console.log("Using USDC:", usdc);
+            
+            if (withMockOracle) {
+                console.log("Using Mock Chainlink feeds for Ethereum Sepolia");
+                // Deploy mock feeds
                 MockAggregatorV3 eurFeed = new MockAggregatorV3(8);
                 eurFeed.setPrice(108000000);
                 MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
                 usdcFeed.setPrice(100000000);
-                
-                usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
-                if (usdc == address(0)) {
-                    usdc = vm.envAddress("USDC");
-                }
-                console.log("Using USDC from helper:", usdc);
                 eurUsdFeed = address(eurFeed);
                 usdcUsdFeed = address(usdcFeed);
+                console.log("EUR/USD Feed (mock):", eurUsdFeed);
+                console.log("USDC/USD Feed (mock):", usdcUsdFeed);
             } else {
                 console.log("Using real Chainlink feeds for Ethereum Sepolia");
                 // Use real Chainlink feeds
-                usdc = ETHEREUM_SEPOLIA_USDC_TOKEN;
                 eurUsdFeed = ETHEREUM_SEPOLIA_EUR_USD_FEED;
-                console.log("EUR/USD Feed:", eurUsdFeed);
+                console.log("EUR/USD Feed (real):", eurUsdFeed);
                 
                 // For USDC/USD feed, use constant if available, otherwise deploy mock
                 if (ETHEREUM_SEPOLIA_USDC_USD_FEED != address(0)) {
                     usdcUsdFeed = ETHEREUM_SEPOLIA_USDC_USD_FEED;
-                    console.log("Using USDC/USD Feed from constant:", usdcUsdFeed);
+                    console.log("USDC/USD Feed (real):", usdcUsdFeed);
                 } else {
                     // Deploy mock for USDC/USD feed (not available on Ethereum Sepolia)
                     console.log("USDC/USD feed not available, deploying mock");
                     MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
                     usdcFeed.setPrice(100000000);
                     usdcUsdFeed = address(usdcFeed);
+                    console.log("USDC/USD Feed (mock - not available):", usdcUsdFeed);
                 }
-                
-                // Use shared helper for USDC selection
-                usdc = DeploymentHelpers.selectUSDCAddress(vm.envOr("WITH_MOCKS", false), block.chainid);
-                if (usdc == address(0)) {
-                    usdc = vm.envAddress("USDC");
-                }
-                console.log("Using USDC from helper:", usdc);
             }
         }
     }
@@ -166,7 +196,14 @@ contract DeployQuantillonPhaseA is Script {
     function _deployOraclePhased() internal {
         if (address(chainlinkOracle) == address(0)) {
             bool withMocks = vm.envOr("WITH_MOCKS", false);
+            bool withMockOracle = vm.envOr("WITH_MOCK_ORACLE", false);
+            
+            // If --with-mocks is set, it implies mock oracle
             if (withMocks) {
+                withMockOracle = true;
+            }
+            
+            if (withMockOracle) {
                 // Use MockChainlinkOracle when WITH_MOCKS is true
                 MockChainlinkOracle impl = new MockChainlinkOracle();
                 ERC1967Proxy proxy = new ERC1967Proxy(address(impl), bytes(""));
@@ -199,7 +236,26 @@ contract DeployQuantillonPhaseA is Script {
             FeeCollector impl = new FeeCollector();
             ERC1967Proxy proxy = new ERC1967Proxy(address(impl), bytes(""));
             feeCollector = FeeCollector(address(proxy));
-            feeCollector.initialize(deployerEOA, deployerEOA, deployerEOA, deployerEOA);
+            
+            // Generate EOA addresses that are guaranteed to not have code
+            // Use deterministic addresses based on deployer to ensure they're EOAs
+            address treasury = address(uint160(uint256(keccak256(abi.encodePacked("treasury", deployerEOA)))));
+            address devFund = address(uint160(uint256(keccak256(abi.encodePacked("devFund", deployerEOA)))));
+            address communityFund = address(uint160(uint256(keccak256(abi.encodePacked("communityFund", deployerEOA)))));
+            
+            // Ensure these addresses don't have code (they're deterministic EOAs)
+            // If they somehow have code, use fallback addresses
+            if (treasury.code.length > 0) {
+                treasury = address(uint160(uint256(keccak256(abi.encodePacked("treasury2", deployerEOA)))));
+            }
+            if (devFund.code.length > 0) {
+                devFund = address(uint160(uint256(keccak256(abi.encodePacked("devFund2", deployerEOA)))));
+            }
+            if (communityFund.code.length > 0) {
+                communityFund = address(uint160(uint256(keccak256(abi.encodePacked("communityFund2", deployerEOA)))));
+            }
+            
+            feeCollector.initialize(deployerEOA, treasury, devFund, communityFund);
             console.log("FeeCollector Proxy:", address(feeCollector));
         }
     }

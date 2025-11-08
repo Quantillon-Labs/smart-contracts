@@ -32,13 +32,31 @@ The new unified deployment script handles all environments with built-in securit
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--with-mocks` | Deploy mock contracts (localhost & testnet only) | `./deploy.sh localhost --with-mocks` |
+| `--with-mocks` | Deploy all mock contracts (MockUSDC + Mock Oracle feeds) | `./deploy.sh localhost --with-mocks` |
+| `--with-mock-usdc` | Deploy MockUSDC contract but use real Chainlink feeds | `./deploy.sh localhost --with-mock-usdc` |
+| `--with-mock-oracle` | Deploy Mock Oracle feeds but use real USDC | `./deploy.sh localhost --with-mock-oracle` |
+| *(no mock flags)* | Use real USDC and real Chainlink feeds (no mocks) | `./deploy.sh localhost` |
 | `--verify` | Verify contracts on block explorer (testnet & mainnet) | `./deploy.sh base-sepolia --verify` |
 | `--dry-run` | Simulate deployment without broadcasting | `./deploy.sh localhost --dry-run` |
 | `--clean-cache` | Force full recompilation by cleaning cache (slower) | `./deploy.sh localhost --clean-cache` |
 | `--help` | Show help message | `./deploy.sh --help` |
 
 **Note:** All deployments use multi-phase atomic deployment (A→B→C→D) automatically. There is no flag to enable/disable this.
+
+### 🎭 Granular Mock Control
+
+The deployment script supports granular control over which contracts are mocked:
+
+- **`--with-mocks`**: Deploys both MockUSDC and Mock Oracle feeds (equivalent to `--with-mock-usdc --with-mock-oracle`)
+- **`--with-mock-usdc`**: Only mocks the USDC token contract; uses real Chainlink price feeds from the forked network
+- **`--with-mock-oracle`**: Only mocks the Chainlink Oracle feeds; uses real USDC from the forked network
+- **No flags**: Uses real USDC and real Chainlink feeds (production-like setup)
+
+**Use Cases:**
+- `--with-mock-usdc`: Test with real price feeds but control USDC supply
+- `--with-mock-oracle`: Test with real USDC but control price feed values
+- `--with-mocks`: Full mock setup for isolated testing
+- No flags: Production-like testing with real contracts from the forked network
 
 ### ⚡ Compilation Cache
 
@@ -128,11 +146,20 @@ cp .env.example .env.base && edit .env.base
 ### 2. Deploy to Localhost
 
 ```bash
-# Start Anvil
-anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
+# Start Anvil (forking Base mainnet for real contracts)
+anvil --host 0.0.0.0 --port 8545 --fork-url https://mainnet.base.org --chain-id 31337 --accounts 10 --balance 10000
 
-# Deploy with mock contracts (uses cache for faster compilation)
+# Deploy with all mock contracts (uses cache for faster compilation)
 ./scripts/deployment/deploy.sh localhost --with-mocks
+
+# Deploy with MockUSDC but real Chainlink feeds
+./scripts/deployment/deploy.sh localhost --with-mock-usdc
+
+# Deploy with Mock Oracle feeds but real USDC
+./scripts/deployment/deploy.sh localhost --with-mock-oracle
+
+# Deploy with no mocks (real USDC + real Chainlink feeds)
+./scripts/deployment/deploy.sh localhost
 
 # Force full recompilation (if needed)
 ./scripts/deployment/deploy.sh localhost --with-mocks --clean-cache
@@ -242,11 +269,17 @@ forge test
 ### Localhost Development
 
 ```bash
-# Basic localhost deployment (uses cache for faster compilation)
+# Basic localhost deployment - no mocks (real USDC + real Chainlink feeds)
 ./scripts/deployment/deploy.sh localhost
 
-# With mock contracts
+# With all mock contracts (MockUSDC + Mock Oracle feeds)
 ./scripts/deployment/deploy.sh localhost --with-mocks
+
+# With MockUSDC only (real Chainlink feeds)
+./scripts/deployment/deploy.sh localhost --with-mock-usdc
+
+# With Mock Oracle feeds only (real USDC)
+./scripts/deployment/deploy.sh localhost --with-mock-oracle
 
 # Dry run (test without broadcasting)
 ./scripts/deployment/deploy.sh localhost --dry-run

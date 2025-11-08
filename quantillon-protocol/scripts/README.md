@@ -26,16 +26,18 @@ The new **`deploy.sh`** script provides a unified interface for all deployments:
 |-------------|-------------|-------|
 | **localhost** | Local Anvil development | `./deploy.sh localhost --with-mocks` |
 | **base-sepolia** | Base Sepolia testnet | `./deploy.sh base-sepolia --verify` |
-| **base** | Base mainnet production | `./deploy.sh base --production --verify` |
+| **base** | Base mainnet production | `./deploy.sh base --verify` |
+| **ethereum-sepolia** | Ethereum Sepolia testnet | `./deploy.sh ethereum-sepolia --with-mocks --verify` |
+| **ethereum** | Ethereum mainnet production | `./deploy.sh ethereum --verify` |
 
 #### Deployment Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--with-mocks` | Deploy mock contracts (localhost only) | `./deploy.sh localhost --with-mocks` |
-| `--verify` | Verify contracts on block explorer | `./deploy.sh base-sepolia --verify` |
-| `--production` | Use production deployment script | `./deploy.sh base --production` |
+| `--with-mocks` | Deploy mock contracts (localhost & testnet only) | `./deploy.sh localhost --with-mocks` |
+| `--verify` | Verify contracts on block explorer (testnet & mainnet) | `./deploy.sh base-sepolia --verify` |
 | `--dry-run` | Simulate deployment without broadcasting | `./deploy.sh localhost --dry-run` |
+| `--clean-cache` | Force full recompilation by cleaning cache (slower) | `./deploy.sh localhost --clean-cache` |
 
 ### Core Deployment Scripts
 
@@ -106,10 +108,14 @@ grep -E 'PRIVATE_KEY|RPC_URL' .env
 anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 
 # 2. Deploy with mock contracts
+# Note: Cache is preserved by default for faster deployments
 ./scripts/deployment/deploy.sh localhost --with-mocks
 
 # 3. Test your changes
 forge test
+
+# 4. Force full recompilation (if needed after dependency updates)
+./scripts/deployment/deploy.sh localhost --with-mocks --clean-cache
 ```
 
 ### Testnet Deployment
@@ -117,13 +123,19 @@ forge test
 ```bash
 # Deploy to Base Sepolia with verification
 ./scripts/deployment/deploy.sh base-sepolia --verify
+
+# Deploy to Ethereum Sepolia with mocks and verification
+./scripts/deployment/deploy.sh ethereum-sepolia --with-mocks --verify
 ```
 
 ### Production Deployment
 
 ```bash
-# Deploy to Base mainnet with production settings
-./scripts/deployment/deploy.sh base --production --verify
+# Deploy to Base mainnet with verification
+./scripts/deployment/deploy.sh base --verify
+
+# Deploy to Ethereum mainnet with verification
+./scripts/deployment/deploy.sh ethereum --verify
 ```
 
 ## 🔧 Development Workflow
@@ -162,8 +174,11 @@ forge test
 ### 4. Production Deployment
 
 ```bash
-# Deploy to mainnet
-./scripts/deployment/deploy.sh base --production --verify
+# Deploy to Base mainnet
+./scripts/deployment/deploy.sh base --verify
+
+# Deploy to Ethereum mainnet
+./scripts/deployment/deploy.sh ethereum --verify
 
 # Monitor deployment
 # Update frontend with new addresses

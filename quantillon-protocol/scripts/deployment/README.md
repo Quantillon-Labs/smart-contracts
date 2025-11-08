@@ -25,21 +25,38 @@ The new unified deployment script handles all environments with built-in securit
 | **localhost** | Local Anvil development | `http://localhost:8545` | `31337` |
 | **base-sepolia** | Base Sepolia testnet | `https://sepolia.base.org` | `84532` |
 | **base** | Base mainnet production | `https://mainnet.base.org` | `8453` |
+| **ethereum-sepolia** | Ethereum Sepolia testnet | `https://ethereum-sepolia-rpc.publicnode.com` | `11155111` |
+| **ethereum** | Ethereum mainnet production | `https://ethereum-rpc.publicnode.com` | `1` |
 
 ### 🔧 Deployment Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--with-mocks` | Deploy mock contracts (localhost only) | `./deploy.sh localhost --with-mocks` |
-| `--verify` | Verify contracts on block explorer | `./deploy.sh base-sepolia --verify` |
-| `--production` | Use production deployment script | `./deploy.sh base --production` |
+| `--with-mocks` | Deploy mock contracts (localhost & testnet only) | `./deploy.sh localhost --with-mocks` |
+| `--verify` | Verify contracts on block explorer (testnet & mainnet) | `./deploy.sh base-sepolia --verify` |
 | `--dry-run` | Simulate deployment without broadcasting | `./deploy.sh localhost --dry-run` |
-| `--phased` | Use phased/atomic deployment (default on) | `./deploy.sh localhost --phased` |
+| `--clean-cache` | Force full recompilation by cleaning cache (slower) | `./deploy.sh localhost --clean-cache` |
 | `--help` | Show help message | `./deploy.sh --help` |
+
+**Note:** All deployments use multi-phase atomic deployment (A→B→C→D) automatically. There is no flag to enable/disable this.
+
+### ⚡ Compilation Cache
+
+The deployment script **preserves the Foundry compilation cache by default** for faster deployments. This means:
+
+- **Faster deployments**: Contracts are only recompiled if source code changed
+- **Cache preserved**: The `cache/` folder is kept between deployments
+- **Force recompilation**: Use `--clean-cache` when you need a full rebuild (e.g., after dependency updates or compiler changes)
+
+**When to use `--clean-cache`:**
+- After updating dependencies (OpenZeppelin, Chainlink, etc.)
+- After changing compiler settings in `foundry.toml`
+- When experiencing compilation issues that might be cache-related
+- For production deployments where you want a clean build
 
 ### 🔄 Multi-Phase Deployment
 
-The default phased deployment splits the process into 4 atomic phases (A→B→C→D) to stay within the 24.9M gas limit per transaction on Base Sepolia/Mainnet. Each phase is optimized to fit comfortably under the limit with safety margins.
+All deployments automatically use a 4-phase atomic deployment (A→B→C→D) to stay within the 24.9M gas limit per transaction. Each phase is optimized to fit comfortably under the limit with safety margins.
 
 #### Phase Structure
 
@@ -52,7 +69,7 @@ The default phased deployment splits the process into 4 atomic phases (A→B→C
 
 #### How It Works
 
-1. **Automatic Phase Execution**: Running `./deploy.sh` automatically executes all 4 phases in sequence
+1. **Automatic Phase Execution**: Running `./deploy.sh` automatically executes all 4 phases in sequence (no flag needed)
 2. **Address Passing**: Deployed contract addresses are automatically extracted and passed between phases via environment variables
 3. **Minimal Initialization**: Contract `initialize()` functions are kept minimal; complex wiring happens in separate transactions
 4. **Governance Setters**: Contracts include governance-only setters (`updateOracle`, `updateYieldShift`, etc.) for post-deployment wiring
@@ -114,8 +131,11 @@ cp .env.example .env.base && edit .env.base
 # Start Anvil
 anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 
-# Deploy with mock contracts
+# Deploy with mock contracts (uses cache for faster compilation)
 ./scripts/deployment/deploy.sh localhost --with-mocks
+
+# Force full recompilation (if needed)
+./scripts/deployment/deploy.sh localhost --with-mocks --clean-cache
 ```
 
 ### 3. Deploy to Testnet
@@ -123,13 +143,19 @@ anvil --host 0.0.0.0 --port 8545 --accounts 10 --balance 10000
 ```bash
 # Deploy to Base Sepolia with verification
 ./scripts/deployment/deploy.sh base-sepolia --verify
+
+# Deploy to Ethereum Sepolia with mocks and verification
+./scripts/deployment/deploy.sh ethereum-sepolia --with-mocks --verify
 ```
 
 ### 4. Deploy to Production
 
 ```bash
-# Deploy to Base mainnet with production settings
-./scripts/deployment/deploy.sh base --production --verify
+# Deploy to Base mainnet with verification
+./scripts/deployment/deploy.sh base --verify
+
+# Deploy to Ethereum mainnet with verification
+./scripts/deployment/deploy.sh ethereum --verify
 ```
 
 ## 📁 Script Structure
@@ -216,7 +242,7 @@ forge test
 ### Localhost Development
 
 ```bash
-# Basic localhost deployment
+# Basic localhost deployment (uses cache for faster compilation)
 ./scripts/deployment/deploy.sh localhost
 
 # With mock contracts
@@ -224,6 +250,9 @@ forge test
 
 # Dry run (test without broadcasting)
 ./scripts/deployment/deploy.sh localhost --dry-run
+
+# Force full recompilation (after dependency updates, etc.)
+./scripts/deployment/deploy.sh localhost --with-mocks --clean-cache
 ```
 
 ### Testnet Deployment
@@ -232,20 +261,24 @@ forge test
 # Deploy to Base Sepolia
 ./scripts/deployment/deploy.sh base-sepolia --verify
 
-# With production script
-./scripts/deployment/deploy.sh base-sepolia --production --verify
+# Deploy to Ethereum Sepolia with mocks
+./scripts/deployment/deploy.sh ethereum-sepolia --with-mocks --verify
 ```
 
 ### Production Deployment
 
 ```bash
-# Deploy to Base mainnet
-./scripts/deployment/deploy.sh base --production --verify
+# Deploy to Base mainnet (recommended: use --clean-cache for production)
+./scripts/deployment/deploy.sh base --verify --clean-cache
+
+# Deploy to Ethereum mainnet (recommended: use --clean-cache for production)
+./scripts/deployment/deploy.sh ethereum --verify --clean-cache
 
 # Ensure you have:
-# - MULTISIG_WALLET set in .env
+# - MULTISIG_WALLET set in .env (if applicable)
 # - All network-specific variables configured
 # - Proper private key with sufficient ETH
+# - Consider using --clean-cache for a clean build
 ```
 
 ## 🔧 Troubleshooting

@@ -37,6 +37,7 @@ WITH_MOCKS=false
 VERIFY=false
 DRY_RUN=false
 ENV_FILE=""
+CLEAN_CACHE=false
 
 # Network configurations
 declare -A NETWORKS=(
@@ -54,7 +55,7 @@ declare -A NETWORKS=(
 clean_deployment_artifacts() {
     log_step "Cleaning deployment artifacts..."
     
-    # Clean broadcast folder
+    # Always clean broadcast folder (deployment logs)
     if [ -d "broadcast" ]; then
         log_info "Removing broadcast folder..."
         rm -rf broadcast
@@ -63,13 +64,18 @@ clean_deployment_artifacts() {
         log_info "No broadcast folder found (clean state)"
     fi
     
-    # Clean cache folder
-    if [ -d "cache" ]; then
-        log_info "Removing cache folder..."
-        rm -rf cache
-        log_success "Cache folder cleaned"
+    # Only clean cache folder if explicitly requested
+    # This preserves compilation cache for faster deployments
+    if [ "$CLEAN_CACHE" = true ]; then
+        if [ -d "cache" ]; then
+            log_info "Removing cache folder (forcing full recompilation)..."
+            rm -rf cache
+            log_success "Cache folder cleaned"
+        else
+            log_info "No cache folder found (clean state)"
+        fi
     else
-        log_info "No cache folder found (clean state)"
+        log_info "Keeping cache folder (faster compilation if no changes)"
     fi
     
     log_success "Deployment artifacts cleaned successfully"
@@ -102,6 +108,7 @@ show_help() {
     echo "  --with-mocks     - Deploy mock contracts (localhost & testnet only)"
     echo "  --verify         - Verify contracts on block explorer (testnet & mainnet)"
     echo "  --dry-run        - Simulate deployment without broadcasting"
+    echo "  --clean-cache    - Force full recompilation by cleaning cache (slower)"
     echo "  --help           - Show this help message"
     echo ""
     echo -e "Examples:"
@@ -584,6 +591,10 @@ main() {
                 ;;
             --dry-run)
                 DRY_RUN=true
+                shift
+                ;;
+            --clean-cache)
+                CLEAN_CACHE=true
                 shift
                 ;;
             --help)

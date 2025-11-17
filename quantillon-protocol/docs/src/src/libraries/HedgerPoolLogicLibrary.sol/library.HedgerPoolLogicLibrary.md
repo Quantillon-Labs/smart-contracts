@@ -7,24 +7,24 @@ Logic functions for HedgerPool to reduce contract size
 
 Validates position parameters and calculates derived values
 
-*Validates all position constraints and calculates fee, margin, and position size*
+Validates all position constraints and calculates fee, margin, and position size
 
 **Notes:**
-- Validates all position constraints and limits
+- security: Validates all position constraints and limits
 
-- Ensures amounts, leverage, and ratios are within limits
+- validation: Ensures amounts, leverage, and ratios are within limits
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- Throws various validation errors if constraints not met
+- errors: Throws various validation errors if constraints not met
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Uses provided eurUsdPrice parameter
+- oracle: Uses provided eurUsdPrice parameter
 
 
 ```solidity
@@ -78,34 +78,37 @@ function validateAndCalculatePositionParams(
 
 Calculates profit or loss for a hedge position
 
-*Computes PnL based on price movement from entry to current price*
+Computes PnL based on price movement from entry to current price
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function
+- access: Internal function
 
-- Uses provided currentPrice parameter
+- oracle: Uses provided currentPrice parameter
 
 
 ```solidity
-function calculatePnL(uint256 positionSize, uint256 entryPrice, uint256 currentPrice) internal pure returns (int256);
+function calculatePnL(uint256 tradedVolume, uint256 entryPrice, uint256 currentPrice)
+    internal
+    pure
+    returns (int256);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`positionSize`|`uint256`|Size of the position in USDC|
+|`tradedVolume`|`uint256`|Size of the filled position in USDC|
 |`entryPrice`|`uint256`|Price at which the position was opened|
 |`currentPrice`|`uint256`|Current market price|
 
@@ -120,30 +123,30 @@ function calculatePnL(uint256 positionSize, uint256 entryPrice, uint256 currentP
 
 Determines if a position is eligible for liquidation
 
-*Checks if position margin ratio is below liquidation threshold*
+Checks if position margin ratio is below liquidation threshold
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Uses provided currentPrice parameter
+- oracle: Uses provided currentPrice parameter
 
 
 ```solidity
 function isPositionLiquidatable(
     uint256 margin,
-    uint256 positionSize,
+    uint256 filledVolume,
     uint256 entryPrice,
     uint256 currentPrice,
     uint256 liquidationThreshold
@@ -154,7 +157,7 @@ function isPositionLiquidatable(
 |Name|Type|Description|
 |----|----|-----------|
 |`margin`|`uint256`|Current margin amount for the position|
-|`positionSize`|`uint256`|Size of the position in USDC|
+|`filledVolume`|`uint256`|Filled size of the position in USDC|
 |`entryPrice`|`uint256`|Price at which the position was opened|
 |`currentPrice`|`uint256`|Current market price|
 |`liquidationThreshold`|`uint256`|Liquidation threshold in basis points|
@@ -170,24 +173,24 @@ function isPositionLiquidatable(
 
 Calculates reward updates for hedgers based on interest rate differentials
 
-*Computes new pending rewards based on time elapsed and interest rates*
+Computes new pending rewards based on time elapsed and interest rates
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity
@@ -225,24 +228,24 @@ function calculateRewardUpdate(
 
 Validates margin operations and calculates new margin values
 
-*Validates margin addition/removal and calculates resulting margin ratio*
+Validates margin addition/removal and calculates resulting margin ratio
 
 **Notes:**
-- Validates margin constraints and limits
+- security: Validates margin constraints and limits
 
-- Ensures margin operations are within limits
+- validation: Ensures margin operations are within limits
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- Throws InsufficientMargin or validation errors
+- errors: Throws InsufficientMargin or validation errors
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity
@@ -278,24 +281,24 @@ function validateMarginOperation(
 
 Generates a unique liquidation commitment hash
 
-*Creates a commitment hash for MEV protection in liquidation process*
+Creates a commitment hash for MEV protection in liquidation process
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity
@@ -319,32 +322,4 @@ function generateLiquidationCommitment(address hedger, uint256 positionId, bytes
 |----|----|-----------|
 |`<none>`|`bytes32`|Commitment hash for liquidation process|
 
-
-## Structs
-### PositionData
-
-```solidity
-struct PositionData {
-    uint256 positionSize;
-    uint256 margin;
-    uint256 entryPrice;
-    uint32 entryTime;
-    uint32 lastUpdateTime;
-    int128 unrealizedPnL;
-    uint16 leverage;
-    bool isActive;
-}
-```
-
-### HedgerData
-
-```solidity
-struct HedgerData {
-    uint256 totalMargin;
-    uint256 totalExposure;
-    uint128 pendingRewards;
-    uint64 lastRewardClaim;
-    bool isActive;
-}
-```
 

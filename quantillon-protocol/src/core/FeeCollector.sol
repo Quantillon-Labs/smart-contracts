@@ -289,11 +289,11 @@ contract FeeCollector is
         (uint256 treasuryAmount, uint256 devFundAmount, uint256 communityAmount) = _calculateDistributionAmounts(balance);
         uint256 totalDistributed = treasuryAmount + devFundAmount + communityAmount;
         
-        // Execute transfers
-        _executeTransfers(token, treasuryAmount, devFundAmount, communityAmount);
-        
         // Update tracking
         totalFeesDistributed[token] += totalDistributed;
+        
+        // Execute transfers after accounting update (nonReentrant guard prevents reentrancy)
+        _executeTransfers(token, treasuryAmount, devFundAmount, communityAmount);
         
         emit FeesDistributed(token, totalDistributed, treasuryAmount, devFundAmount, communityAmount);
     }
@@ -428,14 +428,11 @@ contract FeeCollector is
         }
         if (codeSize > 0) revert CommonErrorLibrary.InvalidAddress();
         
-        // slither-disable-next-line arbitrary-send
         // SECURITY: This is NOT an arbitrary send. The recipient is strictly validated:
-        // 1. Must be one of three pre-authorized fund addresses: treasury, devFund, or communityFund
-        // 2. These addresses are validated during initialization and updates via CommonValidationLibrary.validateNotContract()
-        // 3. Only GOVERNANCE_ROLE can update these addresses, providing additional security
-        // 4. Addresses are validated to be non-zero and non-contract addresses
-        // 5. The recipient parameter is not user-controlled - it's restricted to these three specific addresses
-        // This is a controlled transfer to pre-authorized, validated fund addresses only
+        // - Must be one of three pre-authorized fund addresses (treasury/dev/community)
+        // - Governance controls updates and each address is validated to be non-zero EOAs
+        // The suppression below documents this intentional, controlled behavior.
+        // slither-disable-next-line arbitrary-send
         (bool success, ) = recipient.call{value: amount}("");
         if (!success) revert CommonErrorLibrary.ETHTransferFailed();
     }

@@ -101,6 +101,36 @@ interface IHedgerPool {
       * @custom:oracle Requires fresh oracle price data
      */
     function removeMargin(uint256 positionId, uint256 amount) external;
+
+    /**
+     * @notice Synchronizes hedger fills with a user mint
+     * @dev Callable only by QuantillonVault to allocate fills proportionally
+     * @param usdcAmount Net USDC amount minted into QEURO
+     * @custom:security Restricted to the vault; validates amount > 0
+     * @custom:validation Amount must be positive
+     * @custom:state-changes Updates per-position fills and total exposure
+     * @custom:events Emits `HedgerFillUpdated`
+     * @custom:errors Reverts with capacity-related errors when overfilled
+     * @custom:reentrancy Implementations must guard state before external calls
+     * @custom:access Vault-only
+     * @custom:oracle Not applicable
+     */
+    function recordUserMint(uint256 usdcAmount) external;
+
+    /**
+     * @notice Synchronizes hedger fills with a user redemption
+     * @dev Callable only by QuantillonVault to release fills proportionally
+     * @param usdcAmount Gross USDC amount returned to the user
+     * @custom:security Restricted to the vault; validates amount > 0
+     * @custom:validation Amount must be positive
+     * @custom:state-changes Reduces per-position fills and total exposure
+     * @custom:events Emits `HedgerFillUpdated`
+     * @custom:errors Reverts if insufficient filled exposure remains
+     * @custom:reentrancy Implementations must guard state before external calls
+     * @custom:access Vault-only
+     * @custom:oracle Not applicable
+     */
+    function recordUserRedeem(uint256 usdcAmount) external;
     
     // Liquidation system
     
@@ -138,6 +168,15 @@ interface IHedgerPool {
       * @custom:oracle Requires fresh oracle price data
      */
     function liquidateHedger(address hedger, uint256 positionId, bytes32 salt) external returns (uint256 liquidationReward);
+    
+    /**
+     * @notice Claims accrued hedging rewards for the caller
+     * @dev Combines interest differential and YieldShift rewards
+     * @return interestDifferential Rewards from interest spread
+     * @return yieldShiftRewards Rewards distributed by YieldShift
+     * @return totalRewards Sum of all rewards transferred
+     */
+    function claimHedgingRewards() external returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
     
     /**
      * @notice Checks if there's a pending liquidation commitment for a position
@@ -205,88 +244,39 @@ interface IHedgerPool {
      * @custom:access Public - any hedger can claim their rewards
      * @custom:oracle No oracle dependencies for reward claiming
      */
-    function claimHedgingRewards() external returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
-    
     // View functions
     
     /**
-     * @notice Returns detailed information about a specific hedge position
-     * @dev Provides comprehensive position data including current market price
-     * @param hedger Address of the hedger who owns the position
-     * @param positionId Unique identifier of the position to query
-     * @return positionSize Total position size in USD equivalent
-     * @return margin Current margin amount in USDC (6 decimals)
-     * @return entryPrice EUR/USD price when position was opened
-     * @return currentPrice Current EUR/USD price from oracle
-     * @return leverage Leverage multiplier used for the position
-     * @return lastUpdateTime Timestamp of last position update
-     * @custom:security Validates position ownership and oracle price validity
-     * @custom:validation Validates hedger owns the position
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors Throws InvalidHedger, InvalidOraclePrice
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query position data
-     * @custom:oracle Requires fresh EUR/USD price from Chainlink oracle
+     * @notice Returns the list of currently active position IDs
+     * @dev Useful for analytics and monitoring tools to inspect active hedger positions
+     * @return uint256[] Array containing each active position ID
+     * @custom:security View-only; no restrictions besides public access
+     * @custom:validation None
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable
+     * @custom:access Public
+     * @custom:oracle Not applicable
      */
-    function getHedgerPosition(address hedger, uint256 positionId) external view returns (
-        uint256 positionSize,
-        uint256 margin,
-        uint256 entryPrice,
-        uint256 currentPrice,
-        uint256 leverage,
-        uint256 lastUpdateTime
-    );
-    
-    /**
-     * @notice Returns the current margin ratio for a specific hedge position
-     * @dev Calculates margin ratio as (margin / positionSize) * 10000 (in basis points)
-     * @param hedger Address of the hedger who owns the position
-     * @param positionId Unique identifier of the position to query
-     * @return marginRatio Current margin ratio in basis points (10000 = 100%)
-     * @custom:security Validates position ownership
-     * @custom:validation Validates hedger owns the position
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors Throws InvalidHedger if hedger doesn't own position
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query margin ratio
-     * @custom:oracle No oracle dependencies for margin ratio calculation
-     */
-    function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256);
-    
-    /**
-     * @notice Checks if a hedge position is eligible for liquidation
-     * @dev Determines if position margin ratio is below liquidation threshold
-     * @param hedger Address of the hedger who owns the position
-     * @param positionId Unique identifier of the position to check
-     * @return liquidatable True if position can be liquidated, false otherwise
-     * @custom:security Validates position ownership and oracle price validity
-     * @custom:validation Validates hedger owns the position
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors Throws InvalidHedger if hedger doesn't own position
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can check liquidation status
-     * @custom:oracle Requires fresh EUR/USD price for liquidation calculation
-     */
-    function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool);
-    
-    /**
-     * @notice Returns the total hedge exposure across all active positions
-     * @dev Calculates sum of all active position sizes in USD equivalent
-     * @return totalExposure Total exposure across all hedge positions in USD
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query total exposure
-     * @custom:oracle No oracle dependencies for exposure calculation
-     */
-    function getTotalHedgeExposure() external view returns (uint256);
+    function getActivePositionIds() external view returns (uint256[] memory);
 
+    /**
+     * @notice Returns aggregate hedger fill metrics
+     * @dev Provides total exposure requested vs. currently matched exposure
+     * @return totalHedgeExposure Total requested exposure across all positions
+     * @return totalMatchedExposure Total filled exposure matched with user flow
+     * @custom:security View-only; no restrictions besides public access
+     * @custom:validation None
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable
+     * @custom:access Public
+     * @custom:oracle Not applicable
+     */
+    function getFillMetrics() external view returns (uint256 totalHedgeExposure, uint256 totalMatchedExposure);
+    
     
     // Governance functions
     
@@ -345,33 +335,6 @@ interface IHedgerPool {
      * @custom:oracle No oracle dependencies for fee updates
      */
     function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external;
-    /**
-     * @notice Get hedging configuration parameters
-     * @dev Returns all key hedging configuration parameters for risk management
-     * @return _minMarginRatio Minimum margin ratio in basis points
-     * @return _liquidationThreshold Liquidation threshold in basis points
-     * @return _maxLeverage Maximum leverage multiplier
-     * @return _liquidationPenalty Liquidation penalty in basis points
-     * @return _entryFee Entry fee in basis points
-     * @return _exitFee Exit fee in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query hedging configuration
-     * @custom:oracle No oracle dependencies
-     */
-    function getHedgingConfig() external view returns (
-        uint256 _minMarginRatio,
-        uint256 _liquidationThreshold,
-        uint256 _maxLeverage,
-        uint256 _liquidationPenalty,
-        uint256 _entryFee,
-        uint256 _exitFee
-    );
-    
     // Emergency functions
     
     /**
@@ -417,21 +380,6 @@ interface IHedgerPool {
      * @custom:oracle No oracle dependencies for unpause
      */
     function unpause() external;
-    
-    /**
-     * @notice Checks if hedging is currently active
-     * @dev Returns true if the hedger pool is not paused and operational
-     * @return isActive True if hedging is active, false if paused
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can check hedging status
-     * @custom:oracle No oracle dependencies
-     */
-    function isHedgingActive() external view returns (bool);
     
     // Recovery functions
     
@@ -603,21 +551,6 @@ interface IHedgerPool {
     function exitFee() external view returns (uint256);
     
     /**
-     * @notice Returns the margin fee in basis points
-     * @dev Fee charged when adding/removing margin (e.g., 10 = 0.1%)
-     * @return uint256 Margin fee in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query margin fee
-     * @custom:oracle No oracle dependencies
-     */
-    function marginFee() external view returns (uint256);
-    
-    /**
      * @notice Returns the total margin across all positions
      * @dev Total USDC margin held across all active hedge positions (6 decimals)
      * @return uint256 Total margin in USDC
@@ -738,26 +671,12 @@ interface IHedgerPool {
     function interestDifferentialPool() external view returns (uint256);
     
     /**
-     * @notice Returns the active position count for a hedger
-     * @dev Number of active positions owned by a specific hedger
-     * @param hedger Address of the hedger to query
-     * @return uint256 Number of active positions for the hedger
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query position count
-     * @custom:oracle No oracle dependencies
-     */
-    function activePositionCount(address hedger) external view returns (uint256);
-    /**
      * @notice Returns position details by position ID
      * @dev Returns comprehensive position information for a specific position ID
      * @param positionId The ID of the position to query
      * @return hedger Address of the hedger who owns the position
      * @return positionSize Total position size in USD equivalent
+     * @return filledVolume Currently matched volume in USDC
      * @return margin Current margin amount in USDC (6 decimals)
      * @return entryPrice EUR/USD price when position was opened
      * @return leverage Leverage multiplier used for the position
@@ -777,6 +696,7 @@ interface IHedgerPool {
     function positions(uint256 positionId) external view returns (
         address hedger,
         uint256 positionSize,
+        uint256 filledVolume,
         uint256 margin,
         uint256 entryPrice,
         uint256 leverage,
@@ -785,50 +705,6 @@ interface IHedgerPool {
         int256 unrealizedPnL,
         bool isActive
     );
-    /**
-     * @notice Get hedger information
-     * @dev Returns comprehensive information about a hedger's positions and rewards
-     * @param hedger Address of the hedger to query
-     * @return positionIds Array of position IDs owned by the hedger
-     * @return _totalMargin Total margin across all positions (6 decimals)
-     * @return _totalExposure Total exposure across all positions in USD
-     * @return pendingRewards Pending rewards available for claim (6 decimals)
-     * @return lastRewardClaim Timestamp of last reward claim
-     * @return isActive Whether hedger has active positions
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query hedger information
-     * @custom:oracle No oracle dependencies
-     */
-    function hedgers(address hedger) external view returns (
-        uint256[] memory positionIds,
-        uint256 _totalMargin,
-        uint256 _totalExposure,
-        uint256 pendingRewards,
-        uint256 lastRewardClaim,
-        bool isActive
-    );
-    
-    /**
-     * @notice Returns array of position IDs for a hedger
-     * @dev Returns all position IDs owned by a specific hedger
-     * @param hedger Address of the hedger to query
-     * @return uint256[] Array of position IDs owned by the hedger
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query hedger positions
-     * @custom:oracle No oracle dependencies
-     */
-    function hedgerPositions(address hedger) external view returns (uint256[] memory);
-    
     /**
      * @notice Returns pending yield for a user
      * @dev Returns pending yield rewards for a specific user address
@@ -1167,4 +1043,5 @@ interface IHedgerPool {
     event HedgerWhitelisted(address indexed hedger, address indexed caller);
     event HedgerRemoved(address indexed hedger, address indexed caller);
     event HedgerWhitelistModeToggled(bool enabled, address indexed caller);
+    event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
 } 

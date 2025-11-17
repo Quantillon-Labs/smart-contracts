@@ -4,14 +4,14 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Governance-specific errors for QTIToken governance system
 
-*Main characteristics:
+Main characteristics:
 - Errors specific to governance operations
 - Voting and proposal management errors
 - Timelock and execution errors
-- MEV protection errors*
+- MEV protection errors
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Errors

@@ -4,13 +4,13 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Mathematical operations library for Quantillon Protocol
 
-*This library provides essential mathematical utilities:
+This library provides essential mathematical utilities:
 - Percentage calculations for fees and yield distributions
 - Min/max value selection for safe boundaries
-- Decimal scaling utilities for different token precisions*
+- Decimal scaling utilities for different token precisions
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -19,7 +19,7 @@ Precision for percentage calculations (10000 = 100%)
 
 
 ```solidity
-uint256 public constant BASIS_POINTS = 10000;
+uint256 public constant BASIS_POINTS = 10000
 ```
 
 
@@ -28,7 +28,7 @@ High precision scalar (18 decimals)
 
 
 ```solidity
-uint256 public constant PRECISION = 1e18;
+uint256 public constant PRECISION = 1e18
 ```
 
 
@@ -37,7 +37,7 @@ Maximum allowed percentage (10000%)
 
 
 ```solidity
-uint256 public constant MAX_PERCENTAGE = 1000000;
+uint256 public constant MAX_PERCENTAGE = 1000000
 ```
 
 
@@ -46,24 +46,24 @@ uint256 public constant MAX_PERCENTAGE = 1000000;
 
 Multiply two numbers and divide by a third with rounding
 
-*Used by percentageOf for fee calculations*
+Used by percentageOf for fee calculations
 
 **Notes:**
-- Prevents division by zero and multiplication overflow
+- security: Prevents division by zero and multiplication overflow
 
-- Validates c != 0, checks for multiplication overflow
+- validation: Validates c != 0, checks for multiplication overflow
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws "Division by zero" if c is 0, "Multiplication overflow" if overflow
+- errors: Throws "Division by zero" if c is 0, "Multiplication overflow" if overflow
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -88,24 +88,24 @@ function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 
 
 Calculate percentage of a value
 
-*Used for fee calculations across all contracts*
+Used for fee calculations across all contracts
 
 **Notes:**
-- Prevents percentage overflow and division by zero
+- security: Prevents percentage overflow and division by zero
 
-- Validates percentage <= MAX_PERCENTAGE
+- validation: Validates percentage <= MAX_PERCENTAGE
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws "Percentage too high" if percentage > MAX_PERCENTAGE
+- errors: Throws "Percentage too high" if percentage > MAX_PERCENTAGE
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -129,24 +129,24 @@ function percentageOf(uint256 value, uint256 percentage) internal pure returns (
 
 Scale a value between different decimal precisions with proper rounding
 
-*Used for converting between token precisions (e.g., USDC 6 decimals to 18 decimals)*
+Used for converting between token precisions (e.g., USDC 6 decimals to 18 decimals)
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -174,24 +174,24 @@ function scaleDecimals(uint256 value, uint8 fromDecimals, uint8 toDecimals)
 
 Calculate minimum value between two numbers
 
-*Used for safe boundary calculations in yield management and vault operations*
+Used for safe boundary calculations in yield management and vault operations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -215,24 +215,24 @@ function min(uint256 a, uint256 b) internal pure returns (uint256);
 
 Calculate maximum value between two numbers
 
-*Used in tests and edge case calculations*
+Used in tests and edge case calculations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -256,24 +256,24 @@ function max(uint256 a, uint256 b) internal pure returns (uint256);
 
 Convert EUR amount to USD using exchange rate
 
-*Used in tests for currency conversion*
+Used in tests for currency conversion
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -297,24 +297,24 @@ function eurToUsd(uint256 eurAmount, uint256 eurUsdRate) internal pure returns (
 
 Convert USD amount to EUR using exchange rate
 
-*Used in tests for currency conversion*
+Used in tests for currency conversion
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -338,28 +338,31 @@ function usdToEur(uint256 usdAmount, uint256 eurUsdRate) internal pure returns (
 
 Calculate collateralization ratio
 
-*Used in tests for collateral calculations*
+Used in tests for collateral calculations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
-function calculateCollateralRatio(uint256 collateralValue, uint256 debtValue) internal pure returns (uint256 ratio);
+function calculateCollateralRatio(uint256 collateralValue, uint256 debtValue)
+    internal
+    pure
+    returns (uint256 ratio);
 ```
 **Parameters**
 
@@ -379,24 +382,24 @@ function calculateCollateralRatio(uint256 collateralValue, uint256 debtValue) in
 
 Calculate yield distribution between users and hedgers
 
-*Used in tests for yield calculations*
+Used in tests for yield calculations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -424,24 +427,24 @@ function calculateYieldDistribution(uint256 totalYield, uint256 yieldShiftBps)
 
 Check if a value is within a certain percentage of another value
 
-*Used in tests for tolerance checks*
+Used in tests for tolerance checks
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

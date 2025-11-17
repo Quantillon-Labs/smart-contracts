@@ -761,6 +761,7 @@ contract UserPool is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
+    // slither-disable-next-line reentrancy-benign
     function _transferQeuroAndEmitEvents(
         uint256[] calldata usdcAmounts,
         uint256[] memory qeuroMintedAmounts,
@@ -778,6 +779,7 @@ contract UserPool is
             IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
 
             // Track detailed deposit information with oracle ratio
+            // slither-disable-next-line reentrancy-benign
             userDeposits[msg.sender].push(UserDepositInfo({
                 usdcAmount: uint128(usdcAmount),
                 qeuroReceived: uint128(qeuroMinted),
@@ -941,6 +943,7 @@ contract UserPool is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
+    // slither-disable-next-line reentrancy-benign
     function _executeBatchTransfers(
         uint256[] calldata qeuroAmounts,
         uint256[] memory usdcReceivedAmounts,
@@ -958,6 +961,7 @@ contract UserPool is
             totalWithdrawn += usdcReceivedAmounts[i];
             
             // Track detailed withdrawal information with oracle ratio
+            // slither-disable-next-line reentrancy-benign
             userWithdrawals[msg.sender].push(UserWithdrawalInfo({
                 qeuroAmount: uint128(qeuroAmounts[i]),
                 usdcReceived: uint128(usdcReceivedAmounts[i]),
@@ -973,6 +977,7 @@ contract UserPool is
         
         // Track total withdrawals for analytics
         for (uint256 i = 0; i < length;) {
+            // slither-disable-next-line reentrancy-benign
             totalUserWithdrawals += qeuroAmounts[i];
             unchecked { ++i; }
         }
@@ -1661,8 +1666,14 @@ contract UserPool is
      * @notice Updates the YieldShift contract address
      * @dev Governance-only setter for phased deployment wiring
      * @param _yieldShift New YieldShift contract address
-     * @custom:security Validates address and restricts to governance role
+     * @custom:security Restricted to governance; validates non-zero address
+     * @custom:validation Ensures `_yieldShift` is not the zero address
+     * @custom:state-changes Updates the `yieldShift` integration reference
+     * @custom:events None
+     * @custom:errors Reverts with "token" validation error on zero address
+     * @custom:reentrancy Not applicable
      * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Not applicable
      */
     function updateYieldShift(address _yieldShift) external onlyRole(GOVERNANCE_ROLE) {
         CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");

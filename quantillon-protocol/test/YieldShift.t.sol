@@ -204,19 +204,10 @@ contract MockHedgerPool {
     uint256 public activeHedgers = 50;
     
     /**
-     * @notice Gets the total hedge exposure
+     * @notice Mimics HedgerPool.totalExposure()
      * @dev Mock function for testing purposes
-     * @return The total hedge exposure amount
-     * @custom:security No security validations - test mock
-     * @custom:validation No input validation - test mock
-     * @custom:state-changes No state changes - view function
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - test mock
-     * @custom:oracle No oracle dependencies
      */
-    function getTotalHedgeExposure() external view returns (uint256) {
+    function totalExposure() external view returns (uint256) {
         return totalHedgeExposure;
     }
     

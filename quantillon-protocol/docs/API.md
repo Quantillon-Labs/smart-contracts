@@ -474,6 +474,23 @@ Gets position information.
 
 **Access:** Public view
 
+##### `getActivePositionIds() → (uint256[])`
+Returns the list of all currently active hedger positions.
+
+**Returns:**
+- `uint256[]`: Array of active position IDs
+
+**Access:** Public view
+
+##### `getFillMetrics() → (uint256, uint256)`
+Provides aggregate hedger fill information.
+
+**Returns:**
+- `uint256`: Total hedge exposure requested by active positions
+- `uint256`: Total matched exposure currently filled by user activity
+
+**Access:** Public view
+
 ##### `liquidatePosition(uint256 positionId)`
 Liquidates an undercollateralized position.
 
@@ -494,6 +511,7 @@ event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, in
 event MarginAdded(address indexed hedger, uint256 indexed positionId, uint256 amount);
 event MarginRemoved(address indexed hedger, uint256 indexed positionId, uint256 amount);
 event PositionLiquidated(address indexed liquidator, uint256 indexed positionId, int256 pnl);
+event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
 ```
 
 ---

@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {HedgerPoolErrorLibrary} from "./HedgerPoolErrorLibrary.sol";
 import {VaultMath} from "./VaultMath.sol";
 import {HedgerPoolValidationLibrary} from "./HedgerPoolValidationLibrary.sol";
@@ -12,27 +10,7 @@ import {HedgerPoolValidationLibrary} from "./HedgerPoolValidationLibrary.sol";
  * @notice Logic functions for HedgerPool to reduce contract size
  */
 library HedgerPoolLogicLibrary {
-    using SafeERC20 for IERC20;
     using VaultMath for uint256;
-
-    struct PositionData {
-        uint256 positionSize;
-        uint256 margin;
-        uint256 entryPrice;
-        uint32 entryTime;
-        uint32 lastUpdateTime;
-        int128 unrealizedPnL;
-        uint16 leverage;
-        bool isActive;
-    }
-
-    struct HedgerData {
-        uint256 totalMargin;
-        uint256 totalExposure;
-        uint128 pendingRewards;
-        uint64 lastRewardClaim;
-        bool isActive;
-    }
 
     /**
      * @notice Validates position parameters and calculates derived values
@@ -113,7 +91,7 @@ library HedgerPoolLogicLibrary {
     /**
      * @notice Calculates profit or loss for a hedge position
      * @dev Computes PnL based on price movement from entry to current price
-     * @param positionSize Size of the position in USDC
+     * @param tradedVolume Size of the filled position in USDC
      * @param entryPrice Price at which the position was opened
      * @param currentPrice Current market price
      * @return Profit (positive) or loss (negative) amount
@@ -127,28 +105,25 @@ library HedgerPoolLogicLibrary {
      * @custom:oracle Uses provided currentPrice parameter
      */
     function calculatePnL(
-        uint256 positionSize,
+        uint256 tradedVolume,
         uint256 entryPrice,
         uint256 currentPrice
     ) internal pure returns (int256) {
-        int256 priceChange = int256(entryPrice) - int256(currentPrice);
-        
-        if (priceChange >= 0) {
-            uint256 absPriceChange = uint256(priceChange);
-            uint256 intermediate = positionSize.mulDiv(absPriceChange, entryPrice);
-            return int256(intermediate);
-        } else {
-            uint256 absPriceChange = uint256(-priceChange);
-            uint256 intermediate = positionSize.mulDiv(absPriceChange, entryPrice);
-            return -int256(intermediate);
+        if (tradedVolume == 0 || entryPrice == currentPrice) {
+            return 0;
         }
+
+        int256 priceChange = int256(entryPrice) - int256(currentPrice);
+        uint256 absPriceChange = uint256(priceChange >= 0 ? priceChange : -priceChange);
+        uint256 intermediate = tradedVolume.mulDiv(absPriceChange, 1e18);
+        return priceChange >= 0 ? int256(intermediate) : -int256(intermediate);
     }
 
     /**
      * @notice Determines if a position is eligible for liquidation
      * @dev Checks if position margin ratio is below liquidation threshold
      * @param margin Current margin amount for the position
-     * @param positionSize Size of the position in USDC
+     * @param filledVolume Filled size of the position in USDC
      * @param entryPrice Price at which the position was opened
      * @param currentPrice Current market price
      * @param liquidationThreshold Liquidation threshold in basis points
@@ -164,17 +139,21 @@ library HedgerPoolLogicLibrary {
      */
     function isPositionLiquidatable(
         uint256 margin,
-        uint256 positionSize,
+        uint256 filledVolume,
         uint256 entryPrice,
         uint256 currentPrice,
         uint256 liquidationThreshold
     ) external pure returns (bool) {
-        int256 pnl = calculatePnL(positionSize, entryPrice, currentPrice);
+        if (filledVolume == 0) {
+            return false;
+        }
+
+        int256 pnl = calculatePnL(filledVolume, entryPrice, currentPrice);
         int256 effectiveMargin = int256(margin) + pnl;
         
         if (effectiveMargin <= 0) return true;
         
-        uint256 marginRatio = uint256(effectiveMargin).mulDiv(10000, positionSize);
+        uint256 marginRatio = uint256(effectiveMargin).mulDiv(10000, filledVolume);
         return marginRatio < liquidationThreshold;
     }
 

@@ -15,13 +15,13 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 
 ## 📚 Documentation
 
-- **[API Documentation](./docs/API.md)** - Complete API reference for all smart contracts
-- **[Technical Reference](./docs/API-Reference.md)** - Detailed technical specifications and implementation details
-- **[Quick Start Guide](./docs/Quick-Start.md)** - Get started quickly with integration examples
-- **[Integration Examples](./docs/Integration-Examples.md)** - Comprehensive integration examples and patterns
-- **[Deployment Guide](./scripts/deployment/README.md)** - Complete deployment instructions and procedures
-- **[Security Guide](./docs/Security.md)** - Security practices and considerations
-- **[Documentation Hub](./docs/README.md)** - Comprehensive documentation overview
+- **[API Documentation](https://smartcontracts.quantillon.money/API.html)** - Complete API reference for all smart contracts
+- **[Technical Reference](https://smartcontracts.quantillon.money/API-Reference.html)** - Detailed technical specifications and implementation details
+- **[Quick Start Guide](https://smartcontracts.quantillon.money/Quick-Start.html)** - Get started quickly with integration examples
+- **[Integration Examples](https://smartcontracts.quantillon.money/Integration-Examples.html)** - Comprehensive integration examples and patterns
+- **[Deployment Guide](https://smartcontracts.quantillon.money/Deployment.html)** - Complete deployment instructions and procedures
+- **[Security Guide](https://smartcontracts.quantillon.money/Security.html)** - Security practices and considerations
+- **[Documentation Hub](https://smartcontracts.quantillon.money/)** - Comprehensive documentation overview
 
 ### 🎯 Key Features
 
@@ -111,7 +111,7 @@ The protocol uses a **4-phase atomic deployment** (A→B→C→D) to stay within
 - ✅ Minimal initialization with governance setters for post-deployment wiring
 - ✅ Frontend address updater merges all phase broadcasts automatically
 
-See [Deployment Guide](./scripts/deployment/README.md) for complete details.
+See [Deployment Guide](https://smartcontracts.quantillon.money/Deployment.html) for complete details.
 
 ### 🔐 Secure Deployment
 
@@ -125,24 +125,34 @@ The protocol uses standard environment variable configuration:
 ./scripts/deployment/deploy.sh base-sepolia --verify
 
 # Deploy to Base mainnet (production)
-./scripts/deployment/deploy.sh base --production --verify
+./scripts/deployment/deploy.sh base --verify
+
+# Deploy to Ethereum Sepolia testnet
+./scripts/deployment/deploy.sh ethereum-sepolia --with-mocks --verify
+
+# Deploy to Ethereum mainnet (production)
+./scripts/deployment/deploy.sh ethereum --verify
 ```
 
 ### 📋 Deployment Options
 
 | Environment | Command | Description |
 |-------------|---------|-------------|
-| **localhost** | `./scripts/deployment/deploy.sh localhost --with-mocks` | Development with Anvil and mock contracts |
+| **localhost** | `./scripts/deployment/deploy.sh localhost --with-mocks` | Development with all mock contracts |
+| **localhost** | `./scripts/deployment/deploy.sh localhost --with-mock-usdc` | Development with MockUSDC, real Chainlink feeds |
+| **localhost** | `./scripts/deployment/deploy.sh localhost --with-mock-oracle` | Development with Mock Oracle, real USDC |
+| **localhost** | `./scripts/deployment/deploy.sh localhost` | Development with no mocks (real contracts) |
 | **base-sepolia** | `./scripts/deployment/deploy.sh base-sepolia --verify` | Testnet deployment with contract verification |
-| **base** | `./scripts/deployment/deploy.sh base --production --verify` | Production deployment with multisig governance |
+| **base** | `./scripts/deployment/deploy.sh base --verify` | Production deployment with verification |
 
 ### 🔧 Deployment Features
 
 - **🔐 Secure Environment Variables**: Manage secrets with standard `.env` files (never commit them)
 - **🌐 Multi-Network Support**: Localhost, Base Sepolia, and Base Mainnet
-- **🎭 Mock Contract Handling**: Automatic mock deployment for localhost
+- **🎭 Granular Mock Control**: Choose which contracts to mock (`--with-mocks`, `--with-mock-usdc`, `--with-mock-oracle`)
 - **✅ Contract Verification**: Automatic verification on block explorers
 - **🧪 Dry-Run Capability**: Test deployments without broadcasting
+- **⚡ Smart Caching**: Compilation cache preserved by default for faster deployments (use `--clean-cache` to force full rebuild)
 - **📝 Post-Deployment Tasks**: Automatic ABI copying and address updates
 
 ### 🛡️ Security Features

@@ -12,14 +12,11 @@ import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
-import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 import {HedgerPoolValidationLibrary} from "../libraries/HedgerPoolValidationLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
-import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
-import {HedgerPoolOptimizationLibrary} from "../libraries/HedgerPoolOptimizationLibrary.sol";
 import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {HedgerPoolLogicLibrary} from "../libraries/HedgerPoolLogicLibrary.sol";
@@ -71,6 +68,7 @@ contract HedgerPool is
 
     uint256 public totalMargin;
     uint256 public totalExposure;
+    uint256 public totalFilledExposure;
     uint256 public activeHedgers;
     uint256 public nextPositionId;
 
@@ -80,6 +78,7 @@ contract HedgerPool is
     struct HedgePosition {
         address hedger;
         uint96 positionSize;
+        uint96 filledVolume;
         uint96 margin;
         uint96 entryPrice;
         uint32 entryTime;
@@ -89,26 +88,27 @@ contract HedgerPool is
         bool isActive;
     }
 
-    struct HedgerInfo {
-        uint256[] positionIds;
+    struct HedgerBalance {
         uint128 totalMargin;
         uint128 totalExposure;
+    }
+
+    struct HedgerRewardState {
         uint128 pendingRewards;
         uint64 lastRewardClaim;
-        bool isActive;
     }
 
     mapping(uint256 => HedgePosition) public positions;
-    mapping(address => HedgerInfo) public hedgers;
-    mapping(address => uint256) public activePositionCount;
+    mapping(address => HedgerBalance) private hedgerBalances;
+    mapping(address => HedgerRewardState) private hedgerRewards;
+    mapping(address => uint256) private hedgerPositionCounts;
+    mapping(bytes32 => uint256) private liquidationCommitments;
+    mapping(address => mapping(uint256 => uint32)) private pendingLiquidations;
 
-    mapping(address => mapping(uint256 => bool)) public hedgerHasPosition;
-    mapping(address => mapping(uint256 => uint256)) public positionIndex;
+    uint256[] private activePositions;
+    mapping(uint256 => uint256) private activePositionIndex;
 
-    mapping(bytes32 => bool) public liquidationCommitments;
-    mapping(bytes32 => uint256) public liquidationCommitmentTimes;
     mapping(address => uint256) public lastLiquidationAttempt;
-    mapping(address => mapping(uint256 => bool)) public hasPendingLiquidation;
 
     mapping(address => uint256) public hedgerLastRewardBlock;
 
@@ -137,22 +137,11 @@ contract HedgerPool is
     event ETHRecovered(address indexed to, uint256 indexed amount);
     event TreasuryUpdated(address indexed treasury);
     event VaultUpdated(address indexed vault);
+    event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
 
-    modifier flashLoanProtection() {
-        uint256 balanceBefore = usdc.balanceOf(address(this));
+    modifier onlyVault() {
+        if (msg.sender != address(vault)) revert HedgerPoolErrorLibrary.OnlyVault();
         _;
-        uint256 balanceAfter = usdc.balanceOf(address(this));
-        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0))
-            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
-    }
-
-    modifier secureNonReentrant() {
-        if (paused()) revert HedgerPoolErrorLibrary.NotPaused();
-        uint256 balanceBefore = usdc.balanceOf(address(this));
-        _;
-        uint256 balanceAfter = usdc.balanceOf(address(this));
-        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0))
-            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
     }
 
     /**
@@ -277,9 +266,12 @@ contract HedgerPool is
      * @custom:access Restricted to whitelisted hedgers (if whitelist enabled)
      * @custom:oracle Requires fresh oracle price data
      */
+    // slither-disable-next-line reentrancy-benign
+    // slither-disable-start reentrancy-benign
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) 
         external 
-        secureNonReentrant
+        whenNotPaused
+        nonReentrant
         returns (uint256 positionId) 
     {
         // CHECKS
@@ -297,7 +289,7 @@ contract HedgerPool is
         (uint256 fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio) = 
             HedgerPoolLogicLibrary.validateAndCalculatePositionParams(
                 usdcAmount, leverage, eurUsdPrice, coreParams.entryFee, coreParams.minMarginRatio, MAX_MARGIN_RATIO, coreParams.maxLeverage,
-                MAX_POSITIONS_PER_HEDGER, activePositionCount[msg.sender], MAX_MARGIN,
+                MAX_POSITIONS_PER_HEDGER, hedgerPositionCounts[msg.sender], MAX_MARGIN,
                 MAX_POSITION_SIZE, MAX_ENTRY_PRICE, MAX_LEVERAGE, currentTime
             );
         
@@ -312,6 +304,7 @@ contract HedgerPool is
         HedgePosition storage position = positions[positionId];
         position.hedger = msg.sender;
         position.positionSize = uint96(positionSize);
+        position.filledVolume = 0;
         position.margin = uint96(netMargin);
         position.entryTime = uint32(currentTime);
         position.lastUpdateTime = uint32(currentTime);
@@ -319,24 +312,21 @@ contract HedgerPool is
         position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
+        _trackActivePosition(positionId);
 
         // Update hedger information
-        HedgerInfo storage hedgerInfo = hedgers[msg.sender];
-        bool wasInactive = !hedgerInfo.isActive;
-        if (wasInactive) {
-            hedgerInfo.isActive = true;
+        HedgerBalance storage hedgerInfo = hedgerBalances[msg.sender];
+        bool wasInactive = hedgerInfo.totalExposure == 0;
+        
+        // Batch update hedger state
+        hedgerInfo.totalMargin += uint128(netMargin);
+        hedgerInfo.totalExposure += uint128(positionSize);
+        if (wasInactive && hedgerInfo.totalExposure > 0) {
             activeHedgers++;
         }
         
-        // Batch update hedger state
-        hedgerInfo.positionIds.push(positionId);
-        positionIndex[msg.sender][positionId] = hedgerInfo.positionIds.length - 1;
-        hedgerInfo.totalMargin += uint128(netMargin);
-        hedgerInfo.totalExposure += uint128(positionSize);
-        
         // Update global state
-        hedgerHasPosition[msg.sender][positionId] = true;
-        activePositionCount[msg.sender]++;
+        hedgerPositionCounts[msg.sender]++;
         totalMargin += netMargin;
         totalExposure += positionSize;
         
@@ -355,6 +345,7 @@ contract HedgerPool is
         // Validate margin ratio meets minimum requirements
         assert(marginRatio >= coreParams.minMarginRatio);
     }
+    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Closes an existing hedge position
@@ -392,8 +383,8 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
-        // Check if closing this position would cause protocol undercollateralization
-        _validatePositionClosureSafety(positionId, position.margin);
+        uint256 cachedFilledVolume = _unwindFilledVolume(positionId, position);
+        _validatePositionClosureSafety(position.margin);
 
         // Cache position data before state changes for event emission
         uint256 cachedPositionSize = uint256(position.positionSize);
@@ -401,23 +392,13 @@ contract HedgerPool is
         uint256 cachedMargin = uint256(position.margin);
 
         // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
-        HedgerInfo storage hedgerInfo = hedgers[msg.sender];
-        hedgerInfo.totalMargin -= uint128(cachedMargin);
-        hedgerInfo.totalExposure -= uint128(cachedPositionSize);
-
-        totalMargin -= cachedMargin;
-        totalExposure -= cachedPositionSize;
-
-        position.isActive = false;
-        _removePositionFromArrays(msg.sender, positionId);
-        
-        activePositionCount[msg.sender]--;
-        
-        // Check if hedger has no more active positions and update state
-        if (activePositionCount[msg.sender] == 0) {
-            hedgerInfo.isActive = false;
-            activeHedgers--;
-        }
+        _finalizePosition(
+            msg.sender,
+            positionId,
+            position,
+            cachedMargin,
+            cachedPositionSize
+        );
 
         // Emit event before any external calls (oracle call)
         emit HedgePositionClosed(
@@ -429,8 +410,8 @@ contract HedgerPool is
         // Get oracle price after ALL state changes
         uint256 currentPrice = _getValidOraclePrice();
         pnl = HedgerPoolLogicLibrary.calculatePnL(
-            cachedPositionSize, 
-            cachedEntryPrice, 
+            cachedFilledVolume,
+            cachedEntryPrice,
             currentPrice
         );
 
@@ -470,14 +451,14 @@ contract HedgerPool is
      * @custom:access Restricted to position owner
      * @custom:oracle No oracle dependencies
      */
-    function addMargin(uint256 positionId, uint256 amount) external flashLoanProtection {
+    function addMargin(uint256 positionId, uint256 amount) external whenNotPaused nonReentrant {
         HedgePosition storage position = positions[positionId];
         HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
         HedgerPoolValidationLibrary.validatePositiveAmount(amount);
         HedgerPoolValidationLibrary.validateLiquidationCooldown(lastLiquidationAttempt[msg.sender], LIQUIDATION_COOLDOWN);
         
-        if (hasPendingLiquidation[msg.sender][positionId]) {
+        if (pendingLiquidations[msg.sender][positionId] > 0) {
             revert HedgerPoolErrorLibrary.PendingLiquidationCommitment();
         }
 
@@ -491,7 +472,7 @@ contract HedgerPool is
         
         // Update state variables before external calls (Checks-Effects-Interactions pattern)
         position.margin = uint96(newMargin);
-        hedgers[msg.sender].totalMargin += uint128(netAmount);
+        hedgerBalances[msg.sender].totalMargin += uint128(netAmount);
         totalMargin += netAmount;
 
         emit MarginUpdated(
@@ -533,7 +514,7 @@ contract HedgerPool is
      * @custom:access Restricted to position owner
      * @custom:oracle No oracle dependencies
      */
-    function removeMargin(uint256 positionId, uint256 amount) external flashLoanProtection {
+    function removeMargin(uint256 positionId, uint256 amount) external whenNotPaused nonReentrant {
         HedgePosition storage position = positions[positionId];
         HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
@@ -545,7 +526,7 @@ contract HedgerPool is
         );
         
         position.margin = uint96(newMargin);
-        hedgers[msg.sender].totalMargin -= uint128(amount);
+        hedgerBalances[msg.sender].totalMargin -= uint128(amount);
         totalMargin -= amount;
 
         emit MarginUpdated(
@@ -559,33 +540,57 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Commits to liquidating a hedger position with a salt for MEV protection
-     * @dev Creates a liquidation commitment that must be executed within a time window
-     * @param hedger Address of the hedger whose position will be liquidated
-     * @param positionId ID of the position to liquidate
-     * @param salt Random salt for commitment uniqueness and MEV protection
-     * @custom:security Requires LIQUIDATOR_ROLE, validates addresses and position ID
-     * @custom:validation Ensures hedger is valid address, positionId > 0, commitment doesn't exist
-     * @custom:state-changes Sets liquidation commitment, timing, and pending liquidation flags
-     * @custom:events None (commitment phase)
-     * @custom:errors Throws InvalidRole, InvalidAddress, InvalidPosition, or CommitmentExists
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to LIQUIDATOR_ROLE
+     * @notice Records a user mint and allocates hedger fills proportionally
+     * @dev Callable only by QuantillonVault to sync hedger exposure with user activity
+     * @param usdcAmount Net USDC amount that was minted into QEURO
+     * @custom:security Only callable by the vault; amount must be positive
+     * @custom:validation Validates the amount is greater than zero
+     * @custom:state-changes Updates total filled exposure and per-position fills
+     * @custom:events Emits `HedgerFillUpdated` for every position receiving fill
+     * @custom:errors Reverts with `InvalidAmount`, `NoActiveHedgerLiquidity`, or `InsufficientHedgerCapacity`
+     * @custom:reentrancy Not applicable (no external calls besides trusted helpers)
+     * @custom:access Restricted to `QuantillonVault`
      * @custom:oracle Not applicable
      */
+    function recordUserMint(uint256 usdcAmount) external onlyVault whenNotPaused {
+        HedgerPoolValidationLibrary.validatePositiveAmount(usdcAmount);
+        _increaseFilledVolume(usdcAmount);
+    }
+
+    /**
+     * @notice Records a user redemption and releases hedger fills proportionally
+     * @dev Callable only by QuantillonVault to sync hedger exposure with user activity
+     * @param usdcAmount Gross USDC amount redeemed from QEURO burn
+     * @custom:security Only callable by the vault; amount must be positive
+     * @custom:validation Validates the amount is greater than zero
+     * @custom:state-changes Reduces total filled exposure and per-position fills
+     * @custom:events Emits `HedgerFillUpdated` for every position releasing fill
+     * @custom:errors Reverts with `InvalidAmount` or `InsufficientHedgerCapacity`
+     * @custom:reentrancy Not applicable (no external calls besides trusted helpers)
+     * @custom:access Restricted to `QuantillonVault`
+     * @custom:oracle Not applicable
+     */
+    function recordUserRedeem(uint256 usdcAmount) external onlyVault whenNotPaused {
+        HedgerPoolValidationLibrary.validatePositiveAmount(usdcAmount);
+        _decreaseFilledVolume(usdcAmount, 0);
+    }
+
     function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external {
         _validateRole(LIQUIDATOR_ROLE);
         AccessControlLibrary.validateAddress(hedger);
         if (positionId == 0) revert HedgerPoolErrorLibrary.InvalidPosition();
-        
+
+        HedgePosition storage position = positions[positionId];
+        HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
+        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
+
         bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
             hedger, positionId, salt, msg.sender
         );
         HedgerPoolValidationLibrary.validateCommitmentNotExists(liquidationCommitments[commitment]);
-        
-        liquidationCommitments[commitment] = true;
-        liquidationCommitmentTimes[commitment] = block.number;
-        hasPendingLiquidation[hedger][positionId] = true;
+
+        liquidationCommitments[commitment] = block.number;
+        pendingLiquidations[hedger][positionId] += 1;
         lastLiquidationAttempt[hedger] = block.number;
     }
 
@@ -628,38 +633,30 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, hedger);
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
+        uint256 cachedFilledVolume = _unwindFilledVolume(positionId, position);
+
         bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
             hedger, positionId, salt, msg.sender
         );
-        HedgerPoolValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
+        uint256 commitmentBlock = liquidationCommitments[commitment];
+        HedgerPoolValidationLibrary.validateCommitment(commitmentBlock);
         
         // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
         delete liquidationCommitments[commitment];
-        delete liquidationCommitmentTimes[commitment];
-        hasPendingLiquidation[hedger][positionId] = false;
+        _decrementPendingCommitment(hedger, positionId);
 
-        HedgerInfo storage hedgerInfo = hedgers[hedger];
-        hedgerInfo.totalMargin -= uint128(position.margin);
-        hedgerInfo.totalExposure -= uint128(position.positionSize);
-
-        totalMargin -= position.margin;
-        totalExposure -= position.positionSize;
-
-        position.isActive = false;
-        _removePositionFromArrays(hedger, positionId);
-        
-        activePositionCount[hedger]--;
-        
-        // Check if hedger has no more active positions
-        if (activePositionCount[hedger] == 0) {
-            hedgerInfo.isActive = false;
-            activeHedgers--;
-        }
+        _finalizePosition(
+            hedger,
+            positionId,
+            position,
+            position.margin,
+            position.positionSize
+        );
         
         // Get oracle price after ALL state changes for validation
         uint256 currentPrice = _getValidOraclePrice();
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
-            uint256(position.margin), uint256(position.positionSize), 
+            uint256(position.margin), cachedFilledVolume, 
             uint256(position.entryPrice), currentPrice, coreParams.liquidationThreshold
         );
         
@@ -715,24 +712,25 @@ contract HedgerPool is
         returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards) 
     {
         address hedger = msg.sender;
-        HedgerInfo storage hedgerInfo = hedgers[hedger];
-        
+        HedgerBalance storage hedgerInfo = hedgerBalances[hedger];
+        HedgerRewardState storage rewardState = hedgerRewards[hedger];
+
         (uint256 newPendingRewards, uint256 newLastRewardBlock) = HedgerPoolLogicLibrary.calculateRewardUpdate(
             uint256(hedgerInfo.totalExposure), coreParams.eurInterestRate, coreParams.usdInterestRate,
             hedgerLastRewardBlock[hedger], block.number, MAX_REWARD_PERIOD, 
-            uint256(hedgerInfo.pendingRewards)
+            uint256(rewardState.pendingRewards)
         );
         
-        hedgerInfo.pendingRewards = uint128(newPendingRewards);
+        rewardState.pendingRewards = uint128(newPendingRewards);
         hedgerLastRewardBlock[hedger] = newLastRewardBlock;
         
-        interestDifferential = hedgerInfo.pendingRewards;
+        interestDifferential = rewardState.pendingRewards;
         yieldShiftRewards = yieldShift.getHedgerPendingYield(hedger);
         totalRewards = interestDifferential + yieldShiftRewards;
         
         if (totalRewards > 0) {
-            hedgerInfo.pendingRewards = 0;
-            hedgerInfo.lastRewardClaim = uint64(TIME_PROVIDER.currentTime());
+            rewardState.pendingRewards = 0;
+            rewardState.lastRewardClaim = uint64(TIME_PROVIDER.currentTime());
             
             if (yieldShiftRewards > 0) {
                 uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);
@@ -749,111 +747,43 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Retrieves detailed information about a specific hedger position
-     * @dev Returns position data including current oracle price for real-time calculations
-     * @param hedger Address of the hedger who owns the position
-     * @param positionId ID of the position to retrieve
-     * @return positionSize Current size of the position in USDC
-     * @return margin Current margin amount for the position
-     * @return entryPrice Price at which the position was opened
-     * @return currentPrice Current EUR/USD price from oracle
-     * @return leverage Leverage multiplier for the position
-     * @return lastUpdateTime Timestamp of last position update
-     * @custom:security Validates that the caller owns the position
-     * @custom:validation Ensures position exists and hedger matches
-     * @custom:state-changes None (view function with oracle call)
-     * @custom:events None
-     * @custom:errors Throws InvalidHedger if position doesn't belong to hedger
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Public (anyone can query position data)
-     * @custom:oracle Calls _getValidOraclePrice() for current price
-     */
-    function getHedgerPosition(address hedger, uint256 positionId) 
-        external 
-        view
-        returns (uint256 positionSize, uint256 margin, uint256 entryPrice, uint256 currentPrice, uint256 leverage, uint256 lastUpdateTime) 
-    {
-        HedgePosition storage position = positions[positionId];
-        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
-        
-        uint256 oraclePrice = _getValidOraclePrice();
-        
-        return (
-            position.positionSize,
-            position.margin,
-            position.entryPrice,
-            oraclePrice,
-            position.leverage,
-            position.lastUpdateTime
-        );
-    }
-
-    /**
-     * @notice Calculates the current margin ratio for a hedger position
-     * @dev Returns margin ratio as basis points (10000 = 100%)
-     * @param hedger Address of the hedger who owns the position
-     * @param positionId ID of the position to check
-     * @return Current margin ratio in basis points (margin/positionSize * 10000)
-     * @custom:security Validates that the caller owns the position
-     * @custom:validation Ensures position exists and hedger matches
-     * @custom:state-changes None (view function)
-     * @custom:events None
-     * @custom:errors Throws InvalidHedger if position doesn't belong to hedger
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public (anyone can query margin ratio)
-     * @custom:oracle Not applicable
-     */
-    function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256) {
-        HedgePosition storage position = positions[positionId];
-        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
-        
-        if (position.positionSize == 0) return 0;
-        return uint256(position.margin).mulDiv(10000, uint256(position.positionSize));
-    }
-
-    /**
-     * @notice Checks if a hedger position is eligible for liquidation
-     * @dev Uses current oracle price to determine if position is undercollateralized
-     * @param hedger Address of the hedger who owns the position
-     * @param positionId ID of the position to check
-     * @return True if position can be liquidated, false otherwise
-     * @custom:security Validates that the caller owns the position
-     * @custom:validation Ensures position exists, is active, and hedger matches
-     * @custom:state-changes None (view function with oracle call)
-     * @custom:events None
-     * @custom:errors Throws InvalidHedger if position doesn't belong to hedger
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Public (anyone can check liquidation status)
-     * @custom:oracle Calls _getValidOraclePrice() for current price comparison
-     */
-    function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool) {
-        HedgePosition storage position = positions[positionId];
-        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
-        
-        if (!position.isActive) return false;
-        
-        uint256 currentPrice = _getValidOraclePrice();
-        return HedgerPoolLogicLibrary.isPositionLiquidatable(
-            uint256(position.margin), uint256(position.positionSize), 
-            uint256(position.entryPrice), currentPrice, coreParams.liquidationThreshold
-        );
-    }
-
-    /**
-     * @notice Returns the total hedge exposure across all active positions
-     * @dev Provides aggregate exposure for risk management and monitoring
-     * @return Total exposure amount in USDC across all active hedge positions
-     * @custom:security No security validations required for view function
-     * @custom:validation None required for view function
-     * @custom:state-changes None (view function)
+     * @notice Returns the list of currently active position IDs
+     * @dev Provides a snapshot of all active hedger positions for analytics and monitoring
+     * @return activePositionIds Array of active position IDs
+     * @custom:security View-only helper - no state changes
+     * @custom:validation No additional validation beyond internal state
+     * @custom:state-changes None - view function
      * @custom:events None
      * @custom:errors None
      * @custom:reentrancy Not applicable - view function
-     * @custom:access Public (anyone can query total exposure)
-     * @custom:oracle Not applicable
+     * @custom:access Public - anyone can query active positions
+     * @custom:oracle No oracle dependencies
      */
-    function getTotalHedgeExposure() external view returns (uint256) {
-        return totalExposure;
+    function getActivePositionIds() external view returns (uint256[] memory activePositionIds) {
+        uint256 len = activePositions.length;
+        activePositionIds = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
+            activePositionIds[i] = activePositions[i];
+        }
+    }
+
+    /**
+     * @notice Returns aggregate fill metrics across all positions
+     * @dev Helps off-chain services monitor hedger capacity usage
+     * @return totalHedgeExposure Current aggregate position exposure in USDC
+     * @return totalMatchedExposure Current aggregate filled exposure in USDC
+     * @custom:security View-only helper - no state changes
+     * @custom:validation No additional validation beyond internal state
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query fill metrics
+     * @custom:oracle No oracle dependencies
+     */
+    function getFillMetrics() external view returns (uint256 totalHedgeExposure, uint256 totalMatchedExposure) {
+        totalHedgeExposure = totalExposure;
+        totalMatchedExposure = totalFilledExposure;
     }
 
     /**
@@ -969,23 +899,15 @@ contract HedgerPool is
         if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
-        HedgerInfo storage hedgerInfo = hedgers[hedger];
-        hedgerInfo.totalMargin -= uint128(position.margin);
-        hedgerInfo.totalExposure -= uint128(position.positionSize);
+        _unwindFilledVolume(positionId, position);
 
-        totalMargin -= position.margin;
-        totalExposure -= position.positionSize;
-
-        position.isActive = false;
-        _removePositionFromArrays(hedger, positionId);
-        
-        activePositionCount[hedger]--;
-        
-        // Check if hedger has no more active positions
-        if (activePositionCount[hedger] == 0) {
-            hedgerInfo.isActive = false;
-            activeHedgers--;
-        }
+        _finalizePosition(
+            hedger,
+            positionId,
+            position,
+            position.margin,
+            position.positionSize
+        );
 
         // Withdraw USDC from vault for emergency position closure
         vault.withdrawHedgerDeposit(hedger, position.margin);
@@ -1041,101 +963,7 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool) {
-        return hasPendingLiquidation[hedger][positionId];
-    }
-
-    /**
-     * @notice Returns the current hedging configuration parameters
-     * @dev Provides access to all core hedging parameters for external contracts
-     * @return minMarginRatio_ Current minimum margin ratio in basis points
-     * @return liquidationThreshold_ Current liquidation threshold in basis points
-     * @return maxLeverage_ Current maximum leverage multiplier
-     * @return liquidationPenalty_ Current liquidation penalty in basis points
-     * @return entryFee_ Current entry fee in basis points
-     * @return exitFee_ Current exit fee in basis points
-     * @custom:security No security validations required for view function
-     * @custom:validation None required for view function
-     * @custom:state-changes None (view function)
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public (anyone can query configuration)
-     * @custom:oracle Not applicable
-     */
-    function getHedgingConfig() external view returns (
-        uint256 minMarginRatio_,
-        uint256 liquidationThreshold_,
-        uint256 maxLeverage_,
-        uint256 liquidationPenalty_,
-        uint256 entryFee_,
-        uint256 exitFee_
-    ) {
-        return (coreParams.minMarginRatio, coreParams.liquidationThreshold, coreParams.maxLeverage, coreParams.liquidationPenalty, coreParams.entryFee, coreParams.exitFee);
-    }
-
-    /**
-     * @notice Returns the current margin fee rate
-     * @dev Provides the margin fee for margin operations
-     * @return Current margin fee in basis points
-     * @custom:security No security validations required for view function
-     * @custom:validation None required for view function
-     * @custom:state-changes None (view function)
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public (anyone can query margin fee)
-     * @custom:oracle Not applicable
-     */
-    function marginFee() external view returns (uint256) {
-        return coreParams.marginFee;
-    }
-
-    /**
-     * @notice Returns the maximum allowed values for various parameters
-     * @dev Provides hard limits for position sizes, margins, and other constraints
-     * @return maxPositionSize Maximum position size in USDC
-     * @return maxMargin Maximum margin per position in USDC
-     * @return maxEntryPrice Maximum entry price for positions
-     * @return maxLeverageValue Maximum leverage multiplier
-     * @return maxTotalMargin Maximum total margin across all positions
-     * @return maxTotalExposure Maximum total exposure across all positions
-     * @return maxPendingRewards Maximum pending rewards amount
-     * @custom:security No security validations required for pure function
-     * @custom:validation None required for pure function
-     * @custom:state-changes None (pure function)
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Public (anyone can query max values)
-     * @custom:oracle Not applicable
-     */
-    function getMaxValues() external pure returns (
-        uint256 maxPositionSize,
-        uint256 maxMargin,
-        uint256 maxEntryPrice,
-        uint256 maxLeverageValue,
-        uint256 maxTotalMargin,
-        uint256 maxTotalExposure,
-        uint256 maxPendingRewards
-    ) {
-        return (MAX_POSITION_SIZE, MAX_MARGIN, MAX_ENTRY_PRICE, MAX_LEVERAGE, MAX_TOTAL_MARGIN, MAX_TOTAL_EXPOSURE, MAX_PENDING_REWARDS);
-    }
-
-    /**
-     * @notice Checks if hedging operations are currently active
-     * @dev Returns true if contract is not paused, false if paused
-     * @return True if hedging is active, false if paused
-     * @custom:security No security validations required for view function
-     * @custom:validation None required for view function
-     * @custom:state-changes None (view function)
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public (anyone can query hedging status)
-     * @custom:oracle Not applicable
-     */
-    function isHedgingActive() external view returns (bool) {
-        return !paused();
+        return pendingLiquidations[hedger][positionId] > 0;
     }
 
     /**
@@ -1155,7 +983,7 @@ contract HedgerPool is
     function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external {
         _validateRole(LIQUIDATOR_ROLE);
         if (block.number > lastLiquidationAttempt[hedger] + LIQUIDATION_COOLDOWN) {
-            hasPendingLiquidation[hedger][positionId] = false;
+            pendingLiquidations[hedger][positionId] = 0;
         }
     }
 
@@ -1179,11 +1007,11 @@ contract HedgerPool is
         bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
             hedger, positionId, salt, msg.sender
         );
-        HedgerPoolValidationLibrary.validateCommitment(liquidationCommitments[commitment]);
+        uint256 commitmentBlock = liquidationCommitments[commitment];
+        HedgerPoolValidationLibrary.validateCommitment(commitmentBlock);
         
         delete liquidationCommitments[commitment];
-        delete liquidationCommitmentTimes[commitment];
-        hasPendingLiquidation[hedger][positionId] = false;
+        _decrementPendingCommitment(hedger, positionId);
     }
 
     /**
@@ -1267,6 +1095,14 @@ contract HedgerPool is
      * @notice Updates the oracle address
      * @dev Governance-only setter to allow phased wiring after minimal initialization
      * @param _oracle New oracle address
+     * @custom:security Restricted to GOVERNANCE_ROLE and validates non-zero address
+     * @custom:validation Ensures `_oracle` is not the zero address
+     * @custom:state-changes Updates the `oracle` reference used for price checks
+     * @custom:events Emits `VaultUpdated`? (no) -> None
+     * @custom:errors Reverts with `InvalidAddress`
+     * @custom:reentrancy Not applicable
+     * @custom:access Governance-only
+     * @custom:oracle Establishes new oracle dependency
      */
     function updateOracle(address _oracle) external {
         _validateRole(GOVERNANCE_ROLE);
@@ -1278,6 +1114,14 @@ contract HedgerPool is
      * @notice Updates the YieldShift address
      * @dev Governance-only setter to allow phased wiring after minimal initialization
      * @param _yieldShift New YieldShift address
+     * @custom:security Restricted to GOVERNANCE_ROLE and validates non-zero address
+     * @custom:validation Ensures `_yieldShift` is not the zero address
+     * @custom:state-changes Updates the `yieldShift` reference used for reward sync
+     * @custom:events None
+     * @custom:errors Reverts with `InvalidAddress`
+     * @custom:reentrancy Not applicable
+     * @custom:access Governance-only
+     * @custom:oracle Not applicable
      */
     function updateYieldShift(address _yieldShift) external {
         _validateRole(GOVERNANCE_ROLE);
@@ -1394,7 +1238,11 @@ contract HedgerPool is
      * @custom:oracle Requires fresh oracle price data
      */
     function _getValidOraclePrice() internal view returns (uint256) {
-        (uint256 price, bool isValid) = HedgerPoolOptimizationLibrary.getValidOraclePrice(address(oracle));
+        (bool success, bytes memory data) = address(oracle).staticcall(
+            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector)
+        );
+        if (!success || data.length < 64) revert HedgerPoolErrorLibrary.InvalidOraclePrice();
+        (uint256 price, bool isValid) = abi.decode(data, (uint256, bool));
         if (!isValid) revert HedgerPoolErrorLibrary.InvalidOraclePrice();
         return price;
     }
@@ -1413,7 +1261,7 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     function _validateRole(bytes32 role) internal view {
-        HedgerPoolOptimizationLibrary.validateRole(role, address(this));
+        if (!hasRole(role, msg.sender)) revert HedgerPoolErrorLibrary.NotAuthorized();
     }
 
     /**
@@ -1430,15 +1278,283 @@ contract HedgerPool is
      * @custom:access Internal function
      * @custom:oracle Not applicable
      */
-    function _removePositionFromArrays(address hedger, uint256 positionId) internal {
-        bool success = HedgerPoolOptimizationLibrary.removePositionFromArrays(
-            hedger,
-            positionId,
-            hedgerHasPosition,
-            positionIndex,
-            hedgers[hedger].positionIds
-        );
-        if (!success) revert HedgerPoolErrorLibrary.PositionNotFound();
+    /**
+     * @notice Tracks a newly opened position for global fill allocation
+     * @dev Stores the index of the position in `activePositions` for O(1) removals
+     * @param positionId ID of the position being tracked
+     * @custom:security Caller must ensure position is valid and unique
+     * @custom:validation Assumes positionId is not already tracked
+     * @custom:state-changes Updates `activePositionIndex` and `activePositions`
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - internal function
+     * @custom:access Internal helper
+     * @custom:oracle Not applicable
+     */
+    function _trackActivePosition(uint256 positionId) internal {
+        activePositionIndex[positionId] = activePositions.length;
+        activePositions.push(positionId);
+    }
+
+    /**
+     * @notice Removes a position from the active tracking arrays
+     * @dev Swaps-and-pops to keep the array compact while updating indices
+     * @param positionId ID of the position to untrack
+     * @custom:security Caller must ensure positionId is currently tracked
+     * @custom:validation Assumes the active set is non-empty
+     * @custom:state-changes Modifies `activePositions` and `activePositionIndex`
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - internal function
+     * @custom:access Internal helper
+     * @custom:oracle Not applicable
+     */
+    function _untrackActivePosition(uint256 positionId) internal {
+        uint256 index = activePositionIndex[positionId];
+        uint256 lastIndex = activePositions.length - 1;
+        if (index != lastIndex) {
+            uint256 lastId = activePositions[lastIndex];
+            activePositions[index] = lastId;
+            activePositionIndex[lastId] = index;
+        }
+        activePositions.pop();
+        delete activePositionIndex[positionId];
+    }
+
+    function _finalizePosition(
+        address hedger,
+        uint256 positionId,
+        HedgePosition storage position,
+        uint256 marginDelta,
+        uint256 exposureDelta
+    ) internal {
+        HedgerBalance storage hedgerInfo = hedgerBalances[hedger];
+        bool wasActive = hedgerInfo.totalExposure > 0;
+
+        hedgerInfo.totalMargin -= uint128(marginDelta);
+        hedgerInfo.totalExposure -= uint128(exposureDelta);
+
+        totalMargin -= marginDelta;
+        totalExposure -= exposureDelta;
+
+        position.isActive = false;
+        _untrackActivePosition(positionId);
+
+        uint256 newCount = --hedgerPositionCounts[hedger];
+        if (wasActive && hedgerInfo.totalExposure == 0 && newCount == 0) {
+            activeHedgers--;
+        }
+    }
+
+    function _unwindFilledVolume(uint256 positionId, HedgePosition storage position) internal returns (uint256 freedVolume) {
+        uint256 cachedFilledVolume = uint256(position.filledVolume);
+        if (cachedFilledVolume == 0) {
+            return 0;
+        }
+
+        position.filledVolume = 0;
+        emit HedgerFillUpdated(positionId, cachedFilledVolume, 0);
+        if (totalFilledExposure < cachedFilledVolume) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+        totalFilledExposure -= cachedFilledVolume;
+        _increaseFilledVolume(cachedFilledVolume, positionId);
+        return cachedFilledVolume;
+    }
+
+    function _decrementPendingCommitment(address hedger, uint256 positionId) internal {
+        uint32 count = pendingLiquidations[hedger][positionId];
+        if (count > 0) {
+            unchecked {
+                pendingLiquidations[hedger][positionId] = count - 1;
+            }
+        }
+    }
+
+    /**
+     * @notice Convenience overload to increase fills without skipping any position
+     * @dev Forwards to the full allocator with a zero skip identifier
+     * @param usdcAmount Amount of USDC exposure to allocate
+     * @custom:security Caller must ensure `usdcAmount` is sanitized
+     * @custom:validation No additional validation beyond delegated call
+     * @custom:state-changes See `_increaseFilledVolume(uint256,uint256)`
+     * @custom:events Emits `HedgerFillUpdated` via delegated call
+     * @custom:errors See delegated allocator
+     * @custom:reentrancy Not applicable
+     * @custom:access Internal helper
+     * @custom:oracle Not applicable
+     */
+    function _increaseFilledVolume(uint256 usdcAmount) internal {
+        _increaseFilledVolume(usdcAmount, 0);
+    }
+
+    /**
+     * @notice Allocates user mint exposure across active hedger positions
+     * @dev Distributes `usdcAmount` proportionally to available capacity
+     * @param usdcAmount Amount of USDC exposure to allocate
+     * @param skipPositionId Position ID to exclude (e.g., the exiting position)
+     * @custom:security Caller must ensure hedger sets are consistent before invocation
+     * @custom:validation Validates liquidity availability and capacity before allocation
+     * @custom:state-changes Updates `filledVolume` per position and `totalFilledExposure`
+     * @custom:events Emits `HedgerFillUpdated` for every adjusted position
+     * @custom:errors Reverts if capacity is insufficient or liquidity is absent
+     * @custom:reentrancy Not applicable - internal function
+     * @custom:access Internal helper
+     * @custom:oracle Not applicable
+     */
+    function _increaseFilledVolume(uint256 usdcAmount, uint256 skipPositionId) internal {
+        if (usdcAmount == 0) {
+            return;
+        }
+        if (activePositions.length == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+
+        uint256 availableCapacity = totalExposure - totalFilledExposure;
+        if (skipPositionId != 0) {
+            HedgePosition storage skipPosition = positions[skipPositionId];
+            uint256 skipCapacity = uint256(skipPosition.positionSize) - uint256(skipPosition.filledVolume);
+            if (availableCapacity <= skipCapacity) {
+                availableCapacity = 0;
+            } else {
+                availableCapacity -= skipCapacity;
+            }
+        }
+
+        if (availableCapacity < usdcAmount) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+        if (availableCapacity == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+
+        uint256 allocated = 0;
+        uint256 len = activePositions.length;
+        for (uint256 i = 0; i < len; i++) {
+            uint256 positionId = activePositions[i];
+            if (positionId == skipPositionId) continue;
+            HedgePosition storage position = positions[positionId];
+            uint256 capacity = uint256(position.positionSize) - uint256(position.filledVolume);
+            if (capacity == 0) continue;
+            uint256 share = capacity.mulDiv(usdcAmount, availableCapacity);
+            if (share > capacity) {
+                share = capacity;
+            }
+            if (share == 0) continue;
+            _applyFillChange(positionId, position, share, true);
+            allocated += share;
+        }
+
+        uint256 remaining = usdcAmount - allocated;
+        if (remaining > 0) {
+            for (uint256 i = 0; i < len && remaining > 0; i++) {
+                uint256 positionId = activePositions[i];
+                if (positionId == skipPositionId) continue;
+                HedgePosition storage position = positions[positionId];
+                uint256 capacity = uint256(position.positionSize) - uint256(position.filledVolume);
+                if (capacity == 0) continue;
+                uint256 delta = capacity >= remaining ? remaining : capacity;
+                if (delta == 0) continue;
+                _applyFillChange(positionId, position, delta, true);
+                remaining -= delta;
+            }
+        }
+
+        if (remaining != 0) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+
+        totalFilledExposure += usdcAmount;
+    }
+
+    /**
+     * @notice Releases exposure across hedger positions following a user redeem
+     * @dev Proportionally decreases fills (optionally skipping one position)
+     * @param usdcAmount Amount of USDC exposure to release
+     * @param skipPositionId Position ID to exclude from the release cycle
+     * @custom:security Caller must ensure inputs keep invariants consistent
+     * @custom:validation Ensures sufficient filled exposure exists for release
+     * @custom:state-changes Decreases per-position `filledVolume` and `totalFilledExposure`
+     * @custom:events Emits `HedgerFillUpdated` for every adjusted position
+     * @custom:errors Reverts if exposure is insufficient or no active liquidity is present
+     * @custom:reentrancy Not applicable - internal function
+     * @custom:access Internal helper
+     * @custom:oracle Not applicable
+     */
+    function _decreaseFilledVolume(uint256 usdcAmount, uint256 skipPositionId) internal {
+        if (usdcAmount == 0) {
+            return;
+        }
+        if (totalFilledExposure < usdcAmount) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+
+        uint256 distributable = totalFilledExposure;
+        if (skipPositionId != 0) {
+            distributable -= positions[skipPositionId].filledVolume;
+        }
+        if (distributable < usdcAmount) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+        if (distributable == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+
+        uint256 released = 0;
+        uint256 len = activePositions.length;
+        for (uint256 i = 0; i < len; i++) {
+            uint256 positionId = activePositions[i];
+            if (positionId == skipPositionId) continue;
+            HedgePosition storage position = positions[positionId];
+            uint256 filled = uint256(position.filledVolume);
+            if (filled == 0) continue;
+            uint256 share = filled.mulDiv(usdcAmount, distributable);
+            if (share > filled) {
+                share = filled;
+            }
+            if (share == 0) continue;
+            _applyFillChange(positionId, position, share, false);
+            released += share;
+        }
+
+        uint256 remaining = usdcAmount - released;
+        if (remaining > 0) {
+            for (uint256 i = 0; i < len && remaining > 0; i++) {
+                uint256 positionId = activePositions[i];
+                if (positionId == skipPositionId) continue;
+                HedgePosition storage position = positions[positionId];
+                uint256 filled = uint256(position.filledVolume);
+                if (filled == 0) continue;
+                uint256 delta = filled >= remaining ? remaining : filled;
+                if (delta == 0) continue;
+                _applyFillChange(positionId, position, delta, false);
+                remaining -= delta;
+            }
+        }
+
+        if (remaining != 0) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+        totalFilledExposure -= usdcAmount;
+    }
+
+    /**
+     * @notice Applies a fill delta to a single position and emits an event
+     * @dev Handles both increases and decreases while enforcing capacity constraints
+     * @param positionId ID of the position being updated
+     * @param position Storage pointer to the position struct
+     * @param delta Amount of fill change to apply
+     * @param increase True to increase fill, false to decrease
+     * @custom:security Caller must ensure the storage reference is valid
+     * @custom:validation Validates capacity or availability before applying the delta
+     * @custom:state-changes Updates the position’s `filledVolume`
+     * @custom:events Emits `HedgerFillUpdated`
+     * @custom:errors Reverts with `InsufficientHedgerCapacity` on invalid operations
+     * @custom:reentrancy Not applicable - internal function
+     * @custom:access Internal helper
+     * @custom:oracle Not applicable
+     */
+    function _applyFillChange(
+        uint256 positionId,
+        HedgePosition storage position,
+        uint256 delta,
+        bool increase
+    ) internal {
+        if (delta == 0) return;
+        uint256 previous = position.filledVolume;
+        uint256 updated;
+        if (increase) {
+            updated = previous + delta;
+            if (updated > position.positionSize) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+            position.filledVolume = uint96(updated);
+        } else {
+            if (previous < delta) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+            updated = previous - delta;
+            position.filledVolume = uint96(updated);
+        }
+        emit HedgerFillUpdated(positionId, previous, updated);
     }
     
     /**
@@ -1464,7 +1580,7 @@ contract HedgerPool is
         uint256 leverage,
         uint256 entryPrice
     ) internal pure returns (bytes32) {
-        return HedgerPoolOptimizationLibrary.packPositionOpenData(positionSize, margin, leverage, entryPrice);
+        return keccak256(abi.encode(positionSize, margin, leverage, entryPrice));
     }
     
     /**
@@ -1488,7 +1604,7 @@ contract HedgerPool is
         int256 pnl,
         uint256 timestamp
     ) internal pure returns (bytes32) {
-        return HedgerPoolOptimizationLibrary.packPositionCloseData(exitPrice, pnl, timestamp);
+        return keccak256(abi.encode(exitPrice, pnl, timestamp));
     }
     
     /**
@@ -1512,7 +1628,7 @@ contract HedgerPool is
         uint256 newMarginRatio,
         bool isAdded
     ) internal pure returns (bytes32) {
-        return HedgerPoolOptimizationLibrary.packMarginData(marginAmount, newMarginRatio, isAdded);
+        return keccak256(abi.encode(marginAmount, newMarginRatio, isAdded));
     }
     
     /**
@@ -1534,7 +1650,7 @@ contract HedgerPool is
         uint256 liquidationReward,
         uint256 remainingMargin
     ) internal pure returns (bytes32) {
-        return HedgerPoolOptimizationLibrary.packLiquidationData(liquidationReward, remainingMargin);
+        return keccak256(abi.encode(liquidationReward, remainingMargin));
     }
     
     /**
@@ -1558,25 +1674,16 @@ contract HedgerPool is
         uint256 yieldShiftRewards,
         uint256 totalRewards
     ) internal pure returns (bytes32) {
-        return HedgerPoolOptimizationLibrary.packRewardData(interestDifferential, yieldShiftRewards, totalRewards);
+        return keccak256(abi.encode(interestDifferential, yieldShiftRewards, totalRewards));
     }
 
-    /**
-     * @notice Validates that closing a position won't cause protocol undercollateralization
-     * @dev Checks if closing the position would make the protocol undercollateralized for QEURO minting
-     * @param positionMargin The margin amount of the position being closed
-     * @custom:security Validates protocol collateralization status
-     * @custom:validation Checks vault collateralization ratio
-     * @custom:state-changes No state changes - validation only
-     * @custom:events No events emitted
-     * @custom:errors Throws PositionClosureRestricted if closure would cause undercollateralization
-     * @custom:reentrancy Not protected - internal function only
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function _validatePositionClosureSafety(uint256 /* positionId */, uint256 positionMargin) internal view {
-        bool isValid = HedgerPoolOptimizationLibrary.validatePositionClosureSafety(positionMargin, address(vault));
-        if (!isValid) {
+    function _validatePositionClosureSafety(uint256 positionMargin) internal view {
+        if (address(vault) == address(0)) {
+            return;
+        }
+
+        (bool isCollateralized, uint256 reportedMargin) = vault.isProtocolCollateralized();
+        if (!isCollateralized || reportedMargin <= positionMargin) {
             revert HedgerPoolErrorLibrary.PositionClosureRestricted();
         }
     }

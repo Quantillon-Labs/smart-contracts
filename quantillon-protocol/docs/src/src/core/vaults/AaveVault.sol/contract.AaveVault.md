@@ -1,218 +1,218 @@
 # AaveVault
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/home/uld/GitHub/smart-contracts/quantillon-protocol/docs/src/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Aave integration vault for yield generation through USDC lending
 
-*Main characteristics:
+Main characteristics:
 - USDC deposits into Aave lending protocol for yield generation
 - Automatic yield harvesting and distribution
 - Risk management with exposure limits and health monitoring
 - Emergency withdrawal capabilities for crisis situations
 - Dynamic allocation based on market conditions
-- Upgradeable via UUPS pattern*
+- Upgradeable via UUPS pattern
 
-*Deposit mechanics:
+Deposit mechanics:
 - USDC supplied to Aave protocol for lending
 - Receives aUSDC tokens representing interest-bearing deposits
 - Principal tracking for yield calculation
 - Maximum exposure limits for risk management
-- Health checks before deposits*
+- Health checks before deposits
 
-*Yield harvesting:
+Yield harvesting:
 - Automatic detection of accrued interest
 - Threshold-based harvesting to optimize gas costs
 - Protocol fees charged on harvested yield
 - Net yield distributed to yield shift mechanism
-- Real-time yield tracking and reporting*
+- Real-time yield tracking and reporting
 
-*Risk management:
+Risk management:
 - Maximum Aave exposure limits (default 50M USDC)
 - Utilization rate monitoring for liquidity risk
 - Emergency mode for immediate withdrawals
 - Health monitoring of Aave protocol status
-- Slippage protection on withdrawals*
+- Slippage protection on withdrawals
 
-*Allocation strategy:
+Allocation strategy:
 - Dynamic allocation based on Aave APY
 - Rebalancing thresholds for optimal yield
 - Market condition adjustments
 - Liquidity availability considerations
-- Expected yield calculations*
+- Expected yield calculations
 
-*Fee structure:
+Fee structure:
 - Yield fees charged on harvested interest (default 10%)
 - Protocol fees for sustainability
 - Dynamic fee adjustment based on performance
-- Fee collection and distribution tracking*
+- Fee collection and distribution tracking
 
-*Security features:
+Security features:
 - Role-based access control for all critical operations
 - Reentrancy protection for all external calls
 - Emergency pause mechanism for crisis situations
 - Upgradeable architecture for future improvements
 - Secure withdrawal validation
-- Health monitoring and circuit breakers*
+- Health monitoring and circuit breakers
 
-*Integration points:
+Integration points:
 - Aave lending protocol for yield generation
 - USDC for deposits and withdrawals
 - aUSDC tokens for interest accrual tracking
 - Yield shift mechanism for yield distribution
-- Rewards controller for additional incentives*
+- Rewards controller for additional incentives
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
 ### GOVERNANCE_ROLE
 
 ```solidity
-bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE")
 ```
 
 
 ### VAULT_MANAGER_ROLE
 
 ```solidity
-bytes32 public constant VAULT_MANAGER_ROLE = keccak256("VAULT_MANAGER_ROLE");
+bytes32 public constant VAULT_MANAGER_ROLE = keccak256("VAULT_MANAGER_ROLE")
 ```
 
 
 ### EMERGENCY_ROLE
 
 ```solidity
-bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
 ### usdc
 
 ```solidity
-IERC20 public usdc;
+IERC20 public usdc
 ```
 
 
 ### aUSDC
 
 ```solidity
-IERC20 public aUSDC;
+IERC20 public aUSDC
 ```
 
 
 ### aavePool
 
 ```solidity
-IPool public aavePool;
+IPool public aavePool
 ```
 
 
 ### aaveProvider
 
 ```solidity
-IPoolAddressesProvider public aaveProvider;
+IPoolAddressesProvider public aaveProvider
 ```
 
 
 ### rewardsController
 
 ```solidity
-IRewardsController public rewardsController;
+IRewardsController public rewardsController
 ```
 
 
 ### yieldShift
 
 ```solidity
-IYieldShift public yieldShift;
+IYieldShift public yieldShift
 ```
 
 
 ### maxAaveExposure
 
 ```solidity
-uint256 public maxAaveExposure;
+uint256 public maxAaveExposure
 ```
 
 
 ### harvestThreshold
 
 ```solidity
-uint256 public harvestThreshold;
+uint256 public harvestThreshold
 ```
 
 
 ### yieldFee
 
 ```solidity
-uint256 public yieldFee;
+uint256 public yieldFee
 ```
 
 
 ### rebalanceThreshold
 
 ```solidity
-uint256 public rebalanceThreshold;
+uint256 public rebalanceThreshold
 ```
 
 
 ### principalDeposited
 
 ```solidity
-uint256 public principalDeposited;
+uint256 public principalDeposited
 ```
 
 
 ### lastHarvestTime
 
 ```solidity
-uint256 public lastHarvestTime;
+uint256 public lastHarvestTime
 ```
 
 
 ### totalYieldHarvested
 
 ```solidity
-uint256 public totalYieldHarvested;
+uint256 public totalYieldHarvested
 ```
 
 
 ### totalFeesCollected
 
 ```solidity
-uint256 public totalFeesCollected;
+uint256 public totalFeesCollected
 ```
 
 
 ### utilizationLimit
 
 ```solidity
-uint256 public utilizationLimit;
+uint256 public utilizationLimit
 ```
 
 
 ### emergencyExitThreshold
 
 ```solidity
-uint256 public emergencyExitThreshold;
+uint256 public emergencyExitThreshold
 ```
 
 
 ### emergencyMode
 
 ```solidity
-bool public emergencyMode;
+bool public emergencyMode
 ```
 
 
 ### treasury
 
 ```solidity
-address public treasury;
+address public treasury
 ```
 
 
@@ -221,52 +221,52 @@ address public treasury;
 
 Constructor for AaveVault implementation
 
-*Disables initialization on implementation for security*
+Disables initialization on implementation for security
 
 **Notes:**
-- Disables initialization on implementation for security
+- security: Disables initialization on implementation for security
 
-- No input validation required
+- validation: No input validation required
 
-- Disables initializers
+- state-changes: Disables initializers
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - constructor only
+- reentrancy: Not protected - constructor only
 
-- Public constructor
+- access: Public constructor
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
-constructor();
+constructor() ;
 ```
 
 ### initialize
 
 Initialize the AaveVault contract
 
-*Sets up the contract with all required addresses and roles*
+Sets up the contract with all required addresses and roles
 
 **Notes:**
-- Validates all addresses are not zero
+- security: Validates all addresses are not zero
 
-- Validates all input addresses
+- validation: Validates all input addresses
 
-- Initializes ReentrancyGuard, AccessControl, and Pausable
+- state-changes: Initializes ReentrancyGuard, AccessControl, and Pausable
 
-- Emits initialization events
+- events: Emits initialization events
 
-- Throws if any address is zero
+- errors: Throws if any address is zero
 
-- Protected by initializer modifier
+- reentrancy: Protected by initializer modifier
 
-- Public initializer
+- access: Public initializer
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -297,24 +297,24 @@ function initialize(
 
 Deploy USDC to Aave V3 pool to earn yield
 
-*Supplies USDC to Aave protocol and receives aUSDC tokens representing the deposit*
+Supplies USDC to Aave protocol and receives aUSDC tokens representing the deposit
 
 **Notes:**
-- Validates oracle price freshness, enforces exposure limits and health checks
+- security: Validates oracle price freshness, enforces exposure limits and health checks
 
-- Validates amount > 0, checks max exposure limits, verifies Aave pool health
+- validation: Validates amount > 0, checks max exposure limits, verifies Aave pool health
 
-- Updates principalDeposited, transfers USDC from caller, receives aUSDC
+- state-changes: Updates principalDeposited, transfers USDC from caller, receives aUSDC
 
-- Emits DeployedToAave with operation details
+- events: Emits DeployedToAave with operation details
 
-- Throws WouldExceedLimit if exceeds maxAaveExposure, AavePoolNotHealthy if pool unhealthy
+- errors: Throws WouldExceedLimit if exceeds maxAaveExposure, AavePoolNotHealthy if pool unhealthy
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to VAULT_MANAGER_ROLE
+- access: Restricted to VAULT_MANAGER_ROLE
 
-- Requires fresh EUR/USD price for health validation
+- oracle: Requires fresh EUR/USD price for health validation
 
 
 ```solidity
@@ -337,24 +337,24 @@ function deployToAave(uint256 amount) external nonReentrant whenNotPaused return
 
 Withdraw USDC from Aave V3 pool
 
-*Withdraws USDC from Aave protocol, validates slippage and updates principal tracking*
+Withdraws USDC from Aave protocol, validates slippage and updates principal tracking
 
 **Notes:**
-- Validates withdrawal constraints, enforces minimum balance requirements
+- security: Validates withdrawal constraints, enforces minimum balance requirements
 
-- Validates amount > 0, checks sufficient aUSDC balance, validates slippage
+- validation: Validates amount > 0, checks sufficient aUSDC balance, validates slippage
 
-- Updates principalDeposited, withdraws aUSDC, receives USDC
+- state-changes: Updates principalDeposited, withdraws aUSDC, receives USDC
 
-- Emits WithdrawnFromAave with withdrawal details
+- events: Emits WithdrawnFromAave with withdrawal details
 
-- Throws InsufficientBalance if not enough aUSDC, WouldBreachMinimum if below threshold
+- errors: Throws InsufficientBalance if not enough aUSDC, WouldBreachMinimum if below threshold
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to VAULT_MANAGER_ROLE
+- access: Restricted to VAULT_MANAGER_ROLE
 
-- No oracle dependency for withdrawals
+- oracle: No oracle dependency for withdrawals
 
 
 ```solidity
@@ -377,24 +377,24 @@ function withdrawFromAave(uint256 amount) external nonReentrant returns (uint256
 
 Validates and calculates the actual withdrawal amount
 
-*Internal function to validate withdrawal parameters and calculate actual amount*
+Internal function to validate withdrawal parameters and calculate actual amount
 
 **Notes:**
-- Validates sufficient balance and handles max withdrawal requests
+- security: Validates sufficient balance and handles max withdrawal requests
 
-- Validates aaveBalance > 0, amount <= aaveBalance
+- validation: Validates aaveBalance > 0, amount <= aaveBalance
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InsufficientBalance if balance too low
+- errors: Throws InsufficientBalance if balance too low
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -421,24 +421,24 @@ function _validateAndCalculateWithdrawAmount(uint256 amount, uint256 aaveBalance
 
 Validates withdrawal constraints (emergency mode, minimum balance)
 
-*Internal function to validate withdrawal constraints and minimum balance requirements*
+Internal function to validate withdrawal constraints and minimum balance requirements
 
 **Notes:**
-- Enforces minimum balance requirements unless in emergency mode
+- security: Enforces minimum balance requirements unless in emergency mode
 
-- Validates remaining balance >= minimum threshold
+- validation: Validates remaining balance >= minimum threshold
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- Throws WouldBreachMinimum if below minimum balance threshold
+- errors: Throws WouldBreachMinimum if below minimum balance threshold
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -456,24 +456,24 @@ function _validateWithdrawalConstraints(uint256 withdrawAmount, uint256 aaveBala
 
 Validates expected withdrawal amounts before external call
 
-*Validates expected withdrawal amounts before external call*
+Validates expected withdrawal amounts before external call
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -490,24 +490,24 @@ function _validateExpectedWithdrawal(uint256 withdrawAmount) internal view;
 
 Executes the Aave withdrawal with proper error handling
 
-*Executes the Aave withdrawal with proper error handling*
+Executes the Aave withdrawal with proper error handling
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -534,24 +534,24 @@ function _executeAaveWithdrawal(uint256 originalAmount, uint256 withdrawAmount, 
 
 Validates the withdrawal result and slippage
 
-*Validates the withdrawal result and slippage*
+Validates the withdrawal result and slippage
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -576,24 +576,24 @@ function _validateWithdrawalResult(
 
 Claim Aave rewards (if any)
 
-*Claims any available Aave protocol rewards for the vault's aUSDC position*
+Claims any available Aave protocol rewards for the vault's aUSDC position
 
 **Notes:**
-- No additional security checks required - Aave handles reward validation
+- security: No additional security checks required - Aave handles reward validation
 
-- No input validation required - view function checks pending rewards
+- validation: No input validation required - view function checks pending rewards
 
-- Claims rewards to vault address, updates reward tracking
+- state-changes: Claims rewards to vault address, updates reward tracking
 
-- Emits AaveRewardsClaimed with reward details
+- events: Emits AaveRewardsClaimed with reward details
 
-- No errors thrown - safe to call even with no rewards
+- errors: No errors thrown - safe to call even with no rewards
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to VAULT_MANAGER_ROLE
+- access: Restricted to VAULT_MANAGER_ROLE
 
-- No oracle dependency for reward claims
+- oracle: No oracle dependency for reward claims
 
 
 ```solidity
@@ -610,24 +610,24 @@ function claimAaveRewards() external nonReentrant returns (uint256 rewardsClaime
 
 Harvest Aave yield and distribute via YieldShift
 
-*Harvests available yield from Aave lending, charges protocol fees, distributes net yield*
+Harvests available yield from Aave lending, charges protocol fees, distributes net yield
 
 **Notes:**
-- Uses CEI pattern, validates slippage, enforces harvest threshold
+- security: Uses CEI pattern, validates slippage, enforces harvest threshold
 
-- Validates available yield >= harvestThreshold before harvesting
+- validation: Validates available yield >= harvestThreshold before harvesting
 
-- Updates lastHarvestTime, totalFeesCollected, totalYieldHarvested
+- state-changes: Updates lastHarvestTime, totalFeesCollected, totalYieldHarvested
 
-- Emits AaveYieldHarvested with harvest details
+- events: Emits AaveYieldHarvested with harvest details
 
-- Throws BelowThreshold if yield < harvestThreshold, ExcessiveSlippage if slippage too high
+- errors: Throws BelowThreshold if yield < harvestThreshold, ExcessiveSlippage if slippage too high
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to VAULT_MANAGER_ROLE
+- access: Restricted to VAULT_MANAGER_ROLE
 
-- No oracle dependency for yield harvesting
+- oracle: No oracle dependency for yield harvesting
 
 
 ```solidity
@@ -644,24 +644,24 @@ function harvestAaveYield() external nonReentrant returns (uint256 yieldHarveste
 
 Returns the total available yield from Aave lending
 
-*Calculates yield based on current aToken balance vs principal deposited*
+Calculates yield based on current aToken balance vs principal deposited
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -678,28 +678,31 @@ function getAvailableYield() public view returns (uint256);
 
 Returns the breakdown of yield distribution between users and protocol
 
-*Shows how yield is allocated according to current distribution parameters*
+Shows how yield is allocated according to current distribution parameters
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
-function getYieldDistribution() external view returns (uint256 protocolYield, uint256 userYield, uint256 hedgerYield);
+function getYieldDistribution()
+    external
+    view
+    returns (uint256 protocolYield, uint256 userYield, uint256 hedgerYield);
 ```
 **Returns**
 
@@ -714,24 +717,24 @@ function getYieldDistribution() external view returns (uint256 protocolYield, ui
 
 Returns the current balance of aTokens held by this vault
 
-*Represents the total amount deposited in Aave plus accrued interest*
+Represents the total amount deposited in Aave plus accrued interest
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -748,24 +751,24 @@ function getAaveBalance() external view returns (uint256);
 
 Returns the total interest accrued from Aave lending
 
-*Calculates interest as current balance minus principal deposited*
+Calculates interest as current balance minus principal deposited
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -782,24 +785,24 @@ function getAccruedInterest() external view returns (uint256);
 
 Returns the current APY offered by Aave for the deposited asset
 
-*Fetches the supply rate from Aave's reserve data*
+Fetches the supply rate from Aave's reserve data
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -816,24 +819,24 @@ function getAaveAPY() external view returns (uint256);
 
 Returns detailed information about the Aave position
 
-*Provides comprehensive data about the vault's Aave lending position*
+Provides comprehensive data about the vault's Aave lending position
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -856,24 +859,24 @@ function getAavePositionDetails()
 
 Returns current Aave market data for the deposited asset
 
-*Fetches real-time market information from Aave protocol*
+Fetches real-time market information from Aave protocol
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -896,24 +899,24 @@ function getAaveMarketData()
 
 Performs health checks on the Aave position
 
-*Validates that the Aave position is healthy and functioning properly*
+Validates that the Aave position is healthy and functioning properly
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -932,24 +935,24 @@ function checkAaveHealth() external view returns (bool isHealthy, bool pauseStat
 
 Check if Aave protocol is healthy
 
-*Checks if Aave protocol is functioning properly by verifying reserve data*
+Checks if Aave protocol is functioning properly by verifying reserve data
 
 **Notes:**
-- Uses try-catch to handle potential failures gracefully
+- security: Uses try-catch to handle potential failures gracefully
 
-- No input validation required
+- validation: No input validation required
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - uses try-catch
+- errors: No errors thrown - uses try-catch
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -966,24 +969,24 @@ function _isAaveHealthy() internal view returns (bool);
 
 Automatically rebalance the vault allocation
 
-*Rebalances the vault allocation based on optimal allocation calculations*
+Rebalances the vault allocation based on optimal allocation calculations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1002,24 +1005,24 @@ function autoRebalance() external returns (bool rebalanced, uint256 newAllocatio
 
 Calculates the optimal allocation of funds to Aave
 
-*Determines best allocation strategy based on current market conditions*
+Determines best allocation strategy based on current market conditions
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1037,24 +1040,24 @@ function calculateOptimalAllocation() external view returns (uint256 optimalAllo
 
 Sets the maximum exposure limit for Aave deposits
 
-*Governance function to control risk by limiting Aave exposure*
+Governance function to control risk by limiting Aave exposure
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1071,24 +1074,24 @@ function setMaxAaveExposure(uint256 _maxExposure) external;
 
 Emergency withdrawal from Aave protocol
 
-*Emergency function to withdraw all funds from Aave protocol*
+Emergency function to withdraw all funds from Aave protocol
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1105,24 +1108,24 @@ function emergencyWithdrawFromAave() external nonReentrant returns (uint256 amou
 
 Returns comprehensive risk metrics for the Aave position
 
-*Provides detailed risk analysis including concentration and volatility metrics*
+Provides detailed risk analysis including concentration and volatility metrics
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1144,24 +1147,24 @@ function getRiskMetrics()
 
 Update Aave parameters
 
-*Updates harvest threshold, yield fee, and rebalance threshold*
+Updates harvest threshold, yield fee, and rebalance threshold
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1181,24 +1184,24 @@ function updateAaveParameters(uint256 newHarvestThreshold, uint256 newYieldFee, 
 
 Returns the current Aave integration configuration
 
-*Provides access to all configuration parameters for Aave integration*
+Provides access to all configuration parameters for Aave integration
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1222,24 +1225,24 @@ function getAaveConfig()
 
 Toggles emergency mode for the Aave vault
 
-*Emergency function to enable/disable emergency mode during critical situations*
+Emergency function to enable/disable emergency mode during critical situations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1257,24 +1260,24 @@ function toggleEmergencyMode(bool enabled, string calldata reason) external;
 
 Pauses all Aave vault operations
 
-*Emergency function to halt all vault operations when needed*
+Emergency function to halt all vault operations when needed
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1285,24 +1288,24 @@ function pause() external;
 
 Unpauses Aave vault operations
 
-*Resumes normal vault operations after emergency is resolved*
+Resumes normal vault operations after emergency is resolved
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1313,24 +1316,24 @@ function unpause() external;
 
 Recovers accidentally sent ERC20 tokens from the vault
 
-*Emergency function to recover tokens that are not part of normal operations*
+Emergency function to recover tokens that are not part of normal operations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1348,24 +1351,24 @@ function recoverToken(address token, uint256 amount) external;
 
 Recovers accidentally sent ETH from the vault
 
-*Emergency function to recover ETH that shouldn't be in the vault*
+Emergency function to recover ETH that shouldn't be in the vault
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1374,7 +1377,7 @@ function recoverETH() external;
 
 ## Events
 ### DeployedToAave
-*OPTIMIZED: Indexed operation type for efficient filtering*
+OPTIMIZED: Indexed operation type for efficient filtering
 
 
 ```solidity
@@ -1402,7 +1405,7 @@ event AaveRewardsClaimed(address indexed rewardToken, uint256 rewardAmount, addr
 ```
 
 ### PositionRebalanced
-*OPTIMIZED: Indexed reason and parameter for efficient filtering*
+OPTIMIZED: Indexed reason and parameter for efficient filtering
 
 
 ```solidity

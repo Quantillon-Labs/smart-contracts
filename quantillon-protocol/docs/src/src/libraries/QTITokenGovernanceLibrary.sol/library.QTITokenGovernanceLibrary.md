@@ -4,7 +4,7 @@ Quantillon Labs
 
 Library for QTIToken governance calculations and validations
 
-*Extracts calculation logic from QTIToken to reduce contract size*
+Extracts calculation logic from QTIToken to reduce contract size
 
 
 ## State Variables
@@ -13,7 +13,7 @@ Maximum lock time for QTI tokens (1 year)
 
 
 ```solidity
-uint256 public constant MAX_LOCK_TIME = 365 days;
+uint256 public constant MAX_LOCK_TIME = 365 days
 ```
 
 
@@ -22,7 +22,7 @@ Minimum lock time for vote-escrow (1 week)
 
 
 ```solidity
-uint256 public constant MIN_LOCK_TIME = 7 days;
+uint256 public constant MIN_LOCK_TIME = 7 days
 ```
 
 
@@ -31,7 +31,7 @@ Maximum voting power multiplier (4x)
 
 
 ```solidity
-uint256 public constant MAX_VE_QTI_MULTIPLIER = 4;
+uint256 public constant MAX_VE_QTI_MULTIPLIER = 4
 ```
 
 
@@ -40,24 +40,24 @@ uint256 public constant MAX_VE_QTI_MULTIPLIER = 4;
 
 Calculate voting power multiplier based on lock time
 
-*Calculates linear multiplier from 1x to 4x based on lock duration*
+Calculates linear multiplier from 1x to 4x based on lock duration
 
 **Notes:**
-- No security implications - pure calculation function
+- security: No security implications - pure calculation function
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -80,24 +80,24 @@ function calculateVotingPowerMultiplier(uint256 lockTime) external pure returns 
 
 Internal function to calculate voting power multiplier
 
-*Calculates linear multiplier from 1x to 4x based on lock duration*
+Calculates linear multiplier from 1x to 4x based on lock duration
 
 **Notes:**
-- No security implications - pure calculation function
+- security: No security implications - pure calculation function
 
-- Input validation handled by calling function
+- validation: Input validation handled by calling function
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -120,24 +120,24 @@ function _calculateVotingPowerMultiplier(uint256 lockTime) internal pure returns
 
 Calculate voting power with overflow protection
 
-*Calculates voting power based on amount and lock time with overflow protection*
+Calculates voting power based on amount and lock time with overflow protection
 
 **Notes:**
-- Prevents overflow in voting power calculations
+- security: Prevents overflow in voting power calculations
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAmount if result exceeds uint96 max
+- errors: Throws InvalidAmount if result exceeds uint96 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -161,24 +161,24 @@ function calculateVotingPower(uint256 amount, uint256 lockTime) external pure re
 
 Internal function to calculate voting power with overflow protection
 
-*Calculates voting power based on amount and lock time with overflow protection*
+Calculates voting power based on amount and lock time with overflow protection
 
 **Notes:**
-- Prevents overflow in voting power calculations
+- security: Prevents overflow in voting power calculations
 
-- Input validation handled by calling function
+- validation: Input validation handled by calling function
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAmount if result exceeds uint96 max
+- errors: Throws InvalidAmount if result exceeds uint96 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -202,24 +202,24 @@ function _calculateVotingPower(uint256 amount, uint256 lockTime) internal pure r
 
 Calculate current voting power with linear decay
 
-*Calculates current voting power with linear decay over time*
+Calculates current voting power with linear decay over time
 
 **Notes:**
-- No security implications - pure calculation function
+- security: No security implications - pure calculation function
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -246,24 +246,24 @@ function calculateCurrentVotingPower(LockInfo memory lockInfo, uint256 currentTi
 
 Calculate unlock time with proper validation
 
-*Calculates new unlock time based on current timestamp and lock duration*
+Calculates new unlock time based on current timestamp and lock duration
 
 **Notes:**
-- Prevents timestamp overflow in unlock time calculations
+- security: Prevents timestamp overflow in unlock time calculations
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidTime if result exceeds uint32 max
+- errors: Throws InvalidTime if result exceeds uint32 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -291,24 +291,24 @@ function calculateUnlockTime(uint256 currentTimestamp, uint256 lockTime, uint256
 
 Internal function to calculate unlock time with proper validation
 
-*Calculates new unlock time based on current timestamp and lock duration*
+Calculates new unlock time based on current timestamp and lock duration
 
 **Notes:**
-- Prevents timestamp overflow in unlock time calculations
+- security: Prevents timestamp overflow in unlock time calculations
 
-- Input validation handled by calling function
+- validation: Input validation handled by calling function
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidTime if result exceeds uint32 max
+- errors: Throws InvalidTime if result exceeds uint32 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal function
+- access: Internal function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -336,24 +336,24 @@ function _calculateUnlockTime(uint256 currentTimestamp, uint256 lockTime, uint25
 
 Validate all amounts and lock times, returns total amount
 
-*Ensures all amounts and lock times are valid and calculates total amount*
+Ensures all amounts and lock times are valid and calculates total amount
 
 **Notes:**
-- Prevents invalid amounts and lock times from being processed
+- security: Prevents invalid amounts and lock times from being processed
 
-- Validates amounts are positive and lock times are within bounds
+- validation: Validates amounts are positive and lock times are within bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws various validation errors for invalid inputs
+- errors: Throws various validation errors for invalid inputs
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -380,24 +380,24 @@ function validateAndCalculateTotalAmount(uint256[] calldata amounts, uint256[] c
 
 Process batch locks and calculate totals
 
-*Processes batch lock operations and calculates total voting power and amounts*
+Processes batch lock operations and calculates total voting power and amounts
 
 **Notes:**
-- Prevents overflow in batch calculations
+- security: Prevents overflow in batch calculations
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -441,31 +441,33 @@ function processBatchLocks(
 
 Update lock info with overflow checks
 
-*Updates user's lock information with new amounts and times*
+Updates user's lock information with new amounts and times
 
 **Notes:**
-- Prevents overflow in lock info updates
+- security: Prevents overflow in lock info updates
 
-- Validates amounts and times are within bounds
+- validation: Validates amounts and times are within bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAmount if values exceed uint96 max
+- errors: Throws InvalidAmount if values exceed uint96 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
-function updateLockInfo(uint256 totalNewAmount, uint256 newUnlockTime, uint256 totalNewVotingPower, uint256 lockTime)
-    external
-    pure
-    returns (LockInfo memory updatedLockInfo);
+function updateLockInfo(
+    uint256 totalNewAmount,
+    uint256 newUnlockTime,
+    uint256 totalNewVotingPower,
+    uint256 lockTime
+) external pure returns (LockInfo memory updatedLockInfo);
 ```
 **Parameters**
 
@@ -487,24 +489,24 @@ function updateLockInfo(uint256 totalNewAmount, uint256 newUnlockTime, uint256 t
 
 Calculate decentralization level based on time elapsed
 
-*Calculates decentralization level based on elapsed time since start*
+Calculates decentralization level based on elapsed time since start
 
 **Notes:**
-- No security implications - pure calculation function
+- security: No security implications - pure calculation function
 
-- Input validation handled by calling contract
+- validation: Input validation handled by calling contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - pure function
+- errors: No errors thrown - pure function
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Public function
+- access: Public function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -538,12 +540,12 @@ Lock information structure
 
 ```solidity
 struct LockInfo {
-    uint96 amount;
-    uint32 unlockTime;
-    uint96 votingPower;
-    uint32 lastClaimTime;
-    uint96 initialVotingPower;
-    uint32 lockTime;
+    uint96 amount; // Amount of QTI locked
+    uint32 unlockTime; // Timestamp when lock expires
+    uint96 votingPower; // Current voting power
+    uint32 lastClaimTime; // Last claim time (for future use)
+    uint96 initialVotingPower; // Initial voting power when locked
+    uint32 lockTime; // Original lock duration
 }
 ```
 

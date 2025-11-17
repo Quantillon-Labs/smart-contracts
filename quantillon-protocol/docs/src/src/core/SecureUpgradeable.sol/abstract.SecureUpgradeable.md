@@ -7,10 +7,10 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Secure base contract for upgradeable contracts with timelock protection
 
-*Replaces UUPSUpgradeable with timelock and multi-sig requirements*
+Replaces UUPSUpgradeable with timelock and multi-sig requirements
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -19,7 +19,7 @@ Role for upgrade operations
 
 
 ```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE")
 ```
 
 
@@ -28,7 +28,7 @@ Timelock contract for secure upgrades
 
 
 ```solidity
-ITimelockUpgradeable public timelock;
+ITimelockUpgradeable public timelock
 ```
 
 
@@ -37,7 +37,7 @@ Whether the contract is using secure upgrades
 
 
 ```solidity
-bool public secureUpgradesEnabled;
+bool public secureUpgradesEnabled
 ```
 
 
@@ -46,31 +46,31 @@ bool public secureUpgradesEnabled;
 
 
 ```solidity
-modifier onlyTimelock();
+modifier onlyTimelock() ;
 ```
 
 ### __SecureUpgradeable_init
 
 Initializes the SecureUpgradeable contract
 
-*Sets up the secure upgrade system with timelock protection*
+Sets up the secure upgrade system with timelock protection
 
 **Notes:**
-- Validates timelock address and initializes secure upgrade system
+- security: Validates timelock address and initializes secure upgrade system
 
-- Validates _timelock is not address(0)
+- validation: Validates _timelock is not address(0)
 
-- Initializes timelock, enables secure upgrades, sets up access control
+- state-changes: Initializes timelock, enables secure upgrades, sets up access control
 
-- Emits TimelockSet and SecureUpgradesToggled events
+- events: Emits TimelockSet and SecureUpgradesToggled events
 
-- Throws "SecureUpgradeable: Invalid timelock" if _timelock is address(0)
+- errors: Throws "SecureUpgradeable: Invalid timelock" if _timelock is address(0)
 
-- Protected by onlyInitializing modifier
+- reentrancy: Protected by onlyInitializing modifier
 
-- Internal function - only callable during initialization
+- access: Internal function - only callable during initialization
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -87,24 +87,24 @@ function __SecureUpgradeable_init(address _timelock) internal onlyInitializing;
 
 Set the timelock contract
 
-*Configures the timelock contract for secure upgrade management*
+Configures the timelock contract for secure upgrade management
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -121,24 +121,24 @@ function setTimelock(address _timelock) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Toggle secure upgrades
 
-*Enables or disables the secure upgrade mechanism*
+Enables or disables the secure upgrade mechanism
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -155,24 +155,24 @@ function toggleSecureUpgrades(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE
 
 Propose an upgrade through the timelock
 
-*Initiates a secure upgrade proposal with timelock delay and multi-sig requirements*
+Initiates a secure upgrade proposal with timelock delay and multi-sig requirements
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -193,24 +193,24 @@ function proposeUpgrade(address newImplementation, string calldata description, 
 
 Execute an upgrade through the timelock
 
-*Executes a previously proposed upgrade after timelock delay*
+Executes a previously proposed upgrade after timelock delay
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -227,24 +227,24 @@ function executeUpgrade(address newImplementation) external onlyTimelock;
 
 Emergency upgrade (bypasses timelock, requires emergency mode)
 
-*Allows emergency upgrades when secure upgrades are disabled or timelock is unavailable*
+Allows emergency upgrades when secure upgrades are disabled or timelock is unavailable
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -262,7 +262,7 @@ function emergencyUpgrade(address newImplementation, string calldata description
 
 Authorize upgrade (overrides UUPSUpgradeable)
 
-*Internal function that determines upgrade authorization based on secure upgrade settings*
+Internal function that determines upgrade authorization based on secure upgrade settings
 
 
 ```solidity
@@ -279,24 +279,24 @@ function _authorizeUpgrade(address newImplementation) internal view override;
 
 Check if an upgrade is pending
 
-*Checks if there is a pending upgrade for the specified implementation*
+Checks if there is a pending upgrade for the specified implementation
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -319,24 +319,24 @@ function isUpgradePending(address implementation) external view returns (bool is
 
 Get pending upgrade details
 
-*Returns detailed information about a pending upgrade*
+Returns detailed information about a pending upgrade
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -362,24 +362,24 @@ function getPendingUpgrade(address implementation)
 
 Check if an upgrade can be executed
 
-*Checks if a pending upgrade has passed the timelock delay and can be executed*
+Checks if a pending upgrade has passed the timelock delay and can be executed
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -402,24 +402,24 @@ function canExecuteUpgrade(address implementation) external view returns (bool c
 
 Get upgrade security status
 
-*Returns the current security configuration for upgrades*
+Returns the current security configuration for upgrades
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -441,24 +441,24 @@ function getUpgradeSecurityStatus()
 
 Disable secure upgrades in emergency
 
-*Disables secure upgrades for emergency situations*
+Disables secure upgrades for emergency situations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -469,24 +469,24 @@ function emergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Enable secure upgrades after emergency
 
-*Re-enables secure upgrades after emergency situations*
+Re-enables secure upgrades after emergency situations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

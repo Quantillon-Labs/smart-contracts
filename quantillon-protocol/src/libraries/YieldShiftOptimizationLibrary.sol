@@ -73,7 +73,7 @@ library YieldShiftOptimizationLibrary {
         }
         
         (bool success2, bytes memory data2) = hedgerPoolAddress.staticcall(
-            abi.encodeWithSelector(0xdc0a80ca) // getTotalHedgeExposure()
+            abi.encodeWithSelector(0x79f883da) // totalExposure()
         );
         if (success2 && data2.length >= 32) {
             hedgerPoolSize = abi.decode(data2, (uint256));
@@ -125,7 +125,7 @@ library YieldShiftOptimizationLibrary {
         }
         
         (bool success2, bytes memory data2) = hedgerPoolAddress.staticcall(
-            abi.encodeWithSelector(0xdc0a80ca) // getTotalHedgeExposure()
+            abi.encodeWithSelector(0x79f883da) // totalExposure()
         );
         uint256 currentHedgerPoolSize = 0;
         if (success2 && data2.length >= 32) {

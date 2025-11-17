@@ -4,14 +4,14 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Vault-specific errors for QuantillonVault and related operations
 
-*Main characteristics:
+Main characteristics:
 - Errors specific to vault operations
 - Collateralization and emergency mode errors
 - Pool health and balance errors
-- Yield distribution errors*
+- Yield distribution errors
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Errors

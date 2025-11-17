@@ -1,10 +1,10 @@
 # IHedgerPool
 Interface for the Quantillon HedgerPool contract
 
-*Provides EUR/USD hedging functionality with leverage and margin management*
+Provides EUR/USD hedging functionality with leverage and margin management
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -12,24 +12,24 @@ team@quantillon.money
 
 Initializes the HedgerPool with contracts and parameters
 
-*Sets up the HedgerPool with initial configuration and assigns roles to admin*
+Sets up the HedgerPool with initial configuration and assigns roles to admin
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Initializes all contract state variables
+- state-changes: Initializes all contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by initializer modifier
+- reentrancy: Protected by initializer modifier
 
-- Restricted to initializer modifier
+- access: Restricted to initializer modifier
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -60,24 +60,24 @@ function initialize(
 
 Opens a new hedge position with specified USDC amount and leverage
 
-*Creates a new hedge position with margin requirements and leverage validation*
+Creates a new hedge position with margin requirements and leverage validation
 
 **Notes:**
-- Validates oracle price freshness, enforces margin ratios and leverage limits
+- security: Validates oracle price freshness, enforces margin ratios and leverage limits
 
-- Validates usdcAmount > 0, leverage <= maxLeverage, position count limits
+- validation: Validates usdcAmount > 0, leverage <= maxLeverage, position count limits
 
-- Creates new HedgePosition, updates hedger totals, increments position counters
+- state-changes: Creates new HedgePosition, updates hedger totals, increments position counters
 
-- Emits HedgePositionOpened with position details
+- events: Emits HedgePositionOpened with position details
 
-- Throws InvalidAmount if amount is 0, LeverageTooHigh if exceeds max
+- errors: Throws InvalidAmount if amount is 0, LeverageTooHigh if exceeds max
 
-- Protected by secureNonReentrant modifier
+- reentrancy: Protected by secureNonReentrant modifier
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Requires fresh EUR/USD price for position entry
+- oracle: Requires fresh EUR/USD price for position entry
 
 
 ```solidity
@@ -101,24 +101,24 @@ function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external retur
 
 Closes an existing hedge position
 
-*Closes a hedge position and calculates PnL based on current EUR/USD price*
+Closes a hedge position and calculates PnL based on current EUR/USD price
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -141,24 +141,24 @@ function exitHedgePosition(uint256 positionId) external returns (int256 pnl);
 
 Adds additional margin to an existing position
 
-*Adds USDC margin to an existing hedge position to improve margin ratio*
+Adds USDC margin to an existing hedge position to improve margin ratio
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -176,24 +176,24 @@ function addMargin(uint256 positionId, uint256 amount) external;
 
 Removes margin from an existing position
 
-*Removes USDC margin from an existing hedge position, subject to minimum margin requirements*
+Removes USDC margin from an existing hedge position, subject to minimum margin requirements
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -207,28 +207,96 @@ function removeMargin(uint256 positionId, uint256 amount) external;
 |`amount`|`uint256`|The amount of USDC margin to remove|
 
 
+### recordUserMint
+
+Synchronizes hedger fills with a user mint
+
+Callable only by QuantillonVault to allocate fills proportionally
+
+**Notes:**
+- security: Restricted to the vault; validates amount > 0
+
+- validation: Amount must be positive
+
+- state-changes: Updates per-position fills and total exposure
+
+- events: Emits `HedgerFillUpdated`
+
+- errors: Reverts with capacity-related errors when overfilled
+
+- reentrancy: Implementations must guard state before external calls
+
+- access: Vault-only
+
+- oracle: Not applicable
+
+
+```solidity
+function recordUserMint(uint256 usdcAmount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Net USDC amount minted into QEURO|
+
+
+### recordUserRedeem
+
+Synchronizes hedger fills with a user redemption
+
+Callable only by QuantillonVault to release fills proportionally
+
+**Notes:**
+- security: Restricted to the vault; validates amount > 0
+
+- validation: Amount must be positive
+
+- state-changes: Reduces per-position fills and total exposure
+
+- events: Emits `HedgerFillUpdated`
+
+- errors: Reverts if insufficient filled exposure remains
+
+- reentrancy: Implementations must guard state before external calls
+
+- access: Vault-only
+
+- oracle: Not applicable
+
+
+```solidity
+function recordUserRedeem(uint256 usdcAmount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Gross USDC amount returned to the user|
+
+
 ### commitLiquidation
 
 Commits to liquidating a position (first step of two-phase liquidation)
 
-*Commits to liquidating an undercollateralized position using a two-phase commit-reveal scheme*
+Commits to liquidating an undercollateralized position using a two-phase commit-reveal scheme
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -247,24 +315,24 @@ function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) ext
 
 Executes the liquidation of a position (second step of two-phase liquidation)
 
-*Executes liquidation after valid commitment, transfers rewards and remaining margin*
+Executes liquidation after valid commitment, transfers rewards and remaining margin
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -287,28 +355,49 @@ function liquidateHedger(address hedger, uint256 positionId, bytes32 salt)
 |`liquidationReward`|`uint256`|The reward paid to the liquidator|
 
 
+### claimHedgingRewards
+
+Claims accrued hedging rewards for the caller
+
+Combines interest differential and YieldShift rewards
+
+
+```solidity
+function claimHedgingRewards()
+    external
+    returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`interestDifferential`|`uint256`|Rewards from interest spread|
+|`yieldShiftRewards`|`uint256`|Rewards distributed by YieldShift|
+|`totalRewards`|`uint256`|Sum of all rewards transferred|
+
+
 ### hasPendingLiquidationCommitment
 
 Checks if there's a pending liquidation commitment for a position
 
-*Used to prevent margin operations during liquidation process*
+Used to prevent margin operations during liquidation process
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -332,24 +421,24 @@ function hasPendingLiquidationCommitment(address hedger, uint256 positionId) ext
 
 Clears expired liquidation commitments
 
-*Removes liquidation commitments that have expired beyond the commitment window*
+Removes liquidation commitments that have expired beyond the commitment window
 
 **Notes:**
-- Validates liquidator role and commitment expiration
+- security: Validates liquidator role and commitment expiration
 
-- Validates commitment exists and has expired
+- validation: Validates commitment exists and has expired
 
-- Removes expired liquidation commitment
+- state-changes: Removes expired liquidation commitment
 
-- No events emitted for commitment clearing
+- events: No events emitted for commitment clearing
 
-- Throws CommitmentNotFound if commitment doesn't exist
+- errors: Throws CommitmentNotFound if commitment doesn't exist
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to LIQUIDATOR_ROLE
+- access: Restricted to LIQUIDATOR_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -367,24 +456,24 @@ function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) e
 
 Cancels a pending liquidation commitment
 
-*Allows hedgers to cancel their liquidation commitment before execution*
+Allows hedgers to cancel their liquidation commitment before execution
 
 **Notes:**
-- Validates liquidator role and commitment exists
+- security: Validates liquidator role and commitment exists
 
-- Validates commitment hash matches stored commitment
+- validation: Validates commitment hash matches stored commitment
 
-- Deletes liquidation commitment and pending liquidation flag
+- state-changes: Deletes liquidation commitment and pending liquidation flag
 
-- No events emitted for commitment cancellation
+- events: No events emitted for commitment cancellation
 
-- Throws CommitmentNotFound if commitment doesn't exist
+- errors: Throws CommitmentNotFound if commitment doesn't exist
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to LIQUIDATOR_ROLE
+- access: Restricted to LIQUIDATOR_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -399,238 +488,117 @@ function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32
 |`salt`|`bytes32`|Same salt used in commitLiquidation for commitment verification|
 
 
-### claimHedgingRewards
+### getActivePositionIds
 
 Claims accumulated hedging rewards for the caller
 
-*Combines interest rate differential rewards and yield shift rewards*
+Returns the list of currently active position IDs
+
+Combines interest rate differential rewards and yield shift rewards
+
+Useful for analytics and monitoring tools to inspect active hedger positions
 
 **Notes:**
-- Validates hedger has active positions, updates reward calculations
+- security: Validates hedger has active positions, updates reward calculations
 
-- Validates hedger exists and has pending rewards
+- validation: Validates hedger exists and has pending rewards
 
-- Resets pending rewards, updates last claim timestamp
+- state-changes: Resets pending rewards, updates last claim timestamp
 
-- Emits HedgingRewardsClaimed with reward breakdown
+- events: Emits HedgingRewardsClaimed with reward breakdown
 
-- Throws YieldClaimFailed if yield shift claim fails
+- errors: Throws YieldClaimFailed if yield shift claim fails
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Public - any hedger can claim their rewards
+- access: Public - any hedger can claim their rewards
 
-- No oracle dependencies for reward claiming
+- oracle: No oracle dependencies for reward claiming
+
+- security: View-only; no restrictions besides public access
+
+- validation: None
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: Not applicable
+
+- access: Public
+
+- oracle: Not applicable
 
 
 ```solidity
-function claimHedgingRewards()
-    external
-    returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
+function getActivePositionIds() external view returns (uint256[] memory);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`interestDifferential`|`uint256`|USDC rewards from interest rate differential (6 decimals)|
-|`yieldShiftRewards`|`uint256`|USDC rewards from yield shift mechanism (6 decimals)|
-|`totalRewards`|`uint256`|Total USDC rewards claimed (6 decimals)|
+|`<none>`|`uint256[]`|interestDifferential USDC rewards from interest rate differential (6 decimals)|
 
 
-### getHedgerPosition
+### getFillMetrics
 
-Returns detailed information about a specific hedge position
+Returns aggregate hedger fill metrics
 
-*Provides comprehensive position data including current market price*
+Provides total exposure requested vs. currently matched exposure
 
 **Notes:**
-- Validates position ownership and oracle price validity
+- security: View-only; no restrictions besides public access
 
-- Validates hedger owns the position
+- validation: None
 
-- No state changes - view function only
+- state-changes: None
 
-- No events emitted
+- events: None
 
-- Throws InvalidHedger, InvalidOraclePrice
+- errors: None
 
-- Not applicable - view function
+- reentrancy: Not applicable
 
-- Public - anyone can query position data
+- access: Public
 
-- Requires fresh EUR/USD price from Chainlink oracle
+- oracle: Not applicable
 
 
 ```solidity
-function getHedgerPosition(address hedger, uint256 positionId)
-    external
-    view
-    returns (
-        uint256 positionSize,
-        uint256 margin,
-        uint256 entryPrice,
-        uint256 currentPrice,
-        uint256 leverage,
-        uint256 lastUpdateTime
-    );
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger who owns the position|
-|`positionId`|`uint256`|Unique identifier of the position to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionSize`|`uint256`|Total position size in USD equivalent|
-|`margin`|`uint256`|Current margin amount in USDC (6 decimals)|
-|`entryPrice`|`uint256`|EUR/USD price when position was opened|
-|`currentPrice`|`uint256`|Current EUR/USD price from oracle|
-|`leverage`|`uint256`|Leverage multiplier used for the position|
-|`lastUpdateTime`|`uint256`|Timestamp of last position update|
-
-
-### getHedgerMarginRatio
-
-Returns the current margin ratio for a specific hedge position
-
-*Calculates margin ratio as (margin / positionSize) * 10000 (in basis points)*
-
-**Notes:**
-- Validates position ownership
-
-- Validates hedger owns the position
-
-- No state changes - view function only
-
-- No events emitted
-
-- Throws InvalidHedger if hedger doesn't own position
-
-- Not applicable - view function
-
-- Public - anyone can query margin ratio
-
-- No oracle dependencies for margin ratio calculation
-
-
-```solidity
-function getHedgerMarginRatio(address hedger, uint256 positionId) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger who owns the position|
-|`positionId`|`uint256`|Unique identifier of the position to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|marginRatio Current margin ratio in basis points (10000 = 100%)|
-
-
-### isHedgerLiquidatable
-
-Checks if a hedge position is eligible for liquidation
-
-*Determines if position margin ratio is below liquidation threshold*
-
-**Notes:**
-- Validates position ownership and oracle price validity
-
-- Validates hedger owns the position
-
-- No state changes - view function only
-
-- No events emitted
-
-- Throws InvalidHedger if hedger doesn't own position
-
-- Not applicable - view function
-
-- Public - anyone can check liquidation status
-
-- Requires fresh EUR/USD price for liquidation calculation
-
-
-```solidity
-function isHedgerLiquidatable(address hedger, uint256 positionId) external view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger who owns the position|
-|`positionId`|`uint256`|Unique identifier of the position to check|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|liquidatable True if position can be liquidated, false otherwise|
-
-
-### getTotalHedgeExposure
-
-Returns the total hedge exposure across all active positions
-
-*Calculates sum of all active position sizes in USD equivalent*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query total exposure
-
-- No oracle dependencies for exposure calculation
-
-
-```solidity
-function getTotalHedgeExposure() external view returns (uint256);
+function getFillMetrics() external view returns (uint256 totalHedgeExposure, uint256 totalMatchedExposure);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|totalExposure Total exposure across all hedge positions in USD|
+|`totalHedgeExposure`|`uint256`|Total requested exposure across all positions|
+|`totalMatchedExposure`|`uint256`|Total filled exposure matched with user flow|
 
 
 ### updateHedgingParameters
 
 Updates core hedging parameters for risk management
 
-*Allows governance to adjust risk parameters based on market conditions*
+Allows governance to adjust risk parameters based on market conditions
 
 **Notes:**
-- Validates governance role and parameter constraints
+- security: Validates governance role and parameter constraints
 
-- Validates minMarginRatio >= 500, liquidationThreshold < minMarginRatio, maxLeverage <= 20, liquidationPenalty <= 1000
+- validation: Validates minMarginRatio >= 500, liquidationThreshold < minMarginRatio, maxLeverage <= 20, liquidationPenalty <= 1000
 
-- Updates all hedging parameter state variables
+- state-changes: Updates all hedging parameter state variables
 
-- No events emitted for parameter updates
+- events: No events emitted for parameter updates
 
-- Throws ConfigValueTooLow, ConfigInvalid, ConfigValueTooHigh
+- errors: Throws ConfigValueTooLow, ConfigInvalid, ConfigValueTooHigh
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies for parameter updates
+- oracle: No oracle dependencies for parameter updates
 
 
 ```solidity
@@ -655,24 +623,24 @@ function updateHedgingParameters(
 
 Updates interest rates for EUR and USD
 
-*Allows governance to adjust interest rates for reward calculations*
+Allows governance to adjust interest rates for reward calculations
 
 **Notes:**
-- Validates governance role and rate constraints
+- security: Validates governance role and rate constraints
 
-- Validates rates are within reasonable bounds (0-10000 basis points)
+- validation: Validates rates are within reasonable bounds (0-10000 basis points)
 
-- Updates eurInterestRate and usdInterestRate
+- state-changes: Updates eurInterestRate and usdInterestRate
 
-- No events emitted for rate updates
+- events: No events emitted for rate updates
 
-- Throws ConfigValueTooHigh if rates exceed maximum limits
+- errors: Throws ConfigValueTooHigh if rates exceed maximum limits
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies for rate updates
+- oracle: No oracle dependencies for rate updates
 
 
 ```solidity
@@ -690,24 +658,24 @@ function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external;
 
 Updates hedging fee parameters for protocol revenue
 
-*Allows governance to adjust fees based on market conditions and protocol needs*
+Allows governance to adjust fees based on market conditions and protocol needs
 
 **Notes:**
-- Validates governance role and fee constraints
+- security: Validates governance role and fee constraints
 
-- Validates entryFee <= 100, exitFee <= 100, marginFee <= 50
+- validation: Validates entryFee <= 100, exitFee <= 100, marginFee <= 50
 
-- Updates entryFee, exitFee, and marginFee state variables
+- state-changes: Updates entryFee, exitFee, and marginFee state variables
 
-- No events emitted for fee updates
+- events: No events emitted for fee updates
 
-- Throws ConfigValueTooHigh if fees exceed maximum limits
+- errors: Throws ConfigValueTooHigh if fees exceed maximum limits
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies for fee updates
+- oracle: No oracle dependencies for fee updates
 
 
 ```solidity
@@ -722,77 +690,28 @@ function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee)
 |`_marginFee`|`uint256`|New margin fee in basis points (e.g., 10 = 0.1%, max 50 = 0.5%)|
 
 
-### getHedgingConfig
-
-Get hedging configuration parameters
-
-*Returns all key hedging configuration parameters for risk management*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query hedging configuration
-
-- No oracle dependencies
-
-
-```solidity
-function getHedgingConfig()
-    external
-    view
-    returns (
-        uint256 _minMarginRatio,
-        uint256 _liquidationThreshold,
-        uint256 _maxLeverage,
-        uint256 _liquidationPenalty,
-        uint256 _entryFee,
-        uint256 _exitFee
-    );
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_minMarginRatio`|`uint256`|Minimum margin ratio in basis points|
-|`_liquidationThreshold`|`uint256`|Liquidation threshold in basis points|
-|`_maxLeverage`|`uint256`|Maximum leverage multiplier|
-|`_liquidationPenalty`|`uint256`|Liquidation penalty in basis points|
-|`_entryFee`|`uint256`|Entry fee in basis points|
-|`_exitFee`|`uint256`|Exit fee in basis points|
-
-
 ### emergencyClosePosition
 
 Emergency close position function
 
-*Allows emergency role to force close a position in emergency situations*
+Allows emergency role to force close a position in emergency situations
 
 **Notes:**
-- Validates emergency role authorization
+- security: Validates emergency role authorization
 
-- Validates position exists and is active
+- validation: Validates position exists and is active
 
-- Closes position, transfers remaining margin to hedger
+- state-changes: Closes position, transfers remaining margin to hedger
 
-- Emits HedgePositionClosed event
+- events: Emits HedgePositionClosed event
 
-- Throws InvalidPosition if position doesn't exist
+- errors: Throws InvalidPosition if position doesn't exist
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- Requires fresh EUR/USD price for PnL calculation
+- oracle: Requires fresh EUR/USD price for PnL calculation
 
 
 ```solidity
@@ -810,24 +729,24 @@ function emergencyClosePosition(address hedger, uint256 positionId) external;
 
 Pauses all hedging operations
 
-*Emergency function to pause the hedger pool in case of critical issues*
+Emergency function to pause the hedger pool in case of critical issues
 
 **Notes:**
-- Validates emergency role authorization
+- security: Validates emergency role authorization
 
-- No input validation required
+- validation: No input validation required
 
-- Sets pause state, stops all hedging operations
+- state-changes: Sets pause state, stops all hedging operations
 
-- Emits Paused event from OpenZeppelin
+- events: Emits Paused event from OpenZeppelin
 
-- No errors thrown - safe pause operation
+- errors: No errors thrown - safe pause operation
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- No oracle dependencies for pause
+- oracle: No oracle dependencies for pause
 
 
 ```solidity
@@ -838,86 +757,52 @@ function pause() external;
 
 Unpauses hedging operations
 
-*Allows emergency role to unpause the hedger pool after resolving issues*
+Allows emergency role to unpause the hedger pool after resolving issues
 
 **Notes:**
-- Validates emergency role authorization
+- security: Validates emergency role authorization
 
-- No input validation required
+- validation: No input validation required
 
-- Removes pause state, resumes hedging operations
+- state-changes: Removes pause state, resumes hedging operations
 
-- Emits Unpaused event from OpenZeppelin
+- events: Emits Unpaused event from OpenZeppelin
 
-- No errors thrown - safe unpause operation
+- errors: No errors thrown - safe unpause operation
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- No oracle dependencies for unpause
+- oracle: No oracle dependencies for unpause
 
 
 ```solidity
 function unpause() external;
 ```
 
-### isHedgingActive
-
-Checks if hedging is currently active
-
-*Returns true if the hedger pool is not paused and operational*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can check hedging status
-
-- No oracle dependencies
-
-
-```solidity
-function isHedgingActive() external view returns (bool);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|isActive True if hedging is active, false if paused|
-
-
 ### recoverToken
 
 Recovers tokens accidentally sent to the contract
 
-*Emergency function to recover ERC20 tokens that are not part of normal operations*
+Emergency function to recover ERC20 tokens that are not part of normal operations
 
 **Notes:**
-- Validates admin role and uses secure recovery library
+- security: Validates admin role and uses secure recovery library
 
-- No input validation required - library handles validation
+- validation: No input validation required - library handles validation
 
-- Transfers tokens from contract to treasury
+- state-changes: Transfers tokens from contract to treasury
 
-- Emits TokenRecovered event
+- events: Emits TokenRecovered event
 
-- No errors thrown - library handles error cases
+- errors: No errors thrown - library handles error cases
 
-- Not protected - library handles reentrancy
+- reentrancy: Not protected - library handles reentrancy
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependencies for token recovery
+- oracle: No oracle dependencies for token recovery
 
 
 ```solidity
@@ -935,24 +820,24 @@ function recoverToken(address token, uint256 amount) external;
 
 Recovers ETH accidentally sent to the contract
 
-*Emergency function to recover ETH that was accidentally sent to the contract*
+Emergency function to recover ETH that was accidentally sent to the contract
 
 **Notes:**
-- Validates admin role and emits recovery event
+- security: Validates admin role and emits recovery event
 
-- No input validation required - transfers all ETH
+- validation: No input validation required - transfers all ETH
 
-- Transfers all contract ETH balance to treasury
+- state-changes: Transfers all contract ETH balance to treasury
 
-- Emits ETHRecovered with amount and treasury address
+- events: Emits ETHRecovered with amount and treasury address
 
-- No errors thrown - safe ETH transfer
+- errors: No errors thrown - safe ETH transfer
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -963,24 +848,24 @@ function recoverETH() external;
 
 Returns the USDC token contract interface
 
-*USDC token used for margin deposits and withdrawals (6 decimals)*
+USDC token used for margin deposits and withdrawals (6 decimals)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query USDC contract
+- access: Public - anyone can query USDC contract
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -997,24 +882,24 @@ function usdc() external view returns (IERC20);
 
 Returns the oracle contract address
 
-*Chainlink oracle for EUR/USD price feeds*
+Chainlink oracle for EUR/USD price feeds
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query oracle address
+- access: Public - anyone can query oracle address
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1031,24 +916,24 @@ function oracle() external view returns (address);
 
 Returns the yield shift contract address
 
-*YieldShift contract for reward distribution*
+YieldShift contract for reward distribution
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query yield shift address
+- access: Public - anyone can query yield shift address
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1065,24 +950,24 @@ function yieldShift() external view returns (address);
 
 Returns the minimum margin ratio in basis points
 
-*Minimum margin ratio required for positions (e.g., 1000 = 10%)*
+Minimum margin ratio required for positions (e.g., 1000 = 10%)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query minimum margin ratio
+- access: Public - anyone can query minimum margin ratio
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1099,24 +984,24 @@ function minMarginRatio() external view returns (uint256);
 
 Returns the liquidation threshold in basis points
 
-*Margin ratio below which positions can be liquidated (e.g., 100 = 1%)*
+Margin ratio below which positions can be liquidated (e.g., 100 = 1%)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query liquidation threshold
+- access: Public - anyone can query liquidation threshold
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1133,24 +1018,24 @@ function liquidationThreshold() external view returns (uint256);
 
 Returns the maximum leverage multiplier
 
-*Maximum leverage allowed for hedge positions (e.g., 10 = 10x)*
+Maximum leverage allowed for hedge positions (e.g., 10 = 10x)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query maximum leverage
+- access: Public - anyone can query maximum leverage
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1167,24 +1052,24 @@ function maxLeverage() external view returns (uint256);
 
 Returns the liquidation penalty in basis points
 
-*Penalty applied to liquidated positions (e.g., 200 = 2%)*
+Penalty applied to liquidated positions (e.g., 200 = 2%)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query liquidation penalty
+- access: Public - anyone can query liquidation penalty
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1201,24 +1086,24 @@ function liquidationPenalty() external view returns (uint256);
 
 Returns the entry fee in basis points
 
-*Fee charged when opening hedge positions (e.g., 20 = 0.2%)*
+Fee charged when opening hedge positions (e.g., 20 = 0.2%)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query entry fee
+- access: Public - anyone can query entry fee
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1235,24 +1120,24 @@ function entryFee() external view returns (uint256);
 
 Returns the exit fee in basis points
 
-*Fee charged when closing hedge positions (e.g., 20 = 0.2%)*
+Fee charged when closing hedge positions (e.g., 20 = 0.2%)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query exit fee
+- access: Public - anyone can query exit fee
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1265,62 +1150,28 @@ function exitFee() external view returns (uint256);
 |`<none>`|`uint256`|uint256 Exit fee in basis points|
 
 
-### marginFee
-
-Returns the margin fee in basis points
-
-*Fee charged when adding/removing margin (e.g., 10 = 0.1%)*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query margin fee
-
-- No oracle dependencies
-
-
-```solidity
-function marginFee() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Margin fee in basis points|
-
-
 ### totalMargin
 
 Returns the total margin across all positions
 
-*Total USDC margin held across all active hedge positions (6 decimals)*
+Total USDC margin held across all active hedge positions (6 decimals)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query total margin
+- access: Public - anyone can query total margin
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1337,24 +1188,24 @@ function totalMargin() external view returns (uint256);
 
 Returns the total exposure across all positions
 
-*Total USD exposure across all active hedge positions*
+Total USD exposure across all active hedge positions
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query total exposure
+- access: Public - anyone can query total exposure
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1371,24 +1222,24 @@ function totalExposure() external view returns (uint256);
 
 Returns the number of active hedgers
 
-*Count of unique addresses with active hedge positions*
+Count of unique addresses with active hedge positions
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query active hedger count
+- access: Public - anyone can query active hedger count
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1405,24 +1256,24 @@ function activeHedgers() external view returns (uint256);
 
 Returns the next position ID to be assigned
 
-*Counter for generating unique position IDs*
+Counter for generating unique position IDs
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query next position ID
+- access: Public - anyone can query next position ID
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1439,24 +1290,24 @@ function nextPositionId() external view returns (uint256);
 
 Returns the EUR interest rate in basis points
 
-*Interest rate for EUR-denominated positions (e.g., 350 = 3.5%)*
+Interest rate for EUR-denominated positions (e.g., 350 = 3.5%)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query EUR interest rate
+- access: Public - anyone can query EUR interest rate
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1473,24 +1324,24 @@ function eurInterestRate() external view returns (uint256);
 
 Returns the USD interest rate in basis points
 
-*Interest rate for USD-denominated positions (e.g., 450 = 4.5%)*
+Interest rate for USD-denominated positions (e.g., 450 = 4.5%)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query USD interest rate
+- access: Public - anyone can query USD interest rate
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1507,24 +1358,24 @@ function usdInterestRate() external view returns (uint256);
 
 Returns the total yield earned across all positions
 
-*Total yield earned from interest rate differentials (6 decimals)*
+Total yield earned from interest rate differentials (6 decimals)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query total yield earned
+- access: Public - anyone can query total yield earned
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1541,24 +1392,24 @@ function totalYieldEarned() external view returns (uint256);
 
 Returns the interest differential pool balance
 
-*Pool of funds available for interest rate differential rewards (6 decimals)*
+Pool of funds available for interest rate differential rewards (6 decimals)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query interest differential pool
+- access: Public - anyone can query interest differential pool
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1571,68 +1422,28 @@ function interestDifferentialPool() external view returns (uint256);
 |`<none>`|`uint256`|uint256 Interest differential pool balance in USDC|
 
 
-### activePositionCount
-
-Returns the active position count for a hedger
-
-*Number of active positions owned by a specific hedger*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query position count
-
-- No oracle dependencies
-
-
-```solidity
-function activePositionCount(address hedger) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Number of active positions for the hedger|
-
-
 ### positions
 
 Returns position details by position ID
 
-*Returns comprehensive position information for a specific position ID*
+Returns comprehensive position information for a specific position ID
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query position details
+- access: Public - anyone can query position details
 
-- No oracle dependencies for position data
+- oracle: No oracle dependencies for position data
 
 
 ```solidity
@@ -1642,6 +1453,7 @@ function positions(uint256 positionId)
     returns (
         address hedger,
         uint256 positionSize,
+        uint256 filledVolume,
         uint256 margin,
         uint256 entryPrice,
         uint256 leverage,
@@ -1663,6 +1475,7 @@ function positions(uint256 positionId)
 |----|----|-----------|
 |`hedger`|`address`|Address of the hedger who owns the position|
 |`positionSize`|`uint256`|Total position size in USD equivalent|
+|`filledVolume`|`uint256`|Currently matched volume in USDC|
 |`margin`|`uint256`|Current margin amount in USDC (6 decimals)|
 |`entryPrice`|`uint256`|EUR/USD price when position was opened|
 |`leverage`|`uint256`|Leverage multiplier used for the position|
@@ -1672,123 +1485,28 @@ function positions(uint256 positionId)
 |`isActive`|`bool`|Whether the position is currently active|
 
 
-### hedgers
-
-Get hedger information
-
-*Returns comprehensive information about a hedger's positions and rewards*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query hedger information
-
-- No oracle dependencies
-
-
-```solidity
-function hedgers(address hedger)
-    external
-    view
-    returns (
-        uint256[] memory positionIds,
-        uint256 _totalMargin,
-        uint256 _totalExposure,
-        uint256 pendingRewards,
-        uint256 lastRewardClaim,
-        bool isActive
-    );
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionIds`|`uint256[]`|Array of position IDs owned by the hedger|
-|`_totalMargin`|`uint256`|Total margin across all positions (6 decimals)|
-|`_totalExposure`|`uint256`|Total exposure across all positions in USD|
-|`pendingRewards`|`uint256`|Pending rewards available for claim (6 decimals)|
-|`lastRewardClaim`|`uint256`|Timestamp of last reward claim|
-|`isActive`|`bool`|Whether hedger has active positions|
-
-
-### hedgerPositions
-
-Returns array of position IDs for a hedger
-
-*Returns all position IDs owned by a specific hedger*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query hedger positions
-
-- No oracle dependencies
-
-
-```solidity
-function hedgerPositions(address hedger) external view returns (uint256[] memory);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256[]`|uint256[] Array of position IDs owned by the hedger|
-
-
 ### userPendingYield
 
 Returns pending yield for a user
 
-*Returns pending yield rewards for a specific user address*
+Returns pending yield rewards for a specific user address
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query user pending yield
+- access: Public - anyone can query user pending yield
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1811,24 +1529,24 @@ function userPendingYield(address user) external view returns (uint256);
 
 Returns pending yield for a hedger
 
-*Returns pending yield rewards for a specific hedger address*
+Returns pending yield rewards for a specific hedger address
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query hedger pending yield
+- access: Public - anyone can query hedger pending yield
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1851,24 +1569,24 @@ function hedgerPendingYield(address hedger) external view returns (uint256);
 
 Returns last claim time for a user
 
-*Returns timestamp of last yield claim for a specific user*
+Returns timestamp of last yield claim for a specific user
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query user last claim time
+- access: Public - anyone can query user last claim time
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1891,24 +1609,24 @@ function userLastClaim(address user) external view returns (uint256);
 
 Returns last claim time for a hedger
 
-*Returns timestamp of last yield claim for a specific hedger*
+Returns timestamp of last yield claim for a specific hedger
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query hedger last claim time
+- access: Public - anyone can query hedger last claim time
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1931,24 +1649,24 @@ function hedgerLastClaim(address hedger) external view returns (uint256);
 
 Returns last reward block for a hedger
 
-*Returns block number of last reward calculation for a specific hedger*
+Returns block number of last reward calculation for a specific hedger
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query hedger last reward block
+- access: Public - anyone can query hedger last reward block
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1971,24 +1689,24 @@ function hedgerLastRewardBlock(address hedger) external view returns (uint256);
 
 Returns liquidation commitment status
 
-*Returns whether a specific liquidation commitment exists*
+Returns whether a specific liquidation commitment exists
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query commitment status
+- access: Public - anyone can query commitment status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2011,24 +1729,24 @@ function liquidationCommitments(bytes32 commitment) external view returns (bool)
 
 Returns liquidation commitment timestamp
 
-*Returns block number when liquidation commitment was created*
+Returns block number when liquidation commitment was created
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query commitment timestamp
+- access: Public - anyone can query commitment timestamp
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2051,24 +1769,24 @@ function liquidationCommitmentTimes(bytes32 commitment) external view returns (u
 
 Returns last liquidation attempt block
 
-*Returns block number of last liquidation attempt for a hedger*
+Returns block number of last liquidation attempt for a hedger
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query last liquidation attempt
+- access: Public - anyone can query last liquidation attempt
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2091,24 +1809,24 @@ function lastLiquidationAttempt(address hedger) external view returns (uint256);
 
 Returns pending liquidation status
 
-*Returns whether a position has a pending liquidation commitment*
+Returns whether a position has a pending liquidation commitment
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query pending liquidation status
+- access: Public - anyone can query pending liquidation status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2132,24 +1850,24 @@ function hasPendingLiquidation(address hedger, uint256 positionId) external view
 
 Returns the maximum positions per hedger
 
-*Maximum number of positions a single hedger can have open simultaneously*
+Maximum number of positions a single hedger can have open simultaneously
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query maximum positions per hedger
+- access: Public - anyone can query maximum positions per hedger
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2166,24 +1884,24 @@ function MAX_POSITIONS_PER_HEDGER() external view returns (uint256);
 
 Returns the number of blocks per day
 
-*Used for time-based calculations and reward periods*
+Used for time-based calculations and reward periods
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query blocks per day
+- access: Public - anyone can query blocks per day
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2200,24 +1918,24 @@ function BLOCKS_PER_DAY() external view returns (uint256);
 
 Returns the maximum reward period
 
-*Maximum time period for reward calculations in blocks*
+Maximum time period for reward calculations in blocks
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query maximum reward period
+- access: Public - anyone can query maximum reward period
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2234,24 +1952,24 @@ function MAX_REWARD_PERIOD() external view returns (uint256);
 
 Returns the liquidation cooldown period
 
-*Minimum blocks between liquidation attempts for the same hedger*
+Minimum blocks between liquidation attempts for the same hedger
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query liquidation cooldown
+- access: Public - anyone can query liquidation cooldown
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2268,24 +1986,24 @@ function LIQUIDATION_COOLDOWN() external view returns (uint256);
 
 Whitelists a hedger address
 
-*Allows the specified address to open hedge positions when whitelist is enabled*
+Allows the specified address to open hedge positions when whitelist is enabled
 
 **Notes:**
-- Validates governance role and hedger address
+- security: Validates governance role and hedger address
 
-- Validates hedger is not address(0) and not already whitelisted
+- validation: Validates hedger is not address(0) and not already whitelisted
 
-- Updates isWhitelistedHedger mapping and grants HEDGER_ROLE
+- state-changes: Updates isWhitelistedHedger mapping and grants HEDGER_ROLE
 
-- Emits HedgerWhitelisted with hedger and caller addresses
+- events: Emits HedgerWhitelisted with hedger and caller addresses
 
-- Throws ZeroAddress if hedger is address(0), AlreadyWhitelisted if already whitelisted
+- errors: Throws ZeroAddress if hedger is address(0), AlreadyWhitelisted if already whitelisted
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2302,24 +2020,24 @@ function whitelistHedger(address hedger) external;
 
 Removes a hedger from the whitelist
 
-*Prevents the specified address from opening new hedge positions*
+Prevents the specified address from opening new hedge positions
 
 **Notes:**
-- Validates governance role and hedger address
+- security: Validates governance role and hedger address
 
-- Validates hedger is not address(0) and is currently whitelisted
+- validation: Validates hedger is not address(0) and is currently whitelisted
 
-- Updates isWhitelistedHedger mapping and revokes HEDGER_ROLE
+- state-changes: Updates isWhitelistedHedger mapping and revokes HEDGER_ROLE
 
-- Emits HedgerRemoved with hedger and caller addresses
+- events: Emits HedgerRemoved with hedger and caller addresses
 
-- Throws ZeroAddress if hedger is address(0), NotWhitelisted if not whitelisted
+- errors: Throws ZeroAddress if hedger is address(0), NotWhitelisted if not whitelisted
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2336,24 +2054,24 @@ function removeHedger(address hedger) external;
 
 Toggles hedger whitelist mode
 
-*When enabled, only whitelisted addresses can open hedge positions*
+When enabled, only whitelisted addresses can open hedge positions
 
 **Notes:**
-- Validates governance role
+- security: Validates governance role
 
-- No input validation required - boolean parameter
+- validation: No input validation required - boolean parameter
 
-- Updates hedgerWhitelistEnabled state variable
+- state-changes: Updates hedgerWhitelistEnabled state variable
 
-- Emits HedgerWhitelistModeToggled with enabled status and caller
+- events: Emits HedgerWhitelistModeToggled with enabled status and caller
 
-- No errors thrown - safe boolean toggle
+- errors: No errors thrown - safe boolean toggle
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2370,24 +2088,24 @@ function toggleHedgerWhitelistMode(bool enabled) external;
 
 Check if an address is whitelisted as a hedger
 
-*Returns true if the address is on the hedger whitelist*
+Returns true if the address is on the hedger whitelist
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query hedger whitelist status
+- access: Public - anyone can query hedger whitelist status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2410,24 +2128,24 @@ function isWhitelistedHedger(address hedger) external view returns (bool);
 
 Check if hedger whitelist mode is enabled
 
-*Returns true if hedger whitelist mode is active*
+Returns true if hedger whitelist mode is active
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query hedger whitelist mode status
+- access: Public - anyone can query hedger whitelist mode status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -2471,7 +2189,9 @@ event MarginAdded(address indexed hedger, uint256 indexed positionId, uint256 ma
 ### MarginRemoved
 
 ```solidity
-event MarginRemoved(address indexed hedger, uint256 indexed positionId, uint256 marginRemoved, uint256 newMarginRatio);
+event MarginRemoved(
+    address indexed hedger, uint256 indexed positionId, uint256 marginRemoved, uint256 newMarginRatio
+);
 ```
 
 ### HedgerLiquidated
@@ -2510,5 +2230,11 @@ event HedgerRemoved(address indexed hedger, address indexed caller);
 
 ```solidity
 event HedgerWhitelistModeToggled(bool enabled, address indexed caller);
+```
+
+### HedgerFillUpdated
+
+```solidity
+event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
 ```
 

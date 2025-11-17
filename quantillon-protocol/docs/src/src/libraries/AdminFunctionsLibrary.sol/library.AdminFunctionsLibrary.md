@@ -4,14 +4,14 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Library for rarely used admin functions to reduce contract size
 
-*Main characteristics:
+Main characteristics:
 - Consolidates admin functions like recoverETH and recoverToken
 - Reduces contract size by moving rarely used functions to library
 - Maintains same API and behavior
-- Uses custom errors for gas efficiency*
+- Uses custom errors for gas efficiency
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -19,24 +19,24 @@ team@quantillon.money
 
 Recover ETH to treasury address
 
-*Emergency function to recover ETH sent to the contract*
+Emergency function to recover ETH sent to the contract
 
 **Notes:**
-- Requires admin role
+- security: Requires admin role
 
-- None required
+- validation: None required
 
-- Transfers ETH from contract to treasury
+- state-changes: Transfers ETH from contract to treasury
 
-- Emits ETHRecovered event
+- events: Emits ETHRecovered event
 
-- Throws NotAuthorized if caller lacks admin role
+- errors: Throws NotAuthorized if caller lacks admin role
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to admin role
+- access: Restricted to admin role
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity
@@ -55,24 +55,24 @@ function recoverETH(address contractInstance, address treasury, bytes32 adminRol
 
 Recover tokens to treasury address
 
-*Emergency function to recover ERC20 tokens sent to the contract*
+Emergency function to recover ERC20 tokens sent to the contract
 
 **Notes:**
-- Requires admin role
+- security: Requires admin role
 
-- None required
+- validation: None required
 
-- Transfers tokens from contract to treasury
+- state-changes: Transfers tokens from contract to treasury
 
-- Emits TokenRecovered event
+- events: Emits TokenRecovered event
 
-- Throws NotAuthorized if caller lacks admin role
+- errors: Throws NotAuthorized if caller lacks admin role
 
-- Not protected - library handles reentrancy
+- reentrancy: Not protected - library handles reentrancy
 
-- Restricted to admin role
+- access: Restricted to admin role
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity

@@ -4,11 +4,11 @@ Quantillon Protocol Team
 
 Library for secure token and ETH recovery to treasury addresses
 
-*This library factorizes the recoverToken and recoverETH functionality used across all contracts
-to save gas, reduce bytecode, and ensure consistent security implementation*
+This library factorizes the recoverToken and recoverETH functionality used across all contracts
+to save gas, reduce bytecode, and ensure consistent security implementation
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -16,30 +16,30 @@ team@quantillon.money
 
 Recover tokens accidentally sent to the contract to treasury only
 
-*SECURITY: Prevents recovery of own tokens and sends only to treasury*
+SECURITY: Prevents recovery of own tokens and sends only to treasury
 
-*Gas optimization: Uses library function to avoid code duplication*
+Gas optimization: Uses library function to avoid code duplication
 
-*Security: Prevents recovery of own tokens and ensures treasury-only recovery*
+Security: Prevents recovery of own tokens and ensures treasury-only recovery
 
-*Error handling: Uses custom errors for gas efficiency*
+Error handling: Uses custom errors for gas efficiency
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -59,30 +59,30 @@ function recoverToken(address token, uint256 amount, address contractAddress, ad
 
 Recover ETH to treasury address only
 
-*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
+SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
 
-*Gas optimization: Uses library function to avoid code duplication*
+Gas optimization: Uses library function to avoid code duplication
 
-*Security: Prevents arbitrary ETH transfers that could be exploited*
+Security: Prevents arbitrary ETH transfers that could be exploited
 
-*Error handling: Uses custom errors for gas efficiency*
+Error handling: Uses custom errors for gas efficiency
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

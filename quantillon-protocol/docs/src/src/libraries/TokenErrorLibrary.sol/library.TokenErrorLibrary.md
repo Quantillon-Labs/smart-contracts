@@ -4,14 +4,14 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Token-specific errors for QEURO, QTI, and stQEURO tokens
 
-*Main characteristics:
+Main characteristics:
 - Errors specific to token operations
 - Minting and burning errors
 - Blacklist and whitelist errors
-- Supply and cap management errors*
+- Supply and cap management errors
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Errors

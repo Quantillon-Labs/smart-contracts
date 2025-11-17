@@ -141,7 +141,8 @@ contract QuantillonVaultTestSuite is Test {
     // Mock contracts
     address public mockUSDC = address(0x7);
     address public mockOracle = address(0x8);
-    address public mockHedgerPool = address(0x9);
+    MockHedgerPool public hedgerPoolStub;
+    address public mockHedgerPool;
     address public mockTimelock = address(0x789); // mock timelock address (also used as treasury)
     
     // =============================================================================
@@ -171,6 +172,9 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function setUp() public {
+        hedgerPoolStub = new MockHedgerPool();
+        mockHedgerPool = address(hedgerPoolStub);
+        
         // Deploy QEURO token
         QEUROToken implementation = new QEUROToken();
         bytes memory initData = abi.encodeWithSelector(
@@ -285,12 +289,8 @@ contract QuantillonVaultTestSuite is Test {
             abi.encode()
         );
         
-        // Mock HedgerPool totalMargin (needed for collateralization ratio calculation)
-        vm.mockCall(
-            mockHedgerPool,
-            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
-            abi.encode(1000 * 1e6) // 1000 USDC margin - sufficient for collateralization
-        );
+        // Set HedgerPool totalMargin (needed for collateralization ratio calculation)
+        hedgerPoolStub.setTotalMargin(1000 * 1e6); // 1000 USDC margin - sufficient for collateralization
         
         // Mock UserPool totalDeposits (needed for collateralization ratio calculation)
         vm.mockCall(
@@ -611,13 +611,8 @@ contract QuantillonVaultTestSuite is Test {
             abi.encode(qeuroSupply)
         );
         
-        // Now mock HedgerPool to return 0 totalMargin (no active positions)
-        // This will make the protocol undercollateralized
-        vm.mockCall(
-            mockHedgerPool,
-            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
-            abi.encode(0)
-        );
+        // Force HedgerPool totalMargin to zero (no active positions)
+        hedgerPoolStub.setTotalMargin(0);
         
         // Try to mint more - should revert due to lack of collateralization
         vm.prank(user2);
@@ -638,12 +633,8 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Mint_WhenCollateralized_Success() public {
-        // Mock HedgerPool to return > 0 totalMargin (active positions exist)
-        vm.mockCall(
-            mockHedgerPool,
-            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
-            abi.encode(1000 * 1e6) // 1000 USDC margin
-        );
+        // Configure HedgerPool with active margin
+        hedgerPoolStub.setTotalMargin(1000 * 1e6); // 1000 USDC margin
         
         // Mint should succeed
         vm.prank(user1);
@@ -669,22 +660,14 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_View_IsProtocolCollateralized() public {
         // Test when HedgerPool has no margin (not collateralized)
-        vm.mockCall(
-            mockHedgerPool,
-            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
-            abi.encode(0)
-        );
+        hedgerPoolStub.setTotalMargin(0);
         
         (bool isCollateralized, uint256 totalMargin) = vault.isProtocolCollateralized();
         assertFalse(isCollateralized);
         assertEq(totalMargin, 0);
         
         // Test when HedgerPool has margin (collateralized)
-        vm.mockCall(
-            mockHedgerPool,
-            abi.encodeWithSelector(IHedgerPool.totalMargin.selector),
-            abi.encode(1000 * 1e6) // 1000 USDC margin
-        );
+        hedgerPoolStub.setTotalMargin(1000 * 1e6); // 1000 USDC margin
         
         (isCollateralized, totalMargin) = vault.isProtocolCollateralized();
         assertTrue(isCollateralized);
@@ -1954,5 +1937,39 @@ contract MockHedgerPool {
      */
     function setTotalMargin(uint256 _totalMargin) external {
         totalMargin = _totalMargin;
+    }
+
+    /**
+     * @notice Mock implementation to satisfy HedgerPool interface for mints
+     * @dev Intentionally noop in tests
+     * @param amount Ignored mint amount
+     * @custom:security Test mock only
+     * @custom:validation None
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable
+     * @custom:access Public
+     * @custom:oracle Not applicable
+     */
+    function recordUserMint(uint256 amount) external pure {
+        amount;
+    }
+
+    /**
+     * @notice Mock implementation to satisfy HedgerPool interface for redeems
+     * @dev Intentionally noop in tests
+     * @param amount Ignored redeem amount
+     * @custom:security Test mock only
+     * @custom:validation None
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable
+     * @custom:access Public
+     * @custom:oracle Not applicable
+     */
+    function recordUserRedeem(uint256 amount) external pure {
+        amount;
     }
 }

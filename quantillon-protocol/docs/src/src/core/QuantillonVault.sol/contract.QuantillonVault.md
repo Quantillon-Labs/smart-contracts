@@ -1,50 +1,50 @@
 # QuantillonVault
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/home/uld/GitHub/smart-contracts/quantillon-protocol/docs/src/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Main vault managing QEURO minting against USDC collateral
 
-*Main characteristics:
+Main characteristics:
 - Simple USDC to QEURO swap mechanism
 - USDC as input for QEURO minting
 - Real-time EUR/USD price oracle integration
 - Dynamic fee structure for protocol sustainability
 - Emergency pause mechanism for crisis situations
-- Upgradeable via UUPS pattern*
+- Upgradeable via UUPS pattern
 
-*Minting mechanics:
+Minting mechanics:
 - Users swap USDC for QEURO
 - QEURO is minted based on EUR/USD exchange rate
 - Minting fees charged for protocol revenue
 - Simple 1:1 exchange with price conversion
 - Price deviation protection prevents flash loan manipulation
-- Block-based validation ensures price freshness*
+- Block-based validation ensures price freshness
 
-*Redemption mechanics:
+Redemption mechanics:
 - Users can redeem QEURO back to USDC
 - Redemption based on current EUR/USD exchange rate
 - Protocol fees charged on redemptions
 - USDC returned to user after fee deduction
 - Same price deviation protection as minting
-- Consistent security across all operations*
+- Consistent security across all operations
 
-*Risk management:
+Risk management:
 - Real-time price monitoring
 - Emergency pause capabilities
 - Slippage protection on swaps
 - Flash loan attack prevention via price deviation checks
 - Block-based price manipulation detection
-- Comprehensive oracle validation and fallback mechanisms*
+- Comprehensive oracle validation and fallback mechanisms
 
-*Fee structure:
+Fee structure:
 - Minting fees for creating QEURO
 - Redemption fees for converting QEURO back to USDC
-- Dynamic fee adjustment based on market conditions*
+- Dynamic fee adjustment based on market conditions
 
-*Security features:
+Security features:
 - Role-based access control for all critical operations
 - Reentrancy protection for all external calls
 - Emergency pause mechanism for crisis situations
@@ -53,224 +53,224 @@ Main vault managing QEURO minting against USDC collateral
 - Oracle price validation
 - Flash loan protection through price deviation checks
 - Block-based price update validation
-- Comprehensive price manipulation attack prevention*
+- Comprehensive price manipulation attack prevention
 
-*Integration points:
+Integration points:
 - QEURO token for minting and burning
 - USDC for collateral deposits and withdrawals
 - Chainlink oracle for EUR/USD price feeds
-- Vault math library for precise calculations*
+- Vault math library for precise calculations
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
 ### GOVERNANCE_ROLE
 Role for governance operations (parameter updates, emergency actions)
 
-*keccak256 hash avoids role collisions with other contracts*
+keccak256 hash avoids role collisions with other contracts
 
-*Should be assigned to governance multisig or DAO*
+Should be assigned to governance multisig or DAO
 
 
 ```solidity
-bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE")
 ```
 
 
 ### EMERGENCY_ROLE
 Role for emergency operations (pause)
 
-*keccak256 hash avoids role collisions with other contracts*
+keccak256 hash avoids role collisions with other contracts
 
-*Should be assigned to emergency multisig*
+Should be assigned to emergency multisig
 
 
 ```solidity
-bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
 ### MAX_PRICE_DEVIATION
 Maximum allowed price deviation between consecutive price updates (in basis points)
 
-*Prevents flash loan price manipulation attacks*
+Prevents flash loan price manipulation attacks
 
-*200 basis points = 2% maximum deviation*
+200 basis points = 2% maximum deviation
 
 
 ```solidity
-uint256 private constant MAX_PRICE_DEVIATION = 200;
+uint256 private constant MAX_PRICE_DEVIATION = 200
 ```
 
 
 ### MIN_BLOCKS_BETWEEN_UPDATES
 Minimum number of blocks required between price updates for deviation checks
 
-*Prevents manipulation within the same block*
+Prevents manipulation within the same block
 
 
 ```solidity
-uint256 private constant MIN_BLOCKS_BETWEEN_UPDATES = 1;
+uint256 private constant MIN_BLOCKS_BETWEEN_UPDATES = 1
 ```
 
 
 ### qeuro
 QEURO token contract for minting and burning
 
-*Used for all QEURO minting and burning operations*
+Used for all QEURO minting and burning operations
 
-*Should be the official QEURO token contract*
+Should be the official QEURO token contract
 
 
 ```solidity
-IQEUROToken public qeuro;
+IQEUROToken public qeuro
 ```
 
 
 ### usdc
 USDC token used as collateral
 
-*Used for all collateral deposits, withdrawals, and fee payments*
+Used for all collateral deposits, withdrawals, and fee payments
 
-*Should be the official USDC contract on the target network*
+Should be the official USDC contract on the target network
 
 
 ```solidity
-IERC20 public usdc;
+IERC20 public usdc
 ```
 
 
 ### oracle
 Chainlink oracle contract for EUR/USD price feeds
 
-*Provides real-time EUR/USD exchange rates for minting and redemption*
+Provides real-time EUR/USD exchange rates for minting and redemption
 
-*Used for price calculations in swap operations*
+Used for price calculations in swap operations
 
 
 ```solidity
-IChainlinkOracle public oracle;
+IChainlinkOracle public oracle
 ```
 
 
 ### hedgerPool
 HedgerPool contract for collateralization checks
 
-*Used to verify protocol has sufficient hedging positions before minting QEURO*
+Used to verify protocol has sufficient hedging positions before minting QEURO
 
-*Ensures protocol is properly collateralized by hedgers*
+Ensures protocol is properly collateralized by hedgers
 
 
 ```solidity
-IHedgerPool public hedgerPool;
+IHedgerPool public hedgerPool
 ```
 
 
 ### userPool
 UserPool contract for user deposit tracking
 
-*Used to get total user deposits for collateralization ratio calculations*
+Used to get total user deposits for collateralization ratio calculations
 
-*Required for accurate protocol collateralization assessment*
+Required for accurate protocol collateralization assessment
 
 
 ```solidity
-IUserPool public userPool;
+IUserPool public userPool
 ```
 
 
 ### treasury
 Treasury address for ETH recovery
 
-*SECURITY: Only this address can receive ETH from recoverETH function*
+SECURITY: Only this address can receive ETH from recoverETH function
 
 
 ```solidity
-address public treasury;
+address public treasury
 ```
 
 
 ### feeCollector
 Fee collector contract for protocol fees
 
-*Centralized fee collection and distribution*
+Centralized fee collection and distribution
 
 
 ```solidity
-address public feeCollector;
+address public feeCollector
 ```
 
 
 ### mintFee
 Protocol fee charged on minting QEURO (in basis points)
 
-*Example: 10 = 0.1% minting fee*
+Example: 10 = 0.1% minting fee
 
-*Revenue source for the protocol*
+Revenue source for the protocol
 
 
 ```solidity
-uint256 public mintFee;
+uint256 public mintFee
 ```
 
 
 ### redemptionFee
 Protocol fee charged on redeeming QEURO (in basis points)
 
-*Example: 10 = 0.1% redemption fee*
+Example: 10 = 0.1% redemption fee
 
-*Revenue source for the protocol*
+Revenue source for the protocol
 
 
 ```solidity
-uint256 public redemptionFee;
+uint256 public redemptionFee
 ```
 
 
 ### minCollateralizationRatioForMinting
 Minimum collateralization ratio required for minting QEURO (in basis points)
 
-*Example: 10500 = 105% collateralization ratio required for minting*
+Example: 10500 = 105% collateralization ratio required for minting
 
-*When protocol collateralization >= this threshold, minting is allowed*
+When protocol collateralization >= this threshold, minting is allowed
 
-*When protocol collateralization < this threshold, minting is halted*
+When protocol collateralization < this threshold, minting is halted
 
-*Can be updated by governance to adjust protocol risk parameters*
+Can be updated by governance to adjust protocol risk parameters
 
 
 ```solidity
-uint256 public minCollateralizationRatioForMinting;
+uint256 public minCollateralizationRatioForMinting
 ```
 
 
 ### criticalCollateralizationRatio
 Critical collateralization ratio that triggers liquidation (in basis points)
 
-*Example: 10100 = 101% collateralization ratio triggers liquidation*
+Example: 10100 = 101% collateralization ratio triggers liquidation
 
-*When protocol collateralization < this threshold, hedgers start being liquidated*
+When protocol collateralization < this threshold, hedgers start being liquidated
 
-*Emergency threshold to protect protocol solvency*
+Emergency threshold to protect protocol solvency
 
-*Can be updated by governance to adjust liquidation triggers*
+Can be updated by governance to adjust liquidation triggers
 
 
 ```solidity
-uint256 public criticalCollateralizationRatio;
+uint256 public criticalCollateralizationRatio
 ```
 
 
 ### totalUsdcHeld
 Total USDC held in the vault
 
-*Used for vault analytics and risk management*
+Used for vault analytics and risk management
 
 
 ```solidity
-uint256 public totalUsdcHeld;
+uint256 public totalUsdcHeld
 ```
 
 
@@ -279,29 +279,29 @@ Total QEURO in circulation (minted by this vault)
 
 
 ```solidity
-uint256 public totalMinted;
+uint256 public totalMinted
 ```
 
 
 ### lastValidEurUsdPrice
 Last valid EUR/USD price used in operations
 
-*Used for price deviation checks to prevent manipulation*
+Used for price deviation checks to prevent manipulation
 
 
 ```solidity
-uint256 private lastValidEurUsdPrice;
+uint256 private lastValidEurUsdPrice
 ```
 
 
 ### lastPriceUpdateBlock
 Block number of the last price update
 
-*Used to ensure minimum blocks between updates for deviation checks*
+Used to ensure minimum blocks between updates for deviation checks
 
 
 ```solidity
-uint256 private lastPriceUpdateBlock;
+uint256 private lastPriceUpdateBlock
 ```
 
 
@@ -310,7 +310,7 @@ Variable to store the timestamp of the last valid price update
 
 
 ```solidity
-uint256 private lastPriceUpdateTime;
+uint256 private lastPriceUpdateTime
 ```
 
 
@@ -319,69 +319,69 @@ uint256 private lastPriceUpdateTime;
 
 Modifier to protect against flash loan attacks
 
-*Uses the FlashLoanProtectionLibrary to check USDC balance consistency*
+Uses the FlashLoanProtectionLibrary to check USDC balance consistency
 
 
 ```solidity
-modifier flashLoanProtection();
+modifier flashLoanProtection() ;
 ```
 
 ### constructor
 
 Constructor for QuantillonVault contract
 
-*Disables initializers for security*
+Disables initializers for security
 
 **Notes:**
-- Disables initializers for security
+- security: Disables initializers for security
 
-- No validation needed
+- validation: No validation needed
 
-- Disables initializers
+- state-changes: Disables initializers
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
-- constructor
+- oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
-constructor();
+constructor() ;
 ```
 
 ### initialize
 
 Initializes the vault with contracts and parameters
 
-*This function configures:
+This function configures:
 1. Access roles
 2. References to external contracts
 3. Default protocol parameters
-4. Security (pause, reentrancy, upgrades)*
+4. Security (pause, reentrancy, upgrades)
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Initializes all contract state variables
+- state-changes: Initializes all contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to initializer modifier
+- access: Restricted to initializer modifier
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -414,36 +414,40 @@ function initialize(
 
 Mints QEURO tokens by swapping USDC
 
-*Minting process:
+Minting process:
 1. Fetch EUR/USD price from oracle
 2. Calculate amount of QEURO to mint
 3. Transfer USDC from user
 4. Update vault balances
-5. Mint QEURO to user*
+5. Mint QEURO to user
 
-*Example: 1100 USDC → ~1000 QEURO (if EUR/USD = 1.10)
-Simple swap with protocol fee applied*
+Example: 1100 USDC → ~1000 QEURO (if EUR/USD = 1.10)
+Simple swap with protocol fee applied
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- No access restrictions
+- access: No access restrictions
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
-function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external nonReentrant whenNotPaused flashLoanProtection;
+function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut)
+    external
+    nonReentrant
+    whenNotPaused
+    flashLoanProtection;
 ```
 **Parameters**
 
@@ -457,31 +461,31 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external nonReentran
 
 Redeems QEURO for USDC
 
-*Redeem process:
+Redeem process:
 1. Calculate USDC to return based on EUR/USD price
 2. Apply protocol fees
 3. Burn QEURO
 4. Update vault balances
-5. Transfer USDC to user*
+5. Transfer USDC to user
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- No access restrictions
+- access: No access restrictions
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
-- No flash loan protection needed - legitimate redemption operation
+- security: No flash loan protection needed - legitimate redemption operation
 
 
 ```solidity
@@ -499,24 +503,24 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 
 Retrieves the vault's global metrics
 
-*Returns comprehensive vault metrics for monitoring and analytics*
+Returns comprehensive vault metrics for monitoring and analytics
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- No state changes
+- state-changes: No state changes
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -535,24 +539,24 @@ function getVaultMetrics() external returns (uint256 totalUsdcHeld_, uint256 tot
 
 Calculates the amount of QEURO that can be minted for a given USDC amount
 
-*Calculates mint amount based on current oracle price and protocol fees*
+Calculates mint amount based on current oracle price and protocol fees
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- No state changes
+- state-changes: No state changes
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -576,24 +580,24 @@ function calculateMintAmount(uint256 usdcAmount) external returns (uint256 qeuro
 
 Calculates the amount of USDC received for a QEURO redemption
 
-*Calculates redeem amount based on current oracle price and protocol fees*
+Calculates redeem amount based on current oracle price and protocol fees
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- No state changes
+- state-changes: No state changes
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- No reentrancy protection needed
+- reentrancy: No reentrancy protection needed
 
-- No access restrictions
+- access: No access restrictions
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -617,24 +621,24 @@ function calculateRedeemAmount(uint256 qeuroAmount) external returns (uint256 us
 
 Checks if the protocol is properly collateralized by hedgers
 
-*Public view function to check collateralization status*
+Public view function to check collateralization status
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can check collateralization status
+- access: Public - anyone can check collateralization status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -652,25 +656,25 @@ function isProtocolCollateralized() external view returns (bool isCollateralized
 
 Updates the vault parameters (governance only)
 
-*Safety constraints:
-- Fees <= 5% (user protection)*
+Safety constraints:
+- Fees <= 5% (user protection)
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -688,27 +692,27 @@ function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external onl
 
 Updates the collateralization thresholds (governance only)
 
-*Safety constraints:
+Safety constraints:
 - minCollateralizationRatioForMinting >= 10100 (101% minimum)
 - criticalCollateralizationRatio <= minCollateralizationRatioForMinting
-- criticalCollateralizationRatio >= 10000 (100% minimum)*
+- criticalCollateralizationRatio >= 10000 (100% minimum)
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -729,24 +733,24 @@ function updateCollateralizationThresholds(
 
 Updates the oracle address
 
-*Updates the oracle contract address for price feeds*
+Updates the oracle contract address for price feeds
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -763,24 +767,24 @@ function updateOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE);
 
 Updates the HedgerPool address
 
-*Updates the HedgerPool contract address for collateralization checks*
+Updates the HedgerPool contract address for collateralization checks
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -797,24 +801,24 @@ function updateHedgerPool(address _hedgerPool) external onlyRole(GOVERNANCE_ROLE
 
 Updates the UserPool address
 
-*Updates the UserPool contract address for user deposit tracking*
+Updates the UserPool contract address for user deposit tracking
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -831,24 +835,24 @@ function updateUserPool(address _userPool) external onlyRole(GOVERNANCE_ROLE);
 
 Updates the fee collector address
 
-*Only governance role can update the fee collector address*
+Only governance role can update the fee collector address
 
 **Notes:**
-- Validates address is not zero before updating
+- security: Validates address is not zero before updating
 
-- Ensures _feeCollector is not address(0)
+- validation: Ensures _feeCollector is not address(0)
 
-- Updates feeCollector state variable
+- state-changes: Updates feeCollector state variable
 
-- Emits ParametersUpdated event
+- events: Emits ParametersUpdated event
 
-- Reverts if _feeCollector is address(0)
+- errors: Reverts if _feeCollector is address(0)
 
-- No reentrancy risk, simple state update
+- reentrancy: No reentrancy risk, simple state update
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -865,27 +869,27 @@ function updateFeeCollector(address _feeCollector) external onlyRole(GOVERNANCE_
 
 Updates price deviation protection parameters
 
-*Only governance can update these security parameters*
+Only governance can update these security parameters
 
-*Note: This function requires converting constants to state variables
-for full implementation. Currently a placeholder for future governance control.*
+Note: This function requires converting constants to state variables
+for full implementation. Currently a placeholder for future governance control.
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -905,24 +909,24 @@ function updatePriceProtectionParams(uint256 _maxPriceDeviation, uint256 _minBlo
 
 Withdraws accumulated protocol fees
 
-*Fees accumulate during minting and redemptions*
+Fees accumulate during minting and redemptions
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -939,26 +943,26 @@ function withdrawProtocolFees(address to) external onlyRole(GOVERNANCE_ROLE);
 
 Adds hedger USDC deposit to vault's total USDC reserves
 
-*Called by HedgerPool when hedgers open positions to unify USDC liquidity*
+Called by HedgerPool when hedgers open positions to unify USDC liquidity
 
 **Notes:**
-- Validates caller is HedgerPool contract and amount is positive
+- security: Validates caller is HedgerPool contract and amount is positive
 
-- Validates amount > 0 and caller is authorized HedgerPool
+- validation: Validates amount > 0 and caller is authorized HedgerPool
 
-- Updates totalUsdcHeld with hedger deposit amount
+- state-changes: Updates totalUsdcHeld with hedger deposit amount
 
-- Emits HedgerDepositAdded with deposit details
+- events: Emits HedgerDepositAdded with deposit details
 
-- Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
 
-- Throws "Vault: Amount must be positive" if amount is zero
+- errors: Throws "Vault: Amount must be positive" if amount is zero
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to HedgerPool contract only
+- access: Restricted to HedgerPool contract only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -975,28 +979,28 @@ function addHedgerDeposit(uint256 usdcAmount) external nonReentrant;
 
 Withdraws hedger USDC deposit from vault's reserves
 
-*Called by HedgerPool when hedgers close positions to return their deposits*
+Called by HedgerPool when hedgers close positions to return their deposits
 
 **Notes:**
-- Validates caller is HedgerPool, amount is positive, and sufficient reserves
+- security: Validates caller is HedgerPool, amount is positive, and sufficient reserves
 
-- Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
+- validation: Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
 
-- Updates totalUsdcHeld and transfers USDC to hedger
+- state-changes: Updates totalUsdcHeld and transfers USDC to hedger
 
-- Emits HedgerDepositWithdrawn with withdrawal details
+- events: Emits HedgerDepositWithdrawn with withdrawal details
 
-- Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
 
-- Throws "Vault: Amount must be positive" if amount is zero
+- errors: Throws "Vault: Amount must be positive" if amount is zero
 
-- Throws "Vault: Insufficient USDC reserves" if not enough USDC available
+- errors: Throws "Vault: Insufficient USDC reserves" if not enough USDC available
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to HedgerPool contract only
+- access: Restricted to HedgerPool contract only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1014,24 +1018,24 @@ function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external nonR
 
 Gets the total USDC available for hedger deposits
 
-*Returns the current total USDC held in the vault for transparency*
+Returns the current total USDC held in the vault for transparency
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public access - anyone can query total USDC held
+- access: Public access - anyone can query total USDC held
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1048,24 +1052,24 @@ function getTotalUsdcAvailable() external view returns (uint256);
 
 Updates the last valid price timestamp when a valid price is fetched
 
-*Internal function to track price update timing for monitoring*
+Internal function to track price update timing for monitoring
 
 **Notes:**
-- Updates timestamp only for valid price fetches
+- security: Updates timestamp only for valid price fetches
 
-- No input validation required
+- validation: No input validation required
 
-- Updates lastPriceUpdateTime if price is valid
+- state-changes: Updates lastPriceUpdateTime if price is valid
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - internal function only
+- reentrancy: Not protected - internal function only
 
-- Internal function - no access restrictions
+- access: Internal function - no access restrictions
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1082,26 +1086,26 @@ function _updatePriceTimestamp(bool isValid) internal;
 
 Calculates the current protocol collateralization ratio
 
-*Formula: ((A + B) / A) * 100 where A = user deposits, B = hedger deposits*
+Formula: ((A + B) / A) * 100 where A = user deposits, B = hedger deposits
 
-*Returns ratio in basis points (e.g., 10500 = 105%)*
+Returns ratio in basis points (e.g., 10500 = 105%)
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted - view function
+- events: No events emitted - view function
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can check collateralization ratio
+- access: Public - anyone can check collateralization ratio
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1118,24 +1122,24 @@ function getProtocolCollateralizationRatio() public returns (uint256 ratio);
 
 Checks if minting is allowed based on current collateralization ratio
 
-*Returns true if collateralization ratio >= minCollateralizationRatioForMinting*
+Returns true if collateralization ratio >= minCollateralizationRatioForMinting
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted - view function
+- events: No events emitted - view function
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can check minting status
+- access: Public - anyone can check minting status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1152,24 +1156,24 @@ function canMint() public returns (bool);
 
 Checks if liquidation should be triggered based on current collateralization ratio
 
-*Returns true if collateralization ratio < criticalCollateralizationRatio*
+Returns true if collateralization ratio < criticalCollateralizationRatio
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted - view function
+- events: No events emitted - view function
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can check liquidation status
+- access: Public - anyone can check liquidation status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1186,24 +1190,24 @@ function shouldTriggerLiquidation() public returns (bool shouldLiquidate);
 
 Returns the current price protection status
 
-*Useful for monitoring and debugging price protection*
+Useful for monitoring and debugging price protection
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1226,26 +1230,26 @@ function getPriceProtectionStatus()
 
 Pauses all vault operations
 
-*When paused:
+When paused:
 - No mint/redeem possible
-- Read functions still active*
+- Read functions still active
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1256,24 +1260,24 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 
 Unpauses and resumes operations
 
-*Resumes all vault operations after emergency pause*
+Resumes all vault operations after emergency pause
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1284,27 +1288,27 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 
 Recovers tokens accidentally sent to the vault to treasury only
 
-*Protections:
+Protections:
 - Cannot recover own vault tokens
 - Tokens are sent to treasury address only
-- Only third-party tokens can be recovered*
+- Only third-party tokens can be recovered
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1322,35 +1326,103 @@ function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_A
 
 Recover ETH to treasury address only
 
-*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
+SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
 
-*Security considerations:
+Security considerations:
 - Only DEFAULT_ADMIN_ROLE can recover
 - Prevents sending to zero address
 - Validates balance before attempting transfer
-- Uses call() for reliable ETH transfers to any contract*
+- Uses call() for reliable ETH transfers to any contract
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
 function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
+
+### _syncMintWithHedgers
+
+Internal helper to notify HedgerPool about user mints
+
+Attempts to update hedger fills but swallows failures to avoid blocking users
+
+**Notes:**
+- security: Internal helper; relies on HedgerPool access control
+
+- validation: No additional validation beyond non-zero guard
+
+- state-changes: None inside the vault; delegates to HedgerPool
+
+- events: None
+
+- errors: Silently ignores downstream errors
+
+- reentrancy: Not applicable
+
+- access: Internal helper
+
+- oracle: Not applicable
+
+
+```solidity
+function _syncMintWithHedgers(uint256 amount) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Net USDC amount minted into QEURO (6 decimals)|
+
+
+### _syncRedeemWithHedgers
+
+Internal helper to notify HedgerPool about user redeems
+
+Attempts to release hedger fills but swallows failures to avoid blocking users
+
+**Notes:**
+- security: Internal helper; relies on HedgerPool access control
+
+- validation: No additional validation beyond non-zero guard
+
+- state-changes: None inside the vault; delegates to HedgerPool
+
+- events: None
+
+- errors: Silently ignores downstream errors
+
+- reentrancy: Not applicable
+
+- access: Internal helper
+
+- oracle: Not applicable
+
+
+```solidity
+function _syncRedeemWithHedgers(uint256 amount) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Gross USDC returned to the user (6 decimals)|
+
 
 ## Events
 ### QEUROminted
@@ -1404,7 +1476,7 @@ event HedgerDepositWithdrawn(address indexed hedger, uint256 usdcAmount, uint256
 ### ParametersUpdated
 Emitted when parameters are changed
 
-*OPTIMIZED: Indexed parameter type for efficient filtering*
+OPTIMIZED: Indexed parameter type for efficient filtering
 
 
 ```solidity
@@ -1416,7 +1488,7 @@ Emitted when price deviation protection is triggered
 
 Emitted when collateralization thresholds are updated by governance
 
-*Helps monitor potential flash loan attacks*
+Helps monitor potential flash loan attacks
 
 
 ```solidity
@@ -1440,7 +1512,9 @@ Emitted when protocol collateralization status changes
 
 
 ```solidity
-event CollateralizationStatusChanged(uint256 indexed currentRatio, bool indexed canMint, bool indexed shouldLiquidate);
+event CollateralizationStatusChanged(
+    uint256 indexed currentRatio, bool indexed canMint, bool indexed shouldLiquidate
+);
 ```
 
 **Parameters**
@@ -1454,6 +1528,8 @@ event CollateralizationStatusChanged(uint256 indexed currentRatio, bool indexed 
 ### PriceDeviationDetected
 
 ```solidity
-event PriceDeviationDetected(uint256 currentPrice, uint256 lastValidPrice, uint256 deviationBps, uint256 blockNumber);
+event PriceDeviationDetected(
+    uint256 currentPrice, uint256 lastValidPrice, uint256 deviationBps, uint256 blockNumber
+);
 ```
 

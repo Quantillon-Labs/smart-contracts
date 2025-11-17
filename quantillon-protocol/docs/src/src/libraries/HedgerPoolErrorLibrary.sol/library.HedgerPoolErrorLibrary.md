@@ -4,14 +4,14 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 HedgerPool-specific errors for Quantillon Protocol
 
-*Main characteristics:
+Main characteristics:
 - Errors specific to HedgerPool operations
 - Trading position management errors
 - Liquidation system errors
-- Margin and leverage validation errors*
+- Margin and leverage validation errors
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Errors
@@ -127,6 +127,12 @@ error InvalidAddress();
 
 ```solidity
 error NotAuthorized();
+```
+
+### OnlyVault
+
+```solidity
+error OnlyVault();
 ```
 
 ### RewardOverflow
@@ -289,6 +295,24 @@ error PositionClosureRestricted();
 
 ```solidity
 error PositionNotActive();
+```
+
+### PositionHasActiveFill
+
+```solidity
+error PositionHasActiveFill();
+```
+
+### InsufficientHedgerCapacity
+
+```solidity
+error InsufficientHedgerCapacity();
+```
+
+### NoActiveHedgerLiquidity
+
+```solidity
+error NoActiveHedgerLiquidity();
 ```
 
 ### LiquidationNotAllowed

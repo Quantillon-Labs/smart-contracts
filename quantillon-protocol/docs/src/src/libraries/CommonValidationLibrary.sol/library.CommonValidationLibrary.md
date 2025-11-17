@@ -4,14 +4,14 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Common validation functions used across multiple contracts
 
-*Main characteristics:
+Main characteristics:
 - Consolidates common validation patterns
 - Reduces code duplication across contracts
 - Uses custom errors for gas efficiency
-- Maintains same validation logic*
+- Maintains same validation logic
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -19,24 +19,24 @@ team@quantillon.money
 
 Validates that an address is not zero
 
-*Checks if the provided address is the zero address and reverts with appropriate error*
+Checks if the provided address is the zero address and reverts with appropriate error
 
 **Notes:**
-- Prevents zero address vulnerabilities in critical operations
+- security: Prevents zero address vulnerabilities in critical operations
 
-- Ensures all addresses are properly initialized
+- validation: Ensures all addresses are properly initialized
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws specific custom errors based on errorType
+- errors: Throws specific custom errors based on errorType
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -54,24 +54,24 @@ function validateNonZeroAddress(address addr, string memory errorType) internal 
 
 Validates that an amount is positive
 
-*Ensures the amount is greater than zero to prevent zero-value operations*
+Ensures the amount is greater than zero to prevent zero-value operations
 
 **Notes:**
-- Prevents zero-amount vulnerabilities and invalid operations
+- security: Prevents zero-amount vulnerabilities and invalid operations
 
-- Ensures amounts are meaningful for business logic
+- validation: Ensures amounts are meaningful for business logic
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAmount if amount is zero
+- errors: Throws InvalidAmount if amount is zero
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -88,24 +88,24 @@ function validatePositiveAmount(uint256 amount) internal pure;
 
 Validates that an amount is above minimum threshold
 
-*Ensures the amount meets the minimum requirement for the operation*
+Ensures the amount meets the minimum requirement for the operation
 
 **Notes:**
-- Prevents operations with insufficient amounts
+- security: Prevents operations with insufficient amounts
 
-- Ensures amounts meet business requirements
+- validation: Ensures amounts meet business requirements
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InsufficientBalance if amount is below minimum
+- errors: Throws InsufficientBalance if amount is below minimum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -123,24 +123,24 @@ function validateMinAmount(uint256 amount, uint256 minAmount) internal pure;
 
 Validates that an amount is below maximum threshold
 
-*Ensures the amount does not exceed the maximum allowed limit*
+Ensures the amount does not exceed the maximum allowed limit
 
 **Notes:**
-- Prevents operations that exceed system limits
+- security: Prevents operations that exceed system limits
 
-- Ensures amounts stay within acceptable bounds
+- validation: Ensures amounts stay within acceptable bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws AboveLimit if amount exceeds maximum
+- errors: Throws AboveLimit if amount exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -158,24 +158,24 @@ function validateMaxAmount(uint256 amount, uint256 maxAmount) internal pure;
 
 Validates that a percentage is within valid range (0-100%)
 
-*Ensures percentage values are within acceptable bounds for fees and rates*
+Ensures percentage values are within acceptable bounds for fees and rates
 
 **Notes:**
-- Prevents invalid percentage values that could break system logic
+- security: Prevents invalid percentage values that could break system logic
 
-- Ensures percentages are within business rules
+- validation: Ensures percentages are within business rules
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws AboveLimit if percentage exceeds maximum
+- errors: Throws AboveLimit if percentage exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -193,24 +193,24 @@ function validatePercentage(uint256 percentage, uint256 maxPercentage) internal 
 
 Validates that a duration is within valid range
 
-*Ensures time-based parameters are within acceptable bounds*
+Ensures time-based parameters are within acceptable bounds
 
 **Notes:**
-- Prevents invalid time parameters that could affect system stability
+- security: Prevents invalid time parameters that could affect system stability
 
-- Ensures durations meet business requirements
+- validation: Ensures durations meet business requirements
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws HoldingPeriodNotMet or AboveLimit based on validation failure
+- errors: Throws HoldingPeriodNotMet or AboveLimit based on validation failure
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -229,24 +229,24 @@ function validateDuration(uint256 duration, uint256 minDuration, uint256 maxDura
 
 Validates that a price is valid (greater than zero)
 
-*Ensures price values are meaningful and not zero*
+Ensures price values are meaningful and not zero
 
 **Notes:**
-- Prevents zero-price vulnerabilities in financial operations
+- security: Prevents zero-price vulnerabilities in financial operations
 
-- Ensures prices are valid for calculations
+- validation: Ensures prices are valid for calculations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidPrice if price is zero
+- errors: Throws InvalidPrice if price is zero
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -263,24 +263,24 @@ function validatePrice(uint256 price) internal pure;
 
 Validates that a boolean condition is true
 
-*Generic condition validator that throws specific errors based on error type*
+Generic condition validator that throws specific errors based on error type
 
 **Notes:**
-- Prevents invalid conditions from proceeding in critical operations
+- security: Prevents invalid conditions from proceeding in critical operations
 
-- Ensures business logic conditions are met
+- validation: Ensures business logic conditions are met
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws specific custom errors based on errorType
+- errors: Throws specific custom errors based on errorType
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -298,24 +298,24 @@ function validateCondition(bool condition, string memory errorType) internal pur
 
 Validates that a count is within limits
 
-*Ensures count-based operations don't exceed system limits*
+Ensures count-based operations don't exceed system limits
 
 **Notes:**
-- Prevents operations that exceed system capacity limits
+- security: Prevents operations that exceed system capacity limits
 
-- Ensures counts stay within acceptable bounds
+- validation: Ensures counts stay within acceptable bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws TooManyPositions if count exceeds maximum
+- errors: Throws TooManyPositions if count exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -333,24 +333,24 @@ function validateCountLimit(uint256 count, uint256 maxCount) internal pure;
 
 Validates that a balance is sufficient
 
-*Ensures there's enough balance to perform the required operation*
+Ensures there's enough balance to perform the required operation
 
 **Notes:**
-- Prevents operations with insufficient funds
+- security: Prevents operations with insufficient funds
 
-- Ensures sufficient balance for operations
+- validation: Ensures sufficient balance for operations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InsufficientBalance if balance is below required amount
+- errors: Throws InsufficientBalance if balance is below required amount
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -368,24 +368,24 @@ function validateSufficientBalance(uint256 balance, uint256 requiredAmount) inte
 
 Validates that an address is not a contract (for security)
 
-*Prevents sending funds to potentially malicious contracts*
+Prevents sending funds to potentially malicious contracts
 
 **Notes:**
-- Prevents arbitrary-send vulnerabilities
+- security: Prevents arbitrary-send vulnerabilities
 
-- Ensures address is not a contract
+- validation: Ensures address is not a contract
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidAddress if address is a contract
+- errors: Throws InvalidAddress if address is a contract
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -403,24 +403,24 @@ function validateNotContract(address addr, string memory errorType) internal vie
 
 Validates treasury address is not zero address
 
-*Prevents setting treasury to zero address which could cause loss of funds*
+Prevents setting treasury to zero address which could cause loss of funds
 
 **Notes:**
-- Prevents loss of funds by ensuring treasury is properly set
+- security: Prevents loss of funds by ensuring treasury is properly set
 
-- Ensures treasury address is valid for fund operations
+- validation: Ensures treasury address is valid for fund operations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws ZeroAddress if treasury is zero address
+- errors: Throws ZeroAddress if treasury is zero address
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -437,24 +437,24 @@ function validateTreasuryAddress(address treasury) internal pure;
 
 Validates slippage protection for token swaps/trades
 
-*Ensures received amount is within acceptable tolerance of expected*
+Ensures received amount is within acceptable tolerance of expected
 
 **Notes:**
-- Prevents excessive slippage attacks in token operations
+- security: Prevents excessive slippage attacks in token operations
 
-- Ensures received amount meets minimum expectations
+- validation: Ensures received amount meets minimum expectations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter if slippage exceeds tolerance
+- errors: Throws InvalidParameter if slippage exceeds tolerance
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -473,24 +473,24 @@ function validateSlippage(uint256 received, uint256 expected, uint256 tolerance)
 
 Validates that a value meets minimum threshold requirements
 
-*Used for minimum deposits, stakes, withdrawals, etc.*
+Used for minimum deposits, stakes, withdrawals, etc.
 
 **Notes:**
-- Prevents operations below minimum thresholds
+- security: Prevents operations below minimum thresholds
 
-- Ensures values meet business requirements
+- validation: Ensures values meet business requirements
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws BelowThreshold if value is below minimum
+- errors: Throws BelowThreshold if value is below minimum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -508,24 +508,24 @@ function validateThresholdValue(uint256 value, uint256 threshold) internal pure;
 
 Validates fee amount against maximum allowed fee
 
-*Ensures fees don't exceed protocol limits (typically in basis points)*
+Ensures fees don't exceed protocol limits (typically in basis points)
 
 **Notes:**
-- Prevents excessive fees that could harm users
+- security: Prevents excessive fees that could harm users
 
-- Ensures fees stay within protocol limits
+- validation: Ensures fees stay within protocol limits
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter if fee exceeds maximum
+- errors: Throws InvalidParameter if fee exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -543,24 +543,24 @@ function validateFee(uint256 fee, uint256 maxFee) internal pure;
 
 Validates threshold value against maximum limit
 
-*Used for liquidation thresholds, margin ratios, etc.*
+Used for liquidation thresholds, margin ratios, etc.
 
 **Notes:**
-- Prevents thresholds that could destabilize the system
+- security: Prevents thresholds that could destabilize the system
 
-- Ensures thresholds stay within acceptable bounds
+- validation: Ensures thresholds stay within acceptable bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter if threshold exceeds maximum
+- errors: Throws InvalidParameter if threshold exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

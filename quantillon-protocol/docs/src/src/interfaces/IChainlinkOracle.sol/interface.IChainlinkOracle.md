@@ -4,10 +4,10 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Interface for the Quantillon Chainlink-based oracle
 
-*Exposes read methods for prices and health, plus admin/emergency controls*
+Exposes read methods for prices and health, plus admin/emergency controls
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -15,24 +15,24 @@ team@quantillon.money
 
 Initializes the oracle with admin and feed addresses
 
-*Sets up the oracle with initial configuration and assigns roles to admin*
+Sets up the oracle with initial configuration and assigns roles to admin
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -52,24 +52,24 @@ function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPri
 
 Gets the current EUR/USD price with validation
 
-*Retrieves and validates EUR/USD price from Chainlink feed with freshness checks*
+Retrieves and validates EUR/USD price from Chainlink feed with freshness checks
 
 **Notes:**
-- Validates timestamp freshness, circuit breaker status, price bounds
+- security: Validates timestamp freshness, circuit breaker status, price bounds
 
-- Checks price > 0, timestamp < 1 hour old, within min/max bounds
+- validation: Checks price > 0, timestamp < 1 hour old, within min/max bounds
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - returns fallback price if invalid
+- errors: No errors thrown - returns fallback price if invalid
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Requires fresh Chainlink EUR/USD price feed data
+- oracle: Requires fresh Chainlink EUR/USD price feed data
 
 
 ```solidity
@@ -87,24 +87,24 @@ function getEurUsdPrice() external returns (uint256 price, bool isValid);
 
 Gets the current USDC/USD price with validation
 
-*Retrieves and validates USDC/USD price from Chainlink feed with tolerance checks*
+Retrieves and validates USDC/USD price from Chainlink feed with tolerance checks
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -122,24 +122,24 @@ function getUsdcUsdPrice() external view returns (uint256 price, bool isValid);
 
 Returns overall oracle health signals
 
-*Checks the health status of both price feeds and overall oracle state*
+Checks the health status of both price feeds and overall oracle state
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -158,24 +158,24 @@ function getOracleHealth() external returns (bool isHealthy, bool eurUsdFresh, b
 
 Detailed information about the EUR/USD price
 
-*Provides comprehensive EUR/USD price information including validation status*
+Provides comprehensive EUR/USD price information including validation status
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -198,31 +198,37 @@ function getEurUsdDetails()
 
 Current configuration and circuit breaker state
 
-*Returns current oracle configuration parameters and circuit breaker status*
+Returns current oracle configuration parameters and circuit breaker status
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
 function getOracleConfig()
     external
     view
-    returns (uint256 minPrice, uint256 maxPrice, uint256 maxStaleness, uint256 usdcTolerance, bool circuitBreakerActive);
+    returns (
+        uint256 minPrice,
+        uint256 maxPrice,
+        uint256 maxStaleness,
+        uint256 usdcTolerance,
+        bool circuitBreakerActive
+    );
 ```
 **Returns**
 
@@ -239,24 +245,24 @@ function getOracleConfig()
 
 Addresses and decimals of the underlying feeds
 
-*Returns the addresses and decimal precision of both Chainlink price feeds*
+Returns the addresses and decimal precision of both Chainlink price feeds
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -279,24 +285,24 @@ function getPriceFeedAddresses()
 
 Connectivity check for both feeds
 
-*Tests connectivity to both Chainlink price feeds and returns latest round information*
+Tests connectivity to both Chainlink price feeds and returns latest round information
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -319,24 +325,24 @@ function checkPriceFeedConnectivity()
 
 Updates EUR/USD min and max acceptable prices
 
-*Updates the price bounds for EUR/USD validation with security checks*
+Updates the price bounds for EUR/USD validation with security checks
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -354,24 +360,24 @@ function updatePriceBounds(uint256 _minPrice, uint256 _maxPrice) external;
 
 Updates the allowed USDC deviation from $1.00 in basis points
 
-*Updates the USDC price tolerance for validation with security checks*
+Updates the USDC price tolerance for validation with security checks
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -388,24 +394,24 @@ function updateUsdcTolerance(uint256 newToleranceBps) external;
 
 Updates Chainlink feed addresses
 
-*Updates the addresses of both Chainlink price feeds with validation*
+Updates the addresses of both Chainlink price feeds with validation
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -423,24 +429,24 @@ function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external;
 
 Clears circuit breaker and attempts to resume live prices
 
-*Resets the circuit breaker state to allow normal price operations*
+Resets the circuit breaker state to allow normal price operations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -451,24 +457,24 @@ function resetCircuitBreaker() external;
 
 Manually triggers circuit breaker to use fallback prices
 
-*Activates circuit breaker to switch to fallback price mode for safety*
+Activates circuit breaker to switch to fallback price mode for safety
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -479,24 +485,24 @@ function triggerCircuitBreaker() external;
 
 Pauses all oracle operations
 
-*Pauses the oracle contract to halt all price operations*
+Pauses the oracle contract to halt all price operations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -507,24 +513,24 @@ function pause() external;
 
 Unpauses oracle operations
 
-*Resumes oracle operations after being paused*
+Resumes oracle operations after being paused
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -535,24 +541,24 @@ function unpause() external;
 
 Recovers ERC20 tokens sent to the oracle contract by mistake
 
-*Allows recovery of ERC20 tokens accidentally sent to the oracle contract*
+Allows recovery of ERC20 tokens accidentally sent to the oracle contract
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -570,24 +576,24 @@ function recoverToken(address token, uint256 amount) external;
 
 Recovers ETH sent to the oracle contract by mistake
 
-*Allows recovery of ETH accidentally sent to the oracle contract*
+Allows recovery of ETH accidentally sent to the oracle contract
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

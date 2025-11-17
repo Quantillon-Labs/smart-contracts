@@ -349,52 +349,6 @@ library HedgerPoolOptimizationLibrary {
     // POSITION MANAGEMENT FUNCTIONS
     // =============================================================================
     
-    /**
-     * @notice Removes a position from the hedger's position arrays
-     * @dev Internal function to maintain position tracking arrays
-     * @param hedger Address of the hedger whose position to remove
-     * @param positionId ID of the position to remove
-     * @param hedgerHasPosition Mapping of hedger to position existence
-     * @param positionIndex Mapping of hedger to position index
-     * @param positionIds Array of position IDs for the hedger
-     * @return success True if position was successfully removed
-     * @custom:security Maintains data integrity of position tracking arrays
-     * @custom:validation Ensures position exists before removal
-     * @custom:state-changes Modifies storage mappings and arrays
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - returns boolean result
-     * @custom:reentrancy Not applicable - no external calls
-     * @custom:access External function
-     * @custom:oracle No oracle dependencies
-     */
-    function removePositionFromArrays(
-        address hedger,
-        uint256 positionId,
-        mapping(address => mapping(uint256 => bool)) storage hedgerHasPosition,
-        mapping(address => mapping(uint256 => uint256)) storage positionIndex,
-        uint256[] storage positionIds
-    ) external returns (bool success) {
-        if (!hedgerHasPosition[hedger][positionId]) {
-            return false;
-        }
-        
-        uint256 index = positionIndex[hedger][positionId];
-        uint256 lastIndex = positionIds.length - 1;
-        
-        if (index != lastIndex) {
-            uint256 lastPositionId = positionIds[lastIndex];
-            positionIds[index] = lastPositionId;
-            positionIndex[hedger][lastPositionId] = index;
-        }
-        
-        positionIds.pop();
-        
-        delete positionIndex[hedger][positionId];
-        delete hedgerHasPosition[hedger][positionId];
-        
-        return true;
-    }
-    
     // =============================================================================
     // ORACLE FUNCTIONS
     // =============================================================================

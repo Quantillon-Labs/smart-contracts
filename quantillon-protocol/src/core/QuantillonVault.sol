@@ -468,16 +468,24 @@ contract QuantillonVault is
         uint256 qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
         require(qeuroToMint >= minQeuroOut, "Vault: Insufficient output amount");
 
-        // EFFECTS - All state updates before any external calls
-        unchecked {
-            totalUsdcHeld += netAmount;  // ✅ FIXED: Add net amount after fee, not full amount
-            totalMinted += qeuroToMint;
-        }
-        
-        // Update price state before any external calls
+        require(address(hedgerPool) != address(0), "Vault: HedgerPool not set");
+
+        // Update price cache before external interactions (oracle is trusted, view-only)
         lastPriceUpdateBlock = block.number;
         lastValidEurUsdPrice = eurUsdPrice;
+        // slither-disable-next-line reentrancy-benign
         _updatePriceTimestamp(isValid);
+
+        // EFFECTS - update vault accounting before external hedger interactions
+        unchecked {
+            // slither-disable-next-line reentrancy-benign
+            totalUsdcHeld += netAmount;  // ✅ FIXED: Add net amount after fee, not full amount
+            // slither-disable-next-line reentrancy-benign
+            totalMinted += qeuroToMint;
+        }
+
+        // Inform HedgerPool after vault accounting is updated
+        _syncMintWithHedgers(netAmount);
 
         // INTERACTIONS - All external calls after state updates
         // Transfer full amount to vault
@@ -548,20 +556,28 @@ contract QuantillonVault is
         require(usdcToReturn >= minUsdcOut, "Vault: Insufficient output amount");
         require(totalUsdcHeld >= usdcToReturn, "Vault: Insufficient USDC reserves");
 
-        // Apply protocol fees
-        uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
-        uint256 netUsdcToReturn = usdcToReturn - fee;
+        require(address(hedgerPool) != address(0), "Vault: HedgerPool not set");
 
-        // EFFECTS - All state updates before any external calls
+        // Update price cache before any external interactions (oracle is trusted view-only)
+        lastPriceUpdateBlock = block.number;
+        lastValidEurUsdPrice = eurUsdPrice;
+        // slither-disable-next-line reentrancy-benign
+        _updatePriceTimestamp(isValid);
+
+        // EFFECTS - Update vault balances before external calls
         unchecked {
+            // slither-disable-next-line reentrancy-benign
             totalUsdcHeld -= usdcToReturn;
+            // slither-disable-next-line reentrancy-benign
             totalMinted -= qeuroAmount;
         }
         
-        // Update price state before any external calls
-        lastPriceUpdateBlock = block.number;
-        lastValidEurUsdPrice = eurUsdPrice;
-        _updatePriceTimestamp(isValid);
+        // Inform HedgerPool after internal state is updated
+        _syncRedeemWithHedgers(usdcToReturn);
+
+        // Apply protocol fees
+        uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
+        uint256 netUsdcToReturn = usdcToReturn - fee;
 
         // INTERACTIONS - All external calls after state updates
         qeuro.burn(msg.sender, qeuroAmount);
@@ -1226,6 +1242,46 @@ contract QuantillonVault is
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
         // Use the shared library for secure ETH recovery
         TreasuryRecoveryLibrary.recoverETH(treasury);
+    }
+
+    /**
+     * @notice Internal helper to notify HedgerPool about user mints
+     * @dev Attempts to update hedger fills but swallows failures to avoid blocking users
+     * @param amount Net USDC amount minted into QEURO (6 decimals)
+     * @custom:security Internal helper; relies on HedgerPool access control
+     * @custom:validation No additional validation beyond non-zero guard
+     * @custom:state-changes None inside the vault; delegates to HedgerPool
+     * @custom:events None
+     * @custom:errors Silently ignores downstream errors
+     * @custom:reentrancy Not applicable
+     * @custom:access Internal helper
+     * @custom:oracle Not applicable
+     */
+    function _syncMintWithHedgers(uint256 amount) internal {
+        if (amount == 0) {
+            return;
+        }
+        try hedgerPool.recordUserMint(amount) {} catch {}
+    }
+
+    /**
+     * @notice Internal helper to notify HedgerPool about user redeems
+     * @dev Attempts to release hedger fills but swallows failures to avoid blocking users
+     * @param amount Gross USDC returned to the user (6 decimals)
+     * @custom:security Internal helper; relies on HedgerPool access control
+     * @custom:validation No additional validation beyond non-zero guard
+     * @custom:state-changes None inside the vault; delegates to HedgerPool
+     * @custom:events None
+     * @custom:errors Silently ignores downstream errors
+     * @custom:reentrancy Not applicable
+     * @custom:access Internal helper
+     * @custom:oracle Not applicable
+     */
+    function _syncRedeemWithHedgers(uint256 amount) internal {
+        if (amount == 0) {
+            return;
+        }
+        try hedgerPool.recordUserRedeem(amount) {} catch {}
     }
 
     // =============================================================================

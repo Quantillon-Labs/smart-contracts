@@ -301,6 +301,15 @@ contract YieldShift is
 
     /**
      * @notice Governance bootstrap to set initial histories and source metadata after minimal init
+     * @dev Lazily initializes historical arrays and default authorized yield sources
+     * @custom:security Restricted to governance; reads trusted state only
+     * @custom:validation Relies on prior initialization guarantees
+     * @custom:state-changes Records initial snapshots and default yield source metadata
+     * @custom:events Emits none (pure bookkeeping)
+     * @custom:errors Reverts if caller lacks governance role
+     * @custom:reentrancy Not applicable
+     * @custom:access Governance-only
+     * @custom:oracle Not applicable
      */
     function bootstrapDefaults() external {
         AccessControlLibrary.onlyGovernance(this);
@@ -1132,24 +1141,76 @@ contract YieldShift is
     /**
      * @notice Governance-only setters to wire references post-initialization (phased deploy)
      */
+    /**
+     * @notice Updates the user pool reference used for distribution sync
+     * @dev Governance setter for phased deployments
+     * @param _userPool New user pool address
+     * @custom:security Restricted to governance; validates non-zero address
+     * @custom:validation Ensures `_userPool` is not zero
+     * @custom:state-changes Updates the `userPool` reference
+     * @custom:events None
+     * @custom:errors Reverts if caller is not governance or address invalid
+     * @custom:reentrancy Not applicable
+     * @custom:access Governance-only
+     * @custom:oracle Not applicable
+     */
     function updateUserPool(address _userPool) external {
         AccessControlLibrary.onlyGovernance(this);
         AccessControlLibrary.validateAddress(_userPool);
         userPool = IUserPool(_userPool);
     }
 
+    /**
+     * @notice Updates the user pool reference used for distribution sync
+     * @dev Governance setter for phased deployments
+     * @param _hedgerPool New hedger pool address
+     * @custom:security Restricted to governance; validates non-zero address
+     * @custom:validation Ensures `_hedgerPool` is not zero
+     * @custom:state-changes Updates the `hedgerPool` reference
+     * @custom:events None
+     * @custom:errors Reverts if caller is not governance or address invalid
+     * @custom:reentrancy Not applicable
+     * @custom:access Governance-only
+     * @custom:oracle Not applicable
+     */
     function updateHedgerPool(address _hedgerPool) external {
         AccessControlLibrary.onlyGovernance(this);
         AccessControlLibrary.validateAddress(_hedgerPool);
         hedgerPool = IHedgerPool(_hedgerPool);
     }
 
+    /**
+     * @notice Updates the Aave vault reference used for yield aggregation
+     * @dev Governance setter for phased deployments
+     * @param _aaveVault New Aave vault address
+     * @custom:security Restricted to governance; validates non-zero address
+     * @custom:validation Ensures `_aaveVault` is not zero
+     * @custom:state-changes Updates the `aaveVault` reference
+     * @custom:events None
+     * @custom:errors Reverts if caller is not governance or address invalid
+     * @custom:reentrancy Not applicable
+     * @custom:access Governance-only
+     * @custom:oracle Not applicable
+     */
     function updateAaveVault(address _aaveVault) external {
         AccessControlLibrary.onlyGovernance(this);
         AccessControlLibrary.validateAddress(_aaveVault);
         aaveVault = IAaveVault(_aaveVault);
     }
 
+    /**
+     * @notice Updates the stQEURO reference used for staking integrations
+     * @dev Governance setter for phased deployments
+     * @param _stQEURO New stQEURO token address
+     * @custom:security Restricted to governance; validates non-zero address
+     * @custom:validation Ensures `_stQEURO` is not zero
+     * @custom:state-changes Updates the `stQEURO` reference
+     * @custom:events None
+     * @custom:errors Reverts if caller is not governance or address invalid
+     * @custom:reentrancy Not applicable
+     * @custom:access Governance-only
+     * @custom:oracle Not applicable
+     */
     function updateStQEURO(address _stQEURO) external {
         AccessControlLibrary.onlyGovernance(this);
         AccessControlLibrary.validateAddress(_stQEURO);

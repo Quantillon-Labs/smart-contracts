@@ -146,7 +146,7 @@ library HedgerPoolValidationLibrary {
     /**
      * @notice Validates that a commitment doesn't already exist
      * @dev Prevents duplicate commitments in liquidation system
-     * @param exists Whether the commitment already exists
+     * @param commitmentBlock Block number stored for the commitment (0 if none)
      * @custom:security Prevents duplicate commitments that could cause system issues
      * @custom:validation Ensures commitment doesn't already exist
      * @custom:state-changes No state changes - pure function
@@ -156,14 +156,14 @@ library HedgerPoolValidationLibrary {
      * @custom:access Internal library function
      * @custom:oracle No oracle dependencies
      */
-    function validateCommitmentNotExists(bool exists) internal pure {
-        if (exists) revert HedgerPoolErrorLibrary.CommitmentAlreadyExists();
+    function validateCommitmentNotExists(uint256 commitmentBlock) internal pure {
+        if (commitmentBlock != 0) revert HedgerPoolErrorLibrary.CommitmentAlreadyExists();
     }
     
     /**
      * @notice Validates that a valid commitment exists
      * @dev Ensures commitment exists before executing liquidation
-     * @param exists Whether a valid commitment exists
+     * @param commitmentBlock Block number stored for the commitment (0 if none)
      * @custom:security Prevents liquidation without valid commitment
      * @custom:validation Ensures valid commitment exists before liquidation
      * @custom:state-changes No state changes - pure function
@@ -173,8 +173,8 @@ library HedgerPoolValidationLibrary {
      * @custom:access Internal library function
      * @custom:oracle No oracle dependencies
      */
-    function validateCommitment(bool exists) internal pure {
-        if (!exists) revert HedgerPoolErrorLibrary.NoValidCommitment();
+    function validateCommitment(uint256 commitmentBlock) internal pure {
+        if (commitmentBlock == 0) revert HedgerPoolErrorLibrary.NoValidCommitment();
     }
     
     /**

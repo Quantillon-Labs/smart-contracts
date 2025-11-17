@@ -35,6 +35,7 @@ library HedgerPoolErrorLibrary {
     error InvalidOraclePrice();
     error InvalidAddress();
     error NotAuthorized();
+    error OnlyVault();
     error RewardOverflow();
     error InsufficientMargin();
     error CannotRecoverOwnToken();
@@ -68,6 +69,9 @@ library HedgerPoolErrorLibrary {
     error PositionAlreadyClosed();
     error PositionClosureRestricted();
     error PositionNotActive();
+    error PositionHasActiveFill();
+    error InsufficientHedgerCapacity();
+    error NoActiveHedgerLiquidity();
     
     // Liquidation Errors
     error LiquidationNotAllowed();

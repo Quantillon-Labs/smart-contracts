@@ -4,10 +4,10 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Interface for the Quantillon vault managing QEURO mint/redeem against USDC
 
-*Exposes core swap functions, views, governance, emergency, and recovery*
+Exposes core swap functions, views, governance, emergency, and recovery
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -15,24 +15,24 @@ team@quantillon.money
 
 Initializes the vault
 
-*Sets up the vault with initial configuration and assigns roles to admin*
+Sets up the vault with initial configuration and assigns roles to admin
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -63,24 +63,24 @@ function initialize(
 
 Mints QEURO by swapping USDC
 
-*Converts USDC to QEURO using current oracle price with slippage protection*
+Converts USDC to QEURO using current oracle price with slippage protection
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -98,24 +98,24 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external;
 
 Redeems QEURO for USDC
 
-*Converts QEURO (18 decimals) to USDC (6 decimals) using oracle price*
+Converts QEURO (18 decimals) to USDC (6 decimals) using oracle price
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -133,24 +133,24 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external;
 
 Retrieves the vault's global metrics
 
-*Provides comprehensive vault statistics for monitoring and analysis*
+Provides comprehensive vault statistics for monitoring and analysis
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -172,24 +172,24 @@ function getVaultMetrics()
 
 Computes QEURO mint amount for a USDC swap
 
-*Uses current oracle price to calculate QEURO equivalent without executing swap*
+Uses current oracle price to calculate QEURO equivalent without executing swap
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -213,24 +213,24 @@ function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 
 
 Computes USDC redemption amount for a QEURO swap
 
-*Uses current oracle price to calculate USDC equivalent without executing swap*
+Uses current oracle price to calculate USDC equivalent without executing swap
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -254,24 +254,24 @@ function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint2
 
 Updates vault parameters
 
-*Allows governance to update fee parameters for minting and redemption*
+Allows governance to update fee parameters for minting and redemption
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -289,24 +289,24 @@ function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external;
 
 Updates the oracle address
 
-*Allows governance to update the price oracle used for conversions*
+Allows governance to update the price oracle used for conversions
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -323,24 +323,24 @@ function updateOracle(address _oracle) external;
 
 Withdraws accumulated protocol fees
 
-*Allows governance to withdraw accumulated fees to specified address*
+Allows governance to withdraw accumulated fees to specified address
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -357,24 +357,24 @@ function withdrawProtocolFees(address to) external;
 
 Pauses the vault
 
-*Emergency function to pause all vault operations*
+Emergency function to pause all vault operations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -385,24 +385,24 @@ function pause() external;
 
 Unpauses the vault
 
-*Resumes all vault operations after emergency pause*
+Resumes all vault operations after emergency pause
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -413,24 +413,24 @@ function unpause() external;
 
 Recovers ERC20 tokens sent by mistake
 
-*Allows governance to recover accidentally sent ERC20 tokens*
+Allows governance to recover accidentally sent ERC20 tokens
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -449,24 +449,24 @@ function recoverToken(address token, address to, uint256 amount) external;
 
 Recovers ETH sent by mistake
 
-*Allows governance to recover accidentally sent ETH*
+Allows governance to recover accidentally sent ETH
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -477,24 +477,24 @@ function recoverETH() external;
 
 Checks if an account has a specific role
 
-*Returns true if the account has been granted the role*
+Returns true if the account has been granted the role
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can check roles
+- access: Public - anyone can check roles
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -518,24 +518,24 @@ function hasRole(bytes32 role, address account) external view returns (bool);
 
 Gets the admin role for a given role
 
-*Returns the role that is the admin of the given role*
+Returns the role that is the admin of the given role
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query role admin
+- access: Public - anyone can query role admin
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -558,24 +558,24 @@ function getRoleAdmin(bytes32 role) external view returns (bytes32);
 
 Grants a role to an account
 
-*Can only be called by an account with the admin role*
+Can only be called by an account with the admin role
 
 **Notes:**
-- Validates caller has admin role for the specified role
+- security: Validates caller has admin role for the specified role
 
-- Validates account is not address(0)
+- validation: Validates account is not address(0)
 
-- Grants role to account
+- state-changes: Grants role to account
 
-- Emits RoleGranted event
+- events: Emits RoleGranted event
 
-- Throws AccessControlUnauthorizedAccount if caller lacks admin role
+- errors: Throws AccessControlUnauthorizedAccount if caller lacks admin role
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to role admin
+- access: Restricted to role admin
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -593,24 +593,24 @@ function grantRole(bytes32 role, address account) external;
 
 Revokes a role from an account
 
-*Can only be called by an account with the admin role*
+Can only be called by an account with the admin role
 
 **Notes:**
-- Validates caller has admin role for the specified role
+- security: Validates caller has admin role for the specified role
 
-- Validates account is not address(0)
+- validation: Validates account is not address(0)
 
-- Revokes role from account
+- state-changes: Revokes role from account
 
-- Emits RoleRevoked event
+- events: Emits RoleRevoked event
 
-- Throws AccessControlUnauthorizedAccount if caller lacks admin role
+- errors: Throws AccessControlUnauthorizedAccount if caller lacks admin role
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to role admin
+- access: Restricted to role admin
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -628,24 +628,24 @@ function revokeRole(bytes32 role, address account) external;
 
 Renounces a role from the caller
 
-*The caller gives up their own role*
+The caller gives up their own role
 
 **Notes:**
-- Validates caller is renouncing their own role
+- security: Validates caller is renouncing their own role
 
-- Validates callerConfirmation matches msg.sender
+- validation: Validates callerConfirmation matches msg.sender
 
-- Revokes role from caller
+- state-changes: Revokes role from caller
 
-- Emits RoleRevoked event
+- events: Emits RoleRevoked event
 
-- Throws AccessControlBadConfirmation if callerConfirmation != msg.sender
+- errors: Throws AccessControlBadConfirmation if callerConfirmation != msg.sender
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Public - anyone can renounce their own roles
+- access: Public - anyone can renounce their own roles
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -663,24 +663,24 @@ function renounceRole(bytes32 role, address callerConfirmation) external;
 
 Checks if the contract is paused
 
-*Returns true if the contract is currently paused*
+Returns true if the contract is currently paused
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can check pause status
+- access: Public - anyone can check pause status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -697,24 +697,24 @@ function paused() external view returns (bool);
 
 Upgrades the contract to a new implementation
 
-*Can only be called by accounts with UPGRADER_ROLE*
+Can only be called by accounts with UPGRADER_ROLE
 
 **Notes:**
-- Validates caller has UPGRADER_ROLE
+- security: Validates caller has UPGRADER_ROLE
 
-- Validates newImplementation is not address(0)
+- validation: Validates newImplementation is not address(0)
 
-- Updates implementation address
+- state-changes: Updates implementation address
 
-- Emits Upgraded event
+- events: Emits Upgraded event
 
-- Throws AccessControlUnauthorizedAccount if caller lacks UPGRADER_ROLE
+- errors: Throws AccessControlUnauthorizedAccount if caller lacks UPGRADER_ROLE
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to UPGRADER_ROLE
+- access: Restricted to UPGRADER_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -731,24 +731,24 @@ function upgradeTo(address newImplementation) external;
 
 Upgrades the contract to a new implementation and calls a function
 
-*Can only be called by accounts with UPGRADER_ROLE*
+Can only be called by accounts with UPGRADER_ROLE
 
 **Notes:**
-- Validates caller has UPGRADER_ROLE
+- security: Validates caller has UPGRADER_ROLE
 
-- Validates newImplementation is not address(0)
+- validation: Validates newImplementation is not address(0)
 
-- Updates implementation address and calls initialization
+- state-changes: Updates implementation address and calls initialization
 
-- Emits Upgraded event
+- events: Emits Upgraded event
 
-- Throws AccessControlUnauthorizedAccount if caller lacks UPGRADER_ROLE
+- errors: Throws AccessControlUnauthorizedAccount if caller lacks UPGRADER_ROLE
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to UPGRADER_ROLE
+- access: Restricted to UPGRADER_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -766,24 +766,24 @@ function upgradeToAndCall(address newImplementation, bytes memory data) external
 
 Returns the governance role identifier
 
-*Role that can update vault parameters and governance functions*
+Role that can update vault parameters and governance functions
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query role identifier
+- access: Public - anyone can query role identifier
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -800,24 +800,24 @@ function GOVERNANCE_ROLE() external view returns (bytes32);
 
 Returns the emergency role identifier
 
-*Role that can pause the vault and perform emergency operations*
+Role that can pause the vault and perform emergency operations
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query role identifier
+- access: Public - anyone can query role identifier
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -834,24 +834,24 @@ function EMERGENCY_ROLE() external view returns (bytes32);
 
 Returns the upgrader role identifier
 
-*Role that can upgrade the contract implementation*
+Role that can upgrade the contract implementation
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query role identifier
+- access: Public - anyone can query role identifier
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -868,24 +868,24 @@ function UPGRADER_ROLE() external view returns (bytes32);
 
 Returns the QEURO token address
 
-*The euro-pegged stablecoin token managed by this vault*
+The euro-pegged stablecoin token managed by this vault
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query token address
+- access: Public - anyone can query token address
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -902,24 +902,24 @@ function qeuro() external view returns (address);
 
 Returns the USDC token address
 
-*The collateral token used for minting QEURO*
+The collateral token used for minting QEURO
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query token address
+- access: Public - anyone can query token address
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -936,24 +936,24 @@ function usdc() external view returns (address);
 
 Returns the oracle contract address
 
-*The price oracle used for EUR/USD conversions*
+The price oracle used for EUR/USD conversions
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query oracle address
+- access: Public - anyone can query oracle address
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -970,24 +970,24 @@ function oracle() external view returns (address);
 
 Returns the current minting fee
 
-*Fee charged when minting QEURO with USDC (in basis points)*
+Fee charged when minting QEURO with USDC (in basis points)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query minting fee
+- access: Public - anyone can query minting fee
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1004,24 +1004,24 @@ function mintFee() external view returns (uint256);
 
 Returns the current redemption fee
 
-*Fee charged when redeeming QEURO for USDC (in basis points)*
+Fee charged when redeeming QEURO for USDC (in basis points)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query redemption fee
+- access: Public - anyone can query redemption fee
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1038,24 +1038,24 @@ function redemptionFee() external view returns (uint256);
 
 Returns the total USDC held in the vault
 
-*Total amount of USDC collateral backing QEURO*
+Total amount of USDC collateral backing QEURO
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query total USDC held
+- access: Public - anyone can query total USDC held
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1072,24 +1072,24 @@ function totalUsdcHeld() external view returns (uint256);
 
 Returns the total QEURO minted
 
-*Total amount of QEURO tokens in circulation*
+Total amount of QEURO tokens in circulation
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query total QEURO minted
+- access: Public - anyone can query total QEURO minted
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1106,24 +1106,24 @@ function totalMinted() external view returns (uint256);
 
 Checks if the protocol is properly collateralized by hedgers
 
-*Public view function to check collateralization status*
+Public view function to check collateralization status
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can check collateralization status
+- access: Public - anyone can check collateralization status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1141,24 +1141,24 @@ function isProtocolCollateralized() external view returns (bool isCollateralized
 
 Returns the minimum collateralization ratio for minting
 
-*Minimum ratio required for QEURO minting (in basis points)*
+Minimum ratio required for QEURO minting (in basis points)
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query minimum ratio
+- access: Public - anyone can query minimum ratio
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1175,24 +1175,24 @@ function minCollateralizationRatioForMinting() external view returns (uint256);
 
 Returns the UserPool contract address
 
-*The user pool contract managing user deposits*
+The user pool contract managing user deposits
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - safe view function
+- errors: No errors thrown - safe view function
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public - anyone can query user pool address
+- access: Public - anyone can query user pool address
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1209,26 +1209,26 @@ function userPool() external view returns (address);
 
 Adds hedger USDC deposit to vault's total USDC reserves
 
-*Called by HedgerPool when hedgers open positions to unify USDC liquidity*
+Called by HedgerPool when hedgers open positions to unify USDC liquidity
 
 **Notes:**
-- Validates caller is HedgerPool contract and amount is positive
+- security: Validates caller is HedgerPool contract and amount is positive
 
-- Validates amount > 0 and caller is authorized HedgerPool
+- validation: Validates amount > 0 and caller is authorized HedgerPool
 
-- Updates totalUsdcHeld with hedger deposit amount
+- state-changes: Updates totalUsdcHeld with hedger deposit amount
 
-- Emits HedgerDepositAdded with deposit details
+- events: Emits HedgerDepositAdded with deposit details
 
-- Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
 
-- Throws "Vault: Amount must be positive" if amount is zero
+- errors: Throws "Vault: Amount must be positive" if amount is zero
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to HedgerPool contract only
+- access: Restricted to HedgerPool contract only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1245,28 +1245,28 @@ function addHedgerDeposit(uint256 usdcAmount) external;
 
 Withdraws hedger USDC deposit from vault's reserves
 
-*Called by HedgerPool when hedgers close positions to return their deposits*
+Called by HedgerPool when hedgers close positions to return their deposits
 
 **Notes:**
-- Validates caller is HedgerPool, amount is positive, and sufficient reserves
+- security: Validates caller is HedgerPool, amount is positive, and sufficient reserves
 
-- Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
+- validation: Validates amount > 0, caller is authorized, and totalUsdcHeld >= amount
 
-- Updates totalUsdcHeld and transfers USDC to hedger
+- state-changes: Updates totalUsdcHeld and transfers USDC to hedger
 
-- Emits HedgerDepositWithdrawn with withdrawal details
+- events: Emits HedgerDepositWithdrawn with withdrawal details
 
-- Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
+- errors: Throws "Vault: Only HedgerPool can call" if caller is not HedgerPool
 
-- Throws "Vault: Amount must be positive" if amount is zero
+- errors: Throws "Vault: Amount must be positive" if amount is zero
 
-- Throws "Vault: Insufficient USDC reserves" if not enough USDC available
+- errors: Throws "Vault: Insufficient USDC reserves" if not enough USDC available
 
-- Protected by nonReentrant modifier
+- reentrancy: Protected by nonReentrant modifier
 
-- Restricted to HedgerPool contract only
+- access: Restricted to HedgerPool contract only
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1284,24 +1284,24 @@ function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external;
 
 Gets the total USDC available for hedger deposits
 
-*Returns the current total USDC held in the vault for transparency*
+Returns the current total USDC held in the vault for transparency
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public access - anyone can query total USDC held
+- access: Public access - anyone can query total USDC held
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1318,24 +1318,24 @@ function getTotalUsdcAvailable() external view returns (uint256);
 
 Updates the HedgerPool address
 
-*Updates the HedgerPool contract address for hedger operations*
+Updates the HedgerPool contract address for hedger operations
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1352,24 +1352,24 @@ function updateHedgerPool(address _hedgerPool) external;
 
 Updates the UserPool address
 
-*Updates the UserPool contract address for user deposit tracking*
+Updates the UserPool contract address for user deposit tracking
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to GOVERNANCE_ROLE
+- access: Restricted to GOVERNANCE_ROLE
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -1386,24 +1386,24 @@ function updateUserPool(address _userPool) external;
 
 Gets the price protection status and parameters
 
-*Returns price protection configuration for monitoring*
+Returns price protection configuration for monitoring
 
 **Notes:**
-- No security validations required - view function
+- security: No security validations required - view function
 
-- No input validation required - view function
+- validation: No input validation required - view function
 
-- No state changes - view function only
+- state-changes: No state changes - view function only
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Public access - anyone can query price protection status
+- access: Public access - anyone can query price protection status
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

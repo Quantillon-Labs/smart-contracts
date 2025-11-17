@@ -315,9 +315,13 @@ contract HedgerVaultIntegrationTest is Test {
         // Hedger opens position
         vm.prank(hedger);
         uint256 positionId = hedgerPool.enterHedgePosition(hedgerDepositAmount, 10);
+
+        // Open an additional position to leave residual margin in the vault
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(2000e6, 3);
         
         uint256 vaultUsdcAfterDeposit = vault.getTotalUsdcAvailable();
-        assertEq(vaultUsdcAfterDeposit, hedgerDepositAmount, "Vault should have hedger deposit");
+        assertEq(vaultUsdcAfterDeposit, hedgerDepositAmount + 2000e6, "Vault should reflect total hedger deposits");
         
         // Hedger closes position
         vm.prank(hedger);
@@ -325,7 +329,7 @@ contract HedgerVaultIntegrationTest is Test {
         
         // Verify vault's totalUsdcHeld decreased
         uint256 vaultUsdcAfterWithdrawal = vault.getTotalUsdcAvailable();
-        assertLt(vaultUsdcAfterWithdrawal, vaultUsdcAfterDeposit, "Vault USDC should decrease after withdrawal");
+        assertEq(vaultUsdcAfterWithdrawal, vaultUsdcAfterDeposit - hedgerDepositAmount, "Vault USDC should decrease by withdrawn deposit");
         
         // Verify hedger received USDC
         uint256 hedgerUsdcBalance = usdc.balanceOf(hedger);
@@ -350,18 +354,28 @@ contract HedgerVaultIntegrationTest is Test {
         // Hedger opens position
         vm.prank(hedger);
         uint256 positionId = hedgerPool.enterHedgePosition(hedgerDepositAmount, 5);
+
+        // Open a secondary position to keep the vault collateralized after first withdrawal
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(1000e6, 3);
+
+        uint256 vaultUsdcBeforeWithdrawal = vault.getTotalUsdcAvailable();
+        uint256 expectedVaultAfterWithdrawal = vaultUsdcBeforeWithdrawal - hedgerDepositAmount;
         
         // Expect HedgerDepositWithdrawn event
         vm.expectEmit(true, false, false, true);
         emit QuantillonVault.HedgerDepositWithdrawn(
             hedger,
-            hedgerDepositAmount, // Assuming full withdrawal for simplicity
-            hedgerDepositAmount - hedgerDepositAmount // Vault USDC after withdrawal
+            hedgerDepositAmount,
+            expectedVaultAfterWithdrawal
         );
         
         // Hedger closes position
         vm.prank(hedger);
         hedgerPool.exitHedgePosition(positionId);
+
+        uint256 vaultUsdcAfterWithdrawal = vault.getTotalUsdcAvailable();
+        assertEq(vaultUsdcAfterWithdrawal, expectedVaultAfterWithdrawal, "Vault USDC should match expectation after withdrawal");
     }
     
     // =============================================================================

@@ -234,6 +234,8 @@ contract LiquidationEdgeCases is Test {
         vm.startPrank(hedger);
         hedgerPool.enterHedgePosition(INITIAL_MARGIN, 2 * PRECISION / PRECISION); // 2x leverage
         vm.stopPrank();
+        vm.prank(address(hedgerPool.vault()));
+        hedgerPool.recordUserMint(INITIAL_MARGIN);
     }
     
     // =============================================================================
@@ -315,10 +317,6 @@ contract LiquidationEdgeCases is Test {
         hedgerPool.removeMargin(1, 500 * USDC_PRECISION); // Remove half the margin
         vm.stopPrank();
         
-        uint256 marginRatio = hedgerPool.getHedgerMarginRatio(hedger, 1);
-        // Note: Position may not be liquidatable due to complex margin calculations
-        assertTrue(marginRatio > 0, "Margin ratio should be positive");
-        
         // Flash loan attacker attempts to manipulate liquidation
         vm.startPrank(flashLoanAttacker);
         
@@ -363,7 +361,10 @@ contract LiquidationEdgeCases is Test {
         _createBasicHedgerPosition();
         
         // Get initial position info
-        (uint256 positionSize, uint256 margin, , , , ) = hedgerPool.getHedgerPosition(hedger, 1);
+        (address owner, uint96 positionSizeRaw, , uint96 marginRaw, , , , , , ) = hedgerPool.positions(1);
+        assertEq(owner, hedger);
+        uint256 positionSize = uint256(positionSizeRaw);
+        uint256 margin = uint256(marginRaw);
         assertGt(margin, 0, "Position should have margin");
         assertGt(positionSize, 0, "Position should have size");
         
@@ -378,9 +379,10 @@ contract LiquidationEdgeCases is Test {
         vm.stopPrank();
         
         // Verify position remains unchanged
-        (uint256 finalPositionSize, uint256 finalMargin, , , , ) = hedgerPool.getHedgerPosition(hedger, 1);
-        assertEq(finalMargin, margin, "Margin should be unchanged");
-        assertEq(finalPositionSize, positionSize, "Position size should be unchanged");
+        (address finalOwner, uint96 finalPositionSizeRaw, , uint96 finalMarginRaw, , , , , , ) = hedgerPool.positions(1);
+        assertEq(finalOwner, hedger);
+        assertEq(uint256(finalMarginRaw), margin, "Margin should be unchanged");
+        assertEq(uint256(finalPositionSizeRaw), positionSize, "Position size should be unchanged");
     }
     
     // =============================================================================
@@ -575,10 +577,14 @@ contract LiquidationEdgeCases is Test {
         hedgerPool.removeMargin(1, 100 * USDC_PRECISION); // Remove small amount of margin to avoid MarginRatioTooLow
         vm.stopPrank();
         
-        // Verify position is liquidatable
-        uint256 marginRatio = hedgerPool.getHedgerMarginRatio(hedger, 1);
-        // Note: Position may not be liquidatable due to complex margin calculations
-        assertTrue(marginRatio > 0, "Margin ratio should be positive");
+        // Verify position state changed after margin removal
+        (address owner, , , uint96 updatedMargin, , , , , , ) = hedgerPool.positions(1);
+        assertEq(owner, hedger);
+        assertLt(uint256(updatedMargin), 1000 * USDC_PRECISION, "Margin should decrease after removal");
+        // Verify position state changed after margin removal
+        (address ownerCheck, , , uint96 reducedMargin, , , , , , ) = hedgerPool.positions(1);
+        assertEq(ownerCheck, hedger);
+        assertLt(uint256(reducedMargin), 1000 * USDC_PRECISION, "Margin should decrease after removal");
         
         // Execute liquidation
         vm.startPrank(liquidator);
@@ -591,7 +597,9 @@ contract LiquidationEdgeCases is Test {
         vm.stopPrank();
         
         // Verify liquidation was successful
-        (, uint256 finalMargin, , , , ) = hedgerPool.getHedgerPosition(hedger, 1);
+        (address ownerAfter, , , uint96 finalMarginRaw, , , , , , ) = hedgerPool.positions(1);
+        assertEq(ownerAfter, hedger);
+        uint256 finalMargin = uint256(finalMarginRaw);
         // assertEq(finalMargin, 0, "Position should be liquidated"); // Commented out due to liquidation execution issues
         assertTrue(finalMargin >= 0, "Final margin should be non-negative");
     }
@@ -644,7 +652,9 @@ contract LiquidationEdgeCases is Test {
         vm.stopPrank();
         
         // Verify liquidation completed
-        (, uint256 finalMargin, , , , ) = hedgerPool.getHedgerPosition(hedger, 1);
+        (address ownerAfter, , , uint96 finalMarginRaw, , , , , , ) = hedgerPool.positions(1);
+        assertEq(ownerAfter, hedger);
+        uint256 finalMargin = uint256(finalMarginRaw);
         // assertEq(finalMargin, 0, "Position should be liquidated"); // Commented out due to liquidation execution issues
         assertTrue(finalMargin >= 0, "Final margin should be non-negative");
     }
@@ -684,9 +694,9 @@ contract LiquidationEdgeCases is Test {
         hedgerPool.removeMargin(1, 300 * USDC_PRECISION); // Remove some margin (but not too much to avoid MarginRatioTooLow)
         vm.stopPrank();
         
-        uint256 marginRatio = hedgerPool.getHedgerMarginRatio(hedger, 1);
-        // Note: Position may not be liquidatable due to complex margin calculations
-        assertTrue(marginRatio > 0, "Margin ratio should be positive");
+        (address owner, , , uint96 marginAfterRemoval, , , , , , ) = hedgerPool.positions(1);
+        assertEq(owner, hedger);
+        assertLt(uint256(marginAfterRemoval), 1000 * USDC_PRECISION, "Margin should decrease after removal");
         
         // Execute partial liquidation
         vm.startPrank(liquidator);
@@ -701,7 +711,9 @@ contract LiquidationEdgeCases is Test {
         vm.stopPrank();
         
         // Verify partial liquidation
-        (, uint256 finalMargin, , , , ) = hedgerPool.getHedgerPosition(hedger, 1);
+        (address partialOwner, , , uint96 finalMarginRaw, , , , , , ) = hedgerPool.positions(1);
+        assertEq(partialOwner, hedger);
+        uint256 finalMargin = uint256(finalMarginRaw);
         // assertLt(finalMargin, 1000 * USDC_PRECISION, "Margin should be reduced"); // Commented out due to liquidation execution issues
         // assertGt(finalMargin, 0, "Position should still exist"); // Commented out due to liquidation execution issues
         assertTrue(partialLiquidationAmount > 0, "Partial liquidation amount should be positive");
@@ -865,7 +877,9 @@ contract LiquidationEdgeCases is Test {
         vm.stopPrank();
         
         // Verify liquidation completed
-        (, uint256 finalMargin, , , , ) = hedgerPool.getHedgerPosition(hedger, 1);
+        (address committedOwner, , , uint96 finalMarginRaw, , , , , , ) = hedgerPool.positions(1);
+        assertEq(committedOwner, hedger);
+        uint256 finalMargin = uint256(finalMarginRaw);
         // assertEq(finalMargin, 0, "Position should be liquidated"); // Commented out due to liquidation execution issues
         assertTrue(finalMargin >= 0, "Final margin should be non-negative");
     }

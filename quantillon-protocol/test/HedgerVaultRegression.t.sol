@@ -343,12 +343,24 @@ contract HedgerVaultRegressionTest is Test {
         assertGt(finalVaultUsdc, initialVaultUsdc, "Vault USDC should increase");
         
         // Verify position data is correct
-        (uint256 positionSize, uint256 margin, , , uint256 positionLeverage,) = 
-            hedgerPool.getHedgerPosition(hedger, positionId);
+        (
+            address owner,
+            uint96 positionSizeRaw,
+            ,
+            uint96 marginRaw,
+            ,
+            ,
+            ,
+            ,
+            uint16 positionLeverageRaw,
+            bool isActive
+        ) = hedgerPool.positions(positionId);
         
-        assertEq(positionLeverage, leverage, "Position leverage should match");
-        assertGt(margin, 0, "Position margin should be positive");
-        assertGt(positionSize, 0, "Position size should be positive");
+        assertEq(owner, hedger, "Position owner should match");
+        assertTrue(isActive, "Position should be active");
+        assertEq(positionLeverageRaw, leverage, "Position leverage should match");
+        assertGt(uint256(marginRaw), 0, "Position margin should be positive");
+        assertGt(uint256(positionSizeRaw), 0, "Position size should be positive");
     }
     
     /**
@@ -370,6 +382,10 @@ contract HedgerVaultRegressionTest is Test {
         // Hedger opens position
         vm.prank(hedger);
         uint256 positionId = hedgerPool.enterHedgePosition(usdcAmount, leverage);
+        
+        // Open an additional smaller position to ensure remaining collateral after closure
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(1000e6, 3);
         
         uint256 initialHedgerUsdc = usdc.balanceOf(hedger);
         uint256 initialVaultUsdc = vault.getTotalUsdcAvailable();
@@ -422,10 +438,8 @@ contract HedgerVaultRegressionTest is Test {
         assertGt(finalVaultUsdc, initialVaultUsdc, "Vault USDC should increase after margin addition");
         
         // Verify position margin increased
-        (, uint256 margin, , , ,) = 
-            hedgerPool.getHedgerPosition(hedger, positionId);
-        
-        assertGt(margin, initialUsdcAmount, "Position margin should increase");
+        (, , , uint96 marginRaw, , , , , , ) = hedgerPool.positions(positionId);
+        assertGt(uint256(marginRaw), initialUsdcAmount, "Position margin should increase");
     }
     
     /**

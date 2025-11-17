@@ -322,25 +322,25 @@ deploy_mocks() {
         
         # Deploy MockUSDC if requested
         if [ "$WITH_MOCK_USDC" = true ]; then
-            log_info "Deploying MockUSDC..."
-            if [ "$ENVIRONMENT" = "base-sepolia" ]; then
-                forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
-            elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
-                forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
-            else
-                forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
+        log_info "Deploying MockUSDC..."
+        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
+        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
+        else
+            forge script scripts/deployment/DeployMockUSDC.s.sol --rpc-url "$rpc_url" --broadcast
             fi
         fi
         
         # Deploy Mock Feeds if requested
         if [ "$WITH_MOCK_ORACLE" = true ]; then
-            log_info "Deploying Mock Price Feeds..."
-            if [ "$ENVIRONMENT" = "base-sepolia" ]; then
-                forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
-            elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
-                forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
-            else
-                forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
+        log_info "Deploying Mock Price Feeds..."
+        if [ "$ENVIRONMENT" = "base-sepolia" ]; then
+            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 2000000000
+        elif [ "$ENVIRONMENT" = "ethereum-sepolia" ]; then
+            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast --gas-price 20000000000
+        else
+            forge script scripts/deployment/DeployMockFeeds.s.sol --rpc-url "$rpc_url" --broadcast
             fi
         fi
         

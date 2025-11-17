@@ -99,12 +99,12 @@ contract DeployQuantillonPhaseA is Script {
             if (withMockOracle) {
                 console.log("Using Mock Chainlink feeds for localhost");
                 // Deploy mock feeds
-                MockAggregatorV3 eur = new MockAggregatorV3(8);
-                eur.setPrice(108000000);
-                eurUsdFeed = address(eur);
-                MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
-                usdcFeed.setPrice(100000000);
-                usdcUsdFeed = address(usdcFeed);
+            MockAggregatorV3 eur = new MockAggregatorV3(8);
+            eur.setPrice(108000000);
+            eurUsdFeed = address(eur);
+            MockAggregatorV3 usdcFeed = new MockAggregatorV3(8);
+            usdcFeed.setPrice(100000000);
+            usdcUsdFeed = address(usdcFeed);
                 console.log("EUR/USD Feed (mock):", eurUsdFeed);
                 console.log("USDC/USD Feed (mock):", usdcUsdFeed);
             } else {

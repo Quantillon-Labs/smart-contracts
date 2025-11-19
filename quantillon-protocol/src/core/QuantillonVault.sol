@@ -485,7 +485,8 @@ contract QuantillonVault is
         }
 
         // Inform HedgerPool after vault accounting is updated
-        _syncMintWithHedgers(netAmount);
+        // NOTE: Hedgers must receive the gross mint size so their filled volume matches user-facing flow
+        _syncMintWithHedgers(usdcAmount);
 
         // INTERACTIONS - All external calls after state updates
         // Transfer full amount to vault

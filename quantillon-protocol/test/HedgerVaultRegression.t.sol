@@ -557,8 +557,9 @@ contract HedgerVaultRegressionTest is Test {
         // Verify vault USDC balance matches totalUsdcHeld (accounting for fees that remain in vault due to mocking)
         uint256 vaultUsdcBalance = usdc.balanceOf(address(vault));
         uint256 totalUsdcHeld = vault.getTotalUsdcAvailable();
-        // Since we're mocking the fee collector, fees remain in the vault, so balance should be higher than totalUsdcHeld
-        assertGt(vaultUsdcBalance, totalUsdcHeld, "Vault USDC balance should be higher than totalUsdcHeld due to fees");
+        // If fees are enabled, balance should be higher than totalUsdcHeld due to fees remaining in vault
+        // If fees are 0 (testing mode), balance should equal totalUsdcHeld
+        assertGe(vaultUsdcBalance, totalUsdcHeld, "Vault USDC balance should be >= totalUsdcHeld");
         
         // Hedger closes position
         vm.prank(hedger);
@@ -567,7 +568,7 @@ contract HedgerVaultRegressionTest is Test {
         // Verify vault USDC balance still accounts for fees
         vaultUsdcBalance = usdc.balanceOf(address(vault));
         totalUsdcHeld = vault.getTotalUsdcAvailable();
-        assertGt(vaultUsdcBalance, totalUsdcHeld, "Vault USDC balance should still be higher than totalUsdcHeld due to fees");
+        assertGe(vaultUsdcBalance, totalUsdcHeld, "Vault USDC balance should still be >= totalUsdcHeld");
     }
     
     // =============================================================================

@@ -4,12 +4,12 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Library for essential token operations to reduce contract bytecode size
 
-This library provides core token validation functions:
+*This library provides core token validation functions:
 - Mint and burn parameter validation with supply cap checks
-- Used by QEURO token for secure minting and burning operations
+- Used by QEURO token for secure minting and burning operations*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -17,24 +17,24 @@ security-contact: team@quantillon.money
 
 Validates mint parameters
 
-Ensures minting doesn't exceed maximum supply and validates parameters
+*Ensures minting doesn't exceed maximum supply and validates parameters*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -54,24 +54,24 @@ function validateMint(address to, uint256 amount, uint256 totalSupply, uint256 m
 
 Validates burn parameters
 
-Ensures sufficient balance and validates parameters for burning
+*Ensures sufficient balance and validates parameters for burning*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity

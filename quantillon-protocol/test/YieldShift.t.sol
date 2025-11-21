@@ -206,6 +206,15 @@ contract MockHedgerPool {
     /**
      * @notice Mimics HedgerPool.totalExposure()
      * @dev Mock function for testing purposes
+     * @return Total hedge exposure amount
+     * @custom:security Test mock only - no security implications
+     * @custom:validation No validation needed - returns stored value
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - test mock function
+     * @custom:oracle Not applicable
      */
     function totalExposure() external view returns (uint256) {
         return totalHedgeExposure;
@@ -215,7 +224,7 @@ contract MockHedgerPool {
      * @notice Gets pool statistics for testing
      * @dev Mock function for testing purposes
      * @return activeHedgers_ The number of active hedgers
-     * @return totalExposure The total hedge exposure
+     * @return totalExposure_ The total hedge exposure
      * @return averageExposure The average exposure per hedger
      * @return utilizationRate The utilization rate in basis points
      * @return hedgeEfficiency The hedge efficiency in basis points
@@ -230,17 +239,17 @@ contract MockHedgerPool {
      */
     function getPoolStatistics() external view returns (
         uint256 activeHedgers_,
-        uint256 totalExposure,
+        uint256 totalExposure_,
         uint256 averageExposure,
         uint256 utilizationRate,
         uint256 hedgeEfficiency
     ) {
         activeHedgers_ = activeHedgers;
-        totalExposure = totalHedgeExposure;
+        totalExposure_ = totalHedgeExposure;
         averageExposure = totalHedgeExposure / activeHedgers;
         utilizationRate = 7500; // 75%
         hedgeEfficiency = 8500; // 85%
-        return (activeHedgers_, totalExposure, averageExposure, utilizationRate, hedgeEfficiency);
+        return (activeHedgers_, totalExposure_, averageExposure, utilizationRate, hedgeEfficiency);
     }
     
     /**

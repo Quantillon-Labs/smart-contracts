@@ -286,6 +286,16 @@ contract QuantillonVault is
         uint256 deviationBps,
         uint256 blockNumber
     );
+    
+    /// @notice Emitted when price cache is manually updated by governance
+    /// @param oldPrice Previous cached price
+    /// @param newPrice New cached price
+    /// @param blockNumber Block number when cache was updated
+    event PriceCacheUpdated(
+        uint256 oldPrice,
+        uint256 newPrice,
+        uint256 blockNumber
+    );
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -453,6 +463,8 @@ contract QuantillonVault is
         require(isValid, "Vault: Invalid EUR/USD price");
         
         // Price deviation check using cached price
+        // Only check deviation if enough blocks have passed since last update
+        // This allows gradual price movements while still protecting against sudden oracle manipulation
         if (lastValidEurUsdPrice > 0 && block.number > lastPriceUpdateBlock + MIN_BLOCKS_BETWEEN_UPDATES) {
             uint256 priceDiff = eurUsdPrice > lastValidEurUsdPrice ? 
                 eurUsdPrice - lastValidEurUsdPrice : lastValidEurUsdPrice - eurUsdPrice;
@@ -463,6 +475,11 @@ contract QuantillonVault is
                 revert("Vault: Excessive price deviation");
             }
         }
+        
+        // Update price cache before proceeding (after deviation check)
+        // This ensures the cached price is current for subsequent operations
+        lastPriceUpdateBlock = block.number;
+        lastValidEurUsdPrice = eurUsdPrice;
 
         // Calculate mint fee and QEURO amount using validated oracle price
         uint256 fee = usdcAmount.mulDiv(mintFee, 1e18);
@@ -472,9 +489,7 @@ contract QuantillonVault is
 
         require(address(hedgerPool) != address(0), "Vault: HedgerPool not set");
 
-        // Update price cache before external interactions (oracle is trusted, view-only)
-        lastPriceUpdateBlock = block.number;
-        lastValidEurUsdPrice = eurUsdPrice;
+        // Price cache already updated above (after deviation check)
         // slither-disable-next-line reentrancy-benign
         _updatePriceTimestamp(isValid);
 
@@ -1009,6 +1024,31 @@ contract QuantillonVault is
     // =============================================================================
 
     /**
+     * @notice Updates the price cache with the current oracle price
+     * @dev Allows governance to manually refresh the price cache to prevent deviation check failures
+     * @dev Useful when price has moved significantly and cache needs to be updated
+     * @custom:security Only callable by governance role
+     * @custom:validation Validates oracle price is valid before updating cache
+     * @custom:state-changes Updates lastValidEurUsdPrice, lastPriceUpdateBlock, and lastPriceUpdateTime
+     * @custom:events Emits PriceCacheUpdated event
+     * @custom:errors Reverts if oracle price is invalid
+     * @custom:reentrancy Not applicable - no external calls after state changes
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Requires valid oracle price
+     */
+    function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) {
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Vault: Invalid EUR/USD price");
+        
+        uint256 oldPrice = lastValidEurUsdPrice;
+        lastValidEurUsdPrice = eurUsdPrice;
+        lastPriceUpdateBlock = block.number;
+        lastPriceUpdateTime = block.timestamp;
+        
+        emit PriceCacheUpdated(oldPrice, eurUsdPrice, block.number);
+    }
+
+    /**
      * @notice Updates the last valid price timestamp when a valid price is fetched
      * @param isValid Whether the current price fetch was valid
      * @dev Internal function to track price update timing for monitoring
@@ -1030,8 +1070,9 @@ contract QuantillonVault is
     
     /**
      * @notice Calculates the current protocol collateralization ratio
-     * @dev Formula: ((A + B) / A) * 100 where A = user deposits, B = hedger deposits
+     * @dev Formula: ((A + B) / A) * 100 where A = user deposits, B = hedger effective collateral (deposits + P&L)
      * @dev Returns ratio in basis points (e.g., 10500 = 105%)
+     * @dev Uses hedger effective collateral instead of raw deposits to account for P&L
      * @return ratio Current collateralization ratio in basis points
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -1040,7 +1081,7 @@ contract QuantillonVault is
      * @custom:errors No errors thrown - safe view function
      * @custom:reentrancy Not applicable - view function
      * @custom:access Public - anyone can check collateralization ratio
-     * @custom:oracle No oracle dependencies
+     * @custom:oracle Requires fresh oracle price data (via HedgerPool)
      */
     function getProtocolCollateralizationRatio() public returns (uint256 ratio) {
         // Check if both HedgerPool and UserPool are set
@@ -1051,24 +1092,31 @@ contract QuantillonVault is
         // Get current QEURO supply (A in the formula) - represents current user deposits
         uint256 currentQeuroSupply = qeuro.totalSupply();
         
-        // Get hedger deposits from HedgerPool (B in the formula)
-        uint256 hedgerDeposits = hedgerPool.totalMargin();
-        
         // If no QEURO supply, we can't calculate a meaningful ratio
         // Return 0 to indicate no user deposits yet
         if (currentQeuroSupply == 0) {
             return 0;
         }
         
-        // Convert QEURO supply to current USDC equivalent for accurate calculation
+        // Get oracle price once and reuse it for consistency
         (uint256 currentRate, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Vault: Invalid oracle rate");
         
+        // Convert QEURO supply to current USDC equivalent for accurate calculation
         uint256 currentUsdcEquivalent = currentQeuroSupply.mulDiv(currentRate, 1e18) / 1e12;
         
-        // Calculate ratio: ((A + B) / A) * 100
+        // Get hedger effective collateral from HedgerPool (B in the formula)
+        // This includes deposits + P&L, giving accurate collateralization ratio
+        // Note: User deposits (USDC from mints) are already backing the QEURO supply,
+        // so they're not counted as additional collateral. Only hedger collateral provides over-collateralization.
+        // Pass currentRate to avoid double oracle call and ensure price consistency
+        uint256 hedgerEffectiveCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(currentRate);
+        
+        // Calculate ratio: ((A + B) / A) * 10000
+        // Where A = current USDC equivalent of QEURO supply (debt)
+        // Where B = hedger effective collateral (deposits + P&L) - this is the additional over-collateralization
         // Using basis points (multiply by 10000 instead of 100)
-        ratio = ((currentUsdcEquivalent + hedgerDeposits) * 10000) / currentUsdcEquivalent;
+        ratio = ((currentUsdcEquivalent + hedgerEffectiveCollateral) * 10000) / currentUsdcEquivalent;
         
         return ratio;
     }

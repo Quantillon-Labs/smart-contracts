@@ -575,6 +575,21 @@ contract HedgerPool is
         _decreaseFilledVolume(usdcAmount, 0);
     }
 
+    /**
+     * @notice Commits to liquidating a position (first step of two-phase liquidation)
+     * @dev Creates a commitment hash to prevent front-running of liquidation attempts
+     * @param hedger Address of the hedger whose position will be liquidated
+     * @param positionId Unique identifier of the position to liquidate
+     * @param salt Random salt value to prevent commitment collisions
+     * @custom:security Requires LIQUIDATOR_ROLE, validates position ownership and active status
+     * @custom:validation Validates hedger address, position ID, position is active, hedger matches position owner
+     * @custom:state-changes Creates liquidation commitment, increments pending liquidation count, updates last liquidation attempt
+     * @custom:events None - commitment phase doesn't emit events
+     * @custom:errors Reverts with InvalidPosition if positionId is 0, InvalidHedger if hedger doesn't match, or if commitment already exists
+     * @custom:reentrancy Protected by secureNonReentrant modifier (if called externally)
+     * @custom:access Restricted to LIQUIDATOR_ROLE
+     * @custom:oracle Not applicable - commitment phase doesn't require oracle
+     */
     function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external {
         _validateRole(LIQUIDATOR_ROLE);
         AccessControlLibrary.validateAddress(hedger);
@@ -784,6 +799,44 @@ contract HedgerPool is
     function getFillMetrics() external view returns (uint256 totalHedgeExposure, uint256 totalMatchedExposure) {
         totalHedgeExposure = totalExposure;
         totalMatchedExposure = totalFilledExposure;
+    }
+
+    /**
+     * @notice Calculates total effective hedger collateral (deposits + P&L) across all active positions
+     * @dev Used by vault to determine protocol collateralization ratio
+     * @return totalEffectiveCollateral Total effective collateral in USDC (6 decimals)
+     * @custom:security Read-only helper - no state changes
+     * @custom:validation Requires valid oracle price
+     * @custom:state-changes None - read-only function (not view due to oracle call)
+     * @custom:events None
+     * @custom:errors Reverts if oracle price is invalid
+     * @custom:reentrancy Not applicable - read-only function
+     * @custom:access Public - anyone can query effective collateral
+     * @custom:oracle Requires fresh oracle price data
+     */
+    function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external returns (uint256 totalEffectiveCollateral) {
+        // Price is passed from caller to ensure consistency (no double oracle call)
+        // Caller must validate the price before calling this function
+        
+        uint256 len = activePositions.length;
+        for (uint256 i = 0; i < len; i++) {
+            HedgePosition storage position = positions[activePositions[i]];
+            if (!position.isActive) continue;
+            
+            // Calculate P&L for this position
+            int256 pnl = HedgerPoolLogicLibrary.calculatePnL(
+                uint256(position.filledVolume),
+                uint256(position.entryPrice),
+                currentPrice
+            );
+            
+            // Add margin + P&L (P&L can be negative, so we handle it carefully)
+            int256 effectiveCollateral = int256(uint256(position.margin)) + pnl;
+            if (effectiveCollateral > 0) {
+                totalEffectiveCollateral += uint256(effectiveCollateral);
+            }
+            // If effectiveCollateral is negative, we don't add it (position is underwater)
+        }
     }
 
     /**
@@ -1321,6 +1374,23 @@ contract HedgerPool is
         delete activePositionIndex[positionId];
     }
 
+    /**
+     * @notice Finalizes position closure by updating hedger and protocol totals
+     * @dev Internal helper to clean up position state and update aggregate statistics
+     * @param hedger Address of the hedger whose position is being finalized
+     * @param positionId Unique identifier of the position being finalized
+     * @param position Storage reference to the position being finalized
+     * @param marginDelta Amount of margin being removed from the position
+     * @param exposureDelta Amount of exposure being removed from the position
+     * @custom:security Internal function - assumes all validations done by caller
+     * @custom:validation Assumes marginDelta and exposureDelta are valid and don't exceed current totals
+     * @custom:state-changes Decrements hedger margin/exposure, protocol totals, marks position inactive, removes from active tracking, updates hedger position count
+     * @custom:events None - events emitted by caller
+     * @custom:errors None - assumes valid inputs from caller
+     * @custom:reentrancy Not applicable - internal function, no external calls
+     * @custom:access Internal - only callable within contract
+     * @custom:oracle Not applicable
+     */
     function _finalizePosition(
         address hedger,
         uint256 positionId,
@@ -1346,6 +1416,21 @@ contract HedgerPool is
         }
     }
 
+    /**
+     * @notice Unwinds filled volume from a position and redistributes it
+     * @dev Clears position's filled volume and redistributes it to other active positions
+     * @param positionId Unique identifier of the position being unwound
+     * @param position Storage reference to the position being unwound
+     * @return freedVolume Amount of filled volume that was freed and redistributed
+     * @custom:security Internal function - assumes position is valid and active
+     * @custom:validation Validates totalFilledExposure >= cachedFilledVolume before decrementing
+     * @custom:state-changes Clears position filledVolume, decrements totalFilledExposure, redistributes volume to other positions
+     * @custom:events Emits HedgerFillUpdated with positionId, old filled volume, and 0
+     * @custom:errors Reverts with InsufficientHedgerCapacity if totalFilledExposure < cachedFilledVolume
+     * @custom:reentrancy Not applicable - internal function, no external calls
+     * @custom:access Internal - only callable within contract
+     * @custom:oracle Not applicable
+     */
     function _unwindFilledVolume(uint256 positionId, HedgePosition storage position) internal returns (uint256 freedVolume) {
         uint256 cachedFilledVolume = uint256(position.filledVolume);
         if (cachedFilledVolume == 0) {
@@ -1360,6 +1445,20 @@ contract HedgerPool is
         return cachedFilledVolume;
     }
 
+    /**
+     * @notice Decrements the pending liquidation commitment count for a position
+     * @dev Internal helper to clean up liquidation commitments after execution or cancellation
+     * @param hedger Address of the hedger whose position commitment is being decremented
+     * @param positionId Unique identifier of the position whose commitment is being decremented
+     * @custom:security Internal function - assumes valid hedger and positionId
+     * @custom:validation Validates count > 0 before decrementing to prevent underflow
+     * @custom:state-changes Decrements pendingLiquidations[hedger][positionId] if count > 0
+     * @custom:events None
+     * @custom:errors None - uses unchecked arithmetic with validation
+     * @custom:reentrancy Not applicable - internal function, no external calls
+     * @custom:access Internal - only callable within contract
+     * @custom:oracle Not applicable
+     */
     function _decrementPendingCommitment(address hedger, uint256 positionId) internal {
         uint32 count = pendingLiquidations[hedger][positionId];
         if (count > 0) {
@@ -1677,6 +1776,19 @@ contract HedgerPool is
         return keccak256(abi.encode(interestDifferential, yieldShiftRewards, totalRewards));
     }
 
+    /**
+     * @notice Validates that closing a position won't cause protocol undercollateralization
+     * @dev Checks if protocol remains collateralized after removing this position's margin
+     * @param positionMargin Amount of margin in the position being closed
+     * @custom:security Internal function - prevents protocol undercollateralization from position closures
+     * @custom:validation Checks vault is set, protocol is collateralized, and remaining margin > positionMargin
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors Reverts with PositionClosureRestricted if closing would cause undercollateralization
+     * @custom:reentrancy Not applicable - view function, no state changes
+     * @custom:access Internal - only callable within contract
+     * @custom:oracle Not applicable - uses vault's collateralization check
+     */
     function _validatePositionClosureSafety(uint256 positionMargin) internal view {
         if (address(vault) == address(0)) {
             return;

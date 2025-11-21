@@ -109,13 +109,16 @@ library HedgerPoolLogicLibrary {
         uint256 entryPrice,
         uint256 currentPrice
     ) internal pure returns (int256) {
-        if (tradedVolume == 0 || entryPrice == currentPrice) {
+        if (tradedVolume == 0 || entryPrice == currentPrice || entryPrice == 0) {
             return 0;
         }
 
         int256 priceChange = int256(entryPrice) - int256(currentPrice);
         uint256 absPriceChange = uint256(priceChange >= 0 ? priceChange : -priceChange);
-        uint256 intermediate = tradedVolume.mulDiv(absPriceChange, 1e18);
+        // P&L formula: (tradedVolume * priceChange) / entryPrice
+        // tradedVolume is in 6 decimals (USDC), entryPrice and priceChange are in 18 decimals
+        // Result is in 6 decimals (USDC)
+        uint256 intermediate = tradedVolume.mulDiv(absPriceChange, entryPrice);
         return priceChange >= 0 ? int256(intermediate) : -int256(intermediate);
     }
 

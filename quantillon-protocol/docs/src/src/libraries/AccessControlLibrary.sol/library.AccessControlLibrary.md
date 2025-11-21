@@ -4,14 +4,14 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Access control functions for Quantillon Protocol
 
-Main characteristics:
+*Main characteristics:
 - Role-based access control validation functions
 - Address and amount validation utilities
 - Reduces contract bytecode size through library extraction
-- Provides standardized error handling for access control
+- Provides standardized error handling for access control*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Functions
@@ -19,24 +19,24 @@ security-contact: team@quantillon.money
 
 Ensures the caller has governance role
 
-Reverts with NotGovernance if caller lacks GOVERNANCE_ROLE
+*Reverts with NotGovernance if caller lacks GOVERNANCE_ROLE*
 
 **Notes:**
-- security: Validates caller has GOVERNANCE_ROLE before allowing access
+- Validates caller has GOVERNANCE_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotGovernance if caller lacks required role
+- Throws NotGovernance if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -53,24 +53,24 @@ function onlyGovernance(AccessControlUpgradeable accessControl) internal view;
 
 Ensures the caller has vault manager role
 
-Reverts with NotVaultManager if caller lacks VAULT_MANAGER_ROLE
+*Reverts with NotVaultManager if caller lacks VAULT_MANAGER_ROLE*
 
 **Notes:**
-- security: Validates caller has VAULT_MANAGER_ROLE before allowing access
+- Validates caller has VAULT_MANAGER_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotVaultManager if caller lacks required role
+- Throws NotVaultManager if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -87,24 +87,24 @@ function onlyVaultManager(AccessControlUpgradeable accessControl) internal view;
 
 Ensures the caller has emergency role
 
-Reverts with NotEmergencyRole if caller lacks EMERGENCY_ROLE
+*Reverts with NotEmergencyRole if caller lacks EMERGENCY_ROLE*
 
 **Notes:**
-- security: Validates caller has EMERGENCY_ROLE before allowing access
+- Validates caller has EMERGENCY_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotEmergencyRole if caller lacks required role
+- Throws NotEmergencyRole if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -121,24 +121,24 @@ function onlyEmergencyRole(AccessControlUpgradeable accessControl) internal view
 
 Ensures the caller has liquidator role
 
-Reverts with NotLiquidatorRole if caller lacks LIQUIDATOR_ROLE
+*Reverts with NotLiquidatorRole if caller lacks LIQUIDATOR_ROLE*
 
 **Notes:**
-- security: Validates caller has LIQUIDATOR_ROLE before allowing access
+- Validates caller has LIQUIDATOR_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotLiquidatorRole if caller lacks required role
+- Throws NotLiquidatorRole if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -155,24 +155,24 @@ function onlyLiquidatorRole(AccessControlUpgradeable accessControl) internal vie
 
 Ensures the caller has yield manager role
 
-Reverts with NotYieldManager if caller lacks YIELD_MANAGER_ROLE
+*Reverts with NotYieldManager if caller lacks YIELD_MANAGER_ROLE*
 
 **Notes:**
-- security: Validates caller has YIELD_MANAGER_ROLE before allowing access
+- Validates caller has YIELD_MANAGER_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotYieldManager if caller lacks required role
+- Throws NotYieldManager if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -189,24 +189,24 @@ function onlyYieldManager(AccessControlUpgradeable accessControl) internal view;
 
 Ensures the caller has admin role
 
-Reverts with NotAdmin if caller lacks DEFAULT_ADMIN_ROLE
+*Reverts with NotAdmin if caller lacks DEFAULT_ADMIN_ROLE*
 
 **Notes:**
-- security: Validates caller has DEFAULT_ADMIN_ROLE before allowing access
+- Validates caller has DEFAULT_ADMIN_ROLE before allowing access
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotAdmin if caller lacks required role
+- Throws NotAdmin if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -223,24 +223,24 @@ function onlyAdmin(AccessControlUpgradeable accessControl) internal view;
 
 Validates that an address is not the zero address
 
-Reverts with InvalidAddress if address is zero
+*Reverts with InvalidAddress if address is zero*
 
 **Notes:**
-- security: Prevents zero address usage which could cause loss of funds
+- Prevents zero address usage which could cause loss of funds
 
-- validation: Validates addr != address(0)
+- Validates addr != address(0)
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidAddress if address is zero
+- Throws InvalidAddress if address is zero
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -257,24 +257,24 @@ function validateAddress(address addr) internal pure;
 
 Validates that an amount is not zero
 
-Reverts with InvalidAmount if amount is zero
+*Reverts with InvalidAmount if amount is zero*
 
 **Notes:**
-- security: Prevents zero amount operations which could cause unexpected behavior
+- Prevents zero amount operations which could cause unexpected behavior
 
-- validation: Validates amount > 0
+- Validates amount > 0
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidAmount if amount is zero
+- Throws InvalidAmount if amount is zero
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -291,24 +291,24 @@ function validateAmount(uint256 amount) internal pure;
 
 Validates that an amount is positive (> 0)
 
-Reverts with InvalidAmount if amount is zero or negative
+*Reverts with InvalidAmount if amount is zero or negative*
 
 **Notes:**
-- security: Prevents zero or negative amount operations which could cause unexpected behavior
+- Prevents zero or negative amount operations which could cause unexpected behavior
 
-- validation: Validates amount > 0
+- Validates amount > 0
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws InvalidAmount if amount is zero or negative
+- Throws InvalidAmount if amount is zero or negative
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity

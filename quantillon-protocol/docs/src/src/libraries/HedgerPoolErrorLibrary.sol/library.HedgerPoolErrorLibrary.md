@@ -4,14 +4,14 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 HedgerPool-specific errors for Quantillon Protocol
 
-Main characteristics:
+*Main characteristics:
 - Errors specific to HedgerPool operations
 - Trading position management errors
 - Liquidation system errors
-- Margin and leverage validation errors
+- Margin and leverage validation errors*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## Errors

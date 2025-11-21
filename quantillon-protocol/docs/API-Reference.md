@@ -103,6 +103,35 @@ function getVaultMetrics() external view returns (
 )
 ```
 
+**Returns**: Vault metrics including collateralization ratio (basis points)
+
+#### `getProtocolCollateralizationRatio() → (uint256)`
+```solidity
+function getProtocolCollateralizationRatio() public returns (uint256 ratio)
+```
+
+**Returns**: Current protocol collateralization ratio in basis points (e.g., 10500 = 105%)
+
+**Description**: Calculates the protocol collateralization ratio using the formula: `((A + B) / A) * 10000` where:
+- `A` = Current QEURO supply converted to USDC equivalent (user deposits)
+- `B` = Total effective hedger collateral (deposits + unrealized P&L)
+
+**Note**: Uses hedger effective collateral (via `HedgerPool.getTotalEffectiveHedgerCollateral()`) instead of raw deposits to accurately account for P&L in the collateralization calculation.
+
+**Requirements**:
+- Both HedgerPool and UserPool must be set
+- Valid oracle price
+- QEURO supply > 0
+
+#### `canMint() → (bool)`
+```solidity
+function canMint() external view returns (bool)
+```
+
+**Returns**: `true` if minting is allowed, `false` otherwise
+
+**Description**: Checks if minting is allowed based on current protocol collateralization ratio. Returns `true` if the ratio is >= `minCollateralizationRatioForMinting` (default 105%).
+
 ---
 
 ## QEUROToken
@@ -395,6 +424,19 @@ function getPositionInfo(uint256 positionId) external view returns (
     bool isActive
 )
 ```
+
+#### `getTotalEffectiveHedgerCollateral() → (uint256)`
+```solidity
+function getTotalEffectiveHedgerCollateral() external view returns (uint256 totalEffectiveCollateral)
+```
+
+**Returns**: Total effective hedger collateral in USDC (6 decimals), calculated as sum of (margin + unrealized P&L) for all active positions
+
+**Description**: Calculates the total effective collateral across all active hedger positions, accounting for unrealized P&L. This is used by the vault to determine protocol collateralization ratio. Only positions with positive effective collateral (margin + P&L > 0) are included. Positions with negative effective collateral (underwater positions) are excluded from the total.
+
+**Requirements**:
+- Valid oracle price
+- Fresh price data
 
 #### `liquidatePosition(uint256 positionId)`
 ```solidity

@@ -74,6 +74,19 @@ contract HedgerPoolTestSuite is Test {
         uint16 usdInterestRate;
     }
 
+    /**
+     * @notice Creates a snapshot of current core parameters for testing
+     * @dev Internal helper to capture current HedgerPool core parameters state
+     * @return snapshot Struct containing all core parameters at current state
+     * @custom:security Test helper function - no security implications
+     * @custom:validation No validation needed - read-only snapshot
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal - only callable within test contract
+     * @custom:oracle Not applicable
+     */
     function _coreParamsSnapshot() internal view returns (CoreParamsSnapshot memory snapshot) {
         uint8 _reserved;
         (

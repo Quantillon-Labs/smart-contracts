@@ -7,10 +7,10 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Secure upgrade mechanism with timelock and multi-sig requirements
 
-Replaces unrestricted upgrade capability with governance-controlled upgrades
+*Replaces unrestricted upgrade capability with governance-controlled upgrades*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
@@ -19,7 +19,7 @@ Minimum delay for upgrades (48 hours)
 
 
 ```solidity
-uint256 public constant UPGRADE_DELAY = 48 hours
+uint256 public constant UPGRADE_DELAY = 48 hours;
 ```
 
 
@@ -28,7 +28,7 @@ Maximum delay for upgrades (7 days)
 
 
 ```solidity
-uint256 public constant MAX_UPGRADE_DELAY = 7 days
+uint256 public constant MAX_UPGRADE_DELAY = 7 days;
 ```
 
 
@@ -37,7 +37,7 @@ Minimum number of multi-sig approvals required
 
 
 ```solidity
-uint256 public constant MIN_MULTISIG_APPROVALS = 2
+uint256 public constant MIN_MULTISIG_APPROVALS = 2;
 ```
 
 
@@ -46,7 +46,7 @@ Maximum number of multi-sig signers
 
 
 ```solidity
-uint256 public constant MAX_MULTISIG_SIGNERS = 5
+uint256 public constant MAX_MULTISIG_SIGNERS = 5;
 ```
 
 
@@ -55,7 +55,7 @@ Role for proposing upgrades
 
 
 ```solidity
-bytes32 public constant UPGRADE_PROPOSER_ROLE = keccak256("UPGRADE_PROPOSER_ROLE")
+bytes32 public constant UPGRADE_PROPOSER_ROLE = keccak256("UPGRADE_PROPOSER_ROLE");
 ```
 
 
@@ -64,7 +64,7 @@ Role for executing upgrades after timelock
 
 
 ```solidity
-bytes32 public constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE")
+bytes32 public constant UPGRADE_EXECUTOR_ROLE = keccak256("UPGRADE_EXECUTOR_ROLE");
 ```
 
 
@@ -73,7 +73,7 @@ Role for emergency upgrades (bypasses timelock)
 
 
 ```solidity
-bytes32 public constant EMERGENCY_UPGRADER_ROLE = keccak256("EMERGENCY_UPGRADER_ROLE")
+bytes32 public constant EMERGENCY_UPGRADER_ROLE = keccak256("EMERGENCY_UPGRADER_ROLE");
 ```
 
 
@@ -82,7 +82,7 @@ Role for managing multi-sig signers
 
 
 ```solidity
-bytes32 public constant MULTISIG_MANAGER_ROLE = keccak256("MULTISIG_MANAGER_ROLE")
+bytes32 public constant MULTISIG_MANAGER_ROLE = keccak256("MULTISIG_MANAGER_ROLE");
 ```
 
 
@@ -91,7 +91,7 @@ Pending upgrades by implementation address
 
 
 ```solidity
-mapping(address => PendingUpgrade) public pendingUpgrades
+mapping(address => PendingUpgrade) public pendingUpgrades;
 ```
 
 
@@ -100,7 +100,7 @@ Multi-sig signers
 
 
 ```solidity
-mapping(address => bool) public multisigSigners
+mapping(address => bool) public multisigSigners;
 ```
 
 
@@ -109,7 +109,7 @@ Number of active multi-sig signers
 
 
 ```solidity
-uint256 public multisigSignerCount
+uint256 public multisigSignerCount;
 ```
 
 
@@ -118,7 +118,7 @@ Upgrade approvals by signer
 
 
 ```solidity
-mapping(address => mapping(address => bool)) public upgradeApprovals
+mapping(address => mapping(address => bool)) public upgradeApprovals;
 ```
 
 
@@ -127,7 +127,7 @@ Number of approvals for each pending upgrade
 
 
 ```solidity
-mapping(address => uint256) public upgradeApprovalCount
+mapping(address => uint256) public upgradeApprovalCount;
 ```
 
 
@@ -136,18 +136,18 @@ Whether emergency mode is active
 
 
 ```solidity
-bool public emergencyMode
+bool public emergencyMode;
 ```
 
 
 ### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
-Used to replace direct block.timestamp usage for testability and consistency
+*Used to replace direct block.timestamp usage for testability and consistency*
 
 
 ```solidity
-TimeProvider public immutable TIME_PROVIDER
+TimeProvider public immutable TIME_PROVIDER;
 ```
 
 
@@ -156,38 +156,38 @@ TimeProvider public immutable TIME_PROVIDER
 
 
 ```solidity
-modifier onlyMultisigSigner() ;
+modifier onlyMultisigSigner();
 ```
 
 ### onlyEmergencyUpgrader
 
 
 ```solidity
-modifier onlyEmergencyUpgrader() ;
+modifier onlyEmergencyUpgrader();
 ```
 
 ### initialize
 
 Initializes the timelock contract with admin privileges
 
-Sets up access control roles and pausability. Can only be called once.
+*Sets up access control roles and pausability. Can only be called once.*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to initializer modifier
+- Restricted to initializer modifier
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -204,24 +204,24 @@ function initialize(address admin) public initializer;
 
 Propose an upgrade with timelock
 
-Proposes an upgrade with timelock delay and multi-sig approval requirements
+*Proposes an upgrade with timelock delay and multi-sig approval requirements*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to UPGRADE_PROPOSER_ROLE
+- Restricted to UPGRADE_PROPOSER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -242,24 +242,24 @@ function proposeUpgrade(address newImplementation, string calldata description, 
 
 Approve a pending upgrade (multi-sig signer only)
 
-Allows multi-sig signers to approve pending upgrades
+*Allows multi-sig signers to approve pending upgrades*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to multi-sig signers
+- Restricted to multi-sig signers
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -276,24 +276,24 @@ function approveUpgrade(address implementation) external onlyMultisigSigner;
 
 Revoke approval for a pending upgrade
 
-Allows multi-sig signers to revoke their approval for pending upgrades
+*Allows multi-sig signers to revoke their approval for pending upgrades*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to multi-sig signers
+- Restricted to multi-sig signers
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -310,24 +310,24 @@ function revokeUpgradeApproval(address implementation) external onlyMultisigSign
 
 Execute an upgrade after timelock and multi-sig approval
 
-Executes an upgrade after timelock delay and sufficient multi-sig approvals
+*Executes an upgrade after timelock delay and sufficient multi-sig approvals*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to UPGRADE_EXECUTOR_ROLE
+- Restricted to UPGRADE_EXECUTOR_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -344,24 +344,24 @@ function executeUpgrade(address implementation) external onlyRole(UPGRADE_EXECUT
 
 Cancel a pending upgrade (only proposer or admin)
 
-Allows proposer or admin to cancel pending upgrades
+*Allows proposer or admin to cancel pending upgrades*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to proposer or admin
+- Restricted to proposer or admin
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -378,24 +378,24 @@ function cancelUpgrade(address implementation) external;
 
 Emergency upgrade (bypasses timelock, requires emergency mode)
 
-Performs emergency upgrade bypassing timelock and multi-sig requirements
+*Performs emergency upgrade bypassing timelock and multi-sig requirements*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to emergency upgrader role
+- Restricted to emergency upgrader role
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -413,24 +413,24 @@ function emergencyUpgrade(address newImplementation, string calldata description
 
 Add a multi-sig signer
 
-Adds a new multi-sig signer to the timelock system
+*Adds a new multi-sig signer to the timelock system*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to MULTISIG_MANAGER_ROLE
+- Restricted to MULTISIG_MANAGER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -447,24 +447,24 @@ function addMultisigSigner(address signer) external onlyRole(MULTISIG_MANAGER_RO
 
 Remove a multi-sig signer
 
-Removes a multi-sig signer from the timelock system
+*Removes a multi-sig signer from the timelock system*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to MULTISIG_MANAGER_ROLE
+- Restricted to MULTISIG_MANAGER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -481,24 +481,24 @@ function removeMultisigSigner(address signer) external onlyRole(MULTISIG_MANAGER
 
 Toggle emergency mode
 
-Toggles emergency mode for emergency upgrades
+*Toggles emergency mode for emergency upgrades*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to EMERGENCY_UPGRADER_ROLE
+- Restricted to EMERGENCY_UPGRADER_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -516,24 +516,24 @@ function toggleEmergencyMode(bool enabled, string calldata reason) external only
 
 Get pending upgrade details
 
-Returns pending upgrade details for a given implementation
+*Returns pending upgrade details for a given implementation*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -556,24 +556,24 @@ function getPendingUpgrade(address implementation) external view returns (Pendin
 
 Check if an upgrade can be executed
 
-Checks if an upgrade can be executed based on timelock and approval requirements
+*Checks if an upgrade can be executed based on timelock and approval requirements*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -596,24 +596,24 @@ function canExecuteUpgrade(address implementation) external view returns (bool c
 
 Get upgrade approval status for a signer
 
-Returns whether a signer has approved a specific upgrade
+*Returns whether a signer has approved a specific upgrade*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -637,24 +637,24 @@ function hasUpgradeApproval(address signer, address implementation) external vie
 
 Get all multi-sig signers
 
-Returns array of all multi-sig signer addresses
+*Returns array of all multi-sig signer addresses*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: No state changes
+- No state changes
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -671,24 +671,24 @@ function getMultisigSigners() external view returns (address[] memory signers);
 
 Clear all approvals for an implementation
 
-Clears all approvals for a specific implementation
+*Clears all approvals for a specific implementation*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: Internal function
+- Internal function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -705,24 +705,24 @@ function _clearUpgradeApprovals(address implementation) internal;
 
 Clear all approvals from a specific signer
 
-Clears all approvals from a specific signer
+*Clears all approvals from a specific signer*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: Internal function
+- Internal function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -739,24 +739,24 @@ function _clearSignerApprovals(address signer) internal;
 
 Add a multisig signer (internal)
 
-Adds a multisig signer internally
+*Adds a multisig signer internally*
 
 **Notes:**
-- security: No security checks needed
+- No security checks needed
 
-- validation: No validation needed
+- No validation needed
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown
+- No errors thrown
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: Internal function
+- Internal function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -773,24 +773,24 @@ function _addMultisigSigner(address signer) internal;
 
 Pause the timelock contract
 
-Pauses the timelock contract
+*Pauses the timelock contract*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -801,24 +801,24 @@ function pause() external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Unpause the timelock contract
 
-Unpauses the timelock contract
+*Unpauses the timelock contract*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to DEFAULT_ADMIN_ROLE
+- Restricted to DEFAULT_ADMIN_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -829,28 +829,28 @@ function unpause() external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Constructor for TimelockUpgradeable contract
 
-Sets up the time provider and disables initializers for security
+*Sets up the time provider and disables initializers for security*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Disables initializers
+- Disables initializers
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: No reentrancy protection needed
+- No reentrancy protection needed
 
-- access: No access restrictions
+- No access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
-constructor(TimeProvider _TIME_PROVIDER) ;
+constructor(TimeProvider _TIME_PROVIDER);
 ```
 **Parameters**
 

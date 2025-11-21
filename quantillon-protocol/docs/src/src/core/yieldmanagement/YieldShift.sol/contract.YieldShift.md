@@ -1,60 +1,60 @@
 # YieldShift
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/home/uld/GitHub/smart-contracts/quantillon-protocol/docs/src/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Dynamic yield distribution system balancing rewards between users and hedgers
 
-Main characteristics:
+*Main characteristics:
 - Dynamic yield allocation based on pool balance ratios
 - Time-weighted average price (TWAP) calculations for stability
 - Multiple yield sources integration (Aave, fees, interest differentials)
 - Automatic yield distribution with holding period requirements
 - Emergency pause mechanism for crisis situations
-- Upgradeable via UUPS pattern
+- Upgradeable via UUPS pattern*
 
-Yield shift mechanics:
+*Yield shift mechanics:
 - Base yield shift determines default allocation (default 50/50)
 - Maximum yield shift caps allocation changes (default 90/10)
 - Adjustment speed controls how quickly shifts occur
 - Target pool ratio defines optimal balance point
-- Real-time calculations based on pool metrics
+- Real-time calculations based on pool metrics*
 
-Distribution algorithm:
+*Distribution algorithm:
 - Monitors user pool vs hedger pool size ratios
 - Adjusts yield allocation to incentivize balance
 - Higher user pool → more yield to hedgers (attract hedging)
 - Higher hedger pool → more yield to users (attract deposits)
 - Gradual adjustments prevent dramatic shifts
 - Flash deposit protection through eligible pool size calculations
-- Only deposits meeting holding period requirements count toward yield distribution
+- Only deposits meeting holding period requirements count toward yield distribution*
 
-Yield sources:
+*Yield sources:
 - Aave yield from USDC deposits in lending protocols
 - Protocol fees from minting, redemption, and trading
 - Interest rate differentials from hedging operations
 - External yield farming opportunities
-- Authorized source validation for security
+- Authorized source validation for security*
 
-Time-weighted calculations:
+*Time-weighted calculations:
 - 24-hour TWAP for pool size measurements
 - Historical data tracking for trend analysis
 - Maximum history length prevents unbounded storage
 - Drift tolerance for timestamp validation
-- Automatic data cleanup and optimization
+- Automatic data cleanup and optimization*
 
-Holding period requirements:
+*Holding period requirements:
 - Minimum 7-day holding period for yield claims
 - Prevents yield farming attacks and speculation
 - Encourages long-term protocol participation
 - Tracked per user with deposit timestamps
 - Enhanced protection against flash deposit manipulation
 - Eligible pool sizes exclude recent deposits from yield calculations
-- Dynamic discount system based on deposit timing and activity
+- Dynamic discount system based on deposit timing and activity*
 
-Security features:
+*Security features:
 - Role-based access control for all critical operations
 - Reentrancy protection for all external calls
 - Emergency pause mechanism for crisis situations
@@ -63,273 +63,273 @@ Security features:
 - Secure yield distribution mechanisms
 - Flash deposit attack prevention through holding period requirements
 - Eligible pool size calculations for yield distribution
-- Time-weighted protection against yield manipulation
+- Time-weighted protection against yield manipulation*
 
-Integration points:
+*Integration points:
 - User pool for deposit and staking metrics
 - Hedger pool for hedging exposure metrics
 - Aave vault for yield generation and harvesting
 - stQEURO token for user yield distribution
-- USDC for yield payments and transfers
+- USDC for yield payments and transfers*
 
 **Note:**
-security-contact: team@quantillon.money
+team@quantillon.money
 
 
 ## State Variables
 ### GOVERNANCE_ROLE
 
 ```solidity
-bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE")
+bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 ```
 
 
 ### YIELD_MANAGER_ROLE
 
 ```solidity
-bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE")
+bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
 ```
 
 
 ### EMERGENCY_ROLE
 
 ```solidity
-bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 ```
 
 
 ### usdc
 
 ```solidity
-IERC20 public usdc
+IERC20 public usdc;
 ```
 
 
 ### userPool
 
 ```solidity
-IUserPool public userPool
+IUserPool public userPool;
 ```
 
 
 ### hedgerPool
 
 ```solidity
-IHedgerPool public hedgerPool
+IHedgerPool public hedgerPool;
 ```
 
 
 ### aaveVault
 
 ```solidity
-IAaveVault public aaveVault
+IAaveVault public aaveVault;
 ```
 
 
 ### stQEURO
 
 ```solidity
-IstQEURO public stQEURO
+IstQEURO public stQEURO;
 ```
 
 
 ### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
-Used to replace direct block.timestamp usage for testability and consistency
+*Used to replace direct block.timestamp usage for testability and consistency*
 
 
 ```solidity
-TimeProvider public immutable TIME_PROVIDER
+TimeProvider public immutable TIME_PROVIDER;
 ```
 
 
 ### baseYieldShift
 
 ```solidity
-uint256 public baseYieldShift
+uint256 public baseYieldShift;
 ```
 
 
 ### maxYieldShift
 
 ```solidity
-uint256 public maxYieldShift
+uint256 public maxYieldShift;
 ```
 
 
 ### adjustmentSpeed
 
 ```solidity
-uint256 public adjustmentSpeed
+uint256 public adjustmentSpeed;
 ```
 
 
 ### targetPoolRatio
 
 ```solidity
-uint256 public targetPoolRatio
+uint256 public targetPoolRatio;
 ```
 
 
 ### MIN_HOLDING_PERIOD
 
 ```solidity
-uint256 public constant MIN_HOLDING_PERIOD = 7 days
+uint256 public constant MIN_HOLDING_PERIOD = 7 days;
 ```
 
 
 ### TWAP_PERIOD
 
 ```solidity
-uint256 public constant TWAP_PERIOD = 24 hours
+uint256 public constant TWAP_PERIOD = 24 hours;
 ```
 
 
 ### MAX_TIME_ELAPSED
 
 ```solidity
-uint256 public constant MAX_TIME_ELAPSED = 365 days
+uint256 public constant MAX_TIME_ELAPSED = 365 days;
 ```
 
 
 ### currentYieldShift
 
 ```solidity
-uint256 public currentYieldShift
+uint256 public currentYieldShift;
 ```
 
 
 ### lastUpdateTime
 
 ```solidity
-uint256 public lastUpdateTime
+uint256 public lastUpdateTime;
 ```
 
 
 ### totalYieldGenerated
 
 ```solidity
-uint256 public totalYieldGenerated
+uint256 public totalYieldGenerated;
 ```
 
 
 ### totalYieldDistributed
 
 ```solidity
-uint256 public totalYieldDistributed
+uint256 public totalYieldDistributed;
 ```
 
 
 ### userYieldPool
 
 ```solidity
-uint256 public userYieldPool
+uint256 public userYieldPool;
 ```
 
 
 ### hedgerYieldPool
 
 ```solidity
-uint256 public hedgerYieldPool
+uint256 public hedgerYieldPool;
 ```
 
 
 ### treasury
 
 ```solidity
-address public treasury
+address public treasury;
 ```
 
 
 ### yieldSources
 
 ```solidity
-mapping(bytes32 => uint256) public yieldSources
+mapping(bytes32 => uint256) public yieldSources;
 ```
 
 
 ### yieldSourceNames
 
 ```solidity
-bytes32[] public yieldSourceNames
+bytes32[] public yieldSourceNames;
 ```
 
 
 ### authorizedYieldSources
 
 ```solidity
-mapping(address => bool) public authorizedYieldSources
+mapping(address => bool) public authorizedYieldSources;
 ```
 
 
 ### sourceToYieldType
 
 ```solidity
-mapping(address => bytes32) public sourceToYieldType
+mapping(address => bytes32) public sourceToYieldType;
 ```
 
 
 ### userPendingYield
 
 ```solidity
-mapping(address => uint256) public userPendingYield
+mapping(address => uint256) public userPendingYield;
 ```
 
 
 ### hedgerPendingYield
 
 ```solidity
-mapping(address => uint256) public hedgerPendingYield
+mapping(address => uint256) public hedgerPendingYield;
 ```
 
 
 ### userLastClaim
 
 ```solidity
-mapping(address => uint256) public userLastClaim
+mapping(address => uint256) public userLastClaim;
 ```
 
 
 ### hedgerLastClaim
 
 ```solidity
-mapping(address => uint256) public hedgerLastClaim
+mapping(address => uint256) public hedgerLastClaim;
 ```
 
 
 ### lastDepositTime
 
 ```solidity
-mapping(address => uint256) public lastDepositTime
+mapping(address => uint256) public lastDepositTime;
 ```
 
 
 ### userPoolHistory
 
 ```solidity
-PoolSnapshot[] public userPoolHistory
+PoolSnapshot[] public userPoolHistory;
 ```
 
 
 ### hedgerPoolHistory
 
 ```solidity
-PoolSnapshot[] public hedgerPoolHistory
+PoolSnapshot[] public hedgerPoolHistory;
 ```
 
 
 ### MAX_HISTORY_LENGTH
 
 ```solidity
-uint256 public constant MAX_HISTORY_LENGTH = 1000
+uint256 public constant MAX_HISTORY_LENGTH = 1000;
 ```
 
 
 ### yieldShiftHistory
 
 ```solidity
-YieldShiftSnapshot[] public yieldShiftHistory
+YieldShiftSnapshot[] public yieldShiftHistory;
 ```
 
 
@@ -338,28 +338,28 @@ YieldShiftSnapshot[] public yieldShiftHistory
 
 Constructor for YieldShift implementation
 
-Sets up the time provider and disables initialization on implementation for security
+*Sets up the time provider and disables initialization on implementation for security*
 
 **Notes:**
-- security: Validates time provider address and disables initialization on implementation
+- Validates time provider address and disables initialization on implementation
 
-- validation: Validates time provider is not zero address
+- Validates time provider is not zero address
 
-- state-changes: Sets time provider and disables initializers
+- Sets time provider and disables initializers
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws ZeroAddress if time provider is zero
+- Throws ZeroAddress if time provider is zero
 
-- reentrancy: Not protected - constructor only
+- Not protected - constructor only
 
-- access: Public constructor
+- Public constructor
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
-constructor(TimeProvider _TIME_PROVIDER) ;
+constructor(TimeProvider _TIME_PROVIDER);
 ```
 **Parameters**
 
@@ -372,24 +372,24 @@ constructor(TimeProvider _TIME_PROVIDER) ;
 
 Initialize the YieldShift contract
 
-Sets up the contract with all required addresses and roles
+*Sets up the contract with all required addresses and roles*
 
 **Notes:**
-- security: Validates all addresses are not zero
+- Validates all addresses are not zero
 
-- validation: Validates all input addresses
+- Validates all input addresses
 
-- state-changes: Initializes ReentrancyGuard, AccessControl, and Pausable
+- Initializes ReentrancyGuard, AccessControl, and Pausable
 
-- events: Emits initialization events
+- Emits initialization events
 
-- errors: Throws if any address is zero
+- Throws if any address is zero
 
-- reentrancy: Protected by initializer modifier
+- Protected by initializer modifier
 
-- access: Public initializer
+- Public initializer
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -422,24 +422,24 @@ function initialize(
 
 Governance bootstrap to set initial histories and source metadata after minimal init
 
-Lazily initializes historical arrays and default authorized yield sources
+*Lazily initializes historical arrays and default authorized yield sources*
 
 **Notes:**
-- security: Restricted to governance; reads trusted state only
+- Restricted to governance; reads trusted state only
 
-- validation: Relies on prior initialization guarantees
+- Relies on prior initialization guarantees
 
-- state-changes: Records initial snapshots and default yield source metadata
+- Records initial snapshots and default yield source metadata
 
-- events: Emits none (pure bookkeeping)
+- Emits none (pure bookkeeping)
 
-- errors: Reverts if caller lacks governance role
+- Reverts if caller lacks governance role
 
-- reentrancy: Not applicable
+- Not applicable
 
-- access: Governance-only
+- Governance-only
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -450,24 +450,24 @@ function bootstrapDefaults() external;
 
 Updates the yield distribution between users and hedgers
 
-Recalculates and applies new yield distribution ratios based on current pool states
+*Recalculates and applies new yield distribution ratios based on current pool states*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -478,24 +478,24 @@ function updateYieldDistribution() external nonReentrant whenNotPaused;
 
 Add yield from authorized sources
 
-Adds yield from authorized sources and distributes it according to current yield shift
+*Adds yield from authorized sources and distributes it according to current yield shift*
 
 **Notes:**
-- security: Validates caller is authorized for the yield source
+- Validates caller is authorized for the yield source
 
-- validation: Validates yield amount is positive and matches actual received
+- Validates yield amount is positive and matches actual received
 
-- state-changes: Updates yield sources and total yield generated
+- Updates yield sources and total yield generated
 
-- events: Emits YieldAdded event
+- Emits YieldAdded event
 
-- errors: Throws if caller is unauthorized or yield amount mismatch
+- Throws if caller is unauthorized or yield amount mismatch
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to authorized yield sources
+- Restricted to authorized yield sources
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -513,24 +513,24 @@ function addYield(uint256 yieldAmount, bytes32 source) external nonReentrant;
 
 Claim user yield
 
-Claims yield for a user after holding period requirements are met
+*Claims yield for a user after holding period requirements are met*
 
 **Notes:**
-- security: Validates caller is authorized and holding period is met
+- Validates caller is authorized and holding period is met
 
-- validation: Validates user has pending yield and meets holding period
+- Validates user has pending yield and meets holding period
 
-- state-changes: Updates user pending yield and transfers USDC
+- Updates user pending yield and transfers USDC
 
-- events: Emits YieldClaimed event
+- Emits YieldClaimed event
 
-- errors: Throws if caller is unauthorized or holding period not met
+- Throws if caller is unauthorized or holding period not met
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to user or user pool
+- Restricted to user or user pool
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -553,24 +553,24 @@ function claimUserYield(address user) external nonReentrant returns (uint256 yie
 
 Claim hedger yield
 
-Claims yield for a hedger
+*Claims yield for a hedger*
 
 **Notes:**
-- security: Validates caller is authorized
+- Validates caller is authorized
 
-- validation: Validates hedger has pending yield
+- Validates hedger has pending yield
 
-- state-changes: Updates hedger pending yield and transfers USDC
+- Updates hedger pending yield and transfers USDC
 
-- events: Emits HedgerYieldClaimed event
+- Emits HedgerYieldClaimed event
 
-- errors: Throws if caller is unauthorized or insufficient yield
+- Throws if caller is unauthorized or insufficient yield
 
-- reentrancy: Protected by nonReentrant modifier
+- Protected by nonReentrant modifier
 
-- access: Restricted to hedger or hedger pool
+- Restricted to hedger or hedger pool
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -593,24 +593,24 @@ function claimHedgerYield(address hedger) external nonReentrant returns (uint256
 
 Calculate optimal yield shift based on current pool ratio
 
-Calculates optimal yield allocation to incentivize pool balance
+*Calculates optimal yield allocation to incentivize pool balance*
 
 **Notes:**
-- security: Uses tolerance checks to prevent excessive adjustments
+- Uses tolerance checks to prevent excessive adjustments
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe arithmetic used
+- No errors thrown - safe arithmetic used
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -633,24 +633,24 @@ function _calculateOptimalYieldShift(uint256 poolRatio) internal view returns (u
 
 Apply gradual adjustment to yield shift to prevent sudden changes
 
-Gradually adjusts yield shift based on adjustmentSpeed to prevent volatility
+*Gradually adjusts yield shift based on adjustmentSpeed to prevent volatility*
 
 **Notes:**
-- security: Limits adjustment speed to prevent sudden changes
+- Limits adjustment speed to prevent sudden changes
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe arithmetic used
+- No errors thrown - safe arithmetic used
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -673,24 +673,24 @@ function _applyGradualAdjustment(uint256 targetShift) internal view returns (uin
 
 Get current pool metrics
 
-Returns current pool sizes and ratio for yield shift calculations
+*Returns current pool sizes and ratio for yield shift calculations*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -712,24 +712,24 @@ function _getCurrentPoolMetrics()
 
 Get eligible pool metrics that only count deposits meeting holding period requirements
 
-SECURITY: Prevents flash deposit attacks by excluding recent deposits from yield calculations
+*SECURITY: Prevents flash deposit attacks by excluding recent deposits from yield calculations*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -751,24 +751,24 @@ function _getEligiblePoolMetrics()
 
 Calculate holding period discount based on recent deposit activity
 
-Returns a percentage (in basis points) representing eligible deposits
+*Returns a percentage (in basis points) representing eligible deposits*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -785,24 +785,24 @@ function _calculateHoldingPeriodDiscount() internal view returns (uint256 discou
 
 Check if a value is within tolerance of a target value
 
-Helper function for yield shift calculations
+*Helper function for yield shift calculations*
 
 **Notes:**
-- security: Uses safe arithmetic to prevent overflow
+- Uses safe arithmetic to prevent overflow
 
-- validation: No input validation required - pure function
+- No input validation required - pure function
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe arithmetic used
+- No errors thrown - safe arithmetic used
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -827,24 +827,24 @@ function _isWithinTolerance(uint256 value, uint256 target, uint256 toleranceBps)
 
 Updates the last deposit timestamp for a user
 
-Called by UserPool to track user deposit timing for yield calculations
+*Called by UserPool to track user deposit timing for yield calculations*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -861,24 +861,24 @@ function updateLastDepositTime(address user) external;
 
 Returns the current yield shift percentage
 
-Shows how much yield is currently being shifted between pools
+*Shows how much yield is currently being shifted between pools*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -895,24 +895,24 @@ function getCurrentYieldShift() external view returns (uint256);
 
 Returns the pending yield amount for a specific user
 
-Calculates unclaimed yield based on user's deposits and current rates
+*Calculates unclaimed yield based on user's deposits and current rates*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -935,24 +935,24 @@ function getUserPendingYield(address user) external view returns (uint256);
 
 Returns the pending yield amount for a specific hedger
 
-Calculates unclaimed yield based on hedger's positions and current rates
+*Calculates unclaimed yield based on hedger's positions and current rates*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -975,24 +975,24 @@ function getHedgerPendingYield(address hedger) external view returns (uint256);
 
 Returns the total yield generated by the protocol
 
-Aggregates all yield generated from various sources
+*Aggregates all yield generated from various sources*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1009,24 +1009,24 @@ function getTotalYieldGenerated() external view returns (uint256);
 
 Returns detailed breakdown of yield distribution
 
-Shows how yield is allocated between different pools and stakeholders
+*Shows how yield is allocated between different pools and stakeholders*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1048,24 +1048,24 @@ function getYieldDistributionBreakdown()
 
 Returns comprehensive metrics for both user and hedger pools
 
-Provides detailed analytics about pool performance and utilization
+*Provides detailed analytics about pool performance and utilization*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1088,24 +1088,24 @@ function getPoolMetrics()
 
 Calculates the optimal yield shift based on current market conditions
 
-Uses algorithms to determine best yield distribution strategy
+*Uses algorithms to determine best yield distribution strategy*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1123,24 +1123,24 @@ function calculateOptimalYieldShift() external view returns (uint256 optimalShif
 
 Returns information about all yield sources
 
-Provides details about different yield-generating mechanisms
+*Provides details about different yield-generating mechanisms*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1163,24 +1163,24 @@ function getYieldSources()
 
 Returns the current holding period protection status
 
-Useful for monitoring and debugging holding period protection
+*Useful for monitoring and debugging holding period protection*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1203,24 +1203,24 @@ function getHoldingPeriodProtectionStatus()
 
 Returns historical yield shift data for a specified period
 
-Provides analytics about yield shift patterns over time
+*Provides analytics about yield shift patterns over time*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1249,24 +1249,24 @@ function getHistoricalYieldShift(uint256 period)
 
 Returns comprehensive performance metrics for yield operations
 
-Provides detailed analytics about yield performance and efficiency
+*Provides detailed analytics about yield performance and efficiency*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1294,24 +1294,24 @@ function getYieldPerformanceMetrics()
 
 Calculate user allocation from current yield shift
 
-Calculates how much yield should be allocated to users
+*Calculates how much yield should be allocated to users*
 
 **Notes:**
-- security: Uses safe arithmetic to prevent overflow
+- Uses safe arithmetic to prevent overflow
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe arithmetic used
+- No errors thrown - safe arithmetic used
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1328,24 +1328,24 @@ function _calculateUserAllocation() internal view returns (uint256);
 
 Calculate hedger allocation from current yield shift
 
-Calculates how much yield should be allocated to hedgers
+*Calculates how much yield should be allocated to hedgers*
 
 **Notes:**
-- security: Uses safe arithmetic to prevent overflow
+- Uses safe arithmetic to prevent overflow
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe arithmetic used
+- No errors thrown - safe arithmetic used
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -1362,29 +1362,28 @@ function _calculateHedgerAllocation() internal view returns (uint256);
 
 Set yield shift parameters
 
-Sets the base yield shift, maximum yield shift, and adjustment speed
+*Sets the base yield shift, maximum yield shift, and adjustment speed*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates yield shift ranges and adjustment speed
+- Validates yield shift ranges and adjustment speed
 
-- state-changes: Updates yield shift parameters
+- Updates yield shift parameters
 
-- events: Emits YieldShiftParametersUpdated event
+- Emits YieldShiftParametersUpdated event
 
-- errors: Throws if parameters are invalid
+- Throws if parameters are invalid
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to governance role
+- Restricted to governance role
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
-function setYieldShiftParameters(uint256 _baseYieldShift, uint256 _maxYieldShift, uint256 _adjustmentSpeed)
-    external;
+function setYieldShiftParameters(uint256 _baseYieldShift, uint256 _maxYieldShift, uint256 _adjustmentSpeed) external;
 ```
 **Parameters**
 
@@ -1399,24 +1398,24 @@ function setYieldShiftParameters(uint256 _baseYieldShift, uint256 _maxYieldShift
 
 Sets the target ratio between user and hedger pools
 
-Governance function to adjust pool balance for optimal yield distribution
+*Governance function to adjust pool balance for optimal yield distribution*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1433,24 +1432,24 @@ function setTargetPoolRatio(uint256 _targetPoolRatio) external;
 
 Authorize a yield source for specific yield type
 
-Authorizes a yield source to add yield of a specific type
+*Authorizes a yield source to add yield of a specific type*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1468,24 +1467,24 @@ function authorizeYieldSource(address source, bytes32 yieldType) external;
 
 Revoke authorization for a yield source
 
-Revokes authorization for a yield source
+*Revokes authorization for a yield source*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1504,24 +1503,24 @@ Governance-only setters to wire references post-initialization (phased deploy)
 
 Updates the user pool reference used for distribution sync
 
-Governance setter for phased deployments
+*Governance setter for phased deployments*
 
 **Notes:**
-- security: Restricted to governance; validates non-zero address
+- Restricted to governance; validates non-zero address
 
-- validation: Ensures `_userPool` is not zero
+- Ensures `_userPool` is not zero
 
-- state-changes: Updates the `userPool` reference
+- Updates the `userPool` reference
 
-- events: None
+- None
 
-- errors: Reverts if caller is not governance or address invalid
+- Reverts if caller is not governance or address invalid
 
-- reentrancy: Not applicable
+- Not applicable
 
-- access: Governance-only
+- Governance-only
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1538,24 +1537,24 @@ function updateUserPool(address _userPool) external;
 
 Updates the user pool reference used for distribution sync
 
-Governance setter for phased deployments
+*Governance setter for phased deployments*
 
 **Notes:**
-- security: Restricted to governance; validates non-zero address
+- Restricted to governance; validates non-zero address
 
-- validation: Ensures `_hedgerPool` is not zero
+- Ensures `_hedgerPool` is not zero
 
-- state-changes: Updates the `hedgerPool` reference
+- Updates the `hedgerPool` reference
 
-- events: None
+- None
 
-- errors: Reverts if caller is not governance or address invalid
+- Reverts if caller is not governance or address invalid
 
-- reentrancy: Not applicable
+- Not applicable
 
-- access: Governance-only
+- Governance-only
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1572,24 +1571,24 @@ function updateHedgerPool(address _hedgerPool) external;
 
 Updates the Aave vault reference used for yield aggregation
 
-Governance setter for phased deployments
+*Governance setter for phased deployments*
 
 **Notes:**
-- security: Restricted to governance; validates non-zero address
+- Restricted to governance; validates non-zero address
 
-- validation: Ensures `_aaveVault` is not zero
+- Ensures `_aaveVault` is not zero
 
-- state-changes: Updates the `aaveVault` reference
+- Updates the `aaveVault` reference
 
-- events: None
+- None
 
-- errors: Reverts if caller is not governance or address invalid
+- Reverts if caller is not governance or address invalid
 
-- reentrancy: Not applicable
+- Not applicable
 
-- access: Governance-only
+- Governance-only
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1606,24 +1605,24 @@ function updateAaveVault(address _aaveVault) external;
 
 Updates the stQEURO reference used for staking integrations
 
-Governance setter for phased deployments
+*Governance setter for phased deployments*
 
 **Notes:**
-- security: Restricted to governance; validates non-zero address
+- Restricted to governance; validates non-zero address
 
-- validation: Ensures `_stQEURO` is not zero
+- Ensures `_stQEURO` is not zero
 
-- state-changes: Updates the `stQEURO` reference
+- Updates the `stQEURO` reference
 
-- events: None
+- None
 
-- errors: Reverts if caller is not governance or address invalid
+- Reverts if caller is not governance or address invalid
 
-- reentrancy: Not applicable
+- Not applicable
 
-- access: Governance-only
+- Governance-only
 
-- oracle: Not applicable
+- Not applicable
 
 
 ```solidity
@@ -1640,24 +1639,24 @@ function updateStQEURO(address _stQEURO) external;
 
 Updates yield allocation for a specific user or hedger
 
-Called by pools to update individual yield allocations
+*Called by pools to update individual yield allocations*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1676,24 +1675,24 @@ function updateYieldAllocation(address user, uint256 amount, bool isUser) extern
 
 Executes emergency yield distribution with specified amounts
 
-Emergency function to manually distribute yield during critical situations
+*Emergency function to manually distribute yield during critical situations*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1711,24 +1710,24 @@ function emergencyYieldDistribution(uint256 userAmount, uint256 hedgerAmount) ex
 
 Pauses all yield distribution operations
 
-Emergency function to halt yield distribution during critical situations
+*Emergency function to halt yield distribution during critical situations*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1739,24 +1738,24 @@ function pauseYieldDistribution() external;
 
 Resumes yield distribution operations after being paused
 
-Restarts yield distribution when emergency is resolved
+*Restarts yield distribution when emergency is resolved*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1767,24 +1766,24 @@ function resumeYieldDistribution() external;
 
 Returns the current yield shift configuration
 
-Provides access to all yield shift parameters and settings
+*Provides access to all yield shift parameters and settings*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1807,24 +1806,24 @@ function getYieldShiftConfig()
 
 Checks if yield distribution is currently active
 
-Returns false if paused or in emergency mode
+*Returns false if paused or in emergency mode*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1843,40 +1842,40 @@ Check if a yield source is authorized
 
 Checks if a yield source is authorized for a specific yield type
 
-Checks if a yield source is authorized for a specific yield type
+*Checks if a yield source is authorized for a specific yield type*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1900,24 +1899,24 @@ function isYieldSourceAuthorized(address source, bytes32 yieldType) external vie
 
 Checks current conditions and updates yield distribution if needed
 
-Automated function to maintain optimal yield distribution
+*Automated function to maintain optimal yield distribution*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1928,24 +1927,24 @@ function checkAndUpdateYieldDistribution() external;
 
 Forces an immediate update of yield distribution
 
-Emergency function to bypass normal update conditions and force distribution
+*Emergency function to bypass normal update conditions and force distribution*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1956,24 +1955,24 @@ function forceUpdateYieldDistribution() external;
 
 Get time weighted average of pool history
 
-Calculates time weighted average of pool history over a specified period
+*Calculates time weighted average of pool history over a specified period*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -2001,24 +2000,24 @@ function getTimeWeightedAverage(PoolSnapshot[] storage poolHistory, uint256 peri
 
 Record pool snapshot
 
-Records current pool metrics as a snapshot for historical tracking
+*Records current pool metrics as a snapshot for historical tracking*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -2029,29 +2028,28 @@ function _recordPoolSnapshot() internal;
 
 Record pool snapshot using eligible pool sizes to prevent manipulation
 
-SECURITY: Uses eligible pool sizes that respect holding period requirements
+*SECURITY: Uses eligible pool sizes that respect holding period requirements*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
-function _recordPoolSnapshotWithEligibleSizes(uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize)
-    internal;
+function _recordPoolSnapshotWithEligibleSizes(uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize) internal;
 ```
 **Parameters**
 
@@ -2065,24 +2063,24 @@ function _recordPoolSnapshotWithEligibleSizes(uint256 eligibleUserPoolSize, uint
 
 Add pool snapshot to history
 
-Adds a pool snapshot to the history array with size management
+*Adds a pool snapshot to the history array with size management*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -2101,24 +2099,24 @@ function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize,
 
 Recovers accidentally sent ERC20 tokens from the contract
 
-Emergency function to recover tokens that are not part of normal operations
+*Emergency function to recover tokens that are not part of normal operations*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -2136,24 +2134,24 @@ function recoverToken(address token, uint256 amount) external;
 
 Recovers accidentally sent ETH from the contract
 
-Emergency function to recover ETH that shouldn't be in the contract
+*Emergency function to recover ETH that shouldn't be in the contract*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -2164,24 +2162,24 @@ function recoverETH() external;
 
 Update holding period protection parameters
 
-SECURITY: Only governance can update these critical security parameters
+*SECURITY: Only governance can update these critical security parameters*
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -2199,7 +2197,7 @@ function updateHoldingPeriodProtection(uint256 _minHoldingPeriod, uint256 _baseD
 
 ## Events
 ### YieldDistributionUpdated
-OPTIMIZED: Indexed timestamp for efficient time-based filtering
+*OPTIMIZED: Indexed timestamp for efficient time-based filtering*
 
 
 ```solidity
@@ -2221,7 +2219,7 @@ event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 ti
 ```
 
 ### YieldAdded
-OPTIMIZED: Indexed source and timestamp for efficient filtering
+*OPTIMIZED: Indexed source and timestamp for efficient filtering*
 
 
 ```solidity
@@ -2229,7 +2227,7 @@ event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed tim
 ```
 
 ### YieldShiftParametersUpdated
-OPTIMIZED: Indexed parameter type for efficient filtering
+*OPTIMIZED: Indexed parameter type for efficient filtering*
 
 
 ```solidity
@@ -2258,25 +2256,25 @@ event YieldSourceRevoked(address indexed source);
 
 ## Structs
 ### PoolSnapshot
-OPTIMIZED: Packed struct for gas efficiency in historical arrays
+*OPTIMIZED: Packed struct for gas efficiency in historical arrays*
 
 
 ```solidity
 struct PoolSnapshot {
     uint128 userPoolSize;
     uint128 hedgerPoolSize;
-    uint64 timestamp; // Timestamp (8 bytes, until year 2554)
+    uint64 timestamp;
 }
 ```
 
 ### YieldShiftSnapshot
-OPTIMIZED: Packed struct for gas efficiency in yield shift tracking
+*OPTIMIZED: Packed struct for gas efficiency in yield shift tracking*
 
 
 ```solidity
 struct YieldShiftSnapshot {
     uint128 yieldShift;
-    uint64 timestamp; // Timestamp (8 bytes, until year 2554)
+    uint64 timestamp;
 }
 ```
 

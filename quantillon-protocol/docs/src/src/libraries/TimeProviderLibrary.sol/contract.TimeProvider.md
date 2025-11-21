@@ -4,12 +4,12 @@ Initializable, AccessControlUpgradeable, UUPSUpgradeable
 
 Centralized time provider for the Quantillon Protocol
 
-Provides a controlled time source that can be adjusted for testing and emergency scenarios
+*Provides a controlled time source that can be adjusted for testing and emergency scenarios
 SECURITY CONSIDERATIONS:
 - Only governance can adjust time offset
 - Time offset is limited to prevent abuse
 - Emergency reset capability for security incidents
-- All time adjustments are logged for transparency
+- All time adjustments are logged for transparency*
 
 
 ## State Variables
@@ -18,7 +18,7 @@ Role identifier for governance operations
 
 
 ```solidity
-bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE")
+bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 ```
 
 
@@ -27,7 +27,7 @@ Role identifier for emergency operations
 
 
 ```solidity
-bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 ```
 
 
@@ -36,7 +36,7 @@ Role identifier for upgrade operations
 
 
 ```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE")
+bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 ```
 
 
@@ -45,7 +45,7 @@ Maximum allowed time offset (7 days) to prevent abuse
 
 
 ```solidity
-uint256 public constant MAX_TIME_OFFSET = 7 days
+uint256 public constant MAX_TIME_OFFSET = 7 days;
 ```
 
 
@@ -54,18 +54,18 @@ Maximum allowed time drift (1 hour) for normal operations
 
 
 ```solidity
-uint256 public constant MAX_TIME_DRIFT = 1 hours
+uint256 public constant MAX_TIME_DRIFT = 1 hours;
 ```
 
 
 ### timeOffset
 Current time offset applied to block.timestamp
 
-Can be positive (time advancement) or negative (time delay) within limits
+*Can be positive (time advancement) or negative (time delay) within limits*
 
 
 ```solidity
-int256 public timeOffset
+int256 public timeOffset;
 ```
 
 
@@ -74,7 +74,7 @@ Timestamp when the time offset was last modified
 
 
 ```solidity
-uint256 public lastOffsetChange
+uint256 public lastOffsetChange;
 ```
 
 
@@ -83,7 +83,7 @@ Flag indicating if time provider is in emergency mode
 
 
 ```solidity
-bool public emergencyMode
+bool public emergencyMode;
 ```
 
 
@@ -92,7 +92,7 @@ Counter for time adjustments (for tracking)
 
 
 ```solidity
-uint256 public adjustmentCounter
+uint256 public adjustmentCounter;
 ```
 
 
@@ -103,7 +103,7 @@ Ensures the contract is not in emergency mode
 
 
 ```solidity
-modifier whenNotEmergency() ;
+modifier whenNotEmergency();
 ```
 
 ### validTimeOffset
@@ -112,61 +112,61 @@ Ensures the time offset is within allowed bounds
 
 
 ```solidity
-modifier validTimeOffset(int256 offset) ;
+modifier validTimeOffset(int256 offset);
 ```
 
 ### constructor
 
 Constructor for TimeProvider contract
 
-Disables initializers for proxy pattern compatibility
+*Disables initializers for proxy pattern compatibility*
 
 **Notes:**
-- security: No security validations required - constructor
+- No security validations required - constructor
 
-- validation: No input validation required - constructor
+- No input validation required - constructor
 
-- state-changes: Disables initializers for proxy pattern
+- Disables initializers for proxy pattern
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe constructor
+- No errors thrown - safe constructor
 
-- reentrancy: Not applicable - constructor
+- Not applicable - constructor
 
-- access: Public - anyone can deploy
+- Public - anyone can deploy
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
-- oz-upgrades-unsafe-allow: constructor
+- constructor
 
 
 ```solidity
-constructor() ;
+constructor();
 ```
 
 ### initialize
 
 Initializes the TimeProvider contract
 
-Sets up access control roles and initializes state variables
+*Sets up access control roles and initializes state variables*
 
 **Notes:**
-- security: Validates all addresses are not zero, grants admin roles
+- Validates all addresses are not zero, grants admin roles
 
-- validation: Validates all input addresses are not address(0)
+- Validates all input addresses are not address(0)
 
-- state-changes: Initializes all state variables, sets default values
+- Initializes all state variables, sets default values
 
-- events: No events emitted during initialization
+- No events emitted during initialization
 
-- errors: Throws ZeroAddress if any address is address(0)
+- Throws ZeroAddress if any address is address(0)
 
-- reentrancy: Protected by initializer modifier
+- Protected by initializer modifier
 
-- access: Public - only callable once during deployment
+- Public - only callable once during deployment
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -185,24 +185,24 @@ function initialize(address admin, address governance, address emergency) extern
 
 Returns the current time according to this provider
 
-Returns block.timestamp adjusted by the current time offset
+*Returns block.timestamp adjusted by the current time offset*
 
 **Notes:**
-- security: No security validations required - view function
+- No security validations required - view function
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can query current time
+- Public - anyone can query current time
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -219,24 +219,24 @@ function currentTime() external view returns (uint256);
 
 Returns the current time according to this provider (internal)
 
-Internal function that applies time offset to block.timestamp with underflow protection
+*Internal function that applies time offset to block.timestamp with underflow protection*
 
 **Notes:**
-- security: Validates time offset calculations to prevent underflow
+- Validates time offset calculations to prevent underflow
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe arithmetic used
+- No errors thrown - safe arithmetic used
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Internal function - no access restrictions
+- Internal function - no access restrictions
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -253,24 +253,24 @@ function _getCurrentTime() internal view returns (uint256);
 
 Returns the raw block timestamp without any offset
 
-Returns unmodified block.timestamp for comparison purposes
+*Returns unmodified block.timestamp for comparison purposes*
 
 **Notes:**
-- security: No security validations required - view function
+- No security validations required - view function
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can query raw timestamp
+- Public - anyone can query raw timestamp
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -287,24 +287,24 @@ function rawTimestamp() external view returns (uint256);
 
 Checks if a timestamp is in the future according to provider time
 
-Compares input timestamp with current provider time
+*Compares input timestamp with current provider time*
 
 **Notes:**
-- security: No security validations required - view function
+- No security validations required - view function
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can check if timestamp is future
+- Public - anyone can check if timestamp is future
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -327,24 +327,24 @@ function isFuture(uint256 timestamp) external view returns (bool);
 
 Checks if a timestamp is in the past according to provider time
 
-Compares input timestamp with current provider time
+*Compares input timestamp with current provider time*
 
 **Notes:**
-- security: No security validations required - view function
+- No security validations required - view function
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can check if timestamp is past
+- Public - anyone can check if timestamp is past
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -367,24 +367,24 @@ function isPast(uint256 timestamp) external view returns (bool);
 
 Sets the time offset (governance only)
 
-Allows governance to set a new time offset within allowed bounds
+*Allows governance to set a new time offset within allowed bounds*
 
 **Notes:**
-- security: Validates governance role and time offset bounds
+- Validates governance role and time offset bounds
 
-- validation: Validates newOffset is within MAX_TIME_OFFSET limits
+- Validates newOffset is within MAX_TIME_OFFSET limits
 
-- state-changes: Updates timeOffset, lastOffsetChange, adjustmentCounter
+- Updates timeOffset, lastOffsetChange, adjustmentCounter
 
-- events: Emits TimeOffsetChanged with old and new offset values
+- Emits TimeOffsetChanged with old and new offset values
 
-- errors: Throws InvalidAmount if offset exceeds MAX_TIME_OFFSET
+- Throws InvalidAmount if offset exceeds MAX_TIME_OFFSET
 
-- reentrancy: Not protected - no external calls
+- Not protected - no external calls
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -406,31 +406,28 @@ function setTimeOffset(int256 newOffset, string calldata reason)
 
 Advances time by a specific amount (governance only)
 
-Adds advancement to current time offset, handling both positive and negative offsets
+*Adds advancement to current time offset, handling both positive and negative offsets*
 
 **Notes:**
-- security: Validates governance role and advancement amount
+- Validates governance role and advancement amount
 
-- validation: Validates advancement > 0 and resulting offset within bounds
+- Validates advancement > 0 and resulting offset within bounds
 
-- state-changes: Updates timeOffset, lastOffsetChange, adjustmentCounter
+- Updates timeOffset, lastOffsetChange, adjustmentCounter
 
-- events: Emits TimeOffsetChanged with old and new offset values
+- Emits TimeOffsetChanged with old and new offset values
 
-- errors: Throws InvalidAmount if advancement is 0 or exceeds bounds
+- Throws InvalidAmount if advancement is 0 or exceeds bounds
 
-- reentrancy: Not protected - no external calls
+- Not protected - no external calls
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
-function advanceTime(uint256 advancement, string calldata reason)
-    external
-    onlyRole(GOVERNANCE_ROLE)
-    whenNotEmergency;
+function advanceTime(uint256 advancement, string calldata reason) external onlyRole(GOVERNANCE_ROLE) whenNotEmergency;
 ```
 **Parameters**
 
@@ -444,24 +441,24 @@ function advanceTime(uint256 advancement, string calldata reason)
 
 Resets time to normal (no offset)
 
-Sets time offset to 0, returning to normal block.timestamp behavior
+*Sets time offset to 0, returning to normal block.timestamp behavior*
 
 **Notes:**
-- security: Validates governance role authorization
+- Validates governance role authorization
 
-- validation: No input validation required
+- No input validation required
 
-- state-changes: Updates timeOffset to 0, lastOffsetChange, adjustmentCounter
+- Updates timeOffset to 0, lastOffsetChange, adjustmentCounter
 
-- events: Emits TimeReset and TimeOffsetChanged events
+- Emits TimeReset and TimeOffsetChanged events
 
-- errors: No errors thrown - safe reset operation
+- No errors thrown - safe reset operation
 
-- reentrancy: Not protected - no external calls
+- Not protected - no external calls
 
-- access: Restricted to GOVERNANCE_ROLE
+- Restricted to GOVERNANCE_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -472,24 +469,24 @@ function resetTime() external onlyRole(GOVERNANCE_ROLE);
 
 Toggles emergency mode (emergency role only)
 
-Enables or disables emergency mode, automatically resetting time offset when enabled
+*Enables or disables emergency mode, automatically resetting time offset when enabled*
 
 **Notes:**
-- security: Validates emergency role authorization
+- Validates emergency role authorization
 
-- validation: No input validation required
+- No input validation required
 
-- state-changes: Updates emergencyMode flag, resets timeOffset if enabling
+- Updates emergencyMode flag, resets timeOffset if enabling
 
-- events: Emits EmergencyModeChanged and TimeOffsetChanged if reset
+- Emits EmergencyModeChanged and TimeOffsetChanged if reset
 
-- errors: No errors thrown - safe mode toggle
+- No errors thrown - safe mode toggle
 
-- reentrancy: Not protected - no external calls
+- Not protected - no external calls
 
-- access: Restricted to EMERGENCY_ROLE
+- Restricted to EMERGENCY_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -506,24 +503,24 @@ function setEmergencyMode(bool enabled) external onlyRole(EMERGENCY_ROLE);
 
 Emergency time reset (emergency role only)
 
-Emergency function to immediately reset time offset to 0
+*Emergency function to immediately reset time offset to 0*
 
 **Notes:**
-- security: Validates emergency role authorization
+- Validates emergency role authorization
 
-- validation: No input validation required
+- No input validation required
 
-- state-changes: Updates timeOffset to 0, lastOffsetChange, adjustmentCounter
+- Updates timeOffset to 0, lastOffsetChange, adjustmentCounter
 
-- events: Emits TimeReset and TimeOffsetChanged events
+- Emits TimeReset and TimeOffsetChanged events
 
-- errors: No errors thrown - safe emergency reset
+- No errors thrown - safe emergency reset
 
-- reentrancy: Not protected - no external calls
+- Not protected - no external calls
 
-- access: Restricted to EMERGENCY_ROLE
+- Restricted to EMERGENCY_ROLE
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -534,24 +531,24 @@ function emergencyResetTime() external onlyRole(EMERGENCY_ROLE);
 
 Returns detailed time information
 
-Provides comprehensive time data including provider time, raw timestamp, offset, and emergency status
+*Provides comprehensive time data including provider time, raw timestamp, offset, and emergency status*
 
 **Notes:**
-- security: No security validations required - view function
+- No security validations required - view function
 
-- validation: No input validation required - view function
+- No input validation required - view function
 
-- state-changes: No state changes - view function only
+- No state changes - view function only
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe view function
+- No errors thrown - safe view function
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: Public - anyone can query time information
+- Public - anyone can query time information
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -574,24 +571,24 @@ function getTimeInfo()
 
 Calculates time difference between two timestamps according to provider
 
-Pure function that calculates signed time difference between two timestamps
+*Pure function that calculates signed time difference between two timestamps*
 
 **Notes:**
-- security: No security validations required - pure function
+- No security validations required - pure function
 
-- validation: No input validation required - pure function
+- No input validation required - pure function
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - safe arithmetic used
+- No errors thrown - safe arithmetic used
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public - anyone can calculate time difference
+- Public - anyone can calculate time difference
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -616,21 +613,21 @@ function timeDiff(uint256 timestamp1, uint256 timestamp2) external pure returns 
 Authorizes contract upgrades
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- Validates input parameters and enforces security checks
 
-- validation: Validates input parameters and business logic constraints
+- Validates input parameters and business logic constraints
 
-- state-changes: Updates contract state variables
+- Updates contract state variables
 
-- events: Emits relevant events for state changes
+- Emits relevant events for state changes
 
-- errors: Throws custom errors for invalid conditions
+- Throws custom errors for invalid conditions
 
-- reentrancy: Protected by reentrancy guard
+- Protected by reentrancy guard
 
-- access: Restricted to authorized roles
+- Restricted to authorized roles
 
-- oracle: Requires fresh oracle price data
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -649,9 +646,7 @@ Emitted when time offset is changed
 
 
 ```solidity
-event TimeOffsetChanged(
-    address indexed changer, int256 oldOffset, int256 newOffset, string reason, uint256 timestamp
-);
+event TimeOffsetChanged(address indexed changer, int256 oldOffset, int256 newOffset, string reason, uint256 timestamp);
 ```
 
 ### EmergencyModeChanged

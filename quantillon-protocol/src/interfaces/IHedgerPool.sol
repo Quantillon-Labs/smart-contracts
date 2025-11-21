@@ -175,6 +175,14 @@ interface IHedgerPool {
      * @return interestDifferential Rewards from interest spread
      * @return yieldShiftRewards Rewards distributed by YieldShift
      * @return totalRewards Sum of all rewards transferred
+     * @custom:security Validates caller has accrued rewards, transfers USDC tokens
+     * @custom:validation Checks reward amounts are positive and don't exceed accrued balances
+     * @custom:state-changes Resets hedger reward accumulators, transfers USDC to caller
+     * @custom:events Emits HedgingRewardsClaimed with reward details
+     * @custom:errors Reverts if no rewards available or transfer fails
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Public - any hedger can claim their rewards
+     * @custom:oracle Not applicable
      */
     function claimHedgingRewards() external returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
     
@@ -276,6 +284,34 @@ interface IHedgerPool {
      * @custom:oracle Not applicable
      */
     function getFillMetrics() external view returns (uint256 totalHedgeExposure, uint256 totalMatchedExposure);
+
+    /**
+     * @notice Calculates total effective hedger collateral (deposits + P&L) across all active positions
+     * @dev Used by vault to determine protocol collateralization ratio
+     * @return totalEffectiveCollateral Total effective collateral in USDC (6 decimals)
+     * @custom:security View-only helper - no state changes
+     * @custom:validation Requires valid oracle price
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors Reverts if oracle price is invalid
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query effective collateral
+     * @custom:oracle Requires fresh oracle price data
+     */
+    /**
+     * @notice Calculates total effective hedger collateral (deposits + P&L) across all active positions
+     * @dev Used by vault to determine protocol collateralization ratio
+     * @return totalEffectiveCollateral Total effective collateral in USDC (6 decimals)
+     * @custom:security Read-only helper - no state changes
+     * @custom:validation Requires valid oracle price
+     * @custom:state-changes None - read-only function (not view due to oracle call)
+     * @custom:events None
+     * @custom:errors Reverts if oracle price is invalid
+     * @custom:reentrancy Not applicable - read-only function
+     * @custom:access Public - anyone can query effective collateral
+     * @custom:oracle Requires fresh oracle price data
+     */
+    function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external returns (uint256 totalEffectiveCollateral);
     
     
     // Governance functions

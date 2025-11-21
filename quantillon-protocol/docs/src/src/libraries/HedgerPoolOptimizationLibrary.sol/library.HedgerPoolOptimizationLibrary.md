@@ -4,7 +4,7 @@ Quantillon Labs
 
 Library for HedgerPool data packing, validation, and utility functions
 
-Extracts utility functions from HedgerPool to reduce contract size
+*Extracts utility functions from HedgerPool to reduce contract size*
 
 
 ## Functions
@@ -12,24 +12,24 @@ Extracts utility functions from HedgerPool to reduce contract size
 
 Packs position open data into a single bytes32 for gas efficiency
 
-Encodes position size, margin, leverage, and entry price into a compact format
+*Encodes position size, margin, leverage, and entry price into a compact format*
 
 **Notes:**
-- security: No security implications - pure data packing function
+- No security implications - pure data packing function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -58,24 +58,24 @@ function packPositionOpenData(uint256 positionSize, uint256 margin, uint256 leve
 
 Packs position close data into a single bytes32 for gas efficiency
 
-Encodes exit price, PnL, and timestamp into a compact format
+*Encodes exit price, PnL, and timestamp into a compact format*
 
 **Notes:**
-- security: No security implications - pure data packing function
+- No security implications - pure data packing function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -100,31 +100,28 @@ function packPositionCloseData(uint256 exitPrice, int256 pnl, uint256 timestamp)
 
 Packs margin data into a single bytes32 for gas efficiency
 
-Encodes margin amount, new margin ratio, and operation type
+*Encodes margin amount, new margin ratio, and operation type*
 
 **Notes:**
-- security: No security implications - pure data packing function
+- No security implications - pure data packing function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
-function packMarginData(uint256 marginAmount, uint256 newMarginRatio, bool isAdded)
-    external
-    pure
-    returns (bytes32);
+function packMarginData(uint256 marginAmount, uint256 newMarginRatio, bool isAdded) external pure returns (bytes32);
 ```
 **Parameters**
 
@@ -145,24 +142,24 @@ function packMarginData(uint256 marginAmount, uint256 newMarginRatio, bool isAdd
 
 Packs liquidation data into a single bytes32 for gas efficiency
 
-Encodes liquidation reward and remaining margin
+*Encodes liquidation reward and remaining margin*
 
 **Notes:**
-- security: No security implications - pure data packing function
+- No security implications - pure data packing function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -186,24 +183,24 @@ function packLiquidationData(uint256 liquidationReward, uint256 remainingMargin)
 
 Packs reward data into a single bytes32 for gas efficiency
 
-Encodes interest differential, yield shift rewards, and total rewards
+*Encodes interest differential, yield shift rewards, and total rewards*
 
 **Notes:**
-- security: No security implications - pure data packing function
+- No security implications - pure data packing function
 
-- validation: Input validation handled by calling contract
+- Input validation handled by calling contract
 
-- state-changes: No state changes - pure function
+- No state changes - pure function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - pure function
+- No errors thrown - pure function
 
-- reentrancy: Not applicable - pure function
+- Not applicable - pure function
 
-- access: Public function
+- Public function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -231,24 +228,24 @@ function packRewardData(uint256 interestDifferential, uint256 yieldShiftRewards,
 
 Validates that the caller has the required role
 
-Internal function to check role-based access control
+*Internal function to check role-based access control*
 
 **Notes:**
-- security: Prevents unauthorized access to protected functions
+- Prevents unauthorized access to protected functions
 
-- validation: Ensures proper role-based access control
+- Ensures proper role-based access control
 
-- state-changes: No state changes - view function
+- No state changes - view function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Throws NotAuthorized if caller lacks required role
+- Throws NotAuthorized if caller lacks required role
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: External function with role validation
+- External function with role validation
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -266,24 +263,24 @@ function validateRole(bytes32 role, address contractInstance) external view;
 
 Validates that closing a position won't cause protocol undercollateralization
 
-Checks if closing the position would make the protocol undercollateralized for QEURO minting
+*Checks if closing the position would make the protocol undercollateralized for QEURO minting*
 
 **Notes:**
-- security: Prevents protocol undercollateralization from position closures
+- Prevents protocol undercollateralization from position closures
 
-- validation: Ensures protocol remains properly collateralized
+- Ensures protocol remains properly collateralized
 
-- state-changes: No state changes - view function
+- No state changes - view function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - returns boolean result
+- No errors thrown - returns boolean result
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: External function
+- External function
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -310,24 +307,24 @@ function validatePositionClosureSafety(uint256 positionMargin, address vaultAddr
 
 Gets protocol collateralization data
 
-Internal function to reduce stack depth
+*Internal function to reduce stack depth*
 
 **Notes:**
-- security: Uses staticcall for safe external contract interaction
+- Uses staticcall for safe external contract interaction
 
-- validation: Validates call success and data length before decoding
+- Validates call success and data length before decoding
 
-- state-changes: No state changes, view function
+- No state changes, view function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Returns default values on call failures
+- Returns default values on call failures
 
-- reentrancy: No reentrancy risk, view function
+- No reentrancy risk, view function
 
-- access: Internal function, no access control needed
+- Internal function, no access control needed
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -355,24 +352,24 @@ function _getProtocolData(address vaultAddress)
 
 Checks if QEURO has been minted
 
-Internal function to reduce stack depth
+*Internal function to reduce stack depth*
 
 **Notes:**
-- security: Uses staticcall for safe external contract interaction
+- Uses staticcall for safe external contract interaction
 
-- validation: Validates call success and data length before decoding
+- Validates call success and data length before decoding
 
-- state-changes: No state changes, view function
+- No state changes, view function
 
-- events: No events emitted
+- No events emitted
 
-- errors: Returns false on call failures
+- Returns false on call failures
 
-- reentrancy: No reentrancy risk, view function
+- No reentrancy risk, view function
 
-- access: Internal function, no access control needed
+- Internal function, no access control needed
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -395,24 +392,24 @@ function _hasQEUROMinted(address vaultAddress) internal view returns (bool hasMi
 
 Validates closure with user deposits
 
-Internal function to reduce stack depth
+*Internal function to reduce stack depth*
 
 **Notes:**
-- security: Validates protocol remains collateralized after closure
+- Validates protocol remains collateralized after closure
 
-- validation: Ensures closure doesn't violate collateralization requirements
+- Ensures closure doesn't violate collateralization requirements
 
-- state-changes: No state changes, view function
+- No state changes, view function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No custom errors, returns boolean result
+- No custom errors, returns boolean result
 
-- reentrancy: No reentrancy risk, view function
+- No reentrancy risk, view function
 
-- access: Internal function, no access control needed
+- Internal function, no access control needed
 
-- oracle: No oracle dependencies
+- No oracle dependencies
 
 
 ```solidity
@@ -443,24 +440,24 @@ function _validateClosureWithUserDeposits(
 
 Gets a valid EUR/USD price from the oracle
 
-Retrieves and validates price data from the oracle contract
+*Retrieves and validates price data from the oracle contract*
 
 **Notes:**
-- security: Ensures oracle price data is valid before use
+- Ensures oracle price data is valid before use
 
-- validation: Validates oracle response format and data
+- Validates oracle response format and data
 
-- state-changes: No state changes - view function
+- No state changes - view function
 
-- events: No events emitted
+- No events emitted
 
-- errors: No errors thrown - returns boolean result
+- No errors thrown - returns boolean result
 
-- reentrancy: Not applicable - view function
+- Not applicable - view function
 
-- access: External function
+- External function
 
-- oracle: Depends on oracle contract for price data
+- Depends on oracle contract for price data
 
 
 ```solidity

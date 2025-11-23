@@ -87,7 +87,11 @@ library HedgerPoolValidationLibrary {
      * @custom:oracle No oracle dependencies
      */
     function validateLiquidationCooldown(uint256 lastAttempt, uint256 cooldown) internal view {
-        if (block.number < lastAttempt + cooldown) revert HedgerPoolErrorLibrary.LiquidationCooldown();
+        // Only check cooldown if there was actually a liquidation attempt (lastAttempt > 0)
+        // If lastAttempt is 0, it means no liquidation attempt was ever made, so no cooldown applies
+        if (lastAttempt > 0 && block.number < lastAttempt + cooldown) {
+            revert HedgerPoolErrorLibrary.LiquidationCooldown();
+        }
     }
     
     /**

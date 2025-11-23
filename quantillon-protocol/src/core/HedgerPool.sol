@@ -1486,8 +1486,51 @@ contract HedgerPool is
     }
 
     /**
+     * @notice Checks if a position is healthy enough to receive new fills
+     * @dev Calculates effective margin ratio accounting for P&L and checks against minimum
+     * @param position The position to check
+     * @param currentPrice Current EUR/USD price from oracle
+     * @return True if position is healthy (effective margin ratio >= minMarginRatio)
+     * @custom:security Validates position health before fill allocation
+     * @custom:validation Checks effective margin ratio against minimum
+     * @custom:state-changes None (view function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Internal helper
+     * @custom:oracle Uses provided currentPrice parameter
+     */
+    function _isPositionHealthyForFill(HedgePosition memory position, uint256 currentPrice) internal view returns (bool) {
+        if (position.filledVolume == 0) {
+            // Position with no fills can always receive new fills
+            return true;
+        }
+
+        // Calculate P&L
+        int256 pnl = HedgerPoolLogicLibrary.calculatePnL(
+            uint256(position.filledVolume),
+            uint256(position.entryPrice),
+            currentPrice
+        );
+
+        // Calculate effective margin (margin + P&L)
+        int256 effectiveMargin = int256(uint256(position.margin)) + pnl;
+        
+        // If effective margin is negative or zero, position is underwater
+        if (effectiveMargin <= 0) {
+            return false;
+        }
+
+        // Calculate effective margin ratio
+        uint256 effectiveMarginRatio = uint256(effectiveMargin).mulDiv(10000, uint256(position.filledVolume));
+        
+        // Position is healthy if effective margin ratio >= minMarginRatio
+        return effectiveMarginRatio >= coreParams.minMarginRatio;
+    }
+
+    /**
      * @notice Allocates user mint exposure across active hedger positions
-     * @dev Distributes `usdcAmount` proportionally to available capacity
+     * @dev Distributes `usdcAmount` proportionally to available capacity of HEALTHY positions only
      * @param usdcAmount Amount of USDC exposure to allocate
      * @param skipPositionId Position ID to exclude (e.g., the exiting position)
      * @custom:security Caller must ensure hedger sets are consistent before invocation
@@ -1497,7 +1540,7 @@ contract HedgerPool is
      * @custom:errors Reverts if capacity is insufficient or liquidity is absent
      * @custom:reentrancy Not applicable - internal function
      * @custom:access Internal helper
-     * @custom:oracle Not applicable
+     * @custom:oracle Requires current oracle price to check position health
      */
     function _increaseFilledVolume(uint256 usdcAmount, uint256 skipPositionId) internal {
         if (usdcAmount == 0) {
@@ -1505,26 +1548,41 @@ contract HedgerPool is
         }
         if (activePositions.length == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
 
-        uint256 availableCapacity = totalExposure - totalFilledExposure;
-        if (skipPositionId != 0) {
-            HedgePosition storage skipPosition = positions[skipPositionId];
-            uint256 skipCapacity = uint256(skipPosition.positionSize) - uint256(skipPosition.filledVolume);
-            if (availableCapacity <= skipCapacity) {
-                availableCapacity = 0;
-            } else {
-                availableCapacity -= skipCapacity;
-            }
-        }
+        // Get current oracle price to check position health
+        uint256 currentPrice = _getValidOraclePrice();
 
-        if (availableCapacity < usdcAmount) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
-        if (availableCapacity == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
-
-        uint256 allocated = 0;
+        // First pass: Calculate available capacity from HEALTHY positions only
+        uint256 availableCapacity = 0;
         uint256 len = activePositions.length;
         for (uint256 i = 0; i < len; i++) {
             uint256 positionId = activePositions[i];
             if (positionId == skipPositionId) continue;
             HedgePosition storage position = positions[positionId];
+            
+            // Only consider healthy positions for fill allocation
+            if (!_isPositionHealthyForFill(position, currentPrice)) {
+                continue;
+            }
+            
+            uint256 capacity = uint256(position.positionSize) - uint256(position.filledVolume);
+            availableCapacity += capacity;
+        }
+
+        if (availableCapacity < usdcAmount) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+        if (availableCapacity == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+
+        // Second pass: Allocate fills proportionally to healthy positions only
+        uint256 allocated = 0;
+        for (uint256 i = 0; i < len; i++) {
+            uint256 positionId = activePositions[i];
+            if (positionId == skipPositionId) continue;
+            HedgePosition storage position = positions[positionId];
+            
+            // Skip unhealthy positions
+            if (!_isPositionHealthyForFill(position, currentPrice)) {
+                continue;
+            }
+            
             uint256 capacity = uint256(position.positionSize) - uint256(position.filledVolume);
             if (capacity == 0) continue;
             uint256 share = capacity.mulDiv(usdcAmount, availableCapacity);
@@ -1536,12 +1594,19 @@ contract HedgerPool is
             allocated += share;
         }
 
+        // Third pass: Distribute any remaining amount to healthy positions
         uint256 remaining = usdcAmount - allocated;
         if (remaining > 0) {
             for (uint256 i = 0; i < len && remaining > 0; i++) {
                 uint256 positionId = activePositions[i];
                 if (positionId == skipPositionId) continue;
                 HedgePosition storage position = positions[positionId];
+                
+                // Skip unhealthy positions
+                if (!_isPositionHealthyForFill(position, currentPrice)) {
+                    continue;
+                }
+                
                 uint256 capacity = uint256(position.positionSize) - uint256(position.filledVolume);
                 if (capacity == 0) continue;
                 uint256 delta = capacity >= remaining ? remaining : capacity;

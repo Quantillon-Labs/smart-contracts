@@ -330,7 +330,7 @@ Initializes the HedgerPool contract with a time provider
 
 - Public constructor
 
-- Not applicable
+- Uses provided oracle price
 
 
 ```solidity
@@ -617,13 +617,14 @@ Records a user mint and allocates hedger fills proportionally
 
 
 ```solidity
-function recordUserMint(uint256 usdcAmount) external onlyVault whenNotPaused;
+function recordUserMint(uint256 usdcAmount, uint256 fillPrice) external onlyVault whenNotPaused;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`usdcAmount`|`uint256`|Net USDC amount that was minted into QEURO|
+|`fillPrice`|`uint256`|EUR/USD oracle price supplied by the vault (18 decimals)|
 
 
 ### recordUserRedeem
@@ -1836,7 +1837,7 @@ Convenience overload to increase fills without skipping any position
 
 - No additional validation beyond delegated call
 
-- See `_increaseFilledVolume(uint256,uint256)`
+- See `_increaseFilledVolume(uint256,uint256,uint256)`
 
 - Emits `HedgerFillUpdated` via delegated call
 
@@ -1850,13 +1851,14 @@ Convenience overload to increase fills without skipping any position
 
 
 ```solidity
-function _increaseFilledVolume(uint256 usdcAmount) internal;
+function _increaseFilledVolume(uint256 usdcAmount, uint256 currentPrice) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`usdcAmount`|`uint256`|Amount of USDC exposure to allocate|
+|`currentPrice`|`uint256`|EUR/USD oracle price used for health checks|
 
 
 ### _increaseFilledVolume
@@ -1884,13 +1886,14 @@ Allocates user mint exposure across active hedger positions
 
 
 ```solidity
-function _increaseFilledVolume(uint256 usdcAmount, uint256 skipPositionId) internal;
+function _increaseFilledVolume(uint256 usdcAmount, uint256 currentPrice, uint256 skipPositionId) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`usdcAmount`|`uint256`|Amount of USDC exposure to allocate|
+|`currentPrice`|`uint256`|EUR/USD oracle price supplied by the caller|
 |`skipPositionId`|`uint256`|Position ID to exclude (e.g., the exiting position)|
 
 

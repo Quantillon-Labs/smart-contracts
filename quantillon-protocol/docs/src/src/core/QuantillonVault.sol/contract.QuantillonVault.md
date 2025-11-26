@@ -1379,13 +1379,14 @@ Internal helper to notify HedgerPool about user mints
 
 
 ```solidity
-function _syncMintWithHedgers(uint256 amount) internal;
+function _syncMintWithHedgers(uint256 amount, uint256 fillPrice) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`amount`|`uint256`|Net USDC amount minted into QEURO (6 decimals)|
+|`fillPrice`|`uint256`|EUR/USD oracle price used for the mint (18 decimals)|
 
 
 ### _syncRedeemWithHedgers

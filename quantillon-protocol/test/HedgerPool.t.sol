@@ -384,9 +384,13 @@ contract HedgerPoolTestSuite is Test {
      * @custom:oracle Not applicable
      */
     function _syncVaultFill(uint256 amount) internal {
+        _syncVaultFillWithPrice(amount, EUR_USD_PRICE);
+    }
+
+    function _syncVaultFillWithPrice(uint256 amount, uint256 price) internal {
         if (amount == 0) return;
         vm.prank(_vaultAddress());
-        hedgerPool.recordUserMint(amount);
+        hedgerPool.recordUserMint(amount, price);
     }
 
     /**
@@ -1012,6 +1016,99 @@ contract HedgerPoolTestSuite is Test {
         // Check pool totals
         assertEq(hedgerPool.totalMargin(), netMargin + netAdditionalMargin);
     }
+
+    function test_Margin_AddMarginScalesPositionSizeAndExposure() public {
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        (
+            ,
+            uint96 positionSizeBefore,
+            ,
+            uint96 marginBefore,
+            ,
+            ,
+            ,
+            ,
+            uint16 leverage,
+            bool _isActive
+        ) = hedgerPool.positions(positionId);
+        _isActive;
+
+        CoreParamsSnapshot memory params = _coreParamsSnapshot();
+        uint256 totalExposureBefore = hedgerPool.totalExposure();
+
+        vm.roll(block.number + 600);
+        uint256 additionalMargin = 5000 * 1e6;
+        uint256 netAdditionalMargin = additionalMargin * (10000 - params.marginFee) / 10000;
+
+        vm.prank(hedger1);
+        hedgerPool.addMargin(positionId, additionalMargin);
+
+        (
+            ,
+            uint96 positionSizeAfter,
+            ,
+            uint96 marginAfter,
+            ,
+            ,
+            ,
+            ,
+            uint16 leverageAfter,
+            bool _isActiveAfter
+        ) = hedgerPool.positions(positionId);
+        _isActiveAfter;
+
+        // PositionSize is now recalculated from margin to maintain exact leverage ratio
+        assertEq(uint256(positionSizeAfter), uint256(marginAfter) * uint256(leverageAfter));
+        assertEq(uint256(marginAfter), uint256(marginBefore) + netAdditionalMargin);
+        assertEq(leverageAfter, leverage);
+        // Check that totalExposure increased by the delta
+        uint256 expectedDelta = uint256(positionSizeAfter) - uint256(positionSizeBefore);
+        assertEq(hedgerPool.totalExposure(), totalExposureBefore + expectedDelta);
+    }
+
+    function test_FillsUpdateWeightedEntryPrice() public {
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        uint256 priceOne = 108 * 1e16; // 1.08
+        uint256 priceTwo = 116 * 1e16; // 1.16
+        uint256 exposureOne = 540 * 1e6; // 540 USDC
+        uint256 exposureTwo = 474_440_000; // 474.44 USDC
+
+        _syncVaultFillWithPrice(exposureOne, priceOne);
+        _syncVaultFillWithPrice(exposureTwo, priceTwo);
+
+        (
+            ,
+            ,
+            uint96 filledVolume,
+            ,
+            uint96 entryPrice,
+            ,
+            ,
+            ,
+            ,
+            bool isActive
+        ) = hedgerPool.positions(positionId);
+        isActive;
+
+        assertEq(uint256(filledVolume), exposureOne + exposureTwo);
+
+        // Formula: entryPrice = SUM(QEURO * price) / SUM(QEURO)
+        // Since QEURO = USDC / price:
+        // entryPrice = totalUSDC / (exposure1/price1 + exposure2/price2)
+        // Rearranged: entryPrice = totalUSDC * price1 * price2 / (exposure1 * price2 + exposure2 * price1)
+        uint256 totalUSDC = exposureOne + exposureTwo;
+        uint256 numerator = totalUSDC * priceOne * priceTwo;
+        uint256 denominator = (exposureOne * priceTwo) + (exposureTwo * priceOne);
+        uint256 expectedEntryPrice = numerator / denominator;
+
+        assertEq(uint256(entryPrice), expectedEntryPrice);
+    }
     
     /**
      * @notice Test margin addition to non-existent position should revert
@@ -1111,13 +1208,17 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Grant liquidator role
+        bytes32 liquidatorRole = hedgerPool.LIQUIDATOR_ROLE();
         vm.prank(admin);
-        hedgerPool.grantRole(hedgerPool.LIQUIDATOR_ROLE(), liquidator);
+        hedgerPool.grantRole(liquidatorRole, liquidator);
         
         // Commit liquidation (this creates pending liquidation)
         bytes32 salt = keccak256("test-salt");
         vm.prank(liquidator);
         hedgerPool.commitLiquidation(hedger1, positionId, salt);
+        
+        // Wait for cooldown to expire so pending commitment is the blocking condition
+        vm.roll(block.number + 600);
         
         // Try to add margin - should revert
         vm.prank(hedger1);
@@ -1214,6 +1315,81 @@ contract HedgerPoolTestSuite is Test {
         // Check pool totals
         assertEq(hedgerPool.totalMargin(), netMargin - marginToRemove);
     }
+
+    function test_Margin_RemoveMarginScalesPositionSizeAndExposure() public {
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        (
+            ,
+            uint96 positionSizeBefore,
+            ,
+            uint96 marginBefore,
+            ,
+            ,
+            ,
+            ,
+            uint16 leverage,
+            bool _isActive
+        ) = hedgerPool.positions(positionId);
+        _isActive;
+
+        uint256 totalExposureBefore = hedgerPool.totalExposure();
+        uint256 marginToRemove = 1000 * 1e6;
+
+        vm.prank(hedger1);
+        hedgerPool.removeMargin(positionId, marginToRemove);
+
+        (
+            ,
+            uint96 positionSizeAfter,
+            ,
+            uint96 marginAfter,
+            ,
+            ,
+            ,
+            ,
+            uint16 leverageAfter,
+            bool _isActiveAfter
+        ) = hedgerPool.positions(positionId);
+        _isActiveAfter;
+
+        // PositionSize is now recalculated from margin to maintain exact leverage ratio
+        assertEq(uint256(positionSizeAfter), uint256(marginAfter) * uint256(leverageAfter));
+        assertEq(uint256(marginAfter), uint256(marginBefore) - marginToRemove);
+        assertEq(leverageAfter, leverage);
+        // Check that totalExposure decreased by the delta
+        uint256 expectedDelta = uint256(positionSizeBefore) - uint256(positionSizeAfter);
+        assertEq(hedgerPool.totalExposure(), totalExposureBefore - expectedDelta);
+    }
+
+    function test_Margin_RemoveMarginCannotDropBelowFilledVolume() public {
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        (
+            ,
+            uint96 positionSize,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            ,
+            bool _isActive
+        ) = hedgerPool.positions(positionId);
+        _isActive;
+
+        _syncVaultFill(positionSize);
+
+        vm.startPrank(hedger1);
+        vm.expectRevert(HedgerPoolErrorLibrary.InsufficientHedgerCapacity.selector);
+        hedgerPool.removeMargin(positionId, 1 * 1e6);
+        vm.stopPrank();
+    }
     
     /**
      * @notice Test margin removal that would violate minimum margin should revert
@@ -1233,11 +1409,14 @@ contract HedgerPoolTestSuite is Test {
         vm.prank(hedger1);
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
-        // Try to remove too much margin
-        uint256 tooMuchMargin = MARGIN_AMOUNT * 9 / 10; // Remove 90% of margin
-        vm.prank(hedger1);
+        CoreParamsSnapshot memory params = _coreParamsSnapshot();
+        uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
+
+        // Removing the entire stored margin would drop margin ratio to zero
+        vm.startPrank(hedger1);
         vm.expectRevert(HedgerPoolErrorLibrary.MarginRatioTooLow.selector);
-        hedgerPool.removeMargin(positionId, tooMuchMargin);
+        hedgerPool.removeMargin(positionId, netMargin);
+        vm.stopPrank();
     }
 
     // =============================================================================

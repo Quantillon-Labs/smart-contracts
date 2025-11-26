@@ -106,16 +106,17 @@ interface IHedgerPool {
      * @notice Synchronizes hedger fills with a user mint
      * @dev Callable only by QuantillonVault to allocate fills proportionally
      * @param usdcAmount Net USDC amount minted into QEURO
+     * @param fillPrice EUR/USD oracle price (18 decimals) used for the mint
      * @custom:security Restricted to the vault; validates amount > 0
-     * @custom:validation Amount must be positive
+     * @custom:validation Amount and price must be positive
      * @custom:state-changes Updates per-position fills and total exposure
      * @custom:events Emits `HedgerFillUpdated`
      * @custom:errors Reverts with capacity-related errors when overfilled
      * @custom:reentrancy Implementations must guard state before external calls
      * @custom:access Vault-only
-     * @custom:oracle Not applicable
+     * @custom:oracle Uses provided fill price
      */
-    function recordUserMint(uint256 usdcAmount) external;
+    function recordUserMint(uint256 usdcAmount, uint256 fillPrice) external;
 
     /**
      * @notice Synchronizes hedger fills with a user redemption
@@ -130,7 +131,7 @@ interface IHedgerPool {
      * @custom:access Vault-only
      * @custom:oracle Not applicable
      */
-    function recordUserRedeem(uint256 usdcAmount) external;
+    function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice) external;
     
     // Liquidation system
     
@@ -254,37 +255,6 @@ interface IHedgerPool {
      */
     // View functions
     
-    /**
-     * @notice Returns the list of currently active position IDs
-     * @dev Useful for analytics and monitoring tools to inspect active hedger positions
-     * @return uint256[] Array containing each active position ID
-     * @custom:security View-only; no restrictions besides public access
-     * @custom:validation None
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable
-     * @custom:access Public
-     * @custom:oracle Not applicable
-     */
-    function getActivePositionIds() external view returns (uint256[] memory);
-
-    /**
-     * @notice Returns aggregate hedger fill metrics
-     * @dev Provides total exposure requested vs. currently matched exposure
-     * @return totalHedgeExposure Total requested exposure across all positions
-     * @return totalMatchedExposure Total filled exposure matched with user flow
-     * @custom:security View-only; no restrictions besides public access
-     * @custom:validation None
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable
-     * @custom:access Public
-     * @custom:oracle Not applicable
-     */
-    function getFillMetrics() external view returns (uint256 totalHedgeExposure, uint256 totalMatchedExposure);
-
     /**
      * @notice Calculates total effective hedger collateral (deposits + P&L) across all active positions
      * @dev Used by vault to determine protocol collateralization ratio

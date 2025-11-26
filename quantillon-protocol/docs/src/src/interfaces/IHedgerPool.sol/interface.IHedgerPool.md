@@ -228,17 +228,18 @@ Synchronizes hedger fills with a user mint
 
 - Vault-only
 
-- Not applicable
+- Uses provided oracle price
 
 
 ```solidity
-function recordUserMint(uint256 usdcAmount) external;
+function recordUserMint(uint256 usdcAmount, uint256 fillPrice) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`usdcAmount`|`uint256`|Net USDC amount minted into QEURO|
+|`fillPrice`|`uint256`|EUR/USD oracle price (18 decimals) observed by the vault|
 
 
 ### recordUserRedeem

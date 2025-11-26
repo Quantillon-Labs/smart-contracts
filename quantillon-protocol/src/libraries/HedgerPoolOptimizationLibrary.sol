@@ -39,13 +39,8 @@ library HedgerPoolOptimizationLibrary {
         uint256 margin, 
         uint256 leverage,
         uint256 entryPrice
-    ) external pure returns (bytes32) {
-        return bytes32(
-            (uint256(uint64(positionSize)) << 192) |
-            (uint256(uint64(margin)) << 128) |
-            (uint256(uint32(leverage)) << 96) |
-            uint256(uint96(entryPrice))
-        );
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(positionSize, margin, leverage, entryPrice));
     }
     
     /**
@@ -68,15 +63,8 @@ library HedgerPoolOptimizationLibrary {
         uint256 exitPrice,
         int256 pnl,
         uint256 timestamp
-    ) external pure returns (bytes32) {
-        uint256 absPnl = uint256(pnl < 0 ? -pnl : pnl);
-        uint256 signFlag = pnl < 0 ? (1 << 63) : 0;
-        return bytes32(
-            (uint256(uint96(exitPrice)) << 160) |
-            (uint256(uint96(absPnl)) << 64) |
-            uint256(uint64(timestamp)) |
-            signFlag
-        );
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(exitPrice, pnl, timestamp));
     }
     
     /**
@@ -99,12 +87,8 @@ library HedgerPoolOptimizationLibrary {
         uint256 marginAmount,
         uint256 newMarginRatio,
         bool isAdded
-    ) external pure returns (bytes32) {
-        return bytes32(
-            (uint256(uint128(marginAmount)) << 128) |
-            (uint256(uint128(newMarginRatio)) << 1) |
-            (isAdded ? 1 : 0)
-        );
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(marginAmount, newMarginRatio, isAdded));
     }
     
     /**
@@ -125,11 +109,8 @@ library HedgerPoolOptimizationLibrary {
     function packLiquidationData(
         uint256 liquidationReward,
         uint256 remainingMargin
-    ) external pure returns (bytes32) {
-        return bytes32(
-            (uint256(uint128(liquidationReward)) << 128) |
-            uint256(uint128(remainingMargin))
-        );
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(liquidationReward, remainingMargin));
     }
     
     /**
@@ -152,12 +133,8 @@ library HedgerPoolOptimizationLibrary {
         uint256 interestDifferential,
         uint256 yieldShiftRewards,
         uint256 totalRewards
-    ) external pure returns (bytes32) {
-        return bytes32(
-            (uint256(uint128(interestDifferential)) << 128) |
-            (uint256(uint64(yieldShiftRewards)) << 64) |
-            uint256(uint64(totalRewards))
-        );
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(interestDifferential, yieldShiftRewards, totalRewards));
     }
     
     // =============================================================================

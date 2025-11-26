@@ -54,6 +54,7 @@ contract LiquidationEdgeCases is Test {
     uint256 constant USDC_PRECISION = 1e6;
     uint256 constant INITIAL_MARGIN = 1000 * USDC_PRECISION;
     uint256 constant POSITION_SIZE = 10000 * PRECISION;
+    uint256 constant MOCK_EUR_USD_PRICE = 110 * 1e16;
     
     // ==================== SETUP ====================
     
@@ -198,7 +199,7 @@ contract LiquidationEdgeCases is Test {
         vm.mockCall(
             address(0x2), // mockOracle
             abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
-            abi.encode(110 * 1e16, true) // 1.10 USD price, valid
+            abi.encode(MOCK_EUR_USD_PRICE, true) // 1.10 USD price, valid
         );
         
         // Setup mock calls for YieldShift
@@ -235,7 +236,7 @@ contract LiquidationEdgeCases is Test {
         hedgerPool.enterHedgePosition(INITIAL_MARGIN, 2 * PRECISION / PRECISION); // 2x leverage
         vm.stopPrank();
         vm.prank(address(hedgerPool.vault()));
-        hedgerPool.recordUserMint(INITIAL_MARGIN);
+        hedgerPool.recordUserMint(INITIAL_MARGIN, MOCK_EUR_USD_PRICE);
     }
     
     // =============================================================================

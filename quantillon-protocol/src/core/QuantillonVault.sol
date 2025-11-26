@@ -503,7 +503,7 @@ contract QuantillonVault is
 
         // Inform HedgerPool after vault accounting is updated
         // NOTE: Hedgers must receive the gross mint size so their filled volume matches user-facing flow
-        _syncMintWithHedgers(usdcAmount);
+        _syncMintWithHedgers(usdcAmount, eurUsdPrice);
 
         // INTERACTIONS - All external calls after state updates
         // Transfer full amount to vault
@@ -591,7 +591,7 @@ contract QuantillonVault is
         }
         
         // Inform HedgerPool after internal state is updated
-        _syncRedeemWithHedgers(usdcToReturn);
+        _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice);
 
         // Apply protocol fees
         uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
@@ -1299,6 +1299,7 @@ contract QuantillonVault is
      * @notice Internal helper to notify HedgerPool about user mints
      * @dev Attempts to update hedger fills but swallows failures to avoid blocking users
      * @param amount Net USDC amount minted into QEURO (6 decimals)
+     * @param fillPrice EUR/USD oracle price used for the mint (18 decimals)
      * @custom:security Internal helper; relies on HedgerPool access control
      * @custom:validation No additional validation beyond non-zero guard
      * @custom:state-changes None inside the vault; delegates to HedgerPool
@@ -1308,11 +1309,11 @@ contract QuantillonVault is
      * @custom:access Internal helper
      * @custom:oracle Not applicable
      */
-    function _syncMintWithHedgers(uint256 amount) internal {
+    function _syncMintWithHedgers(uint256 amount, uint256 fillPrice) internal {
         if (amount == 0) {
             return;
         }
-        try hedgerPool.recordUserMint(amount) {} catch {}
+        try hedgerPool.recordUserMint(amount, fillPrice) {} catch {}
     }
 
     /**
@@ -1328,11 +1329,11 @@ contract QuantillonVault is
      * @custom:access Internal helper
      * @custom:oracle Not applicable
      */
-    function _syncRedeemWithHedgers(uint256 amount) internal {
+    function _syncRedeemWithHedgers(uint256 amount, uint256 redeemPrice) internal {
         if (amount == 0) {
             return;
         }
-        try hedgerPool.recordUserRedeem(amount) {} catch {}
+        try hedgerPool.recordUserRedeem(amount, redeemPrice) {} catch {}
     }
 
     // =============================================================================

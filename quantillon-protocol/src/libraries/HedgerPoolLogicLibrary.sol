@@ -123,6 +123,50 @@ library HedgerPoolLogicLibrary {
     }
 
     /**
+     * @notice Calculates collateral-based capacity for a position
+     * @dev Returns how much additional USDC exposure a position can absorb
+     * @param margin Position margin in USDC (6 decimals)
+     * @param filledVolume Current filled volume (6 decimals)
+     * @param entryPrice Entry price (18 decimals)
+     * @param currentPrice Current price (18 decimals)
+     * @param minMarginRatio Minimum margin ratio in basis points
+     * @return capacity Additional USDC exposure the position can absorb
+     */
+    function calculateCollateralCapacity(
+        uint256 margin,
+        uint256 filledVolume,
+        uint256 entryPrice,
+        uint256 currentPrice,
+        uint256 minMarginRatio,
+        int128 realizedPnL
+    ) internal pure returns (uint256) {
+        if (currentPrice == 0 || minMarginRatio == 0) return 0;
+        
+        // Calculate unrealized P&L
+        int256 unrealizedPnL = calculatePnL(filledVolume, entryPrice, currentPrice);
+        
+        // Effective margin = margin + unrealized P&L + realized P&L
+        int256 effectiveMargin = int256(margin) + unrealizedPnL + int256(realizedPnL);
+        if (effectiveMargin <= 0) return 0;
+        
+        // Calculate minted exposure at current price
+        uint256 mintedExposure = filledVolume;
+        if (entryPrice > 0 && filledVolume > 0) {
+            mintedExposure = filledVolume.mulDiv(currentPrice, entryPrice);
+        }
+        
+        // Required margin = mintedExposure * minMarginRatio / 10000
+        uint256 requiredMargin = mintedExposure.mulDiv(minMarginRatio, 10000);
+        
+        // Available collateral = effectiveMargin - requiredMargin
+        if (uint256(effectiveMargin) <= requiredMargin) return 0;
+        uint256 availableCollateral = uint256(effectiveMargin) - requiredMargin;
+        
+        // Capacity = availableCollateral / minMarginRatio * 10000
+        return availableCollateral.mulDiv(10000, minMarginRatio);
+    }
+
+    /**
      * @notice Determines if a position is eligible for liquidation
      * @dev Checks if position margin ratio is below liquidation threshold
      * @param margin Current margin amount for the position

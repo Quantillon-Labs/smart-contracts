@@ -407,7 +407,7 @@ contract HedgerPoolTestSuite is Test {
      * @custom:oracle Not applicable
      */
     function _syncPositionFill(uint256 positionId) internal {
-        (, uint96 positionSize, , , , , , , , ) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , , , , , , , , ) = hedgerPool.positions(positionId);
         _syncVaultFill(uint256(positionSize));
     }
 
@@ -561,7 +561,7 @@ contract HedgerPoolTestSuite is Test {
         assertEq(positionId, 1);
         
         // Check position details
-        (address hedger, uint96 positionSize, , uint96 margin, uint96 entryPrice, , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
+        (address hedger, uint96 positionSize, , uint96 margin, uint96 entryPrice, , , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         assertEq(hedger, hedger1);
         // Position size is calculated dynamically based on net margin and leverage
@@ -672,7 +672,7 @@ contract HedgerPoolTestSuite is Test {
         assertTrue(positionId > 0);
         
         // Verify position details
-        (, uint96 positionSize, , uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         assertTrue(positionSize > 0);
         assertTrue(margin > 0);
@@ -708,7 +708,7 @@ contract HedgerPoolTestSuite is Test {
         assertTrue(positionId > 0);
         
         // Verify position details
-        (, uint96 positionSize, , uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         assertTrue(positionSize > 0);
         assertTrue(margin > 0);
@@ -796,7 +796,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Check that position was closed
-        (,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check P&L (can be negative due to fees and price movement)
@@ -878,7 +878,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Verify position was closed
-        (,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive, "Position should be closed");
         
         console2.log("P&L:", pnl);
@@ -939,7 +939,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Verify position was closed
-        (,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive, "Position should be closed");
         
         console2.log("P&L:", pnl);
@@ -1006,7 +1006,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.addMargin(positionId, additionalMargin);
         
         // Check position margin was updated
-        (,,, uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (,,, uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
         uint256 netAdditionalMargin = additionalMargin * (10000 - params.marginFee) / 10000;
@@ -1031,6 +1031,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             ,
+            ,
             uint16 leverage,
             bool _isActive
         ) = hedgerPool.positions(positionId);
@@ -1051,6 +1052,7 @@ contract HedgerPoolTestSuite is Test {
             uint96 positionSizeAfter,
             ,
             uint96 marginAfter,
+            ,
             ,
             ,
             ,
@@ -1088,6 +1090,7 @@ contract HedgerPoolTestSuite is Test {
             uint96 filledVolume,
             ,
             uint96 entryPrice,
+            ,
             ,
             ,
             ,
@@ -1184,7 +1187,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.addMargin(positionId, additionalMargin);
         
         // Verify margin was added
-        (,,, uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (,,, uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
         assertTrue(margin > MARGIN_AMOUNT);
         assertTrue(isActive);
     }
@@ -1306,7 +1309,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.removeMargin(positionId, marginToRemove);
         
         // Check position margin was updated
-        (,,, uint96 margin, , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (,,, uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
         assertEq(margin, netMargin - marginToRemove);
@@ -1330,6 +1333,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             ,
+            ,
             uint16 leverage,
             bool _isActive
         ) = hedgerPool.positions(positionId);
@@ -1346,6 +1350,7 @@ contract HedgerPoolTestSuite is Test {
             uint96 positionSizeAfter,
             ,
             uint96 marginAfter,
+            ,
             ,
             ,
             ,
@@ -1372,6 +1377,7 @@ contract HedgerPoolTestSuite is Test {
         (
             ,
             uint96 positionSize,
+            ,
             ,
             ,
             ,
@@ -1447,7 +1453,7 @@ contract HedgerPoolTestSuite is Test {
         vm.prank(hedger2);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         {
-            (, , uint96 filledVolume, uint96 margin, , , , , , ) = hedgerPool.positions(positionId);
+            (, , uint96 filledVolume, uint96 margin, , , , , , , ) = hedgerPool.positions(positionId);
             assertGt(filledVolume, 0, "Primary position should be filled");
             assertGt(margin, 0, "Primary position should have margin");
         }
@@ -1474,7 +1480,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 liquidationReward = hedgerPool.liquidateHedger(hedger1, positionId, bytes32(0));
         
         // Check that position was liquidated
-        (,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check liquidation reward
@@ -1613,7 +1619,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Get position info
-        (address hedger, uint256 positionSize, , uint256 margin, uint256 entryPrice, uint256 entryTime, , , uint256 leverage, bool isActive) = hedgerPool.positions(positionId);
+        (address hedger, uint256 positionSize, , uint256 margin, uint256 entryPrice, uint256 entryTime, , , , uint256 leverage, bool isActive) = hedgerPool.positions(positionId);
         
         assertEq(hedger, hedger1);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
@@ -1843,7 +1849,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.emergencyClosePosition(hedger1, positionId);
         
         // Check that position was closed
-        (,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
         assertFalse(isActive);
     }
     
@@ -2236,7 +2242,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Admin recovers tokens
         vm.prank(admin);
-        hedgerPool.recoverToken(address(mockToken), recoveryAmount);
+        hedgerPool.recover(address(mockToken), recoveryAmount);
         
         // Verify tokens were sent to treasury (admin)
         assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + recoveryAmount);
@@ -2259,7 +2265,7 @@ contract HedgerPoolTestSuite is Test {
         
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.recoverToken(address(mockToken), 1000e18);
+        hedgerPool.recover(address(mockToken), 1000e18);
     }
 
     /**
@@ -2277,7 +2283,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
         vm.expectRevert(HedgerPoolErrorLibrary.CannotRecoverOwnToken.selector);
-        hedgerPool.recoverToken(address(hedgerPool), 1000e18);
+        hedgerPool.recover(address(hedgerPool), 1000e18);
     }
 
     /**
@@ -2300,7 +2306,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 initialTreasuryBalance = mockUSDCToken.balanceOf(admin); // admin is treasury
         
         vm.prank(admin);
-        hedgerPool.recoverToken(address(mockUSDCToken), 1000e18);
+        hedgerPool.recover(address(mockUSDCToken), 1000e18);
         
         // Verify USDC was sent to treasury
         assertEq(mockUSDCToken.balanceOf(admin), initialTreasuryBalance + 1000e18);
@@ -2326,7 +2332,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
         
         vm.prank(admin);
-        hedgerPool.recoverToken(address(mockToken), amount);
+        hedgerPool.recover(address(mockToken), amount);
         
         // Verify tokens were sent to treasury
         assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + amount);
@@ -2353,7 +2359,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Admin recovers ETH to treasury (admin)
         vm.prank(admin);
-        hedgerPool.recoverETH();
+        hedgerPool.recover(address(0), 0);
         
         uint256 finalBalance = admin.balance;
         assertEq(finalBalance, initialBalance + recoveryAmount);
@@ -2376,7 +2382,7 @@ contract HedgerPoolTestSuite is Test {
         
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.recoverETH();
+        hedgerPool.recover(address(0), 0);
     }
 
 
@@ -2396,7 +2402,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
         vm.expectRevert(HedgerPoolErrorLibrary.NoETHToRecover.selector);
-        hedgerPool.recoverETH();
+        hedgerPool.recover(address(0), 0);
     }
 
     // =============================================================================
@@ -3625,7 +3631,7 @@ contract HedgerPoolPositionClosureTest is Test {
     function testVaultUpdateFunction() public {
         // Test that the vault can be updated by governance
         vm.startPrank(admin);
-        hedgerPool.updateVault(address(0x999));
+        hedgerPool.updateAddress(1, address(0x999));
         vm.stopPrank();
         
         // Verify the vault was updated

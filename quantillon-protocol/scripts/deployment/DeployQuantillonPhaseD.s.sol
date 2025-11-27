@@ -73,7 +73,7 @@ contract DeployQuantillonPhaseD is Script {
             yieldShift.updateAaveVault(aaveVault);
             yieldShift.updateStQEURO(stQeuroToken);
             yieldShift.bootstrapDefaults();
-            hedgerPool.updateYieldShift(address(yieldShift));
+            hedgerPool.updateAddress(3, address(yieldShift));
         }
 
         // Wire vault/pools

@@ -71,7 +71,7 @@ contract DeployQuantillonPhaseC is Script {
             ERC1967Proxy proxy = new ERC1967Proxy(address(impl), bytes(""));
             hedgerPool = HedgerPool(address(proxy));
             hedgerPool.initialize(deployerEOA, usdc, address(0), deployerEOA, deployerEOA, deployerEOA, quantillonVault);
-            hedgerPool.updateOracle(chainlinkOracle);
+            hedgerPool.updateAddress(2, chainlinkOracle);
             console.log("HedgerPool Proxy:", address(hedgerPool));
         }
     }

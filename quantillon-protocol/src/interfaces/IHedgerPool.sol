@@ -397,27 +397,13 @@ interface IHedgerPool {
      * @custom:security Validates admin role and uses secure recovery library
      * @custom:validation No input validation required - library handles validation
      * @custom:state-changes Transfers tokens from contract to treasury
-     * @custom:events Emits TokenRecovered event
+     * @custom:events Emits TokenRecovered or ETHRecovered event
      * @custom:errors No errors thrown - library handles error cases
      * @custom:reentrancy Not protected - library handles reentrancy
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies for token recovery
      */
-    function recoverToken(address token, uint256 amount) external;
-    
-    /**
-     * @notice Recovers ETH accidentally sent to the contract
-     * @dev Emergency function to recover ETH that was accidentally sent to the contract
-     * @custom:security Validates admin role and emits recovery event
-     * @custom:validation No input validation required - transfers all ETH
-     * @custom:state-changes Transfers all contract ETH balance to treasury
-     * @custom:events Emits ETHRecovered with amount and treasury address
-     * @custom:errors No errors thrown - safe ETH transfer
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function recoverETH() external;
+    function recover(address token, uint256 amount) external;
     
     // State variables
     

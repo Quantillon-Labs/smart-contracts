@@ -193,7 +193,7 @@ contract HedgerVaultIntegrationTest is Test {
         
         // Whitelist hedger
         vm.prank(admin);
-        hedgerPool.whitelistHedger(hedger);
+        hedgerPool.setHedgerWhitelist(hedger, true);
     }
     
     // =============================================================================

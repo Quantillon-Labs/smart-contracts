@@ -116,7 +116,7 @@ interface IHedgerPool {
      * @custom:access Vault-only
      * @custom:oracle Uses provided fill price
      */
-    function recordUserMint(uint256 usdcAmount, uint256 fillPrice) external;
+    function recordUserMint(uint256 usdcAmount, uint256 fillPrice, uint256 qeuroAmount) external;
 
     /**
      * @notice Synchronizes hedger fills with a user redemption
@@ -131,7 +131,7 @@ interface IHedgerPool {
      * @custom:access Vault-only
      * @custom:oracle Not applicable
      */
-    function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice) external;
+    function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) external;
     
     // Liquidation system
     
@@ -954,34 +954,20 @@ interface IHedgerPool {
     // Hedger Whitelist Management
     
     /**
-     * @notice Whitelists a hedger address
-     * @dev Allows the specified address to open hedge positions when whitelist is enabled
-     * @param hedger Address to whitelist as a hedger
+     * @notice Whitelist (add=true) or remove (add=false) a hedger
+     * @dev Allows or prevents the specified address from opening hedge positions
+     * @param hedger Address to whitelist or remove
+     * @param add True to whitelist, false to remove
      * @custom:security Validates governance role and hedger address
-     * @custom:validation Validates hedger is not address(0) and not already whitelisted
-     * @custom:state-changes Updates isWhitelistedHedger mapping and grants HEDGER_ROLE
-     * @custom:events Emits HedgerWhitelisted with hedger and caller addresses
-     * @custom:errors Throws ZeroAddress if hedger is address(0), AlreadyWhitelisted if already whitelisted
+     * @custom:validation Validates hedger is not address(0) and whitelist state is valid
+     * @custom:state-changes Updates isWhitelistedHedger mapping and grants/revokes HEDGER_ROLE
+     * @custom:events Emits HedgerWhitelisted or HedgerRemoved with hedger and caller addresses
+     * @custom:errors Throws ZeroAddress if hedger is address(0), AlreadyWhitelisted/NotWhitelisted based on operation
      * @custom:reentrancy Not protected - no external calls
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
-    function whitelistHedger(address hedger) external;
-    
-    /**
-     * @notice Removes a hedger from the whitelist
-     * @dev Prevents the specified address from opening new hedge positions
-     * @param hedger Address to remove from hedger whitelist
-     * @custom:security Validates governance role and hedger address
-     * @custom:validation Validates hedger is not address(0) and is currently whitelisted
-     * @custom:state-changes Updates isWhitelistedHedger mapping and revokes HEDGER_ROLE
-     * @custom:events Emits HedgerRemoved with hedger and caller addresses
-     * @custom:errors Throws ZeroAddress if hedger is address(0), NotWhitelisted if not whitelisted
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function removeHedger(address hedger) external;
+    function setHedgerWhitelist(address hedger, bool add) external;
     
     /**
      * @notice Toggles hedger whitelist mode

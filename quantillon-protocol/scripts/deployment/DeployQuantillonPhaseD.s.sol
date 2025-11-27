@@ -80,7 +80,7 @@ contract DeployQuantillonPhaseD is Script {
         quantillonVault.updateHedgerPool(address(hedgerPool));
         quantillonVault.updateUserPool(address(userPool));
         feeCollector.authorizeFeeSource(address(quantillonVault));
-        hedgerPool.whitelistHedger(deployerEOA);
+        hedgerPool.setHedgerWhitelist(deployerEOA, true);
 
         vm.stopBroadcast();
         console.log("\nPhase B Complete. YieldShift:", address(yieldShift));

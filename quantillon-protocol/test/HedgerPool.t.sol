@@ -350,7 +350,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function _whitelistHedger(address hedger) internal {
         vm.prank(governance);
-        hedgerPool.whitelistHedger(hedger);
+        hedgerPool.setHedgerWhitelist(hedger, true);
     }
 
     /**
@@ -389,8 +389,10 @@ contract HedgerPoolTestSuite is Test {
 
     function _syncVaultFillWithPrice(uint256 amount, uint256 price) internal {
         if (amount == 0) return;
+        // Calculate QEURO amount: qeuro = usdc * 1e18 / price (convert USDC 6 decimals to QEURO 18 decimals)
+        uint256 qeuroAmount = (amount * 1e30) / price;
         vm.prank(_vaultAddress());
-        hedgerPool.recordUserMint(amount, price);
+        hedgerPool.recordUserMint(amount, price, qeuroAmount);
     }
 
     /**
@@ -407,7 +409,7 @@ contract HedgerPoolTestSuite is Test {
      * @custom:oracle Not applicable
      */
     function _syncPositionFill(uint256 positionId) internal {
-        (, uint96 positionSize, , , , , , , , , ) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , , , , , , , , , ) = hedgerPool.positions(positionId);
         _syncVaultFill(uint256(positionSize));
     }
 
@@ -561,7 +563,7 @@ contract HedgerPoolTestSuite is Test {
         assertEq(positionId, 1);
         
         // Check position details
-        (address hedger, uint96 positionSize, , uint96 margin, uint96 entryPrice, , , , , uint16 leverage, bool isActive) = hedgerPool.positions(positionId);
+        (address hedger, uint96 positionSize, , uint96 margin, uint96 entryPrice, , , , , uint16 leverage, bool isActive, ) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         assertEq(hedger, hedger1);
         // Position size is calculated dynamically based on net margin and leverage
@@ -672,7 +674,7 @@ contract HedgerPoolTestSuite is Test {
         assertTrue(positionId > 0);
         
         // Verify position details
-        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         assertTrue(positionSize > 0);
         assertTrue(margin > 0);
@@ -708,7 +710,7 @@ contract HedgerPoolTestSuite is Test {
         assertTrue(positionId > 0);
         
         // Verify position details
-        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         assertTrue(positionSize > 0);
         assertTrue(margin > 0);
@@ -796,7 +798,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Check that position was closed
-        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check P&L (can be negative due to fees and price movement)
@@ -878,7 +880,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Verify position was closed
-        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
         assertFalse(isActive, "Position should be closed");
         
         console2.log("P&L:", pnl);
@@ -939,7 +941,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Verify position was closed
-        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
         assertFalse(isActive, "Position should be closed");
         
         console2.log("P&L:", pnl);
@@ -1006,7 +1008,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.addMargin(positionId, additionalMargin);
         
         // Check position margin was updated
-        (,,, uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (,,, uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
         uint256 netAdditionalMargin = additionalMargin * (10000 - params.marginFee) / 10000;
@@ -1033,7 +1035,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             uint16 leverage,
-            bool _isActive
+            bool _isActive,
         ) = hedgerPool.positions(positionId);
         _isActive;
 
@@ -1058,7 +1060,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             uint16 leverageAfter,
-            bool _isActiveAfter
+            bool _isActiveAfter,
         ) = hedgerPool.positions(positionId);
         _isActiveAfter;
 
@@ -1095,7 +1097,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             ,
-            bool isActive
+            bool isActive,
         ) = hedgerPool.positions(positionId);
         isActive;
 
@@ -1187,7 +1189,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.addMargin(positionId, additionalMargin);
         
         // Verify margin was added
-        (,,, uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (,,, uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
         assertTrue(margin > MARGIN_AMOUNT);
         assertTrue(isActive);
     }
@@ -1309,7 +1311,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.removeMargin(positionId, marginToRemove);
         
         // Check position margin was updated
-        (,,, uint96 margin, , , , , , , bool isActive) = hedgerPool.positions(positionId);
+        (,,, uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
         assertEq(margin, netMargin - marginToRemove);
@@ -1335,7 +1337,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             uint16 leverage,
-            bool _isActive
+            bool _isActive,
         ) = hedgerPool.positions(positionId);
         _isActive;
 
@@ -1356,7 +1358,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             uint16 leverageAfter,
-            bool _isActiveAfter
+            bool _isActiveAfter,
         ) = hedgerPool.positions(positionId);
         _isActiveAfter;
 
@@ -1385,7 +1387,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             ,
-            bool _isActive
+            bool _isActive,
         ) = hedgerPool.positions(positionId);
         _isActive;
 
@@ -1453,7 +1455,7 @@ contract HedgerPoolTestSuite is Test {
         vm.prank(hedger2);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         {
-            (, , uint96 filledVolume, uint96 margin, , , , , , , ) = hedgerPool.positions(positionId);
+            (, , uint96 filledVolume, uint96 margin, , , , , , , , ) = hedgerPool.positions(positionId);
             assertGt(filledVolume, 0, "Primary position should be filled");
             assertGt(margin, 0, "Primary position should have margin");
         }
@@ -1480,7 +1482,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 liquidationReward = hedgerPool.liquidateHedger(hedger1, positionId, bytes32(0));
         
         // Check that position was liquidated
-        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check liquidation reward
@@ -1619,7 +1621,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Get position info
-        (address hedger, uint256 positionSize, , uint256 margin, uint256 entryPrice, uint256 entryTime, , , , uint256 leverage, bool isActive) = hedgerPool.positions(positionId);
+        (address hedger, uint256 positionSize, , uint256 margin, uint256 entryPrice, uint256 entryTime, , , , uint256 leverage, bool isActive, ) = hedgerPool.positions(positionId);
         
         assertEq(hedger, hedger1);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
@@ -1849,7 +1851,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.emergencyClosePosition(hedger1, positionId);
         
         // Check that position was closed
-        (,,,,,,,,,, bool isActive) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
         assertFalse(isActive);
     }
     
@@ -2654,7 +2656,7 @@ contract HedgerPoolTestSuite is Test {
         vm.prank(governance);
         vm.expectEmit(true, true, false, true);
         emit HedgerWhitelisted(hedger1, governance);
-        hedgerPool.whitelistHedger(hedger1);
+        hedgerPool.setHedgerWhitelist(hedger1, true);
         
         // Verify hedger is now whitelisted and has HEDGER_ROLE
         assertTrue(hedgerPool.isWhitelistedHedger(hedger1));
@@ -2676,12 +2678,12 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_WhitelistHedger_AlreadyWhitelisted_Revert() public {
         // Whitelist hedger first time
         vm.prank(governance);
-        hedgerPool.whitelistHedger(hedger1);
+        hedgerPool.setHedgerWhitelist(hedger1, true);
         
         // Try to whitelist again - should revert
         vm.prank(governance);
         vm.expectRevert(HedgerPoolErrorLibrary.AlreadyWhitelisted.selector);
-        hedgerPool.whitelistHedger(hedger1);
+        hedgerPool.setHedgerWhitelist(hedger1, true);
     }
 
     /**
@@ -2699,7 +2701,7 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_WhitelistHedger_ZeroAddress_Revert() public {
         vm.prank(governance);
         vm.expectRevert(HedgerPoolErrorLibrary.InvalidAddress.selector);
-        hedgerPool.whitelistHedger(address(0));
+        hedgerPool.setHedgerWhitelist(address(0), true);
     }
 
     /**
@@ -2717,7 +2719,7 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_WhitelistHedger_NonGovernance_Revert() public {
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.whitelistHedger(hedger2);
+        hedgerPool.setHedgerWhitelist(hedger2, true);
     }
 
     /**
@@ -2735,7 +2737,7 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_RemoveHedger_Success() public {
         // Whitelist hedger first
         vm.prank(governance);
-        hedgerPool.whitelistHedger(hedger1);
+        hedgerPool.setHedgerWhitelist(hedger1, true);
         
         // Verify hedger is whitelisted
         assertTrue(hedgerPool.isWhitelistedHedger(hedger1));
@@ -2745,7 +2747,7 @@ contract HedgerPoolTestSuite is Test {
         vm.prank(governance);
         vm.expectEmit(true, true, false, true);
         emit HedgerRemoved(hedger1, governance);
-        hedgerPool.removeHedger(hedger1);
+        hedgerPool.setHedgerWhitelist(hedger1, false);
         
         // Verify hedger is no longer whitelisted and doesn't have HEDGER_ROLE
         assertFalse(hedgerPool.isWhitelistedHedger(hedger1));
@@ -2767,7 +2769,7 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_RemoveHedger_NotWhitelisted_Revert() public {
         vm.prank(governance);
         vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
-        hedgerPool.removeHedger(hedger1);
+        hedgerPool.setHedgerWhitelist(hedger1, false);
     }
 
     /**
@@ -2785,7 +2787,7 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_RemoveHedger_ZeroAddress_Revert() public {
         vm.prank(governance);
         vm.expectRevert(HedgerPoolErrorLibrary.InvalidAddress.selector);
-        hedgerPool.removeHedger(address(0));
+        hedgerPool.setHedgerWhitelist(address(0), false);
     }
 
     /**
@@ -2803,7 +2805,7 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_RemoveHedger_NonGovernance_Revert() public {
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.removeHedger(hedger2);
+        hedgerPool.setHedgerWhitelist(hedger2, false);
     }
 
     /**
@@ -3015,7 +3017,7 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_WhitelistSelf_Success() public {
         // Governance can whitelist itself
         vm.prank(governance);
-        hedgerPool.whitelistHedger(governance);
+        hedgerPool.setHedgerWhitelist(governance, true);
         
         assertTrue(hedgerPool.isWhitelistedHedger(governance));
         assertTrue(hedgerPool.hasRole(hedgerPool.HEDGER_ROLE(), governance));
@@ -3036,11 +3038,11 @@ contract HedgerPoolTestSuite is Test {
     function test_HedgerWhitelist_RemoveSelf_Success() public {
         // Whitelist governance first
         vm.prank(governance);
-        hedgerPool.whitelistHedger(governance);
+        hedgerPool.setHedgerWhitelist(governance, true);
         
         // Remove itself
         vm.prank(governance);
-        hedgerPool.removeHedger(governance);
+        hedgerPool.setHedgerWhitelist(governance, false);
         
         assertFalse(hedgerPool.isWhitelistedHedger(governance));
         assertFalse(hedgerPool.hasRole(hedgerPool.HEDGER_ROLE(), governance));
@@ -3475,7 +3477,7 @@ contract HedgerPoolPositionClosureTest is Test {
         
         // Whitelist hedger
         vm.startPrank(admin);
-        hedgerPool.whitelistHedger(hedger);
+        hedgerPool.setHedgerWhitelist(hedger, true);
         vm.stopPrank();
     }
     
@@ -3601,7 +3603,7 @@ contract HedgerPoolPositionClosureTest is Test {
         
         // Whitelist hedger
         vm.startPrank(admin);
-        hedgerPool2.whitelistHedger(hedger);
+        hedgerPool2.setHedgerWhitelist(hedger, true);
         vm.stopPrank();
         
         // Setup allowance for the new HedgerPool

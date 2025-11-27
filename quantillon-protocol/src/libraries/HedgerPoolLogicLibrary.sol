@@ -130,6 +130,8 @@ library HedgerPoolLogicLibrary {
      * @param entryPrice Entry price (18 decimals)
      * @param currentPrice Current price (18 decimals)
      * @param minMarginRatio Minimum margin ratio in basis points
+     * @param realizedPnL Realized P&L (6 decimals)
+     * @param qeuroBacked Exact QEURO amount backed (18 decimals)
      * @return capacity Additional USDC exposure the position can absorb
      */
     function calculateCollateralCapacity(
@@ -138,7 +140,8 @@ library HedgerPoolLogicLibrary {
         uint256 entryPrice,
         uint256 currentPrice,
         uint256 minMarginRatio,
-        int128 realizedPnL
+        int128 realizedPnL,
+        uint128 qeuroBacked
     ) internal pure returns (uint256) {
         if (currentPrice == 0 || minMarginRatio == 0) return 0;
         
@@ -149,13 +152,9 @@ library HedgerPoolLogicLibrary {
         int256 effectiveMargin = int256(margin) + unrealizedPnL + int256(realizedPnL);
         if (effectiveMargin <= 0) return 0;
         
-        // Calculate minted exposure at current price
-        uint256 mintedExposure = filledVolume;
-        if (entryPrice > 0 && filledVolume > 0) {
-            mintedExposure = filledVolume.mulDiv(currentPrice, entryPrice);
-        }
-        
-        // Required margin = mintedExposure * minMarginRatio / 10000
+        // Required margin is based on exact QEURO backed * current price
+        // mintedExposure = qeuroBacked * currentPrice / 1e18 (convert to 6 decimals)
+        uint256 mintedExposure = uint256(qeuroBacked).mulDiv(currentPrice, 1e30);
         uint256 requiredMargin = mintedExposure.mulDiv(minMarginRatio, 10000);
         
         // Available collateral = effectiveMargin - requiredMargin

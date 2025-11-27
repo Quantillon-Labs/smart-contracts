@@ -503,7 +503,7 @@ contract QuantillonVault is
 
         // Inform HedgerPool after vault accounting is updated
         // NOTE: Hedgers must receive the gross mint size so their filled volume matches user-facing flow
-        _syncMintWithHedgers(usdcAmount, eurUsdPrice);
+        _syncMintWithHedgers(usdcAmount, eurUsdPrice, qeuroToMint);
 
         // INTERACTIONS - All external calls after state updates
         // Transfer full amount to vault
@@ -591,7 +591,7 @@ contract QuantillonVault is
         }
         
         // Inform HedgerPool after internal state is updated
-        _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice);
+        _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice, qeuroAmount);
 
         // Apply protocol fees
         uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
@@ -1309,11 +1309,11 @@ contract QuantillonVault is
      * @custom:access Internal helper
      * @custom:oracle Not applicable
      */
-    function _syncMintWithHedgers(uint256 amount, uint256 fillPrice) internal {
+    function _syncMintWithHedgers(uint256 amount, uint256 fillPrice, uint256 qeuroAmount) internal {
         if (amount == 0) {
             return;
         }
-        try hedgerPool.recordUserMint(amount, fillPrice) {} catch {}
+        try hedgerPool.recordUserMint(amount, fillPrice, qeuroAmount) {} catch {}
     }
 
     /**
@@ -1329,11 +1329,11 @@ contract QuantillonVault is
      * @custom:access Internal helper
      * @custom:oracle Not applicable
      */
-    function _syncRedeemWithHedgers(uint256 amount, uint256 redeemPrice) internal {
+    function _syncRedeemWithHedgers(uint256 amount, uint256 redeemPrice, uint256 qeuroAmount) internal {
         if (amount == 0) {
             return;
         }
-        try hedgerPool.recordUserRedeem(amount, redeemPrice) {} catch {}
+        try hedgerPool.recordUserRedeem(amount, redeemPrice, qeuroAmount) {} catch {}
     }
 
     // =============================================================================

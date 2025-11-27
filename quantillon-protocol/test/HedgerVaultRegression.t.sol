@@ -208,7 +208,7 @@ contract HedgerVaultRegressionTest is Test {
         
         // Whitelist hedger
         vm.prank(admin);
-        hedgerPool.whitelistHedger(hedger);
+        hedgerPool.setHedgerWhitelist(hedger, true);
     }
     
     // =============================================================================
@@ -354,7 +354,7 @@ contract HedgerVaultRegressionTest is Test {
             ,
             ,
             uint16 positionLeverageRaw,
-            bool isActive
+            bool isActive,
         ) = hedgerPool.positions(positionId);
         
         assertEq(owner, hedger, "Position owner should match");
@@ -439,7 +439,7 @@ contract HedgerVaultRegressionTest is Test {
         assertGt(finalVaultUsdc, initialVaultUsdc, "Vault USDC should increase after margin addition");
         
         // Verify position margin increased
-        (, , , uint96 marginRaw, , , , , , , ) = hedgerPool.positions(positionId);
+        (, , , uint96 marginRaw, , , , , , , , ) = hedgerPool.positions(positionId);
         assertGt(uint256(marginRaw), initialUsdcAmount, "Position margin should increase");
     }
     
@@ -634,7 +634,7 @@ contract HedgerVaultRegressionTest is Test {
         
         // Whitelist hedger
         vm.prank(admin);
-        hedgerPool.whitelistHedger(newHedger);
+        hedgerPool.setHedgerWhitelist(newHedger, true);
         
         // Whitelisted hedger should succeed
         vm.prank(newHedger);

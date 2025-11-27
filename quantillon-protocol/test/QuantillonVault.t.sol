@@ -2095,9 +2095,10 @@ contract MockHedgerPool {
      * @custom:access Public
      * @custom:oracle Not applicable
      */
-    function recordUserMint(uint256 amount, uint256 fillPrice) external pure {
+    function recordUserMint(uint256 amount, uint256 fillPrice, uint256 qeuroAmount) external pure {
         amount;
         fillPrice;
+        qeuroAmount;
     }
 
     /**
@@ -2113,7 +2114,9 @@ contract MockHedgerPool {
      * @custom:access Public
      * @custom:oracle Not applicable
      */
-    function recordUserRedeem(uint256 amount) external pure {
+    function recordUserRedeem(uint256 amount, uint256 redeemPrice, uint256 qeuroAmount) external pure {
         amount;
+        redeemPrice;
+        qeuroAmount;
     }
 }

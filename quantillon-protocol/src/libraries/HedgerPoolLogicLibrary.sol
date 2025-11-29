@@ -90,11 +90,11 @@ library HedgerPoolLogicLibrary {
 
     /**
      * @notice Calculates profit or loss for a hedge position
-     * @dev Computes PnL based on price movement from entry to current price
-     * @param tradedVolume Size of the filled position in USDC
-     * @param entryPrice Price at which the position was opened
-     * @param currentPrice Current market price
-     * @return Profit (positive) or loss (negative) amount
+     * @dev Computes PnL using new formula: UnrealizedP&L = FilledVolume - QEUROBacked * OracleCurrentPrice
+     * @param filledVolume Size of the filled position in USDC (6 decimals)
+     * @param qeuroBacked Exact QEURO amount backed by this position (18 decimals)
+     * @param currentPrice Current market price (18 decimals)
+     * @return Profit (positive) or loss (negative) amount in USDC (6 decimals)
      * @custom:security No security validations required for pure function
      * @custom:validation None required for pure function
      * @custom:state-changes None (pure function)
@@ -105,21 +105,29 @@ library HedgerPoolLogicLibrary {
      * @custom:oracle Uses provided currentPrice parameter
      */
     function calculatePnL(
-        uint256 tradedVolume,
-        uint256 entryPrice,
+        uint256 filledVolume,
+        uint256 qeuroBacked,
         uint256 currentPrice
     ) internal pure returns (int256) {
-        if (tradedVolume == 0 || entryPrice == currentPrice || entryPrice == 0) {
+        if (filledVolume == 0 || currentPrice == 0) {
             return 0;
         }
 
-        int256 priceChange = int256(entryPrice) - int256(currentPrice);
-        uint256 absPriceChange = uint256(priceChange >= 0 ? priceChange : -priceChange);
-        // P&L formula: (tradedVolume * priceChange) / entryPrice
-        // tradedVolume is in 6 decimals (USDC), entryPrice and priceChange are in 18 decimals
-        // Result is in 6 decimals (USDC)
-        uint256 intermediate = tradedVolume.mulDiv(absPriceChange, entryPrice);
-        return priceChange >= 0 ? int256(intermediate) : -int256(intermediate);
+        // Formula: UnrealizedP&L = FilledVolume - QEUROBacked * OracleCurrentPrice
+        // filledVolume is in 6 decimals (USDC)
+        // qeuroBacked is in 18 decimals (QEURO)
+        // currentPrice is in 18 decimals (USD/EUR)
+        // qeuroBacked * currentPrice gives USDC value in 36 decimals
+        // Divide by 1e30 to convert to 6 decimals (USDC)
+        uint256 qeuroValueInUSDC = qeuroBacked.mulDiv(currentPrice, 1e30);
+        
+        // Calculate P&L: filledVolume - qeuroValueInUSDC
+        // Both are in 6 decimals, result is in 6 decimals
+        if (filledVolume >= qeuroValueInUSDC) {
+            return int256(filledVolume - qeuroValueInUSDC);
+        } else {
+            return -int256(qeuroValueInUSDC - filledVolume);
+        }
     }
 
     /**
@@ -145,11 +153,12 @@ library HedgerPoolLogicLibrary {
     ) internal pure returns (uint256) {
         if (currentPrice == 0 || minMarginRatio == 0) return 0;
         
-        // Calculate unrealized P&L
-        int256 unrealizedPnL = calculatePnL(filledVolume, entryPrice, currentPrice);
+        // Calculate unrealized P&L using new formula
+        int256 unrealizedPnL = calculatePnL(filledVolume, uint256(qeuroBacked), currentPrice);
         
-        // Effective margin = margin + unrealized P&L + realized P&L
-        int256 effectiveMargin = int256(margin) + unrealizedPnL + int256(realizedPnL);
+        // Effective margin = margin + unrealized P&L only
+        // Realized P&L is already locked in and should NOT be included in available collateral
+        int256 effectiveMargin = int256(margin) + unrealizedPnL;
         if (effectiveMargin <= 0) return 0;
         
         // Required margin is based on exact QEURO backed * current price
@@ -188,13 +197,14 @@ library HedgerPoolLogicLibrary {
         uint256 filledVolume,
         uint256 entryPrice,
         uint256 currentPrice,
-        uint256 liquidationThreshold
+        uint256 liquidationThreshold,
+        uint128 qeuroBacked
     ) external pure returns (bool) {
         if (filledVolume == 0) {
             return false;
         }
 
-        int256 pnl = calculatePnL(filledVolume, entryPrice, currentPrice);
+        int256 pnl = calculatePnL(filledVolume, uint256(qeuroBacked), currentPrice);
         int256 effectiveMargin = int256(margin) + pnl;
         
         if (effectiveMargin <= 0) return true;

@@ -362,13 +362,16 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
-        uint256 cachedFilledVolume = _unwindFilledVolume(positionId, position);
-        _validatePositionClosureSafety(position.margin);
-
-        // Cache position data before state changes for event emission
+        // Cache position data before state changes
+        uint256 cachedFilledVolume = uint256(position.filledVolume);
+        uint256 cachedQeuroBacked = uint256(position.qeuroBacked);
         uint256 cachedPositionSize = uint256(position.positionSize);
         uint256 cachedEntryPrice = uint256(position.entryPrice);
         uint256 cachedMargin = uint256(position.margin);
+        
+        // Unwind filled volume (this will reset qeuroBacked to 0)
+        _unwindFilledVolume(positionId, position);
+        _validatePositionClosureSafety(position.margin);
 
         // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
         _finalizePosition(
@@ -389,7 +392,7 @@ contract HedgerPool is
         uint256 currentPrice = _getValidOraclePrice();
         pnl = HedgerPoolLogicLibrary.calculatePnL(
             cachedFilledVolume,
-            cachedEntryPrice,
+            cachedQeuroBacked,
             currentPrice
         );
 
@@ -702,7 +705,8 @@ contract HedgerPool is
         uint256 currentPrice = _getValidOraclePrice();
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             uint256(position.margin), cachedFilledVolume, 
-            uint256(position.entryPrice), currentPrice, coreParams.liquidationThreshold
+            uint256(position.entryPrice), currentPrice, coreParams.liquidationThreshold,
+            position.qeuroBacked
         );
         
         if (!liquidatable) revert HedgerPoolErrorLibrary.PositionNotLiquidatable();
@@ -796,7 +800,8 @@ contract HedgerPool is
         for (uint256 i; i < activePositions.length; ++i) {
             HedgePosition storage p = positions[activePositions[i]];
             if (!p.isActive) continue;
-            int256 e = int256(uint256(p.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(p.filledVolume), uint256(p.entryPrice), price) + int256(p.realizedPnL);
+            // Only consider unrealized P&L for effective collateral, not realized P&L (which is already locked in)
+            int256 e = int256(uint256(p.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(p.filledVolume), uint256(p.qeuroBacked), price);
             if (e > 0) t += uint256(e);
         }
     }
@@ -1197,7 +1202,8 @@ contract HedgerPool is
     /// @notice Checks if position is healthy enough for new fills
     function _isPositionHealthyForFill(HedgePosition storage p, uint256 price) internal view returns (bool) {
         if (p.filledVolume == 0) return true;
-        int256 eff = int256(uint256(p.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(p.filledVolume), uint256(p.entryPrice), price) + int256(p.realizedPnL);
+        // Only consider unrealized P&L for health check, not realized P&L (which is already locked in)
+        int256 eff = int256(uint256(p.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(p.filledVolume), uint256(p.qeuroBacked), price);
         return eff > 0 && uint256(eff).mulDiv(10000, uint256(p.filledVolume)) >= coreParams.minMarginRatio;
     }
 
@@ -1303,9 +1309,13 @@ contract HedgerPool is
             if (share > filled) share = filled;
             if (share == 0) continue;
 
-            _processRedeem(posId, pos, share, filled, redeemPrice);
-            // Decrease qeuroBacked proportionally
+            // Calculate qeuroShare for this position
             uint256 qeuroShare = qeuroAmount.mulDiv(share, usdcAmount);
+            
+            // Process redemption with new realized P&L formula
+            _processRedeem(posId, pos, share, filled, redeemPrice, qeuroShare);
+            
+            // Decrease qeuroBacked proportionally
             pos.qeuroBacked = qeuroShare <= uint256(pos.qeuroBacked) ? pos.qeuroBacked - uint128(qeuroShare) : 0;
             released += share;
         }
@@ -1349,25 +1359,33 @@ contract HedgerPool is
         pos.entryPrice = uint96((uint256(pos.filledVolume) * old * price) / (prevFilled * price + delta * old));
     }
 
-    /// @notice Processes redemption for a single position - calculates realized P&L to conserve total P&L
-    function _processRedeem(uint256 posId, HedgePosition storage pos, uint256 share, uint256 filledBefore, uint256 price) internal {
+    /// @notice Processes redemption for a single position - calculates realized P&L
+    /// @dev New formula: RealizedP&L = QEUROQuantitySold * (entryPrice - OracleCurrentPrice)
+    ///      Hedgers are SHORT EUR, so they profit when EUR price decreases
+    function _processRedeem(uint256 posId, HedgePosition storage pos, uint256 share, uint256 filledBefore, uint256 price, uint256 qeuroAmount) internal {
         uint256 entry = uint256(pos.entryPrice);
-        if (entry > 0 && filledBefore > 0 && share > 0) {
-            // Calculate unrealized P&L before redemption
-            int256 pnlBefore = entry >= price 
-                ? int256(filledBefore.mulDiv(entry - price, entry))
-                : -int256(filledBefore.mulDiv(price - entry, entry));
+        if (entry > 0 && qeuroAmount > 0) {
+            // New formula: RealizedP&L = QEUROQuantitySold * (entryPrice - OracleCurrentPrice)
+            // Hedgers are SHORT EUR, so they profit when price goes DOWN (entryPrice > currentPrice)
+            // qeuroAmount is in 18 decimals (QEURO)
+            // price and entry are in 18 decimals (USD/EUR)
+            // Calculate price difference (entry - price for short position)
+            int256 priceDiff = int256(entry) - int256(price);
             
-            // Calculate unrealized P&L after redemption (entry price stays same, filled decreases)
-            uint256 filledAfter = filledBefore - share;
-            int256 pnlAfter = filledAfter > 0 
-                ? (entry >= price 
-                    ? int256(filledAfter.mulDiv(entry - price, entry))
-                    : -int256(filledAfter.mulDiv(price - entry, entry)))
-                : int256(0);
+            // Calculate realized P&L: qeuroAmount * priceDiff
+            // qeuroAmount * priceDiff gives result in 36 decimals
+            // Use mulDiv to divide by 1e18, then divide by 1e12 to convert to 6 decimals
+            // Result: (qeuroAmount * priceDiff) / 1e30 = realized P&L in USDC (6 decimals)
+            int256 realizedDelta;
+            if (priceDiff >= 0) {
+                uint256 pnl18 = qeuroAmount.mulDiv(uint256(priceDiff), 1e18);
+                realizedDelta = int256(pnl18 / 1e12); // Convert from 18 to 6 decimals
+            } else {
+                uint256 absPriceDiff = uint256(-priceDiff);
+                uint256 pnl18 = qeuroAmount.mulDiv(absPriceDiff, 1e18);
+                realizedDelta = -int256(pnl18 / 1e12); // Convert from 18 to 6 decimals
+            }
             
-            // Realized P&L = difference (conserves total P&L)
-            int256 realizedDelta = pnlBefore - pnlAfter;
             if (realizedDelta != 0) {
                 pos.realizedPnL += int128(realizedDelta);
                 emit RealizedPnLRecorded(posId, realizedDelta, int256(pos.realizedPnL));

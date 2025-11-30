@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-orange.svg)](https://getfoundry.sh/)
-[![Tests](https://img.shields.io/badge/Tests-678%20passed%20%7C%200%20failed-green.svg)](https://github.com/quantillon/smart-contracts)
+[![Tests](https://img.shields.io/badge/Tests-807%20passed%20%7C%200%20failed-green.svg)](https://github.com/quantillon/smart-contracts)
 [![Security](https://img.shields.io/badge/Security-0%20Critical%20%7C%200%20Medium-green.svg)](https://github.com/quantillon/smart-contracts)
 [![Security](https://img.shields.io/badge/Environment-Secure-green.svg)](https://github.com/quantillon)
 
@@ -12,6 +12,15 @@
 ## 📖 Overview
 
 Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability.
+
+### Recent Improvements
+
+- ✅ **807 tests passing** - Comprehensive test coverage with 100% pass rate
+- ✅ **Code optimization** - Consolidated error libraries and removed duplicate code
+- ✅ **Gas efficiency** - Custom errors replace `require()` strings for better gas usage
+- ✅ **Stack optimization** - Fixed stack too deep issues through struct-based refactoring
+- ✅ **Validation consolidation** - Centralized validation functions in `CommonValidationLibrary`
+- ✅ **Error standardization** - Unified error handling across all contracts
 
 ## 📚 Documentation
 
@@ -33,6 +42,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **Yield-Bearing Wrapper**: stQEURO token that automatically accrues yield for holders
 - **Aave Integration**: Automated yield farming through Aave protocol integration
 - **Comprehensive Security**: Role-based access control, reentrancy protection, and emergency pause mechanisms
+- **Optimized Codebase**: Consolidated error libraries, deduplicated validation functions, and gas-optimized error handling
 - **🔐 Secure Environment Variables**: Enterprise-grade security with standard .env files
 
 ## 🏗️ Architecture
@@ -207,8 +217,10 @@ make validate-natspec
 - **Role-Based Access Control**: Granular permissions for different operations
 - **Reentrancy Protection**: Comprehensive reentrancy guards
 - **Emergency Pause**: Circuit breakers for critical functions
-- **Input Validation**: Extensive parameter validation
+- **Input Validation**: Extensive parameter validation with centralized libraries
 - **Overflow Protection**: Safe math operations throughout
+- **Flash Loan Protection**: Balance checks to prevent flash loan attacks
+- **Custom Errors**: Gas-efficient error handling with clear error messages
 - **Secret Handling**: Environment variables loaded from `.env` during development
 
 ## 📊 Development
@@ -238,9 +250,12 @@ make gas-analysis
 ### Code Quality
 
 - **NatSpec Documentation**: Comprehensive documentation for all functions
-- **Test Coverage**: Extensive test suite with 678+ tests
+- **Test Coverage**: Extensive test suite with 807+ tests (100% passing)
 - **Security Analysis**: Regular security audits and static analysis
 - **Gas Optimization**: Optimized for deployment size and execution cost
+- **Error Handling**: Custom errors for gas efficiency and better error messages
+- **Code Deduplication**: Consolidated validation functions and error libraries
+- **Stack Optimization**: Fixed stack too deep issues through struct-based refactoring
 
 ## 🤝 Contributing
 
@@ -253,10 +268,13 @@ make gas-analysis
 ### Development Guidelines
 
 - Follow Solidity style guide
-- Write comprehensive tests
+- Write comprehensive tests (aim for 100% coverage)
 - Update documentation
 - Ensure security best practices
 - Protect secrets; never commit `.env`
+- Use custom errors instead of `require()` strings for gas efficiency
+- Consolidate duplicate code into libraries
+- Follow the centralized error library pattern (`CommonErrorLibrary`)
 
 ## 📄 License
 

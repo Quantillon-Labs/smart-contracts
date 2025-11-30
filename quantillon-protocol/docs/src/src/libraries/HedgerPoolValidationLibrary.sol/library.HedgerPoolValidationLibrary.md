@@ -527,40 +527,6 @@ function validatePendingRewards(uint256 newRewards, uint256 maxRewards) internal
 |`maxRewards`|`uint256`|Maximum allowed pending rewards|
 
 
-### validatePositiveAmount
-
-Validates that an amount is positive (greater than zero)
-
-*Essential for token amounts, deposits, withdrawals, etc.*
-
-**Notes:**
-- Prevents zero-amount operations that could cause issues
-
-- Ensures amount is positive for meaningful operations
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InvalidAmount if amount is zero
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
-
-
-```solidity
-function validatePositiveAmount(uint256 amount) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|The amount to validate|
-
-
 ### validateFee
 
 Validates fee amount against maximum allowed fee

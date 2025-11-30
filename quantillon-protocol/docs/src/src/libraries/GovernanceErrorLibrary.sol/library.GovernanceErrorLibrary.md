@@ -21,34 +21,10 @@ team@quantillon.money
 error InsufficientVotingPower();
 ```
 
-### VotingPeriodTooShort
-
-```solidity
-error VotingPeriodTooShort();
-```
-
-### VotingPeriodTooLong
-
-```solidity
-error VotingPeriodTooLong();
-```
-
 ### ProposalNotFound
 
 ```solidity
 error ProposalNotFound();
-```
-
-### ProposalAlreadyExecuted
-
-```solidity
-error ProposalAlreadyExecuted();
-```
-
-### ProposalAlreadyCanceled
-
-```solidity
-error ProposalAlreadyCanceled();
 ```
 
 ### VotingNotActive
@@ -57,64 +33,16 @@ error ProposalAlreadyCanceled();
 error VotingNotActive();
 ```
 
-### AlreadyVoted
-
-```solidity
-error AlreadyVoted();
-```
-
-### QuorumNotMet
-
-```solidity
-error QuorumNotMet();
-```
-
 ### ProposalThresholdNotMet
 
 ```solidity
 error ProposalThresholdNotMet();
 ```
 
-### VotingNotStarted
-
-```solidity
-error VotingNotStarted();
-```
-
-### VotingEnded
-
-```solidity
-error VotingEnded();
-```
-
-### NoVotingPower
-
-```solidity
-error NoVotingPower();
-```
-
-### VotingNotEnded
-
-```solidity
-error VotingNotEnded();
-```
-
-### ProposalFailed
-
-```solidity
-error ProposalFailed();
-```
-
 ### ProposalExecutionFailed
 
 ```solidity
 error ProposalExecutionFailed();
-```
-
-### ProposalCanceled
-
-```solidity
-error ProposalCanceled();
 ```
 
 ### ProposalAlreadyScheduled
@@ -157,35 +85,5 @@ error ExpiredDeadline();
 
 ```solidity
 error InvalidRebalancing();
-```
-
-### RateLimitTooHigh
-
-```solidity
-error RateLimitTooHigh();
-```
-
-### InvalidAmount
-
-```solidity
-error InvalidAmount();
-```
-
-### InvalidTime
-
-```solidity
-error InvalidTime();
-```
-
-### LockTimeTooShort
-
-```solidity
-error LockTimeTooShort();
-```
-
-### LockTimeTooLong
-
-```solidity
-error LockTimeTooLong();
 ```
 

@@ -12,6 +12,7 @@ import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {IHedgerPool} from "../src/interfaces/IHedgerPool.sol";
 import {IUserPool} from "../src/interfaces/IUserPool.sol";
 import {VaultErrorLibrary} from "../src/libraries/VaultErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
  * @title MockToken
@@ -391,7 +392,7 @@ contract QuantillonVaultTestSuite is Test {
             address(0x999) // mock feeCollector address
         );
         
-        vm.expectRevert("Vault: Admin cannot be zero");
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero QEURO
@@ -408,7 +409,7 @@ contract QuantillonVaultTestSuite is Test {
             address(0x999) // mock feeCollector address
         );
         
-        vm.expectRevert("Vault: QEURO cannot be zero");
+        vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(newImplementation2), initData2);
         
         // Test with zero USDC
@@ -425,7 +426,7 @@ contract QuantillonVaultTestSuite is Test {
             address(0x999) // mock feeCollector address
         );
         
-        vm.expectRevert("Vault: USDC cannot be zero");
+        vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(newImplementation3), initData3);
         
         // Test with zero oracle
@@ -442,7 +443,7 @@ contract QuantillonVaultTestSuite is Test {
             address(0x999) // mock feeCollector address
         );
         
-        vm.expectRevert("Vault: Oracle cannot be zero");
+        vm.expectRevert(CommonErrorLibrary.InvalidOracle.selector);
         new ERC1967Proxy(address(newImplementation4), initData4);
     }
     
@@ -512,7 +513,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Mint_ZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert("Vault: Amount must be positive");
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         vault.mintQEURO(0, 1000 * 1e18);
     }
     
@@ -533,7 +534,7 @@ contract QuantillonVaultTestSuite is Test {
         uint256 minQeuroOut = 10000 * 1e18; // Very high minimum (impossible to meet)
         
         vm.prank(user1);
-        vm.expectRevert("Vault: Insufficient output amount");
+        vm.expectRevert(CommonErrorLibrary.ExcessiveSlippage.selector);
         vault.mintQEURO(usdcAmount, minQeuroOut);
     }
     
@@ -558,7 +559,7 @@ contract QuantillonVaultTestSuite is Test {
         );
         
         vm.prank(user1);
-        vm.expectRevert("Vault: Invalid EUR/USD price");
+        vm.expectRevert(CommonErrorLibrary.InvalidOraclePrice.selector);
         vault.mintQEURO(MINT_AMOUNT, 100 * 1e18);
     }
     
@@ -618,7 +619,7 @@ contract QuantillonVaultTestSuite is Test {
         
         // Try to mint more - should revert due to lack of collateralization
         vm.prank(user2);
-        vm.expectRevert("Vault: Minting not allowed - insufficient collateralization ratio");
+        vm.expectRevert(CommonErrorLibrary.InsufficientCollateralization.selector);
         vault.mintQEURO(MINT_AMOUNT, 0);
     }
 
@@ -731,7 +732,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Redeem_ZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert("Vault: Amount must be positive");
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         vault.redeemQEURO(0, 1000 * 1e6);
     }
     
@@ -756,7 +757,7 @@ contract QuantillonVaultTestSuite is Test {
         uint256 minUsdcOut = 10000 * 1e6; // Very high minimum (impossible to meet)
         
         vm.prank(user1);
-        vm.expectRevert("Vault: Insufficient output amount");
+        vm.expectRevert(CommonErrorLibrary.ExcessiveSlippage.selector);
         vault.redeemQEURO(qeuroAmount, minUsdcOut);
     }
     
@@ -781,7 +782,7 @@ contract QuantillonVaultTestSuite is Test {
         );
         
         vm.prank(user1);
-        vm.expectRevert("Vault: Insufficient USDC reserves");
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         vault.redeemQEURO(REDEEM_AMOUNT, 100 * 1e6);
     }
     
@@ -974,11 +975,11 @@ contract QuantillonVaultTestSuite is Test {
         uint256 tooHighFee = 6e16; // 6% (above 5% limit)
         
         vm.prank(governance);
-        vm.expectRevert("Vault: Mint fee too high (max 5%)");
+        vm.expectRevert(VaultErrorLibrary.FeeTooHigh.selector);
         vault.updateParameters(tooHighFee, 1e15);
         
         vm.prank(governance);
-        vm.expectRevert("Vault: Redemption fee too high (max 5%)");
+        vm.expectRevert(VaultErrorLibrary.FeeTooHigh.selector);
         vault.updateParameters(1e15, tooHighFee);
     }
     
@@ -1035,7 +1036,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Governance_UpdateOracleZeroAddress_Revert() public {
         vm.prank(governance);
-        vm.expectRevert("Vault: Oracle cannot be zero");
+        vm.expectRevert(CommonErrorLibrary.InvalidOracle.selector);
         vault.updateOracle(address(0));
     }
 
@@ -1099,7 +1100,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Governance_UpdateHedgerPoolZeroAddress_Revert() public {
         vm.prank(governance);
-        vm.expectRevert("Vault: HedgerPool cannot be zero");
+        vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
         vault.updateHedgerPool(address(0));
     }
     
@@ -1166,7 +1167,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Governance_WithdrawFeesZeroRecipient_Revert() public {
         vm.prank(governance);
-        vm.expectRevert("Vault: Invalid recipient");
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         vault.withdrawProtocolFees(address(0));
     }
     
@@ -1195,7 +1196,7 @@ contract QuantillonVaultTestSuite is Test {
         );
         
         vm.prank(governance);
-        vm.expectRevert("Vault: No fees to withdraw");
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         vault.withdrawProtocolFees(user2);
     }
     
@@ -1352,7 +1353,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(VaultErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(CommonErrorLibrary.CannotRecoverOwnToken.selector);
         vault.recoverToken(address(vault), 1000 * 1e18);
     }
     
@@ -1493,7 +1494,7 @@ contract QuantillonVaultTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoETHAvailable_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(VaultErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
         vault.recoverETH();
     }
     
@@ -2067,6 +2068,7 @@ contract MockHedgerPool {
     /**
      * @notice Returns total effective hedger collateral (deposits + P&L)
      * @dev Mock implementation that returns the set effective collateral value
+     *      Note: currentPrice parameter is required by interface but ignored in this mock
      * @return Total effective collateral in USDC (6 decimals)
      * @custom:security Test mock only
      * @custom:validation None
@@ -2077,7 +2079,7 @@ contract MockHedgerPool {
      * @custom:access Public
      * @custom:oracle Not applicable
      */
-    function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external view returns (uint256) {
+    function getTotalEffectiveHedgerCollateral(uint256 /* currentPrice */) external view returns (uint256) {
         // Price parameter is ignored in mock, but required by interface
         return totalEffectiveCollateral;
     }
@@ -2085,7 +2087,9 @@ contract MockHedgerPool {
     /**
      * @notice Mock implementation to satisfy HedgerPool interface for mints
      * @dev Intentionally noop in tests
-     * @param amount Ignored mint amount
+     * @param amount Ignored mint amount (6 decimals)
+     * @param fillPrice Ignored fill price (18 decimals)
+     * @param qeuroAmount Ignored QEURO amount (18 decimals)
      * @custom:security Test mock only
      * @custom:validation None
      * @custom:state-changes None
@@ -2104,7 +2108,9 @@ contract MockHedgerPool {
     /**
      * @notice Mock implementation to satisfy HedgerPool interface for redeems
      * @dev Intentionally noop in tests
-     * @param amount Ignored redeem amount
+     * @param amount Ignored redeem amount (6 decimals)
+     * @param redeemPrice Ignored redeem price (18 decimals)
+     * @param qeuroAmount Ignored QEURO amount (18 decimals)
      * @custom:security Test mock only
      * @custom:validation None
      * @custom:state-changes None

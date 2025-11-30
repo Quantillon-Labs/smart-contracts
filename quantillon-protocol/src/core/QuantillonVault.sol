@@ -13,7 +13,9 @@ import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
+import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {VaultErrorLibrary} from "../libraries/VaultErrorLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 
 // Internal interfaces of the Quantillon protocol
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
@@ -24,6 +26,7 @@ import {FeeCollector} from "./FeeCollector.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
+import {PriceValidationLibrary} from "../libraries/PriceValidationLibrary.sol";
 
 /**
  * @title QuantillonVault
@@ -309,10 +312,9 @@ contract QuantillonVault is
         uint256 balanceBefore = usdc.balanceOf(address(this));
         _;
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        require(
-            FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0),
-            "Flash loan attack detected"
-        );
+        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0)) {
+            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
+        }
     }
 
     // =============================================================================
@@ -373,13 +375,13 @@ contract QuantillonVault is
         address _feeCollector
     ) public initializer {
         // Validation of critical parameters
-        require(admin != address(0), "Vault: Admin cannot be zero");
-        require(_qeuro != address(0), "Vault: QEURO cannot be zero");
-        require(_usdc != address(0), "Vault: USDC cannot be zero");
-        require(_oracle != address(0), "Vault: Oracle cannot be zero");
+        if (admin == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_qeuro == address(0)) revert CommonErrorLibrary.InvalidToken();
+        if (_usdc == address(0)) revert CommonErrorLibrary.InvalidToken();
+        if (_oracle == address(0)) revert CommonErrorLibrary.InvalidOracle();
         // Note: HedgerPool and UserPool can be zero during initialization, but must be set before minting
-        require(_timelock != address(0), "Vault: Timelock cannot be zero");
-        require(_feeCollector != address(0), "Vault: FeeCollector cannot be zero");
+        if (_timelock == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
 
         // Initialization of security modules
         __ReentrancyGuard_init();     // Reentrancy protection
@@ -455,55 +457,54 @@ contract QuantillonVault is
         uint256 minQeuroOut
     ) external nonReentrant whenNotPaused flashLoanProtection {
         // CHECKS
-        require(usdcAmount > 0, "Vault: Amount must be positive");
-        require(canMint(), "Vault: Minting not allowed - insufficient collateralization ratio");
-
-        // Get oracle price and validate - cache result to prevent reentrancy
+        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
+        
+        // Cache all oracle calls at start to avoid reentrancy issues
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "Vault: Invalid EUR/USD price");
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        
+        // Check if we can mint (this also calls oracle internally, but we've already cached the price)
+        if (!canMint()) revert CommonErrorLibrary.InsufficientCollateralization();
         
         // Price deviation check using cached price
-        // Only check deviation if enough blocks have passed since last update
-        // This allows gradual price movements while still protecting against sudden oracle manipulation
-        if (lastValidEurUsdPrice > 0 && block.number > lastPriceUpdateBlock + MIN_BLOCKS_BETWEEN_UPDATES) {
-            uint256 priceDiff = eurUsdPrice > lastValidEurUsdPrice ? 
-                eurUsdPrice - lastValidEurUsdPrice : lastValidEurUsdPrice - eurUsdPrice;
-            uint256 deviationBps = priceDiff * 10000 / lastValidEurUsdPrice;
-            
-            if (deviationBps > MAX_PRICE_DEVIATION) {
-                emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
-                revert("Vault: Excessive price deviation");
-            }
+        (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
+            eurUsdPrice,
+            lastValidEurUsdPrice,
+            MAX_PRICE_DEVIATION,
+            lastPriceUpdateBlock,
+            MIN_BLOCKS_BETWEEN_UPDATES
+        );
+        if (shouldRevert) {
+            emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
+            revert CommonErrorLibrary.ExcessiveSlippage();
         }
-        
-        // Update price cache before proceeding (after deviation check)
-        // This ensures the cached price is current for subsequent operations
-        lastPriceUpdateBlock = block.number;
-        lastValidEurUsdPrice = eurUsdPrice;
 
         // Calculate mint fee and QEURO amount using validated oracle price
         uint256 fee = usdcAmount.mulDiv(mintFee, 1e18);
         uint256 netAmount = usdcAmount - fee;
         uint256 qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
-        require(qeuroToMint >= minQeuroOut, "Vault: Insufficient output amount");
+        if (qeuroToMint < minQeuroOut) revert CommonErrorLibrary.ExcessiveSlippage();
 
-        require(address(hedgerPool) != address(0), "Vault: HedgerPool not set");
+        if (address(hedgerPool) == address(0)) revert CommonErrorLibrary.InvalidVault();
 
-        // Price cache already updated above (after deviation check)
-        // slither-disable-next-line reentrancy-benign
+        // EFFECTS - Update all state before external calls
+        // Update price cache
+        lastPriceUpdateBlock = block.number;
+        lastValidEurUsdPrice = eurUsdPrice;
         _updatePriceTimestamp(isValid);
 
-        // EFFECTS - update vault accounting before external hedger interactions
+        // Update vault accounting
         unchecked {
-            // slither-disable-next-line reentrancy-benign
-            totalUsdcHeld += netAmount;  // ✅ FIXED: Add net amount after fee, not full amount
-            // slither-disable-next-line reentrancy-benign
+            totalUsdcHeld += netAmount;
             totalMinted += qeuroToMint;
         }
 
         // Inform HedgerPool after vault accounting is updated
         // NOTE: Hedgers must receive the gross mint size so their filled volume matches user-facing flow
         _syncMintWithHedgers(usdcAmount, eurUsdPrice, qeuroToMint);
+
+        // Emit event after state changes but before external calls
+        emit QEUROminted(msg.sender, usdcAmount, qeuroToMint);
 
         // INTERACTIONS - All external calls after state updates
         // Transfer full amount to vault
@@ -518,8 +519,6 @@ contract QuantillonVault is
         }
         
         qeuro.mint(msg.sender, qeuroToMint);
-
-        emit QEUROminted(msg.sender, usdcAmount, qeuroToMint);
     }
 
     /**
@@ -549,53 +548,55 @@ contract QuantillonVault is
         uint256 minUsdcOut
     ) external nonReentrant whenNotPaused {
         // CHECKS
-        require(qeuroAmount > 0, "Vault: Amount must be positive");
+        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
 
-        // Get oracle price and validate - cache result to prevent reentrancy
+        // Cache oracle price at start to avoid reentrancy issues
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "Vault: Invalid EUR/USD price");
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         
         // Price deviation check using cached price
-        if (lastValidEurUsdPrice > 0 && block.number > lastPriceUpdateBlock + MIN_BLOCKS_BETWEEN_UPDATES) {
-            uint256 priceDiff = eurUsdPrice > lastValidEurUsdPrice ? 
-                eurUsdPrice - lastValidEurUsdPrice : lastValidEurUsdPrice - eurUsdPrice;
-            uint256 deviationBps = priceDiff * 10000 / lastValidEurUsdPrice;
-            
-            if (deviationBps > MAX_PRICE_DEVIATION) {
-                emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
-                revert("Vault: Excessive price deviation");
-            }
+        (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
+            eurUsdPrice,
+            lastValidEurUsdPrice,
+            MAX_PRICE_DEVIATION,
+            lastPriceUpdateBlock,
+            MIN_BLOCKS_BETWEEN_UPDATES
+        );
+        if (shouldRevert) {
+            emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
+            revert CommonErrorLibrary.ExcessiveSlippage();
         }
 
         // Calculate USDC to return using validated oracle price
         uint256 usdcToReturn = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
         usdcToReturn = usdcToReturn / 1e12; // Convert from 18 to 6 decimals
         
-        require(usdcToReturn >= minUsdcOut, "Vault: Insufficient output amount");
-        require(totalUsdcHeld >= usdcToReturn, "Vault: Insufficient USDC reserves");
+        if (usdcToReturn < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
+        if (totalUsdcHeld < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
 
-        require(address(hedgerPool) != address(0), "Vault: HedgerPool not set");
+        if (address(hedgerPool) == address(0)) revert CommonErrorLibrary.InvalidVault();
 
-        // Update price cache before any external interactions (oracle is trusted view-only)
+        // Calculate fees before state changes
+        uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
+        uint256 netUsdcToReturn = usdcToReturn - fee;
+
+        // EFFECTS - Update all state before external calls
+        // Update price cache
         lastPriceUpdateBlock = block.number;
         lastValidEurUsdPrice = eurUsdPrice;
-        // slither-disable-next-line reentrancy-benign
         _updatePriceTimestamp(isValid);
 
-        // EFFECTS - Update vault balances before external calls
+        // Update vault balances
         unchecked {
-            // slither-disable-next-line reentrancy-benign
             totalUsdcHeld -= usdcToReturn;
-            // slither-disable-next-line reentrancy-benign
             totalMinted -= qeuroAmount;
         }
         
         // Inform HedgerPool after internal state is updated
         _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice, qeuroAmount);
 
-        // Apply protocol fees
-        uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
-        uint256 netUsdcToReturn = usdcToReturn - fee;
+        // Emit event after state changes but before external calls
+        emit QEURORedeemed(msg.sender, qeuroAmount, netUsdcToReturn);
 
         // INTERACTIONS - All external calls after state updates
         qeuro.burn(msg.sender, qeuroAmount);
@@ -605,12 +606,10 @@ contract QuantillonVault is
         if (fee > 0) {
             // Approve FeeCollector to pull the fee
             bool success = usdc.approve(feeCollector, fee);
-            if (!success) revert VaultErrorLibrary.TokenTransferFailed();
+            if (!success) revert CommonErrorLibrary.TokenTransferFailed();
             // Call FeeCollector to collect the fee with proper tracking
             FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
         }
-
-        emit QEURORedeemed(msg.sender, qeuroAmount, netUsdcToReturn);
     }
 
 
@@ -763,8 +762,8 @@ contract QuantillonVault is
         uint256 _mintFee,
         uint256 _redemptionFee
     ) external onlyRole(GOVERNANCE_ROLE) {
-        require(_mintFee <= 5e16, "Vault: Mint fee too high (max 5%)");
-        require(_redemptionFee <= 5e16, "Vault: Redemption fee too high (max 5%)");
+        if (_mintFee > 5e16) revert VaultErrorLibrary.FeeTooHigh();
+        if (_redemptionFee > 5e16) revert VaultErrorLibrary.FeeTooHigh();
 
         mintFee = _mintFee;
         redemptionFee = _redemptionFee;
@@ -795,9 +794,9 @@ contract QuantillonVault is
         uint256 _minCollateralizationRatioForMinting,
         uint256 _criticalCollateralizationRatio
     ) external onlyRole(GOVERNANCE_ROLE) {
-        require(_minCollateralizationRatioForMinting >= 10100, "Vault: Min ratio must be >= 101%");
-        require(_criticalCollateralizationRatio >= 10000, "Vault: Critical ratio must be >= 100%");
-        require(_criticalCollateralizationRatio <= _minCollateralizationRatioForMinting, "Vault: Critical ratio must be <= min ratio");
+        if (_minCollateralizationRatioForMinting < 10100) revert CommonErrorLibrary.InvalidThreshold();
+        if (_criticalCollateralizationRatio < 10000) revert CommonErrorLibrary.InvalidThreshold();
+        if (_criticalCollateralizationRatio > _minCollateralizationRatioForMinting) revert CommonErrorLibrary.InvalidThreshold();
 
         minCollateralizationRatioForMinting = _minCollateralizationRatioForMinting;
         criticalCollateralizationRatio = _criticalCollateralizationRatio;
@@ -823,7 +822,7 @@ contract QuantillonVault is
       * @custom:oracle Requires fresh oracle price data
      */
     function updateOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE) {
-        require(_oracle != address(0), "Vault: Oracle cannot be zero");
+        if (_oracle == address(0)) revert CommonErrorLibrary.InvalidOracle();
         oracle = IChainlinkOracle(_oracle);
     }
 
@@ -841,7 +840,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies
      */
     function updateHedgerPool(address _hedgerPool) external onlyRole(GOVERNANCE_ROLE) {
-        require(_hedgerPool != address(0), "Vault: HedgerPool cannot be zero");
+        if (_hedgerPool == address(0)) revert CommonErrorLibrary.InvalidVault();
         hedgerPool = IHedgerPool(_hedgerPool);
         emit ParametersUpdated("hedgerPool", 0, 0);
     }
@@ -860,7 +859,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies
      */
     function updateUserPool(address _userPool) external onlyRole(GOVERNANCE_ROLE) {
-        require(_userPool != address(0), "Vault: UserPool cannot be zero");
+        if (_userPool == address(0)) revert CommonErrorLibrary.InvalidVault();
         userPool = IUserPool(_userPool);
         emit ParametersUpdated("userPool", 0, 0);
     }
@@ -879,7 +878,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies
      */
     function updateFeeCollector(address _feeCollector) external onlyRole(GOVERNANCE_ROLE) {
-        require(_feeCollector != address(0), "Vault: FeeCollector cannot be zero");
+        if (_feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
         feeCollector = _feeCollector;
         emit ParametersUpdated("feeCollector", 0, 0);
     }
@@ -904,8 +903,8 @@ contract QuantillonVault is
         uint256 _maxPriceDeviation, 
         uint256 _minBlocksBetweenUpdates
     ) external onlyRole(GOVERNANCE_ROLE) {
-        require(_maxPriceDeviation <= 1000, "Vault: Max deviation cannot exceed 10%");
-        require(_minBlocksBetweenUpdates <= 100, "Vault: Min blocks cannot exceed 100");
+        if (_maxPriceDeviation > 1000) revert CommonErrorLibrary.ConfigValueTooHigh();
+        if (_minBlocksBetweenUpdates > 100) revert CommonErrorLibrary.ConfigValueTooHigh();
         
         // For now, this function validates parameters but doesn't update them
         // as they are currently implemented as constants
@@ -929,11 +928,11 @@ contract QuantillonVault is
       * @custom:oracle Requires fresh oracle price data
      */
     function withdrawProtocolFees(address to) external onlyRole(GOVERNANCE_ROLE) {
-        require(to != address(0), "Vault: Invalid recipient");
+        if (to == address(0)) revert CommonErrorLibrary.InvalidAddress();
         
         // Calculate available fees (excess USDC beyond what's needed for redemptions)
         uint256 contractBalance = usdc.balanceOf(address(this));
-        require(contractBalance > totalUsdcHeld, "Vault: No fees to withdraw");
+        if (contractBalance <= totalUsdcHeld) revert CommonErrorLibrary.InsufficientBalance();
         
         uint256 feesToWithdraw = contractBalance - totalUsdcHeld;
         usdc.safeTransfer(to, feesToWithdraw);
@@ -958,8 +957,8 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies
      */
     function addHedgerDeposit(uint256 usdcAmount) external nonReentrant {
-        require(msg.sender == address(hedgerPool), "Vault: Only HedgerPool can call");
-        require(usdcAmount > 0, "Vault: Amount must be positive");
+        if (msg.sender != address(hedgerPool)) revert CommonErrorLibrary.NotAuthorized();
+        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         
         // Update vault's total USDC reserves
         unchecked {
@@ -986,10 +985,10 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies
      */
     function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external nonReentrant {
-        require(msg.sender == address(hedgerPool), "Vault: Only HedgerPool can call");
-        require(usdcAmount > 0, "Vault: Amount must be positive");
-        require(hedger != address(0), "Vault: Invalid hedger address");
-        require(totalUsdcHeld >= usdcAmount, "Vault: Insufficient USDC reserves");
+        if (msg.sender != address(hedgerPool)) revert CommonErrorLibrary.NotAuthorized();
+        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
+        if (hedger == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
         
         // Update vault's total USDC reserves
         unchecked {
@@ -1037,14 +1036,19 @@ contract QuantillonVault is
      * @custom:oracle Requires valid oracle price
      */
     function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) {
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "Vault: Invalid EUR/USD price");
-        
+        // Cache old price before external call
         uint256 oldPrice = lastValidEurUsdPrice;
+        
+        // Get new oracle price
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        
+        // EFFECTS - Update all state before emitting event
         lastValidEurUsdPrice = eurUsdPrice;
         lastPriceUpdateBlock = block.number;
         lastPriceUpdateTime = block.timestamp;
         
+        // Emit event after state changes
         emit PriceCacheUpdated(oldPrice, eurUsdPrice, block.number);
     }
 
@@ -1100,7 +1104,7 @@ contract QuantillonVault is
         
         // Get oracle price once and reuse it for consistency
         (uint256 currentRate, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "Vault: Invalid oracle rate");
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         
         // Convert QEURO supply to current USDC equivalent for accurate calculation
         uint256 currentUsdcEquivalent = currentQeuroSupply.mulDiv(currentRate, 1e18) / 1e12;
@@ -1300,6 +1304,7 @@ contract QuantillonVault is
      * @dev Attempts to update hedger fills but swallows failures to avoid blocking users
      * @param amount Net USDC amount minted into QEURO (6 decimals)
      * @param fillPrice EUR/USD oracle price used for the mint (18 decimals)
+     * @param qeuroAmount QEURO amount that was minted (18 decimals)
      * @custom:security Internal helper; relies on HedgerPool access control
      * @custom:validation No additional validation beyond non-zero guard
      * @custom:state-changes None inside the vault; delegates to HedgerPool
@@ -1320,6 +1325,8 @@ contract QuantillonVault is
      * @notice Internal helper to notify HedgerPool about user redeems
      * @dev Attempts to release hedger fills but swallows failures to avoid blocking users
      * @param amount Gross USDC returned to the user (6 decimals)
+     * @param redeemPrice EUR/USD oracle price used for the redeem (18 decimals)
+     * @param qeuroAmount QEURO amount that was redeemed (18 decimals)
      * @custom:security Internal helper; relies on HedgerPool access control
      * @custom:validation No additional validation beyond non-zero guard
      * @custom:state-changes None inside the vault; delegates to HedgerPool

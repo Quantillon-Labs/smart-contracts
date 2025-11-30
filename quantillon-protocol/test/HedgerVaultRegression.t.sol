@@ -9,6 +9,7 @@ import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
  * @title MockUserPool
@@ -661,7 +662,7 @@ contract HedgerVaultRegressionTest is Test {
     function testErrorHandlingStillWorks() public {
         // Zero amount should fail
         vm.prank(user);
-        vm.expectRevert("Vault: Amount must be positive");
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         vault.mintQEURO(0, 0);
         
         // Insufficient balance should fail

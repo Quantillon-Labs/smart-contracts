@@ -27,18 +27,6 @@ error MintingDisabled();
 error BlacklistedAddress();
 ```
 
-### NotWhitelisted
-
-```solidity
-error NotWhitelisted();
-```
-
-### WouldExceedLimit
-
-```solidity
-error WouldExceedLimit();
-```
-
 ### CannotRecoverQEURO
 
 ```solidity
@@ -57,18 +45,6 @@ error CannotRecoverQTI();
 error NewCapBelowCurrentSupply();
 ```
 
-### LockTimeTooShort
-
-```solidity
-error LockTimeTooShort();
-```
-
-### LockTimeTooLong
-
-```solidity
-error LockTimeTooLong();
-```
-
 ### LockNotExpired
 
 ```solidity
@@ -79,24 +55,6 @@ error LockNotExpired();
 
 ```solidity
 error NothingToUnlock();
-```
-
-### InsufficientBalance
-
-```solidity
-error InsufficientBalance();
-```
-
-### InvalidAmount
-
-```solidity
-error InvalidAmount();
-```
-
-### InvalidTime
-
-```solidity
-error InvalidTime();
 ```
 
 ### RateLimitExceeded
@@ -133,161 +91,5 @@ error PrecisionTooHigh();
 
 ```solidity
 error TooManyDecimals();
-```
-
-### InvalidAddress
-
-```solidity
-error InvalidAddress();
-```
-
-### TokenTransferFailed
-
-```solidity
-error TokenTransferFailed();
-```
-
-### ArrayLengthMismatch
-
-```solidity
-error ArrayLengthMismatch();
-```
-
-### BatchSizeTooLarge
-
-```solidity
-error BatchSizeTooLarge();
-```
-
-### RateLimitTooHigh
-
-```solidity
-error RateLimitTooHigh();
-```
-
-### InsufficientVotingPower
-
-```solidity
-error InsufficientVotingPower();
-```
-
-### VotingPeriodTooShort
-
-```solidity
-error VotingPeriodTooShort();
-```
-
-### VotingPeriodTooLong
-
-```solidity
-error VotingPeriodTooLong();
-```
-
-### VotingNotStarted
-
-```solidity
-error VotingNotStarted();
-```
-
-### VotingEnded
-
-```solidity
-error VotingEnded();
-```
-
-### AlreadyVoted
-
-```solidity
-error AlreadyVoted();
-```
-
-### NoVotingPower
-
-```solidity
-error NoVotingPower();
-```
-
-### VotingNotEnded
-
-```solidity
-error VotingNotEnded();
-```
-
-### ProposalAlreadyExecuted
-
-```solidity
-error ProposalAlreadyExecuted();
-```
-
-### ProposalCanceled
-
-```solidity
-error ProposalCanceled();
-```
-
-### ProposalFailed
-
-```solidity
-error ProposalFailed();
-```
-
-### QuorumNotMet
-
-```solidity
-error QuorumNotMet();
-```
-
-### NotAuthorized
-
-```solidity
-error NotAuthorized();
-```
-
-### ProposalAlreadyCanceled
-
-```solidity
-error ProposalAlreadyCanceled();
-```
-
-### ZeroAddress
-
-```solidity
-error ZeroAddress();
-```
-
-### CannotRecoverOwnToken
-
-```solidity
-error CannotRecoverOwnToken();
-```
-
-### NoETHToRecover
-
-```solidity
-error NoETHToRecover();
-```
-
-### InvalidAdmin
-
-```solidity
-error InvalidAdmin();
-```
-
-### InvalidToken
-
-```solidity
-error InvalidToken();
-```
-
-### InvalidTreasury
-
-```solidity
-error InvalidTreasury();
-```
-
-### AboveLimit
-
-```solidity
-error AboveLimit();
 ```
 

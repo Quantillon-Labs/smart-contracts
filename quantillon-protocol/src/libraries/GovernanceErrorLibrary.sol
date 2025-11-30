@@ -17,22 +17,10 @@ pragma solidity 0.8.24;
 library GovernanceErrorLibrary {
     // Voting Errors
     error InsufficientVotingPower();
-    error VotingPeriodTooShort();
-    error VotingPeriodTooLong();
     error ProposalNotFound();
-    error ProposalAlreadyExecuted();
-    error ProposalAlreadyCanceled();
     error VotingNotActive();
-    error AlreadyVoted();
-    error QuorumNotMet();
     error ProposalThresholdNotMet();
-    error VotingNotStarted();
-    error VotingEnded();
-    error NoVotingPower();
-    error VotingNotEnded();
-    error ProposalFailed();
     error ProposalExecutionFailed();
-    error ProposalCanceled();
     
     // MEV Protection Errors
     error ProposalAlreadyScheduled();
@@ -44,9 +32,4 @@ library GovernanceErrorLibrary {
     error InvalidDescription();
     error ExpiredDeadline();
     error InvalidRebalancing();
-    error RateLimitTooHigh();
-    error InvalidAmount();
-    error InvalidTime();
-    error LockTimeTooShort();
-    error LockTimeTooLong();
 }

@@ -34,7 +34,7 @@ Packs position open data into a single bytes32 for gas efficiency
 
 ```solidity
 function packPositionOpenData(uint256 positionSize, uint256 margin, uint256 leverage, uint256 entryPrice)
-    external
+    internal
     pure
     returns (bytes32);
 ```
@@ -79,7 +79,7 @@ Packs position close data into a single bytes32 for gas efficiency
 
 
 ```solidity
-function packPositionCloseData(uint256 exitPrice, int256 pnl, uint256 timestamp) external pure returns (bytes32);
+function packPositionCloseData(uint256 exitPrice, int256 pnl, uint256 timestamp) internal pure returns (bytes32);
 ```
 **Parameters**
 
@@ -121,7 +121,7 @@ Packs margin data into a single bytes32 for gas efficiency
 
 
 ```solidity
-function packMarginData(uint256 marginAmount, uint256 newMarginRatio, bool isAdded) external pure returns (bytes32);
+function packMarginData(uint256 marginAmount, uint256 newMarginRatio, bool isAdded) internal pure returns (bytes32);
 ```
 **Parameters**
 
@@ -163,7 +163,7 @@ Packs liquidation data into a single bytes32 for gas efficiency
 
 
 ```solidity
-function packLiquidationData(uint256 liquidationReward, uint256 remainingMargin) external pure returns (bytes32);
+function packLiquidationData(uint256 liquidationReward, uint256 remainingMargin) internal pure returns (bytes32);
 ```
 **Parameters**
 
@@ -205,7 +205,7 @@ Packs reward data into a single bytes32 for gas efficiency
 
 ```solidity
 function packRewardData(uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards)
-    external
+    internal
     pure
     returns (bytes32);
 ```

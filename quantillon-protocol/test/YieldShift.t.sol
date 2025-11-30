@@ -761,7 +761,7 @@ contract YieldShiftTestSuite is Test {
         
         // Try to add yield without being authorized
         vm.prank(user);
-        vm.expectRevert("Unauthorized yield source");
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         yieldShift.addYield(yieldAmount, keccak256("test_source"));
     }
 

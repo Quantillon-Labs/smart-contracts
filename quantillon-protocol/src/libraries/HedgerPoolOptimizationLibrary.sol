@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {HedgerPoolErrorLibrary} from "./HedgerPoolErrorLibrary.sol";
 import {AccessControlLibrary} from "./AccessControlLibrary.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 
 /**
  * @title HedgerPoolOptimizationLibrary
@@ -159,7 +160,7 @@ library HedgerPoolOptimizationLibrary {
         AccessControlUpgradeable accessControl = AccessControlUpgradeable(contractInstance);
         
         if (!accessControl.hasRole(role, msg.sender)) {
-            revert HedgerPoolErrorLibrary.NotAuthorized();
+            revert CommonErrorLibrary.NotAuthorized();
         }
     }
     

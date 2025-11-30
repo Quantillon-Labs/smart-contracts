@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 
 /**
  * @title TimelockUpgradeable
@@ -118,10 +119,9 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     }
     
     modifier onlyEmergencyUpgrader() {
-        require(
-            hasRole(EMERGENCY_UPGRADER_ROLE, msg.sender) && emergencyMode,
-            "TimelockUpgradeable: Not emergency upgrader or emergency mode inactive"
-        );
+        if (!hasRole(EMERGENCY_UPGRADER_ROLE, msg.sender) || !emergencyMode) {
+            revert CommonErrorLibrary.NotEmergencyRole();
+        }
         _;
     }
     
@@ -601,7 +601,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies
      */
     constructor(TimeProvider _TIME_PROVIDER) {
-        if (address(_TIME_PROVIDER) == address(0)) revert("Zero address");
+        if (address(_TIME_PROVIDER) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }

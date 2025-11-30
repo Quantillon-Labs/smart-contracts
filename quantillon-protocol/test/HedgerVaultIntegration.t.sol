@@ -9,6 +9,7 @@ import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
  * @title HedgerVaultIntegrationTest
@@ -459,7 +460,7 @@ contract HedgerVaultIntegrationTest is Test {
         
         // Non-hedger pool address should fail
         vm.prank(user);
-        vm.expectRevert("Vault: Only HedgerPool can call");
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         vault.addHedgerDeposit(depositAmount);
     }
     
@@ -480,7 +481,7 @@ contract HedgerVaultIntegrationTest is Test {
         
         // Non-hedger pool address should fail
         vm.prank(user);
-        vm.expectRevert("Vault: Only HedgerPool can call");
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         vault.withdrawHedgerDeposit(hedger, withdrawalAmount);
     }
     
@@ -499,7 +500,7 @@ contract HedgerVaultIntegrationTest is Test {
     function testAddHedgerDepositValidatesAmount() public {
         // Zero amount should fail
         vm.prank(address(hedgerPool));
-        vm.expectRevert("Vault: Amount must be positive");
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         vault.addHedgerDeposit(0);
     }
     
@@ -518,7 +519,7 @@ contract HedgerVaultIntegrationTest is Test {
     function testWithdrawHedgerDepositValidatesAmount() public {
         // Zero amount should fail
         vm.prank(address(hedgerPool));
-        vm.expectRevert("Vault: Amount must be positive");
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         vault.withdrawHedgerDeposit(hedger, 0);
     }
     
@@ -539,7 +540,7 @@ contract HedgerVaultIntegrationTest is Test {
         
         // Should fail because vault has no USDC
         vm.prank(address(hedgerPool));
-        vm.expectRevert("Vault: Insufficient USDC reserves");
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         vault.withdrawHedgerDeposit(hedger, withdrawalAmount);
     }
     

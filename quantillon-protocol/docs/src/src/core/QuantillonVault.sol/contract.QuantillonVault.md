@@ -1044,6 +1044,36 @@ function getTotalUsdcAvailable() external view returns (uint256);
 |`<none>`|`uint256`|uint256 Total USDC held in vault (6 decimals)|
 
 
+### updatePriceCache
+
+Updates the price cache with the current oracle price
+
+*Allows governance to manually refresh the price cache to prevent deviation check failures*
+
+*Useful when price has moved significantly and cache needs to be updated*
+
+**Notes:**
+- Only callable by governance role
+
+- Validates oracle price is valid before updating cache
+
+- Updates lastValidEurUsdPrice, lastPriceUpdateBlock, and lastPriceUpdateTime
+
+- Emits PriceCacheUpdated event
+
+- Reverts if oracle price is invalid
+
+- Not applicable - no external calls after state changes
+
+- Restricted to GOVERNANCE_ROLE
+
+- Requires valid oracle price
+
+
+```solidity
+function updatePriceCache() external onlyRole(GOVERNANCE_ROLE);
+```
+
 ### _updatePriceTimestamp
 
 Updates the last valid price timestamp when a valid price is fetched
@@ -1379,7 +1409,7 @@ Internal helper to notify HedgerPool about user mints
 
 
 ```solidity
-function _syncMintWithHedgers(uint256 amount, uint256 fillPrice) internal;
+function _syncMintWithHedgers(uint256 amount, uint256 fillPrice, uint256 qeuroAmount) internal;
 ```
 **Parameters**
 
@@ -1387,6 +1417,7 @@ function _syncMintWithHedgers(uint256 amount, uint256 fillPrice) internal;
 |----|----|-----------|
 |`amount`|`uint256`|Net USDC amount minted into QEURO (6 decimals)|
 |`fillPrice`|`uint256`|EUR/USD oracle price used for the mint (18 decimals)|
+|`qeuroAmount`|`uint256`|QEURO amount that was minted (18 decimals)|
 
 
 ### _syncRedeemWithHedgers
@@ -1414,13 +1445,15 @@ Internal helper to notify HedgerPool about user redeems
 
 
 ```solidity
-function _syncRedeemWithHedgers(uint256 amount) internal;
+function _syncRedeemWithHedgers(uint256 amount, uint256 redeemPrice, uint256 qeuroAmount) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`amount`|`uint256`|Gross USDC returned to the user (6 decimals)|
+|`redeemPrice`|`uint256`|EUR/USD oracle price used for the redeem (18 decimals)|
+|`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
 ## Events
@@ -1527,4 +1560,20 @@ event CollateralizationStatusChanged(uint256 indexed currentRatio, bool indexed 
 ```solidity
 event PriceDeviationDetected(uint256 currentPrice, uint256 lastValidPrice, uint256 deviationBps, uint256 blockNumber);
 ```
+
+### PriceCacheUpdated
+Emitted when price cache is manually updated by governance
+
+
+```solidity
+event PriceCacheUpdated(uint256 oldPrice, uint256 newPrice, uint256 blockNumber);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`oldPrice`|`uint256`|Previous cached price|
+|`newPrice`|`uint256`|New cached price|
+|`blockNumber`|`uint256`|Block number when cache was updated|
 

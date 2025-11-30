@@ -43,7 +43,8 @@ function initialize(
     address _oracle,
     address _hedgerPool,
     address _userPool,
-    address _timelock
+    address _timelock,
+    address _feeCollector
 ) external;
 ```
 **Parameters**
@@ -57,6 +58,7 @@ function initialize(
 |`_hedgerPool`|`address`|HedgerPool contract address|
 |`_userPool`|`address`|UserPool contract address|
 |`_timelock`|`address`|Timelock contract address|
+|`_feeCollector`|`address`|FeeCollector contract address|
 
 
 ### mintQEURO
@@ -413,7 +415,7 @@ function unpause() external;
 
 Recovers ERC20 tokens sent by mistake
 
-*Allows governance to recover accidentally sent ERC20 tokens*
+*Allows governance to recover accidentally sent ERC20 tokens to treasury*
 
 **Notes:**
 - Validates input parameters and enforces security checks
@@ -434,14 +436,13 @@ Recovers ERC20 tokens sent by mistake
 
 
 ```solidity
-function recoverToken(address token, address to, uint256 amount) external;
+function recoverToken(address token, uint256 amount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Token address|
-|`to`|`address`|Recipient|
 |`amount`|`uint256`|Amount to transfer|
 
 
@@ -1421,4 +1422,206 @@ function getPriceProtectionStatus()
 |`maxDeviation`|`uint256`|Maximum allowed price deviation|
 |`minBlocks`|`uint256`|Minimum blocks between price updates|
 
+
+### updateFeeCollector
+
+Updates the fee collector address
+
+*Updates the fee collector contract address*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function updateFeeCollector(address _feeCollector) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_feeCollector`|`address`|New fee collector address|
+
+
+### updateCollateralizationThresholds
+
+Updates the collateralization thresholds
+
+*Updates minimum and critical collateralization ratios*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function updateCollateralizationThresholds(
+    uint256 _minCollateralizationRatioForMinting,
+    uint256 _criticalCollateralizationRatio
+) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_minCollateralizationRatioForMinting`|`uint256`|New minimum collateralization ratio for minting (in basis points)|
+|`_criticalCollateralizationRatio`|`uint256`|New critical collateralization ratio for liquidation (in basis points)|
+
+
+### canMint
+
+Checks if minting is allowed based on current collateralization ratio
+
+*Returns true if collateralization ratio >= minCollateralizationRatioForMinting*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes - view function
+
+- No events emitted - view function
+
+- No errors thrown - safe view function
+
+- Not applicable - view function
+
+- Public - anyone can check minting status
+
+- No oracle dependencies
+
+
+```solidity
+function canMint() external returns (bool);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|canMint Whether minting is currently allowed|
+
+
+### shouldTriggerLiquidation
+
+Checks if liquidation should be triggered based on current collateralization ratio
+
+*Returns true if collateralization ratio < criticalCollateralizationRatio*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes - view function
+
+- No events emitted - view function
+
+- No errors thrown - safe view function
+
+- Not applicable - view function
+
+- Public - anyone can check liquidation status
+
+- No oracle dependencies
+
+
+```solidity
+function shouldTriggerLiquidation() external returns (bool);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|shouldLiquidate Whether liquidation should be triggered|
+
+
+### getProtocolCollateralizationRatio
+
+Calculates the current protocol collateralization ratio
+
+*Returns ratio in basis points (e.g., 10500 = 105%)*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- No state changes - view function
+
+- No events emitted - view function
+
+- No errors thrown - safe view function
+
+- Not applicable - view function
+
+- Public - anyone can check collateralization ratio
+
+- Requires fresh oracle price data (via HedgerPool)
+
+
+```solidity
+function getProtocolCollateralizationRatio() external returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|ratio Current collateralization ratio in basis points|
+
+
+### updatePriceCache
+
+Updates the price cache with the current oracle price
+
+*Allows governance to manually refresh the price cache*
+
+**Notes:**
+- Only callable by governance role
+
+- Validates oracle price is valid before updating cache
+
+- Updates lastValidEurUsdPrice, lastPriceUpdateBlock, and lastPriceUpdateTime
+
+- Emits PriceCacheUpdated event
+
+- Reverts if oracle price is invalid
+
+- Not applicable - no external calls after state changes
+
+- Restricted to GOVERNANCE_ROLE
+
+- Requires valid oracle price
+
+
+```solidity
+function updatePriceCache() external;
+```
 

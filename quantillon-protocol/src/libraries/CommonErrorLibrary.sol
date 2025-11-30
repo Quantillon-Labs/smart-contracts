@@ -91,4 +91,38 @@ library CommonErrorLibrary {
     error NotYieldManager();
     error InsufficientYield();
     error InvalidShiftRange();
+    
+    // Yield Management Errors (used across multiple contracts)
+    error YieldBelowThreshold();
+    error YieldNotAvailable();
+    error YieldDistributionFailed();
+    error YieldCalculationError();
+    
+    // Governance/Voting Errors (used across multiple contracts)
+    error VotingPeriodTooShort();
+    error VotingPeriodTooLong();
+    error VotingNotStarted();
+    error VotingEnded();
+    error AlreadyVoted();
+    error NoVotingPower();
+    error VotingNotEnded();
+    error ProposalAlreadyExecuted();
+    error ProposalCanceled();
+    error ProposalFailed();
+    error QuorumNotMet();
+    error ProposalAlreadyCanceled();
+    
+    // Lock/Time Errors (used across multiple contracts)
+    error LockTimeTooShort();
+    error LockTimeTooLong();
+    
+    // Rate Limit Errors (used across multiple contracts)
+    error RateLimitTooHigh();
+    
+    // Additional Common Errors (consolidated from other libraries)
+    error InvalidOraclePrice();
+    error YieldClaimFailed();
+    error InvalidThreshold();
+    error NotWhitelisted();
+    error InsufficientVotingPower();
 }

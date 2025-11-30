@@ -18,54 +18,19 @@ library TokenErrorLibrary {
     // Token Operation Errors
     error MintingDisabled();
     error BlacklistedAddress();
-    error NotWhitelisted();
-    error WouldExceedLimit();
     error CannotRecoverQEURO();
     error CannotRecoverQTI();
     error NewCapBelowCurrentSupply();
     
     // Vote-Escrow Errors (QTI Token)
-    error LockTimeTooShort();
-    error LockTimeTooLong();
     error LockNotExpired();
     error NothingToUnlock();
     
     // Token Supply Errors
-    error InsufficientBalance();
-    error InvalidAmount();
-    error InvalidTime();
     error RateLimitExceeded();
     error AlreadyBlacklisted();
     error NotBlacklisted();
     error AlreadyWhitelisted();
     error PrecisionTooHigh();
     error TooManyDecimals();
-    
-    // Token Transfer Errors
-    error InvalidAddress();
-    error TokenTransferFailed();
-    error ArrayLengthMismatch();
-    error BatchSizeTooLarge();
-    error RateLimitTooHigh();
-    error InsufficientVotingPower();
-    error VotingPeriodTooShort();
-    error VotingPeriodTooLong();
-    error VotingNotStarted();
-    error VotingEnded();
-    error AlreadyVoted();
-    error NoVotingPower();
-    error VotingNotEnded();
-    error ProposalAlreadyExecuted();
-    error ProposalCanceled();
-    error ProposalFailed();
-    error QuorumNotMet();
-    error NotAuthorized();
-    error ProposalAlreadyCanceled();
-    error ZeroAddress();
-    error CannotRecoverOwnToken();
-    error NoETHToRecover();
-    error InvalidAdmin();
-    error InvalidToken();
-    error InvalidTreasury();
-    error AboveLimit();
 }

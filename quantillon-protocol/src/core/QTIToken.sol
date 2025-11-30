@@ -28,6 +28,7 @@ import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {QTITokenGovernanceLibrary} from "../libraries/QTITokenGovernanceLibrary.sol";
 import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 
 /**
  * @title QTIToken
@@ -150,6 +151,16 @@ contract QTIToken is
     /// @dev Stores locked amount, unlock time, voting power, and claim time
     /// @dev Used to calculate governance power and manage locks
     /// @dev OPTIMIZED: Fields ordered for optimal storage packing
+    // Struct to reduce stack depth in batch operations
+    struct BatchLockState {
+        uint256 currentTimestamp;
+        uint256 existingUnlockTime;
+        uint256 finalUnlockTime;
+        uint256 finalLockTime;
+        uint256 newUnlockTime;
+        uint256 newVotingPower;
+    }
+    
     struct LockInfo {
         uint96 amount;            // Locked QTI amount in wei (18 decimals) - 12 bytes
         uint96 votingPower;       // Current voting power (calculated) - 12 bytes
@@ -330,10 +341,9 @@ contract QTIToken is
         uint256 balanceBefore = balanceOf(address(this));
         _;
         uint256 balanceAfter = balanceOf(address(this));
-        require(
-            FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0),
-            "Flash loan attack detected"
-        );
+        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0)) {
+            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
+        }
     }
 
     // =============================================================================
@@ -392,7 +402,7 @@ contract QTIToken is
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
 
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
@@ -431,9 +441,9 @@ contract QTIToken is
      */
     function lock(uint256 amount, uint256 lockTime) external whenNotPaused flashLoanProtection returns (uint256 veQTI) {
         CommonValidationLibrary.validatePositiveAmount(amount);
-        if (lockTime < MIN_LOCK_TIME) revert TokenErrorLibrary.LockTimeTooShort();
-        if (lockTime > MAX_LOCK_TIME) revert TokenErrorLibrary.LockTimeTooLong();
-        if (balanceOf(msg.sender) < amount) revert TokenErrorLibrary.InsufficientBalance();
+        if (lockTime < MIN_LOCK_TIME) revert CommonErrorLibrary.LockTimeTooShort();
+        if (lockTime > MAX_LOCK_TIME) revert CommonErrorLibrary.LockTimeTooLong();
+        if (balanceOf(msg.sender) < amount) revert CommonErrorLibrary.InsufficientBalance();
         
         // Add validation for uint96 bounds
         if (amount > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
@@ -445,7 +455,7 @@ contract QTIToken is
         // Calculate new unlock time with overflow check
         // Time-based logic using TimeProvider for consistent and testable timing
         uint256 newUnlockTime = TIME_PROVIDER.currentTime() + lockTime;
-        if (newUnlockTime > type(uint32).max) revert TokenErrorLibrary.InvalidTime();
+        if (newUnlockTime > type(uint32).max) revert CommonErrorLibrary.InvalidTime();
         
         // If already locked, extend the lock time
         // Time-based logic using TimeProvider for consistent and testable timing
@@ -457,7 +467,7 @@ contract QTIToken is
         // Calculate voting power with overflow check
         uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
         uint256 newVotingPower = amount * multiplier / 1e18;
-        if (newVotingPower > type(uint96).max) revert TokenErrorLibrary.InvalidAmount();
+        if (newVotingPower > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
         
 
         uint256 newAmount = uint256(lockInfo.amount) + amount;
@@ -547,7 +557,7 @@ contract QTIToken is
         _validateBatchLockInputs(amounts, lockTimes);
         
         uint256 totalAmount = _validateAndCalculateTotalAmount(amounts, lockTimes);
-        if (balanceOf(msg.sender) < totalAmount) revert TokenErrorLibrary.InsufficientBalance();
+        if (balanceOf(msg.sender) < totalAmount) revert CommonErrorLibrary.InsufficientBalance();
         
         veQTIAmounts = new uint256[](amounts.length);
         LockInfo storage lockInfo = locks[msg.sender];
@@ -580,8 +590,8 @@ contract QTIToken is
      * @custom:oracle No oracle dependencies
      */
     function _validateBatchLockInputs(uint256[] calldata amounts, uint256[] calldata lockTimes) internal pure {
-        if (amounts.length != lockTimes.length) revert TokenErrorLibrary.ArrayLengthMismatch();
-        if (amounts.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (amounts.length != lockTimes.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (amounts.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
     }
     
     /**
@@ -630,33 +640,39 @@ contract QTIToken is
         uint256[] memory veQTIAmounts,
         LockInfo storage lockInfo
     ) internal returns (uint256 totalNewVotingPower, uint256 totalNewAmount) {
+        // Use struct to reduce stack depth - initialize all fields explicitly
         uint256 currentTimestamp = TIME_PROVIDER.currentTime();
-        uint256 lockInfoUnlockTime = lockInfo.unlockTime;
+        uint256 existingUnlockTime = lockInfo.unlockTime;
         totalNewAmount = uint256(lockInfo.amount);
+        BatchLockState memory state = BatchLockState({
+            currentTimestamp: currentTimestamp,
+            existingUnlockTime: existingUnlockTime,
+            finalUnlockTime: existingUnlockTime,
+            finalLockTime: lockInfo.lockTime,
+            newUnlockTime: 0,
+            newVotingPower: 0
+        });
         
-        // Initialize with current lock values to handle empty array case
-        uint256 finalUnlockTime = lockInfoUnlockTime;
-        uint256 finalLockTime = lockInfo.lockTime;
-        
-        for (uint256 i = 0; i < amounts.length;) {
-            uint256 newUnlockTime = _calculateUnlockTime(currentTimestamp, lockTimes[i], lockInfoUnlockTime);
-            uint256 newVotingPower = _calculateVotingPower(amounts[i], lockTimes[i]);
+        uint256 length = amounts.length;
+        for (uint256 i = 0; i < length;) {
+            state.newUnlockTime = _calculateUnlockTime(state.currentTimestamp, lockTimes[i], state.existingUnlockTime);
+            state.newVotingPower = _calculateVotingPower(amounts[i], lockTimes[i]);
             
-            veQTIAmounts[i] = newVotingPower;
-            totalNewVotingPower += newVotingPower;
+            veQTIAmounts[i] = state.newVotingPower;
+            totalNewVotingPower += state.newVotingPower;
             totalNewAmount += amounts[i];
             
             // Store final values for last iteration
-            finalUnlockTime = newUnlockTime;
-            finalLockTime = lockTimes[i];
+            state.finalUnlockTime = state.newUnlockTime;
+            state.finalLockTime = lockTimes[i];
             
-            emit TokensLocked(msg.sender, amounts[i], newUnlockTime, newVotingPower);
+            emit TokensLocked(msg.sender, amounts[i], state.newUnlockTime, state.newVotingPower);
             
             unchecked { ++i; }
         }
         
         // Update lock info after the loop
-        _updateLockInfo(lockInfo, totalNewAmount, finalUnlockTime, totalNewVotingPower, finalLockTime);
+        _updateLockInfo(lockInfo, totalNewAmount, state.finalUnlockTime, totalNewVotingPower, state.finalLockTime);
     }
     
     /**
@@ -726,8 +742,8 @@ contract QTIToken is
         uint256 totalNewVotingPower,
         uint256 lockTime
     ) internal {
-        if (totalNewAmount > type(uint96).max) revert TokenErrorLibrary.InvalidAmount();
-        if (totalNewVotingPower > type(uint96).max) revert TokenErrorLibrary.InvalidAmount();
+        if (totalNewAmount > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
+        if (totalNewVotingPower > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
         
         lockInfo.amount = uint96(totalNewAmount);
         lockInfo.unlockTime = uint32(newUnlockTime);
@@ -781,7 +797,7 @@ contract QTIToken is
         whenNotPaused 
         returns (uint256[] memory amounts) 
     {
-        if (users.length > MAX_UNLOCK_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (users.length > MAX_UNLOCK_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         amounts = new uint256[](users.length);
         
@@ -850,13 +866,13 @@ contract QTIToken is
         flashLoanProtection
         returns (bool)
     {
-        if (recipients.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
-        if (recipients.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (recipients.length != amounts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         // Pre-validate recipients and amounts
         for (uint256 i = 0; i < recipients.length; i++) {
-            if (recipients[i] == address(0)) revert TokenErrorLibrary.InvalidAddress();
-            if (amounts[i] == 0) revert TokenErrorLibrary.InvalidAmount();
+            if (recipients[i] == address(0)) revert CommonErrorLibrary.InvalidAddress();
+            if (amounts[i] == 0) revert CommonErrorLibrary.InvalidAmount();
         }
         
 
@@ -985,9 +1001,9 @@ contract QTIToken is
     ) external whenNotPaused returns (uint256 proposalId) {
         // Update voting power to current time before checking threshold
         uint256 currentVotingPower = _updateVotingPower(msg.sender);
-        if (currentVotingPower < proposalThreshold) revert TokenErrorLibrary.InsufficientVotingPower();
-        if (votingPeriod < minVotingPeriod) revert TokenErrorLibrary.VotingPeriodTooShort();
-        if (votingPeriod > maxVotingPeriod) revert TokenErrorLibrary.VotingPeriodTooLong();
+        if (currentVotingPower < proposalThreshold) revert CommonErrorLibrary.InsufficientVotingPower();
+        if (votingPeriod < minVotingPeriod) revert CommonErrorLibrary.VotingPeriodTooShort();
+        if (votingPeriod > maxVotingPeriod) revert CommonErrorLibrary.VotingPeriodTooLong();
 
         proposalId = nextProposalId++;
         
@@ -1022,13 +1038,13 @@ contract QTIToken is
      */
     function vote(uint256 proposalId, bool support) external whenNotPaused {
         Proposal storage proposal = proposals[proposalId];
-        if (TIME_PROVIDER.currentTime() < proposal.startTime) revert TokenErrorLibrary.VotingNotStarted();
-        if (TIME_PROVIDER.currentTime() >= proposal.endTime) revert TokenErrorLibrary.VotingEnded();
-        if (proposal.receipts[msg.sender].hasVoted) revert TokenErrorLibrary.AlreadyVoted();
+        if (TIME_PROVIDER.currentTime() < proposal.startTime) revert CommonErrorLibrary.VotingNotStarted();
+        if (TIME_PROVIDER.currentTime() >= proposal.endTime) revert CommonErrorLibrary.VotingEnded();
+        if (proposal.receipts[msg.sender].hasVoted) revert CommonErrorLibrary.AlreadyVoted();
 
         // Update voting power to current time before voting
         uint256 votingPower = _updateVotingPower(msg.sender);
-        if (votingPower == 0) revert TokenErrorLibrary.NoVotingPower();
+        if (votingPower == 0) revert CommonErrorLibrary.NoVotingPower();
 
         proposal.receipts[msg.sender] = Receipt({
             hasVoted: true,
@@ -1060,12 +1076,12 @@ contract QTIToken is
       * @custom:oracle Requires fresh oracle price data
      */
     function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes) external whenNotPaused flashLoanProtection {
-        if (proposalIds.length != supportVotes.length) revert TokenErrorLibrary.ArrayLengthMismatch();
-        if (proposalIds.length > MAX_VOTE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (proposalIds.length != supportVotes.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (proposalIds.length > MAX_VOTE_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         // Update voting power once for the batch
         uint256 votingPower = _updateVotingPower(msg.sender);
-        if (votingPower == 0) revert TokenErrorLibrary.NoVotingPower();
+        if (votingPower == 0) revert CommonErrorLibrary.NoVotingPower();
         
 
         uint256 currentTimestamp = TIME_PROVIDER.currentTime();
@@ -1077,9 +1093,9 @@ contract QTIToken is
             bool support = supportVotes[i];
             
             Proposal storage proposal = proposals[proposalId];
-            if (currentTimestamp < proposal.startTime) revert TokenErrorLibrary.VotingNotStarted();
-            if (currentTimestamp >= proposal.endTime) revert TokenErrorLibrary.VotingEnded();
-            if (proposal.receipts[sender].hasVoted) revert TokenErrorLibrary.AlreadyVoted();
+            if (currentTimestamp < proposal.startTime) revert CommonErrorLibrary.VotingNotStarted();
+            if (currentTimestamp >= proposal.endTime) revert CommonErrorLibrary.VotingEnded();
+            if (proposal.receipts[sender].hasVoted) revert CommonErrorLibrary.AlreadyVoted();
 
             proposal.receipts[sender] = Receipt({
                 hasVoted: true,
@@ -1113,11 +1129,11 @@ contract QTIToken is
     // slither-disable-next-line low-level-calls
     function executeProposal(uint256 proposalId) external nonReentrant {
         Proposal storage proposal = proposals[proposalId];
-        if (TIME_PROVIDER.currentTime() < proposal.endTime) revert TokenErrorLibrary.VotingNotEnded();
-        if (proposal.executed) revert TokenErrorLibrary.ProposalAlreadyExecuted();
-        if (proposal.canceled) revert TokenErrorLibrary.ProposalCanceled();
-        if (proposal.forVotes <= proposal.againstVotes) revert TokenErrorLibrary.ProposalFailed();
-        if (proposal.forVotes + proposal.againstVotes < quorumVotes) revert TokenErrorLibrary.QuorumNotMet();
+        if (TIME_PROVIDER.currentTime() < proposal.endTime) revert CommonErrorLibrary.VotingNotEnded();
+        if (proposal.executed) revert CommonErrorLibrary.ProposalAlreadyExecuted();
+        if (proposal.canceled) revert CommonErrorLibrary.ProposalCanceled();
+        if (proposal.forVotes <= proposal.againstVotes) revert CommonErrorLibrary.ProposalFailed();
+        if (proposal.forVotes + proposal.againstVotes < quorumVotes) revert CommonErrorLibrary.QuorumNotMet();
 
 
         proposal.executed = true;
@@ -1140,7 +1156,7 @@ contract QTIToken is
      */
     function _verifyCallResult(bool success) private pure {
         if (!success) {
-            revert TokenErrorLibrary.ProposalFailed();
+            revert CommonErrorLibrary.ProposalFailed();
         }
     }
 
@@ -1204,10 +1220,10 @@ contract QTIToken is
     function cancelProposal(uint256 proposalId) external {
         Proposal storage proposal = proposals[proposalId];
         if (msg.sender != proposal.proposer && !hasRole(GOVERNANCE_ROLE, msg.sender)) {
-            revert TokenErrorLibrary.NotAuthorized();
+            revert CommonErrorLibrary.NotAuthorized();
         }
-        if (proposal.executed) revert TokenErrorLibrary.ProposalAlreadyExecuted();
-        if (proposal.canceled) revert TokenErrorLibrary.ProposalAlreadyCanceled();
+        if (proposal.executed) revert CommonErrorLibrary.ProposalAlreadyExecuted();
+        if (proposal.canceled) revert CommonErrorLibrary.ProposalAlreadyCanceled();
 
         proposal.canceled = true;
         emit ProposalCanceled(proposalId);
@@ -1335,7 +1351,7 @@ contract QTIToken is
         AccessControlLibrary.validateAddress(_treasury);
         CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        if (_treasury == address(0)) revert TokenErrorLibrary.ZeroAddress();
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
     }
 
@@ -1423,7 +1439,7 @@ contract QTIToken is
         
         // Update stored voting power with overflow check
         uint256 oldVotingPower = lockInfo.votingPower;
-        if (newVotingPower > type(uint96).max) revert TokenErrorLibrary.InvalidAmount();
+        if (newVotingPower > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
         lockInfo.votingPower = uint96(newVotingPower);
         
         // Update total voting power - Use checked arithmetic for critical state

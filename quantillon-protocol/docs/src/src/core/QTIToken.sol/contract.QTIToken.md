@@ -2036,7 +2036,7 @@ event ETHRecovered(address indexed to, uint256 indexed amount);
 |`amount`|`uint256`|Amount of ETH recovered|
 
 ## Structs
-### LockInfo
+### BatchLockState
 Vote-escrow lock information for each user
 
 *Stores locked amount, unlock time, voting power, and claim time*
@@ -2045,6 +2045,19 @@ Vote-escrow lock information for each user
 
 *OPTIMIZED: Fields ordered for optimal storage packing*
 
+
+```solidity
+struct BatchLockState {
+    uint256 currentTimestamp;
+    uint256 existingUnlockTime;
+    uint256 finalUnlockTime;
+    uint256 finalLockTime;
+    uint256 newUnlockTime;
+    uint256 newVotingPower;
+}
+```
+
+### LockInfo
 
 ```solidity
 struct LockInfo {

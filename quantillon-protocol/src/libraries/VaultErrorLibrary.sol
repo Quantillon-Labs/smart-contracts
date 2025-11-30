@@ -15,44 +15,21 @@ pragma solidity 0.8.24;
  * @custom:security-contact team@quantillon.money
  */
 library VaultErrorLibrary {
-    // Vault Operation Errors
-    error TokenTransferFailed();
-    error InsufficientCollateralization();
-    error EmergencyModeActive();
-    
     // Pool Health Errors
     error PoolNotHealthy();
     error PoolRatioInvalid();
     error PoolSizeZero();
     error PoolImbalance();
     
-    // Yield Management Errors
-    error YieldBelowThreshold();
-    error YieldNotAvailable();
-    error YieldDistributionFailed();
-    error YieldCalculationError();
-    error YieldClaimFailed();
-    
     // Recovery Errors
     error CannotRecoverUSDC();
     error CannotRecoverAToken();
-    error CannotRecoverOwnToken();
     error CannotRecoverCriticalToken(string tokenName);
     
     // External Integration Errors
-    error InvalidOraclePrice();
     error AavePoolNotHealthy();
     
     // Additional Vault Errors
-    error WouldExceedLimit();
-    error InsufficientBalance();
     error WouldBreachMinimum();
-    error InvalidAmount();
-    error InvalidAddress();
-    error BelowThreshold();
     error FeeTooHigh();
-    error InvalidThreshold();
-    error NoETHToRecover();
-    error ExcessiveSlippage();
-    error ConfigValueTooHigh();
 }

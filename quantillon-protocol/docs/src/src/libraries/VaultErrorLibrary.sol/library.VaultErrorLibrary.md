@@ -15,24 +15,6 @@ team@quantillon.money
 
 
 ## Errors
-### TokenTransferFailed
-
-```solidity
-error TokenTransferFailed();
-```
-
-### InsufficientCollateralization
-
-```solidity
-error InsufficientCollateralization();
-```
-
-### EmergencyModeActive
-
-```solidity
-error EmergencyModeActive();
-```
-
 ### PoolNotHealthy
 
 ```solidity
@@ -57,36 +39,6 @@ error PoolSizeZero();
 error PoolImbalance();
 ```
 
-### YieldBelowThreshold
-
-```solidity
-error YieldBelowThreshold();
-```
-
-### YieldNotAvailable
-
-```solidity
-error YieldNotAvailable();
-```
-
-### YieldDistributionFailed
-
-```solidity
-error YieldDistributionFailed();
-```
-
-### YieldCalculationError
-
-```solidity
-error YieldCalculationError();
-```
-
-### YieldClaimFailed
-
-```solidity
-error YieldClaimFailed();
-```
-
 ### CannotRecoverUSDC
 
 ```solidity
@@ -99,22 +51,10 @@ error CannotRecoverUSDC();
 error CannotRecoverAToken();
 ```
 
-### CannotRecoverOwnToken
-
-```solidity
-error CannotRecoverOwnToken();
-```
-
 ### CannotRecoverCriticalToken
 
 ```solidity
 error CannotRecoverCriticalToken(string tokenName);
-```
-
-### InvalidOraclePrice
-
-```solidity
-error InvalidOraclePrice();
 ```
 
 ### AavePoolNotHealthy
@@ -123,69 +63,15 @@ error InvalidOraclePrice();
 error AavePoolNotHealthy();
 ```
 
-### WouldExceedLimit
-
-```solidity
-error WouldExceedLimit();
-```
-
-### InsufficientBalance
-
-```solidity
-error InsufficientBalance();
-```
-
 ### WouldBreachMinimum
 
 ```solidity
 error WouldBreachMinimum();
 ```
 
-### InvalidAmount
-
-```solidity
-error InvalidAmount();
-```
-
-### InvalidAddress
-
-```solidity
-error InvalidAddress();
-```
-
-### BelowThreshold
-
-```solidity
-error BelowThreshold();
-```
-
 ### FeeTooHigh
 
 ```solidity
 error FeeTooHigh();
-```
-
-### InvalidThreshold
-
-```solidity
-error InvalidThreshold();
-```
-
-### NoETHToRecover
-
-```solidity
-error NoETHToRecover();
-```
-
-### ExcessiveSlippage
-
-```solidity
-error ExcessiveSlippage();
-```
-
-### ConfigValueTooHigh
-
-```solidity
-error ConfigValueTooHigh();
 ```
 

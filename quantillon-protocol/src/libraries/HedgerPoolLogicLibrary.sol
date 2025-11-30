@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {HedgerPoolErrorLibrary} from "./HedgerPoolErrorLibrary.sol";
 import {VaultMath} from "./VaultMath.sol";
 import {HedgerPoolValidationLibrary} from "./HedgerPoolValidationLibrary.sol";
+import {CommonValidationLibrary} from "./CommonValidationLibrary.sol";
 
 /**
  * @title HedgerPoolLogicLibrary
@@ -65,7 +66,7 @@ library HedgerPoolLogicLibrary {
         uint256 marginRatio
     ) {
         // Validate basic parameters first
-        HedgerPoolValidationLibrary.validatePositiveAmount(usdcAmount);
+        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         HedgerPoolValidationLibrary.validateLeverage(leverage, maxLeverage);
         HedgerPoolValidationLibrary.validatePositionCount(activePositionCount, maxPositionsPerHedger);
 
@@ -135,20 +136,26 @@ library HedgerPoolLogicLibrary {
      * @dev Returns how much additional USDC exposure a position can absorb
      * @param margin Position margin in USDC (6 decimals)
      * @param filledVolume Current filled volume (6 decimals)
-     * @param entryPrice Entry price (18 decimals)
      * @param currentPrice Current price (18 decimals)
      * @param minMarginRatio Minimum margin ratio in basis points
-     * @param realizedPnL Realized P&L (6 decimals)
      * @param qeuroBacked Exact QEURO amount backed (18 decimals)
      * @return capacity Additional USDC exposure the position can absorb
+     * @custom:security No security validations required for pure function
+     * @custom:validation None required for pure function
+     * @custom:state-changes None (pure function)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal function
+     * @custom:oracle Uses provided currentPrice parameter
      */
     function calculateCollateralCapacity(
         uint256 margin,
         uint256 filledVolume,
-        uint256 entryPrice,
+        uint256 /* entryPrice */,
         uint256 currentPrice,
         uint256 minMarginRatio,
-        int128 realizedPnL,
+        int128 /* realizedPnL */,
         uint128 qeuroBacked
     ) internal pure returns (uint256) {
         if (currentPrice == 0 || minMarginRatio == 0) return 0;
@@ -179,9 +186,9 @@ library HedgerPoolLogicLibrary {
      * @dev Checks if position margin ratio is below liquidation threshold
      * @param margin Current margin amount for the position
      * @param filledVolume Filled size of the position in USDC
-     * @param entryPrice Price at which the position was opened
      * @param currentPrice Current market price
      * @param liquidationThreshold Liquidation threshold in basis points
+     * @param qeuroBacked Exact QEURO amount backed by this position (18 decimals)
      * @return True if position can be liquidated, false otherwise
      * @custom:security No security validations required for pure function
      * @custom:validation None required for pure function
@@ -195,7 +202,7 @@ library HedgerPoolLogicLibrary {
     function isPositionLiquidatable(
         uint256 margin,
         uint256 filledVolume,
-        uint256 entryPrice,
+        uint256 /* entryPrice */,
         uint256 currentPrice,
         uint256 liquidationThreshold,
         uint128 qeuroBacked

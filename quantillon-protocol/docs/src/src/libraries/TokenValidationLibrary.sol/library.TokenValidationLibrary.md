@@ -188,37 +188,3 @@ function validateTreasuryAddress(address treasury) internal pure;
 |`treasury`|`address`|The treasury address to validate|
 
 
-### validatePositiveAmount
-
-Validates that an amount is positive (greater than zero)
-
-*Essential for token amounts, deposits, withdrawals, etc.*
-
-**Notes:**
-- Prevents zero-amount operations that could cause issues
-
-- Ensures amount is positive for meaningful operations
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InvalidAmount if amount is zero
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
-
-
-```solidity
-function validatePositiveAmount(uint256 amount) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|The amount to validate|
-
-

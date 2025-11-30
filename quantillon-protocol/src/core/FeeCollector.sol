@@ -121,10 +121,11 @@ contract FeeCollector is
     
     /// @notice Ensures only authorized contracts can collect fees
     modifier onlyFeeSource() {
-        require(hasRole(GOVERNANCE_ROLE, msg.sender) || 
-                hasRole(TREASURY_ROLE, msg.sender) ||
-                _isAuthorizedFeeSource(msg.sender), 
-                "FeeCollector: Unauthorized fee source");
+        if (!hasRole(GOVERNANCE_ROLE, msg.sender) && 
+            !hasRole(TREASURY_ROLE, msg.sender) &&
+            !_isAuthorizedFeeSource(msg.sender)) {
+            revert CommonErrorLibrary.NotAuthorized();
+        }
         _;
     }
 
@@ -181,7 +182,6 @@ contract FeeCollector is
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (_devFund == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (_communityFund == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        
         treasury = _treasury;
         devFund = _devFund;
         communityFund = _communityFund;
@@ -431,8 +431,9 @@ contract FeeCollector is
         // SECURITY: This is NOT an arbitrary send. The recipient is strictly validated:
         // - Must be one of three pre-authorized fund addresses (treasury/dev/community)
         // - Governance controls updates and each address is validated to be non-zero EOAs
+        // - Addresses are validated to be non-contracts (EOAs only)
         // The suppression below documents this intentional, controlled behavior.
-        // slither-disable-next-line arbitrary-send
+        // slither-disable-next-line arbitrary-send-eth
         (bool success, ) = recipient.call{value: amount}("");
         if (!success) revert CommonErrorLibrary.ETHTransferFailed();
     }
@@ -541,11 +542,10 @@ contract FeeCollector is
         CommonValidationLibrary.validateNotContract(_devFund, "devFund");
         CommonValidationLibrary.validateNotContract(_communityFund, "communityFund");
         
-        // Explicit zero checks for Slither (redundant but satisfies static analysis)
+        // Explicit zero checks for Slither (addresses already validated above)
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (_devFund == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (_communityFund == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        
         treasury = _treasury;
         devFund = _devFund;
         communityFund = _communityFund;

@@ -6,6 +6,7 @@ import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {TokenErrorLibrary} from "../src/libraries/TokenErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 
 /**
@@ -247,7 +248,7 @@ contract QTITokenTestSuite is Test {
             address(0x123)
         );
         
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero treasury
@@ -259,7 +260,7 @@ contract QTITokenTestSuite is Test {
             address(0x123)
         );
         
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation2), initData2);
     }
     
@@ -333,7 +334,7 @@ contract QTITokenTestSuite is Test {
      */
     function test_VoteEscrow_LockZeroAmount_Revert() public {
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         qtiToken.lock(0, ONE_MONTH);
     }
     
@@ -353,7 +354,7 @@ contract QTITokenTestSuite is Test {
         uint256 tooMuch = INITIAL_MINT_AMOUNT + 1;
         
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.InsufficientBalance.selector);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         qtiToken.lock(tooMuch, ONE_MONTH);
     }
     
@@ -373,7 +374,7 @@ contract QTITokenTestSuite is Test {
         uint256 tooShort = 6 days; // Less than MIN_LOCK_TIME (7 days)
         
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.LockTimeTooShort.selector);
+        vm.expectRevert(CommonErrorLibrary.LockTimeTooShort.selector);
         qtiToken.lock(LOCK_AMOUNT, tooShort);
     }
     
@@ -393,7 +394,7 @@ contract QTITokenTestSuite is Test {
         uint256 tooLong = FOUR_YEARS + 1; // More than MAX_LOCK_TIME
         
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.LockTimeTooLong.selector);
+        vm.expectRevert(CommonErrorLibrary.LockTimeTooLong.selector);
         qtiToken.lock(LOCK_AMOUNT, tooLong);
     }
 
@@ -464,7 +465,7 @@ contract QTITokenTestSuite is Test {
         // Try to lock an amount that would exceed user's balance
         // This should revert due to insufficient balance
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.InsufficientBalance.selector);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         qtiToken.lock(largeAmount, ONE_MONTH);
     }
 
@@ -485,7 +486,7 @@ contract QTITokenTestSuite is Test {
         uint256 largeLockTime = type(uint32).max - block.timestamp + 1;
         
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.LockTimeTooLong.selector);
+        vm.expectRevert(CommonErrorLibrary.LockTimeTooLong.selector);
         qtiToken.lock(LOCK_AMOUNT, largeLockTime);
     }
 
@@ -511,7 +512,7 @@ contract QTITokenTestSuite is Test {
         // Try to extend with a time that would cause unlockTime to overflow
         // This should revert due to the overflow protection
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.LockTimeTooLong.selector);
+        vm.expectRevert(CommonErrorLibrary.LockTimeTooLong.selector);
         qtiToken.lock(LOCK_AMOUNT, type(uint256).max);
     }
     
@@ -984,7 +985,7 @@ contract QTITokenTestSuite is Test {
         }
 
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(CommonErrorLibrary.BatchSizeTooLarge.selector);
         qtiToken.batchLock(amounts, times);
     }
 
@@ -1009,7 +1010,7 @@ contract QTITokenTestSuite is Test {
         }
 
         vm.prank(governance);
-        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(CommonErrorLibrary.BatchSizeTooLarge.selector);
         qtiToken.batchUnlock(users);
     }
 
@@ -1036,7 +1037,7 @@ contract QTITokenTestSuite is Test {
         }
 
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(CommonErrorLibrary.BatchSizeTooLarge.selector);
         qtiToken.batchTransfer(recipients, amounts);
     }
 
@@ -1063,7 +1064,7 @@ contract QTITokenTestSuite is Test {
         }
 
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(CommonErrorLibrary.BatchSizeTooLarge.selector);
         qtiToken.batchVote(proposals, choices);
     }
 
@@ -1109,7 +1110,7 @@ contract QTITokenTestSuite is Test {
     function test_Governance_CreateProposalInsufficientPower_Revert() public {
         // Try to create proposal without locking tokens
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.InsufficientVotingPower.selector);
+        vm.expectRevert(CommonErrorLibrary.InsufficientVotingPower.selector);
         qtiToken.createProposal("Test proposal", 5 days, "");
     }
     
@@ -1132,7 +1133,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to create proposal with too short period
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.VotingPeriodTooShort.selector);
+        vm.expectRevert(CommonErrorLibrary.VotingPeriodTooShort.selector);
         qtiToken.createProposal("Test proposal", 2 days, "");
     }
     
@@ -1155,7 +1156,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to create proposal with too long period
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.VotingPeriodTooLong.selector);
+        vm.expectRevert(CommonErrorLibrary.VotingPeriodTooLong.selector);
         qtiToken.createProposal("Test proposal", 15 days, "");
     }
     
@@ -1210,7 +1211,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to vote without voting power
         vm.prank(user2);
-        vm.expectRevert(TokenErrorLibrary.NoVotingPower.selector);
+        vm.expectRevert(CommonErrorLibrary.NoVotingPower.selector);
         qtiToken.vote(proposalId, true);
     }
     
@@ -1239,7 +1240,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to vote again
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.AlreadyVoted.selector);
+        vm.expectRevert(CommonErrorLibrary.AlreadyVoted.selector);
         qtiToken.vote(proposalId, false);
     }
     
@@ -1291,7 +1292,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to vote after end
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.VotingEnded.selector);
+        vm.expectRevert(CommonErrorLibrary.VotingEnded.selector);
         qtiToken.vote(proposalId, true);
     }
     
@@ -1358,7 +1359,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to execute before voting ends
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.VotingNotEnded.selector);
+        vm.expectRevert(CommonErrorLibrary.VotingNotEnded.selector);
         qtiToken.executeProposal(proposalId);
     }
     
@@ -1390,7 +1391,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to execute failed proposal
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.ProposalFailed.selector);
+        vm.expectRevert(CommonErrorLibrary.ProposalFailed.selector);
         qtiToken.executeProposal(proposalId);
     }
     
@@ -1422,7 +1423,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to execute without quorum (total votes < quorum requirement)
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.QuorumNotMet.selector);
+        vm.expectRevert(CommonErrorLibrary.QuorumNotMet.selector);
         qtiToken.executeProposal(proposalId);
     }
     
@@ -1503,7 +1504,7 @@ contract QTITokenTestSuite is Test {
         
         // Try to cancel by unauthorized user
         vm.prank(user2);
-        vm.expectRevert(TokenErrorLibrary.NotAuthorized.selector);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         qtiToken.cancelProposal(proposalId);
     }
 
@@ -1682,7 +1683,7 @@ contract QTITokenTestSuite is Test {
      */
     function test_Admin_UpdateTreasuryToZero_Revert() public {
         vm.prank(governance);
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         qtiToken.updateTreasury(address(0));
     }
     
@@ -1940,7 +1941,7 @@ contract QTITokenTestSuite is Test {
      */
     function test_Recovery_RecoverQTIToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(CommonErrorLibrary.CannotRecoverOwnToken.selector);
         qtiToken.recoverToken(address(qtiToken), 1000e18);
     }
     
@@ -2027,7 +2028,7 @@ contract QTITokenTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
         qtiToken.recoverETH();
     }
 

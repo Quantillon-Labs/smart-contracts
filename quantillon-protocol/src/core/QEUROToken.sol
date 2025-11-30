@@ -32,6 +32,7 @@ import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol"
 import {TokenLibrary} from "../libraries/TokenLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 
 /**
  * @title QEUROToken
@@ -279,10 +280,9 @@ contract QEUROToken is
         uint256 balanceBefore = balanceOf(address(this));
         _;
         uint256 balanceAfter = balanceOf(address(this));
-        require(
-            FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0),
-            "Flash loan attack detected"
-        );
+        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0)) {
+            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
+        }
     }
 
     // =============================================================================
@@ -368,9 +368,9 @@ contract QEUROToken is
         rateLimitInfo = RateLimitInfo(0, 0, uint64(block.number));
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
-        require(_treasury != address(0), "Treasury cannot be zero address");
-        TokenValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        TokenValidationLibrary.validateTreasuryAddress(_treasury);
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
     }
 
@@ -428,7 +428,7 @@ contract QEUROToken is
         // GAS OPTIMIZATION: Cache storage read
         bool whitelistEnabled_ = whitelistEnabled;
         if (whitelistEnabled_ && !isWhitelisted[to]) {
-            revert TokenErrorLibrary.NotWhitelisted();
+            revert CommonErrorLibrary.NotWhitelisted();
         }
 
         // Rate limiting check
@@ -471,8 +471,8 @@ contract QEUROToken is
         // Emergency killswitch check - prevents batch minting when protocol lacks collateral
         if (mintingKillswitch) revert TokenErrorLibrary.MintingDisabled();
         
-        if (recipients.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
-        if (recipients.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (recipients.length != amounts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         uint256 totalAmount = 0;
         
@@ -481,18 +481,18 @@ contract QEUROToken is
             address to = recipients[i];
             uint256 amount = amounts[i];
             
-            if (to == address(0)) revert TokenErrorLibrary.InvalidAddress();
-            if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
+            if (to == address(0)) revert CommonErrorLibrary.InvalidAddress();
+            if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
             
             if (isBlacklisted[to]) revert TokenErrorLibrary.BlacklistedAddress();
-            if (whitelistEnabled && !isWhitelisted[to]) revert TokenErrorLibrary.NotWhitelisted();
+            if (whitelistEnabled && !isWhitelisted[to]) revert CommonErrorLibrary.NotWhitelisted();
             
             // Accumulate total to check supply cap and rate limits once
             totalAmount = totalAmount + amount;
         }
         
         // Supply cap verification for the whole batch
-        if (totalSupply() + totalAmount > maxSupply) revert TokenErrorLibrary.WouldExceedLimit();
+        if (totalSupply() + totalAmount > maxSupply) revert CommonErrorLibrary.WouldExceedLimit();
 
         // Rate limiting for the whole batch
         _checkAndUpdateMintRateLimit(totalAmount);
@@ -577,8 +577,8 @@ contract QEUROToken is
         whenNotPaused
         flashLoanProtection
     {
-        if (froms.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
-        if (froms.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (froms.length != amounts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (froms.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         uint256 totalAmount = 0;
         
@@ -587,9 +587,9 @@ contract QEUROToken is
             address from = froms[i];
             uint256 amount = amounts[i];
             
-            if (from == address(0)) revert TokenErrorLibrary.InvalidAddress();
-            if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
-            if (balanceOf(from) < amount) revert TokenErrorLibrary.InsufficientBalance();
+            if (from == address(0)) revert CommonErrorLibrary.InvalidAddress();
+            if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
+            if (balanceOf(from) < amount) revert CommonErrorLibrary.InsufficientBalance();
             
             // Accumulate total to check rate limits once
             totalAmount = totalAmount + amount;
@@ -716,10 +716,10 @@ contract QEUROToken is
         external 
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
-        TokenValidationLibrary.validatePositiveAmount(newMintLimit);
-        TokenValidationLibrary.validatePositiveAmount(newBurnLimit);
-        if (newMintLimit > MAX_RATE_LIMIT) revert TokenErrorLibrary.RateLimitTooHigh();
-        if (newBurnLimit > MAX_RATE_LIMIT) revert TokenErrorLibrary.RateLimitTooHigh();
+        CommonValidationLibrary.validatePositiveAmount(newMintLimit);
+        CommonValidationLibrary.validatePositiveAmount(newBurnLimit);
+        if (newMintLimit > MAX_RATE_LIMIT) revert CommonErrorLibrary.RateLimitTooHigh();
+        if (newBurnLimit > MAX_RATE_LIMIT) revert CommonErrorLibrary.RateLimitTooHigh();
 
         rateLimitCaps = RateLimitCaps(uint128(newMintLimit), uint128(newBurnLimit));
 
@@ -845,7 +845,7 @@ contract QEUROToken is
         external 
         onlyRole(COMPLIANCE_ROLE) 
     {
-        if (!isWhitelisted[account]) revert TokenErrorLibrary.NotWhitelisted();
+        if (!isWhitelisted[account]) revert CommonErrorLibrary.NotWhitelisted();
         
         isWhitelisted[account] = false;
         emit AddressUnwhitelisted(account);
@@ -895,8 +895,8 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
-        if (accounts.length != reasons.length) revert TokenErrorLibrary.ArrayLengthMismatch();
-        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (accounts.length != reasons.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
@@ -925,7 +925,7 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
-        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
@@ -953,7 +953,7 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
-        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
@@ -982,11 +982,11 @@ contract QEUROToken is
         external
         onlyRole(COMPLIANCE_ROLE)
     {
-        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (accounts.length > MAX_COMPLIANCE_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         for (uint256 i = 0; i < accounts.length; i++) {
             address account = accounts[i];
-            if (!isWhitelisted[account]) revert TokenErrorLibrary.NotWhitelisted();
+            if (!isWhitelisted[account]) revert CommonErrorLibrary.NotWhitelisted();
             
             isWhitelisted[account] = false;
             emit AddressUnwhitelisted(account);
@@ -1021,7 +1021,7 @@ contract QEUROToken is
         external 
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
-        TokenValidationLibrary.validatePositiveAmount(newPrecision);
+        CommonValidationLibrary.validatePositiveAmount(newPrecision);
         if (newPrecision > PRECISION) revert TokenErrorLibrary.PrecisionTooHigh();
 
         uint256 oldPrecision = minPricePrecision;
@@ -1057,7 +1057,7 @@ contract QEUROToken is
         returns (uint256) 
     {
         if (feedDecimals > 18) revert TokenErrorLibrary.TooManyDecimals();
-        TokenValidationLibrary.validatePositiveAmount(price);
+        CommonValidationLibrary.validatePositiveAmount(price);
 
         if (feedDecimals == 18) {
             return price;
@@ -1354,8 +1354,8 @@ contract QEUROToken is
         whenNotPaused
         returns (bool)
     {
-        if (recipients.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
-        if (recipients.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (recipients.length != amounts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
 
         uint256 length = recipients.length;
@@ -1366,13 +1366,13 @@ contract QEUROToken is
             address to = recipients[i];
             uint256 amount = amounts[i];
             
-            if (to == address(0)) revert TokenErrorLibrary.InvalidAddress();
-            if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
+            if (to == address(0)) revert CommonErrorLibrary.InvalidAddress();
+            if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
             
             // Check compliance (blacklist/whitelist) per recipient
             if (isBlacklisted[sender]) revert TokenErrorLibrary.BlacklistedAddress();
             if (isBlacklisted[to]) revert TokenErrorLibrary.BlacklistedAddress();
-            if (whitelistEnabled && !isWhitelisted[to]) revert TokenErrorLibrary.NotWhitelisted();
+            if (whitelistEnabled && !isWhitelisted[to]) revert CommonErrorLibrary.NotWhitelisted();
             
             unchecked { ++i; }
         }
@@ -1429,7 +1429,7 @@ contract QEUROToken is
 
         // Whitelist checks (if enabled, skip for burn operations)
         if (whitelistEnabled && to != address(0) && !isWhitelisted[to]) {
-            revert TokenErrorLibrary.NotWhitelisted();
+            revert CommonErrorLibrary.NotWhitelisted();
         }
 
         super._update(from, to, amount);
@@ -1524,7 +1524,7 @@ contract QEUROToken is
         onlyRole(DEFAULT_ADMIN_ROLE) 
     {
         if (newMaxSupply < totalSupply()) revert TokenErrorLibrary.NewCapBelowCurrentSupply();
-        TokenValidationLibrary.validatePositiveAmount(newMaxSupply);
+        CommonValidationLibrary.validatePositiveAmount(newMaxSupply);
         
         uint256 oldCap = maxSupply;
         maxSupply = newMaxSupply;
@@ -1546,10 +1546,9 @@ contract QEUROToken is
      * @custom:oracle No oracle dependencies
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_treasury != address(0), "Treasury cannot be zero address");
-        AccessControlLibrary.validateAddress(_treasury);
-        TokenValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        TokenValidationLibrary.validateTreasuryAddress(_treasury);
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

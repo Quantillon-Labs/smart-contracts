@@ -9,6 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
 import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
  * @title HedgerPoolTestSuite
@@ -387,6 +388,20 @@ contract HedgerPoolTestSuite is Test {
         _syncVaultFillWithPrice(amount, EUR_USD_PRICE);
     }
 
+    /**
+     * @notice Internal helper to sync vault fill with a specific price
+     * @dev Calculates QEURO amount and calls recordUserMint on hedgerPool
+     * @param amount USDC amount to sync (6 decimals)
+     * @param price EUR/USD price to use for calculation (18 decimals)
+     * @custom:security Test helper function only
+     * @custom:validation None required for test helper
+     * @custom:state-changes Calls hedgerPool.recordUserMint
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - test helper
+     * @custom:access Internal test helper
+     * @custom:oracle Uses provided price parameter
+     */
     function _syncVaultFillWithPrice(uint256 amount, uint256 price) internal {
         if (amount == 0) return;
         // Calculate QEURO amount: qeuro = usdc * 1e18 / price (convert USDC 6 decimals to QEURO 18 decimals)
@@ -482,7 +497,7 @@ contract HedgerPoolTestSuite is Test {
             address(0x999) // Mock vault address
         );
         
-        vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(CommonErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero USDC
@@ -508,7 +523,7 @@ contract HedgerPoolTestSuite is Test {
             address(0x999) // Mock vault address
         );
         
-        vm.expectRevert(abi.encodeWithSelector(HedgerPoolErrorLibrary.InvalidAddress.selector));
+        vm.expectRevert(abi.encodeWithSelector(CommonErrorLibrary.InvalidAddress.selector));
         new ERC1967Proxy(address(newImplementation2), initData2);
         
         // Test with zero oracle - NOW ALLOWED for phased deployment
@@ -1019,6 +1034,18 @@ contract HedgerPoolTestSuite is Test {
         assertEq(hedgerPool.totalMargin(), netMargin + netAdditionalMargin);
     }
 
+    /**
+     * @notice Tests that adding margin scales position size and exposure proportionally
+     * @dev Verifies that adding margin increases position size and total exposure while maintaining leverage
+     * @custom:security Test function only
+     * @custom:validation None required for test
+     * @custom:state-changes Creates position, adds margin, verifies state changes
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public test function
+     * @custom:oracle Not applicable
+     */
     function test_Margin_AddMarginScalesPositionSizeAndExposure() public {
         _whitelistHedger(hedger1);
         vm.prank(hedger1);
@@ -1073,6 +1100,18 @@ contract HedgerPoolTestSuite is Test {
         assertEq(hedgerPool.totalExposure(), totalExposureBefore + expectedDelta);
     }
 
+    /**
+     * @notice Tests that fills update the weighted average entry price correctly
+     * @dev Verifies that multiple fills at different prices result in correct weighted average entry price
+     * @custom:security Test function only
+     * @custom:validation None required for test
+     * @custom:state-changes Creates position, adds fills at different prices, verifies entry price
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public test function
+     * @custom:oracle Not applicable
+     */
     function test_FillsUpdateWeightedEntryPrice() public {
         _whitelistHedger(hedger1);
         vm.prank(hedger1);
@@ -1321,6 +1360,18 @@ contract HedgerPoolTestSuite is Test {
         assertEq(hedgerPool.totalMargin(), netMargin - marginToRemove);
     }
 
+    /**
+     * @notice Tests that removing margin scales position size and exposure proportionally
+     * @dev Verifies that removing margin decreases position size and total exposure while maintaining leverage
+     * @custom:security Test function only
+     * @custom:validation None required for test
+     * @custom:state-changes Creates position, removes margin, verifies state changes
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public test function
+     * @custom:oracle Not applicable
+     */
     function test_Margin_RemoveMarginScalesPositionSizeAndExposure() public {
         _whitelistHedger(hedger1);
         vm.prank(hedger1);
@@ -1371,6 +1422,18 @@ contract HedgerPoolTestSuite is Test {
         assertEq(hedgerPool.totalExposure(), totalExposureBefore - expectedDelta);
     }
 
+    /**
+     * @notice Tests that removing margin cannot drop position size below filled volume
+     * @dev Verifies that margin removal is restricted when it would cause position size to fall below filled volume
+     * @custom:security Test function only
+     * @custom:validation None required for test
+     * @custom:state-changes Creates position, adds fills, attempts to remove too much margin, verifies restriction
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public test function
+     * @custom:oracle Not applicable
+     */
     function test_Margin_RemoveMarginCannotDropBelowFilledVolume() public {
         _whitelistHedger(hedger1);
         vm.prank(hedger1);
@@ -2284,7 +2347,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Recovery_RecoverOwnToken_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(HedgerPoolErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(CommonErrorLibrary.CannotRecoverOwnToken.selector);
         hedgerPool.recover(address(hedgerPool), 1000e18);
     }
 
@@ -2403,7 +2466,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(HedgerPoolErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
         hedgerPool.recover(address(0), 0);
     }
 
@@ -2700,7 +2763,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_HedgerWhitelist_WhitelistHedger_ZeroAddress_Revert() public {
         vm.prank(governance);
-        vm.expectRevert(HedgerPoolErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         hedgerPool.setHedgerWhitelist(address(0), true);
     }
 
@@ -2768,7 +2831,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_HedgerWhitelist_RemoveHedger_NotWhitelisted_Revert() public {
         vm.prank(governance);
-        vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
         hedgerPool.setHedgerWhitelist(hedger1, false);
     }
 
@@ -2786,7 +2849,7 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_HedgerWhitelist_RemoveHedger_ZeroAddress_Revert() public {
         vm.prank(governance);
-        vm.expectRevert(HedgerPoolErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         hedgerPool.setHedgerWhitelist(address(0), false);
     }
 
@@ -2921,7 +2984,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Open position should revert (hedger is not whitelisted)
         vm.prank(freshHedger);
-        vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
     }
 
@@ -2997,7 +3060,7 @@ contract HedgerPoolTestSuite is Test {
         
         // Open position should revert (hedger is not whitelisted)
         vm.prank(freshHedger);
-        vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
     }
 

@@ -17,29 +17,15 @@ pragma solidity 0.8.24;
 library HedgerPoolErrorLibrary {
     // HedgerPool Specific Errors
     error FlashLoanAttackDetected();
-    error NotWhitelisted();
     error PendingLiquidationCommitment();
     error InvalidPosition();
     error PositionNotLiquidatable();
-    error YieldClaimFailed();
     error InvalidHedger();
-    error TooManyPositions();
     error MaxPositionsPerTx();
-    error NotPaused();
-    error ZeroAddress();
-    error InvalidAmount();
-    error ConfigValueTooLow();
-    error ConfigInvalid();
-    error ConfigValueTooHigh();
     error AlreadyWhitelisted();
-    error InvalidOraclePrice();
-    error InvalidAddress();
-    error NotAuthorized();
     error OnlyVault();
     error RewardOverflow();
     error InsufficientMargin();
-    error CannotRecoverOwnToken();
-    error NoETHToRecover();
     
     // Position Limit Errors
     error MarginExceedsMaximum();
@@ -68,7 +54,6 @@ library HedgerPoolErrorLibrary {
     error PositionOwnerMismatch();
     error PositionAlreadyClosed();
     error PositionClosureRestricted();
-    error PositionNotActive();
     error PositionHasActiveFill();
     error InsufficientHedgerCapacity();
     error NoActiveHedgerLiquidity();
@@ -78,23 +63,13 @@ library HedgerPoolErrorLibrary {
     error LiquidationRewardTooHigh();
     error LiquidationPenaltyTooHigh();
     error LiquidationThresholdInvalid();
-    error LiquidationCooldown();
     error NoValidCommitment();
     error CommitmentAlreadyExists();
     error CommitmentDoesNotExist();
     
     // Fee Errors
-    error FeeTooHigh();
     error EntryFeeTooHigh();
     error ExitFeeTooHigh();
     error MarginFeeTooHigh();
     error YieldFeeTooHigh();
-    
-    // Yield Errors
-    error YieldBelowThreshold();
-    error YieldNotAvailable();
-    error YieldDistributionFailed();
-    error YieldCalculationError();
-    error InsufficientYield();
-    error HoldingPeriodNotMet();
 }

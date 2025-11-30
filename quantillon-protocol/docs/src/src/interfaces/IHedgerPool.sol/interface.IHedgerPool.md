@@ -216,7 +216,7 @@ Synchronizes hedger fills with a user mint
 **Notes:**
 - Restricted to the vault; validates amount > 0
 
-- Amount must be positive
+- Amount and price must be positive
 
 - Updates per-position fills and total exposure
 
@@ -228,18 +228,19 @@ Synchronizes hedger fills with a user mint
 
 - Vault-only
 
-- Uses provided oracle price
+- Uses provided fill price
 
 
 ```solidity
-function recordUserMint(uint256 usdcAmount, uint256 fillPrice) external;
+function recordUserMint(uint256 usdcAmount, uint256 fillPrice, uint256 qeuroAmount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcAmount`|`uint256`|Net USDC amount minted into QEURO|
-|`fillPrice`|`uint256`|EUR/USD oracle price (18 decimals) observed by the vault|
+|`usdcAmount`|`uint256`|Net USDC amount minted into QEURO (6 decimals)|
+|`fillPrice`|`uint256`|EUR/USD oracle price (18 decimals) used for the mint|
+|`qeuroAmount`|`uint256`|QEURO amount that was minted (18 decimals)|
 
 
 ### recordUserRedeem
@@ -251,7 +252,7 @@ Synchronizes hedger fills with a user redemption
 **Notes:**
 - Restricted to the vault; validates amount > 0
 
-- Amount must be positive
+- Amount and price must be positive
 
 - Reduces per-position fills and total exposure
 
@@ -263,17 +264,19 @@ Synchronizes hedger fills with a user redemption
 
 - Vault-only
 
-- Not applicable
+- Uses provided redeem price
 
 
 ```solidity
-function recordUserRedeem(uint256 usdcAmount) external;
+function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcAmount`|`uint256`|Gross USDC amount returned to the user|
+|`usdcAmount`|`uint256`|Gross USDC amount returned to the user (6 decimals)|
+|`redeemPrice`|`uint256`|EUR/USD oracle price (18 decimals) observed by the vault|
+|`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
 ### commitLiquidation
@@ -506,15 +509,15 @@ function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32
 |`salt`|`bytes32`|Same salt used in commitLiquidation for commitment verification|
 
 
-### getActivePositionIds
+### getTotalEffectiveHedgerCollateral
 
 Claims accumulated hedging rewards for the caller
 
-Returns the list of currently active position IDs
+Calculates total effective hedger collateral (deposits + P&L) across all active positions
 
 *Combines interest rate differential rewards and yield shift rewards*
 
-*Useful for analytics and monitoring tools to inspect active hedger positions*
+*Used by vault to determine protocol collateralization ratio*
 
 **Notes:**
 - Validates hedger has active positions, updates reward calculations
@@ -532,95 +535,6 @@ Returns the list of currently active position IDs
 - Public - any hedger can claim their rewards
 
 - No oracle dependencies for reward claiming
-
-- View-only; no restrictions besides public access
-
-- None
-
-- None
-
-- None
-
-- None
-
-- Not applicable
-
-- Public
-
-- Not applicable
-
-
-```solidity
-function getActivePositionIds() external view returns (uint256[] memory);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256[]`|interestDifferential USDC rewards from interest rate differential (6 decimals)|
-
-
-### getFillMetrics
-
-Returns aggregate hedger fill metrics
-
-*Provides total exposure requested vs. currently matched exposure*
-
-**Notes:**
-- View-only; no restrictions besides public access
-
-- None
-
-- None
-
-- None
-
-- None
-
-- Not applicable
-
-- Public
-
-- Not applicable
-
-
-```solidity
-function getFillMetrics() external view returns (uint256 totalHedgeExposure, uint256 totalMatchedExposure);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalHedgeExposure`|`uint256`|Total requested exposure across all positions|
-|`totalMatchedExposure`|`uint256`|Total filled exposure matched with user flow|
-
-
-### getTotalEffectiveHedgerCollateral
-
-Calculates total effective hedger collateral (deposits + P&L) across all active positions
-
-Calculates total effective hedger collateral (deposits + P&L) across all active positions
-
-*Used by vault to determine protocol collateralization ratio*
-
-*Used by vault to determine protocol collateralization ratio*
-
-**Notes:**
-- View-only helper - no state changes
-
-- Requires valid oracle price
-
-- None - view function
-
-- None
-
-- Reverts if oracle price is invalid
-
-- Not applicable - view function
-
-- Public - anyone can query effective collateral
-
-- Requires fresh oracle price data
 
 - Read-only helper - no state changes
 
@@ -640,8 +554,14 @@ Calculates total effective hedger collateral (deposits + P&L) across all active 
 
 
 ```solidity
-function getTotalEffectiveHedgerCollateral() external returns (uint256 totalEffectiveCollateral);
+function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external returns (uint256 totalEffectiveCollateral);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`currentPrice`|`uint256`|Current EUR/USD oracle price (18 decimals)|
+
 **Returns**
 
 |Name|Type|Description|
@@ -853,7 +773,7 @@ Unpauses hedging operations
 function unpause() external;
 ```
 
-### recoverToken
+### recover
 
 Recovers tokens accidentally sent to the contract
 
@@ -866,7 +786,7 @@ Recovers tokens accidentally sent to the contract
 
 - Transfers tokens from contract to treasury
 
-- Emits TokenRecovered event
+- Emits TokenRecovered or ETHRecovered event
 
 - No errors thrown - library handles error cases
 
@@ -878,7 +798,7 @@ Recovers tokens accidentally sent to the contract
 
 
 ```solidity
-function recoverToken(address token, uint256 amount) external;
+function recover(address token, uint256 amount) external;
 ```
 **Parameters**
 
@@ -887,34 +807,6 @@ function recoverToken(address token, uint256 amount) external;
 |`token`|`address`|Address of the token to recover|
 |`amount`|`uint256`|Amount of tokens to recover|
 
-
-### recoverETH
-
-Recovers ETH accidentally sent to the contract
-
-*Emergency function to recover ETH that was accidentally sent to the contract*
-
-**Notes:**
-- Validates admin role and emits recovery event
-
-- No input validation required - transfers all ETH
-
-- Transfers all contract ETH balance to treasury
-
-- Emits ETHRecovered with amount and treasury address
-
-- No errors thrown - safe ETH transfer
-
-- Not protected - no external calls
-
-- Restricted to DEFAULT_ADMIN_ROLE
-
-- No oracle dependencies
-
-
-```solidity
-function recoverETH() external;
-```
 
 ### usdc
 
@@ -2054,22 +1946,22 @@ function LIQUIDATION_COOLDOWN() external view returns (uint256);
 |`<none>`|`uint256`|uint256 Liquidation cooldown in blocks|
 
 
-### whitelistHedger
+### setHedgerWhitelist
 
-Whitelists a hedger address
+Whitelist (add=true) or remove (add=false) a hedger
 
-*Allows the specified address to open hedge positions when whitelist is enabled*
+*Allows or prevents the specified address from opening hedge positions*
 
 **Notes:**
 - Validates governance role and hedger address
 
-- Validates hedger is not address(0) and not already whitelisted
+- Validates hedger is not address(0) and whitelist state is valid
 
-- Updates isWhitelistedHedger mapping and grants HEDGER_ROLE
+- Updates isWhitelistedHedger mapping and grants/revokes HEDGER_ROLE
 
-- Emits HedgerWhitelisted with hedger and caller addresses
+- Emits HedgerWhitelisted or HedgerRemoved with hedger and caller addresses
 
-- Throws ZeroAddress if hedger is address(0), AlreadyWhitelisted if already whitelisted
+- Throws ZeroAddress if hedger is address(0), AlreadyWhitelisted/NotWhitelisted based on operation
 
 - Not protected - no external calls
 
@@ -2079,47 +1971,14 @@ Whitelists a hedger address
 
 
 ```solidity
-function whitelistHedger(address hedger) external;
+function setHedgerWhitelist(address hedger, bool add) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`hedger`|`address`|Address to whitelist as a hedger|
-
-
-### removeHedger
-
-Removes a hedger from the whitelist
-
-*Prevents the specified address from opening new hedge positions*
-
-**Notes:**
-- Validates governance role and hedger address
-
-- Validates hedger is not address(0) and is currently whitelisted
-
-- Updates isWhitelistedHedger mapping and revokes HEDGER_ROLE
-
-- Emits HedgerRemoved with hedger and caller addresses
-
-- Throws ZeroAddress if hedger is address(0), NotWhitelisted if not whitelisted
-
-- Not protected - no external calls
-
-- Restricted to GOVERNANCE_ROLE
-
-- No oracle dependencies
-
-
-```solidity
-function removeHedger(address hedger) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address to remove from hedger whitelist|
+|`hedger`|`address`|Address to whitelist or remove|
+|`add`|`bool`|True to whitelist, false to remove|
 
 
 ### toggleHedgerWhitelistMode

@@ -245,7 +245,7 @@ contract FeeCollectorTest is Test {
         vm.startPrank(unauthorizedUser);
         mockUSDC.approve(address(feeCollector), feeAmount);
         
-        vm.expectRevert("FeeCollector: Unauthorized fee source");
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         feeCollector.collectFees(address(mockUSDC), feeAmount, "minting");
         vm.stopPrank();
     }

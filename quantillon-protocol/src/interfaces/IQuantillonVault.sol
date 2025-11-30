@@ -27,8 +27,16 @@ interface IQuantillonVault {
       * @custom:reentrancy Protected by reentrancy guard
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
+     * @param admin Address that receives admin and governance roles
+     * @param _qeuro QEURO token contract address
+     * @param _usdc USDC token contract address
+     * @param _oracle Chainlink oracle contract address
+     * @param _hedgerPool HedgerPool contract address
+     * @param _userPool UserPool contract address
+     * @param _timelock Timelock contract address for secure upgrades
+     * @param _feeCollector FeeCollector contract address
      */
-    function initialize(address admin, address _qeuro, address _usdc, address _oracle, address _hedgerPool, address _userPool, address _timelock) external;
+    function initialize(address admin, address _qeuro, address _usdc, address _oracle, address _hedgerPool, address _userPool, address _timelock, address _feeCollector) external;
 
     /**
      * @notice Mints QEURO by swapping USDC
@@ -193,9 +201,8 @@ interface IQuantillonVault {
 
     /**
      * @notice Recovers ERC20 tokens sent by mistake
-     * @dev Allows governance to recover accidentally sent ERC20 tokens
+     * @dev Allows governance to recover accidentally sent ERC20 tokens to treasury
      * @param token Token address
-     * @param to Recipient
      * @param amount Amount to transfer
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
@@ -206,7 +213,7 @@ interface IQuantillonVault {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function recoverToken(address token, address to, uint256 amount) external;
+    function recoverToken(address token, uint256 amount) external;
 
     /**
      * @notice Recovers ETH sent by mistake
@@ -655,4 +662,97 @@ interface IQuantillonVault {
         uint256 maxDeviation,
         uint256 minBlocks
     );
+
+    /**
+     * @notice Updates the fee collector address
+     * @dev Updates the fee collector contract address
+     * @param _feeCollector New fee collector address
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateFeeCollector(address _feeCollector) external;
+
+    /**
+     * @notice Updates the collateralization thresholds
+     * @dev Updates minimum and critical collateralization ratios
+     * @param _minCollateralizationRatioForMinting New minimum collateralization ratio for minting (in basis points)
+     * @param _criticalCollateralizationRatio New critical collateralization ratio for liquidation (in basis points)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateCollateralizationThresholds(
+        uint256 _minCollateralizationRatioForMinting,
+        uint256 _criticalCollateralizationRatio
+    ) external;
+
+    /**
+     * @notice Checks if minting is allowed based on current collateralization ratio
+     * @dev Returns true if collateralization ratio >= minCollateralizationRatioForMinting
+     * @return canMint Whether minting is currently allowed
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted - view function
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check minting status
+     * @custom:oracle No oracle dependencies
+     */
+    function canMint() external returns (bool);
+
+    /**
+     * @notice Checks if liquidation should be triggered based on current collateralization ratio
+     * @dev Returns true if collateralization ratio < criticalCollateralizationRatio
+     * @return shouldLiquidate Whether liquidation should be triggered
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted - view function
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check liquidation status
+     * @custom:oracle No oracle dependencies
+     */
+    function shouldTriggerLiquidation() external returns (bool);
+
+    /**
+     * @notice Calculates the current protocol collateralization ratio
+     * @dev Returns ratio in basis points (e.g., 10500 = 105%)
+     * @return ratio Current collateralization ratio in basis points
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted - view function
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check collateralization ratio
+     * @custom:oracle Requires fresh oracle price data (via HedgerPool)
+     */
+    function getProtocolCollateralizationRatio() external returns (uint256);
+
+    /**
+     * @notice Updates the price cache with the current oracle price
+     * @dev Allows governance to manually refresh the price cache
+     * @custom:security Only callable by governance role
+     * @custom:validation Validates oracle price is valid before updating cache
+     * @custom:state-changes Updates lastValidEurUsdPrice, lastPriceUpdateBlock, and lastPriceUpdateTime
+     * @custom:events Emits PriceCacheUpdated event
+     * @custom:errors Reverts if oracle price is invalid
+     * @custom:reentrancy Not applicable - no external calls after state changes
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Requires valid oracle price
+     */
+    function updatePriceCache() external;
 }

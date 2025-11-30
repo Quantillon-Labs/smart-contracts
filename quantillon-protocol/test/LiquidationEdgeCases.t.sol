@@ -6,6 +6,7 @@ import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
@@ -376,7 +377,7 @@ contract LiquidationEdgeCases is Test {
         
         // Attempt to directly manipulate position (should fail due to access control)
         // This should fail because flashLoanAttacker is not whitelisted as a hedger
-        vm.expectRevert(HedgerPoolErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
         hedgerPool.enterHedgePosition(1000 * USDC_PRECISION, 2 * PRECISION / PRECISION);
         
         vm.stopPrank();

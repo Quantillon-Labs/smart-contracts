@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 import {TreasuryRecoveryLibrary} from "./TreasuryRecoveryLibrary.sol";

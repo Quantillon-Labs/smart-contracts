@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {TokenErrorLibrary} from "../src/libraries/TokenErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 
 /**
@@ -172,7 +173,7 @@ contract QEUROTokenTestSuite is Test {
             admin
         );
         
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation), initData1);
         
         // Test with zero vault
@@ -185,7 +186,7 @@ contract QEUROTokenTestSuite is Test {
             admin
         );
         
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         new ERC1967Proxy(address(newImplementation2), initData2);
     }
     
@@ -263,7 +264,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Mint_ZeroAddress_Revert() public {
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         qeuroToken.mint(address(0), INITIAL_MINT_AMOUNT);
     }
     
@@ -281,7 +282,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Mint_ZeroAmount_Revert() public {
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         qeuroToken.mint(user1, 0);
     }
     
@@ -327,7 +328,7 @@ contract QEUROTokenTestSuite is Test {
         
         // Try to mint to non-whitelisted address
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
         qeuroToken.mint(user1, INITIAL_MINT_AMOUNT);
         
         // Whitelist user1
@@ -373,7 +374,7 @@ contract QEUROTokenTestSuite is Test {
         
         // Try to mint one more token - should hit supply cap directly
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.WouldExceedLimit.selector);
+        vm.expectRevert(CommonErrorLibrary.WouldExceedLimit.selector);
         qeuroToken.mint(user2, 1);
     }
 
@@ -458,7 +459,7 @@ contract QEUROTokenTestSuite is Test {
         amounts[0] = 100 * 1e18;
 
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.ArrayLengthMismatch.selector);
+        vm.expectRevert(CommonErrorLibrary.ArrayLengthMismatch.selector);
         qeuroToken.batchMint(recipients, amounts);
     }
 
@@ -599,7 +600,7 @@ contract QEUROTokenTestSuite is Test {
         }
 
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(CommonErrorLibrary.BatchSizeTooLarge.selector);
         qeuroToken.batchMint(recipients, amounts);
     }
 
@@ -626,7 +627,7 @@ contract QEUROTokenTestSuite is Test {
         }
 
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(CommonErrorLibrary.BatchSizeTooLarge.selector);
         qeuroToken.batchBurn(froms, amounts);
     }
 
@@ -653,7 +654,7 @@ contract QEUROTokenTestSuite is Test {
         }
 
         vm.prank(user1);
-        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(CommonErrorLibrary.BatchSizeTooLarge.selector);
         qeuroToken.batchTransfer(recipients, amounts);
     }
 
@@ -678,7 +679,7 @@ contract QEUROTokenTestSuite is Test {
         }
 
         vm.prank(compliance);
-        vm.expectRevert(TokenErrorLibrary.BatchSizeTooLarge.selector);
+        vm.expectRevert(CommonErrorLibrary.BatchSizeTooLarge.selector);
         qeuroToken.batchWhitelistAddresses(accounts);
     }
 
@@ -774,7 +775,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Burn_ZeroAddress_Revert() public {
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         qeuroToken.burn(address(0), SMALL_AMOUNT);
     }
     
@@ -792,7 +793,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Burn_ZeroAmount_Revert() public {
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         qeuroToken.burn(user1, 0);
     }
     
@@ -815,7 +816,7 @@ contract QEUROTokenTestSuite is Test {
         
         // Try to burn more than balance
         vm.prank(vault);
-        vm.expectRevert(TokenErrorLibrary.InsufficientBalance.selector);
+        vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
         qeuroToken.burn(user1, LARGE_AMOUNT);
     }
 
@@ -1028,21 +1029,21 @@ contract QEUROTokenTestSuite is Test {
     function test_RateLimit_UpdateInvalidValues_Revert() public {
         // Test zero values
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         qeuroToken.updateRateLimits(0, 1000 * 1e18);
         
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         qeuroToken.updateRateLimits(1000 * 1e18, 0);
         
         // Test values too high
         uint256 tooHigh = 10_000_000 * 1e18 + 1; // MAX_RATE_LIMIT + 1
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.RateLimitTooHigh.selector);
+        vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
         qeuroToken.updateRateLimits(tooHigh, 1000 * 1e18);
         
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.RateLimitTooHigh.selector);
+        vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
         qeuroToken.updateRateLimits(1000 * 1e18, tooHigh);
     }
 
@@ -1101,7 +1102,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Compliance_BlacklistZeroAddress_Revert() public {
         vm.prank(compliance);
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         qeuroToken.blacklistAddress(address(0), "Test blacklist");
     }
     
@@ -1219,7 +1220,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Compliance_WhitelistZeroAddress_Revert() public {
         vm.prank(compliance);
-        vm.expectRevert(TokenErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         qeuroToken.whitelistAddress(address(0));
     }
     
@@ -1282,7 +1283,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Compliance_UnwhitelistNonWhitelisted_Revert() public {
         vm.prank(compliance);
-        vm.expectRevert(TokenErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
         qeuroToken.unwhitelistAddress(user1);
     }
     
@@ -1544,7 +1545,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Admin_UpdateMaxSupplyToZero_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         qeuroToken.updateMaxSupply(0);
     }
     
@@ -1601,7 +1602,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Admin_UpdateMinPricePrecisionToZero_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         qeuroToken.updateMinPricePrecision(0);
     }
     
@@ -1686,7 +1687,7 @@ contract QEUROTokenTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Utility_NormalizePriceZeroPrice_Revert() public {
-        vm.expectRevert(TokenErrorLibrary.InvalidAmount.selector);
+        vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
         qeuroToken.normalizePrice(0, 8);
     }
     
@@ -1836,7 +1837,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Recovery_RecoverQEURO_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.CannotRecoverOwnToken.selector);
+        vm.expectRevert(CommonErrorLibrary.CannotRecoverOwnToken.selector);
         qeuroToken.recoverToken(address(qeuroToken), 1000);
     }
     
@@ -1920,7 +1921,7 @@ contract QEUROTokenTestSuite is Test {
      */
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
-        vm.expectRevert(TokenErrorLibrary.NoETHToRecover.selector);
+        vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
         qeuroToken.recoverETH();
     }
 

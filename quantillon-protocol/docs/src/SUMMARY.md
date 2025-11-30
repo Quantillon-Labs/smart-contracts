@@ -42,6 +42,7 @@
     - [HedgerPoolLogicLibrary](src/libraries/HedgerPoolLogicLibrary.sol/library.HedgerPoolLogicLibrary.md)
     - [HedgerPoolOptimizationLibrary](src/libraries/HedgerPoolOptimizationLibrary.sol/library.HedgerPoolOptimizationLibrary.md)
     - [HedgerPoolValidationLibrary](src/libraries/HedgerPoolValidationLibrary.sol/library.HedgerPoolValidationLibrary.md)
+    - [PriceValidationLibrary](src/libraries/PriceValidationLibrary.sol/library.PriceValidationLibrary.md)
     - [QTITokenGovernanceLibrary](src/libraries/QTITokenGovernanceLibrary.sol/library.QTITokenGovernanceLibrary.md)
     - [TimeProvider](src/libraries/TimeProviderLibrary.sol/contract.TimeProvider.md)
     - [TokenErrorLibrary](src/libraries/TokenErrorLibrary.sol/library.TokenErrorLibrary.md)

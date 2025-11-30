@@ -321,7 +321,7 @@ contract AaveVault is
         aavePool = IPool(aaveProvider.getPool());
         rewardsController = IRewardsController(_rewardsController);
         yieldShift = IYieldShift(_yieldShift);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
@@ -362,10 +362,10 @@ contract AaveVault is
         AccessControlLibrary.onlyVaultManager(this);
         CommonValidationLibrary.validatePositiveAmount(amount);
         
-        if (emergencyMode) revert VaultErrorLibrary.EmergencyModeActive();
+        if (emergencyMode) revert CommonErrorLibrary.EmergencyModeActive();
         
         uint256 newTotalDeposit = principalDeposited + amount;
-        if (newTotalDeposit > maxAaveExposure) revert VaultErrorLibrary.WouldExceedLimit();
+        if (newTotalDeposit > maxAaveExposure) revert CommonErrorLibrary.WouldExceedLimit();
         if (!_isAaveHealthy()) revert VaultErrorLibrary.AavePoolNotHealthy();
         
         uint256 balanceBefore = aUSDC.balanceOf(address(this));
@@ -382,7 +382,7 @@ contract AaveVault is
         aTokensReceived = balanceAfter - balanceBefore;
         
         if (principalDeposited > maxAaveExposure) {
-            revert VaultErrorLibrary.WouldExceedLimit();
+            revert CommonErrorLibrary.WouldExceedLimit();
         }
         
         emit DeployedToAave("deploy", amount, aTokensReceived, balanceAfter);
@@ -445,14 +445,14 @@ contract AaveVault is
         uint256 amount, 
         uint256 aaveBalance
     ) internal pure returns (uint256 withdrawAmount) {
-        if (aaveBalance < 1) revert VaultErrorLibrary.InsufficientBalance();
+        if (aaveBalance < 1) revert CommonErrorLibrary.InsufficientBalance();
         
         withdrawAmount = amount;
         if (amount == type(uint256).max) {
             withdrawAmount = aaveBalance;
         }
         
-        if (withdrawAmount > aaveBalance) revert VaultErrorLibrary.InsufficientBalance();
+        if (withdrawAmount > aaveBalance) revert CommonErrorLibrary.InsufficientBalance();
     }
     
     /**
@@ -495,7 +495,7 @@ contract AaveVault is
         
         if (expectedPrincipalWithdrawn > 0) {
             if (principalDeposited < expectedPrincipalWithdrawn) {
-                revert VaultErrorLibrary.InvalidAmount();
+                revert CommonErrorLibrary.InvalidAmount();
             }
         }
     }
@@ -563,7 +563,7 @@ contract AaveVault is
         
         // Strict validation - ensure actual received matches returned amount
         if (actualReceived != usdcWithdrawn) {
-            revert VaultErrorLibrary.ExcessiveSlippage();
+            revert CommonErrorLibrary.ExcessiveSlippage();
         }
         
         // Validate slippage tolerance
@@ -649,7 +649,7 @@ contract AaveVault is
             
             // Verify actual received matches returned amount
             if (actualYieldReceived != withdrawn) {
-                revert VaultErrorLibrary.ExcessiveSlippage();
+                revert CommonErrorLibrary.ExcessiveSlippage();
             }
             
             CommonValidationLibrary.validateSlippage(actualYieldReceived, availableYield, 100);
@@ -975,7 +975,7 @@ contract AaveVault is
     function setMaxAaveExposure(uint256 _maxExposure) external {
         AccessControlLibrary.onlyGovernance(this);
         CommonValidationLibrary.validatePositiveAmount(_maxExposure);
-        if (_maxExposure > 1_000_000_000e6) revert VaultErrorLibrary.ConfigValueTooHigh();
+        if (_maxExposure > 1_000_000_000e6) revert CommonErrorLibrary.ConfigValueTooHigh();
         
         emit AaveParameterUpdated("maxAaveExposure", maxAaveExposure, _maxExposure);
         maxAaveExposure = _maxExposure;
@@ -1019,7 +1019,7 @@ contract AaveVault is
                 
                 // Verify actual received matches returned amount
                 if (actualReceived != withdrawn) {
-                    revert VaultErrorLibrary.ExcessiveSlippage();
+                    revert CommonErrorLibrary.ExcessiveSlippage();
                 }
                 
             } catch Error(string memory reason) {

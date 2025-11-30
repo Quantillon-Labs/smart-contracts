@@ -78,7 +78,7 @@ function validateAndCalculatePositionParams(
 
 Calculates profit or loss for a hedge position
 
-*Computes PnL based on price movement from entry to current price*
+*Computes PnL using new formula: UnrealizedP&L = FilledVolume - QEUROBacked * OracleCurrentPrice*
 
 **Notes:**
 - No security validations required for pure function
@@ -99,21 +99,75 @@ Calculates profit or loss for a hedge position
 
 
 ```solidity
-function calculatePnL(uint256 tradedVolume, uint256 entryPrice, uint256 currentPrice) internal pure returns (int256);
+function calculatePnL(uint256 filledVolume, uint256 qeuroBacked, uint256 currentPrice) internal pure returns (int256);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`tradedVolume`|`uint256`|Size of the filled position in USDC|
-|`entryPrice`|`uint256`|Price at which the position was opened|
-|`currentPrice`|`uint256`|Current market price|
+|`filledVolume`|`uint256`|Size of the filled position in USDC (6 decimals)|
+|`qeuroBacked`|`uint256`|Exact QEURO amount backed by this position (18 decimals)|
+|`currentPrice`|`uint256`|Current market price (18 decimals)|
 
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`int256`|Profit (positive) or loss (negative) amount|
+|`<none>`|`int256`|Profit (positive) or loss (negative) amount in USDC (6 decimals)|
+
+
+### calculateCollateralCapacity
+
+Calculates collateral-based capacity for a position
+
+*Returns how much additional USDC exposure a position can absorb*
+
+**Notes:**
+- No security validations required for pure function
+
+- None required for pure function
+
+- None (pure function)
+
+- None
+
+- None
+
+- Not applicable - pure function
+
+- Internal function
+
+- Uses provided currentPrice parameter
+
+
+```solidity
+function calculateCollateralCapacity(
+    uint256 margin,
+    uint256 filledVolume,
+    uint256,
+    uint256 currentPrice,
+    uint256 minMarginRatio,
+    int128,
+    uint128 qeuroBacked
+) internal pure returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`margin`|`uint256`|Position margin in USDC (6 decimals)|
+|`filledVolume`|`uint256`|Current filled volume (6 decimals)|
+|`<none>`|`uint256`||
+|`currentPrice`|`uint256`|Current price (18 decimals)|
+|`minMarginRatio`|`uint256`|Minimum margin ratio in basis points|
+|`<none>`|`int128`||
+|`qeuroBacked`|`uint128`|Exact QEURO amount backed (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|capacity Additional USDC exposure the position can absorb|
 
 
 ### isPositionLiquidatable
@@ -144,9 +198,10 @@ Determines if a position is eligible for liquidation
 function isPositionLiquidatable(
     uint256 margin,
     uint256 filledVolume,
-    uint256 entryPrice,
+    uint256,
     uint256 currentPrice,
-    uint256 liquidationThreshold
+    uint256 liquidationThreshold,
+    uint128 qeuroBacked
 ) external pure returns (bool);
 ```
 **Parameters**
@@ -155,9 +210,10 @@ function isPositionLiquidatable(
 |----|----|-----------|
 |`margin`|`uint256`|Current margin amount for the position|
 |`filledVolume`|`uint256`|Filled size of the position in USDC|
-|`entryPrice`|`uint256`|Price at which the position was opened|
+|`<none>`|`uint256`||
 |`currentPrice`|`uint256`|Current market price|
 |`liquidationThreshold`|`uint256`|Liquidation threshold in basis points|
+|`qeuroBacked`|`uint128`|Exact QEURO amount backed by this position (18 decimals)|
 
 **Returns**
 

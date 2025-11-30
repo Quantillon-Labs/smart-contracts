@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -382,23 +382,20 @@ contract YieldShift is
         nonReentrant 
     {
         // Verify caller is authorized for this yield source
-        require(
-            authorizedYieldSources[msg.sender] && 
-            sourceToYieldType[msg.sender] == source,
-            "Unauthorized yield source"
-        );
+        if (!authorizedYieldSources[msg.sender] || sourceToYieldType[msg.sender] != source) {
+            revert CommonErrorLibrary.NotAuthorized();
+        }
         
-        YieldValidationLibrary.validatePositiveAmount(yieldAmount);
+        CommonValidationLibrary.validatePositiveAmount(yieldAmount);
         
         // Verify USDC was actually received
         uint256 balanceBefore = usdc.balanceOf(address(this));
         usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
         uint256 balanceAfter = usdc.balanceOf(address(this));
         uint256 actualReceived = balanceAfter - balanceBefore;
-        require(
-            actualReceived >= yieldAmount && actualReceived <= yieldAmount + 1,
-            "Yield amount mismatch"
-        );
+        if (actualReceived < yieldAmount || actualReceived > yieldAmount + 1) {
+            revert CommonErrorLibrary.InvalidAmount();
+        }
         
         yieldSources[source] += yieldAmount;
         totalYieldGenerated += yieldAmount;

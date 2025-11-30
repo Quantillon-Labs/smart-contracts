@@ -22,6 +22,7 @@ import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol"
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 
 /**
  * @title stQEUROToken
@@ -255,7 +256,9 @@ contract stQEUROToken is
         uint256 totalUnderlyingBefore = totalUnderlying;
         _;
         uint256 totalUnderlyingAfter = totalUnderlying;
-        require(totalUnderlyingAfter >= totalUnderlyingBefore, "Flash loan detected: Total underlying decreased");
+        if (totalUnderlyingAfter < totalUnderlyingBefore) {
+            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
+        }
     }
 
     // =============================================================================
@@ -277,7 +280,7 @@ contract stQEUROToken is
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(TimeProvider _TIME_PROVIDER) {
-        if (address(_TIME_PROVIDER) == address(0)) revert TokenErrorLibrary.ZeroAddress();
+        if (address(_TIME_PROVIDER) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
         // Disables initialization on the implementation for security
         _disableInitializers();
@@ -329,7 +332,7 @@ contract stQEUROToken is
         qeuro = IQEUROToken(_qeuro);
         yieldShift = IYieldShift(_yieldShift);
         usdc = IERC20(_usdc);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
@@ -447,7 +450,7 @@ contract stQEUROToken is
         whenNotPaused 
         returns (uint256[] memory stQEUROAmounts) 
     {
-        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         stQEUROAmounts = new uint256[](qeuroAmounts.length);
         uint256 totalQeuroAmount = 0;
@@ -508,7 +511,7 @@ contract stQEUROToken is
         whenNotPaused 
         returns (uint256[] memory qeuroAmounts) 
     {
-        if (stQEUROAmounts.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (stQEUROAmounts.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         qeuroAmounts = new uint256[](stQEUROAmounts.length);
         uint256 totalStQEUROAmount = 0;
@@ -577,8 +580,8 @@ contract stQEUROToken is
         whenNotPaused
         returns (bool)
     {
-        if (recipients.length != amounts.length) revert TokenErrorLibrary.ArrayLengthMismatch();
-        if (recipients.length > MAX_BATCH_SIZE) revert TokenErrorLibrary.BatchSizeTooLarge();
+        if (recipients.length != amounts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
+        if (recipients.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
 
         uint256 length = recipients.length;
@@ -885,7 +888,7 @@ contract stQEUROToken is
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        if (_treasury == address(0)) revert TokenErrorLibrary.ZeroAddress();
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
     }
 

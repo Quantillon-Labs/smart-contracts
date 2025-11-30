@@ -105,8 +105,9 @@ interface IHedgerPool {
     /**
      * @notice Synchronizes hedger fills with a user mint
      * @dev Callable only by QuantillonVault to allocate fills proportionally
-     * @param usdcAmount Net USDC amount minted into QEURO
+     * @param usdcAmount Net USDC amount minted into QEURO (6 decimals)
      * @param fillPrice EUR/USD oracle price (18 decimals) used for the mint
+     * @param qeuroAmount QEURO amount that was minted (18 decimals)
      * @custom:security Restricted to the vault; validates amount > 0
      * @custom:validation Amount and price must be positive
      * @custom:state-changes Updates per-position fills and total exposure
@@ -121,15 +122,17 @@ interface IHedgerPool {
     /**
      * @notice Synchronizes hedger fills with a user redemption
      * @dev Callable only by QuantillonVault to release fills proportionally
-     * @param usdcAmount Gross USDC amount returned to the user
+     * @param usdcAmount Gross USDC amount returned to the user (6 decimals)
+     * @param redeemPrice EUR/USD oracle price (18 decimals) observed by the vault
+     * @param qeuroAmount QEURO amount that was redeemed (18 decimals)
      * @custom:security Restricted to the vault; validates amount > 0
-     * @custom:validation Amount must be positive
+     * @custom:validation Amount and price must be positive
      * @custom:state-changes Reduces per-position fills and total exposure
      * @custom:events Emits `HedgerFillUpdated`
      * @custom:errors Reverts if insufficient filled exposure remains
      * @custom:reentrancy Implementations must guard state before external calls
      * @custom:access Vault-only
-     * @custom:oracle Not applicable
+     * @custom:oracle Uses provided redeem price
      */
     function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) external;
     
@@ -258,19 +261,7 @@ interface IHedgerPool {
     /**
      * @notice Calculates total effective hedger collateral (deposits + P&L) across all active positions
      * @dev Used by vault to determine protocol collateralization ratio
-     * @return totalEffectiveCollateral Total effective collateral in USDC (6 decimals)
-     * @custom:security View-only helper - no state changes
-     * @custom:validation Requires valid oracle price
-     * @custom:state-changes None - view function
-     * @custom:events None
-     * @custom:errors Reverts if oracle price is invalid
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query effective collateral
-     * @custom:oracle Requires fresh oracle price data
-     */
-    /**
-     * @notice Calculates total effective hedger collateral (deposits + P&L) across all active positions
-     * @dev Used by vault to determine protocol collateralization ratio
+     * @param currentPrice Current EUR/USD oracle price (18 decimals)
      * @return totalEffectiveCollateral Total effective collateral in USDC (6 decimals)
      * @custom:security Read-only helper - no state changes
      * @custom:validation Requires valid oracle price

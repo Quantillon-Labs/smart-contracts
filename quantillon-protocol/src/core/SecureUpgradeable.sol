@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ITimelockUpgradeable} from "../interfaces/ITimelockUpgradeable.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 
 /**
  * @title SecureUpgradeable
@@ -36,11 +37,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     // ============ Modifiers ============
     
     modifier onlyTimelock() {
-        require(
-            address(timelock) != address(0) && 
-            msg.sender == address(timelock),
-            "SecureUpgradeable: Only timelock can call"
-        );
+        if (address(timelock) == address(0) || msg.sender != address(timelock)) {
+            revert CommonErrorLibrary.NotAuthorized();
+        }
         _;
     }
     
@@ -86,7 +85,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:oracle Requires fresh oracle price data
      */
     function setTimelock(address _timelock) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_timelock != address(0), "SecureUpgradeable: Invalid timelock");
+        if (_timelock == address(0)) revert CommonErrorLibrary.ZeroAddress();
         timelock = ITimelockUpgradeable(_timelock);
         emit TimelockSet(_timelock);
     }
@@ -129,8 +128,8 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         string calldata description,
         uint256 customDelay
     ) external onlyRole(UPGRADER_ROLE) {
-        require(secureUpgradesEnabled, "SecureUpgradeable: Secure upgrades disabled");
-        require(address(timelock) != address(0), "SecureUpgradeable: Timelock not set");
+        if (!secureUpgradesEnabled) revert CommonErrorLibrary.NotActive();
+        if (address(timelock) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         
         timelock.proposeUpgrade(newImplementation, description, customDelay);
     }
@@ -171,7 +170,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         address newImplementation,
         string calldata description
     ) external onlyRole(UPGRADER_ROLE) {
-        require(!secureUpgradesEnabled || address(timelock) == address(0), "SecureUpgradeable: Use timelock for upgrades");
+        if (secureUpgradesEnabled && address(timelock) != address(0)) {
+            revert CommonErrorLibrary.NotAuthorized();
+        }
         
         _authorizeUpgrade(newImplementation);
         upgradeToAndCall(newImplementation, "");
@@ -189,13 +190,13 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     function _authorizeUpgrade(address newImplementation) internal override view {
         // If secure upgrades are enabled and timelock is set, only timelock can upgrade
         if (secureUpgradesEnabled && address(timelock) != address(0)) {
-            require(msg.sender == address(timelock), "SecureUpgradeable: Only timelock can upgrade");
+            if (msg.sender != address(timelock)) revert CommonErrorLibrary.NotAuthorized();
         } else {
             // Fallback to role-based authorization
-            require(hasRole(UPGRADER_ROLE, msg.sender), "SecureUpgradeable: Not authorized");
+            if (!hasRole(UPGRADER_ROLE, msg.sender)) revert CommonErrorLibrary.NotAuthorized();
         }
         
-        require(newImplementation != address(0), "SecureUpgradeable: Invalid implementation");
+        if (newImplementation == address(0)) revert CommonErrorLibrary.ZeroAddress();
     }
     
     // ============ View Functions ============
@@ -328,7 +329,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @custom:oracle Requires fresh oracle price data
      */
     function enableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(address(timelock) != address(0), "SecureUpgradeable: Timelock must be set");
+        if (address(timelock) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         secureUpgradesEnabled = true;
         emit SecureUpgradesToggled(true);
     }

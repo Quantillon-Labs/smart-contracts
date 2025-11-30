@@ -107,20 +107,6 @@ library YieldValidationLibrary {
         if (treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
     }
     
-    /**
-     * @notice Validates that an amount is positive (greater than zero)
-     * @dev Essential for token amounts, deposits, withdrawals, etc.
-     * @param amount The amount to validate
-     * @custom:security Prevents zero-amount operations that could cause issues
-     * @custom:validation Ensures amount is positive for meaningful operations
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws InvalidAmount if amount is zero
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validatePositiveAmount(uint256 amount) internal pure {
-        if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
-    }
+    // Note: validatePositiveAmount moved to CommonValidationLibrary to avoid duplication.
+    // Use CommonValidationLibrary.validatePositiveAmount() instead.
 }

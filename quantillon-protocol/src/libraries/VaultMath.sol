@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
+
 /**
  * @title VaultMath
  * @notice Mathematical operations library for Quantillon Protocol
@@ -40,11 +42,11 @@ library VaultMath {
      * @custom:oracle No oracle dependencies
      */
     function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result) {
-        require(c != 0, "VaultMath: Division by zero");
+        if (c == 0) revert CommonErrorLibrary.DivisionByZero();
         
         // Handle overflow protection
         uint256 prod = a * b;
-        require(a == 0 || prod / a == b, "VaultMath: Multiplication overflow");
+        if (a != 0 && prod / a != b) revert CommonErrorLibrary.MultiplicationOverflow();
         
         result = prod / c;
         
@@ -70,7 +72,7 @@ library VaultMath {
      * @custom:oracle No oracle dependencies
      */
     function percentageOf(uint256 value, uint256 percentage) internal pure returns (uint256) {
-        require(percentage <= MAX_PERCENTAGE, "VaultMath: Percentage too high");
+        if (percentage > MAX_PERCENTAGE) revert CommonErrorLibrary.PercentageTooHigh();
         return mulDiv(value, percentage, BASIS_POINTS);
     }
 
@@ -241,7 +243,7 @@ library VaultMath {
         uint256 totalYield,
         uint256 yieldShiftBps
     ) internal pure returns (uint256 userYield, uint256 hedgerYield) {
-        require(yieldShiftBps <= BASIS_POINTS, "VaultMath: Invalid yield shift");
+        if (yieldShiftBps > BASIS_POINTS) revert CommonErrorLibrary.InvalidParameter();
         
         hedgerYield = percentageOf(totalYield, yieldShiftBps);
         userYield = totalYield - hedgerYield;

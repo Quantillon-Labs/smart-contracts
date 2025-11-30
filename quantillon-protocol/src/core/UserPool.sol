@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 // =============================================================================
 // IMPORTS - OpenZeppelin libraries and protocol interfaces
@@ -18,12 +18,14 @@ import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
+import {VaultErrorLibrary} from "../libraries/VaultErrorLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {UserPoolStakingLibrary} from "../libraries/UserPoolStakingLibrary.sol";
 import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 
 /**
  * @title UserPool
@@ -405,10 +407,9 @@ contract UserPool is
         uint256 balanceBefore = usdc.balanceOf(address(this));
         _;
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        require(
-            FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0),
-            "Flash loan attack detected"
-        );
+        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0)) {
+            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
+        }
     }
 
     // =============================================================================
@@ -489,7 +490,7 @@ contract UserPool is
         vault = IQuantillonVault(_vault);
         oracle = IChainlinkOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
-        require(_treasury != address(0), "Treasury cannot be zero address");
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         // Treasury validation handled by CommonValidationLibrary
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
@@ -700,7 +701,7 @@ contract UserPool is
             // Fallback for environments/tests where mint does not update balance (e.g., mocked vault/QEURO)
             // Compute amounts using oracle price to preserve previous behavior
             (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-            require(isValid, "UserPool: Invalid oracle price");
+            if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
             for (uint256 i = 0; i < netAmounts.length; i++) {
                 uint256 qeuroAmount = netAmounts[i].mulDiv(1e30, eurUsdPrice);
                 qeuroMintedAmounts[i] = qeuroAmount;
@@ -767,19 +768,16 @@ contract UserPool is
         uint256[] memory qeuroMintedAmounts,
         uint256 currentTime
     ) internal {
-        // Cache oracle ratio and block number for all deposits in this batch
+        // Cache oracle ratio and block number at start to avoid reentrancy issues
         uint32 oracleRatio = _getOracleRatioScaled();
         uint32 currentBlock = uint32(block.number);
         
+        // EFFECTS - Update all state before external calls
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 qeuroMinted = qeuroMintedAmounts[i];
             
-            // Transfer QEURO to user
-            IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMinted);
-
             // Track detailed deposit information with oracle ratio
-            // slither-disable-next-line reentrancy-benign
             userDeposits[msg.sender].push(UserDepositInfo({
                 usdcAmount: uint128(usdcAmount),
                 qeuroReceived: uint128(qeuroMinted),
@@ -788,8 +786,15 @@ contract UserPool is
                 blockNumber: currentBlock
             }));
 
+            // Emit events after state updates
             emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, currentTime);
             emit UserDepositTracked(msg.sender, usdcAmount, qeuroMinted, oracleRatio, currentTime, currentBlock);
+        }
+        
+        // INTERACTIONS - All external calls after state updates
+        for (uint256 i = 0; i < usdcAmounts.length; i++) {
+            // Transfer QEURO to user
+            IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMintedAmounts[i]);
         }
     }
 
@@ -950,18 +955,21 @@ contract UserPool is
         uint256 currentTime
     ) internal {
         uint256 length = qeuroAmounts.length;
-        uint256 totalWithdrawn = 0;
         
-        // Cache oracle ratio and block number for all withdrawals in this batch
+        // Cache oracle ratio and block number at start to avoid reentrancy issues
         uint32 oracleRatio = _getOracleRatioScaled();
         uint32 currentBlock = uint32(block.number);
         
+        // Calculate total withdrawals before state changes
+        uint256 totalWithdrawn = 0;
         for (uint256 i = 0; i < length;) {
-            usdc.safeTransfer(msg.sender, usdcReceivedAmounts[i]);
             totalWithdrawn += usdcReceivedAmounts[i];
-            
+            unchecked { ++i; }
+        }
+        
+        // EFFECTS - Update all state before external calls
+        for (uint256 i = 0; i < length;) {
             // Track detailed withdrawal information with oracle ratio
-            // slither-disable-next-line reentrancy-benign
             userWithdrawals[msg.sender].push(UserWithdrawalInfo({
                 qeuroAmount: uint128(qeuroAmounts[i]),
                 usdcReceived: uint128(usdcReceivedAmounts[i]),
@@ -970,15 +978,17 @@ contract UserPool is
                 blockNumber: currentBlock
             }));
             
+            totalUserWithdrawals += qeuroAmounts[i];
+            
+            // Emit events after state updates
             emit UserWithdrawal(msg.sender, qeuroAmounts[i], usdcReceivedAmounts[i], currentTime);
             emit UserWithdrawalTracked(msg.sender, qeuroAmounts[i], usdcReceivedAmounts[i], oracleRatio, currentTime, currentBlock);
             unchecked { ++i; }
         }
         
-        // Track total withdrawals for analytics
+        // INTERACTIONS - All external calls after state updates
         for (uint256 i = 0; i < length;) {
-            // slither-disable-next-line reentrancy-benign
-            totalUserWithdrawals += qeuroAmounts[i];
+            usdc.safeTransfer(msg.sender, usdcReceivedAmounts[i]);
             unchecked { ++i; }
         }
     }
@@ -1444,7 +1454,7 @@ contract UserPool is
      */
     function _getOracleRatioScaled() internal returns (uint32) {
         (uint256 oraclePrice, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "Oracle price is invalid");
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         // Scale by 1e6 to fit in uint32 (max value ~4.2B)
         // Oracle price is in 8 decimals, so we scale by 1e6 to get 2 decimals precision
         return uint32(oraclePrice / 1e6);

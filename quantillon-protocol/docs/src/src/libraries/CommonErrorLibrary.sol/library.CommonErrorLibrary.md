@@ -381,3 +381,147 @@ error InsufficientYield();
 error InvalidShiftRange();
 ```
 
+### YieldBelowThreshold
+
+```solidity
+error YieldBelowThreshold();
+```
+
+### YieldNotAvailable
+
+```solidity
+error YieldNotAvailable();
+```
+
+### YieldDistributionFailed
+
+```solidity
+error YieldDistributionFailed();
+```
+
+### YieldCalculationError
+
+```solidity
+error YieldCalculationError();
+```
+
+### VotingPeriodTooShort
+
+```solidity
+error VotingPeriodTooShort();
+```
+
+### VotingPeriodTooLong
+
+```solidity
+error VotingPeriodTooLong();
+```
+
+### VotingNotStarted
+
+```solidity
+error VotingNotStarted();
+```
+
+### VotingEnded
+
+```solidity
+error VotingEnded();
+```
+
+### AlreadyVoted
+
+```solidity
+error AlreadyVoted();
+```
+
+### NoVotingPower
+
+```solidity
+error NoVotingPower();
+```
+
+### VotingNotEnded
+
+```solidity
+error VotingNotEnded();
+```
+
+### ProposalAlreadyExecuted
+
+```solidity
+error ProposalAlreadyExecuted();
+```
+
+### ProposalCanceled
+
+```solidity
+error ProposalCanceled();
+```
+
+### ProposalFailed
+
+```solidity
+error ProposalFailed();
+```
+
+### QuorumNotMet
+
+```solidity
+error QuorumNotMet();
+```
+
+### ProposalAlreadyCanceled
+
+```solidity
+error ProposalAlreadyCanceled();
+```
+
+### LockTimeTooShort
+
+```solidity
+error LockTimeTooShort();
+```
+
+### LockTimeTooLong
+
+```solidity
+error LockTimeTooLong();
+```
+
+### RateLimitTooHigh
+
+```solidity
+error RateLimitTooHigh();
+```
+
+### InvalidOraclePrice
+
+```solidity
+error InvalidOraclePrice();
+```
+
+### YieldClaimFailed
+
+```solidity
+error YieldClaimFailed();
+```
+
+### InvalidThreshold
+
+```solidity
+error InvalidThreshold();
+```
+
+### NotWhitelisted
+
+```solidity
+error NotWhitelisted();
+```
+
+### InsufficientVotingPower
+
+```solidity
+error InsufficientVotingPower();
+```
+

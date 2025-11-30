@@ -151,41 +151,6 @@ library AccessControlLibrary {
         }
     }
     
-    /**
-     * @notice Validates that an amount is not zero
-     * @dev Reverts with InvalidAmount if amount is zero
-     * @param amount The amount to validate
-     * @custom:security Prevents zero amount operations which could cause unexpected behavior
-     * @custom:validation Validates amount > 0
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws InvalidAmount if amount is zero
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function validateAmount(uint256 amount) internal pure {
-        if (amount == 0) {
-            revert CommonErrorLibrary.InvalidAmount();
-        }
-    }
-    
-    /**
-     * @notice Validates that an amount is positive (> 0)
-     * @dev Reverts with InvalidAmount if amount is zero or negative
-     * @param amount The amount to validate
-     * @custom:security Prevents zero or negative amount operations which could cause unexpected behavior
-     * @custom:validation Validates amount > 0
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws InvalidAmount if amount is zero or negative
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function validatePositiveAmount(uint256 amount) internal pure {
-        if (amount <= 0) {
-            revert CommonErrorLibrary.InvalidAmount();
-        }
-    }
+    // Note: validateAmount and validatePositiveAmount moved to CommonValidationLibrary
+    // to avoid duplication. Use CommonValidationLibrary.validatePositiveAmount() instead.
 }

@@ -2,6 +2,8 @@
 pragma solidity 0.8.24;
 
 import {HedgerPoolErrorLibrary} from "./HedgerPoolErrorLibrary.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
+import {VaultErrorLibrary} from "./VaultErrorLibrary.sol";
 
 /**
  * @title HedgerPoolValidationLibrary
@@ -90,7 +92,7 @@ library HedgerPoolValidationLibrary {
         // Only check cooldown if there was actually a liquidation attempt (lastAttempt > 0)
         // If lastAttempt is 0, it means no liquidation attempt was ever made, so no cooldown applies
         if (lastAttempt > 0 && block.number < lastAttempt + cooldown) {
-            revert HedgerPoolErrorLibrary.LiquidationCooldown();
+            revert CommonErrorLibrary.LiquidationCooldown();
         }
     }
     
@@ -108,7 +110,7 @@ library HedgerPoolValidationLibrary {
      * @custom:oracle No oracle dependencies
      */
     function validatePositionActive(bool isActive) internal pure {
-        if (!isActive) revert HedgerPoolErrorLibrary.PositionNotActive();
+        if (!isActive) revert CommonErrorLibrary.PositionNotActive();
     }
     
     /**
@@ -144,7 +146,7 @@ library HedgerPoolValidationLibrary {
      * @custom:oracle No oracle dependencies
      */
     function validatePositionCount(uint256 count, uint256 max) internal pure {
-        if (count >= max) revert HedgerPoolErrorLibrary.TooManyPositions();
+        if (count >= max) revert CommonErrorLibrary.TooManyPositions();
     }
     
     /**
@@ -300,22 +302,8 @@ library HedgerPoolValidationLibrary {
         if (newRewards > maxRewards) revert HedgerPoolErrorLibrary.PendingRewardsExceedMaximum();
     }
     
-    /**
-     * @notice Validates that an amount is positive (greater than zero)
-     * @dev Essential for token amounts, deposits, withdrawals, etc.
-     * @param amount The amount to validate
-     * @custom:security Prevents zero-amount operations that could cause issues
-     * @custom:validation Ensures amount is positive for meaningful operations
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws InvalidAmount if amount is zero
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validatePositiveAmount(uint256 amount) internal pure {
-        if (amount == 0) revert HedgerPoolErrorLibrary.InvalidAmount();
-    }
+    // Note: validatePositiveAmount moved to CommonValidationLibrary to avoid duplication.
+    // Use CommonValidationLibrary.validatePositiveAmount() instead.
     
     /**
      * @notice Validates fee amount against maximum allowed fee
@@ -332,7 +320,7 @@ library HedgerPoolValidationLibrary {
      * @custom:oracle No oracle dependencies
      */
     function validateFee(uint256 fee, uint256 maxFee) internal pure {
-        if (fee > maxFee) revert HedgerPoolErrorLibrary.FeeTooHigh();
+        if (fee > maxFee) revert VaultErrorLibrary.FeeTooHigh();
     }
     
     /**
@@ -349,6 +337,6 @@ library HedgerPoolValidationLibrary {
      * @custom:oracle No oracle dependencies
      */
     function validateTreasuryAddress(address treasury) internal pure {
-        if (treasury == address(0)) revert HedgerPoolErrorLibrary.ZeroAddress();
+        if (treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
     }
 }

@@ -33,9 +33,9 @@ library TokenLibrary {
      * @custom:oracle Requires fresh oracle price data
      */
     function validateMint(address to, uint256 amount, uint256 totalSupply, uint256 maxSupply) internal pure {
-        if (to == address(0)) revert TokenErrorLibrary.InvalidAddress();
-        if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
-        if (totalSupply + amount > maxSupply) revert TokenErrorLibrary.WouldExceedLimit();
+        if (to == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
+        if (totalSupply + amount > maxSupply) revert CommonErrorLibrary.WouldExceedLimit();
     }
     
     /**
@@ -54,8 +54,8 @@ library TokenLibrary {
      * @custom:oracle Requires fresh oracle price data
      */
     function validateBurn(address from, uint256 amount, uint256 balance) internal pure {
-        if (from == address(0)) revert TokenErrorLibrary.InvalidAddress();
-        if (amount == 0) revert TokenErrorLibrary.InvalidAmount();
-        if (balance < amount) revert TokenErrorLibrary.InsufficientBalance();
+        if (from == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
+        if (balance < amount) revert CommonErrorLibrary.InsufficientBalance();
     }
 }

@@ -143,6 +143,7 @@ contract StateTrackerScenario is Script {
         int256 hedgerUnrealizedPnL; // 6 decimals
         int256 hedgerTotalPnL; // 6 decimals
         uint256 hedgerAvailableCollateral; // 6 decimals
+        uint256 qeuroShare; // 18 decimals - QEURO share redeemed from hedger position (only relevant during redemption)
     }
 
     ProtocolStats[] public stats;
@@ -254,6 +255,8 @@ contract StateTrackerScenario is Script {
         // Summary logged in _saveStatisticsToFile
     }
 
+    uint256 lastQeuroShare; // Track last qeuroShare from redemption events
+
     function _captureStats(string memory action) internal {
         stepCounter++;
         
@@ -276,8 +279,12 @@ contract StateTrackerScenario is Script {
             hedgerRealizedPnL: hedgerRealizedPnL,
             hedgerUnrealizedPnL: hedgerUnrealizedPnL,
             hedgerTotalPnL: hedgerTotalPnL,
-            hedgerAvailableCollateral: hedgerAvailableCollateral
+            hedgerAvailableCollateral: hedgerAvailableCollateral,
+            qeuroShare: lastQeuroShare
         });
+        
+        // Reset qeuroShare after capturing stats
+        lastQeuroShare = 0;
 
         stats.push(stat);
 
@@ -331,6 +338,10 @@ contract StateTrackerScenario is Script {
             // Solidity automatically handles sign extension when casting int128 to int256
             hedgerRealizedPnL = int256(realizedPnLFromContract);
             
+            // Check if QEURO supply is 0 - if so, all P&L should be realized (unrealized = 0)
+            QEUROToken qeuroToken = QEUROToken(QEURO);
+            uint256 totalSupply = qeuroToken.totalSupply();
+            
             // Calculate TOTAL unrealized P&L using the same formula as frontend and HedgerPoolLogicLibrary
             // Formula: Total UnrealizedP&L = FilledVolume - QEUROBacked * OracleCurrentPrice
             // filledVolume is in 6 decimals (USDC)
@@ -338,22 +349,29 @@ contract StateTrackerScenario is Script {
             // currentPrice is in 18 decimals (USD/EUR)
             // qeuroBacked * currentPrice gives USDC value in 36 decimals
             // Divide by 1e30 to convert to 6 decimals (USDC)
+            // Edge case: If filledVolume == 0 or price == 0 or qeuroBacked == 0, return 0 (matches contract)
+            // IMPORTANT: When all QEURO is redeemed (totalSupply == 0), unrealized P&L = 0 (all P&L is realized)
             int256 totalUnrealizedPnL;
-            if (filledVolume > 0 && price > 0 && qeuroBacked > 0) {
+            if (totalSupply == 0 || filledVolume == 0 || price == 0 || qeuroBacked == 0) {
+                totalUnrealizedPnL = int256(0);
+            } else {
                 uint256 qeuroValueInUSDC = (uint256(qeuroBacked) * price) / 1e30;
                 if (uint256(filledVolume) >= qeuroValueInUSDC) {
                     totalUnrealizedPnL = int256(uint256(filledVolume) - qeuroValueInUSDC);
                 } else {
                     totalUnrealizedPnL = -int256(qeuroValueInUSDC - uint256(filledVolume));
                 }
-            } else {
-                totalUnrealizedPnL = int256(0);
             }
             
             // Calculate NET unrealized P&L (matching frontend behavior)
             // Frontend displays: Net Unrealized = Total Unrealized - Realized
             // This ensures we show only the remaining unrealized P&L, not the total
-            hedgerUnrealizedPnL = totalUnrealizedPnL - hedgerRealizedPnL;
+            // IMPORTANT: When all QEURO is redeemed (totalSupply == 0), unrealized P&L = 0 (all P&L is realized)
+            if (totalSupply == 0 || qeuroBacked == 0) {
+                hedgerUnrealizedPnL = int256(0);
+            } else {
+                hedgerUnrealizedPnL = totalUnrealizedPnL - hedgerRealizedPnL;
+            }
             
             // Total P&L = Net Unrealized + Realized = (Total Unrealized - Realized) + Realized = Total Unrealized
             // But frontend calculates it as: Net Unrealized + Realized
@@ -514,6 +532,9 @@ contract StateTrackerScenario is Script {
         string memory totalPnLStr = string.concat(_formatPnL(stat.hedgerTotalPnL), " USDC");
         console2.log("  Hedger Total P&L:", totalPnLStr);
         console2.log("  Hedger Available Collateral:", string.concat(_formatUSDC(stat.hedgerAvailableCollateral), " USDC"));
+        if (stat.qeuroShare > 0) {
+            console2.log("  QEURO Share Redeemed:", string.concat(_formatQEURO(stat.qeuroShare), " QEURO"));
+        }
         console2.log("");
     }
 
@@ -700,10 +721,28 @@ contract StateTrackerScenario is Script {
     function _step11_UserRedeems1861QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        uint256 positionId = 1;
 
         uint256 qeuroAmount = 1861 * 1e18;
         qeuroToken.approve(VAULT, qeuroAmount);
+        
+        // Listen for QeuroShareCalculated events
+        vm.recordLogs();
         vault.redeemQEURO(qeuroAmount, 0); // minUsdcOut = 0
+        
+        // Check for QeuroShareCalculated events
+        VmSafe.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = 0; i < logs.length; i++) {
+            bytes32 eventSig = keccak256("QeuroShareCalculated(uint256,uint256,uint256,uint256)");
+            if (logs[i].topics.length >= 2 && logs[i].topics[0] == eventSig) {
+                if (uint256(logs[i].topics[1]) == positionId) {
+                    (uint256 qeuroShare, , ) = abi.decode(logs[i].data, (uint256, uint256, uint256));
+                    lastQeuroShare = qeuroShare;
+                    break;
+                }
+            }
+        }
 
         _captureStats("User redeems 1861 QEURO");
     }
@@ -752,10 +791,28 @@ contract StateTrackerScenario is Script {
     function _step15_UserRedeems500QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        uint256 positionId = 1;
 
         uint256 qeuroAmount = 500 * 1e18;
         qeuroToken.approve(VAULT, qeuroAmount);
+        
+        // Listen for QeuroShareCalculated events
+        vm.recordLogs();
         vault.redeemQEURO(qeuroAmount, 0);
+        
+        // Check for QeuroShareCalculated events
+        VmSafe.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = 0; i < logs.length; i++) {
+            bytes32 eventSig = keccak256("QeuroShareCalculated(uint256,uint256,uint256,uint256)");
+            if (logs[i].topics.length >= 2 && logs[i].topics[0] == eventSig) {
+                if (uint256(logs[i].topics[1]) == positionId) {
+                    (uint256 qeuroShare, , ) = abi.decode(logs[i].data, (uint256, uint256, uint256));
+                    lastQeuroShare = qeuroShare;
+                    break;
+                }
+            }
+        }
 
         _captureStats("User redeems 500 QEURO");
     }
@@ -763,10 +820,28 @@ contract StateTrackerScenario is Script {
     function _step16_UserRedeems500QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        uint256 positionId = 1;
 
         uint256 qeuroAmount = 500 * 1e18;
         qeuroToken.approve(VAULT, qeuroAmount);
+        
+        // Listen for QeuroShareCalculated events
+        vm.recordLogs();
         vault.redeemQEURO(qeuroAmount, 0);
+        
+        // Check for QeuroShareCalculated events
+        VmSafe.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = 0; i < logs.length; i++) {
+            bytes32 eventSig = keccak256("QeuroShareCalculated(uint256,uint256,uint256,uint256)");
+            if (logs[i].topics.length >= 2 && logs[i].topics[0] == eventSig) {
+                if (uint256(logs[i].topics[1]) == positionId) {
+                    (uint256 qeuroShare, , ) = abi.decode(logs[i].data, (uint256, uint256, uint256));
+                    lastQeuroShare = qeuroShare;
+                    break;
+                }
+            }
+        }
 
         _captureStats("User redeems 500 QEURO (no QEURO left circulating)");
     }
@@ -812,6 +887,7 @@ contract StateTrackerScenario is Script {
                 "  Hedger Unrealized P&L: ", _formatPnLForFile(stat.hedgerUnrealizedPnL), " USDC\n",
                 "  Hedger Total P&L: ", _formatPnLForFile(stat.hedgerTotalPnL), " USDC\n",
                 "  Hedger Available Collateral: ", _formatUSDC(stat.hedgerAvailableCollateral), " USDC\n",
+                stat.qeuroShare > 0 ? string.concat("  QEURO Share Redeemed: ", _formatQEURO(stat.qeuroShare), " QEURO\n") : "",
                 "\n"
             );
         }

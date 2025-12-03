@@ -131,7 +131,6 @@ if [ -f "$FORMATTED_FILE" ]; then
     echo "Formatted log:  $FORMATTED_FILE"
     echo "=========================================="
     echo ""
-    echo "The formatted log is much more readable with proper units and formatting!"
 else
     echo ""
     echo "=========================================="

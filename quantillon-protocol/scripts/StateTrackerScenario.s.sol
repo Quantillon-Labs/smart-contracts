@@ -1,0 +1,834 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import "forge-std/Script.sol";
+import "forge-std/console2.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {MockChainlinkOracle} from "../src/mocks/MockChainlinkOracle.sol";
+import {HedgerPool} from "../src/core/HedgerPool.sol";
+import {QuantillonVault} from "../src/core/QuantillonVault.sol";
+import {QEUROToken} from "../src/core/QEUROToken.sol";
+import {UserPool} from "../src/core/UserPool.sol";
+import {HedgerPoolLogicLibrary} from "../src/libraries/HedgerPoolLogicLibrary.sol";
+import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+
+/**
+ * @title StateTrackerScenario
+ * @notice Script to replay the test scenario and capture protocol statistics at each step
+ * @dev Executes the scenario step by step and logs all statistics to console
+ * 
+ * @dev SCENARIO DESCRIPTION:
+ * 
+ * This script replays a comprehensive test scenario that exercises the Quantillon Protocol
+ * through various hedger operations, user minting/redeeming, and oracle price changes.
+ * 
+ * The scenario tests:
+ * 1. Hedger position opening and margin management
+ * 2. User QEURO minting at different oracle prices
+ * 3. User QEURO redemption and its impact on hedger positions
+ * 4. Oracle price volatility and its effect on protocol state
+ * 5. Hedger margin adjustments (additions and removals)
+ * 
+ * STEP-BY-STEP SCENARIO:
+ * 
+ * Step 1: Hedger deposits 50 USDC at 5% margin (20x leverage)
+ *   - Opens a hedger position with initial collateral
+ *   - Position size = 50 USDC * 20 = 1000 USDC capacity
+ * 
+ * Step 2: Oracle price → 1.09 USD/EUR
+ *   - Updates the EUR/USD exchange rate
+ * 
+ * Step 3: User mints 500 QEURO
+ *   - User deposits USDC to mint QEURO at current oracle price (1.09)
+ *   - Hedger position gets filled proportionally
+ * 
+ * Step 4: Oracle price → 1.16 USD/EUR
+ *   - Significant price increase (EUR appreciates)
+ * 
+ * Step 5: Hedger adds 50 USDC
+ *   - Hedger increases margin to support more exposure
+ *   - Position size increases proportionally
+ * 
+ * Step 6: User mints 500 QEURO
+ *   - Additional QEURO minting at higher price (1.16)
+ *   - More hedger capacity gets utilized
+ * 
+ * Step 7: Hedger adds 50 USDC
+ *   - Further margin increase
+ *   - Total hedger margin now: 150 USDC
+ * 
+ * Step 8: Oracle price → 1.11 USD/EUR
+ *   - Price correction (EUR depreciates from 1.16)
+ * 
+ * Step 9: User mints 861 QEURO
+ *   - Large mint operation at 1.11 price
+ * 
+ * Step 10: User mints 1000 QEURO
+ *   - Additional large mint
+ *   - Total QEURO supply peaks at this point
+ * 
+ * Step 11: User redeems 1861 QEURO
+ *   - Large redemption operation
+ *   - Tests hedger position unwinding and realized P&L
+ * 
+ * Step 12: Oracle price → 1.15 USD/EUR
+ *   - Price increase after redemption
+ * 
+ * Step 13: Hedger removes 50 USDC from collateral
+ *   - Hedger withdraws margin
+ *   - Position size decreases proportionally
+ * 
+ * Step 14: Oracle price → 1.16 USD/EUR
+ *   - Price increase to match earlier high
+ * 
+ * Step 15: User redeems 500 QEURO
+ *   - Redemption operation
+ *
+ * Step 16: User redeems 500 QEURO (no QEURO left circulating)
+ *   - Final redemption operation
+ *   - Tests protocol state with zero QEURO supply
+ * 
+ * @dev STATISTICS CAPTURED:
+ * 
+ * At each step, the script captures:
+ * - Oracle price (EUR/USD in 18 decimals and formatted)
+ * - QEURO total supply
+ * - Total USDC held in vault
+ * - Total hedger margin
+ * - Total hedger exposure
+ * - Protocol collateralization ratio (basis points)
+ * - Is protocol collateralized (boolean)
+ * - Active hedgers count
+ * - Hedger position details:
+ *   * Position ID, margin, position size
+ *   * Filled volume (actual exposure)
+ *   * QEURO backed by position
+ *   * Unrealized P&L
+ *   * Realized P&L
+ *   * Entry price, leverage
+ * 
+ * @author Quantillon Labs
+ */
+contract StateTrackerScenario is Script {
+    // Contract addresses from deployment
+    address constant HEDGER_POOL = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
+    address constant VAULT = 0x59b670e9fA9D0A427751Af201D676719a970857b;
+    address constant USER_POOL = 0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf;
+    address constant QEURO = 0x0B306BF915C4d645ff596e518fAf3F9669b97016;
+    address constant USDC = 0x5FbDB2315678afecb367f032d93F642f64180aa3;
+    address constant ORACLE = 0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0;
+    address constant MOCK_EUR_USD_FEED = 0x0165878A594ca255338adfa4d48449f69242Eb8F;
+
+    // Test accounts
+    address public hedger;
+    address public user;
+
+    // Scenario step counter
+    uint256 public stepCounter = 0;
+
+    struct ProtocolStats {
+        uint256 step;
+        string action;
+        // Protocol statistics
+        uint256 oraclePrice; // 18 decimals
+        uint256 qeuroMinted; // 18 decimals (totalSupply)
+        uint256 qeuroMintable; // 18 decimals (calculated)
+        uint256 userCollateral; // 6 decimals (user deposits)
+        uint256 hedgerCollateral; // 6 decimals (hedger margin)
+        uint256 collateralizationPercentage; // percentage (collateralizationRatio / 100)
+        // Hedger statistics
+        uint256 hedgerEntryPrice; // 18 decimals
+        int256 hedgerRealizedPnL; // 6 decimals
+        int256 hedgerUnrealizedPnL; // 6 decimals
+        int256 hedgerTotalPnL; // 6 decimals
+        uint256 hedgerAvailableCollateral; // 6 decimals
+    }
+
+    ProtocolStats[] public stats;
+
+    function run() external {
+        // Use deployer's private key (same as deployment scripts)
+        // This ensures the hedger position is visible in the UI when connected with the same account
+        uint256 pk = vm.envUint("PRIVATE_KEY");
+        hedger = vm.addr(pk);
+        user = vm.addr(pk); // Using same account for simplicity (deployer account)
+
+        console2.log("=== Starting Scenario Replay ===");
+        console2.log("Using deployer account (PRIVATE_KEY from env)");
+        console2.log("");
+        console2.log("========================================");
+        console2.log("IMPORTANT: WALLET CONNECTION REQUIRED");
+        console2.log("========================================");
+        console2.log("To see positions in the UI, connect your wallet to:");
+        console2.log("  Hedger Address:", hedger);
+        console2.log("  User Address:", user);
+        console2.log("");
+        console2.log("If using MetaMask:");
+        console2.log("  1. Click account icon -> Import Account");
+        console2.log("  2. Paste the private key from your PRIVATE_KEY env variable");
+        console2.log("  3. Connect to Localhost:8545 network");
+        console2.log("  4. Refresh the UI");
+        console2.log("========================================");
+        console2.log("");
+
+        // Verify protocol is in fresh state
+        QEUROToken qeuroToken = QEUROToken(QEURO);
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        uint256 initialSupply = qeuroToken.totalSupply();
+        uint256 initialMargin = hedgerPool.totalMargin();
+        uint256 initialExposure = hedgerPool.totalExposure();
+        
+        console2.log("--- Verifying Fresh State ---");
+        console2.log("Initial QEURO Supply:", initialSupply / 1e18);
+        console2.log("Initial Hedger Margin:", initialMargin / 1e6);
+        console2.log("Initial Hedger Exposure:", initialExposure / 1e6);
+        
+        if (initialSupply > 0 || initialMargin > 0 || initialExposure > 0) {
+            console2.log("");
+            console2.log("WARNING: Protocol is not in fresh state!");
+            console2.log("Please redeploy contracts before running scenario.");
+            console2.log("Use: ~/Github/restart-local-stack.sh localhost --with-mocks");
+            console2.log("");
+            console2.log("Proceeding anyway, but results may be inaccurate...");
+        } else {
+            console2.log("Protocol is in fresh state - ready to proceed");
+        }
+        console2.log("");
+
+        vm.startBroadcast(pk);
+
+        // Step 1: Hedger deposits 50 USDC at 5% margin
+        _step1_HedgerDeposits50USDC();
+
+        // Step 2: Oracle → 1.09
+        _step2_SetOraclePrice(109 * 1e16); // 1.09
+
+        // Step 3: User mints 500 QEURO
+        _step3_UserMints500QEURO();
+
+        // Step 4: Oracle → 1.16
+        _step4_SetOraclePrice(116 * 1e16); // 1.16
+
+        // Step 5: Hedger adds 50 USDC
+        _step5_HedgerAdds50USDC();
+
+        // Step 6: User mints 500 QEURO
+        _step6_UserMints500QEURO();
+
+        // Step 7: Hedger adds 50 USDC
+        _step7_HedgerAdds50USDC();
+
+        // Step 8: Oracle → 1.11
+        _step8_SetOraclePrice(111 * 1e16); // 1.11
+
+        // Step 9: User mints 861 QEURO
+        _step9_UserMints861QEURO();
+
+        // Step 10: User mints 1000 QEURO
+        _step10_UserMints1000QEURO();
+
+        // Step 11: User redeems 1861 QEURO
+        _step11_UserRedeems1861QEURO();
+
+        // Step 12: Oracle → 1.15
+        _step12_SetOraclePrice(115 * 1e16); // 1.15
+
+        // Step 13: Hedger removes 50 USDC from collateral
+        _step13_HedgerRemoves50USDC();
+
+        // Step 14: Oracle → 1.16
+        _step14_SetOraclePrice(116 * 1e16); // 1.16
+
+        // Step 15: User redeems 500 QEURO
+        _step15_UserRedeems500QEURO();
+
+        // Step 16: User redeems 500 QEURO (no QEURO left circulating)
+        _step16_UserRedeems500QEURO();
+
+        vm.stopBroadcast();
+
+        // Save statistics to JSON file
+        _saveStatisticsToFile();
+
+        // Summary logged in _saveStatisticsToFile
+    }
+
+    function _captureStats(string memory action) internal {
+        stepCounter++;
+        
+        // Get basic protocol stats
+        (uint256 price, uint256 qeuroMinted, uint256 userCollateral, uint256 hedgerCollateral, uint256 collateralizationPercentage) = _getProtocolStats();
+        
+        // Get hedger stats
+        (uint256 hedgerEntryPrice, int256 hedgerRealizedPnL, int256 hedgerUnrealizedPnL, int256 hedgerTotalPnL, uint256 hedgerAvailableCollateral, uint256 qeuroMintable) = _getHedgerStats(price);
+
+        ProtocolStats memory stat = ProtocolStats({
+            step: stepCounter,
+            action: action,
+            oraclePrice: price,
+            qeuroMinted: qeuroMinted,
+            qeuroMintable: qeuroMintable,
+            userCollateral: userCollateral,
+            hedgerCollateral: hedgerCollateral,
+            collateralizationPercentage: collateralizationPercentage,
+            hedgerEntryPrice: hedgerEntryPrice,
+            hedgerRealizedPnL: hedgerRealizedPnL,
+            hedgerUnrealizedPnL: hedgerUnrealizedPnL,
+            hedgerTotalPnL: hedgerTotalPnL,
+            hedgerAvailableCollateral: hedgerAvailableCollateral
+        });
+
+        stats.push(stat);
+
+        // Log to console
+        _logStats(stat);
+    }
+
+    function _getProtocolStats() internal returns (
+        uint256 price,
+        uint256 qeuroMinted,
+        uint256 userCollateral,
+        uint256 hedgerCollateral,
+        uint256 collateralizationPercentage
+    ) {
+        IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
+        QEUROToken qeuroToken = QEUROToken(QEURO);
+        UserPool userPool = UserPool(USER_POOL);
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        QuantillonVault vault = QuantillonVault(VAULT);
+
+        (price, ) = oracle.getEurUsdPrice();
+        qeuroMinted = qeuroToken.totalSupply();
+        userCollateral = userPool.totalUserDeposits();
+        hedgerCollateral = hedgerPool.totalMargin();
+        uint256 collateralizationRatio = vault.getProtocolCollateralizationRatio();
+        // Store as basis points (e.g., 11120 bps = 111.20%) for 2 decimal precision
+        collateralizationPercentage = collateralizationRatio;
+    }
+
+    function _getHedgerStats(uint256 price) internal returns (
+        uint256 hedgerEntryPrice,
+        int256 hedgerRealizedPnL,
+        int256 hedgerUnrealizedPnL,
+        int256 hedgerTotalPnL,
+        uint256 hedgerAvailableCollateral,
+        uint256 qeuroMintable
+    ) {
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        uint256 positionId = 1;
+        
+        (, , uint96 filledVolume, uint96 margin, uint96 entryPrice, , , int128 unrealizedPnLFromContract, int128 realizedPnLFromContract, , bool isActive, uint128 qeuroBacked) = hedgerPool.positions(positionId);
+
+        hedgerAvailableCollateral = 0;
+        qeuroMintable = 0;
+        
+        if (isActive) {
+            hedgerEntryPrice = uint256(entryPrice);
+            
+            // Convert int128 to int256 for realized P&L
+            // int128 values are stored in 6 decimals (USDC precision)
+            // Solidity automatically handles sign extension when casting int128 to int256
+            hedgerRealizedPnL = int256(realizedPnLFromContract);
+            
+            // Calculate TOTAL unrealized P&L using the same formula as frontend and HedgerPoolLogicLibrary
+            // Formula: Total UnrealizedP&L = FilledVolume - QEUROBacked * OracleCurrentPrice
+            // filledVolume is in 6 decimals (USDC)
+            // qeuroBacked is in 18 decimals (QEURO)
+            // currentPrice is in 18 decimals (USD/EUR)
+            // qeuroBacked * currentPrice gives USDC value in 36 decimals
+            // Divide by 1e30 to convert to 6 decimals (USDC)
+            int256 totalUnrealizedPnL;
+            if (filledVolume > 0 && price > 0 && qeuroBacked > 0) {
+                uint256 qeuroValueInUSDC = (uint256(qeuroBacked) * price) / 1e30;
+                if (uint256(filledVolume) >= qeuroValueInUSDC) {
+                    totalUnrealizedPnL = int256(uint256(filledVolume) - qeuroValueInUSDC);
+                } else {
+                    totalUnrealizedPnL = -int256(qeuroValueInUSDC - uint256(filledVolume));
+                }
+            } else {
+                totalUnrealizedPnL = int256(0);
+            }
+            
+            // Calculate NET unrealized P&L (matching frontend behavior)
+            // Frontend displays: Net Unrealized = Total Unrealized - Realized
+            // This ensures we show only the remaining unrealized P&L, not the total
+            hedgerUnrealizedPnL = totalUnrealizedPnL - hedgerRealizedPnL;
+            
+            // Total P&L = Net Unrealized + Realized = (Total Unrealized - Realized) + Realized = Total Unrealized
+            // But frontend calculates it as: Net Unrealized + Realized
+            hedgerTotalPnL = hedgerUnrealizedPnL + hedgerRealizedPnL;
+            
+            // Get min margin ratio (struct has 10 fields)
+            (uint64 minMarginRatio, , , , , , , , , ) = hedgerPool.coreParams();
+            
+            // Calculate hedger available collateral using frontend formula:
+            // 1. Calculate minted exposure at current price
+            //    mintedExposureAtCurrentPrice = (qeuroBacked * currentPrice) / 1e30
+            uint256 mintedExposureAtCurrentPrice = (uint256(qeuroBacked) * price) / 1e30;
+            
+            // 2. Calculate required margin
+            //    hedgerRequiredMargin = (mintedExposureAtCurrentPrice * minMarginRatio) / 10000
+            uint256 hedgerRequiredMargin = (mintedExposureAtCurrentPrice * uint256(minMarginRatio)) / 10000;
+            
+            // 3. Calculate available collateral
+            //    hedgerAvailableCollateral = margin + unrealizedPnL + realizedPnL - hedgerRequiredMargin
+            //    All values are in 6 decimals (USDC)
+            int256 effectiveMargin = int256(uint256(margin)) + hedgerUnrealizedPnL + hedgerRealizedPnL;
+            if (effectiveMargin > int256(hedgerRequiredMargin)) {
+                hedgerAvailableCollateral = uint256(effectiveMargin) - hedgerRequiredMargin;
+            } else {
+                hedgerAvailableCollateral = 0;
+            }
+            
+            // Calculate QEURO mintable using frontend formula:
+            // Formula: (hedgerAvailableCollateral * 10000 * 1e30) / (minMarginRatio * price)
+            if (minMarginRatio > 0 && price > 0 && hedgerAvailableCollateral > 0) {
+                uint256 numerator = hedgerAvailableCollateral * 10000 * 1e30;
+                uint256 denominator = uint256(minMarginRatio) * price;
+                if (denominator > 0) {
+                    qeuroMintable = numerator / denominator;
+                }
+            }
+        } else {
+            hedgerEntryPrice = 0;
+            hedgerRealizedPnL = int256(0);
+            hedgerUnrealizedPnL = int256(0);
+            hedgerTotalPnL = int256(0);
+        }
+    }
+
+    function _formatPnL(int256 pnl) internal pure returns (string memory) {
+        // P&L is in 6 decimals (USDC), format to 2 decimals
+        // Example: 975700000 (6 decimals) = 975.70 USDC
+        // wholePart = 975700000 / 1e6 = 975
+        // decimalPart = (975700000 / 1e4) % 100 = 97570 % 100 = 70
+        bool isNegative = pnl < 0;
+        uint256 absPnl = isNegative ? uint256(-pnl) : uint256(pnl);
+        
+        uint256 wholePart = absPnl / 1e6; // Get whole part (divide by 1e6 to get integer part)
+        uint256 decimalPart = (absPnl / 1e4) % 100; // Get 2 decimal places (divide by 1e4, then mod 100)
+        
+        string memory sign = isNegative ? "-" : "";
+        string memory result = string.concat(
+            sign,
+            vm.toString(wholePart),
+            ".",
+            decimalPart < 10 ? "0" : "",
+            vm.toString(decimalPart)
+        );
+        return result;
+    }
+
+    function _formatPnLForFile(int256 pnl) internal pure returns (string memory) {
+        // Same as _formatPnL but for file output
+        return _formatPnL(pnl);
+    }
+
+    function _formatUSDC(uint256 usdcAmount) internal pure returns (string memory) {
+        // USDC is in 6 decimals, format to 2 decimals
+        // Example: 50000000 (6 decimals) = 50.00 USDC
+        // wholePart = 50000000 / 1e6 = 50
+        // decimalPart = (50000000 / 1e4) % 100 = 5000 % 100 = 0
+        uint256 wholePart = usdcAmount / 1e6; // Get whole part (divide by 1e6 to get integer part)
+        uint256 decimalPart = (usdcAmount / 1e4) % 100; // Get 2 decimal places (divide by 1e4, then mod 100)
+        
+        return string.concat(
+            vm.toString(wholePart),
+            ".",
+            decimalPart < 10 ? "0" : "",
+            vm.toString(decimalPart)
+        );
+    }
+
+    function _formatQEURO(uint256 qeuroAmount) internal pure returns (string memory) {
+        // QEURO is in 18 decimals, format to 2 decimals
+        // Example: 197297290000000000000000 (18 decimals) = 197297.29 QEURO
+        // wholePart = 197297290000000000000000 / 1e18 = 197297
+        // scaledAmount = 197297290000000000000000 / 1e16 = 19729729
+        // decimalPart = 19729729 % 100 = 29
+        uint256 wholePart = qeuroAmount / 1e18; // Get whole part (divide by 1e18 to get integer)
+        uint256 scaledAmount = qeuroAmount / 1e16; // Scale down by 1e16 to get price * 100
+        uint256 decimalPart = scaledAmount % 100; // Get last 2 digits (the decimal part * 100)
+        
+        return string.concat(
+            vm.toString(wholePart),
+            ".",
+            decimalPart < 10 ? "0" : "",
+            vm.toString(decimalPart)
+        );
+    }
+
+    function _formatPrice(uint256 price) internal pure returns (string memory) {
+        // Price is in 18 decimals (e.g., 1.09e18 = 1090000000000000000), format to 2 decimals (e.g., "1.09")
+        // wholePart = 1090000000000000000 / 1e18 = 1
+        // decimalPart = (1090000000000000000 / 1e16) % 100 = 109 % 100 = 9, but we want 09
+        // Actually: decimalPart = (price / 1e16) % 100 gives us the last 2 digits of the price scaled by 1e16
+        // For 1.09: price = 1090000000000000000, (price / 1e16) = 109, % 100 = 9
+        // We need: (price / 1e16) % 100, but if it's < 10, pad with 0
+        
+        // Actually simpler: divide by 1e18 to get integer part, then multiply by 100 and mod 100 for decimals
+        uint256 wholePart = price / 1e18; // Get whole part (divide by 1e18 to get integer)
+        uint256 scaledPrice = price / 1e16; // Scale down by 1e16 to get price * 100
+        uint256 decimalPart = scaledPrice % 100; // Get last 2 digits (the decimal part * 100)
+        
+        return string.concat(
+            vm.toString(wholePart),
+            ".",
+            decimalPart < 10 ? "0" : "",
+            vm.toString(decimalPart)
+        );
+    }
+
+    function _logStats(ProtocolStats memory stat) internal {
+        console2.log("");
+        console2.log("========================================");
+        console2.log("STEP", stat.step);
+        console2.log("Action:", stat.action);
+        console2.log("========================================");
+        console2.log("");
+        console2.log("--- PROTOCOL STATISTICS ---");
+        console2.log("  Oracle Price:", string.concat(_formatPrice(stat.oraclePrice), " USD"));
+        console2.log("  QEURO Minted:", string.concat(_formatQEURO(stat.qeuroMinted), " QEURO"));
+        console2.log("  QEURO Mintable:", string.concat(_formatQEURO(stat.qeuroMintable), " QEURO"));
+        console2.log("  User Collateral:", string.concat(_formatUSDC(stat.userCollateral), " USDC"));
+        console2.log("  Hedger Collateral:", string.concat(_formatUSDC(stat.hedgerCollateral), " USDC"));
+        // Format as percentage with 2 decimals (e.g., 11120 bps = 111.20%)
+        uint256 wholePart = stat.collateralizationPercentage / 100;
+        uint256 decimalPart = stat.collateralizationPercentage % 100;
+        string memory collatPct = string.concat(
+            vm.toString(wholePart),
+            ".",
+            decimalPart < 10 ? "0" : "",
+            vm.toString(decimalPart),
+            "%"
+        );
+        console2.log("  Collateralization Percentage:", collatPct);
+        console2.log("");
+        console2.log("--- HEDGER STATISTICS ---");
+        console2.log("  Hedger Entry Price:", string.concat(_formatPrice(stat.hedgerEntryPrice), " USD"));
+        string memory realizedPnLStr = string.concat(_formatPnL(stat.hedgerRealizedPnL), " USDC");
+        console2.log("  Hedger Realized P&L:", realizedPnLStr);
+        string memory unrealizedPnLStr = string.concat(_formatPnL(stat.hedgerUnrealizedPnL), " USDC");
+        console2.log("  Hedger Unrealized P&L:", unrealizedPnLStr);
+        string memory totalPnLStr = string.concat(_formatPnL(stat.hedgerTotalPnL), " USDC");
+        console2.log("  Hedger Total P&L:", totalPnLStr);
+        console2.log("  Hedger Available Collateral:", string.concat(_formatUSDC(stat.hedgerAvailableCollateral), " USDC"));
+        console2.log("");
+    }
+
+    function _step1_HedgerDeposits50USDC() internal {
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        IERC20 usdcToken = IERC20(USDC);
+
+        console2.log("--- Step 1: Opening Hedger Position ---");
+        console2.log("Creating position for hedger address:", hedger);
+        console2.log("NOTE: Connect your wallet to this address in the UI to see the position!");
+
+        // Check if whitelist is enabled and whitelist hedger if needed
+        // The deployer should have GOVERNANCE_ROLE to whitelist
+        if (hedgerPool.hedgerWhitelistEnabled()) {
+            if (!hedgerPool.isWhitelistedHedger(hedger)) {
+                console2.log("Whitelisting hedger:", hedger);
+                hedgerPool.setHedgerWhitelist(hedger, true);
+            } else {
+                console2.log("Hedger already whitelisted:", hedger);
+            }
+        }
+
+        // Approve USDC
+        uint256 amount = 50 * 1e6; // 50 USDC
+        usdcToken.approve(HEDGER_POOL, amount);
+        console2.log("USDC approved:", amount / 1e6, "USDC");
+
+        // Open position with 5% margin (20x leverage)
+        uint256 leverage = 20; // 5% margin = 20x leverage
+        console2.log("Opening position with leverage:", leverage, "x");
+        hedgerPool.enterHedgePosition(amount, leverage);
+        console2.log("Position opened successfully!");
+        console2.log("");
+
+        _captureStats("Hedger deposits 50 USDC at 5% margin");
+    }
+
+    function _step2_SetOraclePrice(uint256 price) internal {
+        // Convert price from 18 decimals to 8 decimals (feed format)
+        // price is in 18 decimals (e.g., 1.09e18), need 8 decimals (e.g., 109000000)
+        int256 feedPrice = int256(price / 1e10); // Convert 18 decimals to 8 decimals
+        
+        // Update the mock feed directly
+        (bool success, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setPrice(int256)", feedPrice)
+        );
+        require(success, "Failed to set feed price");
+        
+        // Also update updatedAt timestamp to make it fresh
+        (bool success2, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
+        );
+        if (!success2) {
+            console2.log("Warning: Failed to update timestamp");
+        }
+        
+        // Verify price was set by reading from oracle
+        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
+        require(isValid, "Oracle price invalid");
+        console2.log("Price set to:", currentPrice / 1e16);
+        _captureStats("Oracle -> 1.09");
+    }
+
+    function _step3_UserMints500QEURO() internal {
+        QuantillonVault vault = QuantillonVault(VAULT);
+        IERC20 usdcToken = IERC20(USDC);
+
+        // Calculate USDC needed for 500 QEURO at current price
+        IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Invalid oracle price");
+        
+        // 500 QEURO * price / 1e12 (convert from 18 to 6 decimals)
+        uint256 usdcNeeded = (500 * 1e18 * currentPrice) / 1e30;
+        
+        usdcToken.approve(VAULT, usdcNeeded);
+        vault.mintQEURO(usdcNeeded, 0); // minQeuroOut = 0 for simplicity
+
+        _captureStats("User mints 500 QEURO");
+    }
+
+    function _step4_SetOraclePrice(uint256 price) internal {
+        int256 feedPrice = int256(price / 1e10);
+        (bool success, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setPrice(int256)", feedPrice)
+        );
+        require(success, "Failed to set feed price");
+        (bool success2, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
+        );
+        require(success2, "Failed to set updatedAt");
+        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
+        require(isValid, "Oracle price invalid");
+        console2.log("Price set to:", currentPrice / 1e16);
+        _captureStats("Oracle -> 1.16");
+    }
+
+    function _step5_HedgerAdds50USDC() internal {
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        IERC20 usdcToken = IERC20(USDC);
+
+        uint256 amount = 50 * 1e6; // 50 USDC
+        usdcToken.approve(HEDGER_POOL, amount);
+        hedgerPool.addMargin(1, amount); // Assuming position ID 1
+
+        _captureStats("Hedger adds 50 USDC");
+    }
+
+    function _step6_UserMints500QEURO() internal {
+        QuantillonVault vault = QuantillonVault(VAULT);
+        IERC20 usdcToken = IERC20(USDC);
+
+        IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Invalid oracle price");
+        
+        uint256 usdcNeeded = (500 * 1e18 * currentPrice) / 1e30;
+        
+        usdcToken.approve(VAULT, usdcNeeded);
+        vault.mintQEURO(usdcNeeded, 0);
+
+        _captureStats("User mints 500 QEURO");
+    }
+
+    function _step7_HedgerAdds50USDC() internal {
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+        IERC20 usdcToken = IERC20(USDC);
+
+        uint256 amount = 50 * 1e6; // 50 USDC
+        usdcToken.approve(HEDGER_POOL, amount);
+        hedgerPool.addMargin(1, amount);
+
+        _captureStats("Hedger adds 50 USDC");
+    }
+
+    function _step8_SetOraclePrice(uint256 price) internal {
+        int256 feedPrice = int256(price / 1e10);
+        (bool success, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setPrice(int256)", feedPrice)
+        );
+        require(success, "Failed to set feed price");
+        (bool success2, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
+        );
+        require(success2, "Failed to set updatedAt");
+        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
+        require(isValid, "Oracle price invalid");
+        console2.log("Price set to:", currentPrice / 1e16);
+        _captureStats("Oracle -> 1.11");
+    }
+
+    function _step9_UserMints861QEURO() internal {
+        QuantillonVault vault = QuantillonVault(VAULT);
+        IERC20 usdcToken = IERC20(USDC);
+
+        IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Invalid oracle price");
+        
+        uint256 usdcNeeded = (861 * 1e18 * currentPrice) / 1e30;
+        
+        usdcToken.approve(VAULT, usdcNeeded);
+        vault.mintQEURO(usdcNeeded, 0);
+
+        _captureStats("User mints 861 QEURO");
+    }
+
+    function _step10_UserMints1000QEURO() internal {
+        QuantillonVault vault = QuantillonVault(VAULT);
+        IERC20 usdcToken = IERC20(USDC);
+
+        IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Invalid oracle price");
+        
+        uint256 usdcNeeded = (1000 * 1e18 * currentPrice) / 1e30;
+        
+        usdcToken.approve(VAULT, usdcNeeded);
+        vault.mintQEURO(usdcNeeded, 0);
+
+        _captureStats("User mints 1000 QEURO");
+    }
+
+    function _step11_UserRedeems1861QEURO() internal {
+        QuantillonVault vault = QuantillonVault(VAULT);
+        QEUROToken qeuroToken = QEUROToken(QEURO);
+
+        uint256 qeuroAmount = 1861 * 1e18;
+        qeuroToken.approve(VAULT, qeuroAmount);
+        vault.redeemQEURO(qeuroAmount, 0); // minUsdcOut = 0
+
+        _captureStats("User redeems 1861 QEURO");
+    }
+
+    function _step12_SetOraclePrice(uint256 price) internal {
+        int256 feedPrice = int256(price / 1e10);
+        (bool success, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setPrice(int256)", feedPrice)
+        );
+        require(success, "Failed to set feed price");
+        (bool success2, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
+        );
+        require(success2, "Failed to set updatedAt");
+        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
+        require(isValid, "Oracle price invalid");
+        console2.log("Price set to:", currentPrice / 1e16);
+        _captureStats("Oracle -> 1.15");
+    }
+
+    function _step13_HedgerRemoves50USDC() internal {
+        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
+
+        uint256 amount = 50 * 1e6; // 50 USDC
+        hedgerPool.removeMargin(1, amount); // Assuming position ID 1
+
+        _captureStats("Hedger removes 50 USDC from collateral");
+    }
+
+    function _step14_SetOraclePrice(uint256 price) internal {
+        int256 feedPrice = int256(price / 1e10);
+        (bool success, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setPrice(int256)", feedPrice)
+        );
+        require(success, "Failed to set feed price");
+        (bool success2, ) = MOCK_EUR_USD_FEED.call(
+            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
+        );
+        require(success2, "Failed to set updatedAt");
+        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
+        require(isValid, "Oracle price invalid");
+        console2.log("Price set to:", currentPrice / 1e16);
+        _captureStats("Oracle -> 1.16");
+    }
+
+    function _step15_UserRedeems500QEURO() internal {
+        QuantillonVault vault = QuantillonVault(VAULT);
+        QEUROToken qeuroToken = QEUROToken(QEURO);
+
+        uint256 qeuroAmount = 500 * 1e18;
+        qeuroToken.approve(VAULT, qeuroAmount);
+        vault.redeemQEURO(qeuroAmount, 0);
+
+        _captureStats("User redeems 500 QEURO");
+    }
+
+    function _step16_UserRedeems500QEURO() internal {
+        QuantillonVault vault = QuantillonVault(VAULT);
+        QEUROToken qeuroToken = QEUROToken(QEURO);
+
+        uint256 qeuroAmount = 500 * 1e18;
+        qeuroToken.approve(VAULT, qeuroAmount);
+        vault.redeemQEURO(qeuroAmount, 0);
+
+        _captureStats("User redeems 500 QEURO (no QEURO left circulating)");
+    }
+
+    function _saveStatisticsToFile() internal {
+        // Create formatted log file content
+        string memory logContent = "========================================\n";
+        logContent = string.concat(logContent, "QUANTILLON PROTOCOL - SCENARIO REPLAY RESULTS\n");
+        logContent = string.concat(logContent, "========================================\n\n");
+        logContent = string.concat(logContent, "Scenario: Test Scenario Replay\n");
+        logContent = string.concat(logContent, "Total Steps: ", vm.toString(stepCounter), "\n");
+        logContent = string.concat(logContent, "Execution Date: ", vm.toString(block.timestamp), "\n\n");
+        
+        for (uint256 i = 0; i < stats.length; i++) {
+            ProtocolStats memory stat = stats[i];
+            
+            // Format collateralization percentage to 2 decimal places
+            uint256 wholePart = stat.collateralizationPercentage / 100;
+            uint256 decimalPart = stat.collateralizationPercentage % 100;
+            string memory collatPctFormatted = string.concat(
+                vm.toString(wholePart),
+                ".",
+                decimalPart < 10 ? "0" : "",
+                vm.toString(decimalPart)
+            );
+
+            logContent = string.concat(
+                logContent,
+                "========================================\n",
+                "STEP ", vm.toString(stat.step), ": ", stat.action, "\n",
+                "========================================\n\n",
+                "--- PROTOCOL STATISTICS ---\n",
+                "  Oracle Price: ", _formatPrice(stat.oraclePrice), " USD\n",
+                "  QEURO Minted: ", _formatQEURO(stat.qeuroMinted), " QEURO\n",
+                "  QEURO Mintable: ", _formatQEURO(stat.qeuroMintable), " QEURO\n",
+                "  User Collateral: ", _formatUSDC(stat.userCollateral), " USDC\n",
+                "  Hedger Collateral: ", _formatUSDC(stat.hedgerCollateral), " USDC\n",
+                "  Collateralization Percentage: ", collatPctFormatted, "%\n",
+                "\n",
+                "--- HEDGER STATISTICS ---\n",
+                "  Hedger Entry Price: ", _formatPrice(stat.hedgerEntryPrice), " USD\n",
+                "  Hedger Realized P&L: ", _formatPnLForFile(stat.hedgerRealizedPnL), " USDC\n",
+                "  Hedger Unrealized P&L: ", _formatPnLForFile(stat.hedgerUnrealizedPnL), " USDC\n",
+                "  Hedger Total P&L: ", _formatPnLForFile(stat.hedgerTotalPnL), " USDC\n",
+                "  Hedger Available Collateral: ", _formatUSDC(stat.hedgerAvailableCollateral), " USDC\n",
+                "\n"
+            );
+        }
+        
+        logContent = string.concat(logContent, "========================================\n");
+        logContent = string.concat(logContent, "SCENARIO COMPLETE\n");
+        logContent = string.concat(logContent, "========================================\n");
+        
+        // Save to results folder (Foundry allows writing to root, so we'll write there and move it)
+        string memory filename = string.concat("scenario-", vm.toString(block.timestamp), ".log");
+        vm.writeFile(filename, logContent);
+        console2.log("\n=== SCENARIO COMPLETE ===");
+        console2.log("Total steps executed:", stepCounter);
+        console2.log("Results saved to:", filename);
+        console2.log("Please move the file to scripts/results/ folder manually");
+        
+        // Summary already logged above
+    }
+}
+

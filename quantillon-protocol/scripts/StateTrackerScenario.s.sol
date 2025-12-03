@@ -197,6 +197,9 @@ contract StateTrackerScenario is Script {
         }
         console2.log("");
 
+        // Start broadcasting transactions
+        // Using vm.startBroadcast(pk) - matching deploy.sh pattern
+        // Foundry will broadcast when --broadcast flag is used
         vm.startBroadcast(pk);
 
         // Step 1: Hedger deposits 50 USDC at 5% margin
@@ -249,8 +252,8 @@ contract StateTrackerScenario is Script {
 
         vm.stopBroadcast();
 
-        // Save statistics to JSON file
-        _saveStatisticsToFile();
+        // Note: Statistics are logged to console, no need to save to file
+        // (vm.writeFile is not allowed in broadcast mode)
 
         // Summary logged in _saveStatisticsToFile
     }
@@ -572,29 +575,69 @@ contract StateTrackerScenario is Script {
         _captureStats("Hedger deposits 50 USDC at 5% margin");
     }
 
-    function _step2_SetOraclePrice(uint256 price) internal {
-        // Convert price from 18 decimals to 8 decimals (feed format)
-        // price is in 18 decimals (e.g., 1.09e18), need 8 decimals (e.g., 109000000)
-        int256 feedPrice = int256(price / 1e10); // Convert 18 decimals to 8 decimals
+    /**
+     * @notice Helper function to update oracle price incrementally to avoid triggering deviation checks
+     * @dev Updates price in steps of max 1.5% (150 bps) to stay well below the 2% (200 bps) limit
+     * @param targetPrice Target price in 18 decimals
+     */
+    function _setOraclePriceIncremental(uint256 targetPrice) internal {
+        QuantillonVault vault = QuantillonVault(VAULT);
+        IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
         
-        // Update the mock feed directly
-        (bool success, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setPrice(int256)", feedPrice)
-        );
-        require(success, "Failed to set feed price");
+        // Get current price from oracle
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Oracle price invalid");
         
-        // Also update updatedAt timestamp to make it fresh
-        (bool success2, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
-        );
-        if (!success2) {
-            console2.log("Warning: Failed to update timestamp");
+        // If already at target, just update cache and return
+        if (currentPrice == targetPrice) {
+            vault.updatePriceCache();
+            return;
         }
         
-        // Verify price was set by reading from oracle
-        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
-        require(isValid, "Oracle price invalid");
+        // Maximum step size: 1.5% (150 basis points) to stay well below 2% limit
+        uint256 maxStepBps = 150; // 1.5%
+        uint256 maxStepMultiplier = 10000 + maxStepBps; // 1.015
+        
+        // Update price incrementally until we reach target
+        while (currentPrice != targetPrice) {
+            uint256 nextPrice;
+            
+            if (currentPrice < targetPrice) {
+                // Moving up: increase by max 1.5% or to target, whichever is smaller
+                uint256 maxIncrease = (currentPrice * maxStepMultiplier) / 10000;
+                nextPrice = maxIncrease < targetPrice ? maxIncrease : targetPrice;
+            } else {
+                // Moving down: decrease by max 1.5% or to target, whichever is larger
+                uint256 maxDecrease = (currentPrice * (10000 - maxStepBps)) / 10000;
+                nextPrice = maxDecrease > targetPrice ? maxDecrease : targetPrice;
+            }
+            
+            // Set price on mock feed (8 decimals)
+            int256 feedPrice = int256(nextPrice / 1e10);
+            (bool success, ) = MOCK_EUR_USD_FEED.call(
+                abi.encodeWithSignature("setPrice(int256)", feedPrice)
+            );
+            require(success, "Failed to set feed price");
+            
+            // Update timestamp
+            (bool success2, ) = MOCK_EUR_USD_FEED.call(
+                abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
+            );
+            require(success2, "Failed to set updatedAt");
+            
+            // Update vault cache after each step
+            vault.updatePriceCache();
+            
+            // Update current price for next iteration
+            (currentPrice, isValid) = oracle.getEurUsdPrice();
+            require(isValid, "Oracle price invalid");
+        }
+        
         console2.log("Price set to:", currentPrice / 1e16);
+    }
+
+    function _step2_SetOraclePrice(uint256 price) internal {
+        _setOraclePriceIncremental(price);
         _captureStats("Oracle -> 1.09");
     }
 
@@ -617,18 +660,7 @@ contract StateTrackerScenario is Script {
     }
 
     function _step4_SetOraclePrice(uint256 price) internal {
-        int256 feedPrice = int256(price / 1e10);
-        (bool success, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setPrice(int256)", feedPrice)
-        );
-        require(success, "Failed to set feed price");
-        (bool success2, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
-        );
-        require(success2, "Failed to set updatedAt");
-        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
-        require(isValid, "Oracle price invalid");
-        console2.log("Price set to:", currentPrice / 1e16);
+        _setOraclePriceIncremental(price);
         _captureStats("Oracle -> 1.16");
     }
 
@@ -671,18 +703,7 @@ contract StateTrackerScenario is Script {
     }
 
     function _step8_SetOraclePrice(uint256 price) internal {
-        int256 feedPrice = int256(price / 1e10);
-        (bool success, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setPrice(int256)", feedPrice)
-        );
-        require(success, "Failed to set feed price");
-        (bool success2, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
-        );
-        require(success2, "Failed to set updatedAt");
-        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
-        require(isValid, "Oracle price invalid");
-        console2.log("Price set to:", currentPrice / 1e16);
+        _setOraclePriceIncremental(price);
         _captureStats("Oracle -> 1.11");
     }
 
@@ -748,18 +769,7 @@ contract StateTrackerScenario is Script {
     }
 
     function _step12_SetOraclePrice(uint256 price) internal {
-        int256 feedPrice = int256(price / 1e10);
-        (bool success, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setPrice(int256)", feedPrice)
-        );
-        require(success, "Failed to set feed price");
-        (bool success2, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
-        );
-        require(success2, "Failed to set updatedAt");
-        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
-        require(isValid, "Oracle price invalid");
-        console2.log("Price set to:", currentPrice / 1e16);
+        _setOraclePriceIncremental(price);
         _captureStats("Oracle -> 1.15");
     }
 
@@ -773,18 +783,7 @@ contract StateTrackerScenario is Script {
     }
 
     function _step14_SetOraclePrice(uint256 price) internal {
-        int256 feedPrice = int256(price / 1e10);
-        (bool success, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setPrice(int256)", feedPrice)
-        );
-        require(success, "Failed to set feed price");
-        (bool success2, ) = MOCK_EUR_USD_FEED.call(
-            abi.encodeWithSignature("setUpdatedAt(uint256)", block.timestamp)
-        );
-        require(success2, "Failed to set updatedAt");
-        (uint256 currentPrice, bool isValid) = IChainlinkOracle(ORACLE).getEurUsdPrice();
-        require(isValid, "Oracle price invalid");
-        console2.log("Price set to:", currentPrice / 1e16);
+        _setOraclePriceIncremental(price);
         _captureStats("Oracle -> 1.16");
     }
 

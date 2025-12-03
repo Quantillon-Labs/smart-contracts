@@ -107,35 +107,67 @@ else
     echo ""
 fi
 
-# Step 2: Run the scenario
+# Step 2: Load environment variables
 cd "$SCRIPT_DIR/.."
+echo "Loading environment variables..."
+
+# Check for network-specific .env file first, then fallback to default
+ENV_FILE=""
+if [ -f ".env.localhost" ]; then
+    ENV_FILE=".env.localhost"
+    echo "Found environment file: $ENV_FILE"
+elif [ -f ".env" ]; then
+    ENV_FILE=".env"
+    echo "Found environment file: $ENV_FILE"
+else
+    echo "WARNING: No .env file found (.env.localhost or .env)"
+    echo "Will try to use PRIVATE_KEY from environment..."
+fi
+
+# Load environment variables if file exists
+if [ -n "$ENV_FILE" ] && [ -f "$ENV_FILE" ]; then
+    set -a  # Automatically export all variables
+    source "$ENV_FILE"
+    set +a
+    echo "Environment variables loaded from $ENV_FILE"
+    
+    # Create symlink for Foundry to find the environment file (matching deploy.sh pattern)
+    if [ "$ENV_FILE" != ".env" ]; then
+        ln -sf "$ENV_FILE" .env
+        echo "Created symlink: .env -> $ENV_FILE"
+    fi
+fi
+
+# Check if PRIVATE_KEY is set
+if [ -z "$PRIVATE_KEY" ]; then
+    echo ""
+    echo "ERROR: PRIVATE_KEY environment variable is not set!"
+    echo ""
+    echo "Please either:"
+    echo "  1. Set PRIVATE_KEY in .env.localhost or .env file, OR"
+    echo "  2. Export it before running: export PRIVATE_KEY=your_private_key_here"
+    echo ""
+    exit 1
+fi
+
 echo "Running StateTrackerScenario..."
 echo "This may take a few moments..."
 echo ""
+
+# Run the scenario with broadcast
+# Matching deploy.sh pattern: use vm.startBroadcast(pk) in script and only pass --broadcast flag
+# PRIVATE_KEY must be available as environment variable (loaded from .env file above)
+# Add gas limit to prevent OutOfGas errors during oracle calls
 forge script scripts/StateTrackerScenario.s.sol:StateTrackerScenario \
     --rpc-url http://localhost:8545 \
-    --broadcast 2>&1 | tee "$OUTPUT_FILE"
+    --broadcast \
+    --gas-limit 30000000 \
+    2>&1 | tee "$OUTPUT_FILE"
 
-# Create formatted version
-FORMATTED_FILE="${OUTPUT_FILE%.log}-formatted.log"
 echo ""
-echo "Creating formatted log..."
-"$SCRIPT_DIR/format-scenario-log.sh" "$OUTPUT_FILE" > /dev/null 2>&1
-
-if [ -f "$FORMATTED_FILE" ]; then
-    echo ""
-    echo "=========================================="
-    echo "Scenario execution complete!"
-    echo ""
-    echo "Raw output:     $OUTPUT_FILE"
-    echo "Formatted log:  $FORMATTED_FILE"
-    echo "=========================================="
-    echo ""
-else
-    echo ""
-    echo "=========================================="
-    echo "Scenario execution complete!"
-    echo "Results saved to: $OUTPUT_FILE"
-    echo "=========================================="
-fi
+echo "=========================================="
+echo "Scenario execution complete!"
+echo "Results saved to: $OUTPUT_FILE"
+echo "=========================================="
+echo ""
 

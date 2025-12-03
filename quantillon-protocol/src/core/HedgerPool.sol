@@ -142,6 +142,8 @@ contract HedgerPool is
     event VaultUpdated(address indexed vault);
     event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
     event RealizedPnLRecorded(uint256 indexed positionId, int256 pnlDelta, int256 totalRealizedPnL);
+    event QeuroShareCalculated(uint256 indexed positionId, uint256 qeuroShare, uint256 qeuroBacked, uint256 totalQeuroBacked);
+    event RealizedPnLCalculation(uint256 indexed positionId, uint256 qeuroAmount, uint256 qeuroBacked, uint256 filledBefore, uint256 price, int256 totalUnrealizedPnL, int256 realizedDelta);
 
     modifier onlyVault() {
         if (msg.sender != address(vault)) revert HedgerPoolErrorLibrary.OnlyVault();
@@ -1474,16 +1476,22 @@ contract HedgerPool is
 
         // Calculate total filled for proportional distribution
         uint256 totalFilled = 0;
+        uint256 totalQeuroBacked = 0;
         for (uint256 i = 0; i < len; i++) {
             if (activePositions[i] != skipPositionId) {
                 totalFilled += uint256(positions[activePositions[i]].filledVolume);
+                totalQeuroBacked += uint256(positions[activePositions[i]].qeuroBacked);
             }
         }
         if (totalFilled == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
-        if (totalFilled < usdcAmount) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+        // Note: We don't cap usdcAmount or qeuroAmount based on totalFilled
+        // filledVolume is just accounting - the user is redeeming qeuroAmount QEURO worth usdcAmount USDC
+        // We should realize P&L for ALL qeuroAmount being redeemed, regardless of filledVolume
+        // filledVolume will be decreased as much as possible (capped to available filledVolume), but P&L is calculated for all QEURO
 
         // Distribute proportionally
         uint256 released = 0;
+        uint256 qeuroReleased = 0;
         for (uint256 i; i < len; ++i) {
             uint256 posId = activePositions[i];
             if (posId == skipPositionId) continue;
@@ -1491,20 +1499,35 @@ contract HedgerPool is
             uint256 filled = uint256(pos.filledVolume);
             if (filled == 0) continue;
 
-            uint256 share = filled.mulDiv(usdcAmount, totalFilled);
+            // Calculate qeuroShare proportionally to qeuroBacked (not to filledVolume)
+            // This ensures the proportion of qeuroBacked being redeemed matches the proportion used for P&L calculation
+            uint256 qeuroShare = totalQeuroBacked > 0 
+                ? uint256(pos.qeuroBacked).mulDiv(qeuroAmount, totalQeuroBacked)
+                : 0;
+            if (qeuroShare > qeuroAmount - qeuroReleased) qeuroShare = qeuroAmount - qeuroReleased;
+            if (qeuroShare > uint256(pos.qeuroBacked)) qeuroShare = uint256(pos.qeuroBacked);
+            if (qeuroShare == 0) continue;
+            
+            // Calculate share (USDC to decrease from filledVolume) based on qeuroShare being redeemed
+            // share = qeuroShare * redeemPrice / 1e30 (convert QEURO to USDC at current price)
+            // Cap share to filled to avoid underflow, but this doesn't affect P&L calculation
+            uint256 share = qeuroShare.mulDiv(redeemPrice, 1e30);
             if (share > usdcAmount - released) share = usdcAmount - released;
             if (share > filled) share = filled;
             if (share == 0) continue;
-
-            // Calculate qeuroShare for this position
-            uint256 qeuroShare = qeuroAmount.mulDiv(share, usdcAmount);
+            
+            // Emit event for debugging qeuroShare calculation
+            emit QeuroShareCalculated(posId, qeuroShare, uint256(pos.qeuroBacked), totalQeuroBacked);
             
             // Process redemption with new realized P&L formula
+            // Use qeuroShare (full amount) for P&L calculation to realize all remaining unrealized P&L
+            // This ensures we realize P&L for ALL QEURO being redeemed, regardless of filledVolume
             _processRedeem(posId, pos, share, filled, redeemPrice, qeuroShare);
             
             // Decrease qeuroBacked proportionally
             pos.qeuroBacked = qeuroShare <= uint256(pos.qeuroBacked) ? pos.qeuroBacked - uint128(qeuroShare) : 0;
             released += share;
+            qeuroReleased += qeuroShare;
         }
         totalFilledExposure -= released;
     }
@@ -1579,33 +1602,51 @@ contract HedgerPool is
      * @custom:access Internal helper only
      * @custom:oracle Uses provided price parameter
      */
-    function _processRedeem(uint256 posId, HedgePosition storage pos, uint256 share, uint256 /* filledBefore */, uint256 price, uint256 qeuroAmount) internal {
-        uint256 entry = uint256(pos.entryPrice);
-        if (entry > 0 && qeuroAmount > 0) {
-            // New formula: RealizedP&L = QEUROQuantitySold * (entryPrice - OracleCurrentPrice)
-            // Hedgers are SHORT EUR, so they profit when price goes DOWN (entryPrice > currentPrice)
-            // qeuroAmount is in 18 decimals (QEURO)
-            // price and entry are in 18 decimals (USD/EUR)
-            // Calculate price difference (entry - price for short position)
-            int256 priceDiff = int256(entry) - int256(price);
+    function _processRedeem(uint256 posId, HedgePosition storage pos, uint256 share, uint256 filledBefore, uint256 price, uint256 qeuroAmount) internal {
+        if (share > 0 && qeuroAmount > 0 && price > 0) {
+            // Calculate realized P&L based on the proportion of unrealized P&L being redeemed
+            // Realized P&L = proportion of qeuroBacked being redeemed * total unrealized P&L
+            // Proportion = qeuroAmount / qeuroBacked (before redemption)
+            // Total unrealized P&L = filledVolume - (qeuroBacked * price / 1e30)
+            // IMPORTANT: Use filledBefore (filledVolume before decrease) and qeuroBacked before decrease
+            uint256 currentQeuroBacked = uint256(pos.qeuroBacked);
             
-            // Calculate realized P&L: qeuroAmount * priceDiff
-            // qeuroAmount * priceDiff gives result in 36 decimals
-            // Use mulDiv to divide by 1e18, then divide by 1e12 to convert to 6 decimals
-            // Result: (qeuroAmount * priceDiff) / 1e30 = realized P&L in USDC (6 decimals)
-            int256 realizedDelta;
-            if (priceDiff >= 0) {
-                uint256 pnl18 = qeuroAmount.mulDiv(uint256(priceDiff), 1e18);
-                realizedDelta = int256(pnl18 / 1e12); // Convert from 18 to 6 decimals
-            } else {
-                uint256 absPriceDiff = uint256(-priceDiff);
-                uint256 pnl18 = qeuroAmount.mulDiv(absPriceDiff, 1e18);
-                realizedDelta = -int256(pnl18 / 1e12); // Convert from 18 to 6 decimals
-            }
-            
-            if (realizedDelta != 0) {
+            if (currentQeuroBacked > 0 && filledBefore > 0) {
+                // Calculate total unrealized P&L before redemption using filledVolume BEFORE it's decreased
+                uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
+                int256 totalUnrealizedPnL;
+                if (filledBefore >= qeuroValueInUSDC) {
+                    totalUnrealizedPnL = int256(filledBefore - qeuroValueInUSDC);
+                } else {
+                    totalUnrealizedPnL = -int256(qeuroValueInUSDC - filledBefore);
+                }
+                
+                // Calculate NET unrealized P&L (total unrealized - realized)
+                // This matches the frontend calculation: Net Unrealized = Total Unrealized - Realized
+                int256 netUnrealizedPnL = totalUnrealizedPnL - int256(pos.realizedPnL);
+                
+                // Calculate proportion of qeuroBacked being redeemed
+                // realizedDelta = (qeuroAmount / currentQeuroBacked) * netUnrealizedPnL
+                // We use net unrealized P&L (not total) because we want to realize the remaining unrealized P&L
+                // qeuroAmount is in 18 decimals, netUnrealizedPnL is in 6 decimals (USDC)
+                // currentQeuroBacked is in 18 decimals
+                // Result: (18 decimals * 6 decimals) / 18 decimals = 6 decimals ✓
+                int256 realizedDelta;
+                if (netUnrealizedPnL >= 0) {
+                    // Multiply qeuroAmount (18 decimals) by netUnrealizedPnL (6 decimals) = 24 decimals
+                    // Divide by currentQeuroBacked (18 decimals) = 6 decimals
+                    uint256 pnlShare = qeuroAmount.mulDiv(uint256(netUnrealizedPnL), currentQeuroBacked);
+                    realizedDelta = int256(pnlShare);
+                } else {
+                    uint256 absPnL = uint256(-netUnrealizedPnL);
+                    uint256 pnlShare = qeuroAmount.mulDiv(absPnL, currentQeuroBacked);
+                    realizedDelta = -int256(pnlShare);
+                }
+                
+                // Record realized P&L
                 pos.realizedPnL += int128(realizedDelta);
                 emit RealizedPnLRecorded(posId, realizedDelta, int256(pos.realizedPnL));
+                emit RealizedPnLCalculation(posId, qeuroAmount, currentQeuroBacked, filledBefore, price, totalUnrealizedPnL, realizedDelta);
             }
         }
         _applyFillChange(posId, pos, share, false);

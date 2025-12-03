@@ -110,7 +110,9 @@ library HedgerPoolLogicLibrary {
         uint256 qeuroBacked,
         uint256 currentPrice
     ) internal pure returns (int256) {
-        if (filledVolume == 0 || currentPrice == 0) {
+        // Edge case: If no QEURO is backed, there's no unrealized P&L (all P&L is realized)
+        // This matches frontend behavior: when qeuroBacked === 0n, unrealized P&L = 0
+        if (filledVolume == 0 || currentPrice == 0 || qeuroBacked == 0) {
             return 0;
         }
 

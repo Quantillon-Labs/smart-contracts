@@ -1808,7 +1808,7 @@ function _processRedeem(
     uint256 posId,
     HedgePosition storage pos,
     uint256 share,
-    uint256,
+    uint256 filledBefore,
     uint256 price,
     uint256 qeuroAmount
 ) internal;
@@ -1820,7 +1820,7 @@ function _processRedeem(
 |`posId`|`uint256`|ID of the position being processed|
 |`pos`|`HedgePosition`|Storage pointer to the position struct|
 |`share`|`uint256`|Amount of USDC exposure being released (6 decimals)|
-|`<none>`|`uint256`||
+|`filledBefore`|`uint256`||
 |`price`|`uint256`|Current EUR/USD oracle price for redemption (18 decimals)|
 |`qeuroAmount`|`uint256`|QEURO amount being redeemed (18 decimals)|
 
@@ -1938,6 +1938,28 @@ event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint
 
 ```solidity
 event RealizedPnLRecorded(uint256 indexed positionId, int256 pnlDelta, int256 totalRealizedPnL);
+```
+
+### QeuroShareCalculated
+
+```solidity
+event QeuroShareCalculated(
+    uint256 indexed positionId, uint256 qeuroShare, uint256 qeuroBacked, uint256 totalQeuroBacked
+);
+```
+
+### RealizedPnLCalculation
+
+```solidity
+event RealizedPnLCalculation(
+    uint256 indexed positionId,
+    uint256 qeuroAmount,
+    uint256 qeuroBacked,
+    uint256 filledBefore,
+    uint256 price,
+    int256 totalUnrealizedPnL,
+    int256 realizedDelta
+);
 ```
 
 ## Structs

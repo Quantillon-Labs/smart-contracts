@@ -561,6 +561,107 @@ contract ChainlinkOracleTestSuite is Test {
     }
 
     // =============================================================================
+    // DEV MODE TESTS
+    // =============================================================================
+    
+    /**
+     * @notice Test dev mode toggle by admin
+     * @dev Verifies admin can enable/disable dev mode
+     */
+    function test_DevMode_ToggleByAdmin() public {
+        // Initially dev mode should be disabled
+        assertFalse(oracle.devModeEnabled());
+        
+        // Admin enables dev mode
+        vm.prank(admin);
+        oracle.setDevMode(true);
+        assertTrue(oracle.devModeEnabled());
+        
+        // Admin disables dev mode
+        vm.prank(admin);
+        oracle.setDevMode(false);
+        assertFalse(oracle.devModeEnabled());
+    }
+    
+    /**
+     * @notice Test dev mode toggle unauthorized access
+     * @dev Verifies non-admin cannot toggle dev mode
+     */
+    function test_DevMode_ToggleUnauthorized_Revert() public {
+        // User tries to enable dev mode - should revert
+        vm.prank(user);
+        vm.expectRevert();
+        oracle.setDevMode(true);
+        
+        // Oracle manager tries to enable dev mode - should revert
+        vm.prank(oracleManager);
+        vm.expectRevert();
+        oracle.setDevMode(true);
+    }
+    
+    /**
+     * @notice Test price deviation check skipped when dev mode enabled
+     * @dev Verifies that large price deviations are allowed in dev mode
+     */
+    function test_DevMode_PriceDeviationCheckSkipped() public {
+        // Enable dev mode
+        vm.prank(admin);
+        oracle.setDevMode(true);
+        assertTrue(oracle.devModeEnabled());
+        
+        // Set a price that deviates more than MAX_PRICE_DEVIATION (6% deviation)
+        uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS;
+        mockEurUsdFeed.setPrice(int256(deviatedPrice * 1e10)); // Convert to 8 decimals
+        
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        
+        // Should accept the deviated price when dev mode is enabled
+        assertEq(price, deviatedPrice);
+        assertTrue(isValid);
+    }
+    
+    /**
+     * @notice Test price deviation check works when dev mode disabled
+     * @dev Verifies that deviation checks work normally when dev mode is off
+     */
+    function test_DevMode_PriceDeviationCheckWorksWhenDisabled() public {
+        // Ensure dev mode is disabled
+        vm.prank(admin);
+        oracle.setDevMode(false);
+        assertFalse(oracle.devModeEnabled());
+        
+        // Set a price that deviates more than MAX_PRICE_DEVIATION
+        uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS; // 6% deviation
+        mockEurUsdFeed.setPrice(int256(deviatedPrice * 1e10)); // Convert to 8 decimals
+        
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        
+        // Should reject the deviated price when dev mode is disabled
+        assertEq(price, EUR_USD_PRICE); // Last valid price
+        assertFalse(isValid);
+    }
+    
+    /**
+     * @notice Test getEurUsdDetails with dev mode enabled
+     * @dev Verifies that getEurUsdDetails skips deviation check in dev mode
+     */
+    function test_DevMode_GetEurUsdDetailsSkipsDeviationCheck() public {
+        // Enable dev mode
+        vm.prank(admin);
+        oracle.setDevMode(true);
+        
+        // Set a deviated price
+        uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS;
+        mockEurUsdFeed.setPrice(int256(deviatedPrice * 1e10));
+        
+        (uint256 currentPrice, uint256 lastValidPrice, , bool isStale, bool withinBounds) = oracle.getEurUsdDetails();
+        
+        // Should accept the deviated price
+        assertEq(currentPrice, deviatedPrice);
+        assertTrue(withinBounds);
+    }
+
+    // =============================================================================
     // CIRCUIT BREAKER TESTS
     // =============================================================================
     

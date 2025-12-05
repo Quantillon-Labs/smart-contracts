@@ -215,6 +215,10 @@ contract QuantillonVault is
     /// @dev Used to ensure minimum blocks between updates for deviation checks
     uint256 private lastPriceUpdateBlock;
 
+    /// @notice Dev mode flag to disable price caching requirements
+    /// @dev When enabled, price deviation checks and caching requirements are skipped (dev/testing only)
+    bool public devModeEnabled;
+
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
     // =============================================================================
@@ -299,6 +303,11 @@ contract QuantillonVault is
         uint256 newPrice,
         uint256 blockNumber
     );
+
+    /// @notice Emitted when dev mode is toggled
+    /// @param enabled Whether dev mode is enabled or disabled
+    /// @param caller Address that triggered the toggle
+    event DevModeToggled(bool enabled, address indexed caller);
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -466,17 +475,19 @@ contract QuantillonVault is
         // Check if we can mint (this also calls oracle internally, but we've already cached the price)
         if (!canMint()) revert CommonErrorLibrary.InsufficientCollateralization();
         
-        // Price deviation check using cached price
-        (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
-            eurUsdPrice,
-            lastValidEurUsdPrice,
-            MAX_PRICE_DEVIATION,
-            lastPriceUpdateBlock,
-            MIN_BLOCKS_BETWEEN_UPDATES
-        );
-        if (shouldRevert) {
-            emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
-            revert CommonErrorLibrary.ExcessiveSlippage();
+        // Price deviation check using cached price (skip if dev mode is enabled)
+        if (!devModeEnabled) {
+            (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
+                eurUsdPrice,
+                lastValidEurUsdPrice,
+                MAX_PRICE_DEVIATION,
+                lastPriceUpdateBlock,
+                MIN_BLOCKS_BETWEEN_UPDATES
+            );
+            if (shouldRevert) {
+                emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
+                revert CommonErrorLibrary.ExcessiveSlippage();
+            }
         }
 
         // Calculate mint fee and QEURO amount using validated oracle price
@@ -554,17 +565,19 @@ contract QuantillonVault is
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         
-        // Price deviation check using cached price
-        (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
-            eurUsdPrice,
-            lastValidEurUsdPrice,
-            MAX_PRICE_DEVIATION,
-            lastPriceUpdateBlock,
-            MIN_BLOCKS_BETWEEN_UPDATES
-        );
-        if (shouldRevert) {
-            emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
-            revert CommonErrorLibrary.ExcessiveSlippage();
+        // Price deviation check using cached price (skip if dev mode is enabled)
+        if (!devModeEnabled) {
+            (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
+                eurUsdPrice,
+                lastValidEurUsdPrice,
+                MAX_PRICE_DEVIATION,
+                lastPriceUpdateBlock,
+                MIN_BLOCKS_BETWEEN_UPDATES
+            );
+            if (shouldRevert) {
+                emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
+                revert CommonErrorLibrary.ExcessiveSlippage();
+            }
         }
 
         // Calculate USDC to return using validated oracle price
@@ -1353,6 +1366,24 @@ contract QuantillonVault is
 
     /// @notice Variable to store the timestamp of the last valid price update
     uint256 private lastPriceUpdateTime;
+
+    /**
+     * @notice Toggles dev mode to disable price caching requirements
+     * @dev DEV ONLY: When enabled, price deviation checks are skipped for testing
+     * @param enabled True to enable dev mode, false to disable
+     * @custom:security Only callable by DEFAULT_ADMIN_ROLE
+     * @custom:validation No input validation required
+     * @custom:state-changes Updates devModeEnabled flag
+     * @custom:events Emits DevModeToggled event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - simple state change
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        devModeEnabled = enabled;
+        emit DevModeToggled(enabled, msg.sender);
+    }
 }
 
 // =============================================================================

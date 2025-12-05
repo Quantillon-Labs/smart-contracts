@@ -209,7 +209,9 @@ library HedgerPoolLogicLibrary {
         uint256 liquidationThreshold,
         uint128 qeuroBacked
     ) external pure returns (bool) {
-        if (filledVolume == 0) {
+        // Use current QEURO value (qeuroBacked × currentPrice) instead of filledVolume
+        // This matches the frontend formula: maxWithdrawable = effectiveMargin - (qeuroBacked × currentPrice × liquidationThreshold / 10000)
+        if (qeuroBacked == 0 || currentPrice == 0) {
             return false;
         }
 
@@ -218,7 +220,16 @@ library HedgerPoolLogicLibrary {
         
         if (effectiveMargin <= 0) return true;
         
-        uint256 marginRatio = uint256(effectiveMargin).mulDiv(10000, filledVolume);
+        // Calculate current QEURO value in USDC: (qeuroBacked × currentPrice) / 1e30
+        // qeuroBacked is in 18 decimals (QEURO), currentPrice is in 18 decimals (USD/EUR)
+        // Result is in 6 decimals (USDC)
+        uint256 qeuroValueInUSDC = (uint256(qeuroBacked) * currentPrice) / 1e30;
+        
+        if (qeuroValueInUSDC == 0) return false;
+        
+        // Calculate margin ratio: effectiveMargin / qeuroValueInUSDC × 10000
+        // Position is liquidatable if marginRatio < liquidationThreshold
+        uint256 marginRatio = uint256(effectiveMargin).mulDiv(10000, qeuroValueInUSDC);
         return marginRatio < liquidationThreshold;
     }
 

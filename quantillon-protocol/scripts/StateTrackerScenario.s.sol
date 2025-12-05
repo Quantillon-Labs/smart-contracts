@@ -636,25 +636,12 @@ contract StateTrackerScenario is Script {
         
         if (isActive) {
             hedgerEntryPrice = uint256(entryPrice);
-            
-            // Convert int128 to int256 for realized P&L
-            // int128 values are stored in 6 decimals (USDC precision)
-            // Solidity automatically handles sign extension when casting int128 to int256
             hedgerRealizedPnL = int256(realizedPnLFromContract);
             
-            // Check if QEURO supply is 0 - if so, all P&L should be realized (unrealized = 0)
             QEUROToken qeuroToken = QEUROToken(QEURO);
             uint256 totalSupply = qeuroToken.totalSupply();
             
-            // Calculate TOTAL unrealized P&L using the same formula as frontend and HedgerPoolLogicLibrary
-            // Formula: Total UnrealizedP&L = FilledVolume - QEUROBacked * OracleCurrentPrice
-            // filledVolume is in 6 decimals (USDC)
-            // qeuroBacked is in 18 decimals (QEURO)
-            // currentPrice is in 18 decimals (USD/EUR)
-            // qeuroBacked * currentPrice gives USDC value in 36 decimals
-            // Divide by 1e30 to convert to 6 decimals (USDC)
-            // Edge case: If filledVolume == 0 or price == 0 or qeuroBacked == 0, return 0 (matches contract)
-            // IMPORTANT: When all QEURO is redeemed (totalSupply == 0), unrealized P&L = 0 (all P&L is realized)
+            // Calculate unrealized P&L
             int256 totalUnrealizedPnL;
             if (totalSupply == 0 || filledVolume == 0 || price == 0 || qeuroBacked == 0) {
                 totalUnrealizedPnL = int256(0);
@@ -667,48 +654,42 @@ contract StateTrackerScenario is Script {
                 }
             }
             
-            // Calculate NET unrealized P&L (matching frontend behavior)
-            // Frontend displays: Net Unrealized = Total Unrealized - Realized
-            // This ensures we show only the remaining unrealized P&L, not the total
-            // IMPORTANT: When all QEURO is redeemed (totalSupply == 0), unrealized P&L = 0 (all P&L is realized)
             if (totalSupply == 0 || qeuroBacked == 0) {
                 hedgerUnrealizedPnL = int256(0);
             } else {
                 hedgerUnrealizedPnL = totalUnrealizedPnL - hedgerRealizedPnL;
             }
             
-            // Total P&L = Net Unrealized + Realized = (Total Unrealized - Realized) + Realized = Total Unrealized
-            // But frontend calculates it as: Net Unrealized + Realized
             hedgerTotalPnL = hedgerUnrealizedPnL + hedgerRealizedPnL;
             
-            // Get min margin ratio (struct has 10 fields)
-            (uint64 minMarginRatio, , , , , , , , , ) = hedgerPool.coreParams();
+            // Get core parameters
+            (uint64 minMarginRatio, uint64 liquidationThreshold, , , , , , , , ) = hedgerPool.coreParams();
             
-            // Calculate hedger available collateral using frontend formula:
-            // 1. Calculate minted exposure at current price
-            //    mintedExposureAtCurrentPrice = (qeuroBacked * currentPrice) / 1e30
-            uint256 mintedExposureAtCurrentPrice = (uint256(qeuroBacked) * price) / 1e30;
-            
-            // 2. Calculate required margin
-            //    hedgerRequiredMargin = (mintedExposureAtCurrentPrice * minMarginRatio) / 10000
-            uint256 hedgerRequiredMargin = (mintedExposureAtCurrentPrice * uint256(minMarginRatio)) / 10000;
-            
-            // 3. Calculate available collateral
-            //    hedgerAvailableCollateral = margin + unrealizedPnL + realizedPnL - hedgerRequiredMargin
-            //    All values are in 6 decimals (USDC)
+            // Calculate effective margin (reuse variable)
             int256 effectiveMargin = int256(uint256(margin)) + hedgerUnrealizedPnL + hedgerRealizedPnL;
+            
+            // Calculate available collateral
+            // Formula: effectiveMargin - (qeuroBacked × currentPrice × minMarginRatio / 10000)
+            uint256 mintedExposure = (uint256(qeuroBacked) * price) / 1e30;
+            uint256 hedgerRequiredMargin = (mintedExposure * uint256(minMarginRatio)) / 10000;
             if (effectiveMargin > int256(hedgerRequiredMargin)) {
                 hedgerAvailableCollateral = uint256(effectiveMargin) - hedgerRequiredMargin;
-            } else {
-                hedgerAvailableCollateral = 0;
             }
             
-            // Maximum withdrawable amount is the same as available collateral
-            // This is the maximum USDC the hedger can withdraw while maintaining required margin
-            hedgerMaxWithdrawable = hedgerAvailableCollateral;
+            // Calculate max withdrawable using same formula as AvailableCollateral but with liquidationThreshold (1%)
+            // Formula: effectiveMargin - (qeuroBacked × currentPrice × liquidationThreshold / 10000)
+            // This matches the pattern of AvailableCollateral but uses 1% instead of 5%
+            if (uint256(qeuroBacked) > 0 && price > 0 && liquidationThreshold > 0) {
+                // Use same mintedExposure calculation as AvailableCollateral
+                uint256 minimumMargin = (mintedExposure * uint256(liquidationThreshold)) / 10000;
+                if (effectiveMargin > int256(minimumMargin)) {
+                    hedgerMaxWithdrawable = uint256(effectiveMargin) - minimumMargin;
+                }
+            } else if (effectiveMargin > 0) {
+                hedgerMaxWithdrawable = uint256(effectiveMargin);
+            }
             
-            // Calculate QEURO mintable using frontend formula:
-            // Formula: (hedgerAvailableCollateral * 10000 * 1e30) / (minMarginRatio * price)
+            // Calculate QEURO mintable
             if (minMarginRatio > 0 && price > 0 && hedgerAvailableCollateral > 0) {
                 uint256 numerator = hedgerAvailableCollateral * 10000 * 1e30;
                 uint256 denominator = uint256(minMarginRatio) * price;

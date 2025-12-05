@@ -563,6 +563,27 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validateMarginRatio(newMarginRatio, coreParams.minMarginRatio);
         HedgerPoolValidationLibrary.validateMaxMarginRatio(newMarginRatio, MAX_MARGIN_RATIO);
 
+        // Validate that position won't become liquidatable after margin removal
+        // Get current price for liquidation check
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid || currentPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+        
+        // Check if position would be liquidatable after margin removal
+        // Uses same formula as liquidation check: effectiveMargin.mulDiv(10000, qeuroBacked × currentPrice / 1e30) >= liquidationThreshold
+        // This matches the frontend formula: maxWithdrawable = effectiveMargin - (qeuroBacked × currentPrice × liquidationThreshold / 10000)
+        bool wouldBeLiquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
+            newMargin,
+            uint256(position.filledVolume),
+            uint256(position.entryPrice),
+            currentPrice,
+            coreParams.liquidationThreshold,
+            position.qeuroBacked
+        );
+        
+        if (wouldBeLiquidatable) {
+            revert HedgerPoolErrorLibrary.InsufficientMargin();
+        }
+
         position.margin = uint96(newMargin);
         position.positionSize = uint96(newPositionSize);
 

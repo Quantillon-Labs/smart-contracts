@@ -654,7 +654,7 @@ contract ChainlinkOracleTestSuite is Test {
         uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS;
         mockEurUsdFeed.setPrice(int256(deviatedPrice * 1e10));
         
-        (uint256 currentPrice, uint256 lastValidPrice, , bool isStale, bool withinBounds) = oracle.getEurUsdDetails();
+        (uint256 currentPrice, , , , bool withinBounds) = oracle.getEurUsdDetails();
         
         // Should accept the deviated price
         assertEq(currentPrice, deviatedPrice);

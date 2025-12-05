@@ -41,7 +41,7 @@ library DeploymentHelpers {
      * @param chainId Current chain ID
      * @return usdc The USDC token address to use
      */
-    function selectUSDCAddress(bool withMocks, uint256 chainId) internal view returns (address usdc) {
+    function selectUSDCAddress(bool withMocks, uint256 chainId) internal pure returns (address usdc) {
         (bool isLocalhost, bool isBaseSepolia, bool isEthereumSepolia) = detectNetwork(chainId);
 
         if (isLocalhost) {

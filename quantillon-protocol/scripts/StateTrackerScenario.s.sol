@@ -4,14 +4,21 @@ pragma solidity ^0.8.24;
 import "forge-std/Script.sol";
 import "forge-std/console2.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
 import {MockChainlinkOracle} from "../src/mocks/MockChainlinkOracle.sol";
+import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {UserPool} from "../src/core/UserPool.sol";
+import {FeeCollector} from "../src/core/FeeCollector.sol";
+import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {HedgerPoolLogicLibrary} from "../src/libraries/HedgerPoolLogicLibrary.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {DeploymentHelpers} from "./deployment/DeploymentHelpers.sol";
+import {MockUSDC} from "../src/mocks/MockUSDC.sol";
+import {MockAggregatorV3} from "../test/ChainlinkOracle.t.sol";
 
 /**
  * @title StateTrackerScenario
@@ -111,14 +118,15 @@ import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v
  * @author Quantillon Labs
  */
 contract StateTrackerScenario is Script {
-    // Contract addresses from deployment
-    address constant HEDGER_POOL = 0x36C02dA8a0983159322a80FFE9F24b1acfF8B570;
-    address constant VAULT = 0x59b670e9fA9D0A427751Af201D676719a970857b;
-    address constant USER_POOL = 0x8f86403A4DE0BB5791fa46B8e795C547942fE4Cf;
-    address constant QEURO = 0x0B306BF915C4d645ff596e518fAf3F9669b97016;
-    address constant USDC = 0x5FbDB2315678afecb367f032d93F642f64180aa3;
-    address constant ORACLE = 0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0;
-    address constant MOCK_EUR_USD_FEED = 0x0165878A594ca255338adfa4d48449f69242Eb8F;
+    // Contract addresses (deployed fresh each run)
+    address public HEDGER_POOL;
+    address public VAULT;
+    address public USER_POOL;
+    address public QEURO;
+    address public USDC;
+    address public ORACLE;
+    address public MOCK_EUR_USD_FEED;
+    address public TIME_PROVIDER;
 
     // Test accounts
     address public hedger;
@@ -143,10 +151,184 @@ contract StateTrackerScenario is Script {
         int256 hedgerUnrealizedPnL; // 6 decimals
         int256 hedgerTotalPnL; // 6 decimals
         uint256 hedgerAvailableCollateral; // 6 decimals
+        uint256 hedgerMaxWithdrawable; // 6 decimals - maximum USDC amount hedger can withdraw
         uint256 qeuroShare; // 18 decimals - QEURO share redeemed from hedger position (only relevant during redemption)
     }
 
     ProtocolStats[] public stats;
+
+    /**
+     * @notice Deploys all contracts needed for the scenario
+     * @dev Deploys Phase A (TimeProvider, Oracle, QEURO, Vault) and Phase C (UserPool, HedgerPool)
+     */
+    function _deployContracts() internal {
+        uint256 pk = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(pk);
+        (bool isLocalhost, , ) = DeploymentHelpers.detectNetwork(block.chainid);
+        
+        console2.log("=== Deploying Contracts ===");
+        console2.log("Deployer:", deployer);
+        console2.log("ChainId:", block.chainid);
+        console2.log("");
+        
+        // Deploy TimeProvider
+        TimeProvider timeProvider = new TimeProvider();
+        TIME_PROVIDER = address(timeProvider);
+        console2.log("TimeProvider deployed:", TIME_PROVIDER);
+        
+        // Deploy USDC (mock for localhost)
+        if (isLocalhost) {
+            // Deploy mock USDC
+            MockUSDC mockUSDC = new MockUSDC();
+            USDC = address(mockUSDC);
+            console2.log("MockUSDC deployed:", USDC);
+        } else {
+            USDC = DeploymentHelpers.selectUSDCAddress(false, block.chainid);
+            console2.log("Using USDC:", USDC);
+        }
+        
+        // Deploy Mock Oracle feeds (always use mocks for scenario)
+        address eurUsdFeed;
+        address usdcUsdFeed;
+        
+        if (isLocalhost) {
+            // Deploy mock feeds
+            MockAggregatorV3 eurUsdMockFeed = new MockAggregatorV3(8);
+            eurUsdFeed = address(eurUsdMockFeed);
+            eurUsdMockFeed.setPrice(108000000); // 1.08 USD per EUR
+            console2.log("EUR/USD mock feed deployed:", eurUsdFeed);
+            
+            MockAggregatorV3 usdcUsdMockFeed = new MockAggregatorV3(8);
+            usdcUsdFeed = address(usdcUsdMockFeed);
+            usdcUsdMockFeed.setPrice(100000000); // 1.00 USD per USDC
+            console2.log("USDC/USD mock feed deployed:", usdcUsdFeed);
+        } else {
+            // Use real feeds (not needed for scenario, but for completeness)
+            revert("Scenario only supports localhost deployment");
+        }
+        
+        // Deploy ChainlinkOracle (Mock)
+        MockChainlinkOracle oracleImpl = new MockChainlinkOracle();
+        ERC1967Proxy oracleProxy = new ERC1967Proxy(address(oracleImpl), bytes(""));
+        ORACLE = address(oracleProxy);
+        ChainlinkOracle(ORACLE).initialize(deployer, eurUsdFeed, usdcUsdFeed, deployer);
+        ChainlinkOracle(ORACLE).setDevMode(true);
+        console2.log("Oracle deployed:", ORACLE);
+        
+        // Store mock feed address for price updates
+        MOCK_EUR_USD_FEED = eurUsdFeed;
+        
+        // Deploy QEURO
+        QEUROToken qeuroImpl = new QEUROToken();
+        ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroImpl), bytes(""));
+        QEURO = address(qeuroProxy);
+        QEUROToken(QEURO).initialize(deployer, deployer, deployer, deployer);
+        console2.log("QEURO deployed:", QEURO);
+        
+        // Deploy FeeCollector
+        address treasury = address(uint160(uint256(keccak256(abi.encodePacked("treasury", deployer)))));
+        address devFund = address(uint160(uint256(keccak256(abi.encodePacked("devFund", deployer)))));
+        address communityFund = address(uint160(uint256(keccak256(abi.encodePacked("communityFund", deployer)))));
+        
+        FeeCollector feeCollectorImpl = new FeeCollector();
+        ERC1967Proxy feeCollectorProxy = new ERC1967Proxy(address(feeCollectorImpl), bytes(""));
+        address feeCollector = address(feeCollectorProxy);
+        FeeCollector(feeCollector).initialize(deployer, treasury, devFund, communityFund);
+        console2.log("FeeCollector deployed:", feeCollector);
+        
+        // Deploy Vault
+        QuantillonVault vaultImpl = new QuantillonVault();
+        ERC1967Proxy vaultProxy = new ERC1967Proxy(address(vaultImpl), bytes(""));
+        VAULT = address(vaultProxy);
+        QuantillonVault(VAULT).initialize(deployer, QEURO, USDC, ORACLE, address(0), address(0), deployer, feeCollector);
+        QuantillonVault(VAULT).setDevMode(true);
+        console2.log("Vault deployed:", VAULT);
+        
+        // Setup QEURO roles
+        QEUROToken(QEURO).revokeRole(QEUROToken(QEURO).MINTER_ROLE(), deployer);
+        QEUROToken(QEURO).grantRole(QEUROToken(QEURO).MINTER_ROLE(), VAULT);
+        QEUROToken(QEURO).revokeRole(QEUROToken(QEURO).BURNER_ROLE(), deployer);
+        QEUROToken(QEURO).grantRole(QEUROToken(QEURO).BURNER_ROLE(), VAULT);
+        console2.log("QEURO roles configured");
+        
+        // Deploy UserPool
+        UserPool userPoolImpl = new UserPool(timeProvider);
+        ERC1967Proxy userPoolProxy = new ERC1967Proxy(address(userPoolImpl), bytes(""));
+        USER_POOL = address(userPoolProxy);
+        UserPool(USER_POOL).initialize(deployer, QEURO, USDC, VAULT, ORACLE, address(0), deployer, deployer);
+        console2.log("UserPool deployed:", USER_POOL);
+        
+        // Deploy HedgerPool
+        HedgerPool hedgerPoolImpl = new HedgerPool(timeProvider);
+        ERC1967Proxy hedgerPoolProxy = new ERC1967Proxy(address(hedgerPoolImpl), bytes(""));
+        HEDGER_POOL = address(hedgerPoolProxy);
+        HedgerPool(HEDGER_POOL).initialize(deployer, USDC, address(0), deployer, deployer, deployer, VAULT);
+        HedgerPool(HEDGER_POOL).updateAddress(2, ORACLE);
+        console2.log("HedgerPool deployed:", HEDGER_POOL);
+        
+        // Whitelist the deployer/hedger address immediately after deployment
+        // The deployer has GOVERNANCE_ROLE from initialization, so can whitelist
+        try this._safeIsWhitelistEnabled(HEDGER_POOL) returns (bool whitelistEnabled) {
+            if (whitelistEnabled) {
+                HedgerPool(HEDGER_POOL).setHedgerWhitelist(deployer, true);
+                console2.log("Hedger address whitelisted:", deployer);
+            } else {
+                console2.log("Hedger whitelist is disabled - no whitelisting needed");
+            }
+        } catch {
+            console2.log("WARNING: Could not check whitelist status, attempting to whitelist anyway");
+            try HedgerPool(HEDGER_POOL).setHedgerWhitelist(deployer, true) {
+                console2.log("Hedger address whitelisted:", deployer);
+            } catch {
+                console2.log("WARNING: Could not whitelist hedger address");
+            }
+        }
+        
+        // Wire Vault with Pool addresses (required for Vault to accept calls from pools)
+        QuantillonVault(VAULT).updateHedgerPool(HEDGER_POOL);
+        QuantillonVault(VAULT).updateUserPool(USER_POOL);
+        console2.log("Vault wired with HedgerPool and UserPool");
+        
+        console2.log("");
+        console2.log("=== Deployment Complete ===");
+        console2.log("All contracts deployed successfully!");
+        console2.log("");
+        console2.log("========================================");
+        console2.log("DEPLOYED CONTRACT ADDRESSES");
+        console2.log("========================================");
+        console2.log("IMPORTANT: Update your frontend addresses.json with these addresses!");
+        console2.log("");
+        console2.log("For chainId 31337 (localhost):");
+        console2.log("  TimeProvider:", TIME_PROVIDER);
+        console2.log("  USDC:", USDC);
+        console2.log("  MockEURUSD:", MOCK_EUR_USD_FEED);
+        console2.log("  ChainlinkOracle:", ORACLE);
+        console2.log("  QEUROToken:", QEURO);
+        console2.log("  QuantillonVault:", VAULT);
+        console2.log("  UserPool:", USER_POOL);
+        console2.log("  HedgerPool:", HEDGER_POOL);
+        console2.log("");
+        console2.log("JSON format for addresses.json:");
+        console2.log("{");
+        console2.log("  \"31337\": {");
+        console2.log("    \"name\": \"Anvil Localhost\",");
+        console2.log("    \"isTestnet\": true,");
+        console2.log("    \"contracts\": {");
+        console2.log("      \"TimeProvider\": \"", TIME_PROVIDER, "\",");
+        console2.log("      \"MockUSDC\": \"", USDC, "\",");
+        console2.log("      \"MockEURUSD\": \"", MOCK_EUR_USD_FEED, "\",");
+        console2.log("      \"ChainlinkOracle\": \"", ORACLE, "\",");
+        console2.log("      \"QEUROToken\": \"", QEURO, "\",");
+        console2.log("      \"QuantillonVault\": \"", VAULT, "\",");
+        console2.log("      \"UserPool\": \"", USER_POOL, "\",");
+        console2.log("      \"HedgerPool\": \"", HEDGER_POOL, "\"");
+        console2.log("    }");
+        console2.log("  }");
+        console2.log("}");
+        console2.log("");
+        console2.log("========================================");
+        console2.log("");
+    }
 
     function run() external {
         // Use deployer's private key (same as deployment scripts)
@@ -161,29 +343,96 @@ contract StateTrackerScenario is Script {
         console2.log("========================================");
         console2.log("IMPORTANT: WALLET CONNECTION REQUIRED");
         console2.log("========================================");
-        console2.log("To see positions in the UI, connect your wallet to:");
-        console2.log("  Hedger Address:", hedger);
-        console2.log("  User Address:", user);
+        console2.log("To see positions in the UI, you MUST:");
+        console2.log("  1. Connect your wallet with the SAME account that deployed contracts");
+        console2.log("  2. Update frontend addresses.json with the deployed addresses (see below)");
+        console2.log("");
+        console2.log("Wallet Address (use this account in MetaMask):");
+        console2.log("  Hedger/User Address:", hedger);
         console2.log("");
         console2.log("If using MetaMask:");
         console2.log("  1. Click account icon -> Import Account");
         console2.log("  2. Paste the private key from your PRIVATE_KEY env variable");
         console2.log("  3. Connect to Localhost:8545 network");
-        console2.log("  4. Refresh the UI");
+        console2.log("  4. Make sure frontend addresses.json is updated (see addresses below)");
+        console2.log("  5. Refresh the UI");
         console2.log("========================================");
         console2.log("");
 
-        // Verify protocol is in fresh state
-        QEUROToken qeuroToken = QEUROToken(QEURO);
-        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
-        uint256 initialSupply = qeuroToken.totalSupply();
-        uint256 initialMargin = hedgerPool.totalMargin();
-        uint256 initialExposure = hedgerPool.totalExposure();
-        
+        // Start broadcasting transactions for deployment
+        vm.startBroadcast(pk);
+
+        // Deploy all contracts fresh
+        _deployContracts();
+
+        // Verify protocol is in fresh state (non-fatal - continue even if checks fail)
         console2.log("--- Verifying Fresh State ---");
-        console2.log("Initial QEURO Supply:", initialSupply / 1e18);
-        console2.log("Initial Hedger Margin:", initialMargin / 1e6);
-        console2.log("Initial Hedger Exposure:", initialExposure / 1e6);
+        uint256 initialSupply = 0;
+        uint256 initialMargin = 0;
+        uint256 initialExposure = 0;
+        
+        // Check QEURO totalSupply with comprehensive error handling
+        try this._safeGetTotalSupply(QEURO) returns (uint256 supply) {
+            initialSupply = supply;
+            console2.log("Initial QEURO Supply:", initialSupply / 1e18);
+        } catch Error(string memory) {
+            console2.log("WARNING: Could not read QEURO totalSupply (revert with reason)");
+        } catch (bytes memory) {
+            console2.log("WARNING: Could not read QEURO totalSupply (low-level error)");
+        }
+        
+        // Check HedgerPool totalMargin with comprehensive error handling
+        try this._safeGetTotalMargin(HEDGER_POOL) returns (uint256 margin) {
+            initialMargin = margin;
+            console2.log("Initial Hedger Margin:", initialMargin / 1e6);
+        } catch Error(string memory) {
+            console2.log("WARNING: Could not read HedgerPool totalMargin (revert with reason)");
+        } catch (bytes memory) {
+            console2.log("WARNING: Could not read HedgerPool totalMargin (low-level error)");
+        }
+        
+        // Check HedgerPool totalExposure with comprehensive error handling
+        try this._safeGetTotalExposure(HEDGER_POOL) returns (uint256 exposure) {
+            initialExposure = exposure;
+            console2.log("Initial Hedger Exposure:", initialExposure / 1e6);
+        } catch Error(string memory) {
+            console2.log("WARNING: Could not read HedgerPool totalExposure (revert with reason)");
+        } catch (bytes memory) {
+            console2.log("WARNING: Could not read HedgerPool totalExposure (low-level error)");
+        }
+        
+        // Check if critical contracts are deployed
+        bool contractsDeployed = true;
+        if (HEDGER_POOL.code.length == 0) {
+            console2.log("");
+            console2.log("ERROR: HedgerPool contract not deployed at expected address:", HEDGER_POOL);
+            contractsDeployed = false;
+        }
+        if (VAULT.code.length == 0) {
+            console2.log("");
+            console2.log("ERROR: QuantillonVault contract not deployed at expected address:", VAULT);
+            contractsDeployed = false;
+        }
+        if (QEURO.code.length == 0) {
+            console2.log("");
+            console2.log("ERROR: QEURO contract not deployed at expected address:", QEURO);
+            contractsDeployed = false;
+        }
+        if (USDC.code.length == 0) {
+            console2.log("");
+            console2.log("ERROR: USDC contract not deployed at expected address:", USDC);
+            contractsDeployed = false;
+        }
+        
+        if (!contractsDeployed) {
+            console2.log("");
+            console2.log("CRITICAL: Required contracts are not deployed!");
+            console2.log("Please deploy contracts before running scenario:");
+            console2.log("  Use: ~/Github/restart-local-stack.sh localhost --with-mocks");
+            console2.log("");
+            console2.log("The scenario will likely fail if contracts are not deployed.");
+            console2.log("");
+        }
         
         if (initialSupply > 0 || initialMargin > 0 || initialExposure > 0) {
             console2.log("");
@@ -192,16 +441,12 @@ contract StateTrackerScenario is Script {
             console2.log("Use: ~/Github/restart-local-stack.sh localhost --with-mocks");
             console2.log("");
             console2.log("Proceeding anyway, but results may be inaccurate...");
-        } else {
+        } else if (contractsDeployed) {
             console2.log("Protocol is in fresh state - ready to proceed");
         }
         console2.log("");
 
-        // Start broadcasting transactions
-        // Using vm.startBroadcast(pk) - matching deploy.sh pattern
-        // Foundry will broadcast when --broadcast flag is used
-        vm.startBroadcast(pk);
-
+        // Continue with scenario steps (broadcast already started for deployment)
         // Step 1: Hedger deposits 50 USDC at 5% margin
         _step1_HedgerDeposits50USDC();
 
@@ -252,10 +497,63 @@ contract StateTrackerScenario is Script {
 
         vm.stopBroadcast();
 
+        // Write deployed addresses to file for frontend
+        _writeAddressesToFile();
+
         // Note: Statistics are logged to console, no need to save to file
         // (vm.writeFile is not allowed in broadcast mode)
 
         // Summary logged in _saveStatisticsToFile
+    }
+
+    /**
+     * @notice Outputs deployed contract addresses in JSON format for frontend
+     * @dev Outputs addresses.json format to console - bash script will capture and write to file
+     */
+    function _writeAddressesToFile() internal view {
+        // Output addresses in a format that bash script can capture
+        // Using a special marker so bash script can extract it
+        console2.log("");
+        console2.log("=== ADDRESSES_JSON_START ===");
+        console2.log("{");
+        console2.log("  \"31337\": {");
+        console2.log("    \"name\": \"Anvil Localhost\",");
+        console2.log("    \"isTestnet\": true,");
+        console2.log("    \"contracts\": {");
+        console2.log("      \"TimeProvider\": \"", vm.toString(TIME_PROVIDER), "\",");
+        console2.log("      \"MockUSDC\": \"", vm.toString(USDC), "\",");
+        console2.log("      \"MockEURUSD\": \"", vm.toString(MOCK_EUR_USD_FEED), "\",");
+        console2.log("      \"ChainlinkOracle\": \"", vm.toString(ORACLE), "\",");
+        console2.log("      \"QEUROToken\": \"", vm.toString(QEURO), "\",");
+        console2.log("      \"QuantillonVault\": \"", vm.toString(VAULT), "\",");
+        console2.log("      \"UserPool\": \"", vm.toString(USER_POOL), "\",");
+        console2.log("      \"HedgerPool\": \"", vm.toString(HEDGER_POOL), "\"");
+        console2.log("    }");
+        console2.log("  }");
+        console2.log("}");
+        console2.log("=== ADDRESSES_JSON_END ===");
+        console2.log("");
+    }
+
+    // Helper functions for safe contract calls (must be external for try-catch)
+    function _safeGetTotalSupply(address token) external view returns (uint256) {
+        return QEUROToken(token).totalSupply();
+    }
+
+    function _safeGetTotalMargin(address hedgerPool) external view returns (uint256) {
+        return HedgerPool(hedgerPool).totalMargin();
+    }
+
+    function _safeGetTotalExposure(address hedgerPool) external view returns (uint256) {
+        return HedgerPool(hedgerPool).totalExposure();
+    }
+
+    function _safeIsWhitelistEnabled(address hedgerPool) external view returns (bool) {
+        return HedgerPool(hedgerPool).hedgerWhitelistEnabled();
+    }
+
+    function _safeIsWhitelistedHedger(address hedgerPool, address hedgerAddr) external view returns (bool) {
+        return HedgerPool(hedgerPool).isWhitelistedHedger(hedgerAddr);
     }
 
     uint256 lastQeuroShare; // Track last qeuroShare from redemption events
@@ -267,7 +565,7 @@ contract StateTrackerScenario is Script {
         (uint256 price, uint256 qeuroMinted, uint256 userCollateral, uint256 hedgerCollateral, uint256 collateralizationPercentage) = _getProtocolStats();
         
         // Get hedger stats
-        (uint256 hedgerEntryPrice, int256 hedgerRealizedPnL, int256 hedgerUnrealizedPnL, int256 hedgerTotalPnL, uint256 hedgerAvailableCollateral, uint256 qeuroMintable) = _getHedgerStats(price);
+        (uint256 hedgerEntryPrice, int256 hedgerRealizedPnL, int256 hedgerUnrealizedPnL, int256 hedgerTotalPnL, uint256 hedgerAvailableCollateral, uint256 hedgerMaxWithdrawable, uint256 qeuroMintable) = _getHedgerStats(price);
 
         ProtocolStats memory stat = ProtocolStats({
             step: stepCounter,
@@ -283,6 +581,7 @@ contract StateTrackerScenario is Script {
             hedgerUnrealizedPnL: hedgerUnrealizedPnL,
             hedgerTotalPnL: hedgerTotalPnL,
             hedgerAvailableCollateral: hedgerAvailableCollateral,
+            hedgerMaxWithdrawable: hedgerMaxWithdrawable,
             qeuroShare: lastQeuroShare
         });
         
@@ -317,20 +616,22 @@ contract StateTrackerScenario is Script {
         collateralizationPercentage = collateralizationRatio;
     }
 
-    function _getHedgerStats(uint256 price) internal returns (
+    function _getHedgerStats(uint256 price) internal view returns (
         uint256 hedgerEntryPrice,
         int256 hedgerRealizedPnL,
         int256 hedgerUnrealizedPnL,
         int256 hedgerTotalPnL,
         uint256 hedgerAvailableCollateral,
+        uint256 hedgerMaxWithdrawable,
         uint256 qeuroMintable
     ) {
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         uint256 positionId = 1;
         
-        (, , uint96 filledVolume, uint96 margin, uint96 entryPrice, , , int128 unrealizedPnLFromContract, int128 realizedPnLFromContract, , bool isActive, uint128 qeuroBacked) = hedgerPool.positions(positionId);
+        (, , uint96 filledVolume, uint96 margin, uint96 entryPrice, , , , int128 realizedPnLFromContract, , bool isActive, uint128 qeuroBacked) = hedgerPool.positions(positionId);
 
         hedgerAvailableCollateral = 0;
+        hedgerMaxWithdrawable = 0;
         qeuroMintable = 0;
         
         if (isActive) {
@@ -401,6 +702,10 @@ contract StateTrackerScenario is Script {
             } else {
                 hedgerAvailableCollateral = 0;
             }
+            
+            // Maximum withdrawable amount is the same as available collateral
+            // This is the maximum USDC the hedger can withdraw while maintaining required margin
+            hedgerMaxWithdrawable = hedgerAvailableCollateral;
             
             // Calculate QEURO mintable using frontend formula:
             // Formula: (hedgerAvailableCollateral * 10000 * 1e30) / (minMarginRatio * price)
@@ -501,7 +806,7 @@ contract StateTrackerScenario is Script {
         );
     }
 
-    function _logStats(ProtocolStats memory stat) internal {
+    function _logStats(ProtocolStats memory stat) internal pure {
         console2.log("");
         console2.log("========================================");
         console2.log("STEP", stat.step);
@@ -535,6 +840,7 @@ contract StateTrackerScenario is Script {
         string memory totalPnLStr = string.concat(_formatPnL(stat.hedgerTotalPnL), " USDC");
         console2.log("  Hedger Total P&L:", totalPnLStr);
         console2.log("  Hedger Available Collateral:", string.concat(_formatUSDC(stat.hedgerAvailableCollateral), " USDC"));
+        console2.log("  Hedger Max Withdrawable:", string.concat(_formatUSDC(stat.hedgerMaxWithdrawable), " USDC"));
         if (stat.qeuroShare > 0) {
             console2.log("  QEURO Share Redeemed:", string.concat(_formatQEURO(stat.qeuroShare), " QEURO"));
         }
@@ -551,13 +857,22 @@ contract StateTrackerScenario is Script {
 
         // Check if whitelist is enabled and whitelist hedger if needed
         // The deployer should have GOVERNANCE_ROLE to whitelist
-        if (hedgerPool.hedgerWhitelistEnabled()) {
-            if (!hedgerPool.isWhitelistedHedger(hedger)) {
-                console2.log("Whitelisting hedger:", hedger);
-                hedgerPool.setHedgerWhitelist(hedger, true);
-            } else {
-                console2.log("Hedger already whitelisted:", hedger);
+        // Wrap in try-catch to handle cases where contract may not be deployed
+        try this._safeIsWhitelistEnabled(HEDGER_POOL) returns (bool whitelistEnabled) {
+            if (whitelistEnabled) {
+                try this._safeIsWhitelistedHedger(HEDGER_POOL, hedger) returns (bool isWhitelisted) {
+                    if (!isWhitelisted) {
+                        console2.log("Whitelisting hedger:", hedger);
+                        hedgerPool.setHedgerWhitelist(hedger, true);
+                    } else {
+                        console2.log("Hedger already whitelisted:", hedger);
+                    }
+                } catch {
+                    console2.log("WARNING: Could not check hedger whitelist status");
+                }
             }
+        } catch {
+            console2.log("WARNING: Could not check if whitelist is enabled, skipping whitelist check");
         }
 
         // Approve USDC
@@ -568,8 +883,18 @@ contract StateTrackerScenario is Script {
         // Open position with 5% margin (20x leverage)
         uint256 leverage = 20; // 5% margin = 20x leverage
         console2.log("Opening position with leverage:", leverage, "x");
-        hedgerPool.enterHedgePosition(amount, leverage);
-        console2.log("Position opened successfully!");
+        
+        try hedgerPool.enterHedgePosition(amount, leverage) {
+            console2.log("Position opened successfully!");
+        } catch Error(string memory reason) {
+            console2.log("ERROR: Failed to open hedger position:", reason);
+            console2.log("Make sure contracts are deployed and hedger is whitelisted if required.");
+            revert(string.concat("Step 1 failed: ", reason));
+        } catch (bytes memory) {
+            console2.log("ERROR: Failed to open hedger position (low-level error)");
+            console2.log("Make sure HedgerPool contract is deployed at:", HEDGER_POOL);
+            revert("Step 1 failed: HedgerPool contract may not be deployed or call reverted");
+        }
         console2.log("");
 
         _captureStats("Hedger deposits 50 USDC at 5% margin");
@@ -742,7 +1067,6 @@ contract StateTrackerScenario is Script {
     function _step11_UserRedeems1861QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
-        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         uint256 positionId = 1;
 
         uint256 qeuroAmount = 1861 * 1e18;
@@ -790,7 +1114,6 @@ contract StateTrackerScenario is Script {
     function _step15_UserRedeems500QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
-        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         uint256 positionId = 1;
 
         uint256 qeuroAmount = 500 * 1e18;
@@ -819,7 +1142,6 @@ contract StateTrackerScenario is Script {
     function _step16_UserRedeems500QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
-        HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         uint256 positionId = 1;
 
         uint256 qeuroAmount = 500 * 1e18;
@@ -886,6 +1208,7 @@ contract StateTrackerScenario is Script {
                 "  Hedger Unrealized P&L: ", _formatPnLForFile(stat.hedgerUnrealizedPnL), " USDC\n",
                 "  Hedger Total P&L: ", _formatPnLForFile(stat.hedgerTotalPnL), " USDC\n",
                 "  Hedger Available Collateral: ", _formatUSDC(stat.hedgerAvailableCollateral), " USDC\n",
+                "  Hedger Max Withdrawable: ", _formatUSDC(stat.hedgerMaxWithdrawable), " USDC\n",
                 stat.qeuroShare > 0 ? string.concat("  QEURO Share Redeemed: ", _formatQEURO(stat.qeuroShare), " QEURO\n") : "",
                 "\n"
             );

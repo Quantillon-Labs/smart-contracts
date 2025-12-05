@@ -305,6 +305,17 @@ uint256 private lastPriceUpdateBlock;
 ```
 
 
+### devModeEnabled
+Dev mode flag to disable price caching requirements
+
+*When enabled, price deviation checks and caching requirements are skipped (dev/testing only)*
+
+
+```solidity
+bool public devModeEnabled;
+```
+
+
 ### lastPriceUpdateTime
 Variable to store the timestamp of the last valid price update
 
@@ -1456,6 +1467,40 @@ function _syncRedeemWithHedgers(uint256 amount, uint256 redeemPrice, uint256 qeu
 |`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
+### setDevMode
+
+Toggles dev mode to disable price caching requirements
+
+*DEV ONLY: When enabled, price deviation checks are skipped for testing*
+
+**Notes:**
+- Only callable by DEFAULT_ADMIN_ROLE
+
+- No input validation required
+
+- Updates devModeEnabled flag
+
+- Emits DevModeToggled event
+
+- No errors thrown
+
+- Not protected - simple state change
+
+- Restricted to DEFAULT_ADMIN_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|True to enable dev mode, false to disable|
+
+
 ## Events
 ### QEUROminted
 Emitted when QEURO is minted
@@ -1576,4 +1621,19 @@ event PriceCacheUpdated(uint256 oldPrice, uint256 newPrice, uint256 blockNumber)
 |`oldPrice`|`uint256`|Previous cached price|
 |`newPrice`|`uint256`|New cached price|
 |`blockNumber`|`uint256`|Block number when cache was updated|
+
+### DevModeToggled
+Emitted when dev mode is toggled
+
+
+```solidity
+event DevModeToggled(bool enabled, address indexed caller);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|Whether dev mode is enabled or disabled|
+|`caller`|`address`|Address that triggered the toggle|
 

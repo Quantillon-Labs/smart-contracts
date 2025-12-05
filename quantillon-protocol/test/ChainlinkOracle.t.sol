@@ -604,6 +604,9 @@ contract ChainlinkOracleTestSuite is Test {
      * @dev Verifies that large price deviations are allowed in dev mode
      */
     function test_DevMode_PriceDeviationCheckSkipped() public {
+        // First establish initial price cache
+        oracle.getEurUsdPrice();
+        
         // Enable dev mode
         vm.prank(admin);
         oracle.setDevMode(true);
@@ -611,11 +614,16 @@ contract ChainlinkOracleTestSuite is Test {
         
         // Set a price that deviates more than MAX_PRICE_DEVIATION (6% deviation)
         uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS;
-        mockEurUsdFeed.setPrice(int256(deviatedPrice * 1e10)); // Convert to 8 decimals
+        // Convert from 18 decimals to 8 decimals for Chainlink feed
+        mockEurUsdFeed.setPrice(int256(deviatedPrice / 1e10));
+        // Update timestamp to ensure it's valid
+        mockEurUsdFeed.setUpdatedAt(block.timestamp);
         
+        // Call getEurUsdPrice to update the cache with the deviated price
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         
         // Should accept the deviated price when dev mode is enabled
+        // deviatedPrice = 1.10 * 10600 / 10000 = 1.166
         assertEq(price, deviatedPrice);
         assertTrue(isValid);
     }
@@ -646,17 +654,26 @@ contract ChainlinkOracleTestSuite is Test {
      * @dev Verifies that getEurUsdDetails skips deviation check in dev mode
      */
     function test_DevMode_GetEurUsdDetailsSkipsDeviationCheck() public {
-        // Enable dev mode
+        // Enable dev mode first
         vm.prank(admin);
         oracle.setDevMode(true);
         
         // Set a deviated price
         uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS;
-        mockEurUsdFeed.setPrice(int256(deviatedPrice * 1e10));
+        // Convert from 18 decimals to 8 decimals for Chainlink feed
+        mockEurUsdFeed.setPrice(int256(deviatedPrice / 1e10));
+        // Update timestamp to ensure it's valid
+        mockEurUsdFeed.setUpdatedAt(block.timestamp);
         
+        // Call getEurUsdPrice first to update the cache with the deviated price
+        // This is necessary because getEurUsdDetails is a view function that doesn't update state
+        oracle.getEurUsdPrice();
+        
+        // Now getEurUsdDetails should return the deviated price as currentPrice
         (uint256 currentPrice, , , , bool withinBounds) = oracle.getEurUsdDetails();
         
-        // Should accept the deviated price
+        // Should accept the deviated price as currentPrice
+        // deviatedPrice = 1.10 * 10600 / 10000 = 1.166
         assertEq(currentPrice, deviatedPrice);
         assertTrue(withinBounds);
     }

@@ -205,6 +205,17 @@ uint256 public usdcToleranceBps;
 ```
 
 
+### devModeEnabled
+Dev mode flag to disable spread deviation checks
+
+*When enabled, price deviation checks are skipped (dev/testing only)*
+
+
+```solidity
+bool public devModeEnabled;
+```
+
+
 ### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
@@ -1053,6 +1064,40 @@ function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external on
 |`_usdcUsdFeed`|`address`|New USDC/USD feed address|
 
 
+### setDevMode
+
+Toggles dev mode to disable spread deviation checks
+
+*DEV ONLY: When enabled, price deviation checks are skipped for testing*
+
+**Notes:**
+- Only callable by DEFAULT_ADMIN_ROLE
+
+- No input validation required
+
+- Updates devModeEnabled flag
+
+- Emits DevModeToggled event
+
+- No errors thrown
+
+- Not protected - simple state change
+
+- Restricted to DEFAULT_ADMIN_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|True to enable dev mode, false to disable|
+
+
 ## Events
 ### PriceUpdated
 Emitted on each valid price update
@@ -1121,4 +1166,19 @@ Emitted when ETH is recovered from the contract
 ```solidity
 event ETHRecovered(address indexed to, uint256 amount);
 ```
+
+### DevModeToggled
+Emitted when dev mode is toggled
+
+
+```solidity
+event DevModeToggled(bool enabled, address indexed caller);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|Whether dev mode is enabled or disabled|
+|`caller`|`address`|Address that triggered the toggle|
 

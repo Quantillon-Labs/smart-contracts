@@ -116,6 +116,13 @@ bool public circuitBreakerTriggered;
 ```
 
 
+### devModeEnabled
+
+```solidity
+bool public devModeEnabled;
+```
+
+
 ## Functions
 ### constructor
 
@@ -491,6 +498,23 @@ function setUpdatedAt(uint256 _updatedAt) external onlyRole(DEFAULT_ADMIN_ROLE);
 |`_updatedAt`|`uint256`|The new timestamp|
 
 
+### setDevMode
+
+Toggles dev mode to disable spread deviation checks
+
+*DEV ONLY: When enabled, price deviation checks are skipped for testing*
+
+
+```solidity
+function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|True to enable dev mode, false to disable|
+
+
 ## Events
 ### PriceDeviationDetected
 
@@ -514,5 +538,11 @@ event CircuitBreakerReset(uint256 blockNumber);
 
 ```solidity
 event ETHRecovered(address indexed treasury, uint256 amount);
+```
+
+### DevModeToggled
+
+```solidity
+event DevModeToggled(bool enabled, address indexed caller);
 ```
 

@@ -899,12 +899,18 @@ contract QuantillonVaultTestSuite is Test {
             abi.encode(deviatedPrice, true)
         );
         
+        // Get initial totalMinted before redemption
+        uint256 initialMinted = vault.totalMinted();
+        
         // Redeem should succeed even with large price deviation when dev mode is enabled
         vm.prank(user1);
         vault.redeemQEURO(REDEEM_AMOUNT, 0);
         
         // Verify redeem succeeded (totalMinted decreased)
-        assertLt(vault.totalMinted(), REDEEM_AMOUNT);
+        // After redeeming REDEEM_AMOUNT, totalMinted should be less than initial
+        assertLt(vault.totalMinted(), initialMinted);
+        // Should have decreased by at least REDEEM_AMOUNT (allowing for small rounding differences)
+        assertGe(initialMinted - vault.totalMinted(), REDEEM_AMOUNT - 10); // Allow small tolerance for rounding
     }
     
     /**
@@ -921,7 +927,10 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(user1);
         vault.mintQEURO(MINT_AMOUNT, 0);
         
-        // Change oracle price significantly (more than 5% deviation)
+        // Advance blocks to allow price deviation check (needs at least 1 block)
+        vm.roll(block.number + 2);
+        
+        // Change oracle price significantly (more than 2% deviation - MAX_PRICE_DEVIATION is 200 bps)
         uint256 deviatedPrice = EUR_USD_PRICE * 11000 / 10000; // 10% higher
         vm.mockCall(
             mockOracle,

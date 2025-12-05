@@ -1489,6 +1489,53 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.removeMargin(positionId, netMargin);
         vm.stopPrank();
     }
+    
+    /**
+     * @notice Test margin removal that would make position liquidatable should revert
+     * @dev Verifies that margin removal cannot make position liquidatable (below 1% threshold)
+     * @custom:security Tests critical liquidation prevention mechanism
+     * @custom:validation Ensures liquidation threshold is enforced
+     * @custom:state-changes Creates position, syncs fill, attempts to remove margin that would cause liquidation
+     * @custom:events No events expected - revert test
+     * @custom:errors Expects InsufficientMargin error
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public test function
+     * @custom:oracle Uses mock oracle for price
+     */
+    function test_Margin_RemoveMarginWouldCauseLiquidation_Revert() public {
+        // First open a position
+        _whitelistHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Sync position fill to have qeuroBacked
+        _syncPositionFill(positionId);
+        
+        // Get position data
+        (,,, uint96 margin, , , , , , , , uint128 qeuroBacked) = hedgerPool.positions(positionId);
+        
+        // Calculate how much margin we can remove before hitting liquidation threshold
+        // Formula: maxWithdrawable = effectiveMargin - (qeuroBacked × currentPrice × liquidationThreshold / 10000)
+        // For this test, we'll try to remove more than allowed
+        CoreParamsSnapshot memory params = _coreParamsSnapshot();
+        uint256 currentPrice = EUR_USD_PRICE; // Use default test price
+        
+        // Calculate current QEURO value in USDC
+        uint256 qeuroValueInUSDC = (uint256(qeuroBacked) * currentPrice) / 1e30;
+        
+        // Calculate minimum required margin (1% of qeuroValueInUSDC)
+        uint256 minimumMargin = (qeuroValueInUSDC * params.liquidationThreshold) / 10000;
+        
+        // Try to remove margin that would leave us below minimum (making it liquidatable)
+        // effectiveMargin = margin (assuming no P&L for simplicity)
+        // We want to remove: margin - minimumMargin + 1 (one more than allowed)
+        uint256 marginToRemove = margin > minimumMargin ? margin - minimumMargin + 1 : margin;
+        
+        vm.startPrank(hedger1);
+        vm.expectRevert(HedgerPoolErrorLibrary.InsufficientMargin.selector);
+        hedgerPool.removeMargin(positionId, marginToRemove);
+        vm.stopPrank();
+    }
 
     // =============================================================================
     // LIQUIDATION TESTS

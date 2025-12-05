@@ -129,6 +129,10 @@ contract ChainlinkOracle is
     /// @dev 200 basis points = 2% (USDC can vary between 0.98 and 1.02)
     uint256 public usdcToleranceBps;
 
+    /// @notice Dev mode flag to disable spread deviation checks
+    /// @dev When enabled, price deviation checks are skipped (dev/testing only)
+    bool public devModeEnabled;
+
     // =============================================================================
     // EVENTS - Events for monitoring and alerts
     // =============================================================================
@@ -165,6 +169,11 @@ contract ChainlinkOracle is
 
     /// @notice Emitted when ETH is recovered from the contract
     event ETHRecovered(address indexed to, uint256 amount);
+
+    /// @notice Emitted when dev mode is toggled
+    /// @param enabled Whether dev mode is enabled or disabled
+    /// @param caller Address that triggered the toggle
+    event DevModeToggled(bool enabled, address indexed caller);
 
     // =============================================================================
     // INITIALIZER - Initial contract configuration
@@ -382,7 +391,8 @@ contract ChainlinkOracle is
             eurUsdValid = eurUsdPrice >= minEurUsdPrice && eurUsdPrice <= maxEurUsdPrice;
             
             // Deviation check against last valid price (reject sudden jumps > MAX_PRICE_DEVIATION)
-            if (eurUsdValid && lastValidEurUsdPrice > 0) {
+            // Skip deviation check if dev mode is enabled
+            if (eurUsdValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
                 uint256 base = lastValidEurUsdPrice;
                 uint256 diff = eurUsdPrice > base ? eurUsdPrice - base : base - eurUsdPrice;
                 uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
@@ -574,7 +584,8 @@ contract ChainlinkOracle is
                     // Check bounds and deviation
                     bool isValid = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
                     
-                    if (isValid && lastValidEurUsdPrice > 0) {
+                    // Skip deviation check if dev mode is enabled
+                    if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
                         uint256 base = lastValidEurUsdPrice;
                         uint256 diff = currentPrice > base ? currentPrice - base : base - currentPrice;
                         uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
@@ -916,7 +927,8 @@ contract ChainlinkOracle is
         isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
 
         // Deviation check against last valid price (reject sudden jumps > MAX_PRICE_DEVIATION)
-        if (isValid && lastValidEurUsdPrice > 0) {
+        // Skip deviation check if dev mode is enabled
+        if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
             uint256 base = lastValidEurUsdPrice;
             uint256 diff = price > base ? price - base : base - price;
     
@@ -1055,5 +1067,23 @@ contract ChainlinkOracle is
         usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdFeed);
 
         emit PriceFeedsUpdated(_eurUsdFeed, _usdcUsdFeed);
+    }
+
+    /**
+     * @notice Toggles dev mode to disable spread deviation checks
+     * @dev DEV ONLY: When enabled, price deviation checks are skipped for testing
+     * @param enabled True to enable dev mode, false to disable
+     * @custom:security Only callable by DEFAULT_ADMIN_ROLE
+     * @custom:validation No input validation required
+     * @custom:state-changes Updates devModeEnabled flag
+     * @custom:events Emits DevModeToggled event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - simple state change
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        devModeEnabled = enabled;
+        emit DevModeToggled(enabled, msg.sender);
     }
 }

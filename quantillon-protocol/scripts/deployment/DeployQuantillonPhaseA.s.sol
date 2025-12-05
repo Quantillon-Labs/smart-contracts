@@ -210,6 +210,10 @@ contract DeployQuantillonPhaseA is Script {
                 chainlinkOracle = ChainlinkOracle(address(proxy));
                 chainlinkOracle.initialize(deployerEOA, eurUsdFeed, usdcUsdFeed, deployerEOA);
                 console.log("Mock Oracle Proxy:", address(chainlinkOracle));
+                
+                // Enable dev mode automatically when using mocks
+                chainlinkOracle.setDevMode(true);
+                console.log("Oracle dev mode enabled (with-mocks)");
             } else {
                 // Use real ChainlinkOracle when WITH_MOCKS is false
                 address impl = address(new ChainlinkOracle(timeProvider));
@@ -267,6 +271,13 @@ contract DeployQuantillonPhaseA is Script {
             quantillonVault = QuantillonVault(address(proxy));
             quantillonVault.initialize(deployerEOA, address(qeuroToken), usdc, address(chainlinkOracle), address(0), address(0), deployerEOA, address(feeCollector));
             console.log("Vault Proxy:", address(quantillonVault));
+            
+            // Enable dev mode automatically when using mocks
+            bool withMocks = vm.envOr("WITH_MOCKS", false);
+            if (withMocks) {
+                quantillonVault.setDevMode(true);
+                console.log("Vault dev mode enabled (with-mocks)");
+            }
             
             // Debug: Check roles after initialization
             console.log("Checking roles after QuantillonVault initialization:");

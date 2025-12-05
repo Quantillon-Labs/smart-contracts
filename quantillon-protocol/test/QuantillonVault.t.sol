@@ -810,6 +810,132 @@ contract QuantillonVaultTestSuite is Test {
     }
     
     // =============================================================================
+    // DEV MODE TESTS
+    // =============================================================================
+    
+    /**
+     * @notice Test dev mode toggle by admin
+     * @dev Verifies admin can enable/disable dev mode
+     */
+    function test_DevMode_ToggleByAdmin() public {
+        // Initially dev mode should be disabled
+        assertFalse(vault.devModeEnabled());
+        
+        // Admin enables dev mode
+        vm.prank(admin);
+        vault.setDevMode(true);
+        assertTrue(vault.devModeEnabled());
+        
+        // Admin disables dev mode
+        vm.prank(admin);
+        vault.setDevMode(false);
+        assertFalse(vault.devModeEnabled());
+    }
+    
+    /**
+     * @notice Test dev mode toggle unauthorized access
+     * @dev Verifies non-admin cannot toggle dev mode
+     */
+    function test_DevMode_ToggleUnauthorized_Revert() public {
+        // User tries to enable dev mode - should revert
+        vm.prank(user1);
+        vm.expectRevert();
+        vault.setDevMode(true);
+        
+        // Governance tries to enable dev mode - should revert
+        vm.prank(governance);
+        vm.expectRevert();
+        vault.setDevMode(true);
+    }
+    
+    /**
+     * @notice Test mint with price deviation when dev mode enabled
+     * @dev Verifies that price deviation checks are skipped in dev mode
+     */
+    function test_DevMode_MintWithPriceDeviation_Success() public {
+        // Enable dev mode
+        vm.prank(admin);
+        vault.setDevMode(true);
+        assertTrue(vault.devModeEnabled());
+        
+        // First mint to establish a price cache
+        vm.prank(user1);
+        vault.mintQEURO(MINT_AMOUNT, 0);
+        
+        // Change oracle price significantly (more than 5% deviation)
+        uint256 deviatedPrice = EUR_USD_PRICE * 11000 / 10000; // 10% higher
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encode(deviatedPrice, true)
+        );
+        
+        // Mint should succeed even with large price deviation when dev mode is enabled
+        vm.prank(user2);
+        vault.mintQEURO(MINT_AMOUNT, 0);
+        
+        // Verify mint succeeded
+        assertGt(vault.totalMinted(), 0);
+    }
+    
+    /**
+     * @notice Test redeem with price deviation when dev mode enabled
+     * @dev Verifies that price deviation checks are skipped in dev mode
+     */
+    function test_DevMode_RedeemWithPriceDeviation_Success() public {
+        // First mint some QEURO
+        vm.prank(user1);
+        vault.mintQEURO(MINT_AMOUNT, 0);
+        
+        // Enable dev mode
+        vm.prank(admin);
+        vault.setDevMode(true);
+        
+        // Change oracle price significantly
+        uint256 deviatedPrice = EUR_USD_PRICE * 9000 / 10000; // 10% lower
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encode(deviatedPrice, true)
+        );
+        
+        // Redeem should succeed even with large price deviation when dev mode is enabled
+        vm.prank(user1);
+        vault.redeemQEURO(REDEEM_AMOUNT, 0);
+        
+        // Verify redeem succeeded (totalMinted decreased)
+        assertLt(vault.totalMinted(), REDEEM_AMOUNT);
+    }
+    
+    /**
+     * @notice Test mint with price deviation when dev mode disabled
+     * @dev Verifies that price deviation checks work normally when dev mode is off
+     */
+    function test_DevMode_MintWithPriceDeviationWhenDisabled_Revert() public {
+        // Ensure dev mode is disabled
+        vm.prank(admin);
+        vault.setDevMode(false);
+        assertFalse(vault.devModeEnabled());
+        
+        // First mint to establish a price cache
+        vm.prank(user1);
+        vault.mintQEURO(MINT_AMOUNT, 0);
+        
+        // Change oracle price significantly (more than 5% deviation)
+        uint256 deviatedPrice = EUR_USD_PRICE * 11000 / 10000; // 10% higher
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encode(deviatedPrice, true)
+        );
+        
+        // Mint should fail due to price deviation when dev mode is disabled
+        vm.prank(user2);
+        vm.expectRevert(CommonErrorLibrary.ExcessiveSlippage.selector);
+        vault.mintQEURO(MINT_AMOUNT, 0);
+    }
+    
+    // =============================================================================
     // VIEW FUNCTION TESTS
     // =============================================================================
     

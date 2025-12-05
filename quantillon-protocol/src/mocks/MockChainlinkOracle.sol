@@ -45,11 +45,15 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     // Circuit breaker
     bool public circuitBreakerTriggered;
     
+    // Dev mode flag to disable spread deviation checks
+    bool public devModeEnabled;
+    
     // Events
     event PriceDeviationDetected(uint256 newPrice, uint256 lastPrice, uint256 deviationBps, uint256 blockNumber);
     event CircuitBreakerTriggered(uint256 blockNumber, string reason);
     event CircuitBreakerReset(uint256 blockNumber);
     event ETHRecovered(address indexed treasury, uint256 amount);
+    event DevModeToggled(bool enabled, address indexed caller);
     
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -121,6 +125,16 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // Circuit breaker bounds check
         isValid = price >= MIN_EUR_USD_PRICE && price <= MAX_EUR_USD_PRICE;
 
+        // Deviation check against last valid price (skip if dev mode is enabled)
+        if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
+            uint256 base = lastValidEurUsdPrice;
+            uint256 diff = price > base ? price - base : base - price;
+            uint256 deviationBps = _divRound(diff * 10000, base);
+            if (deviationBps > MAX_PRICE_DEVIATION) {
+                isValid = false;
+            }
+        }
+
         return (price, isValid);
     }
     
@@ -150,8 +164,8 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // Circuit breaker bounds check
         isValid = price >= MIN_USDC_USD_PRICE && price <= MAX_USDC_USD_PRICE;
 
-        // Deviation check against last valid price
-        if (isValid && lastValidUsdcUsdPrice > 0) {
+        // Deviation check against last valid price (skip if dev mode is enabled)
+        if (isValid && lastValidUsdcUsdPrice > 0 && !devModeEnabled) {
             uint256 base = lastValidUsdcUsdPrice;
             uint256 diff = price > base ? price - base : base - price;
     
@@ -474,6 +488,16 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // This is a mock function - in reality, the timestamp comes from the underlying feeds
         // We'll just update the block number to trigger a refresh
         lastPriceUpdateBlock = block.number;
+    }
+    
+    /**
+     * @notice Toggles dev mode to disable spread deviation checks
+     * @dev DEV ONLY: When enabled, price deviation checks are skipped for testing
+     * @param enabled True to enable dev mode, false to disable
+     */
+    function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        devModeEnabled = enabled;
+        emit DevModeToggled(enabled, msg.sender);
     }
     
 }

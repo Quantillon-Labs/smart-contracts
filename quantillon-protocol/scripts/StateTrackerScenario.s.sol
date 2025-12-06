@@ -31,11 +31,11 @@ import {MockAggregatorV3} from "../test/ChainlinkOracle.t.sol";
  * through various hedger operations, user minting/redeeming, and oracle price changes.
  * 
  * The scenario tests:
- * 1. Hedger position opening and margin management
+ * 1. Hedger position opening (multiple positions)
  * 2. User QEURO minting at different oracle prices
  * 3. User QEURO redemption and its impact on hedger positions
  * 4. Oracle price volatility and its effect on protocol state
- * 5. Hedger margin adjustments (additions and removals)
+ * 5. Hedger margin removal from positions
  * 
  * STEP-BY-STEP SCENARIO:
  * 
@@ -53,17 +53,18 @@ import {MockAggregatorV3} from "../test/ChainlinkOracle.t.sol";
  * Step 4: Oracle price → 1.16 USD/EUR
  *   - Significant price increase (EUR appreciates)
  * 
- * Step 5: Hedger adds 50 USDC
- *   - Hedger increases margin to support more exposure
- *   - Position size increases proportionally
+ * Step 5: Hedger opens new position with 50 USDC
+ *   - Hedger opens a second position with 50 USDC at 5% margin (20x leverage)
+ *   - Creates a new separate position instead of adding to existing one
  * 
  * Step 6: User mints 500 QEURO
  *   - Additional QEURO minting at higher price (1.16)
  *   - More hedger capacity gets utilized
  * 
- * Step 7: Hedger adds 50 USDC
- *   - Further margin increase
- *   - Total hedger margin now: 150 USDC
+ * Step 7: Hedger opens new position with 50 USDC
+ *   - Hedger opens a third position with 50 USDC at 5% margin (20x leverage)
+ *   - Creates another separate position
+ *   - Total hedger margin now: 150 USDC across 3 positions
  * 
  * Step 8: Oracle price → 1.11 USD/EUR
  *   - Price correction (EUR depreciates from 1.16)
@@ -83,7 +84,7 @@ import {MockAggregatorV3} from "../test/ChainlinkOracle.t.sol";
  *   - Price increase after redemption
  * 
  * Step 13: Hedger removes 50 USDC from collateral
- *   - Hedger withdraws margin
+ *   - Hedger withdraws margin from latest position
  *   - Position size decreases proportionally
  * 
  * Step 14: Oracle price → 1.16 USD/EUR
@@ -134,6 +135,9 @@ contract StateTrackerScenario is Script {
 
     // Scenario step counter
     uint256 public stepCounter = 0;
+    
+    // Track latest position ID opened by hedger
+    uint256 public latestPositionId = 0;
 
     struct ProtocolStats {
         uint256 step;
@@ -626,22 +630,49 @@ contract StateTrackerScenario is Script {
         uint256 qeuroMintable
     ) {
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
-        uint256 positionId = 1;
         
-        (, , uint96 filledVolume, uint96 margin, uint96 entryPrice, , , , int128 realizedPnLFromContract, , bool isActive, uint128 qeuroBacked) = hedgerPool.positions(positionId);
-
+        // Initialize aggregated values
+        hedgerEntryPrice = 0;
+        hedgerRealizedPnL = int256(0);
+        hedgerUnrealizedPnL = int256(0);
+        hedgerTotalPnL = int256(0);
         hedgerAvailableCollateral = 0;
         hedgerMaxWithdrawable = 0;
         qeuroMintable = 0;
         
-        if (isActive) {
-            hedgerEntryPrice = uint256(entryPrice);
-            hedgerRealizedPnL = int256(realizedPnLFromContract);
+        // Get nextPositionId to know the upper limit
+        uint256 nextPositionId = hedgerPool.nextPositionId();
+        
+        // Get core parameters (same for all positions)
+        (uint64 minMarginRatio, uint64 liquidationThreshold, , , , , , , , ) = hedgerPool.coreParams();
+        
+        // Get total supply once (used for all positions)
+        QEUROToken qeuroToken = QEUROToken(QEURO);
+        uint256 totalSupply = qeuroToken.totalSupply();
+        
+        // Variables for weighted average entry price calculation
+        uint256 totalWeightedEntryPrice = 0;
+        uint256 totalFilledVolume = 0;
+        
+        // Variables for aggregated margin calculations
+        int256 totalEffectiveMargin = 0;
+        uint256 totalRequiredMargin = 0;
+        uint256 totalMinimumMargin = 0;
+        
+        // Iterate through all positions to find hedger's active positions
+        for (uint256 positionId = 1; positionId < nextPositionId; positionId++) {
+            (address positionHedger, , uint96 filledVolume, uint96 margin, uint96 entryPrice, , , , int128 realizedPnLFromContract, , bool isActive, uint128 qeuroBacked) = hedgerPool.positions(positionId);
             
-            QEUROToken qeuroToken = QEUROToken(QEURO);
-            uint256 totalSupply = qeuroToken.totalSupply();
+            // Skip if not owned by hedger or not active
+            if (positionHedger != hedger || !isActive) {
+                continue;
+            }
             
-            // Calculate unrealized P&L
+            // Sum realized P&L
+            hedgerRealizedPnL += int256(realizedPnLFromContract);
+            
+            // Calculate unrealized P&L for this position (matching original logic)
+            
             int256 totalUnrealizedPnL;
             if (totalSupply == 0 || filledVolume == 0 || price == 0 || qeuroBacked == 0) {
                 totalUnrealizedPnL = int256(0);
@@ -654,54 +685,67 @@ contract StateTrackerScenario is Script {
                 }
             }
             
+            // Calculate net unrealized P&L (matching original logic)
+            int256 positionUnrealizedPnL;
             if (totalSupply == 0 || qeuroBacked == 0) {
-                hedgerUnrealizedPnL = int256(0);
+                positionUnrealizedPnL = int256(0);
             } else {
-                hedgerUnrealizedPnL = totalUnrealizedPnL - hedgerRealizedPnL;
+                positionUnrealizedPnL = totalUnrealizedPnL - int256(realizedPnLFromContract);
             }
             
-            hedgerTotalPnL = hedgerUnrealizedPnL + hedgerRealizedPnL;
+            hedgerUnrealizedPnL += positionUnrealizedPnL;
             
-            // Get core parameters
-            (uint64 minMarginRatio, uint64 liquidationThreshold, , , , , , , , ) = hedgerPool.coreParams();
+            // Calculate effective margin for this position
+            int256 effectiveMargin = int256(uint256(margin)) + positionUnrealizedPnL + int256(realizedPnLFromContract);
             
-            // Calculate effective margin (reuse variable)
-            int256 effectiveMargin = int256(uint256(margin)) + hedgerUnrealizedPnL + hedgerRealizedPnL;
+            // Sum effective margins across all positions
+            totalEffectiveMargin += effectiveMargin;
             
-            // Calculate available collateral
-            // Formula: effectiveMargin - (qeuroBacked × currentPrice × minMarginRatio / 10000)
+            // Calculate required margin for this position
             uint256 mintedExposure = (uint256(qeuroBacked) * price) / 1e30;
             uint256 hedgerRequiredMargin = (mintedExposure * uint256(minMarginRatio)) / 10000;
-            if (effectiveMargin > int256(hedgerRequiredMargin)) {
-                hedgerAvailableCollateral = uint256(effectiveMargin) - hedgerRequiredMargin;
-            }
+            totalRequiredMargin += hedgerRequiredMargin;
             
-            // Calculate max withdrawable using same formula as AvailableCollateral but with liquidationThreshold (1%)
-            // Formula: effectiveMargin - (qeuroBacked × currentPrice × liquidationThreshold / 10000)
-            // This matches the pattern of AvailableCollateral but uses 1% instead of 5%
+            // Calculate minimum margin (for max withdrawable) for this position
             if (uint256(qeuroBacked) > 0 && price > 0 && liquidationThreshold > 0) {
-                // Use same mintedExposure calculation as AvailableCollateral
                 uint256 minimumMargin = (mintedExposure * uint256(liquidationThreshold)) / 10000;
-                if (effectiveMargin > int256(minimumMargin)) {
-                    hedgerMaxWithdrawable = uint256(effectiveMargin) - minimumMargin;
-                }
-            } else if (effectiveMargin > 0) {
-                hedgerMaxWithdrawable = uint256(effectiveMargin);
+                totalMinimumMargin += minimumMargin;
             }
             
-            // Calculate QEURO mintable
-            if (minMarginRatio > 0 && price > 0 && hedgerAvailableCollateral > 0) {
-                uint256 numerator = hedgerAvailableCollateral * 10000 * 1e30;
-                uint256 denominator = uint256(minMarginRatio) * price;
-                if (denominator > 0) {
-                    qeuroMintable = numerator / denominator;
-                }
+            // For weighted average entry price, use filled volume as weight
+            if (filledVolume > 0) {
+                totalWeightedEntryPrice += uint256(entryPrice) * uint256(filledVolume);
+                totalFilledVolume += uint256(filledVolume);
             }
-        } else {
-            hedgerEntryPrice = 0;
-            hedgerRealizedPnL = int256(0);
-            hedgerUnrealizedPnL = int256(0);
-            hedgerTotalPnL = int256(0);
+        }
+        
+        // Calculate weighted average entry price
+        if (totalFilledVolume > 0) {
+            hedgerEntryPrice = totalWeightedEntryPrice / totalFilledVolume;
+        }
+        
+        // Calculate aggregated available collateral: total effective margin - total required margin
+        if (totalEffectiveMargin > int256(totalRequiredMargin)) {
+            hedgerAvailableCollateral = uint256(totalEffectiveMargin) - totalRequiredMargin;
+        }
+        
+        // Calculate aggregated max withdrawable: total effective margin - total minimum margin
+        if (totalEffectiveMargin > int256(totalMinimumMargin)) {
+            hedgerMaxWithdrawable = uint256(totalEffectiveMargin) - totalMinimumMargin;
+        } else if (totalEffectiveMargin > 0) {
+            hedgerMaxWithdrawable = uint256(totalEffectiveMargin);
+        }
+        
+        // Calculate total P&L
+        hedgerTotalPnL = hedgerUnrealizedPnL + hedgerRealizedPnL;
+        
+        // Calculate QEURO mintable from total available collateral
+        if (minMarginRatio > 0 && price > 0 && hedgerAvailableCollateral > 0) {
+            uint256 numerator = hedgerAvailableCollateral * 10000 * 1e30;
+            uint256 denominator = uint256(minMarginRatio) * price;
+            if (denominator > 0) {
+                qeuroMintable = numerator / denominator;
+            }
         }
     }
 
@@ -859,14 +903,15 @@ contract StateTrackerScenario is Script {
         // Approve USDC
         uint256 amount = 50 * 1e6; // 50 USDC
         usdcToken.approve(HEDGER_POOL, amount);
-        console2.log("USDC approved:", amount / 1e6, "USDC");
+        console2.log(string.concat("USDC approved: ", vm.toString(amount / 1e6), " USDC"));
 
         // Open position with 5% margin (20x leverage)
         uint256 leverage = 20; // 5% margin = 20x leverage
-        console2.log("Opening position with leverage:", leverage, "x");
+        console2.log(string.concat("Opening position with leverage: ", vm.toString(leverage), "x"));
         
-        try hedgerPool.enterHedgePosition(amount, leverage) {
-            console2.log("Position opened successfully!");
+        try hedgerPool.enterHedgePosition(amount, leverage) returns (uint256 positionId) {
+            latestPositionId = positionId;
+            console2.log(string.concat("Position opened successfully! Position ID: ", vm.toString(positionId)));
         } catch Error(string memory reason) {
             console2.log("ERROR: Failed to open hedger position:", reason);
             console2.log("Make sure contracts are deployed and hedger is whitelisted if required.");
@@ -974,11 +1019,29 @@ contract StateTrackerScenario is Script {
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         IERC20 usdcToken = IERC20(USDC);
 
+        console2.log("--- Step 5: Opening New Hedger Position ---");
+        console2.log("Opening second position for hedger address:", hedger);
+
         uint256 amount = 50 * 1e6; // 50 USDC
         usdcToken.approve(HEDGER_POOL, amount);
-        hedgerPool.addMargin(1, amount); // Assuming position ID 1
+        
+        // Open new position with 5% margin (20x leverage)
+        uint256 leverage = 20; // 5% margin = 20x leverage
+        console2.log(string.concat("Opening new position with leverage: ", vm.toString(leverage), "x"));
+        
+        try hedgerPool.enterHedgePosition(amount, leverage) returns (uint256 positionId) {
+            latestPositionId = positionId;
+            console2.log(string.concat("New position opened successfully! Position ID: ", vm.toString(positionId)));
+        } catch Error(string memory reason) {
+            console2.log("ERROR: Failed to open new hedger position:", reason);
+            revert(string.concat("Step 5 failed: ", reason));
+        } catch (bytes memory) {
+            console2.log("ERROR: Failed to open new hedger position (low-level error)");
+            revert("Step 5 failed: HedgerPool contract call reverted");
+        }
+        console2.log("");
 
-        _captureStats("Hedger adds 50 USDC");
+        _captureStats("Hedger opens new position with 50 USDC");
     }
 
     function _step6_UserMints500QEURO() internal {
@@ -1001,11 +1064,29 @@ contract StateTrackerScenario is Script {
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         IERC20 usdcToken = IERC20(USDC);
 
+        console2.log("--- Step 7: Opening New Hedger Position ---");
+        console2.log("Opening third position for hedger address:", hedger);
+
         uint256 amount = 50 * 1e6; // 50 USDC
         usdcToken.approve(HEDGER_POOL, amount);
-        hedgerPool.addMargin(1, amount);
+        
+        // Open new position with 5% margin (20x leverage)
+        uint256 leverage = 20; // 5% margin = 20x leverage
+        console2.log(string.concat("Opening new position with leverage: ", vm.toString(leverage), "x"));
+        
+        try hedgerPool.enterHedgePosition(amount, leverage) returns (uint256 positionId) {
+            latestPositionId = positionId;
+            console2.log(string.concat("New position opened successfully! Position ID: ", vm.toString(positionId)));
+        } catch Error(string memory reason) {
+            console2.log("ERROR: Failed to open new hedger position:", reason);
+            revert(string.concat("Step 7 failed: ", reason));
+        } catch (bytes memory) {
+            console2.log("ERROR: Failed to open new hedger position (low-level error)");
+            revert("Step 7 failed: HedgerPool contract call reverted");
+        }
+        console2.log("");
 
-        _captureStats("Hedger adds 50 USDC");
+        _captureStats("Hedger opens new position with 50 USDC");
     }
 
     function _step8_SetOraclePrice(uint256 price) internal {
@@ -1048,7 +1129,8 @@ contract StateTrackerScenario is Script {
     function _step11_UserRedeems1861QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
-        uint256 positionId = 1;
+        // Use latest position ID if available, otherwise default to 1
+        uint256 positionId = latestPositionId > 0 ? latestPositionId : 1;
 
         uint256 qeuroAmount = 1861 * 1e18;
         qeuroToken.approve(VAULT, qeuroAmount);
@@ -1081,8 +1163,139 @@ contract StateTrackerScenario is Script {
     function _step13_HedgerRemoves50USDC() internal {
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
 
-        uint256 amount = 50 * 1e6; // 50 USDC
-        hedgerPool.removeMargin(1, amount); // Assuming position ID 1
+        uint256 totalAmountToRemove = 50 * 1e6; // 50 USDC
+        uint256 nextPositionId = hedgerPool.nextPositionId();
+        
+        console2.log("--- Step 13: Removing Margin from Positions ---");
+        console2.log("Target: Remove 50 USDC total, spreading across available positions");
+        
+        uint256 remainingToRemove = totalAmountToRemove;
+        
+        // Get current price and core parameters for upfront calculations
+        IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "Invalid oracle price");
+        
+        (, uint64 liquidationThreshold, , , , , , , , ) = hedgerPool.coreParams();
+        
+        // Iterate through positions and calculate maximum removable amount upfront
+        for (uint256 id = 1; id < nextPositionId && remainingToRemove > 0; id++) {
+            (address positionHedger, , uint96 filledVolume, uint96 margin, , , , int128 unrealizedPnL, int128 realizedPnL, uint16 leverage, bool isActive, uint128 qeuroBacked) = hedgerPool.positions(id);
+            
+            // Skip if not owned by hedger or not active
+            if (positionHedger != hedger || !isActive) {
+                continue;
+            }
+            
+            // Calculate maximum removable amount considering all constraints
+            uint256 maxRemovable = 0;
+            
+            if (uint256(filledVolume) == 0) {
+                // No exposure, can remove all margin
+                maxRemovable = uint256(margin);
+            } else {
+                // Constraint 1: Capacity - newPositionSize >= filledVolume
+                // newPositionSize = (margin - removeAmount) * leverage
+                // So: (margin - removeAmount) * leverage >= filledVolume
+                // removeAmount <= margin - (filledVolume / leverage)
+                uint256 minMarginForCapacity = (uint256(filledVolume) + uint256(leverage) - 1) / uint256(leverage);
+                uint256 maxRemovableForCapacity = uint256(margin) > minMarginForCapacity 
+                    ? uint256(margin) - minMarginForCapacity 
+                    : 0;
+                
+                // Constraint 2: Margin ratio - newMarginRatio >= minMarginRatio
+                // newMarginRatio = newMargin / newPositionSize * 10000
+                // newMargin = margin - removeAmount, newPositionSize = newMargin * leverage
+                // So: (margin - removeAmount) / ((margin - removeAmount) * leverage) * 10000 >= minMarginRatio
+                // This simplifies to: 10000 / leverage >= minMarginRatio
+                // Since leverage is fixed, this constraint is always satisfied if the position was valid
+                // So we don't need to check this separately
+                
+                // Constraint 3: Liquidation - position must not be liquidatable after margin removal
+                // The contract uses: marginRatio = effectiveMargin * 10000 / qeuroValueInUSDC
+                // Position is liquidatable if marginRatio < liquidationThreshold
+                // effectiveMargin = newMargin + calculatePnL(filledVolume, qeuroBacked, currentPrice)
+                // Note: calculatePnL recalculates P&L, doesn't use stored unrealizedPnL
+                
+                // Calculate qeuroValueInUSDC for margin ratio calculation
+                uint256 qeuroValueInUSDC = (uint256(qeuroBacked) * currentPrice) / 1e30;
+                
+                // Recalculate P&L using same formula as contract
+                int256 pnl = 0;
+                if (filledVolume > 0 && currentPrice > 0 && qeuroBacked > 0) {
+                    if (uint256(filledVolume) >= qeuroValueInUSDC) {
+                        pnl = int256(uint256(filledVolume) - qeuroValueInUSDC);
+                    } else {
+                        pnl = -int256(qeuroValueInUSDC - uint256(filledVolume));
+                    }
+                }
+                
+                // Calculate maximum removable amount for liquidation constraint
+                uint256 maxRemovableForLiquidation = 0;
+                
+                if (qeuroValueInUSDC == 0) {
+                    // No exposure, can remove all margin
+                    maxRemovableForLiquidation = uint256(margin);
+                } else {
+                    // We need: (newMargin + pnl) * 10000 / qeuroValueInUSDC >= liquidationThreshold
+                    // So: newMargin + pnl >= qeuroValueInUSDC * liquidationThreshold / 10000
+                    // newMargin >= (qeuroValueInUSDC * liquidationThreshold / 10000) - pnl
+                    uint256 requiredEffectiveMargin = (qeuroValueInUSDC * uint256(liquidationThreshold)) / 10000;
+                    int256 requiredMargin = int256(requiredEffectiveMargin) - pnl;
+                    
+                    uint256 minMarginForLiquidation = 0;
+                    if (requiredMargin > 0) {
+                        minMarginForLiquidation = uint256(requiredMargin);
+                    }
+                    
+                    // Add small safety margin (1%) to avoid edge cases
+                    minMarginForLiquidation = minMarginForLiquidation * 101 / 100;
+                    
+                    maxRemovableForLiquidation = uint256(margin) > minMarginForLiquidation 
+                        ? uint256(margin) - minMarginForLiquidation 
+                        : 0;
+                }
+                
+                // Take the minimum of all constraints
+                maxRemovable = maxRemovableForCapacity < maxRemovableForLiquidation 
+                    ? maxRemovableForCapacity 
+                    : maxRemovableForLiquidation;
+            }
+            
+            // Remove the calculated amount (or remaining amount, whichever is smaller)
+            if (maxRemovable > 0) {
+                uint256 amountToRemove = maxRemovable < remainingToRemove ? maxRemovable : remainingToRemove;
+                
+                // Use expectRevert to suppress failed attempt traces
+                // First check if it will succeed by trying without expecting revert
+                bool success = false;
+                try hedgerPool.removeMargin(id, amountToRemove) {
+                    console2.log(string.concat("Removed ", vm.toString(amountToRemove / 1e6), " USDC from position ID: ", vm.toString(id)));
+                    remainingToRemove -= amountToRemove;
+                    success = true;
+                } catch {
+                    // Suppress the trace by not logging the failure
+                    // Try with a small reduction (2% safety margin)
+                    if (amountToRemove > 2e6) {
+                        amountToRemove = amountToRemove * 98 / 100;
+                        try hedgerPool.removeMargin(id, amountToRemove) {
+                            console2.log(string.concat("Removed ", vm.toString(amountToRemove / 1e6), " USDC from position ID: ", vm.toString(id)));
+                            remainingToRemove -= amountToRemove;
+                            success = true;
+                        } catch {
+                            // Skip silently - calculation was off, position can't have margin removed
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (remainingToRemove > 0) {
+            console2.log(string.concat("WARNING: Could only remove ", vm.toString((totalAmountToRemove - remainingToRemove) / 1e6), " USDC out of ", vm.toString(totalAmountToRemove / 1e6), " USDC requested"));
+            console2.log(string.concat("Remaining: ", vm.toString(remainingToRemove / 1e6), " USDC could not be removed"));
+        } else {
+            console2.log("Successfully removed 50 USDC total across positions");
+        }
 
         _captureStats("Hedger removes 50 USDC from collateral");
     }
@@ -1095,7 +1308,8 @@ contract StateTrackerScenario is Script {
     function _step15_UserRedeems500QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
-        uint256 positionId = 1;
+        // Use latest position ID if available, otherwise default to 1
+        uint256 positionId = latestPositionId > 0 ? latestPositionId : 1;
 
         uint256 qeuroAmount = 500 * 1e18;
         qeuroToken.approve(VAULT, qeuroAmount);
@@ -1123,7 +1337,8 @@ contract StateTrackerScenario is Script {
     function _step16_UserRedeems500QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
-        uint256 positionId = 1;
+        // Use latest position ID if available, otherwise default to 1
+        uint256 positionId = latestPositionId > 0 ? latestPositionId : 1;
 
         uint256 qeuroAmount = 500 * 1e18;
         qeuroToken.approve(VAULT, qeuroAmount);

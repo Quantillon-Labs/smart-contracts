@@ -138,6 +138,7 @@ contract StateTrackerScenario is Script {
     
     // Track latest position ID opened by hedger
     uint256 public latestPositionId = 0;
+    bool public useSinglePosition = false; // If true, add margin to existing position; if false, open new positions
 
     struct ProtocolStats {
         uint256 step;
@@ -341,8 +342,34 @@ contract StateTrackerScenario is Script {
         hedger = vm.addr(pk);
         user = vm.addr(pk); // Using same account for simplicity (deployer account)
 
+        // Read scenario mode from environment variable (default to "multiple" for backward compatibility)
+        string memory mode;
+        try vm.envString("SCENARIO_MODE") returns (string memory envMode) {
+            mode = envMode;
+        } catch {
+            mode = "multiple";
+        }
+        useSinglePosition = keccak256(bytes(mode)) == keccak256(bytes("single"));
+
+        // Read stop after step from environment variable (default to 16 to run all steps)
+        uint256 stopAfterStep;
+        try vm.envUint("STOP_AFTER_STEP") returns (uint256 step) {
+            stopAfterStep = step;
+        } catch {
+            stopAfterStep = 16;
+        }
+        if (stopAfterStep < 1 || stopAfterStep > 16) {
+            revert("STOP_AFTER_STEP must be between 1 and 16");
+        }
+
         console2.log("=== Starting Scenario Replay ===");
         console2.log("Using deployer account (PRIVATE_KEY from env)");
+        console2.log(string.concat("Scenario mode: ", mode, " (", useSinglePosition ? "single position" : "multiple positions", ")"));
+        if (stopAfterStep < 16) {
+            console2.log(string.concat("Will stop after step: ", vm.toString(stopAfterStep)));
+        } else {
+            console2.log("Running all 16 steps");
+        }
         console2.log("");
         console2.log("========================================");
         console2.log("IMPORTANT: WALLET CONNECTION REQUIRED");
@@ -453,51 +480,67 @@ contract StateTrackerScenario is Script {
         // Continue with scenario steps (broadcast already started for deployment)
         // Step 1: Hedger deposits 50 USDC at 5% margin
         _step1_HedgerDeposits50USDC();
+        if (_shouldStop(1, stopAfterStep)) return;
 
         // Step 2: Oracle → 1.09
         _step2_SetOraclePrice(109 * 1e16); // 1.09
+        if (_shouldStop(2, stopAfterStep)) return;
 
         // Step 3: User mints 500 QEURO
         _step3_UserMints500QEURO();
+        if (_shouldStop(3, stopAfterStep)) return;
 
         // Step 4: Oracle → 1.16
         _step4_SetOraclePrice(116 * 1e16); // 1.16
+        if (_shouldStop(4, stopAfterStep)) return;
 
         // Step 5: Hedger adds 50 USDC
         _step5_HedgerAdds50USDC();
+        if (_shouldStop(5, stopAfterStep)) return;
 
         // Step 6: User mints 500 QEURO
         _step6_UserMints500QEURO();
+        if (_shouldStop(6, stopAfterStep)) return;
 
         // Step 7: Hedger adds 50 USDC
         _step7_HedgerAdds50USDC();
+        if (_shouldStop(7, stopAfterStep)) return;
 
         // Step 8: Oracle → 1.11
         _step8_SetOraclePrice(111 * 1e16); // 1.11
+        if (_shouldStop(8, stopAfterStep)) return;
 
         // Step 9: User mints 861 QEURO
         _step9_UserMints861QEURO();
+        if (_shouldStop(9, stopAfterStep)) return;
 
         // Step 10: User mints 1000 QEURO
         _step10_UserMints1000QEURO();
+        if (_shouldStop(10, stopAfterStep)) return;
 
         // Step 11: User redeems 1861 QEURO
         _step11_UserRedeems1861QEURO();
+        if (_shouldStop(11, stopAfterStep)) return;
 
         // Step 12: Oracle → 1.15
         _step12_SetOraclePrice(115 * 1e16); // 1.15
+        if (_shouldStop(12, stopAfterStep)) return;
 
         // Step 13: Hedger removes 50 USDC from collateral
         _step13_HedgerRemoves50USDC();
+        if (_shouldStop(13, stopAfterStep)) return;
 
         // Step 14: Oracle → 1.16
         _step14_SetOraclePrice(116 * 1e16); // 1.16
+        if (_shouldStop(14, stopAfterStep)) return;
 
         // Step 15: User redeems 500 QEURO
         _step15_UserRedeems500QEURO();
+        if (_shouldStop(15, stopAfterStep)) return;
 
         // Step 16: User redeems 500 QEURO (no QEURO left circulating)
         _step16_UserRedeems500QEURO();
+        if (_shouldStop(16, stopAfterStep)) return;
 
         vm.stopBroadcast();
 
@@ -508,6 +551,26 @@ contract StateTrackerScenario is Script {
         // (vm.writeFile is not allowed in broadcast mode)
 
         // Summary logged in _saveStatisticsToFile
+    }
+
+    /**
+     * @notice Checks if scenario should stop after current step
+     * @param currentStep Current step number (1-16)
+     * @param stopAfterStep Step number to stop after (1-16)
+     * @return shouldStop True if execution should stop
+     */
+    function _shouldStop(uint256 currentStep, uint256 stopAfterStep) internal returns (bool shouldStop) {
+        if (currentStep >= stopAfterStep) {
+            console2.log("");
+            console2.log("========================================");
+            console2.log(string.concat("Scenario stopped after step ", vm.toString(currentStep)));
+            console2.log("========================================");
+            console2.log("");
+            vm.stopBroadcast();
+            _writeAddressesToFile();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -642,14 +705,14 @@ contract StateTrackerScenario is Script {
         
         // Get nextPositionId to know the upper limit
         uint256 nextPositionId = hedgerPool.nextPositionId();
-        
+            
         // Get core parameters (same for all positions)
         (uint64 minMarginRatio, uint64 liquidationThreshold, , , , , , , , ) = hedgerPool.coreParams();
         
         // Get total supply once (used for all positions)
-        QEUROToken qeuroToken = QEUROToken(QEURO);
-        uint256 totalSupply = qeuroToken.totalSupply();
-        
+            QEUROToken qeuroToken = QEUROToken(QEURO);
+            uint256 totalSupply = qeuroToken.totalSupply();
+            
         // Variables for weighted average entry price calculation
         uint256 totalWeightedEntryPrice = 0;
         uint256 totalFilledVolume = 0;
@@ -734,18 +797,18 @@ contract StateTrackerScenario is Script {
             hedgerMaxWithdrawable = uint256(totalEffectiveMargin) - totalMinimumMargin;
         } else if (totalEffectiveMargin > 0) {
             hedgerMaxWithdrawable = uint256(totalEffectiveMargin);
-        }
+            }
         
         // Calculate total P&L
         hedgerTotalPnL = hedgerUnrealizedPnL + hedgerRealizedPnL;
-        
+            
         // Calculate QEURO mintable from total available collateral
-        if (minMarginRatio > 0 && price > 0 && hedgerAvailableCollateral > 0) {
-            uint256 numerator = hedgerAvailableCollateral * 10000 * 1e30;
-            uint256 denominator = uint256(minMarginRatio) * price;
-            if (denominator > 0) {
-                qeuroMintable = numerator / denominator;
-            }
+            if (minMarginRatio > 0 && price > 0 && hedgerAvailableCollateral > 0) {
+                uint256 numerator = hedgerAvailableCollateral * 10000 * 1e30;
+                uint256 denominator = uint256(minMarginRatio) * price;
+                if (denominator > 0) {
+                    qeuroMintable = numerator / denominator;
+                }
         }
     }
 
@@ -1019,29 +1082,45 @@ contract StateTrackerScenario is Script {
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         IERC20 usdcToken = IERC20(USDC);
 
-        console2.log("--- Step 5: Opening New Hedger Position ---");
-        console2.log("Opening second position for hedger address:", hedger);
-
         uint256 amount = 50 * 1e6; // 50 USDC
         usdcToken.approve(HEDGER_POOL, amount);
         
-        // Open new position with 5% margin (20x leverage)
-        uint256 leverage = 20; // 5% margin = 20x leverage
-        console2.log(string.concat("Opening new position with leverage: ", vm.toString(leverage), "x"));
-        
-        try hedgerPool.enterHedgePosition(amount, leverage) returns (uint256 positionId) {
-            latestPositionId = positionId;
-            console2.log(string.concat("New position opened successfully! Position ID: ", vm.toString(positionId)));
-        } catch Error(string memory reason) {
-            console2.log("ERROR: Failed to open new hedger position:", reason);
-            revert(string.concat("Step 5 failed: ", reason));
-        } catch (bytes memory) {
-            console2.log("ERROR: Failed to open new hedger position (low-level error)");
-            revert("Step 5 failed: HedgerPool contract call reverted");
+        if (useSinglePosition) {
+            // Add margin to existing position (position ID 1 from step 1)
+            console2.log("--- Step 5: Adding Margin to Existing Position ---");
+            console2.log("Adding 50 USDC to position ID 1 for hedger address:", hedger);
+            
+            try hedgerPool.addMargin(1, amount) {
+                console2.log("Margin added successfully to position ID 1");
+            } catch Error(string memory reason) {
+                console2.log("ERROR: Failed to add margin:", reason);
+                revert(string.concat("Step 5 failed: ", reason));
+            } catch (bytes memory) {
+                console2.log("ERROR: Failed to add margin (low-level error)");
+                revert("Step 5 failed: HedgerPool contract call reverted");
+            }
+            console2.log("");
+            _captureStats("Hedger adds 50 USDC to existing position");
+        } else {
+            // Open new position with 5% margin (20x leverage)
+            console2.log("--- Step 5: Opening New Hedger Position ---");
+            console2.log("Opening second position for hedger address:", hedger);
+            uint256 leverage = 20; // 5% margin = 20x leverage
+            console2.log(string.concat("Opening new position with leverage: ", vm.toString(leverage), "x"));
+            
+            try hedgerPool.enterHedgePosition(amount, leverage) returns (uint256 positionId) {
+                latestPositionId = positionId;
+                console2.log(string.concat("New position opened successfully! Position ID: ", vm.toString(positionId)));
+            } catch Error(string memory reason) {
+                console2.log("ERROR: Failed to open new hedger position:", reason);
+                revert(string.concat("Step 5 failed: ", reason));
+            } catch (bytes memory) {
+                console2.log("ERROR: Failed to open new hedger position (low-level error)");
+                revert("Step 5 failed: HedgerPool contract call reverted");
+            }
+            console2.log("");
+            _captureStats("Hedger opens new position with 50 USDC");
         }
-        console2.log("");
-
-        _captureStats("Hedger opens new position with 50 USDC");
     }
 
     function _step6_UserMints500QEURO() internal {
@@ -1064,29 +1143,45 @@ contract StateTrackerScenario is Script {
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         IERC20 usdcToken = IERC20(USDC);
 
-        console2.log("--- Step 7: Opening New Hedger Position ---");
-        console2.log("Opening third position for hedger address:", hedger);
-
         uint256 amount = 50 * 1e6; // 50 USDC
         usdcToken.approve(HEDGER_POOL, amount);
         
-        // Open new position with 5% margin (20x leverage)
-        uint256 leverage = 20; // 5% margin = 20x leverage
-        console2.log(string.concat("Opening new position with leverage: ", vm.toString(leverage), "x"));
-        
-        try hedgerPool.enterHedgePosition(amount, leverage) returns (uint256 positionId) {
-            latestPositionId = positionId;
-            console2.log(string.concat("New position opened successfully! Position ID: ", vm.toString(positionId)));
-        } catch Error(string memory reason) {
-            console2.log("ERROR: Failed to open new hedger position:", reason);
-            revert(string.concat("Step 7 failed: ", reason));
-        } catch (bytes memory) {
-            console2.log("ERROR: Failed to open new hedger position (low-level error)");
-            revert("Step 7 failed: HedgerPool contract call reverted");
+        if (useSinglePosition) {
+            // Add margin to existing position (position ID 1 from step 1)
+            console2.log("--- Step 7: Adding Margin to Existing Position ---");
+            console2.log("Adding 50 USDC to position ID 1 for hedger address:", hedger);
+            
+            try hedgerPool.addMargin(1, amount) {
+                console2.log("Margin added successfully to position ID 1");
+            } catch Error(string memory reason) {
+                console2.log("ERROR: Failed to add margin:", reason);
+                revert(string.concat("Step 7 failed: ", reason));
+            } catch (bytes memory) {
+                console2.log("ERROR: Failed to add margin (low-level error)");
+                revert("Step 7 failed: HedgerPool contract call reverted");
+            }
+            console2.log("");
+            _captureStats("Hedger adds 50 USDC to existing position");
+        } else {
+            // Open new position with 5% margin (20x leverage)
+            console2.log("--- Step 7: Opening New Hedger Position ---");
+            console2.log("Opening third position for hedger address:", hedger);
+            uint256 leverage = 20; // 5% margin = 20x leverage
+            console2.log(string.concat("Opening new position with leverage: ", vm.toString(leverage), "x"));
+            
+            try hedgerPool.enterHedgePosition(amount, leverage) returns (uint256 positionId) {
+                latestPositionId = positionId;
+                console2.log(string.concat("New position opened successfully! Position ID: ", vm.toString(positionId)));
+            } catch Error(string memory reason) {
+                console2.log("ERROR: Failed to open new hedger position:", reason);
+                revert(string.concat("Step 7 failed: ", reason));
+            } catch (bytes memory) {
+                console2.log("ERROR: Failed to open new hedger position (low-level error)");
+                revert("Step 7 failed: HedgerPool contract call reverted");
+            }
+            console2.log("");
+            _captureStats("Hedger opens new position with 50 USDC");
         }
-        console2.log("");
-
-        _captureStats("Hedger opens new position with 50 USDC");
     }
 
     function _step8_SetOraclePrice(uint256 price) internal {
@@ -1180,7 +1275,7 @@ contract StateTrackerScenario is Script {
         
         // Iterate through positions and calculate maximum removable amount upfront
         for (uint256 id = 1; id < nextPositionId && remainingToRemove > 0; id++) {
-            (address positionHedger, , uint96 filledVolume, uint96 margin, , , , int128 unrealizedPnL, int128 realizedPnL, uint16 leverage, bool isActive, uint128 qeuroBacked) = hedgerPool.positions(id);
+            (address positionHedger, , uint96 filledVolume, uint96 margin, , , , , , uint16 leverage, bool isActive, uint128 qeuroBacked) = hedgerPool.positions(id);
             
             // Skip if not owned by hedger or not active
             if (positionHedger != hedger || !isActive) {

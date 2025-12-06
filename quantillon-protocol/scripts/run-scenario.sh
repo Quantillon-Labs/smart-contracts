@@ -4,35 +4,62 @@
 
 set -e
 
-# Show help if --help is requested
-if [ "$1" = "--help" ] || [ "$1" = "-h" ] || [ "$1" = "help" ]; then
+# Show help if no arguments or --help is requested
+if [ $# -eq 0 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ] || [ "$1" = "help" ]; then
     cat << EOF
 ================================================================================
 QUANTILLON PROTOCOL - SCENARIO REPLAY SCRIPT
 ================================================================================
 
-Usage: $0 [OPTIONS]
+Usage: $0 [MODE] [STOP_AFTER_STEP]
 
 This script automatically:
   1. Redeploys all contracts to ensure fresh state
-  2. Runs the complete 16-step scenario
+  2. Runs the scenario (up to specified step or all 16 steps)
   3. Generates formatted log files in scripts/results/
 
-OPTIONS:
-  --help, -h, help    Show this help message
-  (no arguments)      Run the scenario with default settings
+ARGUMENTS:
+  MODE            Position mode (required):
+                  single    - Use single hedging position (adds margin to existing position in steps 5 & 7)
+                  multiple  - Use multiple hedging positions (opens new positions in steps 5 & 7)
+  
+  STOP_AFTER_STEP Optional step number (1-16) to stop after. If not specified, runs all 16 steps.
 
 OUTPUT:
   Raw log:     scripts/results/scenario-{timestamp}.log
-  Formatted:   scripts/results/scenario-{timestamp}-formatted.log
 
 REQUIREMENTS:
   - Anvil running on localhost:8545
   - restart-local-stack.sh in ~/GitHub/
   - PRIVATE_KEY environment variable set
 
-EXAMPLE:
-  $0
+SCENARIO STEPS:
+  1.  Hedger deposits 50 USDC at 5% margin (20x leverage) - Opens position
+  2.  Oracle price → 1.09 USD/EUR
+  3.  User mints 500 QEURO
+  4.  Oracle price → 1.16 USD/EUR
+  5.  Hedger adds 50 USDC
+     - single mode:   Adds margin to existing position
+     - multiple mode: Opens new position with 50 USDC
+  6.  User mints 500 QEURO
+  7.  Hedger adds 50 USDC
+     - single mode:   Adds margin to existing position
+     - multiple mode: Opens new position with 50 USDC
+  8.  Oracle price → 1.11 USD/EUR
+  9.  User mints 861 QEURO
+  10. User mints 1000 QEURO
+  11. User redeems 1861 QEURO
+  12. Oracle price → 1.15 USD/EUR
+  13. Hedger removes 50 USDC from collateral
+  14. Oracle price → 1.16 USD/EUR
+  15. User redeems 500 QEURO
+  16. User redeems 500 QEURO (no QEURO left circulating)
+
+EXAMPLES:
+  $0 multiple              # Run all 16 steps with multiple positions
+  $0 single                # Run all 16 steps with single position
+  $0 multiple 5            # Run steps 1-5 with multiple positions
+  $0 single 10             # Run steps 1-10 with single position
 
 For more information, see the StateTrackerScenario.s.sol script.
 
@@ -41,23 +68,61 @@ EOF
     exit 0
 fi
 
-# Show brief helper if no arguments (but still proceed with execution)
-if [ $# -eq 0 ]; then
-    cat << EOF
-================================================================================
-QUANTILLON PROTOCOL - SCENARIO REPLAY
-================================================================================
+# Parse mode argument
+SCENARIO_MODE=""
+if [ "$1" = "single" ]; then
+    SCENARIO_MODE="single"
+elif [ "$1" = "multiple" ]; then
+    SCENARIO_MODE="multiple"
+else
+    echo "ERROR: Invalid mode: $1"
+    echo ""
+    echo "Valid modes: single, multiple"
+    echo "Use '$0' or '$0 --help' for usage information."
+    exit 1
+fi
 
-Running scenario replay script...
-  - Contracts will be redeployed to ensure fresh state
-  - 16-step scenario will be executed
-  - Results saved to scripts/results/
+# Parse stop after step argument (optional)
+STOP_AFTER_STEP=""
+if [ $# -ge 2 ]; then
+    STOP_AFTER_STEP="$2"
+    # Validate it's a number between 1 and 16
+    if ! [[ "$STOP_AFTER_STEP" =~ ^[0-9]+$ ]] || [ "$STOP_AFTER_STEP" -lt 1 ] || [ "$STOP_AFTER_STEP" -gt 16 ]; then
+        echo "ERROR: Invalid step number: $STOP_AFTER_STEP"
+        echo ""
+        echo "Step number must be between 1 and 16."
+        echo "Use '$0' or '$0 --help' for usage information."
+        exit 1
+    fi
+fi
 
-Use '$0 --help' for more information.
-
-================================================================================
-
-EOF
+# Show brief helper
+if [ -n "$STOP_AFTER_STEP" ]; then
+    echo "=================================================================================="
+    echo "QUANTILLON PROTOCOL - SCENARIO REPLAY"
+    echo "=================================================================================="
+    echo ""
+    echo "Running scenario replay script..."
+    echo "  - Mode: $SCENARIO_MODE positions"
+    echo "  - Stop after step: $STOP_AFTER_STEP"
+    echo "  - Contracts will be redeployed to ensure fresh state"
+    echo "  - Results saved to scripts/results/"
+    echo ""
+    echo "=================================================================================="
+    echo ""
+else
+    echo "=================================================================================="
+    echo "QUANTILLON PROTOCOL - SCENARIO REPLAY"
+    echo "=================================================================================="
+    echo ""
+    echo "Running scenario replay script..."
+    echo "  - Mode: $SCENARIO_MODE positions"
+    echo "  - Contracts will be redeployed to ensure fresh state"
+    echo "  - 16-step scenario will be executed"
+    echo "  - Results saved to scripts/results/"
+    echo ""
+    echo "=================================================================================="
+    echo ""
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -151,14 +216,20 @@ if [ -z "$PRIVATE_KEY" ]; then
 fi
 
 echo "Running StateTrackerScenario..."
+echo "Mode: $SCENARIO_MODE positions"
+if [ -n "$STOP_AFTER_STEP" ]; then
+    echo "Stop after step: $STOP_AFTER_STEP"
+fi
 echo "This may take a few moments..."
 echo ""
 
 # Run the scenario with broadcast
 # Matching deploy.sh pattern: use vm.startBroadcast(pk) in script and only pass --broadcast flag
 # PRIVATE_KEY must be available as environment variable (loaded from .env file above)
+# SCENARIO_MODE is passed as environment variable to control single vs multiple positions
+# STOP_AFTER_STEP is passed as environment variable to stop after a specific step
 # Add gas limit to prevent OutOfGas errors during oracle calls
-forge script scripts/StateTrackerScenario.s.sol:StateTrackerScenario \
+SCENARIO_MODE="$SCENARIO_MODE" STOP_AFTER_STEP="$STOP_AFTER_STEP" forge script scripts/StateTrackerScenario.s.sol:StateTrackerScenario \
     --rpc-url http://localhost:8545 \
     --broadcast \
     --gas-limit 30000000 \

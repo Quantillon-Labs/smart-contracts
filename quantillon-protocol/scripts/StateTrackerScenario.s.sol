@@ -128,6 +128,7 @@ contract StateTrackerScenario is Script {
     address public ORACLE;
     address public MOCK_EUR_USD_FEED;
     address public TIME_PROVIDER;
+    address public FEE_COLLECTOR;
 
     // Test accounts
     address public hedger;
@@ -150,6 +151,7 @@ contract StateTrackerScenario is Script {
         uint256 userCollateral; // 6 decimals (user deposits)
         uint256 hedgerCollateral; // 6 decimals (hedger margin)
         uint256 collateralizationPercentage; // percentage (collateralizationRatio / 100)
+        uint256 protocolTreasury; // 6 decimals - USDC balance in FeeCollector (protocol fees)
         // Hedger statistics
         uint256 hedgerEntryPrice; // 18 decimals
         int256 hedgerRealizedPnL; // 6 decimals
@@ -166,7 +168,7 @@ contract StateTrackerScenario is Script {
      * @notice Deploys all contracts needed for the scenario
      * @dev Deploys Phase A (TimeProvider, Oracle, QEURO, Vault) and Phase C (UserPool, HedgerPool)
      */
-    function _deployContracts() internal {
+    function _deployContracts(uint256 mintFee) internal {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(pk);
         (bool isLocalhost, , ) = DeploymentHelpers.detectNetwork(block.chainid);
@@ -223,14 +225,7 @@ contract StateTrackerScenario is Script {
         // Store mock feed address for price updates
         MOCK_EUR_USD_FEED = eurUsdFeed;
         
-        // Deploy QEURO
-        QEUROToken qeuroImpl = new QEUROToken();
-        ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroImpl), bytes(""));
-        QEURO = address(qeuroProxy);
-        QEUROToken(QEURO).initialize(deployer, deployer, deployer, deployer);
-        console2.log("QEURO deployed:", QEURO);
-        
-        // Deploy FeeCollector
+        // Deploy FeeCollector first (needed for QEURO initialization)
         address treasury = address(uint160(uint256(keccak256(abi.encodePacked("treasury", deployer)))));
         address devFund = address(uint160(uint256(keccak256(abi.encodePacked("devFund", deployer)))));
         address communityFund = address(uint160(uint256(keccak256(abi.encodePacked("communityFund", deployer)))));
@@ -238,8 +233,16 @@ contract StateTrackerScenario is Script {
         FeeCollector feeCollectorImpl = new FeeCollector();
         ERC1967Proxy feeCollectorProxy = new ERC1967Proxy(address(feeCollectorImpl), bytes(""));
         address feeCollector = address(feeCollectorProxy);
+        FEE_COLLECTOR = feeCollector;
         FeeCollector(feeCollector).initialize(deployer, treasury, devFund, communityFund);
         console2.log("FeeCollector deployed:", feeCollector);
+        
+        // Deploy QEURO
+        QEUROToken qeuroImpl = new QEUROToken();
+        ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroImpl), bytes(""));
+        QEURO = address(qeuroProxy);
+        QEUROToken(QEURO).initialize(deployer, deployer, deployer, deployer, feeCollector);
+        console2.log("QEURO deployed:", QEURO);
         
         // Deploy Vault
         QuantillonVault vaultImpl = new QuantillonVault();
@@ -294,6 +297,16 @@ contract StateTrackerScenario is Script {
         QuantillonVault(VAULT).updateUserPool(USER_POOL);
         console2.log("Vault wired with HedgerPool and UserPool");
         
+        // Authorize Vault as fee source in FeeCollector
+        FeeCollector(feeCollector).authorizeFeeSource(VAULT);
+        console2.log("Vault authorized as fee source in FeeCollector");
+        
+        // Set custom mint and redemption fees from command line argument
+        // Both fees are set to the same value
+        QuantillonVault(VAULT).updateParameters(mintFee, mintFee);
+        console2.log("Mint fee set to:", mintFee);
+        console2.log("Redemption fee set to:", mintFee);
+        
         console2.log("");
         console2.log("=== Deployment Complete ===");
         console2.log("All contracts deployed successfully!");
@@ -335,7 +348,11 @@ contract StateTrackerScenario is Script {
         console2.log("");
     }
 
-    function run() external {
+    function run(uint256 mintFee) external {
+        // mintFee parameter: fee in 18 decimals format
+        // Usage: forge script ... --sig "run(uint256)" -- 0 (for 0% fee)
+        //        forge script ... --sig "run(uint256)" -- 1000000000000000 (for 0.1% fee)
+        //        forge script ... --sig "run(uint256)" -- 10000000000000000 (for 1% fee)
         // Use deployer's private key (same as deployment scripts)
         // This ensures the hedger position is visible in the UI when connected with the same account
         uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -394,7 +411,7 @@ contract StateTrackerScenario is Script {
         vm.startBroadcast(pk);
 
         // Deploy all contracts fresh
-        _deployContracts();
+        _deployContracts(mintFee);
 
         // Verify protocol is in fresh state (non-fatal - continue even if checks fail)
         console2.log("--- Verifying Fresh State ---");
@@ -629,7 +646,7 @@ contract StateTrackerScenario is Script {
         stepCounter++;
         
         // Get basic protocol stats
-        (uint256 price, uint256 qeuroMinted, uint256 userCollateral, uint256 hedgerCollateral, uint256 collateralizationPercentage) = _getProtocolStats();
+        (uint256 price, uint256 qeuroMinted, uint256 userCollateral, uint256 hedgerCollateral, uint256 collateralizationPercentage, uint256 protocolTreasury) = _getProtocolStats();
         
         // Get hedger stats
         (uint256 hedgerEntryPrice, int256 hedgerRealizedPnL, int256 hedgerUnrealizedPnL, int256 hedgerTotalPnL, uint256 hedgerAvailableCollateral, uint256 hedgerMaxWithdrawable, uint256 qeuroMintable) = _getHedgerStats(price);
@@ -643,6 +660,7 @@ contract StateTrackerScenario is Script {
             userCollateral: userCollateral,
             hedgerCollateral: hedgerCollateral,
             collateralizationPercentage: collateralizationPercentage,
+            protocolTreasury: protocolTreasury,
             hedgerEntryPrice: hedgerEntryPrice,
             hedgerRealizedPnL: hedgerRealizedPnL,
             hedgerUnrealizedPnL: hedgerUnrealizedPnL,
@@ -666,7 +684,8 @@ contract StateTrackerScenario is Script {
         uint256 qeuroMinted,
         uint256 userCollateral,
         uint256 hedgerCollateral,
-        uint256 collateralizationPercentage
+        uint256 collateralizationPercentage,
+        uint256 protocolTreasury
     ) {
         IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
         QEUROToken qeuroToken = QEUROToken(QEURO);
@@ -681,6 +700,14 @@ contract StateTrackerScenario is Script {
         uint256 collateralizationRatio = vault.getProtocolCollateralizationRatio();
         // Store as basis points (e.g., 11120 bps = 111.20%) for 2 decimal precision
         collateralizationPercentage = collateralizationRatio;
+        
+        // Get FeeCollector USDC balance (protocol treasury)
+        if (FEE_COLLECTOR != address(0)) {
+            IERC20 usdcToken = IERC20(USDC);
+            protocolTreasury = usdcToken.balanceOf(FEE_COLLECTOR);
+        } else {
+            protocolTreasury = 0;
+        }
     }
 
     function _getHedgerStats(uint256 price) internal view returns (
@@ -713,6 +740,10 @@ contract StateTrackerScenario is Script {
             QEUROToken qeuroToken = QEUROToken(QEURO);
             uint256 totalSupply = qeuroToken.totalSupply();
             
+        // Get mint fee from vault (fee is paid by buyer, not hedger)
+        QuantillonVault vault = QuantillonVault(VAULT);
+        uint256 mintFee = vault.mintFee();
+            
         // Variables for weighted average entry price calculation
         uint256 totalWeightedEntryPrice = 0;
         uint256 totalFilledVolume = 0;
@@ -734,13 +765,19 @@ contract StateTrackerScenario is Script {
             // Sum realized P&L
             hedgerRealizedPnL += int256(realizedPnLFromContract);
             
-            // Calculate unrealized P&L for this position (matching original logic)
-            
+            // Calculate unrealized P&L for this position
+            // NOTE: This matches the contract's HedgerPoolLogicLibrary.calculatePnL formula exactly
+            // Formula: UnrealizedP&L = FilledVolume - QEUROBacked * OracleCurrentPrice
+            // The contract uses gross filledVolume (fee is paid by buyer, not hedger)
             int256 totalUnrealizedPnL;
             if (totalSupply == 0 || filledVolume == 0 || price == 0 || qeuroBacked == 0) {
                 totalUnrealizedPnL = int256(0);
             } else {
+                // Calculate current value of QEURO backed (matching contract formula exactly)
                 uint256 qeuroValueInUSDC = (uint256(qeuroBacked) * price) / 1e30;
+                
+                // P&L = filledVolume - qeuroValueInUSDC (matching contract exactly)
+                // This changes with price movements - when price goes up, hedger loses
                 if (uint256(filledVolume) >= qeuroValueInUSDC) {
                     totalUnrealizedPnL = int256(uint256(filledVolume) - qeuroValueInUSDC);
                 } else {
@@ -918,6 +955,7 @@ contract StateTrackerScenario is Script {
             "%"
         );
         console2.log("  Collateralization Percentage:", collatPct);
+        console2.log("  Protocol Treasury:", string.concat(_formatUSDC(stat.protocolTreasury), " USDC"));
         console2.log("");
         console2.log("--- HEDGER STATISTICS ---");
         console2.log("  Hedger Entry Price:", string.concat(_formatPrice(stat.hedgerEntryPrice), " USD"));
@@ -1055,17 +1093,44 @@ contract StateTrackerScenario is Script {
         _captureStats("Oracle -> 1.09");
     }
 
+    /**
+     * @notice Calculate USDC needed to mint target QEURO amount
+     * @dev The protocol behavior is:
+     *      - User wants to mint targetQeuro QEURO
+     *      - Protocol calculates: usdcNeeded = targetQeuro * price / 1e30
+     *      - User deposits usdcNeeded USDC
+     *      - Protocol takes 0.1% fee from USDC deposit
+     *      - Protocol mints QEURO from remaining USDC
+     *      - User receives slightly less than targetQeuro (due to fee)
+     *      Example: User wants 500 QEURO at 1.08 -> deposits 540 USDC -> receives ~499.5 QEURO
+     * @param targetQeuro Target QEURO amount user wants to mint (in 18 decimals)
+     * @param currentPrice Current EUR/USD price (in 18 decimals)
+     * @return usdcNeeded USDC amount needed (in 6 decimals)
+     */
+    function _calculateUsdcNeededWithFee(uint256 targetQeuro, uint256 currentPrice) internal pure returns (uint256) {
+        // Calculate USDC needed for target QEURO amount
+        // usdcNeeded = targetQeuro * price / 1e30
+        // The vault will automatically take 0.1% fee from this amount
+        uint256 usdcNeeded = (targetQeuro * currentPrice) / 1e30;
+        
+        return usdcNeeded;
+    }
+
     function _step3_UserMints500QEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         IERC20 usdcToken = IERC20(USDC);
 
-        // Calculate USDC needed for 500 QEURO at current price
+        // User wants to mint 500 QEURO
+        // Protocol calculates USDC needed: 500 * price
+        // Protocol takes 0.1% fee from USDC deposit
+        // User receives slightly less than 500 QEURO (e.g., ~499.5 QEURO at 1.08 price)
         IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Invalid oracle price");
         
-        // 500 QEURO * price / 1e12 (convert from 18 to 6 decimals)
-        uint256 usdcNeeded = (500 * 1e18 * currentPrice) / 1e30;
+        // Calculate USDC needed for 500 QEURO (user will receive slightly less due to fee)
+        uint256 targetQeuro = 500 * 1e18;
+        uint256 usdcNeeded = _calculateUsdcNeededWithFee(targetQeuro, currentPrice);
         
         usdcToken.approve(VAULT, usdcNeeded);
         vault.mintQEURO(usdcNeeded, 0); // minQeuroOut = 0 for simplicity
@@ -1131,7 +1196,9 @@ contract StateTrackerScenario is Script {
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Invalid oracle price");
         
-        uint256 usdcNeeded = (500 * 1e18 * currentPrice) / 1e30;
+        // Calculate USDC needed to get 500 QEURO after 0.1% fee
+        uint256 targetQeuro = 500 * 1e18;
+        uint256 usdcNeeded = _calculateUsdcNeededWithFee(targetQeuro, currentPrice);
         
         usdcToken.approve(VAULT, usdcNeeded);
         vault.mintQEURO(usdcNeeded, 0);
@@ -1197,7 +1264,9 @@ contract StateTrackerScenario is Script {
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Invalid oracle price");
         
-        uint256 usdcNeeded = (861 * 1e18 * currentPrice) / 1e30;
+        // Calculate USDC needed to get 861 QEURO after 0.1% fee
+        uint256 targetQeuro = 861 * 1e18;
+        uint256 usdcNeeded = _calculateUsdcNeededWithFee(targetQeuro, currentPrice);
         
         usdcToken.approve(VAULT, usdcNeeded);
         vault.mintQEURO(usdcNeeded, 0);
@@ -1213,7 +1282,9 @@ contract StateTrackerScenario is Script {
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "Invalid oracle price");
         
-        uint256 usdcNeeded = (1000 * 1e18 * currentPrice) / 1e30;
+        // Calculate USDC needed to get 1000 QEURO after 0.1% fee
+        uint256 targetQeuro = 1000 * 1e18;
+        uint256 usdcNeeded = _calculateUsdcNeededWithFee(targetQeuro, currentPrice);
         
         usdcToken.approve(VAULT, usdcNeeded);
         vault.mintQEURO(usdcNeeded, 0);
@@ -1492,6 +1563,7 @@ contract StateTrackerScenario is Script {
                 "  User Collateral: ", _formatUSDC(stat.userCollateral), " USDC\n",
                 "  Hedger Collateral: ", _formatUSDC(stat.hedgerCollateral), " USDC\n",
                 "  Collateralization Percentage: ", collatPctFormatted, "%\n",
+                "  Protocol Treasury: ", _formatUSDC(stat.protocolTreasury), " USDC\n",
                 "\n",
                 "--- HEDGER STATISTICS ---\n",
                 "  Hedger Entry Price: ", _formatPrice(stat.hedgerEntryPrice), " USD\n",

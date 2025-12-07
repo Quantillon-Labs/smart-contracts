@@ -11,7 +11,7 @@ if [ $# -eq 0 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ] || [ "$1" = "help" ]; 
 QUANTILLON PROTOCOL - SCENARIO REPLAY SCRIPT
 ================================================================================
 
-Usage: $0 [MODE] [STOP_AFTER_STEP]
+Usage: $0 [MODE] [STOP_AFTER_STEP] [FEE_PERCENTAGE]
 
 This script automatically:
   1. Redeploys all contracts to ensure fresh state
@@ -23,7 +23,9 @@ ARGUMENTS:
                   single    - Use single hedging position (adds margin to existing position in steps 5 & 7)
                   multiple  - Use multiple hedging positions (opens new positions in steps 5 & 7)
   
-  STOP_AFTER_STEP Optional step number (1-16) to stop after. If not specified, runs all 16 steps.
+  STOP_AFTER_STEP Step number (1-16) to stop after. If not specified, runs all 16 steps.
+  
+  FEE_PERCENTAGE  Mint fee percentage (e.g., 0.1 for 0.1%, 0 for 0%). Default: 0.1
 
 OUTPUT:
   Raw log:     scripts/results/scenario-{timestamp}.log
@@ -56,10 +58,9 @@ SCENARIO STEPS:
   16. User redeems 500 QEURO (no QEURO left circulating)
 
 EXAMPLES:
-  $0 multiple              # Run all 16 steps with multiple positions
-  $0 single                # Run all 16 steps with single position
-  $0 multiple 5            # Run steps 1-5 with multiple positions
-  $0 single 10             # Run steps 1-10 with single position
+  $0 single 10 0.1         # Run 10 steps with single position, 0.1% fee
+  $0 multiple 16 0         # Run all 16 steps with multiple positions, 0% fee
+  $0 single 5 0.5          # Run 5 steps with single position, 0.5% fee
 
 For more information, see the StateTrackerScenario.s.sol script.
 
@@ -96,6 +97,25 @@ if [ $# -ge 2 ]; then
     fi
 fi
 
+# Parse fee percentage argument (optional, default: 0.1%)
+FEE_PERCENTAGE="0.1"
+if [ $# -ge 3 ]; then
+    FEE_PERCENTAGE="$3"
+    # Validate it's a valid number (can be decimal)
+    if ! [[ "$FEE_PERCENTAGE" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+        echo "ERROR: Invalid fee percentage: $FEE_PERCENTAGE"
+        echo ""
+        echo "Fee percentage must be a number (e.g., 0.1 for 0.1%, 0 for 0%)."
+        echo "Use '$0' or '$0 --help' for usage information."
+        exit 1
+    fi
+fi
+
+# Convert fee percentage to 18-decimal format
+# Formula: fee_percentage / 100 * 1e18 = fee_percentage * 1e16
+# Using awk for decimal arithmetic (more portable than bc)
+MINT_FEE=$(awk "BEGIN {printf \"%.0f\", $FEE_PERCENTAGE * 10000000000000000}")
+
 # Show brief helper
 if [ -n "$STOP_AFTER_STEP" ]; then
     echo "=================================================================================="
@@ -105,6 +125,7 @@ if [ -n "$STOP_AFTER_STEP" ]; then
     echo "Running scenario replay script..."
     echo "  - Mode: $SCENARIO_MODE positions"
     echo "  - Stop after step: $STOP_AFTER_STEP"
+    echo "  - Mint fee: $FEE_PERCENTAGE%"
     echo "  - Contracts will be redeployed to ensure fresh state"
     echo "  - Results saved to scripts/results/"
     echo ""
@@ -117,6 +138,7 @@ else
     echo ""
     echo "Running scenario replay script..."
     echo "  - Mode: $SCENARIO_MODE positions"
+    echo "  - Mint fee: $FEE_PERCENTAGE%"
     echo "  - Contracts will be redeployed to ensure fresh state"
     echo "  - 16-step scenario will be executed"
     echo "  - Results saved to scripts/results/"
@@ -220,6 +242,7 @@ echo "Mode: $SCENARIO_MODE positions"
 if [ -n "$STOP_AFTER_STEP" ]; then
     echo "Stop after step: $STOP_AFTER_STEP"
 fi
+echo "Mint fee: $FEE_PERCENTAGE% (raw value: $MINT_FEE)"
 echo "This may take a few moments..."
 echo ""
 
@@ -228,8 +251,10 @@ echo ""
 # PRIVATE_KEY must be available as environment variable (loaded from .env file above)
 # SCENARIO_MODE is passed as environment variable to control single vs multiple positions
 # STOP_AFTER_STEP is passed as environment variable to stop after a specific step
+# MINT_FEE is passed as argument to the run() function
 # Add gas limit to prevent OutOfGas errors during oracle calls
 SCENARIO_MODE="$SCENARIO_MODE" STOP_AFTER_STEP="$STOP_AFTER_STEP" forge script scripts/StateTrackerScenario.s.sol:StateTrackerScenario \
+    --sig "run(uint256)" "$MINT_FEE" \
     --rpc-url http://localhost:8545 \
     --broadcast \
     --gas-limit 30000000 \

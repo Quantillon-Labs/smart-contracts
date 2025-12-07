@@ -57,8 +57,8 @@ contract DeployQuantillonPhaseA is Script {
 
         _deployTimeProvider();
         _deployOraclePhased();
+        _deployFeeCollectorPhased(); // Deploy FeeCollector before QEURO so we can pass it to QEURO initialization
         _deployQEUROPhased();
-        _deployFeeCollectorPhased();
         _deployVaultPhased();
         _setupQEURORoles();
 
@@ -230,7 +230,12 @@ contract DeployQuantillonPhaseA is Script {
             QEUROToken impl = new QEUROToken();
             ERC1967Proxy proxy = new ERC1967Proxy(address(impl), bytes(""));
             qeuroToken = QEUROToken(address(proxy));
-            qeuroToken.initialize(deployerEOA, deployerEOA, deployerEOA, deployerEOA);
+            // Initialize with FeeCollector address (must be deployed first)
+            address feeCollectorAddr = address(feeCollector);
+            if (feeCollectorAddr == address(0)) {
+                revert("FeeCollector must be deployed before QEURO");
+            }
+            qeuroToken.initialize(deployerEOA, deployerEOA, deployerEOA, deployerEOA, feeCollectorAddr);
             console.log("QEURO Proxy:", address(qeuroToken));
         }
     }

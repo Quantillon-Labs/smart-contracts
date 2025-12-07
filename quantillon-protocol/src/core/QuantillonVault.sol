@@ -418,10 +418,8 @@ contract QuantillonVault is
         feeCollector = _feeCollector; // Set fee collector
 
         // Default protocol parameters
-        // mintFee = 1e15;                 // 0.1% mint fee
-        // redemptionFee = 1e15;           // 0.1% redemption fee
-        mintFee = 0;                    // Protocol fee disabled for testing
-        redemptionFee = 0;              // Protocol fee disabled for testing
+        mintFee = 1e15;                 // 0.1% mint fee (taken from USDC deposit)
+        redemptionFee = 1e15;           // 0.1% redemption fee
         
         // Default collateralization parameters
         minCollateralizationRatioForMinting = 10500;  // 105% - minimum ratio for minting
@@ -511,8 +509,9 @@ contract QuantillonVault is
         }
 
         // Inform HedgerPool after vault accounting is updated
-        // NOTE: Hedgers must receive the gross mint size so their filled volume matches user-facing flow
-        _syncMintWithHedgers(usdcAmount, eurUsdPrice, qeuroToMint);
+        // Pass netAmount (after fee) to recordUserMint, as the fee is paid by the buyer, not the hedger
+        // The hedger's filledVolume should track the net USDC that was actually used to mint QEURO
+        _syncMintWithHedgers(netAmount, eurUsdPrice, qeuroToMint);
 
         // Emit event after state changes but before external calls
         emit QEUROminted(msg.sender, usdcAmount, qeuroToMint);

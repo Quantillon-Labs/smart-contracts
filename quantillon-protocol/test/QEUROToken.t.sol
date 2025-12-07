@@ -94,13 +94,17 @@ contract QEUROTokenTestSuite is Test {
         // Create mock timelock address
         address mockTimelock = address(0x123);
         
+        // Create mock FeeCollector address for testing
+        address mockFeeCollector = address(0x456);
+        
         // Deploy proxy with initialization
         bytes memory initData = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             admin,
             vault,
             mockTimelock,
-            admin // Use admin as treasury for testing
+            admin, // Use admin as treasury for testing
+            mockFeeCollector // FeeCollector address
         );
         
         ERC1967Proxy proxy = new ERC1967Proxy(
@@ -205,7 +209,7 @@ contract QEUROTokenTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        qeuroToken.initialize(admin, vault, address(0x123), admin);
+        qeuroToken.initialize(admin, vault, address(0x123), admin, address(0x456));
     }
 
     // =============================================================================

@@ -33,6 +33,7 @@ import {TokenLibrary} from "../libraries/TokenLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
+import {FeeCollector} from "./FeeCollector.sol";
 
 /**
  * @title QEUROToken
@@ -129,6 +130,11 @@ contract QEUROToken is
     /// @dev Prevents out-of-gas attacks through large blacklist/whitelist arrays
     uint256 public constant MAX_COMPLIANCE_BATCH_SIZE = 50;
 
+    /// @notice Protocol fee rate for minting (0.1% = 1e15)
+    /// @dev Fee is calculated as: fee = amount * MINT_FEE_RATE / PRECISION
+    /// @dev Value: 1e15 = 0.1% (since PRECISION = 1e18 = 100%)
+    uint256 public constant MINT_FEE_RATE = 1e15; // 0.1%
+
     // =============================================================================
     // STATE VARIABLES - Dynamic configuration
     // =============================================================================
@@ -185,6 +191,10 @@ contract QEUROToken is
     /// @notice Treasury address for ETH recovery
     /// @dev SECURITY: Only this address can receive ETH from recoverETH function
     address public treasury;
+
+    /// @notice FeeCollector contract address for protocol fee collection
+    /// @dev Protocol fees from minting are sent to this contract
+    address public feeCollector;
 
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
@@ -268,6 +278,17 @@ contract QEUROToken is
     /// @param amount Amount of ETH recovered
     event ETHRecovered(address indexed to, uint256 indexed amount);
 
+    /// @notice Emitted when protocol fee is collected on mint
+    /// @param amount Total amount minted
+    /// @param feeAmount Protocol fee amount collected
+    /// @param feeCollector Address of the fee collector
+    event ProtocolFeeCollected(uint256 indexed amount, uint256 indexed feeAmount, address indexed feeCollector);
+
+    /// @notice Emitted when FeeCollector address is updated
+    /// @param oldFeeCollector Previous FeeCollector address
+    /// @param newFeeCollector New FeeCollector address
+    event FeeCollectorUpdated(address indexed oldFeeCollector, address indexed newFeeCollector);
+
     // =============================================================================
     // MODIFIERS - Access control and security
     // =============================================================================
@@ -314,6 +335,7 @@ contract QEUROToken is
      * @param vault Address of the QuantillonVault (will get MINTER_ROLE and BURNER_ROLE)
      * @param _timelock Address of the timelock contract
      * @param _treasury Treasury address for protocol fees
+     * @param _feeCollector Address of the FeeCollector contract for protocol fee collection
      * 
      * @dev This function replaces the constructor. It:
      *      1. Initializes the ERC20 token with name and symbol
@@ -321,6 +343,7 @@ contract QEUROToken is
      *      3. Assigns appropriate roles
      *      4. Configures pause and upgrade system
      *      5. Sets initial rate limits and precision settings
+     *      6. Sets FeeCollector address for protocol fees
      * 
      * @dev Security considerations:
      *      - Only callable once (initializer modifier)
@@ -340,13 +363,15 @@ contract QEUROToken is
         address admin,
         address vault,
         address _timelock,
-        address _treasury
+        address _treasury,
+        address _feeCollector
     ) public initializer {
         // Input parameter validation
         AccessControlLibrary.validateAddress(admin);
         AccessControlLibrary.validateAddress(vault);
         AccessControlLibrary.validateAddress(_timelock);
         AccessControlLibrary.validateAddress(_treasury);
+        AccessControlLibrary.validateAddress(_feeCollector);
 
         // Initialize parent contracts
         __ERC20_init("Quantillon Euro", "QEURO");
@@ -372,6 +397,8 @@ contract QEUROToken is
         TokenValidationLibrary.validateTreasuryAddress(_treasury);
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
+        if (_feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        feeCollector = _feeCollector;
     }
 
     // =============================================================================
@@ -391,8 +418,14 @@ contract QEUROToken is
      *      - Input parameter validation
      *      - Rate limiting
      *      - Blacklist/whitelist checks
+     *      - Protocol fee collection (0.1% of minted amount)
+     * 
+     * @dev Protocol fee: 0.1% of the minted amount is collected and sent to FeeCollector
+     *      The user receives (amount - fee), and FeeCollector receives the fee
      * 
      * Usage example: vault.mint(user, 1000 * 1e18) for 1000 QEURO
+     *      - User receives: 999 QEURO (1000 - 1)
+     *      - FeeCollector receives: 1 QEURO (0.1% fee)
      * 
      * @dev Security considerations:
      *      - Only MINTER_ROLE can mint
@@ -437,7 +470,7 @@ contract QEUROToken is
         // Supply cap verification to prevent excessive inflation
         // Handled by TokenLibrary.validateMint()
 
-        // Actual mint (secure OpenZeppelin function)
+        // Mint tokens to user (full amount - fee is taken from USDC in vault before minting)
         _mint(to, amount);
         
         // Event for tracking
@@ -452,7 +485,7 @@ contract QEUROToken is
      *
      * @dev Applies the same validations as single mint per item to avoid bypassing
      *      rate limits, blacklist/whitelist checks, and max supply constraints.
-     *      Using external mint for each entry reuses all checks and events.
+     *      Protocol fee (0.1%) is collected for each mint in the batch.
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables
@@ -475,6 +508,7 @@ contract QEUROToken is
         if (recipients.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
         uint256 totalAmount = 0;
+        uint256 totalFeeAmount = 0;
         
         // Pre-validate inputs and compliance per recipient
         for (uint256 i = 0; i < recipients.length; i++) {
@@ -487,22 +521,29 @@ contract QEUROToken is
             if (isBlacklisted[to]) revert TokenErrorLibrary.BlacklistedAddress();
             if (whitelistEnabled && !isWhitelisted[to]) revert CommonErrorLibrary.NotWhitelisted();
             
+            // Calculate fee for this mint
+            uint256 feeAmount = (amount * MINT_FEE_RATE) / PRECISION;
+            totalFeeAmount += feeAmount;
+            
             // Accumulate total to check supply cap and rate limits once
             totalAmount = totalAmount + amount;
         }
         
-        // Supply cap verification for the whole batch
+        // Supply cap verification for the whole batch (including fees)
         if (totalSupply() + totalAmount > maxSupply) revert CommonErrorLibrary.WouldExceedLimit();
 
-        // Rate limiting for the whole batch
+        // Rate limiting for the whole batch (check against total amount including fees)
         _checkAndUpdateMintRateLimit(totalAmount);
 
         address minter = msg.sender;
         
-        // Perform mints
+        // Perform mints (fee is taken from USDC in vault before minting)
         for (uint256 i = 0; i < recipients.length; i++) {
-            _mint(recipients[i], amounts[i]);
-            emit TokensMinted(recipients[i], amounts[i], minter);
+            uint256 amount = amounts[i];
+            
+            // Mint to user (full amount - fee is taken from USDC in vault before minting)
+            _mint(recipients[i], amount);
+            emit TokensMinted(recipients[i], amount, minter);
         }
     }
 
@@ -1551,6 +1592,27 @@ contract QEUROToken is
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
+    }
+
+    /**
+     * @notice Update FeeCollector address
+     * @dev SECURITY: Only governance can update FeeCollector address
+     * @param _feeCollector New FeeCollector address
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateFeeCollector(address _feeCollector) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        AccessControlLibrary.validateAddress(_feeCollector);
+        if (_feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        address oldFeeCollector = feeCollector;
+        feeCollector = _feeCollector;
+        emit FeeCollectorUpdated(oldFeeCollector, _feeCollector);
     }
 
     /**

@@ -184,7 +184,7 @@ interface IQEUROToken {
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function initialize(address admin, address vault, address timelock, address treasury) external;
+    function initialize(address admin, address vault, address timelock, address treasury, address feeCollector) external;
 
     // Core functions
     /**

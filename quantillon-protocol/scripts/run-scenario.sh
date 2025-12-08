@@ -15,15 +15,15 @@ Usage: $0 [MODE] [STOP_AFTER_STEP] [FEE_PERCENTAGE]
 
 This script automatically:
   1. Redeploys all contracts to ensure fresh state
-  2. Runs the scenario (up to specified step or all 16 steps)
+  2. Runs the scenario (up to specified step or all 26 steps)
   3. Generates formatted log files in scripts/results/
 
 ARGUMENTS:
   MODE            Position mode (required):
-                  single    - Use single hedging position (adds margin to existing position in steps 5 & 7)
-                  multiple  - Use multiple hedging positions (opens new positions in steps 5 & 7)
+                  single    - Use single hedging position (adds margin to existing position)
+                  multiple  - Use multiple hedging positions (opens new positions)
   
-  STOP_AFTER_STEP Step number (1-16) to stop after. If not specified, runs all 16 steps.
+  STOP_AFTER_STEP Step number (1-26) to stop after. If not specified, runs all 26 steps.
   
   FEE_PERCENTAGE  Mint fee percentage (e.g., 0.1 for 0.1%, 0 for 0%). Default: 0.1
 
@@ -36,30 +36,36 @@ REQUIREMENTS:
   - PRIVATE_KEY environment variable set
 
 SCENARIO STEPS:
-  1.  Hedger deposits 50 USDC at 5% margin (20x leverage) - Opens position
+  1.  Hedger deposits 50 USDC at 5% margin (Oracle at 1.08)
   2.  Oracle price → 1.09 USD/EUR
   3.  User mints 500 QEURO
-  4.  Oracle price → 1.16 USD/EUR
-  5.  Hedger adds 50 USDC
-     - single mode:   Adds margin to existing position
-     - multiple mode: Opens new position with 50 USDC
-  6.  User mints 500 QEURO
-  7.  Hedger adds 50 USDC
-     - single mode:   Adds margin to existing position
-     - multiple mode: Opens new position with 50 USDC
-  8.  Oracle price → 1.11 USD/EUR
-  9.  User mints 861 QEURO
-  10. User mints 1000 QEURO
-  11. User redeems 1861 QEURO
-  12. Oracle price → 1.15 USD/EUR
-  13. Hedger removes 50 USDC from collateral
-  14. Oracle price → 1.16 USD/EUR
-  15. User redeems 500 QEURO
-  16. User redeems 500 QEURO (no QEURO left circulating)
+  4.  Oracle price → 1.11 USD/EUR
+  5.  Hedger adds 50 USD to its position
+  6.  Oracle price → 1.13 USD/EUR
+  7.  User mints 350 QEURO
+  8.  Oracle price → 1.15 USD/EUR
+  9.  User redeems 180 QEURO
+  10. Hedger deposits 50 more USD to its collateral
+  11. User mints 500 QEURO
+  12. Oracle price → 1.12 USD/EUR
+  13. Oracle price → 1.15 USD/EUR
+  14. Hedger adds 50 more USD to its collateral
+  15. Oracle price → 1.13 USD/EUR
+  16. Oracle price → 1.11 USD/EUR
+  17. User mints 1500 QEURO
+  18. Oracle price → 1.15 USD/EUR
+  19. User redeems 1000 QEURO
+  20. Oracle price → 1.13 USD/EUR
+  21. User redeems 1000 QEURO
+  22. Hedger removes 50 USD from its collateral
+  23. Oracle price → 1.16 USD/EUR
+  24. Hedger removes 20 USD from its collateral
+  25. Oracle price → 1.10 USD/EUR
+  26. User redeems 670 QEURO
 
 EXAMPLES:
   $0 single 10 0.1         # Run 10 steps with single position, 0.1% fee
-  $0 multiple 16 0         # Run all 16 steps with multiple positions, 0% fee
+  $0 multiple 26 0         # Run all 26 steps with multiple positions, 0% fee
   $0 single 5 0.5          # Run 5 steps with single position, 0.5% fee
 
 For more information, see the StateTrackerScenario.s.sol script.
@@ -87,11 +93,11 @@ fi
 STOP_AFTER_STEP=""
 if [ $# -ge 2 ]; then
     STOP_AFTER_STEP="$2"
-    # Validate it's a number between 1 and 16
-    if ! [[ "$STOP_AFTER_STEP" =~ ^[0-9]+$ ]] || [ "$STOP_AFTER_STEP" -lt 1 ] || [ "$STOP_AFTER_STEP" -gt 16 ]; then
+    # Validate it's a number between 1 and 26
+    if ! [[ "$STOP_AFTER_STEP" =~ ^[0-9]+$ ]] || [ "$STOP_AFTER_STEP" -lt 1 ] || [ "$STOP_AFTER_STEP" -gt 26 ]; then
         echo "ERROR: Invalid step number: $STOP_AFTER_STEP"
         echo ""
-        echo "Step number must be between 1 and 16."
+        echo "Step number must be between 1 and 26."
         echo "Use '$0' or '$0 --help' for usage information."
         exit 1
     fi
@@ -140,7 +146,7 @@ else
     echo "  - Mode: $SCENARIO_MODE positions"
     echo "  - Mint fee: $FEE_PERCENTAGE%"
     echo "  - Contracts will be redeployed to ensure fresh state"
-    echo "  - 16-step scenario will be executed"
+    echo "  - 26-step scenario will be executed"
     echo "  - Results saved to scripts/results/"
     echo ""
     echo "=================================================================================="
@@ -170,7 +176,7 @@ echo "==========================================================================
 echo ""
 echo "This script will:"
 echo "  1. Redeploy all contracts to ensure fresh state"
-echo "  2. Run the complete scenario (16 steps)"
+echo "  2. Run the complete scenario (26 steps)"
 echo "  3. Save formatted results to: $OUTPUT_FILE"
 echo ""
 echo "Starting fresh deployment..."
@@ -253,11 +259,12 @@ echo ""
 # STOP_AFTER_STEP is passed as environment variable to stop after a specific step
 # MINT_FEE is passed as argument to the run() function
 # Add gas limit to prevent OutOfGas errors during oracle calls
+# Increased to 50M to handle scenarios with many positions and operations
 SCENARIO_MODE="$SCENARIO_MODE" STOP_AFTER_STEP="$STOP_AFTER_STEP" forge script scripts/StateTrackerScenario.s.sol:StateTrackerScenario \
     --sig "run(uint256)" "$MINT_FEE" \
     --rpc-url http://localhost:8545 \
     --broadcast \
-    --gas-limit 30000000 \
+    --gas-limit 50000000 \
     2>&1 | tee "$OUTPUT_FILE"
 
 echo ""

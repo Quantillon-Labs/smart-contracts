@@ -187,13 +187,15 @@ contract QuantillonVault is
     /// @dev When protocol collateralization >= this threshold, minting is allowed
     /// @dev When protocol collateralization < this threshold, minting is halted
     /// @dev Can be updated by governance to adjust protocol risk parameters
+    /// @dev Stored in 18 decimals format (e.g., 105000000000000000000 = 105.000000%)
     uint256 public minCollateralizationRatioForMinting;
     
-    /// @notice Critical collateralization ratio that triggers liquidation (in basis points)
-    /// @dev Example: 10100 = 101% collateralization ratio triggers liquidation
+    /// @notice Critical collateralization ratio that triggers liquidation (in 18 decimals)
+    /// @dev Example: 101000000000000000000 = 101.000000% collateralization ratio triggers liquidation
     /// @dev When protocol collateralization < this threshold, hedgers start being liquidated
     /// @dev Emergency threshold to protect protocol solvency
     /// @dev Can be updated by governance to adjust liquidation triggers
+    /// @dev Stored in 18 decimals format (e.g., 101000000000000000000 = 101.000000%)
     uint256 public criticalCollateralizationRatio;
 
     // Global vault state
@@ -269,8 +271,8 @@ contract QuantillonVault is
     /// @dev Helps monitor potential flash loan attacks
     
     /// @notice Emitted when collateralization thresholds are updated by governance
-    /// @param minCollateralizationRatioForMinting New minimum collateralization ratio for minting (in basis points)
-    /// @param criticalCollateralizationRatio New critical collateralization ratio for liquidation (in basis points)
+    /// @param minCollateralizationRatioForMinting New minimum collateralization ratio for minting (in 18 decimals)
+    /// @param criticalCollateralizationRatio New critical collateralization ratio for liquidation (in 18 decimals)
     /// @param caller Address of the governance role holder who updated the thresholds
     event CollateralizationThresholdsUpdated(
         uint256 indexed minCollateralizationRatioForMinting,
@@ -421,9 +423,9 @@ contract QuantillonVault is
         mintFee = 1e15;                 // 0.1% mint fee (taken from USDC deposit)
         redemptionFee = 1e15;           // 0.1% redemption fee
         
-        // Default collateralization parameters
-        minCollateralizationRatioForMinting = 10500;  // 105% - minimum ratio for minting
-        criticalCollateralizationRatio = 10100;       // 101% - critical ratio for liquidation
+        // Default collateralization parameters (in 18 decimals format for maximum precision)
+        minCollateralizationRatioForMinting = 105000000000000000000;  // 105.000000% - minimum ratio for minting (105 * 1e18)
+        criticalCollateralizationRatio = 101000000000000000000;       // 101.000000% - critical ratio for liquidation (101 * 1e18)
         
         // Initialize price tracking for flash loan protection
         lastValidEurUsdPrice = 0;       // Will be set on first price fetch
@@ -786,13 +788,13 @@ contract QuantillonVault is
     /**
      * @notice Updates the collateralization thresholds (governance only)
      * 
-     * @param _minCollateralizationRatioForMinting New minimum collateralization ratio for minting (in basis points)
-     * @param _criticalCollateralizationRatio New critical collateralization ratio for liquidation (in basis points)
+     * @param _minCollateralizationRatioForMinting New minimum collateralization ratio for minting (in 18 decimals)
+     * @param _criticalCollateralizationRatio New critical collateralization ratio for liquidation (in 18 decimals)
      * 
      * @dev Safety constraints:
-     *      - minCollateralizationRatioForMinting >= 10100 (101% minimum)
+     *      - minCollateralizationRatioForMinting >= 101000000000000000000 (101.000000% minimum = 101 * 1e18)
      *      - criticalCollateralizationRatio <= minCollateralizationRatioForMinting
-     *      - criticalCollateralizationRatio >= 10000 (100% minimum)
+     *      - criticalCollateralizationRatio >= 100000000000000000000 (100.000000% minimum = 100 * 1e18)
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables
@@ -806,8 +808,8 @@ contract QuantillonVault is
         uint256 _minCollateralizationRatioForMinting,
         uint256 _criticalCollateralizationRatio
     ) external onlyRole(GOVERNANCE_ROLE) {
-        if (_minCollateralizationRatioForMinting < 10100) revert CommonErrorLibrary.InvalidThreshold();
-        if (_criticalCollateralizationRatio < 10000) revert CommonErrorLibrary.InvalidThreshold();
+        if (_minCollateralizationRatioForMinting < 101000000000000000000) revert CommonErrorLibrary.InvalidThreshold();
+        if (_criticalCollateralizationRatio < 100000000000000000000) revert CommonErrorLibrary.InvalidThreshold();
         if (_criticalCollateralizationRatio > _minCollateralizationRatioForMinting) revert CommonErrorLibrary.InvalidThreshold();
 
         minCollateralizationRatioForMinting = _minCollateralizationRatioForMinting;
@@ -1087,9 +1089,9 @@ contract QuantillonVault is
     /**
      * @notice Calculates the current protocol collateralization ratio
      * @dev Formula: ((A + B) / A) * 100 where A = user deposits, B = hedger effective collateral (deposits + P&L)
-     * @dev Returns ratio in basis points (e.g., 10500 = 105%)
+     * @dev Returns ratio in 18 decimals (e.g., 109183495000000000000 = 109.183495%) for maximum precision
      * @dev Uses hedger effective collateral instead of raw deposits to account for P&L
-     * @return ratio Current collateralization ratio in basis points
+     * @return ratio Current collateralization ratio in 18 decimals (maximum precision, e.g., 109183495000000000000 = 109.183495%)
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes No state changes - view function
@@ -1128,11 +1130,13 @@ contract QuantillonVault is
         // Pass currentRate to avoid double oracle call and ensure price consistency
         uint256 hedgerEffectiveCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(currentRate);
         
-        // Calculate ratio: ((A + B) / A) * 10000
+        // Calculate ratio with maximum precision: ((A + B) / A) * 100 * 1e18
         // Where A = current USDC equivalent of QEURO supply (debt)
         // Where B = hedger effective collateral (deposits + P&L) - this is the additional over-collateralization
-        // Using basis points (multiply by 10000 instead of 100)
-        ratio = ((currentUsdcEquivalent + hedgerEffectiveCollateral) * 10000) / currentUsdcEquivalent;
+        // Using 18 decimals (multiply by 1e18) for maximum precision - matches protocol standard
+        // Multiply by 100 to convert ratio to percentage (e.g., 1.09183495 -> 109.183495%)
+        // Result format: percentage * 1e18, so 100% = 1e20, 109.183495% = 109183495000000000000
+        ratio = ((currentUsdcEquivalent + hedgerEffectiveCollateral) * 1e20) / currentUsdcEquivalent;
         
         return ratio;
     }

@@ -61,7 +61,7 @@ SCENARIO STEPS:
   23. Oracle price → 1.16 USD/EUR
   24. Hedger removes 20 USD from its collateral
   25. Oracle price → 1.10 USD/EUR
-  26. User redeems 670 QEURO
+  26. User redeems all his QEURO left
 
 EXAMPLES:
   $0 single 10 0.1         # Run 10 steps with single position, 0.1% fee

@@ -420,8 +420,8 @@ contract QuantillonVault is
         feeCollector = _feeCollector; // Set fee collector
 
         // Default protocol parameters
-        mintFee = 1e15;                 // 0.1% mint fee (taken from USDC deposit)
-        redemptionFee = 1e15;           // 0.1% redemption fee
+        mintFee = 5e16;                 // 5% mint fee (taken from USDC deposit)
+        redemptionFee = 5e16;           // 5% redemption fee
         
         // Default collateralization parameters (in 18 decimals format for maximum precision)
         minCollateralizationRatioForMinting = 105000000000000000000;  // 105.000000% - minimum ratio for minting (105 * 1e18)
@@ -1088,7 +1088,8 @@ contract QuantillonVault is
     
     /**
      * @notice Calculates the current protocol collateralization ratio
-     * @dev Formula: ((A + B) / A) * 100 where A = user deposits, B = hedger effective collateral (deposits + P&L)
+     * @dev Formula: (COLLATUser + COLLATHedger) / (qMinted * oraclePrice) * 100
+     * @dev Where COLLATUser = totalUserDeposits, COLLATHedger = hedger effective collateral (deposits + P&L)
      * @dev Returns ratio in 18 decimals (e.g., 109183495000000000000 = 109.183495%) for maximum precision
      * @dev Uses hedger effective collateral instead of raw deposits to account for P&L
      * @return ratio Current collateralization ratio in 18 decimals (maximum precision, e.g., 109183495000000000000 = 109.183495%)
@@ -1107,7 +1108,7 @@ contract QuantillonVault is
             return 0;
         }
         
-        // Get current QEURO supply (A in the formula) - represents current user deposits
+        // Get current QEURO supply for denominator calculation
         uint256 currentQeuroSupply = qeuro.totalSupply();
         
         // If no QEURO supply, we can't calculate a meaningful ratio
@@ -1120,23 +1121,31 @@ contract QuantillonVault is
         (uint256 currentRate, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         
-        // Convert QEURO supply to current USDC equivalent for accurate calculation
+        // Convert QEURO supply to current USDC equivalent
+        // This represents the current debt value: qMinted * oraclePrice
+        // This also represents COLLATUser (user deposits backing the QEURO supply)
         uint256 currentUsdcEquivalent = currentQeuroSupply.mulDiv(currentRate, 1e18) / 1e12;
         
-        // Get hedger effective collateral from HedgerPool (B in the formula)
+        // COLLATUser = current QEURO supply in USDC (user deposits backing the debt)
+        // Note: We use currentUsdcEquivalent for COLLATUser instead of totalUserDeposits
+        // because totalUserDeposits tracks historical deposits which may differ due to fees/redemptions
+        uint256 userDeposits = currentUsdcEquivalent;
+        
+        // Get hedger effective collateral from HedgerPool (COLLATHedger)
         // This includes deposits + P&L, giving accurate collateralization ratio
-        // Note: User deposits (USDC from mints) are already backing the QEURO supply,
-        // so they're not counted as additional collateral. Only hedger collateral provides over-collateralization.
         // Pass currentRate to avoid double oracle call and ensure price consistency
         uint256 hedgerEffectiveCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(currentRate);
         
-        // Calculate ratio with maximum precision: ((A + B) / A) * 100 * 1e18
-        // Where A = current USDC equivalent of QEURO supply (debt)
-        // Where B = hedger effective collateral (deposits + P&L) - this is the additional over-collateralization
+        // Calculate total collateral: COLLATUser + COLLATHedger
+        uint256 totalCollateral = userDeposits + hedgerEffectiveCollateral;
+        
+        // Calculate ratio with maximum precision: (totalCollateral / currentUsdcEquivalent) * 100 * 1e18
         // Using 18 decimals (multiply by 1e18) for maximum precision - matches protocol standard
         // Multiply by 100 to convert ratio to percentage (e.g., 1.09183495 -> 109.183495%)
         // Result format: percentage * 1e18, so 100% = 1e20, 109.183495% = 109183495000000000000
-        ratio = ((currentUsdcEquivalent + hedgerEffectiveCollateral) * 1e20) / currentUsdcEquivalent;
+        // Formula: (totalCollateral * 1e20) / currentUsdcEquivalent
+        // This gives us the percentage directly (e.g., 109.657% = 109657000000000000000)
+        ratio = (totalCollateral * 1e20) / currentUsdcEquivalent;
         
         return ratio;
     }

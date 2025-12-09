@@ -118,7 +118,7 @@ import {MockAggregatorV3} from "../test/ChainlinkOracle.t.sol";
  * Step 25: Oracle price → 1.10 USD/EUR
  *   - Price decrease
  * 
- * Step 26: User redeems 670 QEURO
+ * Step 26: User redeems all his QEURO left
  *   - Final redemption operation
  * 
  * @dev STATISTICS CAPTURED:
@@ -619,8 +619,8 @@ contract StateTrackerScenario is Script {
         _step25_SetOraclePrice(110 * 1e16); // 1.10
         if (_shouldStop(25, stopAfterStep)) return;
 
-        // Step 26: User redeems 670 QEURO
-        _step26_UserRedeems670QEURO();
+        // Step 26: User redeems all his QEURO left
+        _step26_UserRedeemsAllQEURO();
         if (_shouldStop(26, stopAfterStep)) return;
 
         vm.stopBroadcast();
@@ -733,13 +733,16 @@ contract StateTrackerScenario is Script {
     ) {
         IChainlinkOracle oracle = IChainlinkOracle(ORACLE);
         QEUROToken qeuroToken = QEUROToken(QEURO);
-        UserPool userPool = UserPool(USER_POOL);
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         QuantillonVault vault = QuantillonVault(VAULT);
+        UserPool userPool = UserPool(USER_POOL);
 
         (price, ) = oracle.getEurUsdPrice();
         qeuroMinted = qeuroToken.totalSupply();
-        userCollateral = userPool.totalUserDeposits();
+        // User Collateral = Total USDC deposits from users (does not change with price)
+        // This represents the actual USDC deposits backing the QEURO supply
+        // Use totalUserDeposits from UserPool which tracks actual deposits
+        (userCollateral, , , ) = userPool.getPoolTotals();
         hedgerCollateral = hedgerPool.totalMargin();
         uint256 collateralizationRatio = vault.getProtocolCollateralizationRatio();
         // Store as 18 decimals (e.g., 109183495000000000000 = 109.183495%) for maximum precision
@@ -1770,18 +1773,26 @@ contract StateTrackerScenario is Script {
         _captureStats("Oracle -> 1.10");
     }
 
-    function _step26_UserRedeems670QEURO() internal {
+    function _step26_UserRedeemsAllQEURO() internal {
         QuantillonVault vault = QuantillonVault(VAULT);
         QEUROToken qeuroToken = QEUROToken(QEURO);
         // Use latest position ID if available, otherwise default to 1
         uint256 positionId = latestPositionId > 0 ? latestPositionId : 1;
 
-        uint256 qeuroAmount = 670 * 1e18;
-        qeuroToken.approve(VAULT, qeuroAmount);
+        // Get the user's (msg.sender's) current QEURO balance
+        uint256 qeuroBalance = qeuroToken.balanceOf(msg.sender);
+        
+        // If user has no QEURO, skip redemption
+        if (qeuroBalance == 0) {
+            _captureStats("User redeems all his QEURO left (0 QEURO)");
+            return;
+        }
+        
+        qeuroToken.approve(VAULT, qeuroBalance);
         
         // Listen for QeuroShareCalculated events
         vm.recordLogs();
-        vault.redeemQEURO(qeuroAmount, 0);
+        vault.redeemQEURO(qeuroBalance, 0);
         
         // Check for QeuroShareCalculated events
         VmSafe.Log[] memory logs = vm.getRecordedLogs();
@@ -1796,7 +1807,7 @@ contract StateTrackerScenario is Script {
             }
         }
 
-        _captureStats("User redeems 670 QEURO");
+        _captureStats("User redeems all his QEURO left");
     }
 
     function _saveStatisticsToFile() internal {

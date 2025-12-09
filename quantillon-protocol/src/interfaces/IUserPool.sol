@@ -830,6 +830,22 @@ interface IUserPool {
     function totalDeposits() external view returns (uint256);
     
     /**
+     * @notice Returns the total user deposits
+     * @dev Total USDC deposits across all users (in USDC decimals - 6)
+     * @dev Tracks the sum of all USDC deposits made by users
+     * @return Total user deposits in USDC (6 decimals)
+     * @custom:security Validates input parameters and enforces security checks
+     * @custom:validation Validates input parameters and business logic constraints
+     * @custom:state-changes Updates contract state variables
+     * @custom:events Emits relevant events for state changes
+     * @custom:errors Throws custom errors for invalid conditions
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Restricted to authorized roles
+     * @custom:oracle Requires fresh oracle price data
+     */
+    function totalUserDeposits() external view returns (uint256);
+    
+    /**
      * @notice Returns the total stakes
      * @dev Total amount of QEURO staked by all users
      * @return Total staked QEURO amount

@@ -735,15 +735,22 @@ contract StateTrackerScenario is Script {
         QEUROToken qeuroToken = QEUROToken(QEURO);
         HedgerPool hedgerPool = HedgerPool(HEDGER_POOL);
         QuantillonVault vault = QuantillonVault(VAULT);
-        UserPool userPool = UserPool(USER_POOL);
 
         (price, ) = oracle.getEurUsdPrice();
         qeuroMinted = qeuroToken.totalSupply();
-        // User Collateral = Total USDC deposits from users (does not change with price)
-        // This represents the actual USDC deposits backing the QEURO supply
-        // Use totalUserDeposits from UserPool which tracks actual deposits
-        (userCollateral, , , ) = userPool.getPoolTotals();
         hedgerCollateral = hedgerPool.totalMargin();
+        // User Collateral = Total USDC held in vault minus hedger deposits
+        // This represents the actual USDC deposits from users (net after fees) used to mint QEURO
+        // Formula: totalUsdcHeld - hedgerMargin
+        // totalUsdcHeld includes both user deposits and hedger deposits
+        // Subtracting hedgerMargin gives us only user deposits
+        uint256 totalUsdcHeld = vault.totalUsdcHeld();
+        if (totalUsdcHeld >= hedgerCollateral) {
+            userCollateral = totalUsdcHeld - hedgerCollateral;
+        } else {
+            // Edge case: hedger deposits exceed total (shouldn't happen, but safe fallback)
+            userCollateral = 0;
+        }
         uint256 collateralizationRatio = vault.getProtocolCollateralizationRatio();
         // Store as 18 decimals (e.g., 109183495000000000000 = 109.183495%) for maximum precision
         collateralizationPercentage = collateralizationRatio;

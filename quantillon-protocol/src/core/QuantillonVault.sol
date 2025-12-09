@@ -420,8 +420,8 @@ contract QuantillonVault is
         feeCollector = _feeCollector; // Set fee collector
 
         // Default protocol parameters
-        mintFee = 5e16;                 // 5% mint fee (taken from USDC deposit)
-        redemptionFee = 5e16;           // 5% redemption fee
+        mintFee = 1e15;                 // 0.1% mint fee (taken from USDC deposit)
+        redemptionFee = 1e15;           // 0.1% redemption fee
         
         // Default collateralization parameters (in 18 decimals format for maximum precision)
         minCollateralizationRatioForMinting = 105000000000000000000;  // 105.000000% - minimum ratio for minting (105 * 1e18)

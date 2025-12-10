@@ -73,9 +73,11 @@ interface IQuantillonVault {
     /**
      * @notice Retrieves the vault's global metrics
      * @dev Provides comprehensive vault statistics for monitoring and analysis
-     * @return totalUsdcHeld_ Total USDC held in the vault
+     * @return totalUsdcHeld_ Total USDC held directly in the vault
      * @return totalMinted_ Total QEURO minted
      * @return totalDebtValue Total debt value in USD
+     * @return totalUsdcInAave_ Total USDC deployed to Aave for yield
+     * @return totalUsdcAvailable_ Total USDC available (vault + Aave)
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -85,10 +87,12 @@ interface IQuantillonVault {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function getVaultMetrics() external view returns (
+    function getVaultMetrics() external returns (
         uint256 totalUsdcHeld_,
         uint256 totalMinted_,
-        uint256 totalDebtValue
+        uint256 totalDebtValue,
+        uint256 totalUsdcInAave_,
+        uint256 totalUsdcAvailable_
     );
 
     /**
@@ -755,4 +759,83 @@ interface IQuantillonVault {
      * @custom:oracle Requires valid oracle price
      */
     function updatePriceCache() external;
+
+    // =============================================================================
+    // AAVE INTEGRATION - Functions for USDC yield generation via Aave
+    // =============================================================================
+
+    /**
+     * @notice Deploys USDC from the vault to Aave for yield generation
+     * @dev Called by UserPool after minting QEURO to automatically deploy USDC to Aave
+     * @param usdcAmount Amount of USDC to deploy to Aave (6 decimals)
+     * @custom:security Only callable by VAULT_OPERATOR_ROLE (UserPool)
+     * @custom:validation Validates amount > 0, AaveVault is set, and sufficient USDC balance
+     * @custom:state-changes Updates totalUsdcHeld (decreases) and totalUsdcInAave (increases)
+     * @custom:events Emits UsdcDeployedToAave event
+     * @custom:errors Reverts if amount is 0, AaveVault not set, or insufficient USDC
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to VAULT_OPERATOR_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function deployUsdcToAave(uint256 usdcAmount) external;
+
+    /**
+     * @notice Updates the AaveVault address for USDC yield generation
+     * @dev Only governance role can update the AaveVault address
+     * @param _aaveVault New AaveVault address
+     * @custom:security Validates address is not zero before updating
+     * @custom:validation Ensures _aaveVault is not address(0)
+     * @custom:state-changes Updates aaveVault state variable
+     * @custom:events Emits AaveVaultUpdated event
+     * @custom:errors Reverts if _aaveVault is address(0)
+     * @custom:reentrancy No reentrancy risk, simple state update
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateAaveVault(address _aaveVault) external;
+
+    /**
+     * @notice Returns the AaveVault contract address
+     * @dev The AaveVault contract for USDC yield generation
+     * @return Address of the AaveVault contract
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query aaveVault address
+     * @custom:oracle No oracle dependencies
+     */
+    function aaveVault() external view returns (address);
+
+    /**
+     * @notice Returns the total USDC deployed to Aave
+     * @dev Tracks USDC that has been sent to AaveVault for yield generation
+     * @return Total USDC in Aave (6 decimals)
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query total USDC in Aave
+     * @custom:oracle No oracle dependencies
+     */
+    function totalUsdcInAave() external view returns (uint256);
+
+    /**
+     * @notice Returns the vault operator role identifier
+     * @dev Role that can trigger Aave deployments (assigned to UserPool)
+     * @return The vault operator role bytes32 identifier
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query role identifier
+     * @custom:oracle No oracle dependencies
+     */
+    function VAULT_OPERATOR_ROLE() external view returns (bytes32);
 }

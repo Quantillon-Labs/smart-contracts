@@ -72,7 +72,7 @@ contract DeployQuantillonPhaseB is Script {
     function _selectAaveAddresses() internal {
         bool withMocks = vm.envOr("WITH_MOCKS", false);
         if (isLocalhost || withMocks) {
-            MockAavePool mockPool = new MockAavePool(usdc, usdc);
+            MockAavePool mockPool = new MockAavePool(usdc);
             MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(address(mockPool));
             MockRewardsController mockRewards = new MockRewardsController();
             aaveProvider = address(mockProvider);
@@ -91,7 +91,7 @@ contract DeployQuantillonPhaseB is Script {
             }
             if (sizeProvider == 0 || sizeRewards == 0) {
                 console.log("Base Sepolia Aave addresses not contracts, falling back to mocks");
-                MockAavePool mockPool = new MockAavePool(usdc, usdc);
+                MockAavePool mockPool = new MockAavePool(usdc);
                 MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(address(mockPool));
                 MockRewardsController mockRewards = new MockRewardsController();
                 aaveProvider = address(mockProvider);
@@ -111,7 +111,7 @@ contract DeployQuantillonPhaseB is Script {
             }
             if (sizeProvider == 0 || sizeRewards == 0) {
                 console.log("Ethereum Sepolia Aave addresses not contracts, falling back to mocks");
-                MockAavePool mockPool = new MockAavePool(usdc, usdc);
+                MockAavePool mockPool = new MockAavePool(usdc);
                 MockPoolAddressesProvider mockProvider = new MockPoolAddressesProvider(address(mockPool));
                 MockRewardsController mockRewards = new MockRewardsController();
                 aaveProvider = address(mockProvider);

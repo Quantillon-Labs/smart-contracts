@@ -10,6 +10,7 @@ import "../../src/core/QuantillonVault.sol";
 import "../../src/core/UserPool.sol";
 import "../../src/core/HedgerPool.sol";
 import "../../src/core/FeeCollector.sol";
+import "../../src/core/vaults/AaveVault.sol";
 import "../../src/core/yieldmanagement/YieldShift.sol";
 import "./DeploymentHelpers.sol";
 
@@ -21,7 +22,7 @@ contract DeployQuantillonPhaseD is Script {
     YieldShift public yieldShift;
     TimeProvider public timeProvider;
     address public stQeuroToken;
-    address public aaveVault;
+    AaveVault public aaveVault;
 
     address public deployerEOA;
     address public usdc;
@@ -47,7 +48,8 @@ contract DeployQuantillonPhaseD is Script {
             usdc = vm.envAddress("USDC");
         }
         console.log("USDC:", usdc);
-        aaveVault = vm.envAddress("AAVE_VAULT");
+        aaveVault = AaveVault(vm.envAddress("AAVE_VAULT"));
+        console.log("AaveVault:", address(aaveVault));
 
         timeProvider = TimeProvider(tpAddr);
         quantillonVault = QuantillonVault(vaultAddr);
@@ -70,7 +72,7 @@ contract DeployQuantillonPhaseD is Script {
             yieldShift.initialize(deployerEOA, usdc, address(0), address(0), address(0), address(0), deployerEOA, deployerEOA);
             yieldShift.updateUserPool(address(userPool));
             yieldShift.updateHedgerPool(address(hedgerPool));
-            yieldShift.updateAaveVault(aaveVault);
+            yieldShift.updateAaveVault(address(aaveVault));
             yieldShift.updateStQEURO(stQeuroToken);
             yieldShift.bootstrapDefaults();
             hedgerPool.updateAddress(3, address(yieldShift));
@@ -81,6 +83,26 @@ contract DeployQuantillonPhaseD is Script {
         quantillonVault.updateUserPool(address(userPool));
         feeCollector.authorizeFeeSource(address(quantillonVault));
         hedgerPool.setHedgerWhitelist(deployerEOA, true);
+
+        // =============================================================================
+        // AAVE INTEGRATION WIRING
+        // Connect QuantillonVault to AaveVault for automatic USDC deployment
+        // =============================================================================
+        if (address(aaveVault) != address(0)) {
+            // Set AaveVault address on QuantillonVault for auto-deployment on mint
+            quantillonVault.updateAaveVault(address(aaveVault));
+            console.log("QuantillonVault.aaveVault set to:", address(aaveVault));
+            
+            // Grant VAULT_MANAGER_ROLE on AaveVault to QuantillonVault
+            // This allows QuantillonVault to call aaveVault.deployToAave() and withdrawFromAave()
+            bytes32 vaultManagerRole = aaveVault.VAULT_MANAGER_ROLE();
+            if (!aaveVault.hasRole(vaultManagerRole, address(quantillonVault))) {
+                aaveVault.grantRole(vaultManagerRole, address(quantillonVault));
+                console.log("Granted VAULT_MANAGER_ROLE on AaveVault to QuantillonVault");
+            }
+        } else {
+            console.log("WARNING: AaveVault not set, skipping Aave integration wiring");
+        }
 
         vm.stopBroadcast();
         console.log("\nPhase B Complete. YieldShift:", address(yieldShift));

@@ -151,6 +151,7 @@ contract StateTrackerScenario is Script {
     address public USDC;
     address public ORACLE;
     address public MOCK_EUR_USD_FEED;
+    address public MOCK_USDC_USD_FEED;
     address public TIME_PROVIDER;
     address public FEE_COLLECTOR;
 
@@ -232,6 +233,7 @@ contract StateTrackerScenario is Script {
             MockAggregatorV3 usdcUsdMockFeed = new MockAggregatorV3(8);
             usdcUsdFeed = address(usdcUsdMockFeed);
             usdcUsdMockFeed.setPrice(100000000); // 1.00 USD per USDC
+            MOCK_USDC_USD_FEED = usdcUsdFeed; // Store for JSON output
             console2.log("USDC/USD mock feed deployed:", usdcUsdFeed);
         } else {
             // Use real feeds (not needed for scenario, but for completeness)
@@ -670,8 +672,12 @@ contract StateTrackerScenario is Script {
         console2.log("    \"contracts\": {");
         console2.log("      \"TimeProvider\": \"", vm.toString(TIME_PROVIDER), "\",");
         console2.log("      \"MockUSDC\": \"", vm.toString(USDC), "\",");
+        console2.log("      \"USDC\": \"", vm.toString(USDC), "\",");
         console2.log("      \"MockEURUSD\": \"", vm.toString(MOCK_EUR_USD_FEED), "\",");
+        console2.log("      \"MockUSDCUSD\": \"", vm.toString(MOCK_USDC_USD_FEED), "\",");
         console2.log("      \"ChainlinkOracle\": \"", vm.toString(ORACLE), "\",");
+        console2.log("      \"MockChainlinkOracle\": \"", vm.toString(ORACLE), "\",");
+        console2.log("      \"FeeCollector\": \"", vm.toString(FEE_COLLECTOR), "\",");
         console2.log("      \"QEUROToken\": \"", vm.toString(QEURO), "\",");
         console2.log("      \"QuantillonVault\": \"", vm.toString(VAULT), "\",");
         console2.log("      \"UserPool\": \"", vm.toString(USER_POOL), "\",");

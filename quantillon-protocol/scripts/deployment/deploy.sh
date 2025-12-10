@@ -450,8 +450,8 @@ run_deployment() {
         done
         
         export CHAINLINK_ORACLE="${PROXIES_A[0]}"
-        export QEURO_TOKEN="${PROXIES_A[1]}"
-        export FEE_COLLECTOR="${PROXIES_A[2]}"
+        export FEE_COLLECTOR="${PROXIES_A[1]}"
+        export QEURO_TOKEN="${PROXIES_A[2]}"
         export QUANTILLON_VAULT="${PROXIES_A[3]}"
         
         # If QuantillonVault is not in the proxy array, extract it directly

@@ -684,6 +684,7 @@ contract UserPool is
         uint256 qeuroBalanceBefore = IERC20(address(qeuro)).balanceOf(address(this));
         
         // Single vault call instead of multiple calls in loop
+        // Note: Vault automatically deploys USDC to Aave after minting if AaveVault is configured
         vault.mintQEURO(totalNetAmount, totalMinQeuroOut);
         
         // Get actual QEURO balance after minting (accounts for vault's mint fee)

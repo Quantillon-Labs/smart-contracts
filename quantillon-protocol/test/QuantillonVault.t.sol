@@ -966,7 +966,7 @@ contract QuantillonVaultTestSuite is Test {
         vault.mintQEURO(MINT_AMOUNT, 0);
         
         // Get vault metrics
-        (uint256 totalUsdcHeld_, uint256 totalMinted_, uint256 totalDebtValue) = vault.getVaultMetrics();
+        (uint256 totalUsdcHeld_, uint256 totalMinted_, uint256 totalDebtValue, , ) = vault.getVaultMetrics();
         
         // Calculate expected net amount after fee (0.1% fee)
         uint256 expectedNetAmount = MINT_AMOUNT - Math.mulDiv(MINT_AMOUNT, vault.mintFee(), 1e18);

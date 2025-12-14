@@ -423,7 +423,12 @@ contract AaveVault is
         if (expectedPrincipalToDeduct > 0) {
             principalDeposited -= expectedPrincipalToDeduct;
         }
-        usdcWithdrawn = _executeAaveWithdrawal(amount, withdrawAmount, usdcBefore);        
+        usdcWithdrawn = _executeAaveWithdrawal(amount, withdrawAmount, usdcBefore);
+        
+        // Transfer withdrawn USDC back to caller (QuantillonVault)
+        if (usdcWithdrawn > 0) {
+            usdc.safeTransfer(msg.sender, usdcWithdrawn);
+        }
     }
     
     /**

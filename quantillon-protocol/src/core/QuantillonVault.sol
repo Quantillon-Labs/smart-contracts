@@ -22,6 +22,7 @@ import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IOracle} from "../interfaces/IOracle.sol";
 import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
 import {IUserPool} from "../interfaces/IUserPool.sol";
+import {IAaveVault} from "../interfaces/IAaveVault.sol";
 import {FeeCollector} from "./FeeCollector.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
@@ -115,6 +116,11 @@ contract QuantillonVault is
     /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     
+    /// @notice Role for vault operators (UserPool) to trigger Aave deployments
+    /// @dev keccak256 hash avoids role collisions with other contracts
+    /// @dev Should be assigned to UserPool contract
+    bytes32 public constant VAULT_OPERATOR_ROLE = keccak256("VAULT_OPERATOR_ROLE");
+    
 
 
     // =============================================================================
@@ -174,6 +180,14 @@ contract QuantillonVault is
     /// @notice Fee collector contract for protocol fees
     /// @dev Centralized fee collection and distribution
     address public feeCollector;
+
+    /// @notice AaveVault contract for USDC yield generation
+    /// @dev Used to deploy idle USDC to Aave lending pool
+    IAaveVault public aaveVault;
+    
+    /// @notice Total USDC deployed to Aave for yield generation
+    /// @dev Tracks USDC that has been sent to AaveVault
+    uint256 public totalUsdcInAave;
 
     // Protocol parameters (configurable by governance)
     
@@ -317,6 +331,21 @@ contract QuantillonVault is
     /// @param enabled Whether dev mode is enabled or disabled
     /// @param caller Address that triggered the toggle
     event DevModeToggled(bool enabled, address indexed caller);
+
+    /// @notice Emitted when AaveVault address is updated
+    /// @param oldAaveVault Previous AaveVault address
+    /// @param newAaveVault New AaveVault address
+    event AaveVaultUpdated(address indexed oldAaveVault, address indexed newAaveVault);
+
+    /// @notice Emitted when USDC is deployed to Aave for yield generation
+    /// @param usdcAmount Amount of USDC deployed to Aave
+    /// @param totalUsdcInAave New total USDC in Aave after deployment
+    event UsdcDeployedToAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
+
+    /// @notice Emitted when USDC is withdrawn from Aave
+    /// @param usdcAmount Amount of USDC withdrawn from Aave
+    /// @param totalUsdcInAave New total USDC in Aave after withdrawal
+    event UsdcWithdrawnFromAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -538,6 +567,62 @@ contract QuantillonVault is
         }
         
         qeuro.mint(msg.sender, qeuroToMint);
+        
+        // Auto-deploy USDC to Aave for yield generation (if AaveVault is configured)
+        // This happens atomically with minting to ensure USDC is put to work immediately
+        _autoDeployToAave(netAmount);
+    }
+    
+    /**
+     * @notice Internal function to auto-deploy USDC to Aave after minting
+     * @dev Silently catches errors to ensure minting always succeeds even if Aave has issues
+     * @param usdcAmount Amount of USDC to deploy (6 decimals)
+     * @custom:security Uses try-catch to prevent Aave issues from blocking user mints
+     * @custom:validation Validates AaveVault is set and amount > 0
+     * @custom:state-changes Updates totalUsdcHeld and totalUsdcInAave on success
+     * @custom:events Emits UsdcDeployedToAave on success
+     * @custom:errors Silently swallows errors to ensure mints always succeed
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - no access restrictions
+     * @custom:oracle No oracle dependencies
+     */
+    function _autoDeployToAave(uint256 usdcAmount) internal {
+        // Skip if AaveVault not configured or amount is zero
+        if (address(aaveVault) == address(0) || usdcAmount == 0) return;
+        if (totalUsdcHeld < usdcAmount) return;
+        
+        // Try to deploy to Aave, but don't block minting if it fails
+        try this._executeAaveDeployment(usdcAmount) {} catch {}
+    }
+    
+    /**
+     * @notice External function to execute Aave deployment (called by _autoDeployToAave via try/catch)
+     * @dev This is external so it can be called via try/catch for error handling
+     * @param usdcAmount Amount of USDC to deploy (6 decimals)
+     * @custom:security Only callable from this contract
+     * @custom:validation Validates sufficient balance
+     * @custom:state-changes Updates totalUsdcHeld and totalUsdcInAave
+     * @custom:events Emits UsdcDeployedToAave
+     * @custom:errors Throws if insufficient balance or Aave deployment fails
+     * @custom:reentrancy Not protected - internal helper
+     * @custom:access Internal use only (via try/catch)
+     * @custom:oracle No oracle dependencies
+     */
+    function _executeAaveDeployment(uint256 usdcAmount) external {
+        // Only callable from within this contract
+        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
+        
+        // Update state before external calls
+        unchecked {
+            totalUsdcHeld -= usdcAmount;
+            totalUsdcInAave += usdcAmount;
+        }
+        
+        emit UsdcDeployedToAave(usdcAmount, totalUsdcInAave);
+        
+        // Transfer and deploy to Aave
+        usdc.safeIncreaseAllowance(address(aaveVault), usdcAmount);
+        aaveVault.deployToAave(usdcAmount);
     }
 
     /**
@@ -593,6 +678,18 @@ contract QuantillonVault is
         usdcToReturn = usdcToReturn / 1e12; // Convert from 18 to 6 decimals
         
         if (usdcToReturn < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
+        
+        // Check if total available USDC (vault + Aave) is sufficient
+        uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
+        if (totalAvailable < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
+        
+        // If vault doesn't have enough USDC, withdraw from Aave
+        if (totalUsdcHeld < usdcToReturn && totalUsdcInAave > 0 && address(aaveVault) != address(0)) {
+            uint256 deficit = usdcToReturn - totalUsdcHeld;
+            _withdrawUsdcFromAave(deficit);
+        }
+        
+        // Re-check after potential Aave withdrawal
         if (totalUsdcHeld < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
 
         if (address(hedgerPool) == address(0)) revert CommonErrorLibrary.InvalidVault();
@@ -644,9 +741,11 @@ contract QuantillonVault is
     /**
      * @notice Retrieves the vault's global metrics
      * @dev Returns comprehensive vault metrics for monitoring and analytics
-     * @return totalUsdcHeld_ Total USDC held in the vault
+     * @return totalUsdcHeld_ Total USDC held directly in the vault
      * @return totalMinted_ Total QEURO minted
      * @return totalDebtValue Total debt value in USD
+     * @return totalUsdcInAave_ Total USDC deployed to Aave for yield
+     * @return totalUsdcAvailable_ Total USDC available (vault + Aave)
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes No state changes
@@ -661,11 +760,15 @@ contract QuantillonVault is
         returns (
             uint256 totalUsdcHeld_,
             uint256 totalMinted_,
-            uint256 totalDebtValue
+            uint256 totalDebtValue,
+            uint256 totalUsdcInAave_,
+            uint256 totalUsdcAvailable_
         ) 
     {
         totalUsdcHeld_ = totalUsdcHeld;
         totalMinted_ = totalMinted;
+        totalUsdcInAave_ = totalUsdcInAave;
+        totalUsdcAvailable_ = totalUsdcHeld + totalUsdcInAave;
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (isValid && totalMinted > 0) {
@@ -903,6 +1006,96 @@ contract QuantillonVault is
         feeCollector = _feeCollector;
         emit ParametersUpdated("feeCollector", 0, 0);
     }
+
+    /**
+     * @notice Updates the AaveVault address for USDC yield generation
+     * @dev Only governance role can update the AaveVault address
+     * @param _aaveVault New AaveVault address
+     * @custom:security Validates address is not zero before updating
+     * @custom:validation Ensures _aaveVault is not address(0)
+     * @custom:state-changes Updates aaveVault state variable
+     * @custom:events Emits AaveVaultUpdated event
+     * @custom:errors Reverts if _aaveVault is address(0)
+     * @custom:reentrancy No reentrancy risk, simple state update
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function updateAaveVault(address _aaveVault) external onlyRole(GOVERNANCE_ROLE) {
+        if (_aaveVault == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        address oldAaveVault = address(aaveVault);
+        aaveVault = IAaveVault(_aaveVault);
+        emit AaveVaultUpdated(oldAaveVault, _aaveVault);
+    }
+
+    // =============================================================================
+    // AAVE INTEGRATION FUNCTIONS - Deploy USDC to Aave for yield generation
+    // =============================================================================
+
+    /**
+     * @notice Deploys USDC from the vault to Aave for yield generation
+     * @dev Called by UserPool after minting QEURO to automatically deploy USDC to Aave
+     * @param usdcAmount Amount of USDC to deploy to Aave (6 decimals)
+     * @custom:security Only callable by VAULT_OPERATOR_ROLE (UserPool)
+     * @custom:validation Validates amount > 0, AaveVault is set, and sufficient USDC balance
+     * @custom:state-changes Updates totalUsdcHeld (decreases) and totalUsdcInAave (increases)
+     * @custom:events Emits UsdcDeployedToAave event
+     * @custom:errors Reverts if amount is 0, AaveVault not set, or insufficient USDC
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Restricted to VAULT_OPERATOR_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function deployUsdcToAave(uint256 usdcAmount) external nonReentrant onlyRole(VAULT_OPERATOR_ROLE) {
+        // CHECKS
+        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
+        if (address(aaveVault) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
+        
+        // EFFECTS - Update state before external calls
+        unchecked {
+            totalUsdcHeld -= usdcAmount;
+            totalUsdcInAave += usdcAmount;
+        }
+        
+        emit UsdcDeployedToAave(usdcAmount, totalUsdcInAave);
+        
+        // INTERACTIONS - Transfer USDC to AaveVault and deploy to Aave
+        usdc.safeIncreaseAllowance(address(aaveVault), usdcAmount);
+        aaveVault.deployToAave(usdcAmount);
+    }
+
+    /**
+     * @notice Withdraws USDC from Aave back to the vault
+     * @dev Called internally when redemptions require more USDC than available in vault
+     * @param usdcAmount Amount of USDC to withdraw from Aave (6 decimals)
+     * @return usdcWithdrawn Actual amount of USDC withdrawn
+     * @custom:security Internal function, called during redemption flow
+     * @custom:validation Validates amount > 0 and AaveVault is set
+     * @custom:state-changes Updates totalUsdcHeld (increases) and totalUsdcInAave (decreases)
+     * @custom:events Emits UsdcWithdrawnFromAave event
+     * @custom:errors Reverts if amount is 0 or AaveVault not set
+     * @custom:reentrancy Not protected - internal function only
+     * @custom:access Internal function - called by redeemQEURO
+     * @custom:oracle No oracle dependencies
+     */
+    function _withdrawUsdcFromAave(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn) {
+        if (address(aaveVault) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (usdcAmount == 0) return 0;
+        
+        // Cap withdrawal to what's actually in Aave
+        uint256 amountToWithdraw = usdcAmount > totalUsdcInAave ? totalUsdcInAave : usdcAmount;
+        if (amountToWithdraw == 0) return 0;
+        
+        // Withdraw from AaveVault
+        usdcWithdrawn = aaveVault.withdrawFromAave(amountToWithdraw);
+        
+        // Update state after successful withdrawal
+        unchecked {
+            totalUsdcInAave -= usdcWithdrawn;
+            totalUsdcHeld += usdcWithdrawn;
+        }
+        
+        emit UsdcWithdrawnFromAave(usdcWithdrawn, totalUsdcInAave);
+    }
     
     /**
      * @notice Updates price deviation protection parameters
@@ -1009,6 +1202,18 @@ contract QuantillonVault is
         if (msg.sender != address(hedgerPool)) revert CommonErrorLibrary.NotAuthorized();
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         if (hedger == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        
+        // Check if total available USDC (vault + Aave) is sufficient
+        uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
+        if (totalAvailable < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
+        
+        // If vault doesn't have enough USDC, withdraw from Aave
+        if (totalUsdcHeld < usdcAmount && totalUsdcInAave > 0 && address(aaveVault) != address(0)) {
+            uint256 deficit = usdcAmount - totalUsdcHeld;
+            _withdrawUsdcFromAave(deficit);
+        }
+        
+        // Re-check after potential Aave withdrawal
         if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
         
         // Update vault's total USDC reserves
@@ -1023,20 +1228,20 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Gets the total USDC available for hedger deposits
-     * @dev Returns the current total USDC held in the vault for transparency
-     * @return uint256 Total USDC held in vault (6 decimals)
+     * @notice Gets the total USDC available (vault + Aave)
+     * @dev Returns total USDC that can be used for withdrawals/redemptions
+     * @return uint256 Total USDC available (vault + Aave) (6 decimals)
      * @custom:security No security validations required - view function
      * @custom:validation No input validation required - view function
      * @custom:state-changes No state changes - view function only
      * @custom:events No events emitted
      * @custom:errors No errors thrown
      * @custom:reentrancy Not applicable - view function
-     * @custom:access Public access - anyone can query total USDC held
+     * @custom:access Public access - anyone can query total USDC available
      * @custom:oracle No oracle dependencies
      */
     function getTotalUsdcAvailable() external view returns (uint256) {
-        return totalUsdcHeld;
+        return totalUsdcHeld + totalUsdcInAave;
     }
 
     // =============================================================================

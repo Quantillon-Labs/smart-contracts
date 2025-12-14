@@ -19,7 +19,7 @@ import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 
 // Internal interfaces of the Quantillon protocol
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
-import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../interfaces/IOracle.sol";
 import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
 import {IUserPool} from "../interfaces/IUserPool.sol";
 import {FeeCollector} from "./FeeCollector.sol";
@@ -129,6 +129,13 @@ contract QuantillonVault is
     /// @notice Minimum number of blocks required between price updates for deviation checks
     /// @dev Prevents manipulation within the same block
     uint256 private constant MIN_BLOCKS_BETWEEN_UPDATES = 1;
+    
+    // Collateralization ratio constants (in 18 decimals format)
+    // Fixes Slither ID-31-34: Replace magic numbers with named constants
+    uint256 private constant MIN_COLLATERALIZATION_RATIO_FOR_MINTING = 105e18; // 105.000000%
+    uint256 private constant CRITICAL_COLLATERALIZATION_RATIO = 101e18; // 101.000000%
+    uint256 private constant MIN_ALLOWED_COLLATERALIZATION_RATIO = 101e18; // 101.000000% - minimum allowed value
+    uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18; // 100.000000% - minimum allowed critical ratio
 
 
     // =============================================================================
@@ -145,10 +152,10 @@ contract QuantillonVault is
     /// @dev Should be the official USDC contract on the target network
     IERC20 public usdc;
     
-    /// @notice Chainlink oracle contract for EUR/USD price feeds
+    /// @notice Oracle contract for EUR/USD price feeds (Chainlink or Stork via router)
     /// @dev Provides real-time EUR/USD exchange rates for minting and redemption
     /// @dev Used for price calculations in swap operations
-    IChainlinkOracle public oracle;
+    IOracle public oracle;
 
     /// @notice HedgerPool contract for collateralization checks
     /// @dev Used to verify protocol has sufficient hedging positions before minting QEURO
@@ -408,7 +415,7 @@ contract QuantillonVault is
         // Connections to external contracts
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
-        oracle = IChainlinkOracle(_oracle);
+        oracle = IOracle(_oracle);
         // HedgerPool and UserPool can be set later via update functions if addresses are zero
         if (_hedgerPool != address(0)) {
             hedgerPool = IHedgerPool(_hedgerPool);
@@ -424,8 +431,8 @@ contract QuantillonVault is
         redemptionFee = 1e15;           // 0.1% redemption fee
         
         // Default collateralization parameters (in 18 decimals format for maximum precision)
-        minCollateralizationRatioForMinting = 105000000000000000000;  // 105.000000% - minimum ratio for minting (105 * 1e18)
-        criticalCollateralizationRatio = 101000000000000000000;       // 101.000000% - critical ratio for liquidation (101 * 1e18)
+        minCollateralizationRatioForMinting = MIN_COLLATERALIZATION_RATIO_FOR_MINTING;  // 105.000000% - minimum ratio for minting
+        criticalCollateralizationRatio = CRITICAL_COLLATERALIZATION_RATIO;               // 101.000000% - critical ratio for liquidation
         
         // Initialize price tracking for flash loan protection
         lastValidEurUsdPrice = 0;       // Will be set on first price fetch
@@ -808,8 +815,8 @@ contract QuantillonVault is
         uint256 _minCollateralizationRatioForMinting,
         uint256 _criticalCollateralizationRatio
     ) external onlyRole(GOVERNANCE_ROLE) {
-        if (_minCollateralizationRatioForMinting < 101000000000000000000) revert CommonErrorLibrary.InvalidThreshold();
-        if (_criticalCollateralizationRatio < 100000000000000000000) revert CommonErrorLibrary.InvalidThreshold();
+        if (_minCollateralizationRatioForMinting < MIN_ALLOWED_COLLATERALIZATION_RATIO) revert CommonErrorLibrary.InvalidThreshold();
+        if (_criticalCollateralizationRatio < MIN_ALLOWED_CRITICAL_RATIO) revert CommonErrorLibrary.InvalidThreshold();
         if (_criticalCollateralizationRatio > _minCollateralizationRatioForMinting) revert CommonErrorLibrary.InvalidThreshold();
 
         minCollateralizationRatioForMinting = _minCollateralizationRatioForMinting;
@@ -837,7 +844,7 @@ contract QuantillonVault is
      */
     function updateOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE) {
         if (_oracle == address(0)) revert CommonErrorLibrary.InvalidOracle();
-        oracle = IChainlinkOracle(_oracle);
+        oracle = IOracle(_oracle);
     }
 
     /**
@@ -1049,7 +1056,7 @@ contract QuantillonVault is
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle Requires valid oracle price
      */
-    function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) {
+    function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) nonReentrant {
         // Cache old price before external call
         uint256 oldPrice = lastValidEurUsdPrice;
         

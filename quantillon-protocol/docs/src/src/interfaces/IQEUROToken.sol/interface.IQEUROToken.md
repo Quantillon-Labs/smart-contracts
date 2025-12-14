@@ -381,7 +381,7 @@ Initialize the QEURO token contract
 
 
 ```solidity
-function initialize(address admin, address vault, address timelock, address treasury) external;
+function initialize(address admin, address vault, address timelock, address treasury, address feeCollector) external;
 ```
 **Parameters**
 
@@ -391,6 +391,7 @@ function initialize(address admin, address vault, address timelock, address trea
 |`vault`|`address`|Address of the vault contract|
 |`timelock`|`address`|Address of the timelock contract|
 |`treasury`|`address`|Treasury address|
+|`feeCollector`|`address`|Address of the fee collector contract|
 
 
 ### mint

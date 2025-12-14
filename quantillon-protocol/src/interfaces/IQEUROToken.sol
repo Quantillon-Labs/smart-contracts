@@ -175,6 +175,7 @@ interface IQEUROToken {
      * @param vault Address of the vault contract
      * @param timelock Address of the timelock contract
      * @param treasury Treasury address
+     * @param feeCollector Address of the fee collector contract
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables

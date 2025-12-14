@@ -159,6 +159,19 @@ uint256 public constant MAX_COMPLIANCE_BATCH_SIZE = 50;
 ```
 
 
+### MINT_FEE_RATE
+Protocol fee rate for minting (0.1% = 1e15)
+
+*Fee is calculated as: fee = amount * MINT_FEE_RATE / PRECISION*
+
+*Value: 1e15 = 0.1% (since PRECISION = 1e18 = 100%)*
+
+
+```solidity
+uint256 public constant MINT_FEE_RATE = 1e15;
+```
+
+
 ### maxSupply
 Current maximum supply limit (updatable by governance)
 
@@ -266,6 +279,17 @@ address public treasury;
 ```
 
 
+### feeCollector
+FeeCollector contract address for protocol fee collection
+
+*Protocol fees from minting are sent to this contract*
+
+
+```solidity
+address public feeCollector;
+```
+
+
 ## Functions
 ### flashLoanProtection
 
@@ -317,7 +341,8 @@ Initializes the QEURO token (called only once at deployment)
 2. Configures the role system
 3. Assigns appropriate roles
 4. Configures pause and upgrade system
-5. Sets initial rate limits and precision settings*
+5. Sets initial rate limits and precision settings
+6. Sets FeeCollector address for protocol fees*
 
 *Security considerations:
 - Only callable once (initializer modifier)
@@ -344,7 +369,9 @@ Initializes the QEURO token (called only once at deployment)
 
 
 ```solidity
-function initialize(address admin, address vault, address _timelock, address _treasury) public initializer;
+function initialize(address admin, address vault, address _timelock, address _treasury, address _feeCollector)
+    public
+    initializer;
 ```
 **Parameters**
 
@@ -354,6 +381,7 @@ function initialize(address admin, address vault, address _timelock, address _tr
 |`vault`|`address`|Address of the QuantillonVault (will get MINTER_ROLE and BURNER_ROLE)|
 |`_timelock`|`address`|Address of the timelock contract|
 |`_treasury`|`address`|Treasury address for protocol fees|
+|`_feeCollector`|`address`|Address of the FeeCollector contract for protocol fee collection|
 
 
 ### mint
@@ -367,7 +395,13 @@ Mints QEURO tokens to a specified address
 - Input parameter validation
 - Rate limiting
 - Blacklist/whitelist checks
-Usage example: vault.mint(user, 1000 * 1e18) for 1000 QEURO*
+- Protocol fee collection (0.1% of minted amount)*
+
+*Protocol fee: 0.1% of the minted amount is collected and sent to FeeCollector
+The user receives (amount - fee), and FeeCollector receives the fee
+Usage example: vault.mint(user, 1000 * 1e18) for 1000 QEURO
+- User receives: 999 QEURO (1000 - 1)
+- FeeCollector receives: 1 QEURO (0.1% fee)*
 
 *Security considerations:
 - Only MINTER_ROLE can mint
@@ -412,7 +446,7 @@ Batch mint QEURO tokens to multiple addresses
 
 *Applies the same validations as single mint per item to avoid bypassing
 rate limits, blacklist/whitelist checks, and max supply constraints.
-Using external mint for each entry reuses all checks and events.*
+Protocol fee (0.1%) is collected for each mint in the batch.*
 
 **Notes:**
 - Validates input parameters and enforces security checks
@@ -1693,6 +1727,40 @@ function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE)
 |`_treasury`|`address`|New treasury address|
 
 
+### updateFeeCollector
+
+Update FeeCollector address
+
+*SECURITY: Only governance can update FeeCollector address*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to DEFAULT_ADMIN_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function updateFeeCollector(address _feeCollector) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_feeCollector`|`address`|New FeeCollector address|
+
+
 ### getTokenInfo
 
 Complete token information (for monitoring)
@@ -2096,6 +2164,37 @@ event ETHRecovered(address indexed to, uint256 indexed amount);
 |----|----|-----------|
 |`to`|`address`|Address to which ETH was recovered|
 |`amount`|`uint256`|Amount of ETH recovered|
+
+### ProtocolFeeCollected
+Emitted when protocol fee is collected on mint
+
+
+```solidity
+event ProtocolFeeCollected(uint256 indexed amount, uint256 indexed feeAmount, address indexed feeCollector);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Total amount minted|
+|`feeAmount`|`uint256`|Protocol fee amount collected|
+|`feeCollector`|`address`|Address of the fee collector|
+
+### FeeCollectorUpdated
+Emitted when FeeCollector address is updated
+
+
+```solidity
+event FeeCollectorUpdated(address indexed oldFeeCollector, address indexed newFeeCollector);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`oldFeeCollector`|`address`|Previous FeeCollector address|
+|`newFeeCollector`|`address`|New FeeCollector address|
 
 ## Structs
 ### RateLimitCaps

@@ -148,7 +148,8 @@ contract QuantillonInvariants is Test {
             admin,
             treasury,
             mockTimelock,
-            admin // Use admin as treasury for testing
+            admin, // Use admin as treasury for testing
+            address(0x456) // feeCollector
         );
         ERC1967Proxy qeuroProxy = new ERC1967Proxy(address(qeuroImplementation), qeuroInitData);
         qeuroToken = QEUROToken(address(qeuroProxy));

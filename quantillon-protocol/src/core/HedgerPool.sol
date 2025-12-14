@@ -8,7 +8,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../interfaces/IOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
@@ -48,7 +48,7 @@ contract HedgerPool is
     bytes32 public constant HEDGER_ROLE = keccak256("HEDGER_ROLE");
 
     IERC20 public usdc;
-    IChainlinkOracle public oracle;
+    IOracle public oracle;
     IYieldShift public yieldShift;
     IQuantillonVault public vault;
     address public treasury;
@@ -222,7 +222,7 @@ contract HedgerPool is
         _grantRole(EMERGENCY_ROLE, admin);
 
         usdc = IERC20(_usdc);
-        oracle = IChainlinkOracle(_oracle);
+        oracle = IOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
         vault = IQuantillonVault(_vault);
         
@@ -1126,7 +1126,7 @@ contract HedgerPool is
         if (addr == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (slot == 0) { treasury = addr; emit TreasuryUpdated(addr); }
         else if (slot == 1) { vault = IQuantillonVault(addr); emit VaultUpdated(addr); }
-        else if (slot == 2) oracle = IChainlinkOracle(addr);
+        else if (slot == 2) oracle = IOracle(addr);
         else if (slot == 3) yieldShift = IYieldShift(addr);
         else revert HedgerPoolErrorLibrary.InvalidPosition();
     }
@@ -1332,6 +1332,7 @@ contract HedgerPool is
      * @dev Clears position's filled volume and redistributes it to other active positions
      * @param positionId Unique identifier of the position being unwound
      * @param position Storage reference to the position being unwound
+     * @param cachedPrice Cached EUR/USD price to avoid reentrancy (18 decimals)
      * @return freedVolume Amount of filled volume that was freed and redistributed
      * @custom:security Internal function - assumes position is valid and active
      * @custom:validation Validates totalFilledExposure >= cachedFilledVolume before decrementing
@@ -1612,6 +1613,7 @@ contract HedgerPool is
      * @param posId ID of the position being processed
      * @param pos Storage pointer to the position struct
      * @param share Amount of USDC exposure being released (6 decimals)
+     * @param filledBefore Filled volume before redemption (used for P&L calculation)
      * @param price Current EUR/USD oracle price for redemption (18 decimals)
      * @param qeuroAmount QEURO amount being redeemed (18 decimals)
      * @custom:security Internal function - calculates and records realized P&L

@@ -6,7 +6,7 @@ import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../src/interfaces/IOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
 import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
@@ -308,7 +308,7 @@ contract HedgerPoolTestSuite is Test {
         // Setup mock oracle calls
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(EUR_USD_PRICE, true) // price and isValid
         );
         
@@ -804,7 +804,7 @@ contract HedgerPoolTestSuite is Test {
         // Mock a different exit price for P&L calculation
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(EUR_USD_PRICE_HIGH, true) // Higher price = profit for long position
         );
         
@@ -1519,7 +1519,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 higherPrice = EUR_USD_PRICE * 15000 / 10000; // 50% higher price
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(higherPrice, true)
         );
         
@@ -1594,7 +1594,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 veryHighPrice = EUR_USD_PRICE * 200 / 100; // 100% price increase to ensure liquidation
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(veryHighPrice, true) // Very high price = margin ratio drops below 1%
         );
         
@@ -2609,7 +2609,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 stressedPrice = EUR_USD_PRICE * 200 / 100;
         vm.mockCall(
             address(mockOracle),
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(stressedPrice, true)
         );
         

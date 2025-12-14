@@ -8,7 +8,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
 import {IQuantillonVault} from "../src/interfaces/IQuantillonVault.sol";
-import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../src/interfaces/IOracle.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
@@ -219,7 +219,7 @@ contract UserPoolTestSuite is Test {
         // Setup mock oracle calls
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(uint256(108000000), true) // 1.08 EUR/USD scaled by 1e8
         );
         
@@ -248,7 +248,7 @@ contract UserPoolTestSuite is Test {
         // Setup mock Oracle calls
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(uint256(1.08e18), true) // Return 1.08 EUR/USD rate, valid
         );
         

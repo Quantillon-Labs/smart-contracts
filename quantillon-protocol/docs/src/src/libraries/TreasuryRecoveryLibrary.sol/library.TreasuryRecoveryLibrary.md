@@ -95,3 +95,46 @@ function recoverETH(address treasury) external;
 |`treasury`|`address`|The contract's treasury address|
 
 
+### secureETHTransfer
+
+Secure ETH transfer with whitelist validation
+
+*SECURITY: Only whitelisted addresses can receive ETH, preventing arbitrary sends*
+
+*Gas optimization: Uses library function to avoid code duplication*
+
+*Security: Prevents arbitrary ETH transfers via whitelist validation*
+
+*Error handling: Uses custom errors for gas efficiency*
+
+**Notes:**
+- Validates recipient is whitelisted and not a contract
+
+- Validates amount > 0 and recipient is authorized
+
+- Transfers ETH from contract to recipient
+
+- No events emitted (caller should emit if needed)
+
+- Throws InvalidAddress, InvalidAmount, ZeroAddress, ETHTransferFailed
+
+- Protected by whitelist validation
+
+- Internal function, access control handled by caller
+
+- No oracle dependencies
+
+
+```solidity
+function secureETHTransfer(address recipient, uint256 amount, mapping(address => bool) storage authorizedRecipients)
+    external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`recipient`|`address`|Address to receive ETH (must be whitelisted)|
+|`amount`|`uint256`|Amount of ETH to transfer|
+|`authorizedRecipients`|`mapping(address => bool)`|Mapping of authorized recipient addresses|
+
+

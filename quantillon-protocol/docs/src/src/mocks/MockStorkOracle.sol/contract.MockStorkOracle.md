@@ -1,13 +1,13 @@
-# MockChainlinkOracle
+# MockStorkOracle
 **Inherits:**
-[IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
+[IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
 
 **Author:**
 Quantillon Labs
 
-Mock oracle that implements IChainlinkOracle interface but uses mock feeds
+Mock oracle that implements IStorkOracle interface but uses mock data
 
-*Used for localhost testing - provides same interface as ChainlinkOracle*
+*Used for localhost testing - provides same interface as StorkOracle*
 
 
 ## State Variables
@@ -22,20 +22,6 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
 ```solidity
 bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
-```
-
-
-### eurUsdPriceFeed
-
-```solidity
-AggregatorV3Interface public eurUsdPriceFeed;
-```
-
-
-### usdcUsdPriceFeed
-
-```solidity
-AggregatorV3Interface public usdcUsdPriceFeed;
 ```
 
 
@@ -147,21 +133,28 @@ Initializes the mock oracle
 
 
 ```solidity
-function initialize(address admin, address _eurUsdPriceFeed, address _usdcUsdPriceFeed, address) external initializer;
+function initialize(
+    address admin,
+    address _storkFeedAddress,
+    bytes32 _eurUsdFeedId,
+    bytes32 _usdcUsdFeedId,
+    address _treasury
+) external initializer;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`admin`|`address`|Admin address|
-|`_eurUsdPriceFeed`|`address`|Mock EUR/USD feed address|
-|`_usdcUsdPriceFeed`|`address`|Mock USDC/USD feed address|
-|`<none>`|`address`||
+|`_storkFeedAddress`|`address`|Mock Stork feed address (unused, kept for interface compatibility)|
+|`_eurUsdFeedId`|`bytes32`|Mock EUR/USD feed ID (unused, kept for interface compatibility)|
+|`_usdcUsdFeedId`|`bytes32`|Mock USDC/USD feed ID (unused, kept for interface compatibility)|
+|`_treasury`|`address`|Treasury address|
 
 
 ### getEurUsdPrice
 
-Gets the current EUR/USD price with validation and auto-updates lastValidEurUsdPrice
+Gets the current EUR/USD price with validation
 
 
 ```solidity
@@ -191,88 +184,9 @@ function getUsdcUsdPrice() external view override returns (uint256 price, bool i
 |`isValid`|`bool`|True if price is valid and fresh|
 
 
-### _updatePrices
-
-Updates prices and validates them
-
-*Internal function to update and validate current prices*
-
-
-```solidity
-function _updatePrices() internal;
-```
-
-### _calculateEurUsdPrice
-
-Internal function to calculate EUR/USD price
-
-*Avoids external calls to prevent reentrancy*
-
-
-```solidity
-function _calculateEurUsdPrice() internal pure returns (uint256);
-```
-
-### _calculateUsdcUsdPrice
-
-Internal function to calculate USDC/USD price
-
-*Avoids external calls to prevent reentrancy*
-
-
-```solidity
-function _calculateUsdcUsdPrice() internal pure returns (uint256);
-```
-
-### _scalePrice
-
-Scales price from feed decimals to 18 decimals
-
-
-```solidity
-function _scalePrice(int256 price, uint8 feedDecimals) internal pure returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`price`|`int256`|Price from feed|
-|`feedDecimals`|`uint8`|Number of decimals in the feed|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Scaled price in 18 decimals|
-
-
-### _divRound
-
-Divides with rounding
-
-
-```solidity
-function _divRound(uint256 a, uint256 b) internal pure returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`a`|`uint256`|Numerator|
-|`b`|`uint256`|Denominator|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Result with rounding|
-
-
 ### updateTreasury
 
 Updates treasury address
-
-*Treasury can only be updated to the original admin address to prevent arbitrary sends*
 
 
 ```solidity
@@ -345,7 +259,7 @@ Mock implementation of getOracleHealth
 
 
 ```solidity
-function getOracleHealth() external pure override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
+function getOracleHealth() external view override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh);
 ```
 
 ### getEurUsdDetails
@@ -424,7 +338,11 @@ Mock implementation of updatePriceFeeds
 
 
 ```solidity
-function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external override onlyRole(ORACLE_MANAGER_ROLE);
+function updatePriceFeeds(address _storkFeedAddress, bytes32 _eurUsdFeedId, bytes32 _usdcUsdFeedId)
+    external
+    view
+    override
+    onlyRole(ORACLE_MANAGER_ROLE);
 ```
 
 ### recoverToken
@@ -486,23 +404,6 @@ function setPrices(uint256 _eurUsdPrice, uint256 _usdcUsdPrice) external onlyRol
 |----|----|-----------|
 |`_eurUsdPrice`|`uint256`|The new EUR/USD price in 18 decimals|
 |`_usdcUsdPrice`|`uint256`|The new USDC/USD price in 18 decimals|
-
-
-### setUpdatedAt
-
-Set the updated timestamp for testing purposes
-
-*Only available in mock oracle for testing*
-
-
-```solidity
-function setUpdatedAt(uint256 _updatedAt) external onlyRole(DEFAULT_ADMIN_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_updatedAt`|`uint256`|The new timestamp|
 
 
 ### setDevMode

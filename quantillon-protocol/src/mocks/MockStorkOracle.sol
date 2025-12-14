@@ -1,28 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import "../interfaces/IChainlinkOracle.sol";
+import "../interfaces/IStorkOracle.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "../libraries/CommonValidationLibrary.sol";
 
 /**
- * @title MockChainlinkOracle
- * @notice Mock oracle that implements IChainlinkOracle interface but uses mock feeds
- * @dev Used for localhost testing - provides same interface as ChainlinkOracle
+ * @title MockStorkOracle
+ * @notice Mock oracle that implements IStorkOracle interface but uses mock data
+ * @dev Used for localhost testing - provides same interface as StorkOracle
  * @author Quantillon Labs
  */
-contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract MockStorkOracle is IStorkOracle, Initializable, AccessControlUpgradeable, PausableUpgradeable {
     
     // Role definitions
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
-    
-    // Mock feed interfaces
-    AggregatorV3Interface public eurUsdPriceFeed;
-    AggregatorV3Interface public usdcUsdPriceFeed;
     
     // Treasury address
     address public treasury;
@@ -30,7 +25,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     // Original admin address (immutable after initialization)
     address private originalAdmin;
     
-    // Price bounds (same as ChainlinkOracle)
+    // Price bounds (same as StorkOracle)
     uint256 public constant MIN_EUR_USD_PRICE = 0.5e18;  // 0.5 USD
     uint256 public constant MAX_EUR_USD_PRICE = 2.0e18;  // 2.0 USD
     uint256 public constant MIN_USDC_USD_PRICE = 0.95e18; // 0.95 USD
@@ -64,18 +59,20 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Initializes the mock oracle
      * @param admin Admin address
-     * @param _eurUsdPriceFeed Mock EUR/USD feed address
-     * @param _usdcUsdPriceFeed Mock USDC/USD feed address
+     * @param _storkFeedAddress Mock Stork feed address (unused, kept for interface compatibility)
+     * @param _eurUsdFeedId Mock EUR/USD feed ID (unused, kept for interface compatibility)
+     * @param _usdcUsdFeedId Mock USDC/USD feed ID (unused, kept for interface compatibility)
+     * @param _treasury Treasury address
      */
     function initialize(
         address admin,
-        address _eurUsdPriceFeed,
-        address _usdcUsdPriceFeed,
-        address /* _treasury */
+        address _storkFeedAddress,
+        bytes32 _eurUsdFeedId,
+        bytes32 _usdcUsdFeedId,
+        address _treasury
     ) external initializer {
+        // Validate admin address before any assignments (fixes Slither ID-6)
         CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
-        CommonValidationLibrary.validateNonZeroAddress(_eurUsdPriceFeed, "oracle");
-        CommonValidationLibrary.validateNonZeroAddress(_usdcUsdPriceFeed, "oracle");
         
         __AccessControl_init();
         __Pausable_init();
@@ -85,24 +82,24 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         _grantRole(EMERGENCY_ROLE, admin);
         _grantRole(ORACLE_MANAGER_ROLE, admin);
         
-        // Set feed addresses
-        eurUsdPriceFeed = AggregatorV3Interface(_eurUsdPriceFeed);
-        usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdPriceFeed);
-        require(admin != address(0), "Admin cannot be zero address");
-        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
-        
         // Store original admin address for security
         originalAdmin = admin;
-        treasury = admin; // Use admin as treasury for mock
+        treasury = _treasury != address(0) ? _treasury : admin; // Use admin as treasury if not provided
         
-        // Initialize with default prices (no recursive calls during initialization)
+        // Parameters are unused in mock, but kept for interface compatibility
+        // Suppress unused parameter warnings by referencing them
+        _storkFeedAddress;
+        _eurUsdFeedId;
+        _usdcUsdFeedId;
+        
+        // Initialize with default prices
         lastValidEurUsdPrice = 1.08e18; // 1.08 USD
         lastValidUsdcUsdPrice = 1.00e18; // 1.00 USD
         lastPriceUpdateBlock = block.number;
     }
     
     /**
-     * @notice Gets the current EUR/USD price with validation and auto-updates lastValidEurUsdPrice
+     * @notice Gets the current EUR/USD price with validation
      * @return price EUR/USD price in 18 decimals
      * @return isValid True if price is valid and fresh
      */
@@ -112,32 +109,9 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
             return (lastValidEurUsdPrice, false);
         }
 
-        // Fetch data from mock feed
-        (uint80 roundId, int256 rawPrice, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = eurUsdPriceFeed.latestRoundData();
-        
-        // Data freshness check (more lenient for mock feeds)
-        if (rawPrice <= 0 || roundId != answeredInRound || startedAt > updatedAt) {
-            return (lastValidEurUsdPrice, false);
-        }
-
-        // Convert Chainlink decimals (usually 8) to 18 decimals
-        uint8 feedDecimals = eurUsdPriceFeed.decimals();
-        price = _scalePrice(rawPrice, feedDecimals);
-
-        // Circuit breaker bounds check
+        // Return last valid price (mock implementation)
+        price = lastValidEurUsdPrice;
         isValid = price >= MIN_EUR_USD_PRICE && price <= MAX_EUR_USD_PRICE;
-
-        // Deviation check against last valid price (skip if dev mode is enabled)
-        if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
-            uint256 base = lastValidEurUsdPrice;
-            uint256 diff = price > base ? price - base : base - price;
-            uint256 deviationBps = _divRound(diff * 10000, base);
-            if (deviationBps > MAX_PRICE_DEVIATION) {
-                isValid = false;
-            }
-        }
-
-        return (price, isValid);
     }
     
     /**
@@ -151,107 +125,18 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
             return (lastValidUsdcUsdPrice, false);
         }
 
-        // Fetch data from mock feed
-        (uint80 roundId, int256 rawPrice, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = usdcUsdPriceFeed.latestRoundData();
-        
-        // Data freshness check (more lenient for mock feeds)
-        if (rawPrice <= 0 || roundId != answeredInRound || startedAt > updatedAt) {
-            return (lastValidUsdcUsdPrice, false);
-        }
-
-        // Convert Chainlink decimals (usually 8) to 18 decimals
-        uint8 feedDecimals = usdcUsdPriceFeed.decimals();
-        price = _scalePrice(rawPrice, feedDecimals);
-
-        // Circuit breaker bounds check
+        // Return last valid price (mock implementation)
+        price = lastValidUsdcUsdPrice;
         isValid = price >= MIN_USDC_USD_PRICE && price <= MAX_USDC_USD_PRICE;
-
-        // Deviation check against last valid price (skip if dev mode is enabled)
-        if (isValid && lastValidUsdcUsdPrice > 0 && !devModeEnabled) {
-            uint256 base = lastValidUsdcUsdPrice;
-            uint256 diff = price > base ? price - base : base - price;
-    
-            uint256 deviationBps = _divRound(diff * 10000, base);
-            if (deviationBps > MAX_PRICE_DEVIATION) {
-                isValid = false;
-            }
-        }
-        
-        return (price, isValid);
-    }
-    
-    /**
-     * @notice Updates prices and validates them
-     * @dev Internal function to update and validate current prices
-     */
-    function _updatePrices() internal {
-        // Update block number first (EFFECTS - before external calls)
-        lastPriceUpdateBlock = block.number;
-        
-        // Calculate new prices directly without external calls to avoid reentrancy
-        // This is a mock oracle, so we can calculate prices directly
-        uint256 eurUsdPrice = _calculateEurUsdPrice();
-        uint256 usdcUsdPrice = _calculateUsdcUsdPrice();
-        
-        // Update state variables (EFFECTS)
-        lastValidEurUsdPrice = eurUsdPrice;
-        lastValidUsdcUsdPrice = usdcUsdPrice;
-    }
-    
-    /**
-     * @notice Internal function to calculate EUR/USD price
-     * @dev Avoids external calls to prevent reentrancy
-     */
-    function _calculateEurUsdPrice() internal pure returns (uint256) {
-        // Mock price calculation - in real implementation this would be from external source
-        return 1.10e9; // 1.10 * 1e9 (9 decimals)
-    }
-    
-    /**
-     * @notice Internal function to calculate USDC/USD price
-     * @dev Avoids external calls to prevent reentrancy
-     */
-    function _calculateUsdcUsdPrice() internal pure returns (uint256) {
-        // Mock price calculation - in real implementation this would be from external source
-        return 1.00e9; // 1.00 * 1e9 (9 decimals)
-    }
-    
-    /**
-     * @notice Scales price from feed decimals to 18 decimals
-     * @param price Price from feed
-     * @param feedDecimals Number of decimals in the feed
-     * @return Scaled price in 18 decimals
-     */
-    function _scalePrice(int256 price, uint8 feedDecimals) internal pure returns (uint256) {
-        if (feedDecimals >= 18) {
-            return uint256(price) / (10 ** (feedDecimals - 18));
-        } else {
-            return uint256(price) * (10 ** (18 - feedDecimals));
-        }
-    }
-    
-    /**
-     * @notice Divides with rounding
-     * @param a Numerator
-     * @param b Denominator
-     * @return Result with rounding
-     */
-    function _divRound(uint256 a, uint256 b) internal pure returns (uint256) {
-        return (a + b / 2) / b;
     }
     
     /**
      * @notice Updates treasury address
      * @param _treasury New treasury address
-     * @dev Treasury can only be updated to the original admin address to prevent arbitrary sends
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_treasury != address(0), "Treasury cannot be zero address");
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        
-        // Only allow setting treasury to the original admin address
-        CommonValidationLibrary.validateCondition(_treasury == originalAdmin, "authorization");
-        
         treasury = _treasury;
     }
     
@@ -271,7 +156,6 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         CommonValidationLibrary.validatePositiveAmount(balance);
         
         // Use the original admin address (the one who deployed the contract)
-        // This prevents arbitrary sends by ensuring ETH only goes to the original deployer
         CommonValidationLibrary.validateNonZeroAddress(originalAdmin, "admin");
         CommonValidationLibrary.validateCondition(originalAdmin != address(this), "self");
         
@@ -287,7 +171,6 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     function resetCircuitBreaker() external onlyRole(EMERGENCY_ROLE) {
         circuitBreakerTriggered = false;
         emit CircuitBreakerReset(block.number);
-        _updatePrices(); // Attempt immediate update
     }
     
     /**
@@ -315,18 +198,10 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Mock implementation of getOracleHealth
      */
-    function getOracleHealth() external pure override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) {
-        // Use internal calculations to avoid external calls
-        uint256 eurUsdPrice = _calculateEurUsdPrice();
-        uint256 usdcUsdPrice = _calculateUsdcUsdPrice();
-        
-        // Validate that prices are reasonable (not zero)
-        CommonValidationLibrary.validatePositiveAmount(eurUsdPrice);
-        CommonValidationLibrary.validatePositiveAmount(usdcUsdPrice);
-        
-        isHealthy = true; // Mock oracle is always healthy
-        eurUsdFresh = true;
-        usdcUsdFresh = true;
+    function getOracleHealth() external view override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) {
+        isHealthy = !circuitBreakerTriggered && !paused();
+        eurUsdFresh = lastValidEurUsdPrice > 0;
+        usdcUsdFresh = lastValidUsdcUsdPrice > 0;
     }
     
     /**
@@ -339,12 +214,11 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         bool isStale,
         bool withinBounds
     ) {
-        // Use internal calculation to avoid external calls
-        currentPrice = _calculateEurUsdPrice();
-        lastValidPrice = currentPrice;
+        currentPrice = lastValidEurUsdPrice;
+        lastValidPrice = lastValidEurUsdPrice;
         lastUpdate = block.timestamp;
         isStale = false; // Mock data is never stale
-        withinBounds = true; // Mock data is always within bounds
+        withinBounds = currentPrice >= MIN_EUR_USD_PRICE && currentPrice <= MAX_EUR_USD_PRICE;
     }
     
     /**
@@ -373,10 +247,10 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         uint8 eurUsdDecimals,
         uint8 usdcUsdDecimals
     ) {
-        eurUsdFeedAddress = address(eurUsdPriceFeed);
-        usdcUsdFeedAddress = address(usdcUsdPriceFeed);
-        eurUsdDecimals = 8; // Mock feeds use 8 decimals
-        usdcUsdDecimals = 8; // Mock feeds use 8 decimals
+        eurUsdFeedAddress = address(this); // Mock feed address
+        usdcUsdFeedAddress = address(this); // Mock feed address
+        eurUsdDecimals = 18; // Mock feeds use 18 decimals
+        usdcUsdDecimals = 18; // Mock feeds use 18 decimals
     }
     
     /**
@@ -388,8 +262,8 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         uint80 eurUsdLatestRound,
         uint80 usdcUsdLatestRound
     ) {
-        eurUsdConnected = address(eurUsdPriceFeed) != address(0);
-        usdcUsdConnected = address(usdcUsdPriceFeed) != address(0);
+        eurUsdConnected = lastValidEurUsdPrice > 0;
+        usdcUsdConnected = lastValidUsdcUsdPrice > 0;
         eurUsdLatestRound = 1; // Mock round ID
         usdcUsdLatestRound = 1; // Mock round ID
     }
@@ -413,12 +287,13 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     /**
      * @notice Mock implementation of updatePriceFeeds
      */
-    function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external override onlyRole(ORACLE_MANAGER_ROLE) {
-        CommonValidationLibrary.validateNonZeroAddress(_eurUsdFeed, "oracle");
-        CommonValidationLibrary.validateNonZeroAddress(_usdcUsdFeed, "oracle");
-        
-        eurUsdPriceFeed = AggregatorV3Interface(_eurUsdFeed);
-        usdcUsdPriceFeed = AggregatorV3Interface(_usdcUsdFeed);
+    function updatePriceFeeds(address _storkFeedAddress, bytes32 _eurUsdFeedId, bytes32 _usdcUsdFeedId) external view override onlyRole(ORACLE_MANAGER_ROLE) {
+        // Mock implementation - in real oracle this would update feeds
+        // For mock, we just emit an event or do nothing
+        // Suppress unused parameter warnings by referencing them (fixes Slither ID-25-30)
+        _storkFeedAddress;
+        _eurUsdFeedId;
+        _usdcUsdFeedId;
     }
     
     /**
@@ -481,18 +356,6 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
     }
     
     /**
-     * @notice Set the updated timestamp for testing purposes
-     * @dev Only available in mock oracle for testing
-     * @param _updatedAt The new timestamp
-     */
-    function setUpdatedAt(uint256 _updatedAt) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_updatedAt > 0, "Timestamp must be positive");
-        // This is a mock function - in reality, the timestamp comes from the underlying feeds
-        // We'll just update the block number to trigger a refresh
-        lastPriceUpdateBlock = block.number;
-    }
-    
-    /**
      * @notice Toggles dev mode to disable spread deviation checks
      * @dev DEV ONLY: When enabled, price deviation checks are skipped for testing
      * @param enabled True to enable dev mode, false to disable
@@ -501,5 +364,5 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         devModeEnabled = enabled;
         emit DevModeToggled(enabled, msg.sender);
     }
-    
 }
+

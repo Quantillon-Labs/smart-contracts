@@ -116,6 +116,34 @@ uint256 private constant MIN_BLOCKS_BETWEEN_UPDATES = 1;
 ```
 
 
+### MIN_COLLATERALIZATION_RATIO_FOR_MINTING
+
+```solidity
+uint256 private constant MIN_COLLATERALIZATION_RATIO_FOR_MINTING = 105e18;
+```
+
+
+### CRITICAL_COLLATERALIZATION_RATIO
+
+```solidity
+uint256 private constant CRITICAL_COLLATERALIZATION_RATIO = 101e18;
+```
+
+
+### MIN_ALLOWED_COLLATERALIZATION_RATIO
+
+```solidity
+uint256 private constant MIN_ALLOWED_COLLATERALIZATION_RATIO = 101e18;
+```
+
+
+### MIN_ALLOWED_CRITICAL_RATIO
+
+```solidity
+uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18;
+```
+
+
 ### qeuro
 QEURO token contract for minting and burning
 
@@ -143,7 +171,7 @@ IERC20 public usdc;
 
 
 ### oracle
-Chainlink oracle contract for EUR/USD price feeds
+Oracle contract for EUR/USD price feeds (Chainlink or Stork via router)
 
 *Provides real-time EUR/USD exchange rates for minting and redemption*
 
@@ -151,7 +179,7 @@ Chainlink oracle contract for EUR/USD price feeds
 
 
 ```solidity
-IChainlinkOracle public oracle;
+IOracle public oracle;
 ```
 
 
@@ -240,6 +268,8 @@ Minimum collateralization ratio required for minting QEURO (in basis points)
 
 *Can be updated by governance to adjust protocol risk parameters*
 
+*Stored in 18 decimals format (e.g., 105000000000000000000 = 105.000000%)*
+
 
 ```solidity
 uint256 public minCollateralizationRatioForMinting;
@@ -247,15 +277,17 @@ uint256 public minCollateralizationRatioForMinting;
 
 
 ### criticalCollateralizationRatio
-Critical collateralization ratio that triggers liquidation (in basis points)
+Critical collateralization ratio that triggers liquidation (in 18 decimals)
 
-*Example: 10100 = 101% collateralization ratio triggers liquidation*
+*Example: 101000000000000000000 = 101.000000% collateralization ratio triggers liquidation*
 
 *When protocol collateralization < this threshold, hedgers start being liquidated*
 
 *Emergency threshold to protect protocol solvency*
 
 *Can be updated by governance to adjust liquidation triggers*
+
+*Stored in 18 decimals format (e.g., 101000000000000000000 = 101.000000%)*
 
 
 ```solidity
@@ -700,9 +732,9 @@ function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external onl
 Updates the collateralization thresholds (governance only)
 
 *Safety constraints:
-- minCollateralizationRatioForMinting >= 10100 (101% minimum)
+- minCollateralizationRatioForMinting >= 101000000000000000000 (101.000000% minimum = 101 * 1e18)
 - criticalCollateralizationRatio <= minCollateralizationRatioForMinting
-- criticalCollateralizationRatio >= 10000 (100% minimum)*
+- criticalCollateralizationRatio >= 100000000000000000000 (100.000000% minimum = 100 * 1e18)*
 
 **Notes:**
 - Validates input parameters and enforces security checks
@@ -732,8 +764,8 @@ function updateCollateralizationThresholds(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_minCollateralizationRatioForMinting`|`uint256`|New minimum collateralization ratio for minting (in basis points)|
-|`_criticalCollateralizationRatio`|`uint256`|New critical collateralization ratio for liquidation (in basis points)|
+|`_minCollateralizationRatioForMinting`|`uint256`|New minimum collateralization ratio for minting (in 18 decimals)|
+|`_criticalCollateralizationRatio`|`uint256`|New critical collateralization ratio for liquidation (in 18 decimals)|
 
 
 ### updateOracle
@@ -1082,7 +1114,7 @@ Updates the price cache with the current oracle price
 
 
 ```solidity
-function updatePriceCache() external onlyRole(GOVERNANCE_ROLE);
+function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) nonReentrant;
 ```
 
 ### _updatePriceTimestamp
@@ -1123,9 +1155,11 @@ function _updatePriceTimestamp(bool isValid) internal;
 
 Calculates the current protocol collateralization ratio
 
-*Formula: ((A + B) / A) * 100 where A = user deposits, B = hedger effective collateral (deposits + P&L)*
+*Formula: (COLLATUser + COLLATHedger) / (qMinted * oraclePrice) * 100*
 
-*Returns ratio in basis points (e.g., 10500 = 105%)*
+*Where COLLATUser = totalUserDeposits, COLLATHedger = hedger effective collateral (deposits + P&L)*
+
+*Returns ratio in 18 decimals (e.g., 109183495000000000000 = 109.183495%) for maximum precision*
 
 *Uses hedger effective collateral instead of raw deposits to account for P&L*
 
@@ -1154,7 +1188,7 @@ function getProtocolCollateralizationRatio() public returns (uint256 ratio);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`ratio`|`uint256`|Current collateralization ratio in basis points|
+|`ratio`|`uint256`|Current collateralization ratio in 18 decimals (maximum precision, e.g., 109183495000000000000 = 109.183495%)|
 
 
 ### canMint
@@ -1580,8 +1614,8 @@ event CollateralizationThresholdsUpdated(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`minCollateralizationRatioForMinting`|`uint256`|New minimum collateralization ratio for minting (in basis points)|
-|`criticalCollateralizationRatio`|`uint256`|New critical collateralization ratio for liquidation (in basis points)|
+|`minCollateralizationRatioForMinting`|`uint256`|New minimum collateralization ratio for minting (in 18 decimals)|
+|`criticalCollateralizationRatio`|`uint256`|New critical collateralization ratio for liquidation (in 18 decimals)|
 |`caller`|`address`|Address of the governance role holder who updated the thresholds|
 
 ### CollateralizationStatusChanged

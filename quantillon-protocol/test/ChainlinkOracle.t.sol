@@ -567,6 +567,14 @@ contract ChainlinkOracleTestSuite is Test {
     /**
      * @notice Test dev mode toggle by admin
      * @dev Verifies admin can enable/disable dev mode
+     * @custom:security Tests admin access control for dev mode
+     * @custom:validation Validates dev mode can be toggled by admin
+     * @custom:state-changes Updates devModeEnabled flag in oracle
+     * @custom:events Emits DevModeToggled events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Tests DEFAULT_ADMIN_ROLE access
+     * @custom:oracle Tests dev mode configuration on ChainlinkOracle
      */
     function test_DevMode_ToggleByAdmin() public {
         // Initially dev mode should be disabled
@@ -586,6 +594,14 @@ contract ChainlinkOracleTestSuite is Test {
     /**
      * @notice Test dev mode toggle unauthorized access
      * @dev Verifies non-admin cannot toggle dev mode
+     * @custom:security Tests access control prevents unauthorized dev mode toggle
+     * @custom:validation Validates unauthorized users cannot toggle dev mode
+     * @custom:state-changes No state changes - reverts
+     * @custom:events No events emitted - reverts
+     * @custom:errors Expects AccessControlUnauthorizedAccount error
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Tests unauthorized access is rejected
+     * @custom:oracle Tests access control on ChainlinkOracle dev mode
      */
     function test_DevMode_ToggleUnauthorized_Revert() public {
         // User tries to enable dev mode - should revert
@@ -602,6 +618,14 @@ contract ChainlinkOracleTestSuite is Test {
     /**
      * @notice Test price deviation check skipped when dev mode enabled
      * @dev Verifies that large price deviations are allowed in dev mode
+     * @custom:security Tests dev mode bypasses price deviation protection
+     * @custom:validation Validates large price deviations accepted in dev mode
+     * @custom:state-changes Updates oracle price cache with deviated price
+     * @custom:events Emits PriceUpdated events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Tests price deviation check bypass in ChainlinkOracle dev mode
      */
     function test_DevMode_PriceDeviationCheckSkipped() public {
         // First establish initial price cache
@@ -631,6 +655,14 @@ contract ChainlinkOracleTestSuite is Test {
     /**
      * @notice Test price deviation check works when dev mode disabled
      * @dev Verifies that deviation checks work normally when dev mode is off
+     * @custom:security Tests price deviation protection works when dev mode disabled
+     * @custom:validation Validates large price deviations rejected when dev mode off
+     * @custom:state-changes No state changes - price rejected
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown, returns isValid=false
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Tests price deviation check enforcement in ChainlinkOracle
      */
     function test_DevMode_PriceDeviationCheckWorksWhenDisabled() public {
         // Ensure dev mode is disabled
@@ -652,6 +684,14 @@ contract ChainlinkOracleTestSuite is Test {
     /**
      * @notice Test getEurUsdDetails with dev mode enabled
      * @dev Verifies that getEurUsdDetails skips deviation check in dev mode
+     * @custom:security Tests dev mode affects getEurUsdDetails deviation check
+     * @custom:validation Validates deviation check skipped in getEurUsdDetails
+     * @custom:state-changes No state changes - view function test
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Tests getEurUsdDetails behavior with dev mode in ChainlinkOracle
      */
     function test_DevMode_GetEurUsdDetailsSkipsDeviationCheck() public {
         // Enable dev mode first

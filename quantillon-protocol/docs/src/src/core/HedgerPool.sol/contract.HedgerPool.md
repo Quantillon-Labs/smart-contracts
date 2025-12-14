@@ -52,7 +52,7 @@ IERC20 public usdc;
 ### oracle
 
 ```solidity
-IChainlinkOracle public oracle;
+IOracle public oracle;
 ```
 
 
@@ -1542,7 +1542,7 @@ function _unwindFilledVolume(uint256 positionId, HedgePosition storage position,
 |----|----|-----------|
 |`positionId`|`uint256`|Unique identifier of the position being unwound|
 |`position`|`HedgePosition`|Storage reference to the position being unwound|
-|`cachedPrice`|`uint256`||
+|`cachedPrice`|`uint256`|Cached EUR/USD price to avoid reentrancy (18 decimals)|
 
 **Returns**
 
@@ -1820,7 +1820,7 @@ function _processRedeem(
 |`posId`|`uint256`|ID of the position being processed|
 |`pos`|`HedgePosition`|Storage pointer to the position struct|
 |`share`|`uint256`|Amount of USDC exposure being released (6 decimals)|
-|`filledBefore`|`uint256`||
+|`filledBefore`|`uint256`|Filled volume before redemption (used for P&L calculation)|
 |`price`|`uint256`|Current EUR/USD oracle price for redemption (18 decimals)|
 |`qeuroAmount`|`uint256`|QEURO amount being redeemed (18 decimals)|
 

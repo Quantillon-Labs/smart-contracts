@@ -174,7 +174,8 @@ contract QEUROTokenTestSuite is Test {
             address(0),
             vault,
             address(0x123),
-            admin
+            admin,
+            address(0x456) // feeCollector
         );
         
         vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
@@ -187,7 +188,8 @@ contract QEUROTokenTestSuite is Test {
             admin,
             address(0),
             address(0x123),
-            admin
+            admin,
+            address(0x456) // feeCollector
         );
         
         vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);

@@ -73,7 +73,8 @@ contract HedgerVaultIntegrationTest is Test {
             admin,
             address(0x123), // mock vault address (will be updated)
             admin, // timelock
-            admin  // treasury
+            admin, // treasury
+            address(0x456) // feeCollector
         );
         qeuro = QEUROToken(address(new ERC1967Proxy(address(qeuroImpl), qeuroInitData)));
         

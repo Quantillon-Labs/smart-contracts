@@ -133,13 +133,13 @@ IQuantillonVault public vault;
 
 
 ### oracle
-Chainlink Oracle for EUR/USD price feeds
+Oracle for EUR/USD price feeds (Chainlink or Stork via router)
 
 *Used for converting QEURO supply to USDC equivalent in analytics*
 
 
 ```solidity
-IChainlinkOracle public oracle;
+IOracle public oracle;
 ```
 
 

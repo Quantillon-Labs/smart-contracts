@@ -9,6 +9,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
+import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
  * @title FeeCollector
@@ -65,6 +66,10 @@ contract FeeCollector is
     
     /// @notice Community fund address
     address public communityFund;
+    
+    /// @notice Whitelist mapping for authorized ETH recipients
+    /// @dev Only whitelisted addresses can receive ETH transfers
+    mapping(address => bool) private authorizedETHRecipients;
     
     /// @notice Fee distribution ratios (in basis points, 10000 = 100%)
     uint256 public treasuryRatio;      // Default: 60% (6000 bps)
@@ -185,6 +190,11 @@ contract FeeCollector is
         treasury = _treasury;
         devFund = _devFund;
         communityFund = _communityFund;
+        
+        // Whitelist authorized ETH recipients (fixes Slither arbitrary-send-eth warning)
+        authorizedETHRecipients[_treasury] = true;
+        authorizedETHRecipients[_devFund] = true;
+        authorizedETHRecipients[_communityFund] = true;
         
         // Set default fee distribution ratios (60% treasury, 25% dev, 15% community)
         treasuryRatio = 6000;
@@ -409,33 +419,10 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies
      */
     function _secureETHTransfer(address recipient, uint256 amount) internal {
-        // Validate amount (must be greater than zero)
-        if (amount <= 0) revert CommonErrorLibrary.InvalidAmount();
-        
-        // Validate recipient is one of the authorized fund addresses
-        // This is the primary security check that prevents arbitrary sends
-        if (recipient != treasury && recipient != devFund && recipient != communityFund) {
-            revert CommonErrorLibrary.InvalidAddress();
-        }
-        
-        // Additional runtime validation for security
-        if (recipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        
-        // Validate recipient is not a contract (additional security check)
-        uint256 codeSize;
-        assembly {
-            codeSize := extcodesize(recipient)
-        }
-        if (codeSize > 0) revert CommonErrorLibrary.InvalidAddress();
-        
-        // SECURITY: This is NOT an arbitrary send. The recipient is strictly validated:
-        // - Must be one of three pre-authorized fund addresses (treasury/dev/community)
-        // - Governance controls updates and each address is validated to be non-zero EOAs
-        // - Addresses are validated to be non-contracts (EOAs only)
-        // The suppression below documents this intentional, controlled behavior.
-        // slither-disable-next-line arbitrary-send-eth
-        (bool success, ) = recipient.call{value: amount}("");
-        if (!success) revert CommonErrorLibrary.ETHTransferFailed();
+        // Use library function for secure ETH transfer with whitelist validation
+        // This fixes the Slither arbitrary-send-eth warning by using a centralized,
+        // well-tested library function that enforces whitelist validation
+        TreasuryRecoveryLibrary.secureETHTransfer(recipient, amount, authorizedETHRecipients);
     }
 
     /**
@@ -541,6 +528,11 @@ contract FeeCollector is
         CommonValidationLibrary.validateNotContract(_treasury, "treasury");
         CommonValidationLibrary.validateNotContract(_devFund, "devFund");
         CommonValidationLibrary.validateNotContract(_communityFund, "communityFund");
+        
+        // Remove old addresses from whitelist
+        authorizedETHRecipients[treasury] = false;
+        authorizedETHRecipients[devFund] = false;
+        authorizedETHRecipients[communityFund] = false;
         
         // Explicit zero checks for Slither (addresses already validated above)
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();

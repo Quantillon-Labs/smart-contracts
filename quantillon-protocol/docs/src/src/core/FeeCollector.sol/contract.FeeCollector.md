@@ -81,6 +81,17 @@ address public communityFund;
 ```
 
 
+### authorizedETHRecipients
+Whitelist mapping for authorized ETH recipients
+
+*Only whitelisted addresses can receive ETH transfers*
+
+
+```solidity
+mapping(address => bool) private authorizedETHRecipients;
+```
+
+
 ### treasuryRatio
 Fee distribution ratios (in basis points, 10000 = 100%)
 

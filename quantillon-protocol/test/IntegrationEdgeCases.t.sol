@@ -14,7 +14,7 @@ import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../src/interfaces/IOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
@@ -129,7 +129,7 @@ contract IntegrationEdgeCases is Test {
         vm.mockCall(address(0x1), abi.encodeWithSelector(IERC20.approve.selector), abi.encode(true));
         
         // Setup mock calls for Oracle (address 0x2)
-        vm.mockCall(address(0x2), abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector), abi.encode(11 * 1e17, true));
+        vm.mockCall(address(0x2), abi.encodeWithSelector(IOracle.getEurUsdPrice.selector), abi.encode(11 * 1e17, true));
         
         // Setup mock calls for YieldShift (address 0x3)
         vm.mockCall(address(0x3), abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector), abi.encode(0));

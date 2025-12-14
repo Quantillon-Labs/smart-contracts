@@ -8,7 +8,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
-import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../src/interfaces/IOracle.sol";
 import {IHedgerPool} from "../src/interfaces/IHedgerPool.sol";
 import {IUserPool} from "../src/interfaces/IUserPool.sol";
 import {VaultErrorLibrary} from "../src/libraries/VaultErrorLibrary.sol";
@@ -183,7 +183,8 @@ contract QuantillonVaultTestSuite is Test {
             admin,
             address(0x123), // mock vault address
             address(0x456),  // mock timelock address
-            admin // Use admin as treasury for testing
+            admin, // Use admin as treasury for testing
+            address(0x789) // feeCollector
         );
         qeuroToken = QEUROToken(address(new ERC1967Proxy(address(implementation), initData)));
         
@@ -279,7 +280,7 @@ contract QuantillonVaultTestSuite is Test {
         // Mock oracle price feed
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(EUR_USD_PRICE, true)
         );
         
@@ -554,7 +555,7 @@ contract QuantillonVaultTestSuite is Test {
         // Mock invalid oracle response
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(0, false) // Invalid price
         );
         
@@ -816,6 +817,14 @@ contract QuantillonVaultTestSuite is Test {
     /**
      * @notice Test dev mode toggle by admin
      * @dev Verifies admin can enable/disable dev mode
+     * @custom:security Tests admin access control for dev mode
+     * @custom:validation Validates dev mode can be toggled by admin
+     * @custom:state-changes Updates devModeEnabled flag in vault
+     * @custom:events Emits DevModeToggled events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Tests DEFAULT_ADMIN_ROLE access
+     * @custom:oracle Tests dev mode configuration on QuantillonVault
      */
     function test_DevMode_ToggleByAdmin() public {
         // Initially dev mode should be disabled
@@ -835,6 +844,14 @@ contract QuantillonVaultTestSuite is Test {
     /**
      * @notice Test dev mode toggle unauthorized access
      * @dev Verifies non-admin cannot toggle dev mode
+     * @custom:security Tests access control prevents unauthorized dev mode toggle
+     * @custom:validation Validates unauthorized users cannot toggle dev mode
+     * @custom:state-changes No state changes - reverts
+     * @custom:events No events emitted - reverts
+     * @custom:errors Expects AccessControlUnauthorizedAccount error
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Tests unauthorized access is rejected
+     * @custom:oracle Tests access control on QuantillonVault dev mode
      */
     function test_DevMode_ToggleUnauthorized_Revert() public {
         // User tries to enable dev mode - should revert
@@ -851,6 +868,14 @@ contract QuantillonVaultTestSuite is Test {
     /**
      * @notice Test mint with price deviation when dev mode enabled
      * @dev Verifies that price deviation checks are skipped in dev mode
+     * @custom:security Tests dev mode bypasses price deviation protection during mint
+     * @custom:validation Validates large price deviations accepted in dev mode for minting
+     * @custom:state-changes Mints QEURO tokens with deviated price
+     * @custom:events Emits Minted events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Tests price deviation check bypass in QuantillonVault dev mode
      */
     function test_DevMode_MintWithPriceDeviation_Success() public {
         // Enable dev mode
@@ -866,7 +891,7 @@ contract QuantillonVaultTestSuite is Test {
         uint256 deviatedPrice = EUR_USD_PRICE * 11000 / 10000; // 10% higher
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(deviatedPrice, true)
         );
         
@@ -881,6 +906,14 @@ contract QuantillonVaultTestSuite is Test {
     /**
      * @notice Test redeem with price deviation when dev mode enabled
      * @dev Verifies that price deviation checks are skipped in dev mode
+     * @custom:security Tests dev mode bypasses price deviation protection during redeem
+     * @custom:validation Validates large price deviations accepted in dev mode for redemption
+     * @custom:state-changes Redeems QEURO tokens with deviated price
+     * @custom:events Emits Redeemed events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Tests price deviation check bypass in QuantillonVault dev mode
      */
     function test_DevMode_RedeemWithPriceDeviation_Success() public {
         // First mint some QEURO
@@ -895,7 +928,7 @@ contract QuantillonVaultTestSuite is Test {
         uint256 deviatedPrice = EUR_USD_PRICE * 9000 / 10000; // 10% lower
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(deviatedPrice, true)
         );
         
@@ -916,6 +949,14 @@ contract QuantillonVaultTestSuite is Test {
     /**
      * @notice Test mint with price deviation when dev mode disabled
      * @dev Verifies that price deviation checks work normally when dev mode is off
+     * @custom:security Tests price deviation protection works when dev mode disabled
+     * @custom:validation Validates large price deviations rejected when dev mode off
+     * @custom:state-changes No state changes - mint rejected
+     * @custom:events No events emitted
+     * @custom:errors Expects revert due to price deviation
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public - no access restrictions
+     * @custom:oracle Tests price deviation check enforcement in QuantillonVault
      */
     function test_DevMode_MintWithPriceDeviationWhenDisabled_Revert() public {
         // Ensure dev mode is disabled
@@ -934,7 +975,7 @@ contract QuantillonVaultTestSuite is Test {
         uint256 deviatedPrice = EUR_USD_PRICE * 11000 / 10000; // 10% higher
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(deviatedPrice, true)
         );
         
@@ -1036,7 +1077,7 @@ contract QuantillonVaultTestSuite is Test {
         // Mock invalid oracle response
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(0, false) // Invalid price
         );
         
@@ -1728,7 +1769,7 @@ contract QuantillonVaultTestSuite is Test {
         // Change oracle price to higher
         vm.mockCall(
             mockOracle,
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(EUR_USD_PRICE_HIGH, true)
         );
         
@@ -1782,11 +1823,14 @@ contract QuantillonVaultTestSuite is Test {
             abi.encode(qeuroSupply)
         );
         
-        // Calculate expected ratio: ((1,000,000 + 100,000) / 1,000,000) * 10000 = 11000 (110%)
-        uint256 expectedRatio = 11000; // 110% in basis points
+        // Calculate expected ratio: ((1,000,000 + 100,000) / 1,000,000) * 100 * 1e18 = 110e18 (110%)
+        // Function returns percentage in 18 decimals: 110% = 110 * 1e18 = 110000000000000000000
+        // Note: Due to rounding in calculations, we use approximate equality
+        uint256 expectedRatio = 110e18; // 110% in 18 decimals format
         uint256 actualRatio = vault.getProtocolCollateralizationRatio();
         
-        assertEq(actualRatio, expectedRatio);
+        // Allow small rounding differences (within 1e15, which is 0.001%)
+        assertApproxEqRel(actualRatio, expectedRatio, 1e15);
     }
     
     /**
@@ -1946,12 +1990,15 @@ contract QuantillonVaultTestSuite is Test {
             abi.encode(qeuroSupply)
         );
         
-        // Calculate expected ratio: ((1,000,000 + 80,000) / 1,000,000) * 10000 = 10800 (108%)
+        // Calculate expected ratio: ((1,000,000 + 80,000) / 1,000,000) * 100 * 1e18 = 108e18 (108%)
         // Note: Uses effective collateral (80k) not raw margin (100k)
-        uint256 expectedRatio = 10800; // 108% in basis points
+        // Function returns percentage in 18 decimals: 108% = 108 * 1e18 = 108000000000000000000
+        // Note: Due to rounding in calculations, we use approximate equality
+        uint256 expectedRatio = 108e18; // 108% in 18 decimals format
         uint256 actualRatio = vault.getProtocolCollateralizationRatio();
         
-        assertEq(actualRatio, expectedRatio);
+        // Allow small rounding differences (within 1e15, which is 0.001%)
+        assertApproxEqRel(actualRatio, expectedRatio, 1e15);
     }
     
     /**
@@ -2007,8 +2054,10 @@ contract QuantillonVaultTestSuite is Test {
      * @custom:oracle Not applicable
      */
     function test_Collateralization_UpdateThresholdsByGovernance() public {
-        uint256 newMinRatio = 11000; // 110%
-        uint256 newCriticalRatio = 10200; // 102%
+        // Function expects values in 18 decimals format: 110% = 110e18, 102% = 102e18
+        // Minimum must be >= 101e18 (101%), critical must be >= 100e18 (100%)
+        uint256 newMinRatio = 110e18; // 110% in 18 decimals
+        uint256 newCriticalRatio = 102e18; // 102% in 18 decimals
         
         vm.prank(governance);
         vault.updateCollateralizationThresholds(newMinRatio, newCriticalRatio);

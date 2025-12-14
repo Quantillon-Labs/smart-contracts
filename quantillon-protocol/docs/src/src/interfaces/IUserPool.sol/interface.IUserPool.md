@@ -1820,6 +1820,42 @@ function totalDeposits() external view returns (uint256);
 |`<none>`|`uint256`|Total deposits in USDC equivalent|
 
 
+### totalUserDeposits
+
+Returns the total user deposits
+
+*Total USDC deposits across all users (in USDC decimals - 6)*
+
+*Tracks the sum of all USDC deposits made by users*
+
+**Notes:**
+- Validates input parameters and enforces security checks
+
+- Validates input parameters and business logic constraints
+
+- Updates contract state variables
+
+- Emits relevant events for state changes
+
+- Throws custom errors for invalid conditions
+
+- Protected by reentrancy guard
+
+- Restricted to authorized roles
+
+- Requires fresh oracle price data
+
+
+```solidity
+function totalUserDeposits() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Total user deposits in USDC (6 decimals)|
+
+
 ### totalStakes
 
 Returns the total stakes

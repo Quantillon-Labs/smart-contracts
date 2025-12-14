@@ -14,7 +14,7 @@ import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../src/interfaces/IOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
@@ -185,7 +185,7 @@ contract EconomicAttackVectors is Test {
         // Setup mock calls for Oracle
         vm.mockCall(
             address(0x2), // mockOracle
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(110 * 1e16, true) // 1.10 USD price, valid
         );
         

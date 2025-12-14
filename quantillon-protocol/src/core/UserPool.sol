@@ -14,7 +14,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
-import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../interfaces/IOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
@@ -134,9 +134,9 @@ contract UserPool is
     /// @dev Should be the official QuantillonVault contract
     IQuantillonVault public vault;
     
-    /// @notice Chainlink Oracle for EUR/USD price feeds
+    /// @notice Oracle for EUR/USD price feeds (Chainlink or Stork via router)
     /// @dev Used for converting QEURO supply to USDC equivalent in analytics
-    IChainlinkOracle public oracle;
+    IOracle public oracle;
     
     /// @notice Yield shift mechanism for yield management
     /// @dev Handles yield distribution and management
@@ -488,7 +488,7 @@ contract UserPool is
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         vault = IQuantillonVault(_vault);
-        oracle = IChainlinkOracle(_oracle);
+        oracle = IOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         // Treasury validation handled by CommonValidationLibrary

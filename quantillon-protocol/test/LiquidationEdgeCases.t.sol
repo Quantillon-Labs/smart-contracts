@@ -12,7 +12,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
+import {IOracle} from "../src/interfaces/IOracle.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
 
 /**
@@ -199,7 +199,7 @@ contract LiquidationEdgeCases is Test {
         // Setup mock calls for Oracle
         vm.mockCall(
             address(0x2), // mockOracle
-            abi.encodeWithSelector(IChainlinkOracle.getEurUsdPrice.selector),
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(MOCK_EUR_USD_PRICE, true) // 1.10 USD price, valid
         );
         

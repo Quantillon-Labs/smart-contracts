@@ -290,11 +290,15 @@ contract AaveIntegrationTest is Test {
         // Act: Get vault metrics
         (
             uint256 totalUsdcHeld,
-            uint256 totalMinted,
-            uint256 totalDebtValue,
+            uint256 _totalMinted,
+            uint256 _totalDebtValue,
             uint256 totalUsdcInAave,
             uint256 totalUsdcAvailable
         ) = vault.getVaultMetrics();
+        
+        // Suppress unused variable warnings
+        _totalMinted;
+        _totalDebtValue;
         
         // Assert: Metrics should reflect Aave deployment
         assertGt(totalUsdcInAave, 0, "totalUsdcInAave should be > 0");

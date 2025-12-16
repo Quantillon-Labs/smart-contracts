@@ -564,19 +564,19 @@ interface IHedgerPool {
     function totalExposure() external view returns (uint256);
     
     /**
-     * @notice Returns the number of active hedgers
-     * @dev Count of unique addresses with active hedge positions
-     * @return uint256 Number of active hedgers
+     * @notice Returns whether there is an active hedger with open positions
+     * @dev Returns true if the single hedger has active positions
+     * @return bool True if there is an active hedger
      * @custom:security No security validations required - view function
      * @custom:validation No input validation required - view function
      * @custom:state-changes No state changes - view function only
      * @custom:events No events emitted
      * @custom:errors No errors thrown - safe view function
      * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query active hedger count
+     * @custom:access Public - anyone can query active hedger status
      * @custom:oracle No oracle dependencies
      */
-    function activeHedgers() external view returns (uint256);
+    function hasActiveHedger() external view returns (bool);
     
     /**
      * @notice Returns the next position ID to be assigned
@@ -942,75 +942,40 @@ interface IHedgerPool {
         uint256 totalRewards
     );
     
-    // Hedger Whitelist Management
+    // Single Hedger Management
     
     /**
-     * @notice Whitelist (add=true) or remove (add=false) a hedger
-     * @dev Allows or prevents the specified address from opening hedge positions
-     * @param hedger Address to whitelist or remove
-     * @param add True to whitelist, false to remove
+     * @notice Returns the address of the single hedger
+     * @dev Returns the address that is authorized to open hedge positions
+     * @return address The address of the single hedger
+     * @custom:security No security validations required - view function
+     * @custom:validation No input validation required - view function
+     * @custom:state-changes No state changes - view function only
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown - safe view function
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query the single hedger address
+     * @custom:oracle No oracle dependencies
+     */
+    function singleHedger() external view returns (address);
+    
+    /**
+     * @notice Sets the single hedger address
+     * @dev Only governance can set the single hedger address
+     * @param hedger Address of the single hedger
      * @custom:security Validates governance role and hedger address
-     * @custom:validation Validates hedger is not address(0) and whitelist state is valid
-     * @custom:state-changes Updates isWhitelistedHedger mapping and grants/revokes HEDGER_ROLE
-     * @custom:events Emits HedgerWhitelisted or HedgerRemoved with hedger and caller addresses
-     * @custom:errors Throws ZeroAddress if hedger is address(0), AlreadyWhitelisted/NotWhitelisted based on operation
+     * @custom:validation Validates hedger is not address(0)
+     * @custom:state-changes Updates singleHedger state variable
+     * @custom:events Emits SingleHedgerUpdated with hedger and caller addresses
+     * @custom:errors Throws ZeroAddress if hedger is address(0)
      * @custom:reentrancy Not protected - no external calls
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
-    function setHedgerWhitelist(address hedger, bool add) external;
+    function setSingleHedger(address hedger) external;
     
-    /**
-     * @notice Toggles hedger whitelist mode
-     * @dev When enabled, only whitelisted addresses can open hedge positions
-     * @param enabled Whether to enable hedger whitelist mode
-     * @custom:security Validates governance role
-     * @custom:validation No input validation required - boolean parameter
-     * @custom:state-changes Updates hedgerWhitelistEnabled state variable
-     * @custom:events Emits HedgerWhitelistModeToggled with enabled status and caller
-     * @custom:errors No errors thrown - safe boolean toggle
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function toggleHedgerWhitelistMode(bool enabled) external;
+    // Single Hedger Events
     
-    
-    /**
-     * @notice Check if an address is whitelisted as a hedger
-     * @dev Returns true if the address is on the hedger whitelist
-     * @param hedger Address to check
-     * @return isWhitelisted True if the address is whitelisted as a hedger
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query hedger whitelist status
-     * @custom:oracle No oracle dependencies
-     */
-    function isWhitelistedHedger(address hedger) external view returns (bool);
-    
-    /**
-     * @notice Check if hedger whitelist mode is enabled
-     * @dev Returns true if hedger whitelist mode is active
-     * @return enabled True if hedger whitelist mode is enabled
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query hedger whitelist mode status
-     * @custom:oracle No oracle dependencies
-     */
-    function hedgerWhitelistEnabled() external view returns (bool);
-    
-    // Hedger Whitelist Events
-    
-    event HedgerWhitelisted(address indexed hedger, address indexed caller);
-    event HedgerRemoved(address indexed hedger, address indexed caller);
-    event HedgerWhitelistModeToggled(bool enabled, address indexed caller);
+    event SingleHedgerUpdated(address indexed hedger, address indexed caller);
     event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
 } 

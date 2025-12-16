@@ -201,7 +201,7 @@ contract MockUserPool {
  */
 contract MockHedgerPool {
     uint256 public totalHedgeExposure = 800000 * 1e6; // 800K USDC
-    uint256 public activeHedgers = 50;
+    bool public hasActiveHedger = true;
     
     /**
      * @notice Mimics HedgerPool.totalExposure()
@@ -223,7 +223,7 @@ contract MockHedgerPool {
     /**
      * @notice Gets pool statistics for testing
      * @dev Mock function for testing purposes
-     * @return activeHedgers_ The number of active hedgers
+     * @return activeHedgers_ The number of active hedgers (1 if hasActiveHedger, 0 otherwise)
      * @return totalExposure_ The total hedge exposure
      * @return averageExposure The average exposure per hedger
      * @return utilizationRate The utilization rate in basis points
@@ -244,9 +244,9 @@ contract MockHedgerPool {
         uint256 utilizationRate,
         uint256 hedgeEfficiency
     ) {
-        activeHedgers_ = activeHedgers;
+        activeHedgers_ = hasActiveHedger ? 1 : 0;
         totalExposure_ = totalHedgeExposure;
-        averageExposure = totalHedgeExposure / activeHedgers;
+        averageExposure = hasActiveHedger ? totalHedgeExposure : 0;
         utilizationRate = 7500; // 75%
         hedgeEfficiency = 8500; // 85%
         return (activeHedgers_, totalExposure_, averageExposure, utilizationRate, hedgeEfficiency);
@@ -270,20 +270,20 @@ contract MockHedgerPool {
     }
     
     /**
-     * @notice Sets the active hedgers count for testing
+     * @notice Sets the active hedger status for testing
      * @dev Mock function for testing purposes
-     * @param _activeHedgers The new active hedgers count
+     * @param _hasActiveHedger The new active hedger status
      * @custom:security No security validations - test mock
      * @custom:validation No input validation - test mock
-     * @custom:state-changes Updates activeHedgers state variable
+     * @custom:state-changes Updates hasActiveHedger state variable
      * @custom:events No events emitted
      * @custom:errors No errors thrown
      * @custom:reentrancy Not protected - test mock
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function setActiveHedgers(uint256 _activeHedgers) external {
-        activeHedgers = _activeHedgers;
+    function setHasActiveHedger(bool _hasActiveHedger) external {
+        hasActiveHedger = _hasActiveHedger;
     }
 }
 

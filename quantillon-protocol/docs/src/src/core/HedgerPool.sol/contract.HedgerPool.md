@@ -112,13 +112,6 @@ uint256 public totalFilledExposure;
 ```
 
 
-### activeHedgers
-
-```solidity
-uint256 public activeHedgers;
-```
-
-
 ### nextPositionId
 
 ```solidity
@@ -126,17 +119,14 @@ uint256 public nextPositionId;
 ```
 
 
-### isWhitelistedHedger
+### singleHedger
+Address of the single hedger allowed to open positions
+
+*This replaces the previous multi-hedger whitelist model*
+
 
 ```solidity
-mapping(address => bool) public isWhitelistedHedger;
-```
-
-
-### hedgerWhitelistEnabled
-
-```solidity
-bool public hedgerWhitelistEnabled;
+address public singleHedger;
 ```
 
 
@@ -147,24 +137,10 @@ mapping(uint256 => HedgePosition) public positions;
 ```
 
 
-### hedgerBalances
-
-```solidity
-mapping(address => HedgerBalance) private hedgerBalances;
-```
-
-
 ### hedgerRewards
 
 ```solidity
 mapping(address => HedgerRewardState) private hedgerRewards;
-```
-
-
-### hedgerPositionCounts
-
-```solidity
-mapping(address => uint256) private hedgerPositionCounts;
 ```
 
 
@@ -196,6 +172,17 @@ mapping(uint256 => uint256) private activePositionIndex;
 ```
 
 
+### hedgerActivePositionId
+Maps hedger address to their active position ID (0 = no active position)
+
+*Used to enforce single position per hedger limit*
+
+
+```solidity
+mapping(address => uint256) private hedgerActivePositionId;
+```
+
+
 ### lastLiquidationAttempt
 
 ```solidity
@@ -213,7 +200,7 @@ mapping(address => uint256) public hedgerLastRewardBlock;
 ### MAX_POSITIONS_PER_HEDGER
 
 ```solidity
-uint256 public constant MAX_POSITIONS_PER_HEDGER = 50;
+uint256 public constant MAX_POSITIONS_PER_HEDGER = 1;
 ```
 
 
@@ -838,6 +825,40 @@ function getTotalEffectiveHedgerCollateral(uint256 price) external view returns 
 |`t`|`uint256`|Total effective collateral in USDC (6 decimals)|
 
 
+### hasActiveHedger
+
+Checks if there is an active hedger with an active position
+
+*Returns true if the single hedger has an active position*
+
+**Notes:**
+- View-only helper - no state changes
+
+- None
+
+- None - view function
+
+- None
+
+- None
+
+- Not applicable - view function
+
+- Public - anyone can query
+
+- Not applicable
+
+
+```solidity
+function hasActiveHedger() external view returns (bool);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|True if hedger has an active position, false otherwise|
+
+
 ### updateHedgingParameters
 
 Updates core hedging parameters for risk management
@@ -1227,26 +1248,22 @@ function updateAddress(uint8 slot, address addr) external;
 |`addr`|`address`|New address for the slot|
 
 
-### setHedgerWhitelist
+### setSingleHedger
 
-Whitelists or removes a hedger address for position opening
+Sets the single hedger address allowed to open positions
 
-*Whitelisting process:
-1. Validates governance role and hedger address
-2. Checks hedger is not already whitelisted (if adding)
-3. Adds hedger to whitelist and grants HEDGER_ROLE (if adding)
-4. Removes hedger from whitelist and revokes HEDGER_ROLE (if removing)*
+*Replaces the previous multi-hedger whitelist model with a single hedger*
 
 **Notes:**
 - Validates input parameters and enforces security checks
 
-- Validates governance role, hedger address, not already whitelisted (if adding)
+- Validates governance role and non-zero hedger address
 
-- Adds/removes hedger to/from whitelist, grants/revokes HEDGER_ROLE
+- Updates singleHedger address
 
-- Emits HedgerWhitelisted or HedgerRemovedFromWhitelist
+- None
 
-- Throws AlreadyWhitelisted if adding already whitelisted hedger
+- Throws ZeroAddress if hedger is zero
 
 - Not protected - governance function
 
@@ -1256,55 +1273,13 @@ Whitelists or removes a hedger address for position opening
 
 
 ```solidity
-function setHedgerWhitelist(address hedger, bool add) external;
+function setSingleHedger(address hedger) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`hedger`|`address`|Address of the hedger to whitelist or remove|
-|`add`|`bool`|True to whitelist, false to remove from whitelist|
-
-
-### toggleHedgerWhitelistMode
-
-Toggles the hedger whitelist mode on/off
-
-*Whitelist mode toggle:
-1. Validates governance role
-2. Updates hedgerWhitelistEnabled state
-3. Emits event for transparency*
-
-*When enabled: Only whitelisted hedgers can open positions*
-
-*When disabled: Any address can open positions*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates governance role
-
-- Updates hedgerWhitelistEnabled state
-
-- Emits HedgerWhitelistModeToggled with new state and caller
-
-- Throws custom errors for invalid conditions
-
-- Not protected - governance function
-
-- Restricted to GOVERNANCE_ROLE
-
-- No oracle dependencies
-
-
-```solidity
-function toggleHedgerWhitelistMode(bool enabled) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`enabled`|`bool`|Whether to enable or disable the whitelist mode|
+|`hedger`|`address`|Address of the single hedger|
 
 
 ### _getValidOraclePrice
@@ -1996,15 +1971,6 @@ struct HedgePosition {
     uint16 leverage;
     bool isActive;
     uint128 qeuroBacked;
-}
-```
-
-### HedgerBalance
-
-```solidity
-struct HedgerBalance {
-    uint128 totalMargin;
-    uint128 totalExposure;
 }
 ```
 

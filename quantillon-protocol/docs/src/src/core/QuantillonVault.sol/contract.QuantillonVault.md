@@ -92,6 +92,19 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 ```
 
 
+### VAULT_OPERATOR_ROLE
+Role for vault operators (UserPool) to trigger Aave deployments
+
+*keccak256 hash avoids role collisions with other contracts*
+
+*Should be assigned to UserPool contract*
+
+
+```solidity
+bytes32 public constant VAULT_OPERATOR_ROLE = keccak256("VAULT_OPERATOR_ROLE");
+```
+
+
 ### MAX_PRICE_DEVIATION
 Maximum allowed price deviation between consecutive price updates (in basis points)
 
@@ -228,6 +241,28 @@ Fee collector contract for protocol fees
 
 ```solidity
 address public feeCollector;
+```
+
+
+### aaveVault
+AaveVault contract for USDC yield generation
+
+*Used to deploy idle USDC to Aave lending pool*
+
+
+```solidity
+IAaveVault public aaveVault;
+```
+
+
+### totalUsdcInAave
+Total USDC deployed to Aave for yield generation
+
+*Tracks USDC that has been sent to AaveVault*
+
+
+```solidity
+uint256 public totalUsdcInAave;
 ```
 
 
@@ -496,6 +531,74 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external nonReentran
 |`minQeuroOut`|`uint256`|Minimum amount of QEURO expected (slippage protection)|
 
 
+### _autoDeployToAave
+
+Internal function to auto-deploy USDC to Aave after minting
+
+*Silently catches errors to ensure minting always succeeds even if Aave has issues*
+
+**Notes:**
+- Uses try-catch to prevent Aave issues from blocking user mints
+
+- Validates AaveVault is set and amount > 0
+
+- Updates totalUsdcHeld and totalUsdcInAave on success
+
+- Emits UsdcDeployedToAave on success
+
+- Silently swallows errors to ensure mints always succeed
+
+- Not protected - internal function only
+
+- Internal function - no access restrictions
+
+- No oracle dependencies
+
+
+```solidity
+function _autoDeployToAave(uint256 usdcAmount) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to deploy (6 decimals)|
+
+
+### _executeAaveDeployment
+
+External function to execute Aave deployment (called by _autoDeployToAave via try/catch)
+
+*This is external so it can be called via try/catch for error handling*
+
+**Notes:**
+- Only callable from this contract
+
+- Validates sufficient balance
+
+- Updates totalUsdcHeld and totalUsdcInAave
+
+- Emits UsdcDeployedToAave
+
+- Throws if insufficient balance or Aave deployment fails
+
+- Not protected - internal helper
+
+- Internal use only (via try/catch)
+
+- No oracle dependencies
+
+
+```solidity
+function _executeAaveDeployment(uint256 usdcAmount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to deploy (6 decimals)|
+
+
 ### redeemQEURO
 
 Redeems QEURO for USDC
@@ -563,15 +666,25 @@ Retrieves the vault's global metrics
 
 
 ```solidity
-function getVaultMetrics() external returns (uint256 totalUsdcHeld_, uint256 totalMinted_, uint256 totalDebtValue);
+function getVaultMetrics()
+    external
+    returns (
+        uint256 totalUsdcHeld_,
+        uint256 totalMinted_,
+        uint256 totalDebtValue,
+        uint256 totalUsdcInAave_,
+        uint256 totalUsdcAvailable_
+    );
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`totalUsdcHeld_`|`uint256`|Total USDC held in the vault|
+|`totalUsdcHeld_`|`uint256`|Total USDC held directly in the vault|
 |`totalMinted_`|`uint256`|Total QEURO minted|
 |`totalDebtValue`|`uint256`|Total debt value in USD|
+|`totalUsdcInAave_`|`uint256`|Total USDC deployed to Aave for yield|
+|`totalUsdcAvailable_`|`uint256`|Total USDC available (vault + Aave)|
 
 
 ### calculateMintAmount
@@ -904,6 +1017,114 @@ function updateFeeCollector(address _feeCollector) external onlyRole(GOVERNANCE_
 |`_feeCollector`|`address`|New fee collector address|
 
 
+### updateAaveVault
+
+Updates the AaveVault address for USDC yield generation
+
+*Only governance role can update the AaveVault address*
+
+**Notes:**
+- Validates address is not zero before updating
+
+- Ensures _aaveVault is not address(0)
+
+- Updates aaveVault state variable
+
+- Emits AaveVaultUpdated event
+
+- Reverts if _aaveVault is address(0)
+
+- No reentrancy risk, simple state update
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function updateAaveVault(address _aaveVault) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_aaveVault`|`address`|New AaveVault address|
+
+
+### deployUsdcToAave
+
+Deploys USDC from the vault to Aave for yield generation
+
+*Called by UserPool after minting QEURO to automatically deploy USDC to Aave*
+
+**Notes:**
+- Only callable by VAULT_OPERATOR_ROLE (UserPool)
+
+- Validates amount > 0, AaveVault is set, and sufficient USDC balance
+
+- Updates totalUsdcHeld (decreases) and totalUsdcInAave (increases)
+
+- Emits UsdcDeployedToAave event
+
+- Reverts if amount is 0, AaveVault not set, or insufficient USDC
+
+- Protected by nonReentrant modifier
+
+- Restricted to VAULT_OPERATOR_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function deployUsdcToAave(uint256 usdcAmount) external nonReentrant onlyRole(VAULT_OPERATOR_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to deploy to Aave (6 decimals)|
+
+
+### _withdrawUsdcFromAave
+
+Withdraws USDC from Aave back to the vault
+
+*Called internally when redemptions require more USDC than available in vault*
+
+**Notes:**
+- Internal function, called during redemption flow
+
+- Validates amount > 0 and AaveVault is set
+
+- Updates totalUsdcHeld (increases) and totalUsdcInAave (decreases)
+
+- Emits UsdcWithdrawnFromAave event
+
+- Reverts if amount is 0 or AaveVault not set
+
+- Not protected - internal function only
+
+- Internal function - called by redeemQEURO
+
+- No oracle dependencies
+
+
+```solidity
+function _withdrawUsdcFromAave(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to withdraw from Aave (6 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcWithdrawn`|`uint256`|Actual amount of USDC withdrawn|
+
+
 ### updatePriceProtectionParams
 
 Updates price deviation protection parameters
@@ -1055,9 +1276,9 @@ function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external nonR
 
 ### getTotalUsdcAvailable
 
-Gets the total USDC available for hedger deposits
+Gets the total USDC available (vault + Aave)
 
-*Returns the current total USDC held in the vault for transparency*
+*Returns total USDC that can be used for withdrawals/redemptions*
 
 **Notes:**
 - No security validations required - view function
@@ -1072,7 +1293,7 @@ Gets the total USDC available for hedger deposits
 
 - Not applicable - view function
 
-- Public access - anyone can query total USDC held
+- Public access - anyone can query total USDC available
 
 - No oracle dependencies
 
@@ -1084,7 +1305,7 @@ function getTotalUsdcAvailable() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|uint256 Total USDC held in vault (6 decimals)|
+|`<none>`|`uint256`|uint256 Total USDC available (vault + Aave) (6 decimals)|
 
 
 ### updatePriceCache
@@ -1670,4 +1891,49 @@ event DevModeToggled(bool enabled, address indexed caller);
 |----|----|-----------|
 |`enabled`|`bool`|Whether dev mode is enabled or disabled|
 |`caller`|`address`|Address that triggered the toggle|
+
+### AaveVaultUpdated
+Emitted when AaveVault address is updated
+
+
+```solidity
+event AaveVaultUpdated(address indexed oldAaveVault, address indexed newAaveVault);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`oldAaveVault`|`address`|Previous AaveVault address|
+|`newAaveVault`|`address`|New AaveVault address|
+
+### UsdcDeployedToAave
+Emitted when USDC is deployed to Aave for yield generation
+
+
+```solidity
+event UsdcDeployedToAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC deployed to Aave|
+|`totalUsdcInAave`|`uint256`|New total USDC in Aave after deployment|
+
+### UsdcWithdrawnFromAave
+Emitted when USDC is withdrawn from Aave
+
+
+```solidity
+event UsdcWithdrawnFromAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC withdrawn from Aave|
+|`totalUsdcInAave`|`uint256`|New total USDC in Aave after withdrawal|
 

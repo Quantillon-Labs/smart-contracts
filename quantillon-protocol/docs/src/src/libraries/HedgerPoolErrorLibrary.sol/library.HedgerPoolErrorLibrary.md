@@ -225,6 +225,12 @@ error InsufficientHedgerCapacity();
 error NoActiveHedgerLiquidity();
 ```
 
+### HedgerHasActivePosition
+
+```solidity
+error HedgerHasActivePosition();
+```
+
 ### LiquidationNotAllowed
 
 ```solidity

@@ -57,6 +57,7 @@ library HedgerPoolErrorLibrary {
     error PositionHasActiveFill();
     error InsufficientHedgerCapacity();
     error NoActiveHedgerLiquidity();
+    error HedgerHasActivePosition();
     
     // Liquidation Errors
     error LiquidationNotAllowed();

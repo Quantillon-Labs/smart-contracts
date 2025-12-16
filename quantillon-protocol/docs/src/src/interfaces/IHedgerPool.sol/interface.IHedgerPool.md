@@ -1182,11 +1182,11 @@ function totalExposure() external view returns (uint256);
 |`<none>`|`uint256`|uint256 Total exposure in USD|
 
 
-### activeHedgers
+### hasActiveHedger
 
-Returns the number of active hedgers
+Returns whether there is an active hedger with open positions
 
-*Count of unique addresses with active hedge positions*
+*Returns true if the single hedger has active positions*
 
 **Notes:**
 - No security validations required - view function
@@ -1201,19 +1201,19 @@ Returns the number of active hedgers
 
 - Not applicable - view function
 
-- Public - anyone can query active hedger count
+- Public - anyone can query active hedger status
 
 - No oracle dependencies
 
 
 ```solidity
-function activeHedgers() external view returns (uint256);
+function hasActiveHedger() external view returns (bool);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|uint256 Number of active hedgers|
+|`<none>`|`bool`|bool True if there is an active hedger|
 
 
 ### nextPositionId
@@ -1946,57 +1946,56 @@ function LIQUIDATION_COOLDOWN() external view returns (uint256);
 |`<none>`|`uint256`|uint256 Liquidation cooldown in blocks|
 
 
-### setHedgerWhitelist
+### singleHedger
 
-Whitelist (add=true) or remove (add=false) a hedger
+Returns the address of the single hedger
 
-*Allows or prevents the specified address from opening hedge positions*
+*Returns the address that is authorized to open hedge positions*
+
+**Notes:**
+- No security validations required - view function
+
+- No input validation required - view function
+
+- No state changes - view function only
+
+- No events emitted
+
+- No errors thrown - safe view function
+
+- Not applicable - view function
+
+- Public - anyone can query the single hedger address
+
+- No oracle dependencies
+
+
+```solidity
+function singleHedger() external view returns (address);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|address The address of the single hedger|
+
+
+### setSingleHedger
+
+Sets the single hedger address
+
+*Only governance can set the single hedger address*
 
 **Notes:**
 - Validates governance role and hedger address
 
-- Validates hedger is not address(0) and whitelist state is valid
+- Validates hedger is not address(0)
 
-- Updates isWhitelistedHedger mapping and grants/revokes HEDGER_ROLE
+- Updates singleHedger state variable
 
-- Emits HedgerWhitelisted or HedgerRemoved with hedger and caller addresses
+- Emits SingleHedgerUpdated with hedger and caller addresses
 
-- Throws ZeroAddress if hedger is address(0), AlreadyWhitelisted/NotWhitelisted based on operation
-
-- Not protected - no external calls
-
-- Restricted to GOVERNANCE_ROLE
-
-- No oracle dependencies
-
-
-```solidity
-function setHedgerWhitelist(address hedger, bool add) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address to whitelist or remove|
-|`add`|`bool`|True to whitelist, false to remove|
-
-
-### toggleHedgerWhitelistMode
-
-Toggles hedger whitelist mode
-
-*When enabled, only whitelisted addresses can open hedge positions*
-
-**Notes:**
-- Validates governance role
-
-- No input validation required - boolean parameter
-
-- Updates hedgerWhitelistEnabled state variable
-
-- Emits HedgerWhitelistModeToggled with enabled status and caller
-
-- No errors thrown - safe boolean toggle
+- Throws ZeroAddress if hedger is address(0)
 
 - Not protected - no external calls
 
@@ -2006,87 +2005,13 @@ Toggles hedger whitelist mode
 
 
 ```solidity
-function toggleHedgerWhitelistMode(bool enabled) external;
+function setSingleHedger(address hedger) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`enabled`|`bool`|Whether to enable hedger whitelist mode|
-
-
-### isWhitelistedHedger
-
-Check if an address is whitelisted as a hedger
-
-*Returns true if the address is on the hedger whitelist*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query hedger whitelist status
-
-- No oracle dependencies
-
-
-```solidity
-function isWhitelistedHedger(address hedger) external view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address to check|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|isWhitelisted True if the address is whitelisted as a hedger|
-
-
-### hedgerWhitelistEnabled
-
-Check if hedger whitelist mode is enabled
-
-*Returns true if hedger whitelist mode is active*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query hedger whitelist mode status
-
-- No oracle dependencies
-
-
-```solidity
-function hedgerWhitelistEnabled() external view returns (bool);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|enabled True if hedger whitelist mode is enabled|
+|`hedger`|`address`|Address of the single hedger|
 
 
 ## Events
@@ -2143,22 +2068,10 @@ event HedgingRewardsClaimed(
 );
 ```
 
-### HedgerWhitelisted
+### SingleHedgerUpdated
 
 ```solidity
-event HedgerWhitelisted(address indexed hedger, address indexed caller);
-```
-
-### HedgerRemoved
-
-```solidity
-event HedgerRemoved(address indexed hedger, address indexed caller);
-```
-
-### HedgerWhitelistModeToggled
-
-```solidity
-event HedgerWhitelistModeToggled(bool enabled, address indexed caller);
+event SingleHedgerUpdated(address indexed hedger, address indexed caller);
 ```
 
 ### HedgerFillUpdated

@@ -210,7 +210,7 @@ contract HedgerVaultRegressionTest is Test {
         
         // Whitelist hedger
         vm.prank(admin);
-        hedgerPool.setHedgerWhitelist(hedger, true);
+        hedgerPool.setSingleHedger(hedger);
     }
     
     // =============================================================================
@@ -386,24 +386,21 @@ contract HedgerVaultRegressionTest is Test {
         vm.prank(hedger);
         uint256 positionId = hedgerPool.enterHedgePosition(usdcAmount, leverage);
         
-        // Open an additional smaller position to ensure remaining collateral after closure
-        vm.prank(hedger);
-        hedgerPool.enterHedgePosition(1000e6, 3);
-        
         uint256 initialHedgerUsdc = usdc.balanceOf(hedger);
         uint256 initialVaultUsdc = vault.getTotalUsdcAvailable();
         
-        // Hedger closes position
+        // Remove some margin instead of closing (avoids PositionClosureRestricted when protocol is not fully collateralized)
+        uint256 marginToRemove = 1000e6; // Remove 1,000 USDC
         vm.prank(hedger);
-        hedgerPool.exitHedgePosition(positionId);
+        hedgerPool.removeMargin(positionId, marginToRemove);
         
         // Verify hedger USDC increased
         uint256 finalHedgerUsdc = usdc.balanceOf(hedger);
-        assertGt(finalHedgerUsdc, initialHedgerUsdc, "Hedger USDC should increase after closing");
+        assertGt(finalHedgerUsdc, initialHedgerUsdc, "Hedger USDC should increase after margin removal");
         
         // Verify vault USDC decreased
         uint256 finalVaultUsdc = vault.getTotalUsdcAvailable();
-        assertLt(finalVaultUsdc, initialVaultUsdc, "Vault USDC should decrease after closing");
+        assertLt(finalVaultUsdc, initialVaultUsdc, "Vault USDC should decrease after margin removal");
     }
     
     /**
@@ -505,15 +502,15 @@ contract HedgerVaultRegressionTest is Test {
         // Add hedger deposit to provide collateralization for minting
         uint256 initialHedgerDepositAmount = 5000000e6; // 5,000,000 USDC
         vm.prank(hedger);
-        hedgerPool.enterHedgePosition(initialHedgerDepositAmount, 2); // 2x leverage
+        uint256 initialPositionId = hedgerPool.enterHedgePosition(initialHedgerDepositAmount, 2); // 2x leverage
         
         // User mints QEURO
         vm.prank(user);
         vault.mintQEURO(userUsdcAmount, 0);
         
-        // Hedger opens position
+        // Add margin to existing position instead of closing and reopening (keeps hedger active)
         vm.prank(hedger);
-        hedgerPool.enterHedgePosition(hedgerUsdcAmount, 5);
+        hedgerPool.addMargin(initialPositionId, hedgerUsdcAmount);
         
         // Get vault metrics
         (uint256 totalUsdcHeld, uint256 totalMinted, uint256 totalDebtValue, , ) = vault.getVaultMetrics();
@@ -547,15 +544,15 @@ contract HedgerVaultRegressionTest is Test {
         // Add hedger deposit to provide collateralization for minting
         uint256 initialHedgerDepositAmount = 5000000e6; // 5,000,000 USDC
         vm.prank(hedger);
-        hedgerPool.enterHedgePosition(initialHedgerDepositAmount, 2); // 2x leverage
+        uint256 initialPositionId = hedgerPool.enterHedgePosition(initialHedgerDepositAmount, 2); // 2x leverage
         
         // User mints QEURO
         vm.prank(user);
         vault.mintQEURO(userUsdcAmount, 0);
         
-        // Hedger opens position
+        // Add margin to existing position instead of closing and reopening (keeps hedger active)
         vm.prank(hedger);
-        uint256 positionId = hedgerPool.enterHedgePosition(hedgerUsdcAmount, 5);
+        hedgerPool.addMargin(initialPositionId, hedgerUsdcAmount);
         
         // Verify vault USDC balance matches totalUsdcHeld (accounting for fees that remain in vault due to mocking)
         uint256 vaultUsdcBalance = usdc.balanceOf(address(vault));
@@ -564,9 +561,9 @@ contract HedgerVaultRegressionTest is Test {
         // If fees are 0 (testing mode), balance should equal totalUsdcHeld
         assertGe(vaultUsdcBalance, totalUsdcHeld, "Vault USDC balance should be >= totalUsdcHeld");
         
-        // Hedger closes position
+        // Remove margin instead of closing (avoids PositionClosureRestricted)
         vm.prank(hedger);
-        hedgerPool.exitHedgePosition(positionId);
+        hedgerPool.removeMargin(initialPositionId, hedgerUsdcAmount);
         
         // Verify vault USDC balance still accounts for fees
         vaultUsdcBalance = usdc.balanceOf(address(vault));
@@ -636,7 +633,7 @@ contract HedgerVaultRegressionTest is Test {
         
         // Whitelist hedger
         vm.prank(admin);
-        hedgerPool.setHedgerWhitelist(newHedger, true);
+        hedgerPool.setSingleHedger(newHedger);
         
         // Whitelisted hedger should succeed
         vm.prank(newHedger);

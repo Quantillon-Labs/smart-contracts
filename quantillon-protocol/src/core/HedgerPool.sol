@@ -71,11 +71,11 @@ contract HedgerPool is
     uint256 public totalMargin;
     uint256 public totalExposure;
     uint256 public totalFilledExposure;
-    uint256 public activeHedgers;
     uint256 public nextPositionId;
 
-    mapping(address => bool) public isWhitelistedHedger;
-    bool public hedgerWhitelistEnabled;
+    /// @notice Address of the single hedger allowed to open positions
+    /// @dev This replaces the previous multi-hedger whitelist model
+    address public singleHedger;
 
     struct HedgePosition {
         address hedger;
@@ -92,31 +92,28 @@ contract HedgerPool is
         uint128 qeuroBacked;     // Exact QEURO amount backed by this position (18 decimals)
     }
 
-    struct HedgerBalance {
-        uint128 totalMargin;
-        uint128 totalExposure;
-    }
-
     struct HedgerRewardState {
         uint128 pendingRewards;
         uint64 lastRewardClaim;
     }
 
     mapping(uint256 => HedgePosition) public positions;
-    mapping(address => HedgerBalance) private hedgerBalances;
     mapping(address => HedgerRewardState) private hedgerRewards;
-    mapping(address => uint256) private hedgerPositionCounts;
     mapping(bytes32 => uint256) private liquidationCommitments;
     mapping(address => mapping(uint256 => uint32)) private pendingLiquidations;
 
     uint256[] private activePositions;
     mapping(uint256 => uint256) private activePositionIndex;
 
+    /// @notice Maps hedger address to their active position ID (0 = no active position)
+    /// @dev Used to enforce single position per hedger limit
+    mapping(address => uint256) private hedgerActivePositionId;
+
     mapping(address => uint256) public lastLiquidationAttempt;
 
     mapping(address => uint256) public hedgerLastRewardBlock;
 
-    uint256 public constant MAX_POSITIONS_PER_HEDGER = 50;
+    uint256 public constant MAX_POSITIONS_PER_HEDGER = 1;
     uint96 public constant MAX_UINT96_VALUE = type(uint96).max;
     uint256 public constant MAX_POSITION_SIZE = MAX_UINT96_VALUE;
     uint256 public constant MAX_MARGIN = MAX_UINT96_VALUE;
@@ -238,7 +235,6 @@ contract HedgerPool is
         coreParams.marginFee = 0;
         coreParams.eurInterestRate = 350;
         coreParams.usdInterestRate = 450;
-        hedgerWhitelistEnabled = true;
         nextPositionId = 1;
     }
 
@@ -279,8 +275,15 @@ contract HedgerPool is
         returns (uint256 positionId) 
     {
         // CHECKS
-        if (hedgerWhitelistEnabled && !isWhitelistedHedger[msg.sender]) {
-            revert CommonErrorLibrary.NotWhitelisted();
+        // Single hedger model: only the configured hedger address can open positions
+        if (msg.sender != singleHedger) revert CommonErrorLibrary.NotAuthorized();
+        
+        // Ensure hedger doesn't already have an active position
+        if (hedgerActivePositionId[msg.sender] != 0) {
+            HedgePosition storage existingPosition = positions[hedgerActivePositionId[msg.sender]];
+            if (existingPosition.isActive) {
+                revert HedgerPoolErrorLibrary.HedgerHasActivePosition();
+            }
         }
         
         uint256 currentTime = TIME_PROVIDER.currentTime();
@@ -292,9 +295,20 @@ contract HedgerPool is
         // Calculate position parameters using actual oracle price
         (uint256 fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio) = 
             HedgerPoolLogicLibrary.validateAndCalculatePositionParams(
-                usdcAmount, leverage, eurUsdPrice, coreParams.entryFee, coreParams.minMarginRatio, MAX_MARGIN_RATIO, coreParams.maxLeverage,
-                MAX_POSITIONS_PER_HEDGER, hedgerPositionCounts[msg.sender], MAX_MARGIN,
-                MAX_POSITION_SIZE, MAX_ENTRY_PRICE, MAX_LEVERAGE, currentTime
+                usdcAmount,
+                leverage,
+                eurUsdPrice,
+                coreParams.entryFee,
+                coreParams.minMarginRatio,
+                MAX_MARGIN_RATIO,
+                coreParams.maxLeverage,
+                1, // Single position per hedger limit
+                0, // Single hedger model: single position per hedger enforced
+                MAX_MARGIN,
+                MAX_POSITION_SIZE,
+                MAX_ENTRY_PRICE,
+                MAX_LEVERAGE,
+                currentTime
             );
         // Explicitly use all return values to avoid unused-return warning
         // fee and marginRatio are validated by the library function, no additional checks needed
@@ -313,13 +327,8 @@ contract HedgerPool is
         position.unrealizedPnL = 0;
         position.isActive = true;
         _trackActivePosition(positionId);
+        hedgerActivePositionId[msg.sender] = positionId;
 
-        HedgerBalance storage hedgerInfo = hedgerBalances[msg.sender];
-        bool wasInactive = hedgerInfo.totalExposure == 0;
-        hedgerInfo.totalMargin += uint128(netMargin);
-        hedgerInfo.totalExposure += uint128(positionSize);
-        if (wasInactive && hedgerInfo.totalExposure > 0) activeHedgers++;
-        hedgerPositionCounts[msg.sender]++;
         totalMargin += netMargin;
         totalExposure += positionSize;
         usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
@@ -491,8 +500,6 @@ contract HedgerPool is
         position.margin = uint96(newMargin);
         position.positionSize = uint96(newPositionSize);
 
-        hedgerBalances[msg.sender].totalMargin += uint128(netAmount);
-        hedgerBalances[msg.sender].totalExposure += uint128(deltaPositionSize);
         totalMargin += netAmount;
         totalExposure += deltaPositionSize;
 
@@ -587,8 +594,6 @@ contract HedgerPool is
         position.margin = uint96(newMargin);
         position.positionSize = uint96(newPositionSize);
 
-        hedgerBalances[msg.sender].totalMargin -= uint128(amount);
-        hedgerBalances[msg.sender].totalExposure -= uint128(deltaPositionSize);
         totalMargin -= amount;
         totalExposure -= deltaPositionSize;
 
@@ -811,11 +816,11 @@ contract HedgerPool is
         returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards) 
     {
         address hedger = msg.sender;
-        HedgerBalance storage hedgerInfo = hedgerBalances[hedger];
         HedgerRewardState storage rewardState = hedgerRewards[hedger];
 
+        // In single-hedger mode we use the protocol-wide exposure as reward base
         (uint256 newPendingRewards, uint256 newLastRewardBlock) = HedgerPoolLogicLibrary.calculateRewardUpdate(
-            uint256(hedgerInfo.totalExposure), coreParams.eurInterestRate, coreParams.usdInterestRate,
+            totalExposure, coreParams.eurInterestRate, coreParams.usdInterestRate,
             hedgerLastRewardBlock[hedger], block.number, MAX_REWARD_PERIOD, 
             uint256(rewardState.pendingRewards)
         );
@@ -868,6 +873,27 @@ contract HedgerPool is
             int256 e = int256(uint256(p.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(p.filledVolume), uint256(p.qeuroBacked), price);
             if (e > 0) t += uint256(e);
         }
+    }
+
+    /**
+     * @notice Checks if there is an active hedger with an active position
+     * @dev Returns true if the single hedger has an active position
+     * @return True if hedger has an active position, false otherwise
+     * @custom:security View-only helper - no state changes
+     * @custom:validation None
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can query
+     * @custom:oracle Not applicable
+     */
+    function hasActiveHedger() external view returns (bool) {
+        if (singleHedger == address(0)) return false;
+        uint256 activePositionId = hedgerActivePositionId[singleHedger];
+        if (activePositionId == 0) return false;
+        HedgePosition storage position = positions[activePositionId];
+        return position.isActive;
     }
 
     /**
@@ -1132,64 +1158,23 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Whitelists or removes a hedger address for position opening
-     * @dev Whitelisting process:
-     *      1. Validates governance role and hedger address
-     *      2. Checks hedger is not already whitelisted (if adding)
-     *      3. Adds hedger to whitelist and grants HEDGER_ROLE (if adding)
-     *      4. Removes hedger from whitelist and revokes HEDGER_ROLE (if removing)
-     * @param hedger Address of the hedger to whitelist or remove
-     * @param add True to whitelist, false to remove from whitelist
+     * @notice Sets the single hedger address allowed to open positions
+     * @dev Replaces the previous multi-hedger whitelist model with a single hedger
+     * @param hedger Address of the single hedger
      * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates governance role, hedger address, not already whitelisted (if adding)
-     * @custom:state-changes Adds/removes hedger to/from whitelist, grants/revokes HEDGER_ROLE
-     * @custom:events Emits HedgerWhitelisted or HedgerRemovedFromWhitelist
-     * @custom:errors Throws AlreadyWhitelisted if adding already whitelisted hedger
+     * @custom:validation Validates governance role and non-zero hedger address
+     * @custom:state-changes Updates singleHedger address
+     * @custom:events None
+     * @custom:errors Throws ZeroAddress if hedger is zero
      * @custom:reentrancy Not protected - governance function
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
-    function setHedgerWhitelist(address hedger, bool add) external {
+    function setSingleHedger(address hedger) external {
         _validateRole(GOVERNANCE_ROLE);
-        AccessControlLibrary.validateAddress(hedger);
-        if (add) {
-            if (isWhitelistedHedger[hedger]) revert HedgerPoolErrorLibrary.AlreadyWhitelisted();
-            isWhitelistedHedger[hedger] = true;
-            _grantRole(HEDGER_ROLE, hedger);
-            emit HedgerWhitelisted(hedger, msg.sender);
-        } else {
-            if (!isWhitelistedHedger[hedger]) revert CommonErrorLibrary.NotWhitelisted();
-            isWhitelistedHedger[hedger] = false;
-            _revokeRole(HEDGER_ROLE, hedger);
-            emit HedgerRemoved(hedger, msg.sender);
-        }
-    }
-
-    /**
-     * @notice Toggles the hedger whitelist mode on/off
-     * 
-     * @param enabled Whether to enable or disable the whitelist mode
-     * 
-     * @dev Whitelist mode toggle:
-     *      1. Validates governance role
-     *      2. Updates hedgerWhitelistEnabled state
-     *      3. Emits event for transparency
-     * 
-     * @dev When enabled: Only whitelisted hedgers can open positions
-     * @dev When disabled: Any address can open positions
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates governance role
-     * @custom:state-changes Updates hedgerWhitelistEnabled state
-     * @custom:events Emits HedgerWhitelistModeToggled with new state and caller
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Not protected - governance function
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function toggleHedgerWhitelistMode(bool enabled) external {
-        _validateRole(GOVERNANCE_ROLE);
-        hedgerWhitelistEnabled = enabled;
-        emit HedgerWhitelistModeToggled(enabled, msg.sender);
+        // Explicit zero address check to satisfy static analysis
+        if (hedger == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        singleHedger = hedger;
     }
 
     /**
@@ -1309,22 +1294,17 @@ contract HedgerPool is
         uint256 marginDelta,
         uint256 exposureDelta
     ) internal {
-        HedgerBalance storage hedgerInfo = hedgerBalances[hedger];
-        bool wasActive = hedgerInfo.totalExposure > 0;
-
-        hedgerInfo.totalMargin -= uint128(marginDelta);
-        hedgerInfo.totalExposure -= uint128(exposureDelta);
-
         totalMargin -= marginDelta;
         totalExposure -= exposureDelta;
 
         position.isActive = false;
         _untrackActivePosition(positionId);
-
-        uint256 newCount = --hedgerPositionCounts[hedger];
-        if (wasActive && hedgerInfo.totalExposure == 0 && newCount == 0) {
-            activeHedgers--;
+        
+        // Reset hedger's active position tracking
+        if (hedgerActivePositionId[hedger] == positionId) {
+            hedgerActivePositionId[hedger] = 0;
         }
+
     }
 
     /**
@@ -1362,8 +1342,23 @@ contract HedgerPool is
         if (totalFilledExposure < cachedFilledVolume) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
         totalFilledExposure -= cachedFilledVolume;
         
-        // Call _increaseFilledVolume with cached price
-        _increaseFilledVolume(cachedFilledVolume, currentPrice, cachedQeuroBacked, positionId);
+        // Only redistribute if there are other active positions (excluding the current one being unwound)
+        // With single position per hedger, if this is the only position, there's nothing to redistribute to
+        uint256 len = activePositions.length;
+        bool hasOtherPositions = false;
+        for (uint256 i = 0; i < len; i++) {
+            if (activePositions[i] != positionId) {
+                hasOtherPositions = true;
+                break;
+            }
+        }
+        
+        // If there are other positions, redistribute the filled volume
+        if (hasOtherPositions) {
+            _increaseFilledVolume(cachedFilledVolume, currentPrice, cachedQeuroBacked, positionId);
+        }
+        // Otherwise, the filled volume is simply cleared (no redistribution needed)
+        
         return cachedFilledVolume;
     }
 

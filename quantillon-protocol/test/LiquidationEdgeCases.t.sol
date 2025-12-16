@@ -109,7 +109,7 @@ contract LiquidationEdgeCases is Test {
         hedgerPool.grantRole(keccak256("EMERGENCY_ROLE"), emergencyRole);
         
         // Whitelist hedger for testing (hedger whitelist is enabled by default)
-        hedgerPool.setHedgerWhitelist(hedger, true);
+        hedgerPool.setSingleHedger(hedger);
         vm.stopPrank();
         
         // Mock vault calls
@@ -377,7 +377,7 @@ contract LiquidationEdgeCases is Test {
         
         // Attempt to directly manipulate position (should fail due to access control)
         // This should fail because flashLoanAttacker is not whitelisted as a hedger
-        vm.expectRevert(CommonErrorLibrary.NotWhitelisted.selector);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         hedgerPool.enterHedgePosition(1000 * USDC_PRECISION, 2 * PRECISION / PRECISION);
         
         vm.stopPrank();

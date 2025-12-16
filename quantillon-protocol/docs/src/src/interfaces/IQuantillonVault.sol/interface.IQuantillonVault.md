@@ -158,16 +158,23 @@ Retrieves the vault's global metrics
 ```solidity
 function getVaultMetrics()
     external
-    view
-    returns (uint256 totalUsdcHeld_, uint256 totalMinted_, uint256 totalDebtValue);
+    returns (
+        uint256 totalUsdcHeld_,
+        uint256 totalMinted_,
+        uint256 totalDebtValue,
+        uint256 totalUsdcInAave_,
+        uint256 totalUsdcAvailable_
+    );
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`totalUsdcHeld_`|`uint256`|Total USDC held in the vault|
+|`totalUsdcHeld_`|`uint256`|Total USDC held directly in the vault|
 |`totalMinted_`|`uint256`|Total QEURO minted|
 |`totalDebtValue`|`uint256`|Total debt value in USD|
+|`totalUsdcInAave_`|`uint256`|Total USDC deployed to Aave for yield|
+|`totalUsdcAvailable_`|`uint256`|Total USDC available (vault + Aave)|
 
 
 ### calculateMintAmount
@@ -1624,4 +1631,174 @@ Updates the price cache with the current oracle price
 ```solidity
 function updatePriceCache() external;
 ```
+
+### deployUsdcToAave
+
+Deploys USDC from the vault to Aave for yield generation
+
+*Called by UserPool after minting QEURO to automatically deploy USDC to Aave*
+
+**Notes:**
+- Only callable by VAULT_OPERATOR_ROLE (UserPool)
+
+- Validates amount > 0, AaveVault is set, and sufficient USDC balance
+
+- Updates totalUsdcHeld (decreases) and totalUsdcInAave (increases)
+
+- Emits UsdcDeployedToAave event
+
+- Reverts if amount is 0, AaveVault not set, or insufficient USDC
+
+- Protected by nonReentrant modifier
+
+- Restricted to VAULT_OPERATOR_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function deployUsdcToAave(uint256 usdcAmount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to deploy to Aave (6 decimals)|
+
+
+### updateAaveVault
+
+Updates the AaveVault address for USDC yield generation
+
+*Only governance role can update the AaveVault address*
+
+**Notes:**
+- Validates address is not zero before updating
+
+- Ensures _aaveVault is not address(0)
+
+- Updates aaveVault state variable
+
+- Emits AaveVaultUpdated event
+
+- Reverts if _aaveVault is address(0)
+
+- No reentrancy risk, simple state update
+
+- Restricted to GOVERNANCE_ROLE
+
+- No oracle dependencies
+
+
+```solidity
+function updateAaveVault(address _aaveVault) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_aaveVault`|`address`|New AaveVault address|
+
+
+### aaveVault
+
+Returns the AaveVault contract address
+
+*The AaveVault contract for USDC yield generation*
+
+**Notes:**
+- No security validations required - view function
+
+- No input validation required - view function
+
+- No state changes - view function only
+
+- No events emitted
+
+- No errors thrown - safe view function
+
+- Not applicable - view function
+
+- Public - anyone can query aaveVault address
+
+- No oracle dependencies
+
+
+```solidity
+function aaveVault() external view returns (address);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|Address of the AaveVault contract|
+
+
+### totalUsdcInAave
+
+Returns the total USDC deployed to Aave
+
+*Tracks USDC that has been sent to AaveVault for yield generation*
+
+**Notes:**
+- No security validations required - view function
+
+- No input validation required - view function
+
+- No state changes - view function only
+
+- No events emitted
+
+- No errors thrown - safe view function
+
+- Not applicable - view function
+
+- Public - anyone can query total USDC in Aave
+
+- No oracle dependencies
+
+
+```solidity
+function totalUsdcInAave() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Total USDC in Aave (6 decimals)|
+
+
+### VAULT_OPERATOR_ROLE
+
+Returns the vault operator role identifier
+
+*Role that can trigger Aave deployments (assigned to UserPool)*
+
+**Notes:**
+- No security validations required - view function
+
+- No input validation required - view function
+
+- No state changes - view function only
+
+- No events emitted
+
+- No errors thrown - safe view function
+
+- Not applicable - view function
+
+- Public - anyone can query role identifier
+
+- No oracle dependencies
+
+
+```solidity
+function VAULT_OPERATOR_ROLE() external view returns (bytes32);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bytes32`|The vault operator role bytes32 identifier|
+
 

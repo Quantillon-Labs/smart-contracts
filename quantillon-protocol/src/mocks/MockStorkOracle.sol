@@ -83,8 +83,12 @@ contract MockStorkOracle is IStorkOracle, Initializable, AccessControlUpgradeabl
         _grantRole(ORACLE_MANAGER_ROLE, admin);
         
         // Store original admin address for security
+        // Explicit validation right before assignment to satisfy static analysis
+        // (admin is already validated above, but this makes the check explicit for Slither)
+        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
         originalAdmin = admin;
-        treasury = _treasury != address(0) ? _treasury : admin; // Use admin as treasury if not provided
+        // Treasury defaults to admin if not provided (admin is already validated)
+        treasury = _treasury != address(0) ? _treasury : admin;
         
         // Parameters are unused in mock, but kept for interface compatibility
         // Suppress unused parameter warnings by referencing them

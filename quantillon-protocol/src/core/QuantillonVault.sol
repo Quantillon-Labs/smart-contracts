@@ -622,7 +622,10 @@ contract QuantillonVault is
         
         // Transfer and deploy to Aave
         usdc.safeIncreaseAllowance(address(aaveVault), usdcAmount);
-        aaveVault.deployToAave(usdcAmount);
+        uint256 aTokensReceived = aaveVault.deployToAave(usdcAmount);
+        
+        // Validate that deployment was successful (aTokensReceived should be > 0)
+        if (aTokensReceived == 0) revert CommonErrorLibrary.InvalidAmount();
     }
 
     /**
@@ -1060,7 +1063,10 @@ contract QuantillonVault is
         
         // INTERACTIONS - Transfer USDC to AaveVault and deploy to Aave
         usdc.safeIncreaseAllowance(address(aaveVault), usdcAmount);
-        aaveVault.deployToAave(usdcAmount);
+        uint256 aTokensReceived = aaveVault.deployToAave(usdcAmount);
+        
+        // Validate that deployment was successful (aTokensReceived should be > 0)
+        if (aTokensReceived == 0) revert CommonErrorLibrary.InvalidAmount();
     }
 
     /**

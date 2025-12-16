@@ -195,7 +195,7 @@ contract HedgerVaultIntegrationTest is Test {
         
         // Whitelist hedger
         vm.prank(admin);
-        hedgerPool.setHedgerWhitelist(hedger, true);
+        hedgerPool.setSingleHedger(hedger);
     }
     
     // =============================================================================
@@ -264,12 +264,12 @@ contract HedgerVaultIntegrationTest is Test {
     }
     
     /**
-     * @notice Test multiple hedger deposits accumulate in vault
-     * @dev Verifies that multiple hedger deposits are properly accumulated
+     * @notice Test hedger deposit accumulates in vault
+     * @dev Verifies that hedger deposit is properly accumulated in vault
      * @custom:security Tests deposit accumulation mechanism
-     * @custom:validation Ensures multiple deposits are properly tracked
-     * @custom:state-changes Opens multiple positions and verifies accumulation
-     * @custom:events Expects multiple position opening events
+     * @custom:validation Ensures deposit is properly tracked
+     * @custom:state-changes Opens position and verifies accumulation
+     * @custom:events Expects position opening event
      * @custom:errors None expected
      * @custom:reentrancy Not applicable - test function
      * @custom:access No access restrictions - test function
@@ -277,22 +277,21 @@ contract HedgerVaultIntegrationTest is Test {
      */
     function testMultipleHedgerDepositsAccumulate() public {
         uint256 deposit1 = 3000e6; // 3,000 USDC
-        uint256 deposit2 = 7000e6; // 7,000 USDC
-        uint256 totalDeposits = deposit1 + deposit2;
         
         // First hedger deposit
         vm.prank(hedger);
-        hedgerPool.enterHedgePosition(deposit1, 5);
+        uint256 positionId1 = hedgerPool.enterHedgePosition(deposit1, 5);
         
         uint256 vaultUsdcAfterFirst = vault.getTotalUsdcAvailable();
         assertEq(vaultUsdcAfterFirst, deposit1, "Vault should have first deposit");
         
-        // Second hedger deposit
+        // Add margin to existing position instead of closing and reopening (avoids PositionClosureRestricted)
+        uint256 additionalMargin = 4000e6; // 4,000 USDC
         vm.prank(hedger);
-        hedgerPool.enterHedgePosition(deposit2, 10);
+        hedgerPool.addMargin(positionId1, additionalMargin);
         
-        uint256 vaultUsdcAfterSecond = vault.getTotalUsdcAvailable();
-        assertEq(vaultUsdcAfterSecond, totalDeposits, "Vault should have both deposits");
+        uint256 vaultUsdcAfterAddition = vault.getTotalUsdcAvailable();
+        assertEq(vaultUsdcAfterAddition, deposit1 + additionalMargin, "Vault should have both deposits");
     }
     
     // =============================================================================
@@ -317,21 +316,18 @@ contract HedgerVaultIntegrationTest is Test {
         // Hedger opens position
         vm.prank(hedger);
         uint256 positionId = hedgerPool.enterHedgePosition(hedgerDepositAmount, 10);
-
-        // Open an additional position to leave residual margin in the vault
-        vm.prank(hedger);
-        hedgerPool.enterHedgePosition(2000e6, 3);
         
         uint256 vaultUsdcAfterDeposit = vault.getTotalUsdcAvailable();
-        assertEq(vaultUsdcAfterDeposit, hedgerDepositAmount + 2000e6, "Vault should reflect total hedger deposits");
+        assertEq(vaultUsdcAfterDeposit, hedgerDepositAmount, "Vault should reflect hedger deposit");
         
-        // Hedger closes position
+        // Remove margin instead of closing (avoids PositionClosureRestricted)
+        uint256 marginToRemove = hedgerDepositAmount / 2; // Remove half the margin
         vm.prank(hedger);
-        hedgerPool.exitHedgePosition(positionId);
+        hedgerPool.removeMargin(positionId, marginToRemove);
         
         // Verify vault's totalUsdcHeld decreased
         uint256 vaultUsdcAfterWithdrawal = vault.getTotalUsdcAvailable();
-        assertEq(vaultUsdcAfterWithdrawal, vaultUsdcAfterDeposit - hedgerDepositAmount, "Vault USDC should decrease by withdrawn deposit");
+        assertEq(vaultUsdcAfterWithdrawal, vaultUsdcAfterDeposit - marginToRemove, "Vault USDC should decrease by removed margin");
         
         // Verify hedger received USDC
         uint256 hedgerUsdcBalance = usdc.balanceOf(hedger);
@@ -357,24 +353,21 @@ contract HedgerVaultIntegrationTest is Test {
         vm.prank(hedger);
         uint256 positionId = hedgerPool.enterHedgePosition(hedgerDepositAmount, 5);
 
-        // Open a secondary position to keep the vault collateralized after first withdrawal
-        vm.prank(hedger);
-        hedgerPool.enterHedgePosition(1000e6, 3);
-
         uint256 vaultUsdcBeforeWithdrawal = vault.getTotalUsdcAvailable();
-        uint256 expectedVaultAfterWithdrawal = vaultUsdcBeforeWithdrawal - hedgerDepositAmount;
+        uint256 marginToRemove = hedgerDepositAmount / 2; // Remove half the margin
+        uint256 expectedVaultAfterWithdrawal = vaultUsdcBeforeWithdrawal - marginToRemove;
         
         // Expect HedgerDepositWithdrawn event
         vm.expectEmit(true, false, false, true);
         emit QuantillonVault.HedgerDepositWithdrawn(
             hedger,
-            hedgerDepositAmount,
+            marginToRemove,
             expectedVaultAfterWithdrawal
         );
         
-        // Hedger closes position
+        // Remove margin instead of closing (avoids PositionClosureRestricted)
         vm.prank(hedger);
-        hedgerPool.exitHedgePosition(positionId);
+        hedgerPool.removeMargin(positionId, marginToRemove);
 
         uint256 vaultUsdcAfterWithdrawal = vault.getTotalUsdcAvailable();
         assertEq(vaultUsdcAfterWithdrawal, expectedVaultAfterWithdrawal, "Vault USDC should match expectation after withdrawal");

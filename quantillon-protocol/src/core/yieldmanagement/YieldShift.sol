@@ -979,12 +979,12 @@ contract YieldShift is
             pop(totalDeposits)
             pop(totalRewards)
         }
-        uint256 activeHedgers = hedgerPool.activeHedgers();
+        bool hasActiveHedger = hedgerPool.hasActiveHedger();
         
         averageUserYield = totalUsers > 0 ? 
             userYieldPool / totalUsers : 0;
-        averageHedgerYield = activeHedgers > 0 ? 
-            hedgerYieldPool / activeHedgers : 0;
+        averageHedgerYield = hasActiveHedger ? 
+            hedgerYieldPool : 0;
         
         yieldEfficiency = totalYieldGenerated > 0 ? 
             totalYieldDistributed_.mulDiv(10000, totalYieldGenerated) : 0;

@@ -56,14 +56,10 @@ artifacts/
 # 📊 DEPLOYMENT & BROADCAST LOGS
 # =============================================================================
 
-# Ignores development broadcast logs
-!/broadcast
-/broadcast/*/31337/
-/broadcast/**/dry-run/
-/broadcast/**/run-latest.json
-/broadcast/**/run-*.json
+# Broadcast logs (fully ignored - keep local only)
+broadcast/
 
-# Deployment logs
+# Deployment logs (fully ignored - keep local only)
 deployments/
 deployment-*.log
 deployment-*.json

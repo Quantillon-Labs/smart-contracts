@@ -1,0 +1,11 @@
+# =============================================================================
+# QUANTILLON PROTOCOL - GIT ATTRIBUTES
+# =============================================================================
+# 
+# This file specifies which files should be encrypted with git-crypt
+# WHY: Keep sensitive deployment scripts and configurations encrypted in public repo
+# =============================================================================
+
+# Encrypt entire scripts/ folder
+scripts/** filter=git-crypt diff=git-crypt
+

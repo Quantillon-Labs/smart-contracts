@@ -335,29 +335,4 @@ library HedgerPoolLogicLibrary {
         HedgerPoolValidationLibrary.validateNewMargin(newMargin, maxMargin);
     }
 
-    /**
-     * @notice Generates a unique liquidation commitment hash
-     * @dev Creates a commitment hash for MEV protection in liquidation process
-     * @param hedger Address of the hedger whose position will be liquidated
-     * @param positionId ID of the position to liquidate
-     * @param salt Random salt for commitment uniqueness
-     * @param liquidator Address of the liquidator making the commitment
-     * @return Commitment hash for liquidation process
-     * @custom:security No security validations required for pure function
-     * @custom:validation None required for pure function
-     * @custom:state-changes None (pure function)
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access External pure function
-     * @custom:oracle Not applicable
-     */
-    function generateLiquidationCommitment(
-        address hedger,
-        uint256 positionId,
-        bytes32 salt,
-        address liquidator
-    ) external pure returns (bytes32) {
-        return keccak256(abi.encodePacked(hedger, positionId, salt, liquidator));
-    }
 }

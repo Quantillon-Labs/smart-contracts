@@ -21,22 +21,10 @@ team@quantillon.money
 error FlashLoanAttackDetected();
 ```
 
-### PendingLiquidationCommitment
-
-```solidity
-error PendingLiquidationCommitment();
-```
-
 ### InvalidPosition
 
 ```solidity
 error InvalidPosition();
-```
-
-### PositionNotLiquidatable
-
-```solidity
-error PositionNotLiquidatable();
 ```
 
 ### InvalidHedger
@@ -229,48 +217,6 @@ error NoActiveHedgerLiquidity();
 
 ```solidity
 error HedgerHasActivePosition();
-```
-
-### LiquidationNotAllowed
-
-```solidity
-error LiquidationNotAllowed();
-```
-
-### LiquidationRewardTooHigh
-
-```solidity
-error LiquidationRewardTooHigh();
-```
-
-### LiquidationPenaltyTooHigh
-
-```solidity
-error LiquidationPenaltyTooHigh();
-```
-
-### LiquidationThresholdInvalid
-
-```solidity
-error LiquidationThresholdInvalid();
-```
-
-### NoValidCommitment
-
-```solidity
-error NoValidCommitment();
-```
-
-### CommitmentAlreadyExists
-
-```solidity
-error CommitmentAlreadyExists();
-```
-
-### CommitmentDoesNotExist
-
-```solidity
-error CommitmentDoesNotExist();
 ```
 
 ### EntryFeeTooHigh

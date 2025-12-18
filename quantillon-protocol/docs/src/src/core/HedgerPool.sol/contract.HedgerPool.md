@@ -21,13 +21,6 @@ bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 ```
 
 
-### LIQUIDATOR_ROLE
-
-```solidity
-bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
-```
-
-
 ### EMERGENCY_ROLE
 
 ```solidity
@@ -144,20 +137,6 @@ mapping(address => HedgerRewardState) private hedgerRewards;
 ```
 
 
-### liquidationCommitments
-
-```solidity
-mapping(bytes32 => uint256) private liquidationCommitments;
-```
-
-
-### pendingLiquidations
-
-```solidity
-mapping(address => mapping(uint256 => uint32)) private pendingLiquidations;
-```
-
-
 ### activePositions
 
 ```solidity
@@ -180,13 +159,6 @@ Maps hedger address to their active position ID (0 = no active position)
 
 ```solidity
 mapping(address => uint256) private hedgerActivePositionId;
-```
-
-
-### lastLiquidationAttempt
-
-```solidity
-mapping(address => uint256) public lastLiquidationAttempt;
 ```
 
 
@@ -264,13 +236,6 @@ uint256 public constant MAX_TOTAL_MARGIN = MAX_UINT128_VALUE;
 
 ```solidity
 uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE;
-```
-
-
-### LIQUIDATION_COOLDOWN
-
-```solidity
-uint256 public constant LIQUIDATION_COOLDOWN = 300;
 ```
 
 
@@ -647,97 +612,6 @@ function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuro
 |`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
-### commitLiquidation
-
-Commits to liquidating a position (first step of two-phase liquidation)
-
-*Creates a commitment hash to prevent front-running of liquidation attempts*
-
-**Notes:**
-- Requires LIQUIDATOR_ROLE, validates position ownership and active status
-
-- Validates hedger address, position ID, position is active, hedger matches position owner
-
-- Creates liquidation commitment, increments pending liquidation count, updates last liquidation attempt
-
-- None - commitment phase doesn't emit events
-
-- Reverts with InvalidPosition if positionId is 0, InvalidHedger if hedger doesn't match, or if commitment already exists
-
-- Protected by secureNonReentrant modifier (if called externally)
-
-- Restricted to LIQUIDATOR_ROLE
-
-- Not applicable - commitment phase doesn't require oracle
-
-
-```solidity
-function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger whose position will be liquidated|
-|`positionId`|`uint256`|Unique identifier of the position to liquidate|
-|`salt`|`bytes32`|Random salt value to prevent commitment collisions|
-
-
-### liquidateHedger
-
-Liquidates an undercollateralized hedge position
-
-*Liquidation process:
-1. Validates liquidator role and commitment
-2. Validates position ownership and active status
-3. Calculates liquidation reward and remaining margin
-4. Updates hedger stats and removes position
-5. Withdraws USDC from vault for liquidator reward and remaining margin*
-
-*Security features:
-1. Role-based access control (LIQUIDATOR_ROLE)
-2. Commitment validation to prevent front-running
-3. Reentrancy protection*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates liquidator role, commitment, position ownership, active status
-
-- Liquidates position, updates hedger stats, withdraws USDC from vault
-
-- Emits HedgerLiquidated with liquidation details
-
-- Throws custom errors for invalid conditions
-
-- Protected by nonReentrant modifier
-
-- Restricted to LIQUIDATOR_ROLE
-
-- Requires fresh oracle price data
-
-
-```solidity
-function liquidateHedger(address hedger, uint256 positionId, bytes32 salt)
-    external
-    nonReentrant
-    returns (uint256 liquidationReward);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger to liquidate|
-|`positionId`|`uint256`|Unique identifier of the position to liquidate|
-|`salt`|`bytes32`|Random salt for commitment validation|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`liquidationReward`|`uint256`|Amount of USDC reward for the liquidator|
-
-
 ### claimHedgingRewards
 
 Claims hedging rewards for a hedger
@@ -868,13 +742,13 @@ Updates core hedging parameters for risk management
 **Notes:**
 - Validates governance role and parameter constraints
 
-- Validates minRatio >= 500, liqThreshold < minRatio, maxLev <= 20, liqPenalty <= 1000
+- Validates minRatio >= 500, maxLev <= 20
 
-- Updates all hedging parameter state variables
+- Updates minMarginRatio and maxLeverage state variables
 
 - No events emitted for parameter updates
 
-- Throws ConfigValueTooLow, ConfigInvalid, ConfigValueTooHigh
+- Throws ConfigValueTooLow, ConfigValueTooHigh
 
 - Not protected - no external calls
 
@@ -884,16 +758,14 @@ Updates core hedging parameters for risk management
 
 
 ```solidity
-function updateHedgingParameters(uint256 minRatio, uint256 liqThreshold, uint256 maxLev, uint256 liqPenalty) external;
+function updateHedgingParameters(uint256 minRatio, uint256 maxLev) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`minRatio`|`uint256`|New minimum margin ratio in basis points (e.g., 500 = 5%)|
-|`liqThreshold`|`uint256`|New liquidation threshold in basis points (e.g., 100 = 1%)|
 |`maxLev`|`uint256`|New maximum leverage multiplier (e.g., 20 = 20x)|
-|`liqPenalty`|`uint256`|New liquidation penalty in basis points (e.g., 200 = 2%)|
 
 
 ### updateInterestRates
@@ -1065,118 +937,6 @@ Unpauses all contract operations after emergency pause
 ```solidity
 function unpause() external;
 ```
-
-### hasPendingLiquidationCommitment
-
-Checks if there's a pending liquidation commitment for a position
-
-*Used to prevent margin operations during liquidation process*
-
-**Notes:**
-- View-only function - no state changes
-
-- None required for view function
-
-- None - view function
-
-- None
-
-- None
-
-- Not applicable - view function
-
-- Public - anyone can check commitment status
-
-- Not applicable
-
-
-```solidity
-function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|The address of the hedger|
-|`positionId`|`uint256`|The ID of the position|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|True if there's a pending liquidation commitment|
-
-
-### clearExpiredLiquidationCommitment
-
-Clears expired liquidation commitments after cooldown period
-
-*Allows liquidators to clean up expired commitments*
-
-**Notes:**
-- Requires LIQUIDATOR_ROLE, checks cooldown period
-
-- Ensures cooldown period has passed
-
-- Clears pending liquidation flag if expired
-
-- None
-
-- Throws InvalidRole if caller lacks LIQUIDATOR_ROLE
-
-- Protected by nonReentrant modifier
-
-- Restricted to LIQUIDATOR_ROLE
-
-- Not applicable
-
-
-```solidity
-function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger whose commitment to clear|
-|`positionId`|`uint256`|ID of the position whose commitment to clear|
-
-
-### cancelLiquidationCommitment
-
-Cancels a liquidation commitment before execution
-
-*Allows liquidators to cancel their own commitments*
-
-**Notes:**
-- Requires LIQUIDATOR_ROLE, validates commitment exists
-
-- Ensures commitment exists and belongs to caller
-
-- Deletes commitment data and clears pending liquidation flag
-
-- None
-
-- Throws InvalidRole or CommitmentNotFound
-
-- Protected by nonReentrant modifier
-
-- Restricted to LIQUIDATOR_ROLE
-
-- Not applicable
-
-
-```solidity
-function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger whose position was committed for liquidation|
-|`positionId`|`uint256`|ID of the position whose commitment to cancel|
-|`salt`|`bytes32`|Salt used in the original commitment|
-
 
 ### recover
 
@@ -1526,41 +1286,6 @@ function _unwindFilledVolume(uint256 positionId, HedgePosition storage position,
 |`freedVolume`|`uint256`|Amount of filled volume that was freed and redistributed|
 
 
-### _decrementPendingCommitment
-
-Decrements pending liquidation commitment count for a position
-
-*Internal helper to manage liquidation commitment tracking*
-
-**Notes:**
-- Internal function - no external access
-
-- None required for internal function
-
-- Decrements pendingLiquidations count if > 0
-
-- None
-
-- None
-
-- Not applicable - internal function
-
-- Internal helper only
-
-- Not applicable
-
-
-```solidity
-function _decrementPendingCommitment(address hedger, uint256 positionId) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger|
-|`positionId`|`uint256`|ID of the position|
-
-
 ### _isPositionHealthyForFill
 
 Checks if position is healthy enough for new fills
@@ -1853,14 +1578,6 @@ event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, by
 event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
 ```
 
-### HedgerLiquidated
-
-```solidity
-event HedgerLiquidated(
-    address indexed hedger, uint256 indexed positionId, address indexed liquidator, bytes32 packedData
-);
-```
-
 ### HedgingRewardsClaimed
 
 ```solidity
@@ -1943,9 +1660,7 @@ event RealizedPnLCalculation(
 ```solidity
 struct CoreParams {
     uint64 minMarginRatio;
-    uint64 liquidationThreshold;
     uint16 maxLeverage;
-    uint16 liquidationPenalty;
     uint16 entryFee;
     uint16 exitFee;
     uint16 marginFee;

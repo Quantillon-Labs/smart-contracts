@@ -43,7 +43,6 @@ contract HedgerPool is
     using HedgerPoolValidationLibrary for uint256;
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
-    bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     bytes32 public constant HEDGER_ROLE = keccak256("HEDGER_ROLE");
 
@@ -56,9 +55,7 @@ contract HedgerPool is
 
     struct CoreParams {
         uint64 minMarginRatio;
-        uint64 liquidationThreshold;
         uint16 maxLeverage;
-        uint16 liquidationPenalty;
         uint16 entryFee;
         uint16 exitFee;
         uint16 marginFee;
@@ -99,8 +96,6 @@ contract HedgerPool is
 
     mapping(uint256 => HedgePosition) public positions;
     mapping(address => HedgerRewardState) private hedgerRewards;
-    mapping(bytes32 => uint256) private liquidationCommitments;
-    mapping(address => mapping(uint256 => uint32)) private pendingLiquidations;
 
     uint256[] private activePositions;
     mapping(uint256 => uint256) private activePositionIndex;
@@ -108,8 +103,6 @@ contract HedgerPool is
     /// @notice Maps hedger address to their active position ID (0 = no active position)
     /// @dev Used to enforce single position per hedger limit
     mapping(address => uint256) private hedgerActivePositionId;
-
-    mapping(address => uint256) public lastLiquidationAttempt;
 
     mapping(address => uint256) public hedgerLastRewardBlock;
 
@@ -123,13 +116,11 @@ contract HedgerPool is
     uint128 public constant MAX_UINT128_VALUE = type(uint128).max;
     uint256 public constant MAX_TOTAL_MARGIN = MAX_UINT128_VALUE;
     uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE;
-    uint256 public constant LIQUIDATION_COOLDOWN = 300;
     uint256 public constant MAX_REWARD_PERIOD = 365 days;
 
     event HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
-    event HedgerLiquidated(address indexed hedger, uint256 indexed positionId, address indexed liquidator, bytes32 packedData);
     event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
     event HedgerWhitelisted(address indexed hedger, address indexed caller);
     event HedgerRemoved(address indexed hedger, address indexed caller);
@@ -227,9 +218,7 @@ contract HedgerPool is
         treasury = _treasury;
 
         coreParams.minMarginRatio = 500;  // 5% minimum margin ratio (20x max leverage)
-        coreParams.liquidationThreshold = 100;
         coreParams.maxLeverage = 20;      // 20x maximum leverage (5% minimum margin)
-        coreParams.liquidationPenalty = 200;
         coreParams.entryFee = 0;
         coreParams.exitFee = 0;
         coreParams.marginFee = 0;
@@ -458,11 +447,6 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
         CommonValidationLibrary.validatePositiveAmount(amount);
-        HedgerPoolValidationLibrary.validateLiquidationCooldown(lastLiquidationAttempt[msg.sender], LIQUIDATION_COOLDOWN);
-        
-        if (pendingLiquidations[msg.sender][positionId] > 0) {
-            revert HedgerPoolErrorLibrary.PendingLiquidationCommitment();
-        }
 
         uint256 fee = amount.percentageOf(coreParams.marginFee);
         uint256 netAmount = amount - fee;
@@ -575,19 +559,18 @@ contract HedgerPool is
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid || currentPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
         
-        // Check if position would be liquidatable after margin removal
-        // Uses same formula as liquidation check: effectiveMargin.mulDiv(10000, qeuroBacked × currentPrice / 1e30) >= liquidationThreshold
-        // This matches the frontend formula: maxWithdrawable = effectiveMargin - (qeuroBacked × currentPrice × liquidationThreshold / 10000)
-        bool wouldBeLiquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
+        // Check if position would become unhealthy after margin removal
+        // Uses minMarginRatio as threshold to ensure position maintains minimum collateralization
+        bool wouldBeUnhealthy = HedgerPoolLogicLibrary.isPositionLiquidatable(
             newMargin,
             uint256(position.filledVolume),
             uint256(position.entryPrice),
             currentPrice,
-            coreParams.liquidationThreshold,
+            coreParams.minMarginRatio,
             position.qeuroBacked
         );
         
-        if (wouldBeLiquidatable) {
+        if (wouldBeUnhealthy) {
             revert HedgerPoolErrorLibrary.InsufficientMargin();
         }
 
@@ -647,142 +630,6 @@ contract HedgerPool is
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         if (redeemPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
         _decreaseFilledVolume(usdcAmount, redeemPrice, qeuroAmount, 0);
-    }
-
-    /**
-     * @notice Commits to liquidating a position (first step of two-phase liquidation)
-     * @dev Creates a commitment hash to prevent front-running of liquidation attempts
-     * @param hedger Address of the hedger whose position will be liquidated
-     * @param positionId Unique identifier of the position to liquidate
-     * @param salt Random salt value to prevent commitment collisions
-     * @custom:security Requires LIQUIDATOR_ROLE, validates position ownership and active status
-     * @custom:validation Validates hedger address, position ID, position is active, hedger matches position owner
-     * @custom:state-changes Creates liquidation commitment, increments pending liquidation count, updates last liquidation attempt
-     * @custom:events None - commitment phase doesn't emit events
-     * @custom:errors Reverts with InvalidPosition if positionId is 0, InvalidHedger if hedger doesn't match, or if commitment already exists
-     * @custom:reentrancy Protected by secureNonReentrant modifier (if called externally)
-     * @custom:access Restricted to LIQUIDATOR_ROLE
-     * @custom:oracle Not applicable - commitment phase doesn't require oracle
-     */
-    function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external {
-        _validateRole(LIQUIDATOR_ROLE);
-        AccessControlLibrary.validateAddress(hedger);
-        if (positionId == 0) revert HedgerPoolErrorLibrary.InvalidPosition();
-
-        HedgePosition storage position = positions[positionId];
-        HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
-        if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
-
-        bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
-            hedger, positionId, salt, msg.sender
-        );
-        HedgerPoolValidationLibrary.validateCommitmentNotExists(liquidationCommitments[commitment]);
-
-        liquidationCommitments[commitment] = block.number;
-        pendingLiquidations[hedger][positionId] += 1;
-        lastLiquidationAttempt[hedger] = block.number;
-    }
-
-    /**
-     * @notice Liquidates an undercollateralized hedge position
-     * 
-     * @param hedger Address of the hedger to liquidate
-     * @param positionId Unique identifier of the position to liquidate
-     * @param salt Random salt for commitment validation
-     * @return liquidationReward Amount of USDC reward for the liquidator
-     * 
-     * @dev Liquidation process:
-     *      1. Validates liquidator role and commitment
-     *      2. Validates position ownership and active status
-     *      3. Calculates liquidation reward and remaining margin
-     *      4. Updates hedger stats and removes position
-     *      5. Withdraws USDC from vault for liquidator reward and remaining margin
-     * 
-     * @dev Security features:
-     *      1. Role-based access control (LIQUIDATOR_ROLE)
-     *      2. Commitment validation to prevent front-running
-     *      3. Reentrancy protection
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates liquidator role, commitment, position ownership, active status
-     * @custom:state-changes Liquidates position, updates hedger stats, withdraws USDC from vault
-     * @custom:events Emits HedgerLiquidated with liquidation details
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to LIQUIDATOR_ROLE
-     * @custom:oracle Requires fresh oracle price data
-     */
-    // slither-disable-next-line reentrancy-no-eth
-    function liquidateHedger(address hedger, uint256 positionId, bytes32 salt) 
-        external 
-        nonReentrant 
-        returns (uint256 liquidationReward) 
-    {
-        _validateRole(LIQUIDATOR_ROLE);
-        
-        HedgePosition storage position = positions[positionId];
-        HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, hedger);
-        HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
-
-        // Cache oracle price at start to avoid reentrancy issues
-        uint256 currentPrice = _getValidOraclePrice();
-        
-        // Cache position data before state changes
-        uint128 cachedQeuroBacked = position.qeuroBacked;
-        uint256 cachedMargin = uint256(position.margin);
-        uint256 cachedPositionSize = uint256(position.positionSize);
-        uint256 cachedEntryPrice = uint256(position.entryPrice);
-        uint256 cachedFilledVolume = uint256(position.filledVolume);
-
-        bytes32 commitment = HedgerPoolLogicLibrary.generateLiquidationCommitment(
-            hedger, positionId, salt, msg.sender
-        );
-        uint256 commitmentBlock = liquidationCommitments[commitment];
-        HedgerPoolValidationLibrary.validateCommitment(commitmentBlock);
-        
-        // Validate liquidation before state changes
-        bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
-            cachedMargin, cachedFilledVolume, 
-            cachedEntryPrice, currentPrice, coreParams.liquidationThreshold,
-            cachedQeuroBacked
-        );
-        
-        if (!liquidatable) revert HedgerPoolErrorLibrary.PositionNotLiquidatable();
-
-        // Unwind filled volume (updates state) - pass cached price to avoid double oracle call
-        _unwindFilledVolume(positionId, position, currentPrice);
-
-        // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
-        delete liquidationCommitments[commitment];
-        _decrementPendingCommitment(hedger, positionId);
-
-        _finalizePosition(
-            hedger,
-            positionId,
-            position,
-            cachedMargin,
-            cachedPositionSize
-        );
-        
-        // Calculate liquidation reward and remaining margin
-        liquidationReward = cachedMargin.percentageOf(coreParams.liquidationPenalty);
-        uint256 remainingMargin = cachedMargin - liquidationReward;
-
-        // Emit event after state changes but before external calls
-        emit HedgerLiquidated(
-            hedger,
-            positionId,
-            msg.sender,
-            HedgerPoolOptimizationLibrary.packLiquidationData(liquidationReward, remainingMargin)
-        );
-
-        // INTERACTIONS - All external calls after state updates
-        // Withdraw liquidation reward from vault for liquidator
-        vault.withdrawHedgerDeposit(msg.sender, liquidationReward);
-
-        if (remainingMargin > 0) {
-            // Withdraw remaining margin from vault for hedger
-            vault.withdrawHedgerDeposit(hedger, remainingMargin);
-        }
     }
 
     /**
@@ -900,27 +747,22 @@ contract HedgerPool is
      * @notice Updates core hedging parameters for risk management
      * @dev Allows governance to adjust risk parameters based on market conditions
      * @param minRatio New minimum margin ratio in basis points (e.g., 500 = 5%)
-     * @param liqThreshold New liquidation threshold in basis points (e.g., 100 = 1%)
      * @param maxLev New maximum leverage multiplier (e.g., 20 = 20x)
-     * @param liqPenalty New liquidation penalty in basis points (e.g., 200 = 2%)
      * @custom:security Validates governance role and parameter constraints
-     * @custom:validation Validates minRatio >= 500, liqThreshold < minRatio, maxLev <= 20, liqPenalty <= 1000
-     * @custom:state-changes Updates all hedging parameter state variables
+     * @custom:validation Validates minRatio >= 500, maxLev <= 20
+     * @custom:state-changes Updates minMarginRatio and maxLeverage state variables
      * @custom:events No events emitted for parameter updates
-     * @custom:errors Throws ConfigValueTooLow, ConfigInvalid, ConfigValueTooHigh
+     * @custom:errors Throws ConfigValueTooLow, ConfigValueTooHigh
      * @custom:reentrancy Not protected - no external calls
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies for parameter updates
      */
-    function updateHedgingParameters(uint256 minRatio, uint256 liqThreshold, uint256 maxLev, uint256 liqPenalty) external {
+    function updateHedgingParameters(uint256 minRatio, uint256 maxLev) external {
         _validateRole(GOVERNANCE_ROLE);
         if (minRatio < 500) revert CommonErrorLibrary.ConfigValueTooLow();
-        if (liqThreshold >= minRatio) revert CommonErrorLibrary.ConfigInvalid();
-        if (maxLev > 20 || liqPenalty > 1000) revert CommonErrorLibrary.ConfigValueTooHigh();
+        if (maxLev > 20) revert CommonErrorLibrary.ConfigValueTooHigh();
         coreParams.minMarginRatio = uint64(minRatio);
-        coreParams.liquidationThreshold = uint64(liqThreshold);
         coreParams.maxLeverage = uint16(maxLev);
-        coreParams.liquidationPenalty = uint16(liqPenalty);
     }
 
     /**
@@ -1051,68 +893,6 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     function unpause() external { _validateRole(EMERGENCY_ROLE); _unpause(); }
-    /**
-     * @notice Checks if there's a pending liquidation commitment for a position
-     * @dev Used to prevent margin operations during liquidation process
-     * @param hedger The address of the hedger
-     * @param positionId The ID of the position
-     * @return True if there's a pending liquidation commitment
-     * @custom:security View-only function - no state changes
-     * @custom:validation None required for view function
-     * @custom:state-changes None - view function
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can check commitment status
-     * @custom:oracle Not applicable
-     */
-    function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool) {
-        return pendingLiquidations[hedger][positionId] > 0;
-    }
-
-    /**
-     * @notice Clears expired liquidation commitments after cooldown period
-     * @dev Allows liquidators to clean up expired commitments
-     * @param hedger Address of the hedger whose commitment to clear
-     * @param positionId ID of the position whose commitment to clear
-     * @custom:security Requires LIQUIDATOR_ROLE, checks cooldown period
-     * @custom:validation Ensures cooldown period has passed
-     * @custom:state-changes Clears pending liquidation flag if expired
-     * @custom:events None
-     * @custom:errors Throws InvalidRole if caller lacks LIQUIDATOR_ROLE
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to LIQUIDATOR_ROLE
-     * @custom:oracle Not applicable
-     */
-    function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external {
-        _validateRole(LIQUIDATOR_ROLE);
-        if (block.number > lastLiquidationAttempt[hedger] + LIQUIDATION_COOLDOWN) {
-            pendingLiquidations[hedger][positionId] = 0;
-        }
-    }
-
-    /**
-     * @notice Cancels a liquidation commitment before execution
-     * @dev Allows liquidators to cancel their own commitments
-     * @param hedger Address of the hedger whose position was committed for liquidation
-     * @param positionId ID of the position whose commitment to cancel
-     * @param salt Salt used in the original commitment
-     * @custom:security Requires LIQUIDATOR_ROLE, validates commitment exists
-     * @custom:validation Ensures commitment exists and belongs to caller
-     * @custom:state-changes Deletes commitment data and clears pending liquidation flag
-     * @custom:events None
-     * @custom:errors Throws InvalidRole or CommitmentNotFound
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to LIQUIDATOR_ROLE
-     * @custom:oracle Not applicable
-     */
-    function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external {
-        _validateRole(LIQUIDATOR_ROLE);
-        bytes32 c = HedgerPoolLogicLibrary.generateLiquidationCommitment(hedger, positionId, salt, msg.sender);
-        HedgerPoolValidationLibrary.validateCommitment(liquidationCommitments[c]);
-        delete liquidationCommitments[c];
-        _decrementPendingCommitment(hedger, positionId);
-    }
 
     /**
      * @notice Recovers tokens (token != 0) or ETH (token == 0) to treasury
@@ -1360,25 +1140,6 @@ contract HedgerPool is
         // Otherwise, the filled volume is simply cleared (no redistribution needed)
         
         return cachedFilledVolume;
-    }
-
-    /**
-     * @notice Decrements pending liquidation commitment count for a position
-     * @dev Internal helper to manage liquidation commitment tracking
-     * @param hedger Address of the hedger
-     * @param positionId ID of the position
-     * @custom:security Internal function - no external access
-     * @custom:validation None required for internal function
-     * @custom:state-changes Decrements pendingLiquidations count if > 0
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - internal function
-     * @custom:access Internal helper only
-     * @custom:oracle Not applicable
-     */
-    function _decrementPendingCommitment(address hedger, uint256 positionId) internal {
-        uint32 count = pendingLiquidations[hedger][positionId];
-        if (count > 0) { unchecked { pendingLiquidations[hedger][positionId] = count - 1; } }
     }
 
     /**

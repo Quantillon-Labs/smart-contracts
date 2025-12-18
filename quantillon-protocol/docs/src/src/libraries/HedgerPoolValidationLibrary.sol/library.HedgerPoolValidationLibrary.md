@@ -120,41 +120,6 @@ function validateMaxMarginRatio(uint256 marginRatio, uint256 maxRatio) internal 
 |`maxRatio`|`uint256`|The maximum allowed margin ratio|
 
 
-### validateLiquidationCooldown
-
-Validates liquidation cooldown period to prevent manipulation
-
-*Uses block numbers to prevent timestamp manipulation attacks*
-
-**Notes:**
-- Prevents liquidation manipulation through cooldown bypass
-
-- Ensures proper cooldown period between liquidation attempts
-
-- No state changes - view function
-
-- No events emitted
-
-- Throws LiquidationCooldown if cooldown period not met
-
-- Not applicable - view function
-
-- Internal library function
-
-- No oracle dependencies
-
-
-```solidity
-function validateLiquidationCooldown(uint256 lastAttempt, uint256 cooldown) internal view;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`lastAttempt`|`uint256`|The block number of the last liquidation attempt|
-|`cooldown`|`uint256`|The required cooldown period in blocks|
-
-
 ### validatePositionActive
 
 Validates that a position is active before operations
@@ -257,74 +222,6 @@ function validatePositionCount(uint256 count, uint256 max) internal pure;
 |----|----|-----------|
 |`count`|`uint256`|The current position count|
 |`max`|`uint256`|The maximum allowed positions|
-
-
-### validateCommitmentNotExists
-
-Validates that a commitment doesn't already exist
-
-*Prevents duplicate commitments in liquidation system*
-
-**Notes:**
-- Prevents duplicate commitments that could cause system issues
-
-- Ensures commitment doesn't already exist
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws CommitmentAlreadyExists if commitment exists
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
-
-
-```solidity
-function validateCommitmentNotExists(uint256 commitmentBlock) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`commitmentBlock`|`uint256`|Block number stored for the commitment (0 if none)|
-
-
-### validateCommitment
-
-Validates that a valid commitment exists
-
-*Ensures commitment exists before executing liquidation*
-
-**Notes:**
-- Prevents liquidation without valid commitment
-
-- Ensures valid commitment exists before liquidation
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws NoValidCommitment if commitment doesn't exist
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
-
-
-```solidity
-function validateCommitment(uint256 commitmentBlock) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`commitmentBlock`|`uint256`|Block number stored for the commitment (0 if none)|
 
 
 ### validatePositionParams

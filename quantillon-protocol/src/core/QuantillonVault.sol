@@ -260,6 +260,20 @@ contract QuantillonVault is
         uint256 usdcAmount
     );
     
+    /// @notice Emitted when QEURO is redeemed in liquidation mode (pro-rata)
+    /// @param user Address of the user redeeming QEURO
+    /// @param qeuroAmount Amount of QEURO redeemed (18 decimals)
+    /// @param usdcPayout Amount of USDC received (6 decimals)
+    /// @param collateralizationRatioBps Protocol CR at redemption time (basis points)
+    /// @param isPremium True if user received more than fair value (CR > 100%)
+    event LiquidationRedeemed(
+        address indexed user,
+        uint256 qeuroAmount,
+        uint256 usdcPayout,
+        uint256 collateralizationRatioBps,
+        bool isPremium
+    );
+    
     /// @notice Emitted when hedger deposits USDC to vault for unified liquidity
     /// @param hedgerPool Address of the HedgerPool contract that made the deposit
     /// @param usdcAmount Amount of USDC deposited (6 decimals)
@@ -629,21 +643,20 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Redeems QEURO for USDC
+     * @notice Redeems QEURO for USDC - automatically routes to normal or liquidation mode
      * 
      * @param qeuroAmount Amount of QEURO to swap for USDC
      * @param minUsdcOut Minimum amount of USDC expected
      * 
      * @dev Redeem process:
-     *      1. Calculate USDC to return based on EUR/USD price
-     *      2. Apply protocol fees
-     *      3. Burn QEURO
-     *      4. Update vault balances
-     *      5. Transfer USDC to user
+     *      1. Check if protocol is in liquidation mode (CR <= 101%)
+     *      2. If liquidation mode: use pro-rata distribution (no fees)
+     *      3. If normal mode: use oracle price with fees
+     *      4. Burn QEURO and transfer USDC
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
+     * @custom:events Emits QEURORedeemed or LiquidationRedeemed based on mode
      * @custom:errors Throws custom errors for invalid conditions
      * @custom:reentrancy Protected by reentrancy guard
      * @custom:access No access restrictions
@@ -657,6 +670,17 @@ contract QuantillonVault is
         // CHECKS
         CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
 
+        // Check if protocol is in liquidation mode (CR <= 101%)
+        uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
+        uint256 collateralizationRatioBps = currentRatio18Dec / 1e16;
+        
+        // Route to liquidation mode if CR <= 101%
+        if (collateralizationRatioBps <= 10100 && collateralizationRatioBps > 0) {
+            _redeemLiquidationMode(qeuroAmount, minUsdcOut, collateralizationRatioBps);
+            return;
+        }
+
+        // Normal mode redemption
         // Cache oracle price at start to avoid reentrancy issues
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
@@ -732,8 +756,169 @@ contract QuantillonVault is
             FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
         }
     }
+    
+    /**
+     * @notice Internal function for liquidation mode redemption (pro-rata)
+     * @dev Called by redeemQEURO when protocol is in liquidation mode
+     * @param qeuroAmount Amount of QEURO to redeem
+     * @param minUsdcOut Minimum USDC expected
+     * @param collateralizationRatioBps Current CR in basis points
+     */
+    function _redeemLiquidationMode(
+        uint256 qeuroAmount,
+        uint256 minUsdcOut,
+        uint256 collateralizationRatioBps
+    ) internal {
+        // Get total QEURO supply
+        uint256 totalSupply = qeuro.totalSupply();
+        if (totalSupply == 0) revert CommonErrorLibrary.InvalidAmount();
+        
+        // Get oracle price for collateral calculation
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        
+        // Calculate total collateral
+        uint256 userCollateral = totalSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        uint256 hedgerCollateral = 0;
+        if (address(hedgerPool) != address(0)) {
+            hedgerCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(eurUsdPrice);
+        }
+        uint256 totalCollateralUsdc = userCollateral + hedgerCollateral;
+        
+        // Calculate pro-rata payout
+        uint256 usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
+        
+        // Slippage check
+        if (usdcPayout < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
+        
+        // Check if total available USDC is sufficient
+        uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
+        if (totalAvailable < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
+        
+        // If vault doesn't have enough USDC, withdraw from Aave
+        if (totalUsdcHeld < usdcPayout && totalUsdcInAave > 0 && address(aaveVault) != address(0)) {
+            uint256 deficit = usdcPayout - totalUsdcHeld;
+            _withdrawUsdcFromAave(deficit);
+        }
+        
+        // Re-check after potential Aave withdrawal
+        if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
+        
+        // Determine if premium or haircut
+        uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        bool isPremium = usdcPayout >= fairValueUsdc;
+        
+        // EFFECTS - Update state
+        unchecked {
+            totalUsdcHeld -= usdcPayout;
+            totalMinted -= qeuroAmount;
+        }
+        
+        // Emit liquidation event
+        emit LiquidationRedeemed(
+            msg.sender,
+            qeuroAmount,
+            usdcPayout,
+            collateralizationRatioBps,
+            isPremium
+        );
+        
+        // INTERACTIONS
+        qeuro.burn(msg.sender, qeuroAmount);
+        usdc.safeTransfer(msg.sender, usdcPayout);
+    }
 
-
+    /**
+     * @notice Redeems QEURO for USDC using pro-rata distribution in liquidation mode
+     * @dev Only callable when protocol is in liquidation mode (CR <= 101%)
+     * @dev Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
+     * @dev Premium if CR > 100%, haircut if CR < 100%
+     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
+     * @param minUsdcOut Minimum USDC expected (slippage protection)
+     * @custom:security Protected by nonReentrant, requires liquidation mode
+     * @custom:validation Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
+     * @custom:state-changes Burns QEURO, transfers USDC pro-rata
+     * @custom:events Emits LiquidationRedeemed
+     * @custom:errors Reverts if not in liquidation mode or slippage exceeded
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public - anyone with QEURO can redeem
+     * @custom:oracle Requires oracle price for collateral calculation
+     */
+    function redeemQEUROLiquidation(
+        uint256 qeuroAmount,
+        uint256 minUsdcOut
+    ) external nonReentrant whenNotPaused {
+        // CHECKS
+        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
+        
+        // Check protocol is in liquidation mode (CR <= 101%)
+        uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
+        uint256 collateralizationRatioBps = currentRatio18Dec / 1e16;
+        if (collateralizationRatioBps > 10100) revert CommonErrorLibrary.NotInLiquidationMode();
+        
+        // Get total QEURO supply
+        uint256 totalSupply = qeuro.totalSupply();
+        if (totalSupply == 0) revert CommonErrorLibrary.InvalidAmount();
+        
+        // Get oracle price for collateral calculation
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        
+        // Calculate total collateral
+        uint256 userCollateral = totalSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        uint256 hedgerCollateral = 0;
+        if (address(hedgerPool) != address(0)) {
+            hedgerCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(eurUsdPrice);
+        }
+        uint256 totalCollateralUsdc = userCollateral + hedgerCollateral;
+        
+        // Calculate pro-rata payout: (qeuroAmount / totalSupply) * totalCollateral
+        uint256 usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
+        
+        // Slippage check
+        if (usdcPayout < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
+        
+        // Check if total available USDC (vault + Aave) is sufficient
+        uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
+        if (totalAvailable < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
+        
+        // If vault doesn't have enough USDC, withdraw from Aave
+        if (totalUsdcHeld < usdcPayout && totalUsdcInAave > 0 && address(aaveVault) != address(0)) {
+            uint256 deficit = usdcPayout - totalUsdcHeld;
+            _withdrawUsdcFromAave(deficit);
+        }
+        
+        // Re-check after potential Aave withdrawal
+        if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
+        
+        // Determine if premium or haircut
+        uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        bool isPremium = usdcPayout >= fairValueUsdc;
+        
+        // EFFECTS - Update all state before external calls
+        unchecked {
+            totalUsdcHeld -= usdcPayout;
+            totalMinted -= qeuroAmount;
+        }
+        
+        // Note: In liquidation mode, we don't sync with hedgers as the position is being unwound
+        // The pro-rata distribution already accounts for the hedger collateral in the payout
+        
+        // Emit event
+        emit LiquidationRedeemed(
+            msg.sender,
+            qeuroAmount,
+            usdcPayout,
+            collateralizationRatioBps,
+            isPremium
+        );
+        
+        // INTERACTIONS - All external calls after state updates
+        qeuro.burn(msg.sender, qeuroAmount);
+        usdc.safeTransfer(msg.sender, usdcPayout);
+        
+        // No fees in liquidation mode - user receives full pro-rata share
+    }
 
 
 
@@ -1409,6 +1594,130 @@ contract QuantillonVault is
     function shouldTriggerLiquidation() public returns (bool shouldLiquidate) {
         uint256 currentRatio = getProtocolCollateralizationRatio();
         return currentRatio < criticalCollateralizationRatio;
+    }
+
+    /**
+     * @notice Returns liquidation status and key metrics for pro-rata redemption
+     * @dev Protocol enters liquidation mode when CR <= 101%. In this mode, users can redeem pro-rata.
+     * @return isInLiquidation True if protocol is in liquidation mode (CR <= 101%)
+     * @return collateralizationRatioBps Current collateralization ratio in basis points (e.g., 10100 = 101%)
+     * @return totalCollateralUsdc Total protocol collateral in USDC (6 decimals)
+     * @return totalQeuroSupply Total QEURO supply (18 decimals)
+     * @custom:security View function - no state changes
+     * @custom:validation No input validation required
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check liquidation status
+     * @custom:oracle Requires oracle price for collateral calculation
+     */
+    function getLiquidationStatus() external returns (
+        bool isInLiquidation,
+        uint256 collateralizationRatioBps,
+        uint256 totalCollateralUsdc,
+        uint256 totalQeuroSupply
+    ) {
+        // Get current QEURO supply
+        totalQeuroSupply = qeuro.totalSupply();
+        
+        // If no QEURO supply, not in liquidation
+        if (totalQeuroSupply == 0) {
+            return (false, 0, 0, 0);
+        }
+        
+        // Get collateralization ratio (18 decimals format)
+        uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
+        
+        // Convert from 18 decimals to basis points (divide by 1e16)
+        // Format: percentage * 1e18, so 100% = 1e20, 101% = 1.01e20
+        // To convert to bps: (ratio / 1e18) * 10000 = ratio / 1e16
+        // 1e20 (100%) -> 10000 bps, 1.01e20 (101%) -> 10100 bps
+        collateralizationRatioBps = currentRatio18Dec / 1e16;
+        
+        // Calculate total collateral: user deposits (QEURO value) + hedger effective collateral
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        
+        // User collateral: QEURO supply converted to USDC
+        uint256 userCollateral = totalQeuroSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        
+        // Hedger collateral
+        uint256 hedgerCollateral = 0;
+        if (address(hedgerPool) != address(0)) {
+            hedgerCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(eurUsdPrice);
+        }
+        
+        totalCollateralUsdc = userCollateral + hedgerCollateral;
+        
+        // Liquidation mode when CR <= 101% (10100 bps)
+        isInLiquidation = collateralizationRatioBps <= 10100;
+    }
+
+    /**
+     * @notice Calculates pro-rata payout for liquidation mode redemption
+     * @dev Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
+     * @dev Premium if CR > 100%, haircut if CR < 100%
+     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
+     * @return usdcPayout Amount of USDC the user would receive (6 decimals)
+     * @return isPremium True if payout > fair value (CR > 100%), false if haircut (CR < 100%)
+     * @return premiumOrDiscountBps Premium or discount in basis points (e.g., 50 = 0.5%)
+     * @custom:security View function - no state changes
+     * @custom:validation Validates qeuroAmount > 0
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors Throws InvalidAmount if qeuroAmount is 0
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can calculate payout
+     * @custom:oracle Requires oracle price for fair value calculation
+     */
+    function calculateLiquidationPayout(uint256 qeuroAmount) external returns (
+        uint256 usdcPayout,
+        bool isPremium,
+        uint256 premiumOrDiscountBps
+    ) {
+        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
+        
+        // Get total QEURO supply
+        uint256 totalSupply = qeuro.totalSupply();
+        if (totalSupply == 0) {
+            return (0, false, 0);
+        }
+        
+        // Get oracle price for fair value calculation
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        
+        // Calculate total collateral (same as in getLiquidationStatus)
+        uint256 userCollateral = totalSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        uint256 hedgerCollateral = 0;
+        if (address(hedgerPool) != address(0)) {
+            hedgerCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(eurUsdPrice);
+        }
+        uint256 totalCollateralUsdc = userCollateral + hedgerCollateral;
+        
+        // Calculate pro-rata payout: (qeuroAmount / totalSupply) * totalCollateral
+        // qeuroAmount (18 dec) * totalCollateral (6 dec) / totalSupply (18 dec) = 6 dec
+        usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
+        
+        // Calculate fair value: qeuroAmount * eurUsdPrice
+        // qeuroAmount (18 dec) * eurUsdPrice (18 dec) / 1e18 = 18 dec, then / 1e12 = 6 dec
+        uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        
+        // Determine if premium or discount
+        if (usdcPayout >= fairValueUsdc) {
+            isPremium = true;
+            // Premium = (payout - fairValue) / fairValue * 10000
+            if (fairValueUsdc > 0) {
+                premiumOrDiscountBps = (usdcPayout - fairValueUsdc).mulDiv(10000, fairValueUsdc);
+            }
+        } else {
+            isPremium = false;
+            // Discount = (fairValue - payout) / fairValue * 10000
+            if (fairValueUsdc > 0) {
+                premiumOrDiscountBps = (fairValueUsdc - usdcPayout).mulDiv(10000, fairValueUsdc);
+            }
+        }
     }
     
     /**

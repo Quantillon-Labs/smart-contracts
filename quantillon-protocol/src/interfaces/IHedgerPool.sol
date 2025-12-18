@@ -136,43 +136,6 @@ interface IHedgerPool {
      */
     function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) external;
     
-    // Liquidation system
-    
-    /**
-     * @notice Commits to liquidating a position (first step of two-phase liquidation)
-     * @dev Commits to liquidating an undercollateralized position using a two-phase commit-reveal scheme
-     * @param hedger The address of the hedger whose position will be liquidated
-     * @param positionId The ID of the position to liquidate
-     * @param salt A random value to prevent front-running
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
-    
-    /**
-     * @notice Executes the liquidation of a position (second step of two-phase liquidation)
-     * @dev Executes liquidation after valid commitment, transfers rewards and remaining margin
-     * @param hedger The address of the hedger whose position is being liquidated
-     * @param positionId The ID of the position to liquidate
-     * @param salt The same salt value used in the commitment
-     * @return liquidationReward The reward paid to the liquidator
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function liquidateHedger(address hedger, uint256 positionId, bytes32 salt) external returns (uint256 liquidationReward);
-    
     /**
      * @notice Claims accrued hedging rewards for the caller
      * @dev Combines interest differential and YieldShift rewards
@@ -189,55 +152,6 @@ interface IHedgerPool {
      * @custom:oracle Not applicable
      */
     function claimHedgingRewards() external returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
-    
-    /**
-     * @notice Checks if there's a pending liquidation commitment for a position
-     * @dev Used to prevent margin operations during liquidation process
-     * @param hedger The address of the hedger
-     * @param positionId The ID of the position
-     * @return bool True if there's a pending liquidation commitment
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
-    /**
-     * @notice Clears expired liquidation commitments
-     * @dev Removes liquidation commitments that have expired beyond the commitment window
-     * @param hedger The address of the hedger
-     * @param positionId The ID of the position
-     * @custom:security Validates liquidator role and commitment expiration
-     * @custom:validation Validates commitment exists and has expired
-     * @custom:state-changes Removes expired liquidation commitment
-     * @custom:events No events emitted for commitment clearing
-     * @custom:errors Throws CommitmentNotFound if commitment doesn't exist
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to LIQUIDATOR_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
-    
-    /**
-     * @notice Cancels a pending liquidation commitment
-     * @dev Allows hedgers to cancel their liquidation commitment before execution
-     * @param hedger The hedger address
-     * @param positionId The position ID to cancel liquidation for
-     * @param salt Same salt used in commitLiquidation for commitment verification
-     * @custom:security Validates liquidator role and commitment exists
-     * @custom:validation Validates commitment hash matches stored commitment
-     * @custom:state-changes Deletes liquidation commitment and pending liquidation flag
-     * @custom:events No events emitted for commitment cancellation
-     * @custom:errors Throws CommitmentNotFound if commitment doesn't exist
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to LIQUIDATOR_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;
     
     // Rewards
     
@@ -281,23 +195,19 @@ interface IHedgerPool {
      * @notice Updates core hedging parameters for risk management
      * @dev Allows governance to adjust risk parameters based on market conditions
      * @param newMinMarginRatio New minimum margin ratio in basis points (e.g., 500 = 5%)
-     * @param newLiquidationThreshold New liquidation threshold in basis points (e.g., 100 = 1%)
      * @param newMaxLeverage New maximum leverage multiplier (e.g., 20 = 20x)
-     * @param newLiquidationPenalty New liquidation penalty in basis points (e.g., 200 = 2%)
      * @custom:security Validates governance role and parameter constraints
-     * @custom:validation Validates minMarginRatio >= 500, liquidationThreshold < minMarginRatio, maxLeverage <= 20, liquidationPenalty <= 1000
-     * @custom:state-changes Updates all hedging parameter state variables
+     * @custom:validation Validates minMarginRatio >= 500, maxLeverage <= 20
+     * @custom:state-changes Updates minMarginRatio and maxLeverage state variables
      * @custom:events No events emitted for parameter updates
-     * @custom:errors Throws ConfigValueTooLow, ConfigInvalid, ConfigValueTooHigh
+     * @custom:errors Throws ConfigValueTooLow, ConfigValueTooHigh
      * @custom:reentrancy Not protected - no external calls
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies for parameter updates
      */
     function updateHedgingParameters(
         uint256 newMinMarginRatio,
-        uint256 newLiquidationThreshold,
-        uint256 newMaxLeverage,
-        uint256 newLiquidationPenalty
+        uint256 newMaxLeverage
     ) external;
     
     /**
@@ -459,21 +369,6 @@ interface IHedgerPool {
     function minMarginRatio() external view returns (uint256);
     
     /**
-     * @notice Returns the liquidation threshold in basis points
-     * @dev Margin ratio below which positions can be liquidated (e.g., 100 = 1%)
-     * @return uint256 Liquidation threshold in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query liquidation threshold
-     * @custom:oracle No oracle dependencies
-     */
-    function liquidationThreshold() external view returns (uint256);
-    
-    /**
      * @notice Returns the maximum leverage multiplier
      * @dev Maximum leverage allowed for hedge positions (e.g., 10 = 10x)
      * @return uint256 Maximum leverage multiplier
@@ -487,21 +382,6 @@ interface IHedgerPool {
      * @custom:oracle No oracle dependencies
      */
     function maxLeverage() external view returns (uint256);
-    
-    /**
-     * @notice Returns the liquidation penalty in basis points
-     * @dev Penalty applied to liquidated positions (e.g., 200 = 2%)
-     * @return uint256 Liquidation penalty in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query liquidation penalty
-     * @custom:oracle No oracle dependencies
-     */
-    function liquidationPenalty() external view returns (uint256);
     
     /**
      * @notice Returns the entry fee in basis points
@@ -768,71 +648,6 @@ interface IHedgerPool {
      */
     function hedgerLastRewardBlock(address hedger) external view returns (uint256);
     
-    /**
-     * @notice Returns liquidation commitment status
-     * @dev Returns whether a specific liquidation commitment exists
-     * @param commitment Hash of the liquidation commitment
-     * @return bool True if commitment exists, false otherwise
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query commitment status
-     * @custom:oracle No oracle dependencies
-     */
-    function liquidationCommitments(bytes32 commitment) external view returns (bool);
-    
-    /**
-     * @notice Returns liquidation commitment timestamp
-     * @dev Returns block number when liquidation commitment was created
-     * @param commitment Hash of the liquidation commitment
-     * @return uint256 Block number when commitment was created
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query commitment timestamp
-     * @custom:oracle No oracle dependencies
-     */
-    function liquidationCommitmentTimes(bytes32 commitment) external view returns (uint256);
-    
-    /**
-     * @notice Returns last liquidation attempt block
-     * @dev Returns block number of last liquidation attempt for a hedger
-     * @param hedger Address of the hedger to query
-     * @return uint256 Block number of last liquidation attempt
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query last liquidation attempt
-     * @custom:oracle No oracle dependencies
-     */
-    function lastLiquidationAttempt(address hedger) external view returns (uint256);
-    
-    /**
-     * @notice Returns pending liquidation status
-     * @dev Returns whether a position has a pending liquidation commitment
-     * @param hedger Address of the hedger
-     * @param positionId ID of the position
-     * @return bool True if liquidation is pending, false otherwise
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query pending liquidation status
-     * @custom:oracle No oracle dependencies
-     */
-    function hasPendingLiquidation(address hedger, uint256 positionId) external view returns (bool);
-    
     // Constants
     
     /**
@@ -880,21 +695,6 @@ interface IHedgerPool {
      */
     function MAX_REWARD_PERIOD() external view returns (uint256);
     
-    /**
-     * @notice Returns the liquidation cooldown period
-     * @dev Minimum blocks between liquidation attempts for the same hedger
-     * @return uint256 Liquidation cooldown in blocks
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query liquidation cooldown
-     * @custom:oracle No oracle dependencies
-     */
-    function LIQUIDATION_COOLDOWN() external view returns (uint256);
-    
     // Events
     event HedgePositionOpened(
         address indexed hedger,
@@ -925,14 +725,6 @@ interface IHedgerPool {
         uint256 indexed positionId,
         uint256 marginRemoved,
         uint256 newMarginRatio
-    );
-    
-    event HedgerLiquidated(
-        address indexed hedger,
-        uint256 indexed positionId,
-        address indexed liquidator,
-        uint256 liquidationReward,
-        uint256 remainingMargin
     );
     
     event HedgingRewardsClaimed(

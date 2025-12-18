@@ -525,3 +525,9 @@ error NotWhitelisted();
 error InsufficientVotingPower();
 ```
 
+### NotInLiquidationMode
+
+```solidity
+error NotInLiquidationMode();
+```
+

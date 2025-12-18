@@ -17,9 +17,7 @@ pragma solidity 0.8.24;
 library HedgerPoolErrorLibrary {
     // HedgerPool Specific Errors
     error FlashLoanAttackDetected();
-    error PendingLiquidationCommitment();
     error InvalidPosition();
-    error PositionNotLiquidatable();
     error InvalidHedger();
     error MaxPositionsPerTx();
     error AlreadyWhitelisted();
@@ -59,14 +57,6 @@ library HedgerPoolErrorLibrary {
     error NoActiveHedgerLiquidity();
     error HedgerHasActivePosition();
     
-    // Liquidation Errors
-    error LiquidationNotAllowed();
-    error LiquidationRewardTooHigh();
-    error LiquidationPenaltyTooHigh();
-    error LiquidationThresholdInvalid();
-    error NoValidCommitment();
-    error CommitmentAlreadyExists();
-    error CommitmentDoesNotExist();
     
     // Fee Errors
     error EntryFeeTooHigh();

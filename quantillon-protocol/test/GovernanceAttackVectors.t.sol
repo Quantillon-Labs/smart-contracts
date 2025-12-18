@@ -122,8 +122,7 @@ contract GovernanceAttackVectors is Test {
         vm.startPrank(admin);
         hedgerPool.grantRole(hedgerPool.EMERGENCY_ROLE(), emergencyRole);
         hedgerPool.grantRole(hedgerPool.GOVERNANCE_ROLE(), governance);
-        hedgerPool.grantRole(hedgerPool.LIQUIDATOR_ROLE(), attacker);
-        hedgerPool.grantRole(hedgerPool.LIQUIDATOR_ROLE(), flashLoanAttacker);
+        // LIQUIDATOR_ROLE removed - liquidation system changed to protocol-wide
         
         userPool.grantRole(userPool.EMERGENCY_ROLE(), emergencyRole);
         userPool.grantRole(userPool.GOVERNANCE_ROLE(), governance);

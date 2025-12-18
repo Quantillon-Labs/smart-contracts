@@ -279,86 +279,6 @@ function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuro
 |`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
-### commitLiquidation
-
-Commits to liquidating a position (first step of two-phase liquidation)
-
-*Commits to liquidating an undercollateralized position using a two-phase commit-reveal scheme*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
-
-```solidity
-function commitLiquidation(address hedger, uint256 positionId, bytes32 salt) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|The address of the hedger whose position will be liquidated|
-|`positionId`|`uint256`|The ID of the position to liquidate|
-|`salt`|`bytes32`|A random value to prevent front-running|
-
-
-### liquidateHedger
-
-Executes the liquidation of a position (second step of two-phase liquidation)
-
-*Executes liquidation after valid commitment, transfers rewards and remaining margin*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
-
-```solidity
-function liquidateHedger(address hedger, uint256 positionId, bytes32 salt)
-    external
-    returns (uint256 liquidationReward);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|The address of the hedger whose position is being liquidated|
-|`positionId`|`uint256`|The ID of the position to liquidate|
-|`salt`|`bytes32`|The same salt value used in the commitment|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`liquidationReward`|`uint256`|The reward paid to the liquidator|
-
-
 ### claimHedgingRewards
 
 Claims accrued hedging rewards for the caller
@@ -395,118 +315,6 @@ function claimHedgingRewards()
 |`interestDifferential`|`uint256`|Rewards from interest spread|
 |`yieldShiftRewards`|`uint256`|Rewards distributed by YieldShift|
 |`totalRewards`|`uint256`|Sum of all rewards transferred|
-
-
-### hasPendingLiquidationCommitment
-
-Checks if there's a pending liquidation commitment for a position
-
-*Used to prevent margin operations during liquidation process*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
-
-```solidity
-function hasPendingLiquidationCommitment(address hedger, uint256 positionId) external view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|The address of the hedger|
-|`positionId`|`uint256`|The ID of the position|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|bool True if there's a pending liquidation commitment|
-
-
-### clearExpiredLiquidationCommitment
-
-Clears expired liquidation commitments
-
-*Removes liquidation commitments that have expired beyond the commitment window*
-
-**Notes:**
-- Validates liquidator role and commitment expiration
-
-- Validates commitment exists and has expired
-
-- Removes expired liquidation commitment
-
-- No events emitted for commitment clearing
-
-- Throws CommitmentNotFound if commitment doesn't exist
-
-- Not protected - no external calls
-
-- Restricted to LIQUIDATOR_ROLE
-
-- No oracle dependencies
-
-
-```solidity
-function clearExpiredLiquidationCommitment(address hedger, uint256 positionId) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|The address of the hedger|
-|`positionId`|`uint256`|The ID of the position|
-
-
-### cancelLiquidationCommitment
-
-Cancels a pending liquidation commitment
-
-*Allows hedgers to cancel their liquidation commitment before execution*
-
-**Notes:**
-- Validates liquidator role and commitment exists
-
-- Validates commitment hash matches stored commitment
-
-- Deletes liquidation commitment and pending liquidation flag
-
-- No events emitted for commitment cancellation
-
-- Throws CommitmentNotFound if commitment doesn't exist
-
-- Not protected - no external calls
-
-- Restricted to LIQUIDATOR_ROLE
-
-- No oracle dependencies
-
-
-```solidity
-function cancelLiquidationCommitment(address hedger, uint256 positionId, bytes32 salt) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|The hedger address|
-|`positionId`|`uint256`|The position ID to cancel liquidation for|
-|`salt`|`bytes32`|Same salt used in commitLiquidation for commitment verification|
 
 
 ### getTotalEffectiveHedgerCollateral
@@ -578,13 +386,13 @@ Updates core hedging parameters for risk management
 **Notes:**
 - Validates governance role and parameter constraints
 
-- Validates minMarginRatio >= 500, liquidationThreshold < minMarginRatio, maxLeverage <= 20, liquidationPenalty <= 1000
+- Validates minMarginRatio >= 500, maxLeverage <= 20
 
-- Updates all hedging parameter state variables
+- Updates minMarginRatio and maxLeverage state variables
 
 - No events emitted for parameter updates
 
-- Throws ConfigValueTooLow, ConfigInvalid, ConfigValueTooHigh
+- Throws ConfigValueTooLow, ConfigValueTooHigh
 
 - Not protected - no external calls
 
@@ -594,21 +402,14 @@ Updates core hedging parameters for risk management
 
 
 ```solidity
-function updateHedgingParameters(
-    uint256 newMinMarginRatio,
-    uint256 newLiquidationThreshold,
-    uint256 newMaxLeverage,
-    uint256 newLiquidationPenalty
-) external;
+function updateHedgingParameters(uint256 newMinMarginRatio, uint256 newMaxLeverage) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`newMinMarginRatio`|`uint256`|New minimum margin ratio in basis points (e.g., 500 = 5%)|
-|`newLiquidationThreshold`|`uint256`|New liquidation threshold in basis points (e.g., 100 = 1%)|
 |`newMaxLeverage`|`uint256`|New maximum leverage multiplier (e.g., 20 = 20x)|
-|`newLiquidationPenalty`|`uint256`|New liquidation penalty in basis points (e.g., 200 = 2%)|
 
 
 ### updateInterestRates
@@ -944,40 +745,6 @@ function minMarginRatio() external view returns (uint256);
 |`<none>`|`uint256`|uint256 Minimum margin ratio in basis points|
 
 
-### liquidationThreshold
-
-Returns the liquidation threshold in basis points
-
-*Margin ratio below which positions can be liquidated (e.g., 100 = 1%)*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query liquidation threshold
-
-- No oracle dependencies
-
-
-```solidity
-function liquidationThreshold() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Liquidation threshold in basis points|
-
-
 ### maxLeverage
 
 Returns the maximum leverage multiplier
@@ -1010,40 +777,6 @@ function maxLeverage() external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|uint256 Maximum leverage multiplier|
-
-
-### liquidationPenalty
-
-Returns the liquidation penalty in basis points
-
-*Penalty applied to liquidated positions (e.g., 200 = 2%)*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query liquidation penalty
-
-- No oracle dependencies
-
-
-```solidity
-function liquidationPenalty() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Liquidation penalty in basis points|
 
 
 ### entryFee
@@ -1649,167 +1382,6 @@ function hedgerLastRewardBlock(address hedger) external view returns (uint256);
 |`<none>`|`uint256`|uint256 Block number of last reward calculation|
 
 
-### liquidationCommitments
-
-Returns liquidation commitment status
-
-*Returns whether a specific liquidation commitment exists*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query commitment status
-
-- No oracle dependencies
-
-
-```solidity
-function liquidationCommitments(bytes32 commitment) external view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`commitment`|`bytes32`|Hash of the liquidation commitment|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|bool True if commitment exists, false otherwise|
-
-
-### liquidationCommitmentTimes
-
-Returns liquidation commitment timestamp
-
-*Returns block number when liquidation commitment was created*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query commitment timestamp
-
-- No oracle dependencies
-
-
-```solidity
-function liquidationCommitmentTimes(bytes32 commitment) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`commitment`|`bytes32`|Hash of the liquidation commitment|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Block number when commitment was created|
-
-
-### lastLiquidationAttempt
-
-Returns last liquidation attempt block
-
-*Returns block number of last liquidation attempt for a hedger*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query last liquidation attempt
-
-- No oracle dependencies
-
-
-```solidity
-function lastLiquidationAttempt(address hedger) external view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger to query|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Block number of last liquidation attempt|
-
-
-### hasPendingLiquidation
-
-Returns pending liquidation status
-
-*Returns whether a position has a pending liquidation commitment*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query pending liquidation status
-
-- No oracle dependencies
-
-
-```solidity
-function hasPendingLiquidation(address hedger, uint256 positionId) external view returns (bool);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address of the hedger|
-|`positionId`|`uint256`|ID of the position|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|bool True if liquidation is pending, false otherwise|
-
-
 ### MAX_POSITIONS_PER_HEDGER
 
 Returns the maximum positions per hedger
@@ -1912,40 +1484,6 @@ function MAX_REWARD_PERIOD() external view returns (uint256);
 |`<none>`|`uint256`|uint256 Maximum reward period in blocks|
 
 
-### LIQUIDATION_COOLDOWN
-
-Returns the liquidation cooldown period
-
-*Minimum blocks between liquidation attempts for the same hedger*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query liquidation cooldown
-
-- No oracle dependencies
-
-
-```solidity
-function LIQUIDATION_COOLDOWN() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Liquidation cooldown in blocks|
-
-
 ### singleHedger
 
 Returns the address of the single hedger
@@ -2046,18 +1584,6 @@ event MarginAdded(address indexed hedger, uint256 indexed positionId, uint256 ma
 
 ```solidity
 event MarginRemoved(address indexed hedger, uint256 indexed positionId, uint256 marginRemoved, uint256 newMarginRatio);
-```
-
-### HedgerLiquidated
-
-```solidity
-event HedgerLiquidated(
-    address indexed hedger,
-    uint256 indexed positionId,
-    address indexed liquidator,
-    uint256 liquidationReward,
-    uint256 remainingMargin
-);
 ```
 
 ### HedgingRewardsClaimed

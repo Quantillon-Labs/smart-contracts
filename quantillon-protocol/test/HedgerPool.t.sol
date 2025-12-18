@@ -65,9 +65,7 @@ contract HedgerPoolTestSuite is Test {
     
     struct CoreParamsSnapshot {
         uint64 minMarginRatio;
-        uint64 liquidationThreshold;
         uint16 maxLeverage;
-        uint16 liquidationPenalty;
         uint16 entryFee;
         uint16 exitFee;
         uint16 marginFee;
@@ -92,9 +90,7 @@ contract HedgerPoolTestSuite is Test {
         uint8 _reserved;
         (
             snapshot.minMarginRatio,
-            snapshot.liquidationThreshold,
             snapshot.maxLeverage,
-            snapshot.liquidationPenalty,
             snapshot.entryFee,
             snapshot.exitFee,
             snapshot.marginFee,
@@ -251,8 +247,7 @@ contract HedgerPoolTestSuite is Test {
         // Grant additional roles for testing
         vm.prank(admin);
         hedgerPool.grantRole(keccak256("GOVERNANCE_ROLE"), governance);
-        vm.prank(admin);
-        hedgerPool.grantRole(keccak256("LIQUIDATOR_ROLE"), liquidator);
+        // LIQUIDATOR_ROLE removed - liquidation system changed to protocol-wide
         vm.prank(admin);
         hedgerPool.grantRole(keccak256("EMERGENCY_ROLE"), emergency);
         
@@ -453,15 +448,14 @@ contract HedgerPoolTestSuite is Test {
         // Check roles are properly assigned
         assertTrue(hedgerPool.hasRole(hedgerPool.DEFAULT_ADMIN_ROLE(), admin));
         assertTrue(hedgerPool.hasRole(hedgerPool.GOVERNANCE_ROLE(), governance));
-        assertTrue(hedgerPool.hasRole(hedgerPool.LIQUIDATOR_ROLE(), liquidator));
+        // LIQUIDATOR_ROLE removed - liquidation system changed to protocol-wide
         assertTrue(hedgerPool.hasRole(hedgerPool.EMERGENCY_ROLE(), emergency));
         
         // Check default configuration values
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         assertEq(params.minMarginRatio, 500);  // 5% minimum margin ratio
         assertEq(params.maxLeverage, 20);      // 20x maximum leverage
-        assertEq(params.liquidationThreshold, 100); // 1% liquidation threshold
-        // liquidationPenalty is 200 (2%)
+        // liquidationThreshold and liquidationPenalty removed - liquidation system changed to protocol-wide
     }
     
     /**
@@ -1200,79 +1194,6 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.addMargin(positionId, 1000 * 1e6);
     }
 
-    /**
-     * @notice Test margin addition during liquidation cooldown should revert
-     * @dev Verifies that margin cannot be added during liquidation cooldown period
-     * @custom:security No security implications - test function
-     * @custom:validation No input validation required - test function
-     * @custom:state-changes No state changes - test function
-     * @custom:events No events emitted - test function
-     * @custom:errors No errors thrown - test function
-     * @custom:reentrancy Not applicable - test function
-     * @custom:access Public - no access restrictions
-     * @custom:oracle No oracle dependency for test function
-     */
-    function test_Margin_AddMarginDuringLiquidationCooldown_Revert() public {
-        // First open a position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Simulate a liquidation attempt (this sets lastLiquidationAttempt)
-        // Note: We need to trigger a liquidation attempt first
-        // For this test, we'll need to make the position liquidatable and attempt liquidation
-        // But since we can't easily do that without complex setup, we'll test the cooldown check directly
-        
-        // Wait for liquidation cooldown to pass (300 blocks)
-        vm.roll(block.number + 600);
-        
-        // Now add margin should work
-        uint256 additionalMargin = 1000 * 1e6;
-        vm.prank(hedger1);
-        hedgerPool.addMargin(positionId, additionalMargin);
-        
-        // Verify margin was added
-        (,,, uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
-        assertTrue(margin > MARGIN_AMOUNT);
-        assertTrue(isActive);
-    }
-
-    /**
-     * @notice Test margin addition with pending liquidation should revert
-     * @dev Verifies that margin cannot be added when position has pending liquidation
-     * @custom:security No security implications - test function
-     * @custom:validation No input validation required - test function
-     * @custom:state-changes No state changes - test function
-     * @custom:events No events emitted - test function
-     * @custom:errors No errors thrown - test function
-     * @custom:reentrancy Not applicable - test function
-     * @custom:access Public - no access restrictions
-     * @custom:oracle No oracle dependency for test function
-     */
-    function test_Margin_AddMarginWithPendingLiquidation_Revert() public {
-        // First open a position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Grant liquidator role
-        bytes32 liquidatorRole = hedgerPool.LIQUIDATOR_ROLE();
-        vm.prank(admin);
-        hedgerPool.grantRole(liquidatorRole, liquidator);
-        
-        // Commit liquidation (this creates pending liquidation)
-        bytes32 salt = keccak256("test-salt");
-        vm.prank(liquidator);
-        hedgerPool.commitLiquidation(hedger1, positionId, salt);
-        
-        // Wait for cooldown to expire so pending commitment is the blocking condition
-        vm.roll(block.number + 600);
-        
-        // Try to add margin - should revert
-        vm.prank(hedger1);
-        vm.expectRevert(HedgerPoolErrorLibrary.PendingLiquidationCommitment.selector);
-        hedgerPool.addMargin(positionId, 1000 * 1e6);
-    }
 
     /**
      * @notice Test margin addition to inactive position should revert
@@ -1494,185 +1415,6 @@ contract HedgerPoolTestSuite is Test {
         vm.stopPrank();
     }
     
-    /**
-     * @notice Test margin removal that would make position liquidatable should revert
-     * @dev Verifies that margin removal cannot make position liquidatable (below 1% threshold)
-     * @custom:security Tests critical liquidation prevention mechanism
-     * @custom:validation Ensures liquidation threshold is enforced
-     * @custom:state-changes Creates position, syncs fill, attempts to remove margin that would cause liquidation
-     * @custom:events No events expected - revert test
-     * @custom:errors Expects InsufficientMargin error
-     * @custom:reentrancy Not applicable - test function
-     * @custom:access Public test function
-     * @custom:oracle Uses mock oracle for price
-     */
-    function test_Margin_RemoveMarginWouldCauseLiquidation_Revert() public {
-        // First open a position with high margin
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Sync position fill to have qeuroBacked
-        _syncPositionFill(positionId);
-        
-        // Get position data
-        (,, uint96 filledVolume, uint96 margin, , , , , , , , uint128 qeuroBacked) = hedgerPool.positions(positionId);
-        
-        // Simulate a price increase to make qeuroBacked × currentPrice > filledVolume
-        // This makes the liquidation check (based on current QEURO value) stricter than capacity check
-        uint256 higherPrice = EUR_USD_PRICE * 15000 / 10000; // 50% higher price
-        vm.mockCall(
-            mockOracle,
-            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
-            abi.encode(higherPrice, true)
-        );
-        
-        // Calculate liquidation threshold requirement with higher price
-        CoreParamsSnapshot memory params = _coreParamsSnapshot();
-        uint256 leverage = 5;
-        
-        // Calculate current QEURO value in USDC at higher price
-        uint256 qeuroValueInUSDC = (uint256(qeuroBacked) * higherPrice) / 1e30;
-        uint256 minimumMarginForLiquidation = (qeuroValueInUSDC * params.liquidationThreshold) / 10000;
-        
-        // Calculate minimum margin for capacity (based on filledVolume, not current price)
-        uint256 minMarginForCapacity = (uint256(filledVolume) + leverage - 1) / leverage;
-        
-        // With higher price, liquidation threshold should be stricter than capacity
-        // Try to remove margin that would leave us just below liquidation threshold
-        // but still above capacity requirement
-        uint256 targetMargin = minimumMarginForLiquidation > 0 ? minimumMarginForLiquidation - 1 : 0;
-        uint256 marginToRemove = margin > targetMargin ? margin - targetMargin : margin;
-        uint256 newMargin = margin - marginToRemove;
-        uint256 newPositionSize = newMargin * leverage;
-        
-        // Verify we still pass capacity check
-        if (newPositionSize >= uint256(filledVolume) && targetMargin >= minMarginForCapacity) {
-            // Should trigger liquidation check
-            vm.startPrank(hedger1);
-            vm.expectRevert(HedgerPoolErrorLibrary.InsufficientMargin.selector);
-            hedgerPool.removeMargin(positionId, marginToRemove);
-            vm.stopPrank();
-        }
-    }
-
-    // =============================================================================
-    // LIQUIDATION TESTS
-    // =============================================================================
-    
-    /**
-     * @notice Test successful position liquidation
-     * @dev Verifies that liquidators can liquidate undercollateralized positions
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Liquidation_LiquidatePositionSuccess() public {
-        // First open a position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        // Sync fill to make position liquidatable
-        _syncPositionFill(positionId);
-        
-        {
-            (, , uint96 filledVolume, uint96 margin, , , , , , , , ) = hedgerPool.positions(positionId);
-            assertGt(filledVolume, 0, "Position should be filled");
-            assertGt(margin, 0, "Primary position should have margin");
-        }
-        
-        uint256 initialTotalMargin = hedgerPool.totalMargin();
-        uint256 initialTotalExposure = hedgerPool.totalExposure();
-        bool initialActiveHedger = hedgerPool.hasActiveHedger();
-        assertTrue(initialActiveHedger, "Hedger should be active before liquidation");
-        
-        // Mock a significant price increase that would trigger liquidation
-        // For a short position, price increase = loss, making it liquidatable (margin ratio < 1%)
-        uint256 veryHighPrice = EUR_USD_PRICE * 200 / 100; // 100% price increase to ensure liquidation
-        vm.mockCall(
-            mockOracle,
-            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
-            abi.encode(veryHighPrice, true) // Very high price = margin ratio drops below 1%
-        );
-        
-        // Commit liquidation first
-        vm.prank(liquidator);
-        hedgerPool.commitLiquidation(hedger1, positionId, bytes32(0));
-        
-        // Liquidate the position
-        // Note: This will fail with NoActiveHedgerLiquidity if there are no other positions
-        // to redistribute filled volume to. With single position limit, liquidation of the only
-        // position requires that _unwindFilledVolume handles the case where there are no other positions.
-        // For now, we test that the position can be liquidated when there's filled volume.
-        vm.prank(liquidator);
-        uint256 liquidationReward = hedgerPool.liquidateHedger(hedger1, positionId, bytes32(0));
-        
-        // Check that position was liquidated
-        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
-        assertFalse(isActive);
-        
-        // Check liquidation reward
-        assertGt(liquidationReward, 0);
-        
-        // Pool metrics should decrease to zero (no remaining hedger)
-        assertLt(hedgerPool.totalMargin(), initialTotalMargin);
-        assertLt(hedgerPool.totalExposure(), initialTotalExposure);
-        assertFalse(hedgerPool.hasActiveHedger(), "Hedger should not be active after liquidation");
-    }
-    
-    /**
-     * @notice Test liquidation by non-liquidator should revert
-     * @dev Verifies that only authorized liquidators can liquidate positions
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Liquidation_LiquidateByNonLiquidator_Revert() public {
-        // First open a position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Try to liquidate by non-liquidator
-        vm.prank(hedger2);
-        vm.expectRevert();
-        hedgerPool.commitLiquidation(hedger1, positionId, bytes32(0));
-    }
-    
-    /**
-     * @notice Test liquidation of healthy position should revert
-     * @dev Verifies that healthy positions cannot be liquidated
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Liquidation_LiquidateHealthyPosition_Revert() public {
-        // First open a position with high margin
-        _setSingleHedger(hedger1);
-        uint256 highMargin = MARGIN_AMOUNT * 2; // Double margin
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(highMargin, 5);
-        
-        // Try to liquidate healthy position
-        vm.prank(liquidator);
-        vm.expectRevert(HedgerPoolErrorLibrary.NoValidCommitment.selector);
-        hedgerPool.liquidateHedger(hedger1, positionId, bytes32(0));
-    }
 
     // =============================================================================
     // REWARD TESTS
@@ -1813,23 +1555,17 @@ contract HedgerPoolTestSuite is Test {
      */
     function test_Governance_UpdatePoolParameters() public {
         uint256 newMinMarginRatio = 1500; // 15%
-        uint256 newLiquidationThreshold = 800; // 8%
         uint256 newMaxLeverage = 8; // 8x
-        uint256 newLiquidationPenalty = 300; // 3%
         
         vm.prank(governance);
         hedgerPool.updateHedgingParameters(
             newMinMarginRatio,
-            newLiquidationThreshold,
-            newMaxLeverage,
-            newLiquidationPenalty
+            newMaxLeverage
         );
         
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         assertEq(params.minMarginRatio, newMinMarginRatio);
-        assertEq(params.liquidationThreshold, newLiquidationThreshold);
         assertEq(params.maxLeverage, newMaxLeverage);
-        assertEq(params.liquidationPenalty, newLiquidationPenalty);
     }
     
     /**
@@ -1847,7 +1583,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Governance_UpdateHedgingParametersByNonGovernance_Revert() public {
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.updateHedgingParameters(1500, 800, 8, 300);
+        hedgerPool.updateHedgingParameters(1500, 8);
     }
     
     /**
@@ -2059,151 +1795,6 @@ contract HedgerPoolTestSuite is Test {
 
 
 
-    /**
-     * @notice Test commit liquidation functionality
-     * @dev Verifies that liquidators can commit to liquidate positions
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Liquidation_CommitLiquidation() public {
-        // Open position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Commit liquidation
-        vm.prank(liquidator);
-        bytes32 salt = keccak256(abi.encodePacked("test"));
-        hedgerPool.commitLiquidation(hedger1, positionId, salt);
-        
-        // Check that commitment exists
-        assertTrue(hedgerPool.hasPendingLiquidationCommitment(hedger1, positionId));
-    }
-
-    /**
-     * @notice Test commit liquidation by non-liquidator
-     * @dev Verifies that only liquidators can commit liquidations
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Liquidation_CommitLiquidationByNonLiquidator_Revert() public {
-        // Open position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Try to commit liquidation by non-liquidator
-        vm.prank(hedger2);
-        bytes32 salt = keccak256(abi.encodePacked("test"));
-        vm.expectRevert();
-        hedgerPool.commitLiquidation(hedger1, positionId, salt);
-    }
-
-    /**
-     * @notice Test clear expired liquidation commitment
-     * @dev Verifies that expired liquidation commitments can be cleared
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Liquidation_ClearExpiredLiquidationCommitment() public {
-        // Open position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Commit liquidation
-        vm.prank(liquidator);
-        bytes32 salt = keccak256(abi.encodePacked("test"));
-        hedgerPool.commitLiquidation(hedger1, positionId, salt);
-        
-        // Fast forward blocks to make commitment expire (301 blocks > 300 block cooldown)
-        vm.roll(block.number + 301);
-        
-        // Clear expired commitment
-        vm.prank(liquidator);
-        hedgerPool.clearExpiredLiquidationCommitment(hedger1, positionId);
-        
-        // Check that commitment is cleared
-        assertFalse(hedgerPool.hasPendingLiquidationCommitment(hedger1, positionId));
-    }
-
-    /**
-     * @notice Test cancel liquidation commitment
-     * @dev Verifies that liquidators can cancel their own commitments
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Liquidation_CancelLiquidationCommitment() public {
-        // Open position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Commit liquidation
-        vm.prank(liquidator);
-        bytes32 salt = keccak256(abi.encodePacked("test"));
-        hedgerPool.commitLiquidation(hedger1, positionId, salt);
-        
-        // Cancel commitment
-        vm.prank(liquidator);
-        hedgerPool.cancelLiquidationCommitment(hedger1, positionId, salt);
-        
-        // Check that commitment is cancelled
-        assertFalse(hedgerPool.hasPendingLiquidationCommitment(hedger1, positionId));
-    }
-
-    /**
-     * @notice Test cancel liquidation commitment by different liquidator
-     * @dev Verifies that only the committing liquidator can cancel
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Liquidation_CancelLiquidationCommitmentByDifferentLiquidator_Revert() public {
-        // Open position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Commit liquidation
-        vm.prank(liquidator);
-        bytes32 salt = keccak256(abi.encodePacked("test"));
-        hedgerPool.commitLiquidation(hedger1, positionId, salt);
-        
-        // Try to cancel by different liquidator
-        vm.prank(hedger2);
-        vm.expectRevert();
-        hedgerPool.cancelLiquidationCommitment(hedger1, positionId, salt);
-    }
 
     /**
      * @notice Test is hedging active
@@ -2276,37 +1867,6 @@ contract HedgerPoolTestSuite is Test {
 
 
 
-    /**
-     * @notice Test has pending liquidation commitment
-     * @dev Verifies that liquidation commitment status can be checked
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_View_HasPendingLiquidationCommitment() public {
-        // Open position
-        _setSingleHedger(hedger1);
-        vm.prank(hedger1);
-        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        
-        // Initially no commitment
-        bool hasCommitment = hedgerPool.hasPendingLiquidationCommitment(hedger1, positionId);
-        assertFalse(hasCommitment);
-        
-        // Commit liquidation
-        vm.prank(liquidator);
-        bytes32 salt = keccak256(abi.encodePacked("test"));
-        hedgerPool.commitLiquidation(hedger1, positionId, salt);
-        
-        // Now has commitment
-        hasCommitment = hedgerPool.hasPendingLiquidationCommitment(hedger1, positionId);
-        assertTrue(hasCommitment);
-    }
 
     // =============================================================================
     // RECOVERY FUNCTION TESTS

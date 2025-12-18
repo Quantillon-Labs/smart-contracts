@@ -1570,6 +1570,129 @@ function shouldTriggerLiquidation() external returns (bool);
 |`<none>`|`bool`|shouldLiquidate Whether liquidation should be triggered|
 
 
+### getLiquidationStatus
+
+Returns liquidation status and key metrics for pro-rata redemption
+
+*Protocol enters liquidation mode when CR <= 101%*
+
+**Notes:**
+- View function - no state changes
+
+- No input validation required
+
+- None - view function
+
+- None
+
+- None
+
+- Not applicable - view function
+
+- Public - anyone can check liquidation status
+
+- Requires oracle price for collateral calculation
+
+
+```solidity
+function getLiquidationStatus()
+    external
+    returns (
+        bool isInLiquidation,
+        uint256 collateralizationRatioBps,
+        uint256 totalCollateralUsdc,
+        uint256 totalQeuroSupply
+    );
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`isInLiquidation`|`bool`|True if protocol is in liquidation mode|
+|`collateralizationRatioBps`|`uint256`|Current CR in basis points|
+|`totalCollateralUsdc`|`uint256`|Total protocol collateral in USDC (6 decimals)|
+|`totalQeuroSupply`|`uint256`|Total QEURO supply (18 decimals)|
+
+
+### calculateLiquidationPayout
+
+Calculates pro-rata payout for liquidation mode redemption
+
+*Formula: payout = (qeuroAmount / totalSupply) * totalCollateral*
+
+**Notes:**
+- View function - no state changes
+
+- Validates qeuroAmount > 0
+
+- None - view function
+
+- None
+
+- Throws InvalidAmount if qeuroAmount is 0
+
+- Not applicable - view function
+
+- Public - anyone can calculate payout
+
+- Requires oracle price for fair value calculation
+
+
+```solidity
+function calculateLiquidationPayout(uint256 qeuroAmount)
+    external
+    returns (uint256 usdcPayout, bool isPremium, uint256 premiumOrDiscountBps);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcPayout`|`uint256`|Amount of USDC the user would receive (6 decimals)|
+|`isPremium`|`bool`|True if payout > fair value (CR > 100%)|
+|`premiumOrDiscountBps`|`uint256`|Premium or discount in basis points|
+
+
+### redeemQEUROLiquidation
+
+Redeems QEURO for USDC using pro-rata distribution in liquidation mode
+
+*Only callable when protocol is in liquidation mode (CR <= 101%)*
+
+**Notes:**
+- Protected by nonReentrant, requires liquidation mode
+
+- Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
+
+- Burns QEURO, transfers USDC pro-rata
+
+- Emits LiquidationRedeemed
+
+- Reverts if not in liquidation mode or slippage exceeded
+
+- Protected by nonReentrant modifier
+
+- Public - anyone with QEURO can redeem
+
+- Requires oracle price for collateral calculation
+
+
+```solidity
+function redeemQEUROLiquidation(uint256 qeuroAmount, uint256 minUsdcOut) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
+|`minUsdcOut`|`uint256`|Minimum USDC expected (slippage protection)|
+
+
 ### getProtocolCollateralizationRatio
 
 Calculates the current protocol collateralization ratio

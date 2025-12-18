@@ -77,6 +77,8 @@ cd smart-contracts/quantillon-protocol
 npm install
 ```
 
+> **Note**: Some folders (`scripts/`) are encrypted with git-crypt for privacy concerns. If you need access to these files, you'll need the encryption key. Contact the maintainers for access.
+
 ### 2. Environment Configuration
 
 ```bash
@@ -222,6 +224,7 @@ make validate-natspec
 - **Flash Loan Protection**: Balance checks to prevent flash loan attacks
 - **Custom Errors**: Gas-efficient error handling with clear error messages
 - **Secret Handling**: Environment variables loaded from `.env` during development
+- **🔐 Encrypted Folders**: Some folders (e.g., `scripts/`) are encrypted with git-crypt for privacy and security. These files require the encryption key to decrypt and access.
 
 ## 📊 Development
 

@@ -75,28 +75,6 @@ library HedgerPoolValidationLibrary {
     }
     
     /**
-     * @notice Validates liquidation cooldown period to prevent manipulation
-     * @dev Uses block numbers to prevent timestamp manipulation attacks
-     * @param lastAttempt The block number of the last liquidation attempt
-     * @param cooldown The required cooldown period in blocks
-     * @custom:security Prevents liquidation manipulation through cooldown bypass
-     * @custom:validation Ensures proper cooldown period between liquidation attempts
-     * @custom:state-changes No state changes - view function
-     * @custom:events No events emitted
-     * @custom:errors Throws LiquidationCooldown if cooldown period not met
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validateLiquidationCooldown(uint256 lastAttempt, uint256 cooldown) internal view {
-        // Only check cooldown if there was actually a liquidation attempt (lastAttempt > 0)
-        // If lastAttempt is 0, it means no liquidation attempt was ever made, so no cooldown applies
-        if (lastAttempt > 0 && block.number < lastAttempt + cooldown) {
-            revert CommonErrorLibrary.LiquidationCooldown();
-        }
-    }
-    
-    /**
      * @notice Validates that a position is active before operations
      * @dev Prevents operations on closed or invalid positions
      * @param isActive The position's active status
@@ -147,40 +125,6 @@ library HedgerPoolValidationLibrary {
      */
     function validatePositionCount(uint256 count, uint256 max) internal pure {
         if (count >= max) revert CommonErrorLibrary.TooManyPositions();
-    }
-    
-    /**
-     * @notice Validates that a commitment doesn't already exist
-     * @dev Prevents duplicate commitments in liquidation system
-     * @param commitmentBlock Block number stored for the commitment (0 if none)
-     * @custom:security Prevents duplicate commitments that could cause system issues
-     * @custom:validation Ensures commitment doesn't already exist
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws CommitmentAlreadyExists if commitment exists
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validateCommitmentNotExists(uint256 commitmentBlock) internal pure {
-        if (commitmentBlock != 0) revert HedgerPoolErrorLibrary.CommitmentAlreadyExists();
-    }
-    
-    /**
-     * @notice Validates that a valid commitment exists
-     * @dev Ensures commitment exists before executing liquidation
-     * @param commitmentBlock Block number stored for the commitment (0 if none)
-     * @custom:security Prevents liquidation without valid commitment
-     * @custom:validation Ensures valid commitment exists before liquidation
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws NoValidCommitment if commitment doesn't exist
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validateCommitment(uint256 commitmentBlock) internal pure {
-        if (commitmentBlock == 0) revert HedgerPoolErrorLibrary.NoValidCommitment();
     }
     
     /**

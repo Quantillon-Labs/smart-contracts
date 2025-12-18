@@ -130,8 +130,7 @@ contract EconomicAttackVectors is Test {
         // Grant roles
         vm.startPrank(admin);
         hedgerPool.grantRole(keccak256("GOVERNANCE_ROLE"), governance);
-        hedgerPool.grantRole(keccak256("LIQUIDATOR_ROLE"), arbitrageur);
-        hedgerPool.grantRole(keccak256("LIQUIDATOR_ROLE"), flashLoanAttacker);
+        // LIQUIDATOR_ROLE removed - liquidation system changed to protocol-wide
         hedgerPool.grantRole(keccak256("EMERGENCY_ROLE"), emergencyRole);
         vm.stopPrank();
         

@@ -732,6 +732,67 @@ interface IQuantillonVault {
     function shouldTriggerLiquidation() external returns (bool);
 
     /**
+     * @notice Returns liquidation status and key metrics for pro-rata redemption
+     * @dev Protocol enters liquidation mode when CR <= 101%
+     * @return isInLiquidation True if protocol is in liquidation mode
+     * @return collateralizationRatioBps Current CR in basis points
+     * @return totalCollateralUsdc Total protocol collateral in USDC (6 decimals)
+     * @return totalQeuroSupply Total QEURO supply (18 decimals)
+     * @custom:security View function - no state changes
+     * @custom:validation No input validation required
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can check liquidation status
+     * @custom:oracle Requires oracle price for collateral calculation
+     */
+    function getLiquidationStatus() external returns (
+        bool isInLiquidation,
+        uint256 collateralizationRatioBps,
+        uint256 totalCollateralUsdc,
+        uint256 totalQeuroSupply
+    );
+
+    /**
+     * @notice Calculates pro-rata payout for liquidation mode redemption
+     * @dev Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
+     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
+     * @return usdcPayout Amount of USDC the user would receive (6 decimals)
+     * @return isPremium True if payout > fair value (CR > 100%)
+     * @return premiumOrDiscountBps Premium or discount in basis points
+     * @custom:security View function - no state changes
+     * @custom:validation Validates qeuroAmount > 0
+     * @custom:state-changes None - view function
+     * @custom:events None
+     * @custom:errors Throws InvalidAmount if qeuroAmount is 0
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - anyone can calculate payout
+     * @custom:oracle Requires oracle price for fair value calculation
+     */
+    function calculateLiquidationPayout(uint256 qeuroAmount) external returns (
+        uint256 usdcPayout,
+        bool isPremium,
+        uint256 premiumOrDiscountBps
+    );
+
+    /**
+     * @notice Redeems QEURO for USDC using pro-rata distribution in liquidation mode
+     * @dev Only callable when protocol is in liquidation mode (CR <= 101%)
+     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
+     * @param minUsdcOut Minimum USDC expected (slippage protection)
+     * @custom:security Protected by nonReentrant, requires liquidation mode
+     * @custom:validation Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
+     * @custom:state-changes Burns QEURO, transfers USDC pro-rata
+     * @custom:events Emits LiquidationRedeemed
+     * @custom:errors Reverts if not in liquidation mode or slippage exceeded
+     * @custom:reentrancy Protected by nonReentrant modifier
+     * @custom:access Public - anyone with QEURO can redeem
+     * @custom:oracle Requires oracle price for collateral calculation
+     */
+    function redeemQEUROLiquidation(uint256 qeuroAmount, uint256 minUsdcOut) external;
+
+    /**
      * @notice Calculates the current protocol collateralization ratio
      * @dev Returns ratio in basis points (e.g., 10500 = 105%)
      * @return ratio Current collateralization ratio in basis points

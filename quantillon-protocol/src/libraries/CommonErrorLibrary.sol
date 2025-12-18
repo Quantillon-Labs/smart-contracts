@@ -125,4 +125,7 @@ library CommonErrorLibrary {
     error InvalidThreshold();
     error NotWhitelisted();
     error InsufficientVotingPower();
+    
+    // Protocol Liquidation Mode Errors
+    error NotInLiquidationMode();
 }

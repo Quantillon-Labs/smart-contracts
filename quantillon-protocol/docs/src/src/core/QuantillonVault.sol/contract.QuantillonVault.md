@@ -601,14 +601,13 @@ function _executeAaveDeployment(uint256 usdcAmount) external;
 
 ### redeemQEURO
 
-Redeems QEURO for USDC
+Redeems QEURO for USDC - automatically routes to normal or liquidation mode
 
 *Redeem process:
-1. Calculate USDC to return based on EUR/USD price
-2. Apply protocol fees
-3. Burn QEURO
-4. Update vault balances
-5. Transfer USDC to user*
+1. Check if protocol is in liquidation mode (CR <= 101%)
+2. If liquidation mode: use pro-rata distribution (no fees)
+3. If normal mode: use oracle price with fees
+4. Burn QEURO and transfer USDC*
 
 **Notes:**
 - Validates input parameters and enforces security checks
@@ -617,7 +616,7 @@ Redeems QEURO for USDC
 
 - Updates contract state variables
 
-- Emits relevant events for state changes
+- Emits QEURORedeemed or LiquidationRedeemed based on mode
 
 - Throws custom errors for invalid conditions
 
@@ -639,6 +638,64 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 |----|----|-----------|
 |`qeuroAmount`|`uint256`|Amount of QEURO to swap for USDC|
 |`minUsdcOut`|`uint256`|Minimum amount of USDC expected|
+
+
+### _redeemLiquidationMode
+
+Internal function for liquidation mode redemption (pro-rata)
+
+*Called by redeemQEURO when protocol is in liquidation mode*
+
+
+```solidity
+function _redeemLiquidationMode(uint256 qeuroAmount, uint256 minUsdcOut, uint256 collateralizationRatioBps) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to redeem|
+|`minUsdcOut`|`uint256`|Minimum USDC expected|
+|`collateralizationRatioBps`|`uint256`|Current CR in basis points|
+
+
+### redeemQEUROLiquidation
+
+Redeems QEURO for USDC using pro-rata distribution in liquidation mode
+
+*Only callable when protocol is in liquidation mode (CR <= 101%)*
+
+*Formula: payout = (qeuroAmount / totalSupply) * totalCollateral*
+
+*Premium if CR > 100%, haircut if CR < 100%*
+
+**Notes:**
+- Protected by nonReentrant, requires liquidation mode
+
+- Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
+
+- Burns QEURO, transfers USDC pro-rata
+
+- Emits LiquidationRedeemed
+
+- Reverts if not in liquidation mode or slippage exceeded
+
+- Protected by nonReentrant modifier
+
+- Public - anyone with QEURO can redeem
+
+- Requires oracle price for collateral calculation
+
+
+```solidity
+function redeemQEUROLiquidation(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentrant whenNotPaused;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
+|`minUsdcOut`|`uint256`|Minimum USDC expected (slippage protection)|
 
 
 ### getVaultMetrics
@@ -1480,6 +1537,96 @@ function shouldTriggerLiquidation() public returns (bool shouldLiquidate);
 |`shouldLiquidate`|`bool`|Whether liquidation should be triggered|
 
 
+### getLiquidationStatus
+
+Returns liquidation status and key metrics for pro-rata redemption
+
+*Protocol enters liquidation mode when CR <= 101%. In this mode, users can redeem pro-rata.*
+
+**Notes:**
+- View function - no state changes
+
+- No input validation required
+
+- None - view function
+
+- None
+
+- None
+
+- Not applicable - view function
+
+- Public - anyone can check liquidation status
+
+- Requires oracle price for collateral calculation
+
+
+```solidity
+function getLiquidationStatus()
+    external
+    returns (
+        bool isInLiquidation,
+        uint256 collateralizationRatioBps,
+        uint256 totalCollateralUsdc,
+        uint256 totalQeuroSupply
+    );
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`isInLiquidation`|`bool`|True if protocol is in liquidation mode (CR <= 101%)|
+|`collateralizationRatioBps`|`uint256`|Current collateralization ratio in basis points (e.g., 10100 = 101%)|
+|`totalCollateralUsdc`|`uint256`|Total protocol collateral in USDC (6 decimals)|
+|`totalQeuroSupply`|`uint256`|Total QEURO supply (18 decimals)|
+
+
+### calculateLiquidationPayout
+
+Calculates pro-rata payout for liquidation mode redemption
+
+*Formula: payout = (qeuroAmount / totalSupply) * totalCollateral*
+
+*Premium if CR > 100%, haircut if CR < 100%*
+
+**Notes:**
+- View function - no state changes
+
+- Validates qeuroAmount > 0
+
+- None - view function
+
+- None
+
+- Throws InvalidAmount if qeuroAmount is 0
+
+- Not applicable - view function
+
+- Public - anyone can calculate payout
+
+- Requires oracle price for fair value calculation
+
+
+```solidity
+function calculateLiquidationPayout(uint256 qeuroAmount)
+    external
+    returns (uint256 usdcPayout, bool isPremium, uint256 premiumOrDiscountBps);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcPayout`|`uint256`|Amount of USDC the user would receive (6 decimals)|
+|`isPremium`|`bool`|True if payout > fair value (CR > 100%), false if haircut (CR < 100%)|
+|`premiumOrDiscountBps`|`uint256`|Premium or discount in basis points (e.g., 50 = 0.5%)|
+
+
 ### getPriceProtectionStatus
 
 Returns the current price protection status
@@ -1772,6 +1919,26 @@ Emitted when QEURO is redeemed
 ```solidity
 event QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmount);
 ```
+
+### LiquidationRedeemed
+Emitted when QEURO is redeemed in liquidation mode (pro-rata)
+
+
+```solidity
+event LiquidationRedeemed(
+    address indexed user, uint256 qeuroAmount, uint256 usdcPayout, uint256 collateralizationRatioBps, bool isPremium
+);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address of the user redeeming QEURO|
+|`qeuroAmount`|`uint256`|Amount of QEURO redeemed (18 decimals)|
+|`usdcPayout`|`uint256`|Amount of USDC received (6 decimals)|
+|`collateralizationRatioBps`|`uint256`|Protocol CR at redemption time (basis points)|
+|`isPremium`|`bool`|True if user received more than fair value (CR > 100%)|
 
 ### HedgerDepositAdded
 Emitted when hedger deposits USDC to vault for unified liquidity

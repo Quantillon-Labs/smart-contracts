@@ -110,24 +110,6 @@ library HedgerPoolValidationLibrary {
     }
     
     /**
-     * @notice Validates position count limits to prevent system overload
-     * @dev Enforces maximum positions per user for gas and complexity management
-     * @param count The current position count
-     * @param max The maximum allowed positions
-     * @custom:security Prevents system overload through excessive positions
-     * @custom:validation Ensures position count stays within system limits
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws TooManyPositions if count exceeds maximum
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validatePositionCount(uint256 count, uint256 max) internal pure {
-        if (count >= max) revert CommonErrorLibrary.TooManyPositions();
-    }
-    
-    /**
      * @notice Validates all position parameters against maximum limits
      * @dev Ensures all position parameters are within acceptable bounds
      * @param netMargin The net margin amount after fees

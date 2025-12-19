@@ -414,8 +414,8 @@ interface IHedgerPool {
     function exitFee() external view returns (uint256);
     
     /**
-     * @notice Returns the total margin across all positions
-     * @dev Total USDC margin held across all active hedge positions (6 decimals)
+     * @notice Returns the total margin for the hedger position
+     * @dev Total USDC margin held by the hedger position (6 decimals)
      * @return uint256 Total margin in USDC
      * @custom:security No security validations required - view function
      * @custom:validation No input validation required - view function
@@ -429,8 +429,8 @@ interface IHedgerPool {
     function totalMargin() external view returns (uint256);
     
     /**
-     * @notice Returns the total exposure across all positions
-     * @dev Total USD exposure across all active hedge positions
+     * @notice Returns the total exposure for the hedger position
+     * @dev Total USD exposure of the hedger position
      * @return uint256 Total exposure in USD
      * @custom:security No security validations required - view function
      * @custom:validation No input validation required - view function
@@ -457,21 +457,6 @@ interface IHedgerPool {
      * @custom:oracle No oracle dependencies
      */
     function hasActiveHedger() external view returns (bool);
-    
-    /**
-     * @notice Returns the next position ID to be assigned
-     * @dev Counter for generating unique position IDs
-     * @return uint256 Next position ID
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query next position ID
-     * @custom:oracle No oracle dependencies
-     */
-    function nextPositionId() external view returns (uint256);
     
     /**
      * @notice Returns the EUR interest rate in basis points
@@ -649,21 +634,6 @@ interface IHedgerPool {
     function hedgerLastRewardBlock(address hedger) external view returns (uint256);
     
     // Constants
-    
-    /**
-     * @notice Returns the maximum positions per hedger
-     * @dev Maximum number of positions a single hedger can have open simultaneously
-     * @return uint256 Maximum positions per hedger
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query maximum positions per hedger
-     * @custom:oracle No oracle dependencies
-     */
-    function MAX_POSITIONS_PER_HEDGER() external view returns (uint256);
     
     /**
      * @notice Returns the number of blocks per day

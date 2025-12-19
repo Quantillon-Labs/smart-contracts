@@ -23,8 +23,6 @@ library HedgerPoolLogicLibrary {
      * @param minMarginRatio Minimum margin ratio in basis points
      * @param maxMarginRatio Maximum margin ratio in basis points
      * @param maxLeverage Maximum allowed leverage
-     * @param maxPositionsPerHedger Maximum positions per hedger
-     * @param activePositionCount Current active position count for hedger
      * @param maxMargin Maximum margin per position
      * @param maxPositionSize Maximum position size
      * @param maxEntryPrice Maximum entry price
@@ -52,8 +50,6 @@ library HedgerPoolLogicLibrary {
         uint256 minMarginRatio,
         uint256 maxMarginRatio,
         uint256 maxLeverage,
-        uint256 maxPositionsPerHedger,
-        uint256 activePositionCount,
         uint256 maxMargin,
         uint256 maxPositionSize,
         uint256 maxEntryPrice,
@@ -68,7 +64,6 @@ library HedgerPoolLogicLibrary {
         // Validate basic parameters first
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         HedgerPoolValidationLibrary.validateLeverage(leverage, maxLeverage);
-        HedgerPoolValidationLibrary.validatePositionCount(activePositionCount, maxPositionsPerHedger);
 
         // Calculate basic values
         fee = usdcAmount.percentageOf(entryFee);
@@ -236,7 +231,7 @@ library HedgerPoolLogicLibrary {
     /**
      * @notice Calculates reward updates for hedgers based on interest rate differentials
      * @dev Computes new pending rewards based on time elapsed and interest rates
-     * @param totalExposure Total exposure across all positions
+     * @param totalExposure Total exposure for the hedger position
      * @param eurInterestRate EUR interest rate in basis points
      * @param usdInterestRate USD interest rate in basis points
      * @param lastRewardBlock Block number of last reward calculation

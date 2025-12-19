@@ -756,7 +756,7 @@ contract QuantillonVault is
             FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
         }
     }
-    
+
     /**
      * @notice Internal function for liquidation mode redemption (pro-rata)
      * @dev Called by redeemQEURO when protocol is in liquidation mode

@@ -68,7 +68,6 @@ contract HedgerPool is
     uint256 public totalMargin;
     uint256 public totalExposure;
     uint256 public totalFilledExposure;
-    uint256 public nextPositionId;
 
     /// @notice Address of the single hedger allowed to open positions
     /// @dev This replaces the previous multi-hedger whitelist model
@@ -97,16 +96,11 @@ contract HedgerPool is
     mapping(uint256 => HedgePosition) public positions;
     mapping(address => HedgerRewardState) private hedgerRewards;
 
-    uint256[] private activePositions;
-    mapping(uint256 => uint256) private activePositionIndex;
-
     /// @notice Maps hedger address to their active position ID (0 = no active position)
-    /// @dev Used to enforce single position per hedger limit
+    /// @dev Used to track the single hedger's position in single hedger model
     mapping(address => uint256) private hedgerActivePositionId;
 
     mapping(address => uint256) public hedgerLastRewardBlock;
-
-    uint256 public constant MAX_POSITIONS_PER_HEDGER = 1;
     uint96 public constant MAX_UINT96_VALUE = type(uint96).max;
     uint256 public constant MAX_POSITION_SIZE = MAX_UINT96_VALUE;
     uint256 public constant MAX_MARGIN = MAX_UINT96_VALUE;
@@ -224,7 +218,6 @@ contract HedgerPool is
         coreParams.marginFee = 0;
         coreParams.eurInterestRate = 350;
         coreParams.usdInterestRate = 450;
-        nextPositionId = 1;
     }
 
     /**
@@ -291,8 +284,6 @@ contract HedgerPool is
                 coreParams.minMarginRatio,
                 MAX_MARGIN_RATIO,
                 coreParams.maxLeverage,
-                1, // Single position per hedger limit
-                0, // Single hedger model: single position per hedger enforced
                 MAX_MARGIN,
                 MAX_POSITION_SIZE,
                 MAX_ENTRY_PRICE,
@@ -303,7 +294,8 @@ contract HedgerPool is
         // fee and marginRatio are validated by the library function, no additional checks needed
         if (fee > usdcAmount || marginRatio == 0) revert HedgerPoolErrorLibrary.InvalidPosition();
         
-        positionId = nextPositionId++;
+        // Use fixed position ID 1 for single position model
+        positionId = 1;
         HedgePosition storage position = positions[positionId];
         position.hedger = msg.sender;
         position.positionSize = uint96(positionSize);
@@ -315,7 +307,6 @@ contract HedgerPool is
         position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
-        _trackActivePosition(positionId);
         hedgerActivePositionId[msg.sender] = positionId;
 
         totalMargin += netMargin;
@@ -608,7 +599,7 @@ contract HedgerPool is
     function recordUserMint(uint256 usdcAmount, uint256 fillPrice, uint256 qeuroAmount) external onlyVault whenNotPaused {
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         if (fillPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
-        _increaseFilledVolume(usdcAmount, fillPrice, qeuroAmount, 0);
+        _increaseFilledVolume(usdcAmount, fillPrice, qeuroAmount);
     }
 
     /**
@@ -629,7 +620,7 @@ contract HedgerPool is
     function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) external onlyVault whenNotPaused {
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         if (redeemPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
-        _decreaseFilledVolume(usdcAmount, redeemPrice, qeuroAmount, 0);
+        _decreaseFilledVolume(usdcAmount, redeemPrice, qeuroAmount);
     }
 
     /**
@@ -698,7 +689,7 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Calculates total effective hedger collateral (margin + P&L) across all active positions
+     * @notice Calculates total effective hedger collateral (margin + P&L) for the hedger position
      * @dev Used by vault to determine protocol collateralization ratio
      * @param price Current EUR/USD oracle price (18 decimals)
      * @return t Total effective collateral in USDC (6 decimals)
@@ -712,14 +703,16 @@ contract HedgerPool is
      * @custom:oracle Requires fresh oracle price data
      */
     function getTotalEffectiveHedgerCollateral(uint256 price) external view returns (uint256 t) {
-        uint256 len = activePositions.length;
-        for (uint256 i; i < len; ++i) {
-            HedgePosition storage p = positions[activePositions[i]];
-            if (!p.isActive) continue;
-            // Only consider unrealized P&L for effective collateral, not realized P&L (which is already locked in)
-            int256 e = int256(uint256(p.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(p.filledVolume), uint256(p.qeuroBacked), price);
-            if (e > 0) t += uint256(e);
-        }
+        if (singleHedger == address(0)) return 0;
+        uint256 positionId = hedgerActivePositionId[singleHedger];
+        if (positionId == 0) return 0;
+        
+        HedgePosition storage position = positions[positionId];
+        if (!position.isActive) return 0;
+        
+        // Only consider unrealized P&L for effective collateral, not realized P&L (which is already locked in)
+        int256 e = int256(uint256(position.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(position.filledVolume), uint256(position.qeuroBacked), price);
+        if (e > 0) t = uint256(e);
     }
 
     /**
@@ -1007,48 +1000,6 @@ contract HedgerPool is
      * @custom:access Internal function
      * @custom:oracle Not applicable
      */
-    /**
-     * @notice Tracks a newly opened position for global fill allocation
-     * @dev Stores the index of the position in `activePositions` for O(1) removals
-     * @param positionId ID of the position being tracked
-     * @custom:security Caller must ensure position is valid and unique
-     * @custom:validation Assumes positionId is not already tracked
-     * @custom:state-changes Updates `activePositionIndex` and `activePositions`
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - internal function
-     * @custom:access Internal helper
-     * @custom:oracle Not applicable
-     */
-    function _trackActivePosition(uint256 positionId) internal {
-        activePositionIndex[positionId] = activePositions.length;
-        activePositions.push(positionId);
-    }
-
-    /**
-     * @notice Removes a position from the active tracking arrays
-     * @dev Swaps-and-pops to keep the array compact while updating indices
-     * @param positionId ID of the position to untrack
-     * @custom:security Caller must ensure positionId is currently tracked
-     * @custom:validation Assumes the active set is non-empty
-     * @custom:state-changes Modifies `activePositions` and `activePositionIndex`
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - internal function
-     * @custom:access Internal helper
-     * @custom:oracle Not applicable
-     */
-    function _untrackActivePosition(uint256 positionId) internal {
-        uint256 index = activePositionIndex[positionId];
-        uint256 lastIndex = activePositions.length - 1;
-        if (index != lastIndex) {
-            uint256 lastId = activePositions[lastIndex];
-            activePositions[index] = lastId;
-            activePositionIndex[lastId] = index;
-        }
-        activePositions.pop();
-        delete activePositionIndex[positionId];
-    }
 
     /**
      * @notice Finalizes position closure by updating hedger and protocol totals
@@ -1060,7 +1011,7 @@ contract HedgerPool is
      * @param exposureDelta Amount of exposure being removed from the position
      * @custom:security Internal function - assumes all validations done by caller
      * @custom:validation Assumes marginDelta and exposureDelta are valid and don't exceed current totals
-     * @custom:state-changes Decrements hedger margin/exposure, protocol totals, marks position inactive, removes from active tracking, updates hedger position count
+     * @custom:state-changes Decrements hedger margin/exposure, protocol totals, marks position inactive, updates hedger position tracking
      * @custom:events None - events emitted by caller
      * @custom:errors None - assumes valid inputs from caller
      * @custom:reentrancy Not applicable - internal function, no external calls
@@ -1078,7 +1029,6 @@ contract HedgerPool is
         totalExposure -= exposureDelta;
 
         position.isActive = false;
-        _untrackActivePosition(positionId);
         
         // Reset hedger's active position tracking
         if (hedgerActivePositionId[hedger] == positionId) {
@@ -1088,15 +1038,15 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Unwinds filled volume from a position and redistributes it
-     * @dev Clears position's filled volume and redistributes it to other active positions
+     * @notice Unwinds filled volume from a position
+     * @dev Clears position's filled volume (no redistribution needed with single position)
      * @param positionId Unique identifier of the position being unwound
      * @param position Storage reference to the position being unwound
      * @param cachedPrice Cached EUR/USD price to avoid reentrancy (18 decimals)
      * @return freedVolume Amount of filled volume that was freed and redistributed
      * @custom:security Internal function - assumes position is valid and active
      * @custom:validation Validates totalFilledExposure >= cachedFilledVolume before decrementing
-     * @custom:state-changes Clears position filledVolume, decrements totalFilledExposure, redistributes volume to other positions
+     * @custom:state-changes Clears position filledVolume, decrements totalFilledExposure
      * @custom:events Emits HedgerFillUpdated with positionId, old filled volume, and 0
      * @custom:errors Reverts with InsufficientHedgerCapacity if totalFilledExposure < cachedFilledVolume
      * @custom:reentrancy Protected by nonReentrant on all public entry points
@@ -1106,38 +1056,19 @@ contract HedgerPool is
     // slither-disable-next-line reentrancy-no-eth
     function _unwindFilledVolume(uint256 positionId, HedgePosition storage position, uint256 cachedPrice) internal returns (uint256 freedVolume) {
         uint256 cachedFilledVolume = uint256(position.filledVolume);
-        uint256 cachedQeuroBacked = uint256(position.qeuroBacked);
         if (cachedFilledVolume == 0) {
             return 0;
         }
 
         // Require valid cached price to avoid reentrancy issues (caller must provide valid price)
         if (cachedPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
-        uint256 currentPrice = cachedPrice;
 
-        // Update state before calling _increaseFilledVolume
+        // Update state - clear filled volume (no redistribution needed with single position)
         position.filledVolume = 0;
         position.qeuroBacked = 0;
         emit HedgerFillUpdated(positionId, cachedFilledVolume, 0);
         if (totalFilledExposure < cachedFilledVolume) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
         totalFilledExposure -= cachedFilledVolume;
-        
-        // Only redistribute if there are other active positions (excluding the current one being unwound)
-        // With single position per hedger, if this is the only position, there's nothing to redistribute to
-        uint256 len = activePositions.length;
-        bool hasOtherPositions = false;
-        for (uint256 i = 0; i < len; i++) {
-            if (activePositions[i] != positionId) {
-                hasOtherPositions = true;
-                break;
-            }
-        }
-        
-        // If there are other positions, redistribute the filled volume
-        if (hasOtherPositions) {
-            _increaseFilledVolume(cachedFilledVolume, currentPrice, cachedQeuroBacked, positionId);
-        }
-        // Otherwise, the filled volume is simply cleared (no redistribution needed)
         
         return cachedFilledVolume;
     }
@@ -1165,149 +1096,102 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Allocates user mint exposure across active hedger positions
-     * @dev Distributes `usdcAmount` proportionally to available capacity of HEALTHY positions only
+     * @notice Allocates user mint exposure to the hedger position
+     * @dev Allocates `usdcAmount` to the single hedger position if healthy
      * @param usdcAmount Amount of USDC exposure to allocate (6 decimals)
      * @param currentPrice Current EUR/USD oracle price supplied by the caller (18 decimals)
      * @param qeuroAmount QEURO amount that was minted (18 decimals)
-     * @param skipPositionId Position ID to exclude (e.g., the exiting position)
-     * @custom:security Caller must ensure hedger sets are consistent before invocation
+     * @custom:security Caller must ensure hedger position exists
      * @custom:validation Validates liquidity availability and capacity before allocation
-     * @custom:state-changes Updates `filledVolume` per position and `totalFilledExposure`
-     * @custom:events Emits `HedgerFillUpdated` for every adjusted position
+     * @custom:state-changes Updates `filledVolume` and `totalFilledExposure`
+     * @custom:events Emits `HedgerFillUpdated` for the position
      * @custom:errors Reverts if capacity is insufficient or liquidity is absent
      * @custom:reentrancy Not applicable - internal function
      * @custom:access Internal helper
      * @custom:oracle Requires current oracle price to check position health
      */
-    function _increaseFilledVolume(uint256 usdcAmount, uint256 currentPrice, uint256 qeuroAmount, uint256 skipPositionId) internal {
+    function _increaseFilledVolume(uint256 usdcAmount, uint256 currentPrice, uint256 qeuroAmount) internal {
         if (usdcAmount == 0) return;
-        uint256 len = activePositions.length;
-        if (len == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
         if (currentPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+        
+        if (singleHedger == address(0)) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        uint256 positionId = hedgerActivePositionId[singleHedger];
+        if (positionId == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        
+        HedgePosition storage position = positions[positionId];
+        if (!position.isActive) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        if (!_isPositionHealthyForFill(position, currentPrice)) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
 
         uint256 minMarginRatio = coreParams.minMarginRatio;
-
-        // Build capacity array and calculate total
-        uint256[] memory capacities = new uint256[](len);
-        uint256 availableCapacity = 0;
-        for (uint256 i = 0; i < len; i++) {
-            uint256 positionId = activePositions[i];
-            if (positionId == skipPositionId) continue;
-            HedgePosition storage position = positions[positionId];
-            if (!_isPositionHealthyForFill(position, currentPrice)) continue;
-            uint256 cap = HedgerPoolLogicLibrary.calculateCollateralCapacity(
-                uint256(position.margin), uint256(position.filledVolume),
-                uint256(position.entryPrice), currentPrice, minMarginRatio, position.realizedPnL, position.qeuroBacked
-            );
-            capacities[i] = cap;
-            availableCapacity += cap;
-        }
+        uint256 availableCapacity = HedgerPoolLogicLibrary.calculateCollateralCapacity(
+            uint256(position.margin), uint256(position.filledVolume),
+            uint256(position.entryPrice), currentPrice, minMarginRatio, position.realizedPnL, position.qeuroBacked
+        );
 
         if (availableCapacity == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
         if (availableCapacity < usdcAmount) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
 
-        // Allocate proportionally
-        uint256 allocated = 0;
-        for (uint256 i; i < len; ++i) {
-            uint256 cap = capacities[i];
-            if (cap == 0) continue;
-            uint256 positionId = activePositions[i];
-            HedgePosition storage position = positions[positionId];
-            uint256 share = cap.mulDiv(usdcAmount, availableCapacity);
-            uint256 remaining = usdcAmount - allocated;
-            if (share > remaining) share = remaining;
-            if (share > cap) share = cap;
-            if (share == 0) continue;
-            uint256 prevFilled = uint256(position.filledVolume);
-            _applyFillChange(positionId, position, share, true);
-            _updateEntryPriceAfterFill(position, prevFilled, share, currentPrice);
-            position.qeuroBacked += uint128(qeuroAmount.mulDiv(share, usdcAmount));
-            allocated += share;
-        }
-        if (allocated < usdcAmount) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+        // Allocate to single position (100% of usdcAmount)
+        uint256 prevFilled = uint256(position.filledVolume);
+        _applyFillChange(positionId, position, usdcAmount, true);
+        _updateEntryPriceAfterFill(position, prevFilled, usdcAmount, currentPrice);
+        position.qeuroBacked += uint128(qeuroAmount);
         totalFilledExposure += usdcAmount;
     }
 
     /**
-     * @notice Releases exposure across hedger positions following a user redeem
-     * @dev Proportionally decreases fills based on filled volume share
+     * @notice Releases exposure from the hedger position following a user redeem
+     * @dev Decreases fills from the single hedger position
      * @param usdcAmount Amount of USDC to release (at redeem price) (6 decimals)
      * @param redeemPrice Current EUR/USD oracle price (18 decimals) for P&L calculation
      * @param qeuroAmount QEURO amount that was redeemed (18 decimals)
-     * @param skipPositionId Position ID to exclude from the release cycle
      * @custom:security Internal function - validates price and amounts
      * @custom:validation Validates usdcAmount > 0, redeemPrice > 0, and sufficient filled exposure
-     * @custom:state-changes Decreases filledVolume per position, updates totalFilledExposure, calculates realized P&L
-     * @custom:events Emits HedgerFillUpdated and RealizedPnLRecorded for each position
+     * @custom:state-changes Decreases filledVolume, updates totalFilledExposure, calculates realized P&L
+     * @custom:events Emits HedgerFillUpdated and RealizedPnLRecorded
      * @custom:errors Reverts with InvalidOraclePrice, NoActiveHedgerLiquidity, or InsufficientHedgerCapacity
      * @custom:reentrancy Not applicable - internal function
      * @custom:access Internal helper only
      * @custom:oracle Uses provided redeemPrice parameter
      */
-    function _decreaseFilledVolume(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount, uint256 skipPositionId) internal {
+    function _decreaseFilledVolume(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) internal {
         if (usdcAmount == 0) return;
         if (redeemPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
 
-        uint256 len = activePositions.length;
-        if (len == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
-
-        // Calculate total filled for proportional distribution
-        uint256 totalFilled = 0;
-        uint256 totalQeuroBacked = 0;
-        for (uint256 i = 0; i < len; i++) {
-            if (activePositions[i] != skipPositionId) {
-                totalFilled += uint256(positions[activePositions[i]].filledVolume);
-                totalQeuroBacked += uint256(positions[activePositions[i]].qeuroBacked);
-            }
-        }
-        if (totalFilled == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
-        // Note: We don't cap usdcAmount or qeuroAmount based on totalFilled
-        // filledVolume is just accounting - the user is redeeming qeuroAmount QEURO worth usdcAmount USDC
-        // We should realize P&L for ALL qeuroAmount being redeemed, regardless of filledVolume
-        // filledVolume will be decreased as much as possible (capped to available filledVolume), but P&L is calculated for all QEURO
-
-        // Distribute proportionally
-        uint256 released = 0;
-        uint256 qeuroReleased = 0;
-        for (uint256 i; i < len; ++i) {
-            uint256 posId = activePositions[i];
-            if (posId == skipPositionId) continue;
-            HedgePosition storage pos = positions[posId];
-            uint256 filled = uint256(pos.filledVolume);
-            if (filled == 0) continue;
-
-            // Calculate qeuroShare proportionally to qeuroBacked (not to filledVolume)
-            // This ensures the proportion of qeuroBacked being redeemed matches the proportion used for P&L calculation
-            uint256 qeuroShare = totalQeuroBacked > 0 
-                ? uint256(pos.qeuroBacked).mulDiv(qeuroAmount, totalQeuroBacked)
-                : 0;
-            if (qeuroShare > qeuroAmount - qeuroReleased) qeuroShare = qeuroAmount - qeuroReleased;
-            if (qeuroShare > uint256(pos.qeuroBacked)) qeuroShare = uint256(pos.qeuroBacked);
-            if (qeuroShare == 0) continue;
-            
-            // Calculate share (USDC to decrease from filledVolume) based on qeuroShare being redeemed
-            // share = qeuroShare * redeemPrice / 1e30 (convert QEURO to USDC at current price)
-            // Cap share to filled to avoid underflow, but this doesn't affect P&L calculation
-            uint256 share = qeuroShare.mulDiv(redeemPrice, 1e30);
-            if (share > usdcAmount - released) share = usdcAmount - released;
-            if (share > filled) share = filled;
-            if (share == 0) continue;
-            
-            // Emit event for debugging qeuroShare calculation
-            emit QeuroShareCalculated(posId, qeuroShare, uint256(pos.qeuroBacked), totalQeuroBacked);
-            
-            // Process redemption with new realized P&L formula
-            // Use qeuroShare (full amount) for P&L calculation to realize all remaining unrealized P&L
-            // This ensures we realize P&L for ALL QEURO being redeemed, regardless of filledVolume
-            _processRedeem(posId, pos, share, filled, redeemPrice, qeuroShare);
-            
-            // Decrease qeuroBacked proportionally
-            pos.qeuroBacked = qeuroShare <= uint256(pos.qeuroBacked) ? pos.qeuroBacked - uint128(qeuroShare) : 0;
-            released += share;
-            qeuroReleased += qeuroShare;
-        }
-        totalFilledExposure -= released;
+        if (singleHedger == address(0)) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        uint256 positionId = hedgerActivePositionId[singleHedger];
+        if (positionId == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        
+        HedgePosition storage pos = positions[positionId];
+        if (!pos.isActive) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        
+        uint256 filled = uint256(pos.filledVolume);
+        if (filled == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        
+        // With single position, all qeuroAmount goes to this position (100%)
+        uint256 qeuroShare = qeuroAmount;
+        if (qeuroShare > uint256(pos.qeuroBacked)) qeuroShare = uint256(pos.qeuroBacked);
+        if (qeuroShare == 0) return;
+        
+        // Calculate share (USDC to decrease from filledVolume) based on qeuroShare being redeemed
+        // share = qeuroShare * redeemPrice / 1e30 (convert QEURO to USDC at current price)
+        // Cap share to filled to avoid underflow, but this doesn't affect P&L calculation
+        uint256 share = qeuroShare.mulDiv(redeemPrice, 1e30);
+        if (share > usdcAmount) share = usdcAmount;
+        if (share > filled) share = filled;
+        if (share == 0) return;
+        
+        // Emit event for debugging qeuroShare calculation
+        emit QeuroShareCalculated(positionId, qeuroShare, uint256(pos.qeuroBacked), uint256(pos.qeuroBacked));
+        
+        // Process redemption with new realized P&L formula
+        // Use qeuroShare (full amount) for P&L calculation to realize all remaining unrealized P&L
+        // This ensures we realize P&L for ALL QEURO being redeemed, regardless of filledVolume
+        _processRedeem(positionId, pos, share, filled, redeemPrice, qeuroShare);
+        
+        // Decrease qeuroBacked
+        pos.qeuroBacked = qeuroShare <= uint256(pos.qeuroBacked) ? pos.qeuroBacked - uint128(qeuroShare) : 0;
+        totalFilledExposure -= share;
     }
 
     /**

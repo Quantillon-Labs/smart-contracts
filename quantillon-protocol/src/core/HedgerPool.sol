@@ -532,18 +532,7 @@ contract HedgerPool is
         // Recalculate positionSize from new margin to maintain exact leverage ratio
         uint256 newPositionSize = newMargin * leverageValue;
         uint256 currentPositionSize = uint256(position.positionSize);
-        
-        if (newPositionSize < uint256(position.filledVolume)) {
-            revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
-        }
-
         uint256 deltaPositionSize = currentPositionSize - newPositionSize;
-
-        uint256 newMarginRatio = newPositionSize > 0
-            ? newMargin.mulDiv(10000, newPositionSize)
-            : 0;
-        HedgerPoolValidationLibrary.validateMarginRatio(newMarginRatio, coreParams.minMarginRatio);
-        HedgerPoolValidationLibrary.validateMaxMarginRatio(newMarginRatio, MAX_MARGIN_RATIO);
 
         // Validate that position won't become liquidatable after margin removal
         // Get current price for liquidation check
@@ -552,6 +541,8 @@ contract HedgerPool is
         
         // Check if position would become unhealthy after margin removal
         // Uses minMarginRatio as threshold to ensure position maintains minimum collateralization
+        // This is the primary safety check - it ensures the position has sufficient collateral
+        // to cover its exposure even after margin removal
         bool wouldBeUnhealthy = HedgerPoolLogicLibrary.isPositionLiquidatable(
             newMargin,
             uint256(position.filledVolume),
@@ -564,6 +555,14 @@ contract HedgerPool is
         if (wouldBeUnhealthy) {
             revert HedgerPoolErrorLibrary.InsufficientMargin();
         }
+
+        // Validate margin ratio after removal (based on new position size)
+        // This ensures the position maintains proper leverage structure
+        uint256 newMarginRatio = newPositionSize > 0
+            ? newMargin.mulDiv(10000, newPositionSize)
+            : 0;
+        HedgerPoolValidationLibrary.validateMarginRatio(newMarginRatio, coreParams.minMarginRatio);
+        HedgerPoolValidationLibrary.validateMaxMarginRatio(newMarginRatio, MAX_MARGIN_RATIO);
 
         position.margin = uint96(newMargin);
         position.positionSize = uint96(newPositionSize);

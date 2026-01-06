@@ -105,10 +105,16 @@ library HedgerPoolLogicLibrary {
         uint256 qeuroBacked,
         uint256 currentPrice
     ) internal pure returns (int256) {
-        // Edge case: If no QEURO is backed, there's no unrealized P&L (all P&L is realized)
-        // This matches frontend behavior: when qeuroBacked === 0n, unrealized P&L = 0
-        if (filledVolume == 0 || currentPrice == 0 || qeuroBacked == 0) {
+        // Edge case: If no filled volume or price, return 0
+        if (filledVolume == 0 || currentPrice == 0) {
             return 0;
+        }
+        
+        // Special case: When all QEURO is redeemed (qeuroBacked == 0), but filledVolume still exists,
+        // the remaining filledVolume represents a loss that should be shown as unrealized P&L
+        if (qeuroBacked == 0) {
+            // Return negative filledVolume as unrealized loss
+            return -int256(filledVolume);
         }
 
         // Formula: UnrealizedP&L = FilledVolume - QEUROBacked * OracleCurrentPrice
@@ -202,7 +208,8 @@ library HedgerPoolLogicLibrary {
         uint256 /* entryPrice */,
         uint256 currentPrice,
         uint256 liquidationThreshold,
-        uint128 qeuroBacked
+        uint128 qeuroBacked,
+        int128 realizedPnL
     ) external pure returns (bool) {
         // Use current QEURO value (qeuroBacked × currentPrice) instead of filledVolume
         // This matches the frontend formula: maxWithdrawable = effectiveMargin - (qeuroBacked × currentPrice × liquidationThreshold / 10000)
@@ -210,8 +217,16 @@ library HedgerPoolLogicLibrary {
             return false;
         }
 
-        int256 pnl = calculatePnL(filledVolume, uint256(qeuroBacked), currentPrice);
-        int256 effectiveMargin = int256(margin) + pnl;
+        // Calculate total unrealized P&L
+        int256 totalUnrealizedPnL = calculatePnL(filledVolume, uint256(qeuroBacked), currentPrice);
+        
+        // Calculate net unrealized P&L (total unrealized - realized)
+        // When margin is reduced by realized losses, we should use net unrealized P&L
+        // because the margin already accounts for the realized loss
+        int256 netUnrealizedPnL = totalUnrealizedPnL - int256(realizedPnL);
+        
+        // Effective margin = margin + net unrealized P&L
+        int256 effectiveMargin = int256(margin) + netUnrealizedPnL;
         
         if (effectiveMargin <= 0) return true;
         

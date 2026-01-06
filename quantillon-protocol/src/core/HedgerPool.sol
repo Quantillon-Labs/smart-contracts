@@ -549,7 +549,8 @@ contract HedgerPool is
             uint256(position.entryPrice),
             currentPrice,
             coreParams.minMarginRatio,
-            position.qeuroBacked
+            position.qeuroBacked,
+            position.realizedPnL
         );
         
         if (wouldBeUnhealthy) {
@@ -709,8 +710,17 @@ contract HedgerPool is
         HedgePosition storage position = positions[positionId];
         if (!position.isActive) return 0;
         
-        // Only consider unrealized P&L for effective collateral, not realized P&L (which is already locked in)
-        int256 e = int256(uint256(position.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(position.filledVolume), uint256(position.qeuroBacked), price);
+        // Calculate total unrealized P&L
+        int256 totalUnrealizedPnL = HedgerPoolLogicLibrary.calculatePnL(uint256(position.filledVolume), uint256(position.qeuroBacked), price);
+        
+        // Calculate net unrealized P&L (total unrealized - realized)
+        // When margin is reduced by realized losses, we should use net unrealized P&L
+        // because the margin already accounts for the realized loss
+        int256 netUnrealizedPnL = totalUnrealizedPnL - int256(position.realizedPnL);
+        
+        // Effective collateral = margin + net unrealized P&L
+        // The margin already reflects realized losses, so we only add net unrealized P&L
+        int256 e = int256(uint256(position.margin)) + netUnrealizedPnL;
         if (e > 0) t = uint256(e);
     }
 
@@ -1309,6 +1319,87 @@ contract HedgerPool is
                 pos.realizedPnL += int128(realizedDelta);
                 emit RealizedPnLRecorded(posId, realizedDelta, int256(pos.realizedPnL));
                 emit RealizedPnLCalculation(posId, qeuroAmount, currentQeuroBacked, filledBefore, price, totalUnrealizedPnL, realizedDelta);
+                
+                // If realized P&L is positive (profit), add it to hedger margin
+                // This ensures the hedger margin balance reflects realized profits.
+                // The profit belongs to the hedger, so their margin (collateral) is increased.
+                if (realizedDelta > 0) {
+                    uint256 profitAmount = uint256(realizedDelta);
+                    uint256 currentMargin = uint256(pos.margin);
+                    uint256 newMargin = currentMargin + profitAmount;
+                    
+                    // Update margin (cap at max uint96)
+                    if (newMargin > type(uint96).max) {
+                        pos.margin = type(uint96).max;
+                        totalMargin = totalMargin - currentMargin + type(uint96).max;
+                    } else {
+                        pos.margin = uint96(newMargin);
+                        totalMargin += profitAmount;
+                    }
+                    
+                    // Recalculate positionSize to maintain leverage ratio
+                    uint256 leverageValue = uint256(pos.leverage);
+                    uint256 newPositionSize = uint256(pos.margin) * leverageValue;
+                    if (newPositionSize > type(uint96).max) {
+                        pos.positionSize = type(uint96).max;
+                    } else {
+                        pos.positionSize = uint96(newPositionSize);
+                    }
+                    
+                    // Emit margin update event
+                    uint256 newMarginRatio = pos.margin > 0 && pos.positionSize > 0
+                        ? (uint256(pos.margin) * 10000) / uint256(pos.positionSize)
+                        : 0;
+                    emit MarginUpdated(
+                        pos.hedger,
+                        posId,
+                        HedgerPoolOptimizationLibrary.packMarginData(profitAmount, newMarginRatio, true)
+                    );
+                }
+                
+                // If realized P&L is negative (loss), reduce hedger margin by the loss amount
+                // This ensures the hedger margin balance reflects realized losses.
+                // The loss is absorbed by the hedger, so their margin (collateral) is reduced.
+                // NOTE: We do NOT reduce totalExposure here because no USDC is withdrawn from the vault.
+                // The loss is already accounted for in the redemption payout, but the hedger's margin
+                // must be reduced to reflect that they absorbed the loss.
+                if (realizedDelta < 0) {
+                    uint256 lossAmount = uint256(-realizedDelta);
+                    uint256 currentMargin = uint256(pos.margin);
+                    
+                    // Reduce margin by loss amount, but don't go below zero
+                    if (lossAmount > currentMargin) {
+                        // If loss exceeds margin, reduce margin to zero
+                        totalMargin -= currentMargin;
+                        pos.margin = 0;
+                        pos.positionSize = 0; // Position size becomes zero when margin is zero
+                    } else {
+                        // Normal case: reduce margin by loss amount
+                        uint256 newMargin = currentMargin - lossAmount;
+                        pos.margin = uint96(newMargin);
+                        
+                        // Recalculate positionSize to maintain leverage ratio
+                        // NOTE: We update positionSize for internal consistency, but do NOT reduce totalExposure
+                        // because the actual exposure (filledVolume) hasn't changed - only the margin backing it
+                        uint256 leverageValue = uint256(pos.leverage);
+                        uint256 newPositionSize = newMargin * leverageValue;
+                        
+                        pos.positionSize = uint96(newPositionSize);
+                        totalMargin -= lossAmount;
+                        // Do NOT reduce totalExposure here - the loss is already accounted for in redemption payout
+                        // totalExposure should only change when hedger explicitly removes margin (withdraws USDC)
+                    }
+                    
+                    // Emit margin update event
+                    uint256 newMarginRatio = pos.margin > 0 && pos.positionSize > 0
+                        ? (uint256(pos.margin) * 10000) / uint256(pos.positionSize)
+                        : 0;
+                    emit MarginUpdated(
+                        pos.hedger,
+                        posId,
+                        HedgerPoolOptimizationLibrary.packMarginData(lossAmount, newMarginRatio, false)
+                    );
+                }
             }
         }
         _applyFillChange(posId, pos, share, false);

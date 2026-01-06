@@ -427,6 +427,27 @@ contract HedgerPoolTestSuite is Test {
         _syncVaultFill(uint256(positionSize));
     }
 
+    /**
+     * @notice Simulates a vault redemption to test hedger P&L realization
+     * @dev Calls `recordUserRedeem` with the correct vault sender context
+     * @param usdcAmount Amount of USDC being redeemed (6 decimals)
+     * @param redeemPrice EUR/USD price at redemption time (18 decimals)
+     * @param qeuroAmount Amount of QEURO being redeemed (18 decimals)
+     * @custom:security Test helper only
+     * @custom:validation Skips validation aside from zero guard
+     * @custom:state-changes Delegates to HedgerPool (test-only)
+     * @custom:events None directly
+     * @custom:errors Pass-through from HedgerPool
+     * @custom:reentrancy Not applicable
+     * @custom:access Internal to tests
+     * @custom:oracle Uses provided price parameter
+     */
+    function _syncVaultRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) internal {
+        if (usdcAmount == 0 || qeuroAmount == 0) return;
+        vm.prank(_vaultAddress());
+        hedgerPool.recordUserRedeem(usdcAmount, redeemPrice, qeuroAmount);
+    }
+
 
     // =============================================================================
     // INITIALIZATION TESTS
@@ -1413,6 +1434,260 @@ contract HedgerPoolTestSuite is Test {
         vm.expectRevert(HedgerPoolErrorLibrary.MarginRatioTooLow.selector);
         hedgerPool.removeMargin(positionId, netMargin);
         vm.stopPrank();
+    }
+
+    /**
+     * @notice Test that hedger margin is reduced when realized losses occur during redemption
+     * @dev Verifies that when a user redeems QEURO and hedger realizes a loss, the margin is reduced
+     *      because the hedger absorbs the loss
+     * @custom:security Tests critical margin accounting during redemption
+     * @custom:validation Ensures margin reduction matches realized loss
+     * @custom:state-changes Creates position, fills it, changes price, redeems, verifies margin reduction
+     * @custom:events Expects margin update events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public test function
+     * @custom:oracle Uses mock oracle with price changes
+     */
+    function test_Margin_MarginReducedOnRealizedLossDuringRedemption() public {
+        // Setup: Open a hedger position
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Get initial margin and entry price
+        (, , , , uint96 entryPrice, , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        assertTrue(isActive);
+        
+        // Fill the position by simulating a user mint
+        // Mint 50k USDC worth of QEURO at entry price
+        uint256 fillAmount = 50_000e6; // 50k USDC
+        _syncVaultFillWithPrice(fillAmount, entryPrice);
+        
+        // Verify position is filled
+        (, , uint96 filledVolume, , , , , , , , , uint128 qeuroBacked) = hedgerPool.positions(positionId);
+        assertGt(filledVolume, 0);
+        assertGt(qeuroBacked, 0);
+        
+        // Change oracle price to create unrealized loss
+        // Entry price was 1.10, new price is 1.15 (EUR appreciated, hedger loses)
+        uint256 newPrice = 115 * 1e16; // 1.15 USD/EUR
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            abi.encode(newPrice, true)
+        );
+        
+        // Simulate a user redemption that realizes the loss
+        // Redeem 10k QEURO worth at the new higher price
+        uint256 qeuroToRedeem = 10_000e18; // 10k QEURO
+        uint256 usdcToRedeem = (qeuroToRedeem * newPrice) / 1e30; // Convert to USDC (6 decimals)
+        
+        // Record margin, realized P&L, and totalExposure before redemption
+        (, , , uint96 marginBefore, , , , , int128 realizedPnLBefore, , , ) = hedgerPool.positions(positionId);
+        uint256 totalMarginBefore = hedgerPool.totalMargin();
+        uint256 totalExposureBefore = hedgerPool.totalExposure();
+        
+        // Execute redemption
+        _syncVaultRedeem(usdcToRedeem, newPrice, qeuroToRedeem);
+        
+        // Verify margin was reduced
+        (, , , uint96 marginAfter, , , , , int128 realizedPnLAfter, , , ) = hedgerPool.positions(positionId);
+        uint256 totalMarginAfter = hedgerPool.totalMargin();
+        uint256 totalExposureAfter = hedgerPool.totalExposure();
+        
+        // Calculate realized loss (should be negative since EUR price increased)
+        int256 realizedDelta = int256(realizedPnLAfter) - int256(realizedPnLBefore);
+        assertLt(realizedDelta, 0, "Realized P&L delta should be negative (loss)");
+        
+        // Convert loss to positive amount for margin reduction calculation
+        uint256 realizedLossAmount = uint256(-realizedDelta);
+        
+        // Margin should be reduced by the loss (but not go below zero)
+        // The hedger absorbs the loss, so their margin (collateral) is reduced
+        if (realizedLossAmount > uint256(marginBefore)) {
+            // If loss exceeds margin, margin should be zero
+            assertEq(marginAfter, 0, "Margin should be zero when loss exceeds margin");
+            assertEq(totalMarginAfter, totalMarginBefore - uint256(marginBefore),
+                "Total margin should be reduced by initial margin amount");
+        } else {
+            // Normal case: margin reduced by loss amount
+            assertEq(uint256(marginAfter), uint256(marginBefore) - realizedLossAmount, 
+                "Margin should be reduced by realized loss amount");
+            assertEq(totalMarginAfter, totalMarginBefore - realizedLossAmount,
+                "Total margin should be reduced by realized loss");
+        }
+        
+        // Position size should be recalculated to maintain leverage ratio when margin changes
+        (, uint96 positionSizeAfter, , , , , , , , uint16 leverage, , ) = hedgerPool.positions(positionId);
+        if (marginAfter > 0) {
+            uint256 expectedPositionSize = uint256(marginAfter) * uint256(leverage);
+            assertEq(uint256(positionSizeAfter), expectedPositionSize,
+                "Position size should maintain leverage ratio after margin reduction");
+        } else {
+            assertEq(positionSizeAfter, 0, "Position size should be zero when margin is zero");
+        }
+        
+        // totalExposure should NOT be reduced - the loss is already accounted for in redemption payout
+        assertEq(totalExposureAfter, totalExposureBefore,
+            "Total exposure should NOT change when realized losses occur during redemption");
+    }
+    
+    /**
+     * @notice Test that hedger margin is increased when realized profits occur during redemption
+     * @dev Verifies that when a user redeems QEURO and hedger realizes a profit, the margin is increased
+     *      because the hedger earns the profit
+     * @custom:security Tests critical margin accounting during redemption
+     * @custom:validation Ensures margin increase matches realized profit
+     * @custom:state-changes Creates position, fills it, changes price, redeems, verifies margin increase
+     * @custom:events Expects margin update events
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public test function
+     * @custom:oracle Uses mock oracle with price changes
+     */
+    function test_Margin_MarginIncreasedOnRealizedProfitDuringRedemption() public {
+        // Setup: Open a hedger position
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Get initial margin and entry price
+        (, , , , uint96 entryPrice, , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        assertTrue(isActive);
+        
+        // Fill the position by simulating a user mint
+        // Mint 50k USDC worth of QEURO at entry price
+        uint256 fillAmount = 50_000e6; // 50k USDC
+        _syncVaultFillWithPrice(fillAmount, entryPrice);
+        
+        // Verify position is filled
+        (, , uint96 filledVolume, , , , , , , , , uint128 qeuroBacked) = hedgerPool.positions(positionId);
+        assertGt(filledVolume, 0);
+        assertGt(qeuroBacked, 0);
+        
+        // Change oracle price to create unrealized profit
+        // Entry price was 1.10, new price is 1.05 (EUR depreciated, hedger gains)
+        uint256 newPrice = 105 * 1e16; // 1.05 USD/EUR
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            abi.encode(newPrice, true)
+        );
+        
+        // Simulate a user redemption that realizes the profit
+        // Redeem 10k QEURO worth at the new lower price
+        uint256 qeuroToRedeem = 10_000e18; // 10k QEURO
+        uint256 usdcToRedeem = (qeuroToRedeem * newPrice) / 1e30; // Convert to USDC (6 decimals)
+        
+        // Record margin, realized P&L, and leverage before redemption
+        (, , , uint96 marginBefore, , , , , int128 realizedPnLBefore, uint16 leverage, , ) = hedgerPool.positions(positionId);
+        uint256 totalMarginBefore = hedgerPool.totalMargin();
+        uint256 totalExposureBefore = hedgerPool.totalExposure();
+        
+        // Execute redemption
+        _syncVaultRedeem(usdcToRedeem, newPrice, qeuroToRedeem);
+        
+        // Verify margin was increased
+        (, uint96 positionSizeAfter, , uint96 marginAfter, , , , , int128 realizedPnLAfter, , , ) = hedgerPool.positions(positionId);
+        uint256 totalMarginAfter = hedgerPool.totalMargin();
+        uint256 totalExposureAfter = hedgerPool.totalExposure();
+        
+        // Calculate realized profit (should be positive since EUR price decreased)
+        int256 realizedDelta = int256(realizedPnLAfter) - int256(realizedPnLBefore);
+        assertGt(realizedDelta, 0, "Realized P&L delta should be positive (profit)");
+        
+        // Convert profit to amount for margin increase calculation
+        uint256 realizedProfitAmount = uint256(realizedDelta);
+        
+        // Margin should be increased by the profit amount
+        assertEq(uint256(marginAfter), uint256(marginBefore) + realizedProfitAmount, 
+            "Margin should be increased by realized profit amount");
+        assertEq(totalMarginAfter, totalMarginBefore + realizedProfitAmount,
+            "Total margin should be increased by realized profit");
+        
+        // Position size should be recalculated to maintain leverage ratio
+        uint256 expectedPositionSize = uint256(marginAfter) * uint256(leverage);
+        assertEq(uint256(positionSizeAfter), expectedPositionSize,
+            "Position size should maintain leverage ratio after margin increase");
+        
+        // totalExposure should NOT be reduced - the profit is already accounted for in redemption payout
+        assertEq(totalExposureAfter, totalExposureBefore,
+            "Total exposure should NOT change when realized profits occur during redemption");
+    }
+    
+    /**
+     * @notice Test that calculatePnL returns -filledVolume when qeuroBacked is zero
+     * @dev Verifies that when all QEURO is redeemed, unrealized P&L is calculated as -filledVolume
+     * @custom:security Tests critical P&L calculation edge case
+     * @custom:validation Ensures correct unrealized P&L when no QEURO is backed
+     * @custom:state-changes Creates position, fills it, redeems all QEURO, verifies P&L calculation
+     * @custom:events None expected
+     * @custom:errors None expected
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access Public test function
+     * @custom:oracle Uses mock oracle
+     */
+    function test_UnrealizedPnL_CalculatePnLWhenQeuroBackedIsZero() public {
+        // Setup: Open a hedger position
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+        
+        // Get entry price
+        (, , , , uint96 entryPrice, , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        assertTrue(isActive);
+        
+        // Fill the position by simulating a user mint
+        uint256 fillAmount = 50_000e6; // 50k USDC
+        _syncVaultFillWithPrice(fillAmount, entryPrice);
+        
+        // Verify position is filled
+        (, , uint96 filledVolumeBefore, , , , , , , , , uint128 qeuroBackedBefore) = hedgerPool.positions(positionId);
+        assertGt(filledVolumeBefore, 0);
+        assertGt(qeuroBackedBefore, 0);
+        
+        // Set oracle price for redemption
+        uint256 redeemPrice = 110 * 1e16; // 1.10 USD/EUR
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            abi.encode(redeemPrice, true)
+        );
+        
+        // Redeem all QEURO
+        uint256 qeuroToRedeem = qeuroBackedBefore;
+        uint256 usdcToRedeem = (qeuroToRedeem * redeemPrice) / 1e30;
+        
+        // Execute redemption
+        _syncVaultRedeem(usdcToRedeem, redeemPrice, qeuroToRedeem);
+        
+        // Verify qeuroBacked is now zero
+        (, , uint96 filledVolumeAfter, , , , , , , , , uint128 qeuroBackedAfter) = hedgerPool.positions(positionId);
+        assertEq(qeuroBackedAfter, 0, "QEURO backed should be zero after full redemption");
+        
+        // When qeuroBacked == 0, calculatePnL should return -filledVolume
+        // This represents the remaining unrealized loss
+        int256 expectedUnrealizedPnL = -int256(uint256(filledVolumeAfter));
+        
+        // Get effective hedger collateral which uses calculatePnL internally
+        uint256 effectiveCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(redeemPrice);
+        
+        // Calculate what the effective collateral should be
+        // Effective collateral = margin + net unrealized P&L
+        // Net unrealized P&L = total unrealized - realized
+        // When qeuroBacked == 0, total unrealized = -filledVolume
+        (, , , uint96 margin, , , , , int128 realizedPnL, , , ) = hedgerPool.positions(positionId);
+        int256 netUnrealizedPnL = expectedUnrealizedPnL - int256(realizedPnL);
+        int256 expectedEffectiveMargin = int256(uint256(margin)) + netUnrealizedPnL;
+        
+        if (expectedEffectiveMargin > 0) {
+            assertEq(effectiveCollateral, uint256(expectedEffectiveMargin),
+                "Effective collateral should match margin + net unrealized P&L");
+        } else {
+            assertEq(effectiveCollateral, 0,
+                "Effective collateral should be zero when margin + net unrealized P&L is negative");
+        }
     }
     
 

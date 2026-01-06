@@ -713,6 +713,14 @@ contract HedgerPool is
         // Calculate total unrealized P&L
         int256 totalUnrealizedPnL = HedgerPoolLogicLibrary.calculatePnL(uint256(position.filledVolume), uint256(position.qeuroBacked), price);
         
+        // Special case: When all QEURO is redeemed (qeuroBacked == 0) and filledVolume == 0,
+        // calculatePnL returns 0, but we need to show the remaining unrealized loss
+        // The remaining loss should make effectiveMargin = 0 (availableCollateral = 0)
+        // So: unrealizedPnL = -margin
+        if (position.qeuroBacked == 0 && position.filledVolume == 0 && totalUnrealizedPnL == 0) {
+            totalUnrealizedPnL = -int256(uint256(position.margin));
+        }
+        
         // Calculate net unrealized P&L (total unrealized - realized)
         // When margin is reduced by realized losses, we should use net unrealized P&L
         // because the margin already accounts for the realized loss

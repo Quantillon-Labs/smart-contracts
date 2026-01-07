@@ -201,6 +201,11 @@ contract QuantillonVault is
     /// @dev Revenue source for the protocol
     uint256 public redemptionFee;
 
+    /// @notice Whether fees are taken during liquidation mode redemption
+    /// @dev Set to true by default - fees are charged even in liquidation mode
+    /// @dev Can be changed by governance if needed
+    bool public constant TAKES_FEES_DURING_LIQUIDATION = true;
+
     // Collateralization parameters (configurable by governance)
     
     /// @notice Minimum collateralization ratio required for minting QEURO (in basis points)
@@ -650,8 +655,11 @@ contract QuantillonVault is
      * 
      * @dev Redeem process:
      *      1. Check if protocol is in liquidation mode (CR <= 101%)
-     *      2. If liquidation mode: use pro-rata distribution (no fees)
-     *      3. If normal mode: use oracle price with fees
+     *      2. If liquidation mode: use pro-rata distribution based on actual USDC in vault
+     *         - Payout = (qeuroAmount / totalSupply) * totalVaultUsdc
+     *         - Hedger loses margin proportionally: (qeuroAmount / totalSupply) * hedgerMargin
+     *         - Fees are applied if TAKES_FEES_DURING_LIQUIDATION is true
+     *      3. If normal mode: use oracle price with standard fees
      *      4. Burn QEURO and transfer USDC
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -747,8 +755,8 @@ contract QuantillonVault is
         qeuro.burn(msg.sender, qeuroAmount);
         usdc.safeTransfer(msg.sender, netUsdcToReturn);
         
-        // Transfer fee to fee collector (if fee > 0)
-        if (fee > 0) {
+        // Transfer fee to fee collector (if fees are enabled and fee > 0)
+        if (TAKES_FEES_DURING_LIQUIDATION && fee > 0) {
             // Approve FeeCollector to pull the fee
             bool success = usdc.approve(feeCollector, fee);
             if (!success) revert CommonErrorLibrary.TokenTransferFailed();
@@ -758,11 +766,15 @@ contract QuantillonVault is
     }
 
     /**
-     * @notice Internal function for liquidation mode redemption (pro-rata)
-     * @dev Called by redeemQEURO when protocol is in liquidation mode
-     * @param qeuroAmount Amount of QEURO to redeem
-     * @param minUsdcOut Minimum USDC expected
-     * @param collateralizationRatioBps Current CR in basis points
+     * @notice Internal function for liquidation mode redemption (pro-rata based on actual USDC)
+     * @dev Called by redeemQEURO when protocol is in liquidation mode (CR <= 101%)
+     * @dev Key formulas:
+     *      - Payout = (qeuroAmount / totalSupply) * totalVaultUsdc (actual USDC, not market value)
+     *      - Hedger loss = (qeuroAmount / totalSupply) * hedgerMargin (proportional margin reduction)
+     *      - Fees applied if TAKES_FEES_DURING_LIQUIDATION is true
+     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
+     * @param minUsdcOut Minimum USDC expected (slippage protection)
+     * @param collateralizationRatioBps Current CR in basis points (for event emission)
      */
     function _redeemLiquidationMode(
         uint256 qeuroAmount,
@@ -777,15 +789,18 @@ contract QuantillonVault is
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         
-        // Calculate total collateral
-        uint256 userCollateral = totalSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        // In liquidation mode, use ACTUAL USDC in vault for pro-rata distribution
+        // This ensures users get their fair share of what's actually available
+        // NOT the market value of QEURO (which would be higher than actual collateral)
+        uint256 totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
+        
+        // Get hedger margin for later distribution of losses
         uint256 hedgerCollateral = 0;
         if (address(hedgerPool) != address(0)) {
-            hedgerCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(eurUsdPrice);
+            hedgerCollateral = hedgerPool.totalMargin();
         }
-        uint256 totalCollateralUsdc = userCollateral + hedgerCollateral;
         
-        // Calculate pro-rata payout
+        // Calculate pro-rata payout based on actual USDC available
         uint256 usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
         
         // Slippage check
@@ -804,6 +819,14 @@ contract QuantillonVault is
         // Re-check after potential Aave withdrawal
         if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
         
+        // Calculate fees before state changes (if fees are enabled during liquidation)
+        uint256 fee = 0;
+        uint256 netUsdcPayout = usdcPayout;
+        if (TAKES_FEES_DURING_LIQUIDATION) {
+            fee = usdcPayout.mulDiv(redemptionFee, 1e18);
+            netUsdcPayout = usdcPayout - fee;
+        }
+        
         // Determine if premium or haircut
         uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
         bool isPremium = usdcPayout >= fairValueUsdc;
@@ -814,35 +837,53 @@ contract QuantillonVault is
             totalMinted -= qeuroAmount;
         }
         
-        // Emit liquidation event
+        // In liquidation mode, hedger loses margin proportionally to QEURO redeemed
+        // Use recordLiquidationRedeem which directly reduces margin by (qeuroAmount/totalSupply) * hedgerMargin
+        if (address(hedgerPool) != address(0) && hedgerCollateral > 0) {
+            try hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply) {} catch {}
+        }
+        
+        // Emit liquidation event (emit net payout after fees)
         emit LiquidationRedeemed(
             msg.sender,
             qeuroAmount,
-            usdcPayout,
+            netUsdcPayout,
             collateralizationRatioBps,
             isPremium
         );
         
-        // INTERACTIONS
+        // INTERACTIONS - All external calls after state updates
         qeuro.burn(msg.sender, qeuroAmount);
-        usdc.safeTransfer(msg.sender, usdcPayout);
+        usdc.safeTransfer(msg.sender, netUsdcPayout);
+        
+        // Transfer fee to fee collector (if fees are enabled and fee > 0)
+        if (TAKES_FEES_DURING_LIQUIDATION && fee > 0) {
+            // Approve FeeCollector to pull the fee
+            bool success = usdc.approve(feeCollector, fee);
+            if (!success) revert CommonErrorLibrary.TokenTransferFailed();
+            // Call FeeCollector to collect the fee with proper tracking
+            FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
+        }
     }
 
     /**
      * @notice Redeems QEURO for USDC using pro-rata distribution in liquidation mode
      * @dev Only callable when protocol is in liquidation mode (CR <= 101%)
-     * @dev Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
+     * @dev Key formulas:
+     *      - Payout = (qeuroAmount / totalSupply) * totalVaultUsdc (actual USDC in vault)
+     *      - Hedger loss = (qeuroAmount / totalSupply) * hedgerMargin (realized as negative P&L)
+     *      - Fees applied if TAKES_FEES_DURING_LIQUIDATION is true
      * @dev Premium if CR > 100%, haircut if CR < 100%
      * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
      * @param minUsdcOut Minimum USDC expected (slippage protection)
      * @custom:security Protected by nonReentrant, requires liquidation mode
      * @custom:validation Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
-     * @custom:state-changes Burns QEURO, transfers USDC pro-rata
+     * @custom:state-changes Burns QEURO, transfers USDC pro-rata, reduces hedger margin proportionally
      * @custom:events Emits LiquidationRedeemed
      * @custom:errors Reverts if not in liquidation mode or slippage exceeded
      * @custom:reentrancy Protected by nonReentrant modifier
      * @custom:access Public - anyone with QEURO can redeem
-     * @custom:oracle Requires oracle price for collateral calculation
+     * @custom:oracle Requires oracle price for fair value calculation
      */
     function redeemQEUROLiquidation(
         uint256 qeuroAmount,
@@ -864,22 +905,25 @@ contract QuantillonVault is
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         
-        // Calculate total collateral
-        uint256 userCollateral = totalSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
+        // In liquidation mode, use ACTUAL USDC in vault for pro-rata distribution
+        // This ensures users get their fair share of what's actually available
+        // NOT the market value of QEURO (which would be higher than actual collateral)
+        uint256 totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
+        
+        // Get hedger margin for later distribution of losses
         uint256 hedgerCollateral = 0;
         if (address(hedgerPool) != address(0)) {
-            hedgerCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(eurUsdPrice);
+            hedgerCollateral = hedgerPool.totalMargin();
         }
-        uint256 totalCollateralUsdc = userCollateral + hedgerCollateral;
         
-        // Calculate pro-rata payout: (qeuroAmount / totalSupply) * totalCollateral
+        // Calculate pro-rata payout based on actual USDC available
         uint256 usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
         
         // Slippage check
         if (usdcPayout < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
         
-        // Check if total available USDC (vault + Aave) is sufficient
-        uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
+        // Check if total available USDC is sufficient (should always be true since we use actual balance)
+        uint256 totalAvailable = totalCollateralUsdc;
         if (totalAvailable < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
         
         // If vault doesn't have enough USDC, withdraw from Aave
@@ -891,6 +935,14 @@ contract QuantillonVault is
         // Re-check after potential Aave withdrawal
         if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
         
+        // Calculate fees before state changes (if fees are enabled during liquidation)
+        uint256 fee = 0;
+        uint256 netUsdcPayout = usdcPayout;
+        if (TAKES_FEES_DURING_LIQUIDATION) {
+            fee = usdcPayout.mulDiv(redemptionFee, 1e18);
+            netUsdcPayout = usdcPayout - fee;
+        }
+        
         // Determine if premium or haircut
         uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
         bool isPremium = usdcPayout >= fairValueUsdc;
@@ -901,23 +953,33 @@ contract QuantillonVault is
             totalMinted -= qeuroAmount;
         }
         
-        // Note: In liquidation mode, we don't sync with hedgers as the position is being unwound
-        // The pro-rata distribution already accounts for the hedger collateral in the payout
+        // In liquidation mode, hedger loses margin proportionally to QEURO redeemed
+        // Use recordLiquidationRedeem which directly reduces margin by (qeuroAmount/totalSupply) * hedgerMargin
+        if (address(hedgerPool) != address(0) && hedgerCollateral > 0) {
+            try hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply) {} catch {}
+        }
         
-        // Emit event
+        // Emit event (emit net payout after fees)
         emit LiquidationRedeemed(
             msg.sender,
             qeuroAmount,
-            usdcPayout,
+            netUsdcPayout,
             collateralizationRatioBps,
             isPremium
         );
         
         // INTERACTIONS - All external calls after state updates
         qeuro.burn(msg.sender, qeuroAmount);
-        usdc.safeTransfer(msg.sender, usdcPayout);
+        usdc.safeTransfer(msg.sender, netUsdcPayout);
         
-        // No fees in liquidation mode - user receives full pro-rata share
+        // Transfer fee to fee collector (if fees are enabled and fee > 0)
+        if (TAKES_FEES_DURING_LIQUIDATION && fee > 0) {
+            // Approve FeeCollector to pull the fee
+            bool success = usdc.approve(feeCollector, fee);
+            if (!success) revert CommonErrorLibrary.TokenTransferFailed();
+            // Call FeeCollector to collect the fee with proper tracking
+            FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
+        }
     }
 
 
@@ -1491,11 +1553,14 @@ contract QuantillonVault is
     
     /**
      * @notice Calculates the current protocol collateralization ratio
-     * @dev Formula: (COLLATUser + COLLATHedger) / (qMinted * oraclePrice) * 100
-     * @dev Where COLLATUser = totalUserDeposits, COLLATHedger = hedger effective collateral (deposits + P&L)
-     * @dev Returns ratio in 18 decimals (e.g., 109183495000000000000 = 109.183495%) for maximum precision
-     * @dev Uses hedger effective collateral instead of raw deposits to account for P&L
-     * @return ratio Current collateralization ratio in 18 decimals (maximum precision, e.g., 109183495000000000000 = 109.183495%)
+     * @dev Formula: CR = (UserCollateral + HedgerCollateral) / (QeuroMinted × OraclePrice) × 100
+     * @dev Where:
+     *      - UserCollateral = actual USDC in vault minus hedger margin
+     *      - HedgerCollateral = hedger margin (raw, not effective)
+     *      - QeuroMinted × OraclePrice = backing requirement (USDC value of QEURO at current price)
+     * @dev Returns ratio in 18 decimals (e.g., 100966000000000000000 = 100.966%)
+     * @dev Note: This is used to determine if protocol is in liquidation mode (CR <= 101%)
+     * @return ratio Current collateralization ratio in 18 decimals
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes No state changes - view function
@@ -1503,7 +1568,7 @@ contract QuantillonVault is
      * @custom:errors No errors thrown - safe view function
      * @custom:reentrancy Not applicable - view function
      * @custom:access Public - anyone can check collateralization ratio
-     * @custom:oracle Requires fresh oracle price data (via HedgerPool)
+     * @custom:oracle Requires fresh oracle price data
      */
     function getProtocolCollateralizationRatio() public returns (uint256 ratio) {
         // Check if both HedgerPool and UserPool are set
@@ -1524,31 +1589,16 @@ contract QuantillonVault is
         (uint256 currentRate, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         
-        // Convert QEURO supply to current USDC equivalent
-        // This represents the current debt value: qMinted * oraclePrice
-        // This also represents COLLATUser (user deposits backing the QEURO supply)
-        uint256 currentUsdcEquivalent = currentQeuroSupply.mulDiv(currentRate, 1e18) / 1e12;
+        // Calculate backing requirement: QEURO supply × oracle price
+        // This is the USDC value that should back all outstanding QEURO at current market price
+        uint256 backingRequirement = currentQeuroSupply.mulDiv(currentRate, 1e18) / 1e12;
         
-        // COLLATUser = current QEURO supply in USDC (user deposits backing the debt)
-        // Note: We use currentUsdcEquivalent for COLLATUser instead of totalUserDeposits
-        // because totalUserDeposits tracks historical deposits which may differ due to fees/redemptions
-        uint256 userDeposits = currentUsdcEquivalent;
+        // Get actual total collateral in vault (user deposits + hedger margin)
+        uint256 totalCollateral = totalUsdcHeld + totalUsdcInAave;
         
-        // Get hedger effective collateral from HedgerPool (COLLATHedger)
-        // This includes deposits + P&L, giving accurate collateralization ratio
-        // Pass currentRate to avoid double oracle call and ensure price consistency
-        uint256 hedgerEffectiveCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(currentRate);
-        
-        // Calculate total collateral: COLLATUser + COLLATHedger
-        uint256 totalCollateral = userDeposits + hedgerEffectiveCollateral;
-        
-        // Calculate ratio with maximum precision: (totalCollateral / currentUsdcEquivalent) * 100 * 1e18
-        // Using 18 decimals (multiply by 1e18) for maximum precision - matches protocol standard
-        // Multiply by 100 to convert ratio to percentage (e.g., 1.09183495 -> 109.183495%)
-        // Result format: percentage * 1e18, so 100% = 1e20, 109.183495% = 109183495000000000000
-        // Formula: (totalCollateral * 1e20) / currentUsdcEquivalent
-        // This gives us the percentage directly (e.g., 109.657% = 109657000000000000000)
-        ratio = (totalCollateral * 1e20) / currentUsdcEquivalent;
+        // Calculate ratio: (totalCollateral / backingRequirement) × 100
+        // Result in 18 decimals: 100% = 1e20, 100.966% = 100966000000000000000
+        ratio = (totalCollateral * 1e20) / backingRequirement;
         
         return ratio;
     }
@@ -1635,20 +1685,8 @@ contract QuantillonVault is
         // 1e20 (100%) -> 10000 bps, 1.01e20 (101%) -> 10100 bps
         collateralizationRatioBps = currentRatio18Dec / 1e16;
         
-        // Calculate total collateral: user deposits (QEURO value) + hedger effective collateral
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-        
-        // User collateral: QEURO supply converted to USDC
-        uint256 userCollateral = totalQeuroSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
-        
-        // Hedger collateral
-        uint256 hedgerCollateral = 0;
-        if (address(hedgerPool) != address(0)) {
-            hedgerCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(eurUsdPrice);
-        }
-        
-        totalCollateralUsdc = userCollateral + hedgerCollateral;
+        // Total collateral = actual USDC in vault (user deposits + hedger margin)
+        totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
         
         // Liquidation mode when CR <= 101% (10100 bps)
         isInLiquidation = collateralizationRatioBps <= 10100;

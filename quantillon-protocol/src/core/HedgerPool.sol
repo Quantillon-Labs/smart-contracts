@@ -624,6 +624,64 @@ contract HedgerPool is
     }
 
     /**
+     * @notice Records a liquidation mode redemption - directly reduces hedger margin proportionally
+     * @dev In liquidation mode, the hedger loses margin proportionally to QEURO redeemed
+     * @dev Formula: hedgerLoss = (qeuroAmount / totalSupply) * hedgerMargin
+     * @param qeuroAmount Amount of QEURO being redeemed (18 decimals)
+     * @param totalQeuroSupply Total QEURO supply before redemption (18 decimals)
+     * @custom:security Vault-only access
+     * @custom:validation Validates positive amounts
+     * @custom:state-changes Reduces hedger margin, records realized P&L, reduces qeuroBacked
+     * @custom:events Emits RealizedPnLRecorded and margin update events
+     * @custom:errors Reverts if no hedger or invalid amounts
+     * @custom:reentrancy Protected by whenNotPaused
+     * @custom:access Vault-only
+     */
+    function recordLiquidationRedeem(uint256 qeuroAmount, uint256 totalQeuroSupply) external onlyVault whenNotPaused {
+        if (qeuroAmount == 0 || totalQeuroSupply == 0) return;
+        if (singleHedger == address(0)) return;
+        
+        uint256 positionId = hedgerActivePositionId[singleHedger];
+        if (positionId == 0) return;
+        
+        HedgePosition storage pos = positions[positionId];
+        if (!pos.isActive) return;
+        
+        uint256 currentMargin = uint256(pos.margin);
+        if (currentMargin == 0) return;
+        
+        // Calculate hedger's proportional loss: (qeuroAmount / totalSupply) * margin
+        // qeuroAmount (18 dec) * margin (6 dec) / totalSupply (18 dec) = 6 dec
+        uint256 hedgerLoss = qeuroAmount.mulDiv(currentMargin, totalQeuroSupply);
+        if (hedgerLoss > currentMargin) hedgerLoss = currentMargin;
+        
+        // Update margin (reduce by loss amount)
+        uint256 newMargin = currentMargin - hedgerLoss;
+        pos.margin = uint96(newMargin);
+        totalMargin -= hedgerLoss;
+        
+        // Record as realized P&L (loss is negative)
+        int256 realizedDelta = -int256(hedgerLoss);
+        pos.realizedPnL += int128(realizedDelta);
+        emit RealizedPnLRecorded(positionId, realizedDelta, int256(pos.realizedPnL));
+        
+        // Reduce qeuroBacked proportionally
+        uint256 qeuroShare = qeuroAmount;
+        if (qeuroShare > uint256(pos.qeuroBacked)) qeuroShare = uint256(pos.qeuroBacked);
+        pos.qeuroBacked = pos.qeuroBacked - uint128(qeuroShare);
+        
+        // Reduce filledVolume proportionally
+        // filledVolume reduction = (qeuroAmount / totalSupply) * filledVolume
+        uint256 currentFilled = uint256(pos.filledVolume);
+        if (currentFilled > 0) {
+            uint256 filledReduction = qeuroAmount.mulDiv(currentFilled, totalQeuroSupply);
+            if (filledReduction > currentFilled) filledReduction = currentFilled;
+            pos.filledVolume = uint96(currentFilled - filledReduction);
+            totalFilledExposure -= filledReduction;
+        }
+    }
+
+    /**
      * @notice Claims hedging rewards for a hedger
      * 
      * @return interestDifferential Interest differential rewards earned

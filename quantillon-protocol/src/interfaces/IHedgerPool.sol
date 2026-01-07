@@ -137,6 +137,23 @@ interface IHedgerPool {
     function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) external;
     
     /**
+     * @notice Records a liquidation mode redemption - directly reduces hedger margin proportionally
+     * @dev In liquidation mode, the hedger loses margin proportionally to QEURO redeemed
+     * @dev Formula: hedgerLoss = (qeuroAmount / totalSupply) * hedgerMargin
+     * @param qeuroAmount Amount of QEURO being redeemed (18 decimals)
+     * @param totalQeuroSupply Total QEURO supply before redemption (18 decimals)
+     * @custom:security Vault-only access, validates inputs
+     * @custom:validation Validates positive amounts
+     * @custom:state-changes Reduces hedger margin, records realized P&L
+     * @custom:events Emits margin reduction and realized P&L events
+     * @custom:errors Reverts if no hedger or invalid amounts
+     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:access Vault-only
+     * @custom:oracle Not applicable - uses proportional calculation
+     */
+    function recordLiquidationRedeem(uint256 qeuroAmount, uint256 totalQeuroSupply) external;
+    
+    /**
      * @notice Claims accrued hedging rewards for the caller
      * @dev Combines interest differential and YieldShift rewards
      * @return interestDifferential Rewards from interest spread

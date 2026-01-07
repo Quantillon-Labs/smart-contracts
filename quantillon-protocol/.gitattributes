@@ -9,3 +9,8 @@
 # Encrypt entire scripts/ folder
 scripts/** filter=git-crypt diff=git-crypt
 
+
+
+
+
+

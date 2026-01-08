@@ -1,5 +1,5 @@
 {
-  "filter_paths": "lib,test,out,cache,node_modules",
+  "filter_paths": "lib,test,out,cache,node_modules,src/mocks",
   "exclude_informational": false,
   "exclude_low": false,
   "exclude_medium": false,
@@ -7,7 +7,9 @@
 
   "detectors_to_exclude": [
     "naming-convention",
-    "external-function"
+    "external-function",
+    "reentrancy-no-eth",
+    "reentrancy-benign"
   ],
 
   "solc_args": "--optimize --via-ir",

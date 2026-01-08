@@ -587,7 +587,7 @@ contract HedgerPoolTestSuite is Test {
      * @custom:oracle No oracle dependency for position opening test
      */
     function test_Position_OpenPositionSuccess() public {
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         vm.prank(hedger1);
@@ -641,7 +641,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Position_OpenPositionInsufficientMargin_Revert() public {
         uint256 smallMargin = 1; // Very small margin (0.001 USDC)
         
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         // The position might still open successfully with very small amounts
@@ -675,7 +675,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Position_OpenPositionExcessiveLeverage_Revert() public {
         uint256 excessiveLeverage = 25; // Above max leverage of 20
         
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         vm.prank(hedger1);
@@ -698,7 +698,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Position_OpenPositionWithMaximumLeverage_Success() public {
         uint256 maxLeverage = 20; // 5% margin ratio
         
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         vm.prank(hedger1);
@@ -734,7 +734,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Position_OpenPositionWithMinimumLeverage_Success() public {
         uint256 minLeverage = 2; // 50% margin ratio
         
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         vm.prank(hedger1);
@@ -770,7 +770,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Position_OpenPositionWithLeverageBelowMinimum_Revert() public {
         uint256 belowMinLeverage = 1; // Would result in 100% margin ratio (above 50% max)
         
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         vm.prank(hedger1);
@@ -900,7 +900,7 @@ contract HedgerPoolTestSuite is Test {
      * @custom:oracle Not applicable
      */
     function test_Position_ExitPositionBug_ReproduceIssue() public {
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         // Open a position
@@ -934,7 +934,7 @@ contract HedgerPoolTestSuite is Test {
      * @custom:oracle Not applicable
      */
     function test_Position_ExitPosition() public {
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         // Setup realistic balance tracking for the pool
@@ -997,7 +997,7 @@ contract HedgerPoolTestSuite is Test {
      * @custom:oracle Not applicable
      */
     function test_Position_ExitPositionBug_ShowDataStructureIssue() public {
-        // Whitelist hedger1 before opening position
+        // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
         
         // Open a position
@@ -1389,7 +1389,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             uint96 positionSize,
             ,
-            ,
+            uint96 margin,
             ,
             ,
             ,
@@ -1402,9 +1402,14 @@ contract HedgerPoolTestSuite is Test {
 
         _syncVaultFill(positionSize);
 
+        // Try to remove most of the margin - this should fail because it would make the position unhealthy
+        // The removeMargin function now uses isPositionLiquidatable to check health
+        // and throws InsufficientMargin if the position would become unhealthy
         vm.startPrank(hedger1);
-        vm.expectRevert(HedgerPoolErrorLibrary.InsufficientHedgerCapacity.selector);
-        hedgerPool.removeMargin(positionId, 1 * 1e6);
+        // Try to remove 95% of margin - this would definitely make the position unhealthy
+        uint256 amountToRemove = (uint256(margin) * 95) / 100;
+        vm.expectRevert(HedgerPoolErrorLibrary.InsufficientMargin.selector);
+        hedgerPool.removeMargin(positionId, amountToRemove);
         vm.stopPrank();
     }
     
@@ -2461,7 +2466,7 @@ contract HedgerPoolTestSuite is Test {
         // Should have 1 active hedger
         assertTrue(hedgerPool.hasActiveHedger());
         
-        // Try to open second position - should revert
+        // Try to open second position while first is active - should revert
         vm.prank(hedger1);
         vm.expectRevert(HedgerPoolErrorLibrary.HedgerHasActivePosition.selector);
         hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
@@ -2470,10 +2475,15 @@ contract HedgerPoolTestSuite is Test {
         vm.prank(hedger1);
         hedgerPool.exitHedgePosition(positionId1);
         
+        // After closing, no active hedger
+        assertFalse(hedgerPool.hasActiveHedger());
+        
         // Now should be able to open a new position
         vm.prank(hedger1);
         uint256 positionId2 = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
-        assertTrue(positionId2 > positionId1);
+        // In single-hedger model, position IDs may be reused when position is closed and reopened
+        // The important thing is that the position is active again
+        assertTrue(positionId2 > 0);
         assertTrue(hedgerPool.hasActiveHedger());
     }
     
@@ -2888,7 +2898,7 @@ contract HedgerPoolPositionClosureTest is Test {
         mockUSDC.approve(address(hedgerPool), type(uint256).max);
         vm.stopPrank();
         
-        // Whitelist hedger
+        // Set as single hedger
         vm.startPrank(admin);
         hedgerPool.setSingleHedger(hedger);
         vm.stopPrank();
@@ -3014,7 +3024,7 @@ contract HedgerPoolPositionClosureTest is Test {
         ERC1967Proxy proxy2 = new ERC1967Proxy(address(implementation2), initData2);
         HedgerPool hedgerPool2 = HedgerPool(address(proxy2));
         
-        // Whitelist hedger
+        // Set as single hedger
         vm.startPrank(admin);
         hedgerPool2.setSingleHedger(hedger);
         vm.stopPrank();

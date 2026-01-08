@@ -292,6 +292,19 @@ uint256 public redemptionFee;
 ```
 
 
+### TAKES_FEES_DURING_LIQUIDATION
+Whether fees are taken during liquidation mode redemption
+
+*Set to true by default - fees are charged even in liquidation mode*
+
+*Can be changed by governance if needed*
+
+
+```solidity
+bool public constant TAKES_FEES_DURING_LIQUIDATION = true;
+```
+
+
 ### minCollateralizationRatioForMinting
 Minimum collateralization ratio required for minting QEURO (in basis points)
 
@@ -605,8 +618,11 @@ Redeems QEURO for USDC - automatically routes to normal or liquidation mode
 
 *Redeem process:
 1. Check if protocol is in liquidation mode (CR <= 101%)
-2. If liquidation mode: use pro-rata distribution (no fees)
-3. If normal mode: use oracle price with fees
+2. If liquidation mode: use pro-rata distribution based on actual USDC in vault
+- Payout = (qeuroAmount / totalSupply) * totalVaultUsdc
+- Hedger loses margin proportionally: (qeuroAmount / totalSupply) * hedgerMargin
+- Fees are applied if TAKES_FEES_DURING_LIQUIDATION is true
+3. If normal mode: use oracle price with standard fees
 4. Burn QEURO and transfer USDC*
 
 **Notes:**
@@ -642,9 +658,44 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 
 ### _redeemLiquidationMode
 
-Internal function for liquidation mode redemption (pro-rata)
+Internal function for liquidation mode redemption (pro-rata based on actual USDC)
 
-*Called by redeemQEURO when protocol is in liquidation mode*
+Internal function to handle QEURO redemption in liquidation mode (CR ≤ 101%)
+
+*Called by redeemQEURO when protocol is in liquidation mode (CR <= 101%)*
+
+*Key formulas:
+- Payout = (qeuroAmount / totalSupply) * totalVaultUsdc (actual USDC, not market value)
+- Hedger loss = (qeuroAmount / totalSupply) * hedgerMargin (proportional margin reduction)
+- Fees applied if TAKES_FEES_DURING_LIQUIDATION is true*
+
+*Called by redeemQEURO when protocol enters liquidation mode
+Liquidation Mode Formulas:
+1. userPayout = (qeuroAmount / totalQEUROSupply) × totalVaultUSDC
+- Pro-rata distribution based on actual USDC, NOT fair value
+- If CR < 100%, users take a haircut
+- If CR > 100%, users receive a small premium
+2. hedgerLoss = (qeuroAmount / totalQEUROSupply) × hedgerMargin
+- Hedger absorbs proportional margin loss
+- Recorded via hedgerPool.recordLiquidationRedeem()
+In liquidation mode, hedger's unrealizedPnL = -margin (all margin at risk).*
+
+**Notes:**
+- Internal function - handles liquidation redemptions with pro-rata distribution
+
+- Validates totalSupply > 0, oracle price valid, usdcPayout >= minUsdcOut, sufficient balance
+
+- Reduces totalUsdcHeld, totalMinted, calls hedgerPool.recordLiquidationRedeem
+
+- Emits LiquidationRedeemed
+
+- Reverts with InvalidAmount, InvalidOraclePrice, ExcessiveSlippage, InsufficientBalance
+
+- Protected by CEI pattern - state changes before external calls
+
+- Internal function - called by redeemQEURO
+
+- Requires valid EUR/USD price from oracle
 
 
 ```solidity
@@ -654,9 +705,9 @@ function _redeemLiquidationMode(uint256 qeuroAmount, uint256 minUsdcOut, uint256
 
 |Name|Type|Description|
 |----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to redeem|
-|`minUsdcOut`|`uint256`|Minimum USDC expected|
-|`collateralizationRatioBps`|`uint256`|Current CR in basis points|
+|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
+|`minUsdcOut`|`uint256`|Minimum USDC expected (slippage protection)|
+|`collateralizationRatioBps`|`uint256`|Current CR in basis points (for event emission)|
 
 
 ### redeemQEUROLiquidation
@@ -665,7 +716,10 @@ Redeems QEURO for USDC using pro-rata distribution in liquidation mode
 
 *Only callable when protocol is in liquidation mode (CR <= 101%)*
 
-*Formula: payout = (qeuroAmount / totalSupply) * totalCollateral*
+*Key formulas:
+- Payout = (qeuroAmount / totalSupply) * totalVaultUsdc (actual USDC in vault)
+- Hedger loss = (qeuroAmount / totalSupply) * hedgerMargin (realized as negative P&L)
+- Fees applied if TAKES_FEES_DURING_LIQUIDATION is true*
 
 *Premium if CR > 100%, haircut if CR < 100%*
 
@@ -674,7 +728,7 @@ Redeems QEURO for USDC using pro-rata distribution in liquidation mode
 
 - Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
 
-- Burns QEURO, transfers USDC pro-rata
+- Burns QEURO, transfers USDC pro-rata, reduces hedger margin proportionally
 
 - Emits LiquidationRedeemed
 
@@ -684,7 +738,7 @@ Redeems QEURO for USDC using pro-rata distribution in liquidation mode
 
 - Public - anyone with QEURO can redeem
 
-- Requires oracle price for collateral calculation
+- Requires oracle price for fair value calculation
 
 
 ```solidity
@@ -1433,30 +1487,32 @@ function _updatePriceTimestamp(bool isValid) internal;
 
 Calculates the current protocol collateralization ratio
 
-*Formula: (COLLATUser + COLLATHedger) / (qMinted * oraclePrice) * 100*
-
-*Where COLLATUser = totalUserDeposits, COLLATHedger = hedger effective collateral (deposits + P&L)*
-
-*Returns ratio in 18 decimals (e.g., 109183495000000000000 = 109.183495%) for maximum precision*
-
-*Uses hedger effective collateral instead of raw deposits to account for P&L*
+*Formula: CR = (TotalVaultUSDC / BackingRequirement) × 100
+Where:
+- TotalVaultUSDC = totalUsdcHeld + totalUsdcInAave (raw USDC, not effective margin)
+- BackingRequirement = QEUROSupply × OraclePrice / 1e30 (USDC value of all QEURO)
+Returns ratio in 18 decimals:
+- 100% = 1e20 (100000000000000000000)
+- 101% = 1.01e20 (101000000000000000000)
+Liquidation mode is triggered when CR <= 101% (10100 bps).
+In liquidation mode, redemptions use pro-rata USDC distribution instead of fair value.*
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- View function that reads state and oracle - safe for external calls
 
-- Validates input parameters and business logic constraints
+- Validates hedgerPool and userPool are set, oracle price is valid
 
-- No state changes - view function
+- Updates oracle timestamp (via getEurUsdPrice call)
 
-- No events emitted - view function
+- None - view function
 
-- No errors thrown - safe view function
+- Reverts with InvalidOraclePrice if oracle data is invalid
 
-- Not applicable - view function
+- Not applicable - no state changes, only reads
 
 - Public - anyone can check collateralization ratio
 
-- Requires fresh oracle price data (via HedgerPool)
+- Requires fresh oracle price data
 
 
 ```solidity
@@ -1466,7 +1522,7 @@ function getProtocolCollateralizationRatio() public returns (uint256 ratio);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`ratio`|`uint256`|Current collateralization ratio in 18 decimals (maximum precision, e.g., 109183495000000000000 = 109.183495%)|
+|`ratio`|`uint256`|Current collateralization ratio in 18 decimals|
 
 
 ### canMint

@@ -26,6 +26,20 @@ contract MockStorkFeed {
     mapping(bytes32 => int256) public prices;
     mapping(bytes32 => uint256) public timestamps;
     
+    /**
+     * @notice Constructor for mock Stork feed
+     * @dev Initializes mock feed with decimals and optional feed ID price
+     * @param _decimals Number of decimals for price representation
+     * @param _feedId Feed ID to initialize (optional)
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Initializes decimals, updatedAt, and default price for feed ID
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - constructor
+     * @custom:access Public - test mock
+     * @custom:oracle Mock Stork price feed
+     */
     constructor(uint8 _decimals, bytes32 _feedId) {
         decimals_ = _decimals;
         updatedAt = block.timestamp;
@@ -37,12 +51,38 @@ contract MockStorkFeed {
         }
     }
     
+    /**
+     * @notice Sets price for backward compatibility (deprecated)
+     * @dev Parameter is unused - kept for backward compatibility
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Updates updatedAt timestamp
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle Updates mock timestamp
+     */
     function setPrice(int256 /* _price */) external {
         // Set price for all feed IDs (for backward compatibility)
         updatedAt = block.timestamp;
         // Note: This is kept for backward compatibility but setPriceForFeed should be used
     }
     
+    /**
+     * @notice Sets price for a specific feed ID
+     * @dev Updates price mapping and sets timestamp if not already set
+     * @param feedId Feed ID to set price for
+     * @param _price New price value (18 decimals)
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Updates prices[feedId] and timestamps[feedId] if not set
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle Updates mock price for specific feed
+     */
     function setPriceForFeed(bytes32 feedId, int256 _price) external {
         prices[feedId] = _price;
         // Don't update timestamp here - use setUpdatedAtForFeed to control timestamp separately
@@ -52,20 +92,74 @@ contract MockStorkFeed {
         }
     }
     
+    /**
+     * @notice Sets whether getTemporalNumericValueV1 should revert
+     * @dev Updates shouldRevert flag to control mock behavior
+     * @param _shouldRevert True to make getTemporalNumericValueV1 revert
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Updates shouldRevert flag
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function setShouldRevert(bool _shouldRevert) external {
         shouldRevert = _shouldRevert;
     }
     
+    /**
+     * @notice Sets updatedAt timestamp for all feeds
+     * @dev Updates global updatedAt timestamp used as fallback
+     * @param _updatedAt New timestamp value
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Updates updatedAt timestamp
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle Updates mock timestamp
+     */
     function setUpdatedAt(uint256 _updatedAt) external {
         updatedAt = _updatedAt;
         // Update all feed timestamps
     }
     
+    /**
+     * @notice Sets updatedAt timestamp for a specific feed ID
+     * @dev Updates timestamp mapping for specific feed ID
+     * @param feedId Feed ID to update timestamp for
+     * @param _updatedAt New timestamp value
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Updates timestamps[feedId]
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle Updates mock timestamp for specific feed
+     */
     function setUpdatedAtForFeed(bytes32 feedId, uint256 _updatedAt) external {
         timestamps[feedId] = _updatedAt;
         // Don't update updatedAt here to avoid conflicts
     }
     
+    /**
+     * @notice Returns temporal numeric value for a feed ID
+     * @dev Returns price and timestamp for feed ID, with fallback logic
+     * @param id Feed ID to query
+     * @return TemporalNumericValue struct with price and timestamp
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors Reverts with "MockStorkFeed: Revert requested" if shouldRevert is true
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test mock
+     * @custom:oracle Returns mock price and timestamp for feed ID
+     */
     function getTemporalNumericValueV1(bytes32 id) external view returns (TemporalNumericValue memory) {
         if (shouldRevert) {
             revert("MockStorkFeed: Revert requested");
@@ -91,6 +185,19 @@ contract MockStorkFeed {
         });
     }
     
+    /**
+     * @notice Returns number of decimals for price representation
+     * @dev Returns stored decimals value
+     * @return Number of decimals
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test mock
+     * @custom:oracle Returns mock decimals value
+     */
     function decimals() external view returns (uint8) {
         return decimals_;
     }
@@ -118,6 +225,18 @@ contract StorkOracleTest is Test {
     bytes32 public constant EUR_USD_FEED_ID = keccak256("EUR/USD");
     bytes32 public constant USDC_USD_FEED_ID = keccak256("USDC/USD");
     
+    /**
+     * @notice Sets up test environment with all required contracts
+     * @dev Deploys and initializes TimeProvider, StorkOracle, and mock feeds
+     * @custom:security No security implications - test setup
+     * @custom:validation No validation - test setup
+     * @custom:state-changes Deploys contracts and initializes test environment
+     * @custom:events Emits initialization events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - test setup
+     * @custom:access Public - test function
+     * @custom:oracle Sets up mock Stork feeds
+     */
     function setUp() public {
         // Deploy TimeProvider
         timeProviderImpl = new TimeProvider();
@@ -161,6 +280,18 @@ contract StorkOracleTest is Test {
         storkOracle = StorkOracle(payable(address(oracleProxy)));
     }
     
+    /**
+     * @notice Tests that StorkOracle is properly initialized
+     * @dev Verifies admin roles, feed addresses, and treasury address
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_Initialization() public view {
         assertEq(storkOracle.hasRole(storkOracle.DEFAULT_ADMIN_ROLE(), admin), true);
         assertEq(storkOracle.hasRole(storkOracle.ORACLE_MANAGER_ROLE(), admin), true);
@@ -170,6 +301,18 @@ contract StorkOracleTest is Test {
         assertEq(storkOracle.treasury(), treasury);
     }
     
+    /**
+     * @notice Tests that StorkOracle returns valid EUR/USD price
+     * @dev Verifies price is returned in 18 decimals and marked as valid
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle Queries Stork feed for EUR/USD price
+     */
     function test_GetEurUsdPrice() public view {
         (uint256 price, bool isValid) = storkOracle.getEurUsdPrice();
         assertGt(price, 0);
@@ -178,6 +321,18 @@ contract StorkOracleTest is Test {
         assertApproxEqRel(price, 1.08e18, 0.01e18);
     }
     
+    /**
+     * @notice Tests that StorkOracle returns valid USDC/USD price
+     * @dev Verifies price is returned in 18 decimals and marked as valid
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle Queries Stork feed for USDC/USD price
+     */
     function test_GetUsdcUsdPrice() public view {
         (uint256 price, bool isValid) = storkOracle.getUsdcUsdPrice();
         assertGt(price, 0);
@@ -186,6 +341,18 @@ contract StorkOracleTest is Test {
         assertApproxEqRel(price, 1.00e18, 0.01e18);
     }
     
+    /**
+     * @notice Tests that price bounds validation works correctly
+     * @dev Verifies prices outside bounds are marked invalid
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Updates mock feed prices
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle Tests price bound validation on Stork feed
+     */
     function test_PriceBounds() public {
         bool isValid;
         
@@ -205,6 +372,18 @@ contract StorkOracleTest is Test {
         assertTrue(isValid);
     }
     
+    /**
+     * @notice Tests that stale price timestamps are detected
+     * @dev Verifies prices with timestamps older than max staleness are marked invalid
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Sets stale timestamp on mock feed, advances block time
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle Tests stale timestamp detection on Stork feed
+     */
     function test_StalePrice() public {
         // Set a higher timestamp to avoid underflow issues
         vm.warp(10000);
@@ -248,6 +427,18 @@ contract StorkOracleTest is Test {
         assertFalse(isValid, "Price should be invalid due to stale timestamp"); // Should be marked as invalid
     }
     
+    /**
+     * @notice Tests that circuit breaker prevents invalid prices
+     * @dev Verifies circuit breaker triggers and marks prices as invalid
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Triggers circuit breaker
+     * @custom:events Emits CircuitBreakerTriggered event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle Tests circuit breaker functionality
+     */
     function test_CircuitBreaker() public {
         vm.prank(admin);
         // triggerCircuitBreaker doesn't emit CircuitBreakerTriggered event - it just sets the flag
@@ -260,6 +451,18 @@ contract StorkOracleTest is Test {
         assertFalse(isValid);
     }
     
+    /**
+     * @notice Tests that circuit breaker can be reset
+     * @dev Verifies resetCircuitBreaker clears circuit breaker flag
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Triggers then resets circuit breaker
+     * @custom:events Emits circuit breaker events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle Tests circuit breaker reset functionality
+     */
     function test_ResetCircuitBreaker() public {
         vm.prank(admin);
         storkOracle.triggerCircuitBreaker();
@@ -270,6 +473,18 @@ contract StorkOracleTest is Test {
         assertFalse(storkOracle.circuitBreakerTriggered());
     }
     
+    /**
+     * @notice Tests that price bounds can be updated
+     * @dev Verifies updatePriceBounds updates min and max price bounds
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Updates price bounds configuration
+     * @custom:events Emits price bounds update events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle Updates price validation bounds
+     */
     function test_UpdatePriceBounds() public {
         vm.prank(admin);
         storkOracle.updatePriceBounds(0.90e18, 1.30e18);
@@ -279,6 +494,18 @@ contract StorkOracleTest is Test {
         assertEq(maxPrice, 1.30e18);
     }
     
+    /**
+     * @notice Tests that price feed addresses can be updated
+     * @dev Verifies updatePriceFeeds updates feed contract addresses and feed IDs
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Updates feed addresses and feed IDs
+     * @custom:events Emits feed update events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle Updates Stork feed contract and feed IDs
+     */
     function test_UpdatePriceFeeds() public {
         MockStorkFeed newFeed = new MockStorkFeed(18, EUR_USD_FEED_ID);
         newFeed.setPriceForFeed(EUR_USD_FEED_ID, 1.10e18);
@@ -296,6 +523,18 @@ contract StorkOracleTest is Test {
         assertEq(address(storkOracle.usdcUsdPriceFeed()), address(newFeed));
     }
     
+    /**
+     * @notice Tests that oracle health status is returned correctly
+     * @dev Verifies getOracleHealth returns health status for both feeds
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle Queries health status from Stork feeds
+     */
     function test_GetOracleHealth() public view {
         (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) = storkOracle.getOracleHealth();
         assertTrue(isHealthy);
@@ -303,6 +542,18 @@ contract StorkOracleTest is Test {
         assertTrue(usdcUsdFresh);
     }
     
+    /**
+     * @notice Tests that oracle can be paused
+     * @dev Verifies pause functionality prevents price queries
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Sets paused state to true
+     * @custom:events Emits Paused event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_Pause() public {
         vm.prank(admin);
         storkOracle.pause();
@@ -313,6 +564,18 @@ contract StorkOracleTest is Test {
         assertFalse(isValid);
     }
     
+    /**
+     * @notice Tests that oracle can be unpaused
+     * @dev Verifies unpause functionality restores price queries
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Sets paused state to false
+     * @custom:events Emits Unpaused event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_Unpause() public {
         vm.prank(admin);
         storkOracle.pause();
@@ -323,6 +586,18 @@ contract StorkOracleTest is Test {
         assertFalse(storkOracle.paused());
     }
     
+    /**
+     * @notice Tests that ETH can be recovered to treasury
+     * @dev Verifies recoverETH transfers ETH from oracle to treasury
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Transfers ETH from oracle to treasury
+     * @custom:events Emits ETH recovery events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_RecoverETH() public {
         vm.deal(address(storkOracle), 1 ether);
         
@@ -334,12 +609,36 @@ contract StorkOracleTest is Test {
         assertEq(treasury.balance, balanceBefore + 1 ether);
     }
     
+    /**
+     * @notice Tests that non-admin cannot update price bounds
+     * @dev Verifies access control prevents unauthorized price bound updates
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Attempts unauthorized price bound update
+     * @custom:events No events emitted
+     * @custom:errors Expects revert on unauthorized access
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_Revert_NonAdminCannotSwitchOracle() public {
         vm.prank(user);
         vm.expectRevert();
         storkOracle.updatePriceBounds(0.90e18, 1.30e18);
     }
     
+    /**
+     * @notice Tests that invalid price bounds (min > max) are rejected
+     * @dev Verifies updatePriceBounds reverts when min price exceeds max price
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Attempts to set invalid price bounds
+     * @custom:events No events emitted
+     * @custom:errors Expects revert on invalid bounds
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_Revert_InvalidPriceBounds() public {
         vm.prank(admin);
         vm.expectRevert();

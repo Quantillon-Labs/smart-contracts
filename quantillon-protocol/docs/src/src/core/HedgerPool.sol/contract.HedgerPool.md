@@ -7,7 +7,23 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Optimized EUR/USD hedging pool for managing currency risk and providing yield
 
-*Optimized version with reduced contract size through library extraction and code consolidation*
+*Optimized version with reduced contract size through library extraction and code consolidation
+P&L Calculation Model:
+Hedgers are SHORT EUR (they owe QEURO to users). When EUR/USD price rises, hedgers lose.
+1. TOTAL UNREALIZED P&L (mark-to-market of current position):
+totalUnrealizedPnL = FilledVolume - (QEUROBacked × OraclePrice / 1e30)
+2. NET UNREALIZED P&L (used when margin already reflects realized P&L):
+netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
+3. EFFECTIVE MARGIN (true economic value):
+effectiveMargin = margin + netUnrealizedPnL
+4. REALIZED P&L (during partial redemptions):
+When users redeem QEURO, a portion of net unrealized P&L is realized.
+realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
+- If positive (profit): margin increases
+- If negative (loss): margin decreases
+5. LIQUIDATION MODE (CR ≤ 101%):
+In liquidation mode, unrealizedPnL = -margin (all margin at risk).
+effectiveMargin = 0, hedger absorbs pro-rata losses on redemptions.*
 
 **Note:**
 team@quantillon.money
@@ -105,13 +121,6 @@ uint256 public totalFilledExposure;
 ```
 
 
-### nextPositionId
-
-```solidity
-uint256 public nextPositionId;
-```
-
-
 ### singleHedger
 Address of the single hedger allowed to open positions
 
@@ -137,24 +146,10 @@ mapping(address => HedgerRewardState) private hedgerRewards;
 ```
 
 
-### activePositions
-
-```solidity
-uint256[] private activePositions;
-```
-
-
-### activePositionIndex
-
-```solidity
-mapping(uint256 => uint256) private activePositionIndex;
-```
-
-
 ### hedgerActivePositionId
 Maps hedger address to their active position ID (0 = no active position)
 
-*Used to enforce single position per hedger limit*
+*Used to track the single hedger's position in single hedger model*
 
 
 ```solidity
@@ -166,13 +161,6 @@ mapping(address => uint256) private hedgerActivePositionId;
 
 ```solidity
 mapping(address => uint256) public hedgerLastRewardBlock;
-```
-
-
-### MAX_POSITIONS_PER_HEDGER
-
-```solidity
-uint256 public constant MAX_POSITIONS_PER_HEDGER = 1;
 ```
 
 
@@ -612,6 +600,46 @@ function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuro
 |`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
+### recordLiquidationRedeem
+
+Records a liquidation mode redemption - directly reduces hedger margin proportionally
+
+*Called by vault when protocol is in liquidation mode (CR ≤ 101%)
+In liquidation mode, the ENTIRE hedger margin is considered at risk (unrealized P&L = -margin).
+When users redeem, the hedger absorbs a pro-rata loss:
+Formula: hedgerLoss = (qeuroAmount / totalQeuroSupply) × currentMargin
+This loss is recorded as realized P&L and reduces the hedger's margin.
+The qeuroBacked and filledVolume are also reduced proportionally.*
+
+**Notes:**
+- Vault-only access prevents unauthorized calls
+
+- Validates qeuroAmount > 0, totalQeuroSupply > 0, position exists and is active
+
+- Reduces hedger margin, records realized P&L, reduces qeuroBacked and filledVolume
+
+- Emits RealizedPnLRecorded
+
+- None (early returns for invalid states)
+
+- Protected by whenNotPaused modifier
+
+- Restricted to QuantillonVault via onlyVault modifier
+
+- No oracle dependency - uses provided parameters
+
+
+```solidity
+function recordLiquidationRedeem(uint256 qeuroAmount, uint256 totalQeuroSupply) external onlyVault whenNotPaused;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO being redeemed (18 decimals)|
+|`totalQeuroSupply`|`uint256`|Total QEURO supply before redemption (18 decimals)|
+
+
 ### claimHedgingRewards
 
 Claims hedging rewards for a hedger
@@ -661,20 +689,25 @@ function claimHedgingRewards()
 
 ### getTotalEffectiveHedgerCollateral
 
-Calculates total effective hedger collateral (margin + P&L) across all active positions
+Calculates total effective hedger collateral (margin + P&L) for the hedger position
 
-*Used by vault to determine protocol collateralization ratio*
+*Used by vault to determine protocol collateralization ratio
+Formula breakdown:
+1. totalUnrealizedPnL = FilledVolume - (QEUROBacked × price / 1e30)
+2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
+(margin already reflects realized P&L, so we use net unrealized to avoid double-counting)
+3. effectiveCollateral = margin + netUnrealizedPnL*
 
 **Notes:**
-- View-only helper - no state changes
+- View-only helper - no state changes, safe for external calls
 
-- Requires valid oracle price
+- Validates price > 0, position exists and is active
 
 - None - view function
 
-- None
+- None - view function
 
-- Reverts if oracle price is invalid
+- None - returns 0 for invalid states
 
 - Not applicable - view function
 
@@ -1110,15 +1143,15 @@ function _validateRole(bytes32 role) internal view;
 |`role`|`bytes32`|The role to validate against|
 
 
-### _trackActivePosition
+### _finalizePosition
 
 Removes a position from the hedger's position arrays
 
-Tracks a newly opened position for global fill allocation
+Finalizes position closure by updating hedger and protocol totals
 
 *Internal function to maintain position tracking arrays*
 
-*Stores the index of the position in `activePositions` for O(1) removals*
+*Internal helper to clean up position state and update aggregate statistics*
 
 **Notes:**
 - Validates position exists before removal
@@ -1137,79 +1170,11 @@ Tracks a newly opened position for global fill allocation
 
 - Not applicable
 
-- Caller must ensure position is valid and unique
-
-- Assumes positionId is not already tracked
-
-- Updates `activePositionIndex` and `activePositions`
-
-- None
-
-- None
-
-- Not applicable - internal function
-
-- Internal helper
-
-- Not applicable
-
-
-```solidity
-function _trackActivePosition(uint256 positionId) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|ID of the position to remove|
-
-
-### _untrackActivePosition
-
-Removes a position from the active tracking arrays
-
-*Swaps-and-pops to keep the array compact while updating indices*
-
-**Notes:**
-- Caller must ensure positionId is currently tracked
-
-- Assumes the active set is non-empty
-
-- Modifies `activePositions` and `activePositionIndex`
-
-- None
-
-- None
-
-- Not applicable - internal function
-
-- Internal helper
-
-- Not applicable
-
-
-```solidity
-function _untrackActivePosition(uint256 positionId) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|ID of the position to untrack|
-
-
-### _finalizePosition
-
-Finalizes position closure by updating hedger and protocol totals
-
-*Internal helper to clean up position state and update aggregate statistics*
-
-**Notes:**
 - Internal function - assumes all validations done by caller
 
 - Assumes marginDelta and exposureDelta are valid and don't exceed current totals
 
-- Decrements hedger margin/exposure, protocol totals, marks position inactive, removes from active tracking, updates hedger position count
+- Decrements hedger margin/exposure, protocol totals, marks position inactive, updates hedger position tracking
 
 - None - events emitted by caller
 
@@ -1235,8 +1200,8 @@ function _finalizePosition(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`hedger`|`address`|Address of the hedger whose position is being finalized|
-|`positionId`|`uint256`|Unique identifier of the position being finalized|
+|`hedger`|`address`|Address of the hedger whose position to remove|
+|`positionId`|`uint256`|ID of the position to remove|
 |`position`|`HedgePosition`|Storage reference to the position being finalized|
 |`marginDelta`|`uint256`|Amount of margin being removed from the position|
 |`exposureDelta`|`uint256`|Amount of exposure being removed from the position|
@@ -1244,16 +1209,16 @@ function _finalizePosition(
 
 ### _unwindFilledVolume
 
-Unwinds filled volume from a position and redistributes it
+Unwinds filled volume from a position
 
-*Clears position's filled volume and redistributes it to other active positions*
+*Clears position's filled volume (no redistribution needed with single position)*
 
 **Notes:**
 - Internal function - assumes position is valid and active
 
 - Validates totalFilledExposure >= cachedFilledVolume before decrementing
 
-- Clears position filledVolume, decrements totalFilledExposure, redistributes volume to other positions
+- Clears position filledVolume, decrements totalFilledExposure
 
 - Emits HedgerFillUpdated with positionId, old filled volume, and 0
 
@@ -1329,18 +1294,18 @@ function _isPositionHealthyForFill(HedgePosition storage p, uint256 price) inter
 
 ### _increaseFilledVolume
 
-Allocates user mint exposure across active hedger positions
+Allocates user mint exposure to the hedger position
 
-*Distributes `usdcAmount` proportionally to available capacity of HEALTHY positions only*
+*Allocates `usdcAmount` to the single hedger position if healthy*
 
 **Notes:**
-- Caller must ensure hedger sets are consistent before invocation
+- Caller must ensure hedger position exists
 
 - Validates liquidity availability and capacity before allocation
 
-- Updates `filledVolume` per position and `totalFilledExposure`
+- Updates `filledVolume` and `totalFilledExposure`
 
-- Emits `HedgerFillUpdated` for every adjusted position
+- Emits `HedgerFillUpdated` for the position
 
 - Reverts if capacity is insufficient or liquidity is absent
 
@@ -1352,8 +1317,7 @@ Allocates user mint exposure across active hedger positions
 
 
 ```solidity
-function _increaseFilledVolume(uint256 usdcAmount, uint256 currentPrice, uint256 qeuroAmount, uint256 skipPositionId)
-    internal;
+function _increaseFilledVolume(uint256 usdcAmount, uint256 currentPrice, uint256 qeuroAmount) internal;
 ```
 **Parameters**
 
@@ -1362,23 +1326,22 @@ function _increaseFilledVolume(uint256 usdcAmount, uint256 currentPrice, uint256
 |`usdcAmount`|`uint256`|Amount of USDC exposure to allocate (6 decimals)|
 |`currentPrice`|`uint256`|Current EUR/USD oracle price supplied by the caller (18 decimals)|
 |`qeuroAmount`|`uint256`|QEURO amount that was minted (18 decimals)|
-|`skipPositionId`|`uint256`|Position ID to exclude (e.g., the exiting position)|
 
 
 ### _decreaseFilledVolume
 
-Releases exposure across hedger positions following a user redeem
+Releases exposure from the hedger position following a user redeem
 
-*Proportionally decreases fills based on filled volume share*
+*Decreases fills from the single hedger position*
 
 **Notes:**
 - Internal function - validates price and amounts
 
 - Validates usdcAmount > 0, redeemPrice > 0, and sufficient filled exposure
 
-- Decreases filledVolume per position, updates totalFilledExposure, calculates realized P&L
+- Decreases filledVolume, updates totalFilledExposure, calculates realized P&L
 
-- Emits HedgerFillUpdated and RealizedPnLRecorded for each position
+- Emits HedgerFillUpdated and RealizedPnLRecorded
 
 - Reverts with InvalidOraclePrice, NoActiveHedgerLiquidity, or InsufficientHedgerCapacity
 
@@ -1390,8 +1353,7 @@ Releases exposure across hedger positions following a user redeem
 
 
 ```solidity
-function _decreaseFilledVolume(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount, uint256 skipPositionId)
-    internal;
+function _decreaseFilledVolume(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) internal;
 ```
 **Parameters**
 
@@ -1400,7 +1362,6 @@ function _decreaseFilledVolume(uint256 usdcAmount, uint256 redeemPrice, uint256 
 |`usdcAmount`|`uint256`|Amount of USDC to release (at redeem price) (6 decimals)|
 |`redeemPrice`|`uint256`|Current EUR/USD oracle price (18 decimals) for P&L calculation|
 |`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
-|`skipPositionId`|`uint256`|Position ID to exclude from the release cycle|
 
 
 ### _applyFillChange
@@ -1482,8 +1443,21 @@ function _updateEntryPriceAfterFill(HedgePosition storage pos, uint256 prevFille
 
 Processes redemption for a single position - calculates realized P&L
 
+Calculates and records realized P&L during QEURO redemption
+
 *New formula: RealizedP&L = QEUROQuantitySold * (entryPrice - OracleCurrentPrice)
 Hedgers are SHORT EUR, so they profit when EUR price decreases*
+
+*Called by _decreaseFilledVolume for normal (non-liquidation) redemptions
+P&L Calculation Formula:
+1. totalUnrealizedPnL = filledVolume - (qeuroBacked × price / 1e30)
+2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
+(avoids double-counting since margin already reflects realized P&L)
+3. realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
+After calculation:
+- If realizedDelta > 0 (profit): margin increases
+- If realizedDelta < 0 (loss): margin decreases
+- realizedPnL accumulates the realized portion*
 
 **Notes:**
 - Internal function - calculates and records realized P&L
@@ -1501,6 +1475,22 @@ Hedgers are SHORT EUR, so they profit when EUR price decreases*
 - Internal helper only
 
 - Uses provided price parameter
+
+- Internal function - updates position state and margin
+
+- Validates share > 0, qeuroAmount > 0, price > 0, qeuroBacked > 0
+
+- Updates pos.realizedPnL, pos.margin, totalMargin, pos.positionSize
+
+- Emits RealizedPnLRecorded, RealizedPnLCalculation, MarginUpdated, HedgerFillUpdated
+
+- None - early returns for invalid states
+
+- Not applicable - internal function, no external calls
+
+- Internal helper only - called by _decreaseFilledVolume
+
+- Uses provided price parameter (must be fresh oracle data)
 
 
 ```solidity

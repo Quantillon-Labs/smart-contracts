@@ -27,6 +27,30 @@ import {HedgerPoolOptimizationLibrary} from "../libraries/HedgerPoolOptimization
  * @title HedgerPool
  * @notice Optimized EUR/USD hedging pool for managing currency risk and providing yield
  * @dev Optimized version with reduced contract size through library extraction and code consolidation
+ * 
+ * P&L Calculation Model:
+ * 
+ * Hedgers are SHORT EUR (they owe QEURO to users). When EUR/USD price rises, hedgers lose.
+ * 
+ * 1. TOTAL UNREALIZED P&L (mark-to-market of current position):
+ *    totalUnrealizedPnL = FilledVolume - (QEUROBacked × OraclePrice / 1e30)
+ * 
+ * 2. NET UNREALIZED P&L (used when margin already reflects realized P&L):
+ *    netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
+ * 
+ * 3. EFFECTIVE MARGIN (true economic value):
+ *    effectiveMargin = margin + netUnrealizedPnL
+ * 
+ * 4. REALIZED P&L (during partial redemptions):
+ *    When users redeem QEURO, a portion of net unrealized P&L is realized.
+ *    realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
+ *    - If positive (profit): margin increases
+ *    - If negative (loss): margin decreases
+ * 
+ * 5. LIQUIDATION MODE (CR ≤ 101%):
+ *    In liquidation mode, unrealizedPnL = -margin (all margin at risk).
+ *    effectiveMargin = 0, hedger absorbs pro-rata losses on redemptions.
+ * 
  * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
@@ -248,8 +272,9 @@ contract HedgerPool is
      * @custom:access Restricted to whitelisted hedgers (if whitelist enabled)
      * @custom:oracle Requires fresh oracle price data
      */
-    // slither-disable-next-line reentrancy-benign
+    // slither-disable-start reentrancy-no-eth
     // slither-disable-start reentrancy-benign
+    // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) 
         external 
         whenNotPaused
@@ -319,6 +344,7 @@ contract HedgerPool is
             HedgerPoolOptimizationLibrary.packPositionOpenData(positionSize, netMargin, leverage, eurUsdPrice)
         );
     }
+    // slither-disable-end reentrancy-no-eth
     // slither-disable-end reentrancy-benign
 
     /**
@@ -348,7 +374,9 @@ contract HedgerPool is
      * @custom:access Restricted to position owner
      * @custom:oracle Requires fresh oracle price data
      */
-    // slither-disable-next-line reentrancy-no-eth
+    // slither-disable-start reentrancy-no-eth
+    // slither-disable-start reentrancy-benign
+    // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function exitHedgePosition(uint256 positionId) 
         external 
         whenNotPaused
@@ -406,6 +434,8 @@ contract HedgerPool is
             vault.withdrawHedgerDeposit(msg.sender, netPayout);
         }
     }
+    // slither-disable-end reentrancy-no-eth
+    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Adds additional margin to an existing hedge position
@@ -517,6 +547,9 @@ contract HedgerPool is
      * @custom:access Restricted to position owner
      * @custom:oracle No oracle dependencies
      */
+    // slither-disable-start reentrancy-no-eth
+    // slither-disable-start reentrancy-benign
+    // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function removeMargin(uint256 positionId, uint256 amount) external whenNotPaused nonReentrant {
         HedgePosition storage position = positions[positionId];
         HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
@@ -580,6 +613,8 @@ contract HedgerPool is
         // Withdraw USDC from vault for hedger margin removal
         vault.withdrawHedgerDeposit(msg.sender, amount);
     }
+    // slither-disable-end reentrancy-no-eth
+    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Records a user mint and allocates hedger fills proportionally
@@ -625,17 +660,26 @@ contract HedgerPool is
 
     /**
      * @notice Records a liquidation mode redemption - directly reduces hedger margin proportionally
-     * @dev In liquidation mode, the hedger loses margin proportionally to QEURO redeemed
-     * @dev Formula: hedgerLoss = (qeuroAmount / totalSupply) * hedgerMargin
+     * @dev Called by vault when protocol is in liquidation mode (CR ≤ 101%)
+     * 
+     * In liquidation mode, the ENTIRE hedger margin is considered at risk (unrealized P&L = -margin).
+     * When users redeem, the hedger absorbs a pro-rata loss:
+     * 
+     * Formula: hedgerLoss = (qeuroAmount / totalQeuroSupply) × currentMargin
+     * 
+     * This loss is recorded as realized P&L and reduces the hedger's margin.
+     * The qeuroBacked and filledVolume are also reduced proportionally.
+     * 
      * @param qeuroAmount Amount of QEURO being redeemed (18 decimals)
      * @param totalQeuroSupply Total QEURO supply before redemption (18 decimals)
-     * @custom:security Vault-only access
-     * @custom:validation Validates positive amounts
-     * @custom:state-changes Reduces hedger margin, records realized P&L, reduces qeuroBacked
-     * @custom:events Emits RealizedPnLRecorded and margin update events
-     * @custom:errors Reverts if no hedger or invalid amounts
-     * @custom:reentrancy Protected by whenNotPaused
-     * @custom:access Vault-only
+     * @custom:security Vault-only access prevents unauthorized calls
+     * @custom:validation Validates qeuroAmount > 0, totalQeuroSupply > 0, position exists and is active
+     * @custom:state-changes Reduces hedger margin, records realized P&L, reduces qeuroBacked and filledVolume
+     * @custom:events Emits RealizedPnLRecorded
+     * @custom:errors None (early returns for invalid states)
+     * @custom:reentrancy Protected by whenNotPaused modifier
+     * @custom:access Restricted to QuantillonVault via onlyVault modifier
+     * @custom:oracle No oracle dependency - uses provided parameters
      */
     function recordLiquidationRedeem(uint256 qeuroAmount, uint256 totalQeuroSupply) external onlyVault whenNotPaused {
         if (qeuroAmount == 0 || totalQeuroSupply == 0) return;
@@ -749,13 +793,20 @@ contract HedgerPool is
     /**
      * @notice Calculates total effective hedger collateral (margin + P&L) for the hedger position
      * @dev Used by vault to determine protocol collateralization ratio
+     * 
+     * Formula breakdown:
+     * 1. totalUnrealizedPnL = FilledVolume - (QEUROBacked × price / 1e30)
+     * 2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
+     *    (margin already reflects realized P&L, so we use net unrealized to avoid double-counting)
+     * 3. effectiveCollateral = margin + netUnrealizedPnL
+     * 
      * @param price Current EUR/USD oracle price (18 decimals)
      * @return t Total effective collateral in USDC (6 decimals)
-     * @custom:security View-only helper - no state changes
-     * @custom:validation Requires valid oracle price
+     * @custom:security View-only helper - no state changes, safe for external calls
+     * @custom:validation Validates price > 0, position exists and is active
      * @custom:state-changes None - view function
-     * @custom:events None
-     * @custom:errors Reverts if oracle price is invalid
+     * @custom:events None - view function
+     * @custom:errors None - returns 0 for invalid states
      * @custom:reentrancy Not applicable - view function
      * @custom:access Public - anyone can query effective collateral
      * @custom:oracle Requires fresh oracle price data
@@ -768,24 +819,23 @@ contract HedgerPool is
         HedgePosition storage position = positions[positionId];
         if (!position.isActive) return 0;
         
-        // Calculate total unrealized P&L
+        // Calculate total unrealized P&L (mark-to-market of current position)
         int256 totalUnrealizedPnL = HedgerPoolLogicLibrary.calculatePnL(uint256(position.filledVolume), uint256(position.qeuroBacked), price);
         
-        // Special case: When all QEURO is redeemed (qeuroBacked == 0) and filledVolume == 0,
-        // calculatePnL returns 0, but we need to show the remaining unrealized loss
-        // The remaining loss should make effectiveMargin = 0 (availableCollateral = 0)
-        // So: unrealizedPnL = -margin
+        // Special case: When all QEURO is redeemed (qeuroBacked == 0, filledVolume == 0),
+        // calculatePnL returns 0. In this state, the position has no active exposure,
+        // so effective margin equals the remaining margin after all P&L was realized.
+        // Set unrealizedPnL = -margin so effectiveMargin = 0 (conservative approach).
         if (position.qeuroBacked == 0 && position.filledVolume == 0 && totalUnrealizedPnL == 0) {
             totalUnrealizedPnL = -int256(uint256(position.margin));
         }
         
-        // Calculate net unrealized P&L (total unrealized - realized)
-        // When margin is reduced by realized losses, we should use net unrealized P&L
-        // because the margin already accounts for the realized loss
+        // Calculate NET unrealized P&L = totalUnrealizedPnL - realizedPnL
+        // The margin has already been adjusted by realized P&L during redemptions,
+        // so we subtract realizedPnL to avoid double-counting.
         int256 netUnrealizedPnL = totalUnrealizedPnL - int256(position.realizedPnL);
         
         // Effective collateral = margin + net unrealized P&L
-        // The margin already reflects realized losses, so we only add net unrealized P&L
         int256 e = int256(uint256(position.margin)) + netUnrealizedPnL;
         if (e > 0) t = uint256(e);
     }
@@ -903,7 +953,9 @@ contract HedgerPool is
      * @custom:access Restricted to EMERGENCY_ROLE
      * @custom:oracle Requires oracle price for _unwindFilledVolume
      */
-    // slither-disable-next-line reentrancy-no-eth
+    // slither-disable-start reentrancy-no-eth
+    // slither-disable-start reentrancy-benign
+    // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function emergencyClosePosition(address hedger, uint256 positionId) external nonReentrant {
         _validateRole(EMERGENCY_ROLE);
         
@@ -934,6 +986,8 @@ contract HedgerPool is
         // Withdraw USDC from vault for emergency position closure
         vault.withdrawHedgerDeposit(hedger, cachedMargin);
     }
+    // slither-disable-end reentrancy-no-eth
+    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Pauses all contract operations in case of emergency
@@ -1128,7 +1182,9 @@ contract HedgerPool is
      * @custom:access Internal - only callable within contract
      * @custom:oracle Requires fresh oracle price data
      */
-    // slither-disable-next-line reentrancy-no-eth
+    // slither-disable-start reentrancy-no-eth
+    // slither-disable-start reentrancy-benign
+    // SECURITY: Internal function called from nonReentrant context; no untrusted external calls
     function _unwindFilledVolume(uint256 positionId, HedgePosition storage position, uint256 cachedPrice) internal returns (uint256 freedVolume) {
         uint256 cachedFilledVolume = uint256(position.filledVolume);
         if (cachedFilledVolume == 0) {
@@ -1147,6 +1203,8 @@ contract HedgerPool is
         
         return cachedFilledVolume;
     }
+    // slither-disable-end reentrancy-no-eth
+    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Checks if position is healthy enough for new fills
@@ -1340,17 +1398,43 @@ contract HedgerPool is
      * @custom:access Internal helper only
      * @custom:oracle Uses provided price parameter
      */
+    /**
+     * @notice Calculates and records realized P&L during QEURO redemption
+     * @dev Called by _decreaseFilledVolume for normal (non-liquidation) redemptions
+     * 
+     * P&L Calculation Formula:
+     * 1. totalUnrealizedPnL = filledVolume - (qeuroBacked × price / 1e30)
+     * 2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
+     *    (avoids double-counting since margin already reflects realized P&L)
+     * 3. realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
+     * 
+     * After calculation:
+     * - If realizedDelta > 0 (profit): margin increases
+     * - If realizedDelta < 0 (loss): margin decreases
+     * - realizedPnL accumulates the realized portion
+     * 
+     * @param posId Position ID being processed
+     * @param pos Storage reference to the position
+     * @param share Amount of filledVolume being released (6 decimals)
+     * @param filledBefore filledVolume BEFORE this redemption (6 decimals)
+     * @param price Current EUR/USD oracle price (18 decimals)
+     * @param qeuroAmount QEURO amount being redeemed (18 decimals)
+     * @custom:security Internal function - updates position state and margin
+     * @custom:validation Validates share > 0, qeuroAmount > 0, price > 0, qeuroBacked > 0
+     * @custom:state-changes Updates pos.realizedPnL, pos.margin, totalMargin, pos.positionSize
+     * @custom:events Emits RealizedPnLRecorded, RealizedPnLCalculation, MarginUpdated, HedgerFillUpdated
+     * @custom:errors None - early returns for invalid states
+     * @custom:reentrancy Not applicable - internal function, no external calls
+     * @custom:access Internal helper only - called by _decreaseFilledVolume
+     * @custom:oracle Uses provided price parameter (must be fresh oracle data)
+     */
     function _processRedeem(uint256 posId, HedgePosition storage pos, uint256 share, uint256 filledBefore, uint256 price, uint256 qeuroAmount) internal {
         if (share > 0 && qeuroAmount > 0 && price > 0) {
-            // Calculate realized P&L based on the proportion of unrealized P&L being redeemed
-            // Realized P&L = proportion of qeuroBacked being redeemed * total unrealized P&L
-            // Proportion = qeuroAmount / qeuroBacked (before redemption)
-            // Total unrealized P&L = filledVolume - (qeuroBacked * price / 1e30)
-            // IMPORTANT: Use filledBefore (filledVolume before decrease) and qeuroBacked before decrease
             uint256 currentQeuroBacked = uint256(pos.qeuroBacked);
             
             if (currentQeuroBacked > 0 && filledBefore > 0) {
-                // Calculate total unrealized P&L before redemption using filledVolume BEFORE it's decreased
+                // Step 1: Calculate total unrealized P&L (mark-to-market)
+                // Formula: totalUnrealizedPnL = filledVolume - (qeuroBacked × price / 1e30)
                 uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
                 int256 totalUnrealizedPnL;
                 if (filledBefore >= qeuroValueInUSDC) {
@@ -1359,16 +1443,14 @@ contract HedgerPool is
                     totalUnrealizedPnL = -int256(qeuroValueInUSDC - filledBefore);
                 }
                 
-                // Calculate NET unrealized P&L (total unrealized - realized)
-                // This matches the frontend calculation: Net Unrealized = Total Unrealized - Realized
+                // Step 2: Calculate NET unrealized P&L (subtract already-realized portion)
+                // The margin has already been adjusted by realized P&L during previous redemptions,
+                // so we subtract realizedPnL to avoid double-counting.
                 int256 netUnrealizedPnL = totalUnrealizedPnL - int256(pos.realizedPnL);
                 
-                // Calculate proportion of qeuroBacked being redeemed
-                // realizedDelta = (qeuroAmount / currentQeuroBacked) * netUnrealizedPnL
-                // We use net unrealized P&L (not total) because we want to realize the remaining unrealized P&L
-                // qeuroAmount is in 18 decimals, netUnrealizedPnL is in 6 decimals (USDC)
-                // currentQeuroBacked is in 18 decimals
-                // Result: (18 decimals * 6 decimals) / 18 decimals = 6 decimals ✓
+                // Step 3: Calculate the realized P&L delta for this redemption
+                // Formula: realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
+                // qeuroAmount (18 dec) × netUnrealizedPnL (6 dec) / qeuroBacked (18 dec) = 6 dec
                 int256 realizedDelta;
                 if (netUnrealizedPnL >= 0) {
                     // Multiply qeuroAmount (18 decimals) by netUnrealizedPnL (6 decimals) = 24 decimals

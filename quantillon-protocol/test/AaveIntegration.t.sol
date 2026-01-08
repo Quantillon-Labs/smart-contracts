@@ -36,11 +36,40 @@ contract MockUSDC {
     uint8 public decimals = 6;
     uint256 public totalSupply;
     
+    /**
+     * @notice Mints new USDC tokens to an address
+     * @dev Increases balanceOf mapping and totalSupply
+     * @param to Address to receive the tokens
+     * @param amount Amount of tokens to mint (6 decimals)
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Increases balanceOf[to] and totalSupply
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
         totalSupply += amount;
     }
     
+    /**
+     * @notice Transfers USDC tokens to another address
+     * @dev Transfers tokens from msg.sender to recipient, validates balance
+     * @param to Address to receive the tokens
+     * @param amount Amount of tokens to transfer (6 decimals)
+     * @return Success status
+     * @custom:security No security implications - test mock
+     * @custom:validation Validates sender has sufficient balance
+     * @custom:state-changes Decreases balanceOf[msg.sender], increases balanceOf[to]
+     * @custom:events No events emitted
+     * @custom:errors Reverts with "Insufficient balance" if balance insufficient
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function transfer(address to, uint256 amount) external returns (bool) {
         require(balanceOf[msg.sender] >= amount, "Insufficient balance");
         balanceOf[msg.sender] -= amount;
@@ -48,6 +77,22 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Transfers USDC tokens from one address to another using allowance
+     * @dev Transfers tokens using allowance mechanism, validates balance and allowance
+     * @param from Address to transfer from
+     * @param to Address to receive the tokens
+     * @param amount Amount of tokens to transfer (6 decimals)
+     * @return Success status
+     * @custom:security No security implications - test mock
+     * @custom:validation Validates from has sufficient balance and allowance
+     * @custom:state-changes Decreases balanceOf[from] and allowance, increases balanceOf[to]
+     * @custom:events No events emitted
+     * @custom:errors Reverts with "Insufficient balance" or "Insufficient allowance"
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         require(balanceOf[from] >= amount, "Insufficient balance");
         require(allowance[from][msg.sender] >= amount, "Insufficient allowance");
@@ -57,6 +102,21 @@ contract MockUSDC {
         return true;
     }
     
+    /**
+     * @notice Approves spender to transfer tokens on behalf of sender
+     * @dev Sets allowance mapping for spender
+     * @param spender Address to approve
+     * @param amount Amount of tokens to approve (6 decimals)
+     * @return Success status
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Sets allowance[msg.sender][spender]
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
         return true;
@@ -70,10 +130,37 @@ contract MockUSDC {
 contract MockOracle {
     uint256 public price = 108e16; // 1 EUR = 1.08 USD (18 decimals)
     
+    /**
+     * @notice Returns the current EUR/USD price
+     * @dev Returns stored price value and always marks as valid
+     * @return price Current price (18 decimals)
+     * @return isValid Always returns true for mock
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test mock
+     * @custom:oracle Returns mock EUR/USD price
+     */
     function getEurUsdPrice() external view returns (uint256, bool) {
         return (price, true);
     }
     
+    /**
+     * @notice Sets the mock EUR/USD price
+     * @dev Updates stored price value
+     * @param _price New price value (18 decimals)
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Updates price state variable
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle Updates mock EUR/USD price
+     */
     function setPrice(uint256 _price) external {
         price = _price;
     }
@@ -86,8 +173,47 @@ contract MockOracle {
 contract MockHedgerPool {
     uint256 public totalMargin = 1000000e6; // 1M USDC margin
     
+    /**
+     * @notice Mock function to record user mint (no-op)
+     * @dev Parameters are unused in mock implementation
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes No state changes - no-op
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function recordUserMint(uint256, uint256, uint256) external {}
+    
+    /**
+     * @notice Mock function to record user redeem (no-op)
+     * @dev Parameters are unused in mock implementation
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes No state changes - no-op
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function recordUserRedeem(uint256, uint256, uint256) external {}
+    
+    /**
+     * @notice Returns total effective hedger collateral
+     * @dev Parameter is unused in mock implementation
+     * @return Total margin amount (6 decimals)
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function getTotalEffectiveHedgerCollateral(uint256) external view returns (uint256) {
         return totalMargin;
     }
@@ -103,10 +229,37 @@ contract MockAaveVault {
     uint256 public totalDeployed;
     uint256 public totalWithdrawn;
     
+    /**
+     * @notice Constructor for mock Aave vault
+     * @dev Initializes mock Aave vault with USDC token address
+     * @param _usdc Address of USDC token contract
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Initializes usdc address
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - constructor
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     constructor(address _usdc) {
         usdc = IERC20(_usdc);
     }
     
+    /**
+     * @notice Simulates deploying USDC to Aave
+     * @dev Transfers USDC from caller and tracks deployment metrics
+     * @param amount Amount of USDC to deploy (6 decimals)
+     * @return Amount of aTokens received (1:1 for simplicity)
+     * @custom:security No security implications - test mock
+     * @custom:validation Validates transferFrom succeeds
+     * @custom:state-changes Transfers USDC from caller, updates principalDeposited and totalDeployed
+     * @custom:events No events emitted
+     * @custom:errors Reverts if transferFrom fails
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function deployToAave(uint256 amount) external returns (uint256) {
         // Transfer USDC from caller to this contract (simulating Aave deposit)
         usdc.transferFrom(msg.sender, address(this), amount);
@@ -115,6 +268,20 @@ contract MockAaveVault {
         return amount; // Return aTokens received (1:1 for simplicity)
     }
     
+    /**
+     * @notice Simulates withdrawing USDC from Aave
+     * @dev Withdraws up to available principal and transfers to caller
+     * @param amount Amount of USDC to withdraw (6 decimals)
+     * @return Actual amount withdrawn (may be less than requested)
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes Decreases principalDeposited, increases totalWithdrawn, transfers USDC to caller
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test mock
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function withdrawFromAave(uint256 amount) external returns (uint256) {
         uint256 withdrawAmount = amount > principalDeposited ? principalDeposited : amount;
         if (withdrawAmount > 0) {
@@ -126,6 +293,19 @@ contract MockAaveVault {
         return withdrawAmount;
     }
     
+    /**
+     * @notice Returns current Aave balance
+     * @dev Returns principalDeposited value
+     * @return Current principal deposited in Aave (6 decimals)
+     * @custom:security No security implications - test mock
+     * @custom:validation No validation - test mock
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test mock
+     * @custom:oracle No oracle dependency
+     */
     function getAaveBalance() external view returns (uint256) {
         return principalDeposited;
     }
@@ -155,6 +335,18 @@ contract AaveIntegrationTest is Test {
     // Constants
     uint256 constant INITIAL_USDC = 100_000e6; // 100,000 USDC
     
+    /**
+     * @notice Sets up test environment with all required contracts
+     * @dev Deploys mock contracts, vault, user pool, and configures roles
+     * @custom:security No security implications - test setup
+     * @custom:validation No validation - test setup
+     * @custom:state-changes Deploys and initializes all test contracts
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test setup
+     * @custom:access Public - test setup
+     * @custom:oracle No oracle dependency
+     */
     function setUp() public {
         vm.startPrank(admin);
         
@@ -251,6 +443,18 @@ contract AaveIntegrationTest is Test {
     // DEPLOYMENT TO AAVE TESTS
     // =============================================================================
     
+    /**
+     * @notice Tests that USDC is successfully deployed to Aave during deposit
+     * @dev Verifies that depositing USDC triggers automatic Aave deployment
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Deposits USDC, triggers Aave deployment
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_deployUsdcToAave_success() public {
         // Arrange: First deposit some USDC to vault through minting
         uint256 depositAmount = 10_000e6; // 10,000 USDC
@@ -272,6 +476,18 @@ contract AaveIntegrationTest is Test {
         assertEq(aaveVault.totalDeployed(), vault.totalUsdcInAave(), "AaveVault should have received USDC");
     }
     
+    /**
+     * @notice Tests that vault metrics are updated correctly after Aave deployment
+     * @dev Verifies totalUsdcInAave and totalUsdcAvailable reflect Aave deployment
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Deposits USDC, checks vault metrics
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_deployUsdcToAave_updatesMetrics() public {
         // Arrange: Deposit USDC
         uint256 depositAmount = 10_000e6;
@@ -305,6 +521,18 @@ contract AaveIntegrationTest is Test {
         assertEq(totalUsdcAvailable, totalUsdcHeld + totalUsdcInAave, "totalUsdcAvailable should be sum");
     }
     
+    /**
+     * @notice Tests that getTotalUsdcAvailable includes Aave balance
+     * @dev Verifies that total available USDC calculation includes deployed Aave funds
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Deposits USDC, checks total available
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_getTotalUsdcAvailable_includesAave() public {
         // Arrange: Deposit USDC
         uint256 depositAmount = 10_000e6;
@@ -329,6 +557,18 @@ contract AaveIntegrationTest is Test {
     // REDEMPTION FROM AAVE TESTS
     // =============================================================================
     
+    /**
+     * @notice Tests that QEURO redemption triggers Aave withdrawal
+     * @dev Verifies that redeeming QEURO withdraws USDC from Aave when vault balance is insufficient
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Deposits USDC, redeems QEURO, checks Aave balance decrease
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_redeemQEURO_withdrawsFromAave() public {
         // Arrange: Deposit USDC and get QEURO
         uint256 depositAmount = 10_000e6;
@@ -367,6 +607,18 @@ contract AaveIntegrationTest is Test {
     // ACCESS CONTROL TESTS
     // =============================================================================
     
+    /**
+     * @notice Tests that deployUsdcToAave is restricted to VAULT_OPERATOR_ROLE
+     * @dev Verifies that non-operator cannot call deployUsdcToAave
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Attempts unauthorized call
+     * @custom:events No events emitted
+     * @custom:errors Expects revert on unauthorized access
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_deployUsdcToAave_onlyVaultOperator() public {
         // Arrange: Try to call deployUsdcToAave without VAULT_OPERATOR_ROLE
         vm.startPrank(user);
@@ -378,6 +630,18 @@ contract AaveIntegrationTest is Test {
         vm.stopPrank();
     }
     
+    /**
+     * @notice Tests that updateAaveVault is restricted to GOVERNANCE_ROLE
+     * @dev Verifies that non-governance cannot update Aave vault address
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Attempts unauthorized call
+     * @custom:events No events emitted
+     * @custom:errors Expects revert on unauthorized access
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_updateAaveVault_onlyGovernance() public {
         // Arrange: Try to call updateAaveVault without GOVERNANCE_ROLE
         vm.startPrank(user);
@@ -393,6 +657,18 @@ contract AaveIntegrationTest is Test {
     // EDGE CASE TESTS
     // =============================================================================
     
+    /**
+     * @notice Tests that updateAaveVault rejects zero address
+     * @dev Verifies that setting Aave vault to zero address reverts
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Attempts to set zero address
+     * @custom:events No events emitted
+     * @custom:errors Expects ZeroAddress error
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_deployUsdcToAave_zeroAddress() public {
         // Arrange: Set AaveVault to zero address
         vm.startPrank(admin);
@@ -404,6 +680,18 @@ contract AaveIntegrationTest is Test {
         vm.stopPrank();
     }
     
+    /**
+     * @notice Tests that deposit works when Aave vault is not configured
+     * @dev Verifies that deposits succeed even without Aave vault (deployment silently skipped)
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Deploys vault without Aave, deposits USDC, mints QEURO
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_deposit_worksWithoutAaveVault() public {
         // Arrange: Deploy a new vault without AaveVault set
         vm.startPrank(admin);

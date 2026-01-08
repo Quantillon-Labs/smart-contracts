@@ -279,6 +279,43 @@ function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuro
 |`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
+### recordLiquidationRedeem
+
+Records a liquidation mode redemption - directly reduces hedger margin proportionally
+
+*In liquidation mode, the hedger loses margin proportionally to QEURO redeemed*
+
+*Formula: hedgerLoss = (qeuroAmount / totalSupply) * hedgerMargin*
+
+**Notes:**
+- Vault-only access, validates inputs
+
+- Validates positive amounts
+
+- Reduces hedger margin, records realized P&L
+
+- Emits margin reduction and realized P&L events
+
+- Reverts if no hedger or invalid amounts
+
+- Protected by reentrancy guard
+
+- Vault-only
+
+- Not applicable - uses proportional calculation
+
+
+```solidity
+function recordLiquidationRedeem(uint256 qeuroAmount, uint256 totalQeuroSupply) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO being redeemed (18 decimals)|
+|`totalQeuroSupply`|`uint256`|Total QEURO supply before redemption (18 decimals)|
+
+
 ### claimHedgingRewards
 
 Claims accrued hedging rewards for the caller
@@ -849,9 +886,9 @@ function exitFee() external view returns (uint256);
 
 ### totalMargin
 
-Returns the total margin across all positions
+Returns the total margin for the hedger position
 
-*Total USDC margin held across all active hedge positions (6 decimals)*
+*Total USDC margin held by the hedger position (6 decimals)*
 
 **Notes:**
 - No security validations required - view function
@@ -883,9 +920,9 @@ function totalMargin() external view returns (uint256);
 
 ### totalExposure
 
-Returns the total exposure across all positions
+Returns the total exposure for the hedger position
 
-*Total USD exposure across all active hedge positions*
+*Total USD exposure of the hedger position*
 
 **Notes:**
 - No security validations required - view function
@@ -947,40 +984,6 @@ function hasActiveHedger() external view returns (bool);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`bool`|bool True if there is an active hedger|
-
-
-### nextPositionId
-
-Returns the next position ID to be assigned
-
-*Counter for generating unique position IDs*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query next position ID
-
-- No oracle dependencies
-
-
-```solidity
-function nextPositionId() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Next position ID|
 
 
 ### eurInterestRate
@@ -1380,40 +1383,6 @@ function hedgerLastRewardBlock(address hedger) external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|uint256 Block number of last reward calculation|
-
-
-### MAX_POSITIONS_PER_HEDGER
-
-Returns the maximum positions per hedger
-
-*Maximum number of positions a single hedger can have open simultaneously*
-
-**Notes:**
-- No security validations required - view function
-
-- No input validation required - view function
-
-- No state changes - view function only
-
-- No events emitted
-
-- No errors thrown - safe view function
-
-- Not applicable - view function
-
-- Public - anyone can query maximum positions per hedger
-
-- No oracle dependencies
-
-
-```solidity
-function MAX_POSITIONS_PER_HEDGER() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Maximum positions per hedger|
 
 
 ### BLOCKS_PER_DAY

@@ -9,11 +9,12 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-/**
- * @title MockAggregatorV3
- * @notice Mock Chainlink price feed for testing
- */
-contract MockAggregatorV3 is AggregatorV3Interface {
+    /**
+     * @title MockAggregatorV3
+     * @notice Mock Chainlink price feed for testing
+     * @dev Implements AggregatorV3Interface for testing OracleRouter functionality
+     */
+    contract MockAggregatorV3 is AggregatorV3Interface {
     int256 public price;
     uint8 public decimals_;
     uint256 public updatedAt;
@@ -21,6 +22,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     
     /**
      * @notice Constructor for mock aggregator
+     * @dev Initializes mock Chainlink aggregator with default price
      * @param _decimals Number of decimals for price representation
      * @custom:security No security implications - test mock
      * @custom:validation No validation - test mock
@@ -39,6 +41,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     
     /**
      * @notice Sets the mock price
+     * @dev Updates price, increments roundId, and updates timestamp
      * @param _price New price value
      * @custom:security No security implications - test mock
      * @custom:validation No validation - test mock
@@ -57,6 +60,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     
     /**
      * @notice Returns latest round data
+     * @dev Returns mock round data with current price and timestamps
      * @return roundId Latest round ID
      * @return price Latest price
      * @return startedAt Timestamp when round started
@@ -77,6 +81,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     
     /**
      * @notice Returns number of decimals
+     * @dev Returns the decimals value set in constructor
      * @return Number of decimals for price
      * @custom:security No security implications - test mock
      * @custom:validation No validation - test mock
@@ -93,6 +98,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     
     /**
      * @notice Returns feed description
+     * @dev Returns hardcoded description string for mock feed
      * @return Description string
      * @custom:security No security implications - test mock
      * @custom:validation No validation - test mock
@@ -109,6 +115,7 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     
     /**
      * @notice Returns feed version
+     * @dev Returns hardcoded version number for mock feed
      * @return Version number
      * @custom:security No security implications - test mock
      * @custom:validation No validation - test mock
@@ -228,6 +235,18 @@ contract OracleRouterTest is Test {
         AccessControlUpgradeable(address(storkOracle)).grantRole(oracleManagerRole, address(router));
     }
     
+    /**
+     * @notice Tests that router is properly initialized with correct roles and oracle addresses
+     * @dev Verifies admin roles, oracle addresses, active oracle type, and treasury address
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_Initialization() public view {
         assertEq(router.hasRole(router.DEFAULT_ADMIN_ROLE(), admin), true);
         assertEq(router.hasRole(router.ORACLE_MANAGER_ROLE(), admin), true);
@@ -238,6 +257,18 @@ contract OracleRouterTest is Test {
         assertEq(router.treasury(), treasury);
     }
     
+    /**
+     * @notice Tests that router delegates EUR/USD price to Chainlink oracle (default)
+     * @dev Verifies router returns Chainlink price when Chainlink is active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle Delegates to Chainlink oracle
+     */
     function test_GetEurUsdPrice_Chainlink() public {
         // Router should delegate to Chainlink (default)
         (uint256 price, bool isValid) = router.getEurUsdPrice();
@@ -246,6 +277,18 @@ contract OracleRouterTest is Test {
         assertEq(price, 1.08e18); // Chainlink price
     }
     
+    /**
+     * @notice Tests that router delegates EUR/USD price to Stork oracle after switch
+     * @dev Verifies router returns Stork price when Stork is active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Switches active oracle to Stork
+     * @custom:events Emits OracleSwitched event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle Delegates to Stork oracle
+     */
     function test_GetEurUsdPrice_Stork() public {
         // Switch to Stork
         vm.prank(admin);
@@ -258,6 +301,18 @@ contract OracleRouterTest is Test {
         assertEq(price, 1.10e18); // Stork price
     }
     
+    /**
+     * @notice Tests switching active oracle from Chainlink to Stork
+     * @dev Verifies oracle switch updates activeOracle and emits event
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Updates activeOracle to Stork
+     * @custom:events Emits OracleSwitched event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle Switches from Chainlink to Stork oracle
+     */
     function test_SwitchOracle_ChainlinkToStork() public {
         assertEq(uint256(router.activeOracle()), uint256(OracleRouter.OracleType.CHAINLINK));
         
@@ -277,6 +332,18 @@ contract OracleRouterTest is Test {
         assertEq(price, 1.10e18); // Stork price
     }
     
+    /**
+     * @notice Tests switching active oracle from Stork back to Chainlink
+     * @dev Verifies oracle switch updates activeOracle correctly
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Updates activeOracle to Chainlink
+     * @custom:events Emits OracleSwitched event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle Switches from Stork to Chainlink oracle
+     */
     function test_SwitchOracle_StorkToChainlink() public {
         // First switch to Stork
         vm.prank(admin);
@@ -293,6 +360,18 @@ contract OracleRouterTest is Test {
         assertEq(price, 1.08e18); // Chainlink price
     }
     
+    /**
+     * @notice Tests that router returns USDC/USD price from active oracle
+     * @dev Verifies router delegates USDC/USD price query to active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle Delegates to active oracle for USDC/USD price
+     */
     function test_GetUsdcUsdPrice() public view {
         (uint256 price, bool isValid) = router.getUsdcUsdPrice();
         assertGt(price, 0);
@@ -300,6 +379,18 @@ contract OracleRouterTest is Test {
         assertEq(price, 1.00e18);
     }
     
+    /**
+     * @notice Tests that router returns oracle health status
+     * @dev Verifies router delegates health check to active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle Delegates to active oracle for health check
+     */
     function test_GetOracleHealth() public {
         (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) = router.getOracleHealth();
         assertTrue(isHealthy);
@@ -307,6 +398,18 @@ contract OracleRouterTest is Test {
         assertTrue(usdcUsdFresh);
     }
     
+    /**
+     * @notice Tests that router returns detailed EUR/USD price information
+     * @dev Verifies router delegates detailed price query to active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle Delegates to active oracle for detailed price info
+     */
     function test_GetEurUsdDetails() public {
         (uint256 currentPrice, uint256 lastValidPrice, uint256 lastUpdate, bool isStale, bool withinBounds) = 
             router.getEurUsdDetails();
@@ -317,6 +420,18 @@ contract OracleRouterTest is Test {
         assertTrue(withinBounds);
     }
     
+    /**
+     * @notice Tests that router returns oracle configuration parameters
+     * @dev Verifies router delegates config query to active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle Delegates to active oracle for configuration
+     */
     function test_GetOracleConfig() public view {
         (uint256 minPrice, uint256 maxPrice, uint256 maxStaleness, uint256 usdcTolerance, bool circuitBreakerActive) = 
             router.getOracleConfig();
@@ -327,6 +442,18 @@ contract OracleRouterTest is Test {
         assertFalse(circuitBreakerActive);
     }
     
+    /**
+     * @notice Tests that router returns price feed addresses and decimals
+     * @dev Verifies router delegates feed address query to active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle Delegates to active oracle for feed addresses
+     */
     function test_GetPriceFeedAddresses() public view {
         (address eurUsdFeedAddress, address usdcUsdFeedAddress, uint8 eurUsdDecimals, uint8 usdcUsdDecimals) = 
             router.getPriceFeedAddresses();
@@ -336,6 +463,18 @@ contract OracleRouterTest is Test {
         assertGt(usdcUsdDecimals, 0);
     }
     
+    /**
+     * @notice Tests that router checks price feed connectivity
+     * @dev Verifies router delegates connectivity check to active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle Delegates to active oracle for connectivity check
+     */
     function test_CheckPriceFeedConnectivity() public view {
         (bool eurUsdConnected, bool usdcUsdConnected, uint80 eurUsdLatestRound, uint80 usdcUsdLatestRound) = 
             router.checkPriceFeedConnectivity();
@@ -345,6 +484,18 @@ contract OracleRouterTest is Test {
         assertGt(usdcUsdLatestRound, 0);
     }
     
+    /**
+     * @notice Tests that router can update oracle addresses
+     * @dev Verifies router updates chainlinkOracle and storkOracle addresses
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Updates oracle addresses
+     * @custom:events Emits oracle address update events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle Updates Chainlink and Stork oracle addresses
+     */
     function test_UpdateOracleAddresses() public {
         MockChainlinkOracle newChainlink = new MockChainlinkOracle();
         newChainlink.initialize(admin, address(eurUsdFeed), address(usdcUsdFeed), treasury);
@@ -359,6 +510,18 @@ contract OracleRouterTest is Test {
         assertEq(address(router.storkOracle()), address(newStork));
     }
     
+    /**
+     * @notice Tests that router can update price bounds via delegation
+     * @dev Verifies router delegates price bound update to active oracle
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Updates price bounds on active oracle
+     * @custom:events Emits price bound update events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle Delegates price bound update to active oracle
+     */
     function test_UpdatePriceBounds() public {
         // updatePriceBounds requires ORACLE_MANAGER_ROLE on the underlying oracle
         // Admin should already have this role from initialization
@@ -374,6 +537,18 @@ contract OracleRouterTest is Test {
         // because the router delegates to the oracle
     }
     
+    /**
+     * @notice Tests that router can be paused
+     * @dev Verifies pause functionality works correctly
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Sets paused state to true
+     * @custom:events Emits Paused event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_Pause() public {
         vm.prank(admin);
         router.pause();
@@ -381,6 +556,18 @@ contract OracleRouterTest is Test {
         assertTrue(router.paused());
     }
     
+    /**
+     * @notice Tests that router can be unpaused
+     * @dev Verifies unpause functionality works correctly
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Sets paused state to false
+     * @custom:events Emits Unpaused event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_Unpause() public {
         vm.prank(admin);
         router.pause();
@@ -391,6 +578,18 @@ contract OracleRouterTest is Test {
         assertFalse(router.paused());
     }
     
+    /**
+     * @notice Tests that router can recover ETH to treasury
+     * @dev Verifies ETH recovery functionality transfers ETH to treasury
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Transfers ETH from router to treasury
+     * @custom:events Emits ETH recovery events
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_RecoverETH() public {
         vm.deal(address(router), 1 ether);
         
@@ -402,6 +601,18 @@ contract OracleRouterTest is Test {
         assertEq(treasury.balance, balanceBefore + 1 ether);
     }
     
+    /**
+     * @notice Tests that router returns current active oracle type
+     * @dev Verifies getActiveOracle returns correct oracle type after switches
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Switches active oracle
+     * @custom:events Emits OracleSwitched event
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle Returns active oracle type
+     */
     function test_GetActiveOracle() public {
         assertEq(uint256(router.getActiveOracle()), uint256(OracleRouter.OracleType.CHAINLINK));
         
@@ -411,24 +622,72 @@ contract OracleRouterTest is Test {
         assertEq(uint256(router.getActiveOracle()), uint256(OracleRouter.OracleType.STORK));
     }
     
+    /**
+     * @notice Tests that router returns Chainlink and Stork oracle addresses
+     * @dev Verifies getOracleAddresses returns both oracle contract addresses
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - view function
+     * @custom:access Public - test function
+     * @custom:oracle Returns oracle contract addresses
+     */
     function test_GetOracleAddresses() public view {
         (address chainlinkAddress, address storkAddress) = router.getOracleAddresses();
         assertEq(chainlinkAddress, address(chainlinkOracle));
         assertEq(storkAddress, address(storkOracle));
     }
     
+    /**
+     * @notice Tests that non-admin cannot switch oracle
+     * @dev Verifies access control prevents unauthorized oracle switching
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Attempts unauthorized oracle switch
+     * @custom:events No events emitted
+     * @custom:errors Expects revert on unauthorized access
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_Revert_NonAdminCannotSwitchOracle() public {
         vm.prank(user);
         vm.expectRevert();
         router.switchOracle(OracleRouter.OracleType.STORK);
     }
     
+    /**
+     * @notice Tests that switching to the same oracle reverts
+     * @dev Verifies router prevents redundant oracle switches
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Attempts to switch to current oracle
+     * @custom:events No events emitted
+     * @custom:errors Expects revert with "Already using this oracle"
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Restricted to admin role
+     * @custom:oracle No oracle dependency
+     */
     function test_Revert_CannotSwitchToSameOracle() public {
         vm.prank(admin);
         vm.expectRevert("OracleRouter: Already using this oracle");
         router.switchOracle(OracleRouter.OracleType.CHAINLINK); // Already using Chainlink
     }
     
+    /**
+     * @notice Tests that initialize cannot be called on already initialized router
+     * @dev Verifies that re-initialization is prevented
+     * @custom:security No security implications - test function
+     * @custom:validation No validation - test function
+     * @custom:state-changes Attempts to re-initialize router
+     * @custom:events No events emitted
+     * @custom:errors Expects revert with InvalidInitialization error
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
     function test_Revert_InitializeCalledOnRouter() public {
         // Router is already initialized via proxy, so calling initialize again will revert with InvalidInitialization
         vm.expectRevert();

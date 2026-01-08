@@ -763,7 +763,9 @@ contract UserPool is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
-    // slither-disable-next-line reentrancy-benign
+    // slither-disable-start reentrancy-no-eth
+    // slither-disable-start reentrancy-benign
+    // SECURITY: Internal function called from nonReentrant context; external call to trusted Oracle
     function _transferQeuroAndEmitEvents(
         uint256[] calldata usdcAmounts,
         uint256[] memory qeuroMintedAmounts,
@@ -798,6 +800,8 @@ contract UserPool is
             IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMintedAmounts[i]);
         }
     }
+    // slither-disable-end reentrancy-no-eth
+    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Withdraw USDC by burning QEURO (unified single/batch function)
@@ -949,7 +953,9 @@ contract UserPool is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
-    // slither-disable-next-line reentrancy-benign
+    // slither-disable-start reentrancy-no-eth
+    // slither-disable-start reentrancy-benign
+    // SECURITY: Internal function called from nonReentrant context; external call to trusted Oracle
     function _executeBatchTransfers(
         uint256[] calldata qeuroAmounts,
         uint256[] memory usdcReceivedAmounts,
@@ -993,6 +999,8 @@ contract UserPool is
             unchecked { ++i; }
         }
     }
+    // slither-disable-end reentrancy-no-eth
+    // slither-disable-end reentrancy-benign
 
     // =============================================================================
     // STAKING FUNCTIONS

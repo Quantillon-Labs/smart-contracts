@@ -189,41 +189,6 @@ function validatePositionOwner(address owner, address caller) internal pure;
 |`caller`|`address`|The address attempting the operation|
 
 
-### validatePositionCount
-
-Validates position count limits to prevent system overload
-
-*Enforces maximum positions per user for gas and complexity management*
-
-**Notes:**
-- Prevents system overload through excessive positions
-
-- Ensures position count stays within system limits
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws TooManyPositions if count exceeds maximum
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
-
-
-```solidity
-function validatePositionCount(uint256 count, uint256 max) internal pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`count`|`uint256`|The current position count|
-|`max`|`uint256`|The maximum allowed positions|
-
-
 ### validatePositionParams
 
 Validates all position parameters against maximum limits

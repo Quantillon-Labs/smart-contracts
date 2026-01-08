@@ -208,7 +208,7 @@ contract HedgerVaultRegressionTest is Test {
         vm.prank(hedger);
         usdc.approve(address(hedgerPool), type(uint256).max);
         
-        // Whitelist hedger
+        // Set as single hedger
         vm.prank(admin);
         hedgerPool.setSingleHedger(hedger);
     }
@@ -605,12 +605,12 @@ contract HedgerVaultRegressionTest is Test {
     }
     
     /**
-     * @notice Test hedger whitelist still works correctly
-     * @dev Verifies that hedger whitelist functionality remains intact
-     * @custom:security Tests hedger whitelist functionality integrity
-     * @custom:validation Ensures whitelist functionality works correctly
-     * @custom:state-changes Whitelists hedger and opens position
-     * @custom:events Expects whitelist and position opening events
+     * @notice Test single hedger authorization still works correctly
+     * @dev Verifies that single hedger model functionality remains intact
+     * @custom:security Tests single hedger authorization functionality
+     * @custom:validation Ensures only authorized hedger can open positions
+     * @custom:state-changes Sets single hedger and opens position
+     * @custom:events Expects position opening events
      * @custom:errors None expected
      * @custom:reentrancy Not applicable - test function
      * @custom:access Tests governance role access
@@ -626,19 +626,19 @@ contract HedgerVaultRegressionTest is Test {
         vm.prank(newHedger);
         usdc.approve(address(hedgerPool), type(uint256).max);
         
-        // Non-whitelisted hedger should fail
+        // Non-authorized hedger should fail
         vm.prank(newHedger);
         vm.expectRevert();
         hedgerPool.enterHedgePosition(1000e6, 5);
         
-        // Whitelist hedger
+        // Set as single hedger
         vm.prank(admin);
         hedgerPool.setSingleHedger(newHedger);
         
-        // Whitelisted hedger should succeed
+        // Authorized hedger should succeed
         vm.prank(newHedger);
         uint256 positionId = hedgerPool.enterHedgePosition(1000e6, 5);
-        assertGt(positionId, 0, "Whitelisted hedger should be able to open position");
+        assertGt(positionId, 0, "Authorized hedger should be able to open position");
     }
     
     // =============================================================================

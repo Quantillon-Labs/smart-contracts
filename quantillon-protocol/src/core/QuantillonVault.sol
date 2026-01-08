@@ -136,12 +136,12 @@ contract QuantillonVault is
     /// @dev Prevents manipulation within the same block
     uint256 private constant MIN_BLOCKS_BETWEEN_UPDATES = 1;
     
-    // Collateralization ratio constants (in 18 decimals format)
+    // Collateralization ratio constants
     // Fixes Slither ID-31-34: Replace magic numbers with named constants
-    uint256 private constant MIN_COLLATERALIZATION_RATIO_FOR_MINTING = 105e18; // 105.000000%
-    uint256 private constant CRITICAL_COLLATERALIZATION_RATIO = 101e18; // 101.000000%
-    uint256 private constant MIN_ALLOWED_COLLATERALIZATION_RATIO = 101e18; // 101.000000% - minimum allowed value
-    uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18; // 100.000000% - minimum allowed critical ratio
+    uint256 private constant MIN_COLLATERALIZATION_RATIO_FOR_MINTING = 105e18; // 105.000000% (18 decimals)
+    uint256 private constant CRITICAL_COLLATERALIZATION_RATIO_BPS = 10100; // 101.000000% (basis points)
+    uint256 private constant MIN_ALLOWED_COLLATERALIZATION_RATIO = 101e18; // 101.000000% - minimum allowed value (18 decimals)
+    uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18; // 100.000000% - minimum allowed critical ratio (18 decimals)
 
 
     // =============================================================================
@@ -480,7 +480,8 @@ contract QuantillonVault is
         
         // Default collateralization parameters (in 18 decimals format for maximum precision)
         minCollateralizationRatioForMinting = MIN_COLLATERALIZATION_RATIO_FOR_MINTING;  // 105.000000% - minimum ratio for minting
-        criticalCollateralizationRatio = CRITICAL_COLLATERALIZATION_RATIO;               // 101.000000% - critical ratio for liquidation
+        // Convert CRITICAL_COLLATERALIZATION_RATIO_BPS (10100 bps) to 18 decimals: 10100 / 10000 * 1e18 = 101 * 1e16
+        criticalCollateralizationRatio = (CRITICAL_COLLATERALIZATION_RATIO_BPS * 1e18) / 10000;   // 101.000000% - critical ratio for liquidation
         
         // Initialize price tracking for flash loan protection
         lastValidEurUsdPrice = 0;       // Will be set on first price fetch
@@ -691,7 +692,7 @@ contract QuantillonVault is
         uint256 collateralizationRatioBps = currentRatio18Dec / 1e16;
         
         // Route to liquidation mode if CR <= 101%
-        if (collateralizationRatioBps <= 10100 && collateralizationRatioBps > 0) {
+        if (collateralizationRatioBps <= CRITICAL_COLLATERALIZATION_RATIO_BPS && collateralizationRatioBps > 0) {
             _redeemLiquidationMode(qeuroAmount, minUsdcOut, collateralizationRatioBps);
             return;
         }
@@ -941,7 +942,7 @@ contract QuantillonVault is
         // Check protocol is in liquidation mode (CR <= 101%)
         uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
         uint256 collateralizationRatioBps = currentRatio18Dec / 1e16;
-        if (collateralizationRatioBps > 10100) revert CommonErrorLibrary.NotInLiquidationMode();
+        if (collateralizationRatioBps > CRITICAL_COLLATERALIZATION_RATIO_BPS) revert CommonErrorLibrary.NotInLiquidationMode();
         
         // Get total QEURO supply
         uint256 totalSupply = qeuro.totalSupply();
@@ -1758,7 +1759,7 @@ contract QuantillonVault is
         totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
         
         // Liquidation mode when CR <= 101% (10100 bps)
-        isInLiquidation = collateralizationRatioBps <= 10100;
+        isInLiquidation = collateralizationRatioBps <= CRITICAL_COLLATERALIZATION_RATIO_BPS;
     }
 
     /**

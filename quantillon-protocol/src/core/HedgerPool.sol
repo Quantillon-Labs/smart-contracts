@@ -131,6 +131,7 @@ contract HedgerPool is
     uint256 public constant MAX_ENTRY_PRICE = MAX_UINT96_VALUE;
     uint256 public constant MAX_LEVERAGE = type(uint16).max;
     uint256 public constant MAX_MARGIN_RATIO = 5000; // 50% maximum margin ratio (2x minimum leverage)
+    uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 500; // 5% minimum margin ratio (20x max leverage) - basis points
     uint128 public constant MAX_UINT128_VALUE = type(uint128).max;
     uint256 public constant MAX_TOTAL_MARGIN = MAX_UINT128_VALUE;
     uint256 public constant MAX_TOTAL_EXPOSURE = MAX_UINT128_VALUE;
@@ -235,7 +236,7 @@ contract HedgerPool is
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
 
-        coreParams.minMarginRatio = 500;  // 5% minimum margin ratio (20x max leverage)
+        coreParams.minMarginRatio = uint64(DEFAULT_MIN_MARGIN_RATIO_BPS);  // 5% minimum margin ratio (20x max leverage)
         coreParams.maxLeverage = 20;      // 20x maximum leverage (5% minimum margin)
         coreParams.entryFee = 0;
         coreParams.exitFee = 0;
@@ -867,7 +868,7 @@ contract HedgerPool is
      * @param minRatio New minimum margin ratio in basis points (e.g., 500 = 5%)
      * @param maxLev New maximum leverage multiplier (e.g., 20 = 20x)
      * @custom:security Validates governance role and parameter constraints
-     * @custom:validation Validates minRatio >= 500, maxLev <= 20
+     * @custom:validation Validates minRatio >= DEFAULT_MIN_MARGIN_RATIO_BPS, maxLev <= 20
      * @custom:state-changes Updates minMarginRatio and maxLeverage state variables
      * @custom:events No events emitted for parameter updates
      * @custom:errors Throws ConfigValueTooLow, ConfigValueTooHigh
@@ -877,7 +878,7 @@ contract HedgerPool is
      */
     function updateHedgingParameters(uint256 minRatio, uint256 maxLev) external {
         _validateRole(GOVERNANCE_ROLE);
-        if (minRatio < 500) revert CommonErrorLibrary.ConfigValueTooLow();
+        if (minRatio < DEFAULT_MIN_MARGIN_RATIO_BPS) revert CommonErrorLibrary.ConfigValueTooLow();
         if (maxLev > 20) revert CommonErrorLibrary.ConfigValueTooHigh();
         coreParams.minMarginRatio = uint64(minRatio);
         coreParams.maxLeverage = uint16(maxLev);

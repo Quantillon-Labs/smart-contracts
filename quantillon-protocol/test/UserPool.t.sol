@@ -1204,7 +1204,8 @@ contract UserPoolTestSuite is Test {
         userPool.deposit(amounts, minOuts);
         
         // Update QEURO totalSupply mock to reflect the deposit
-        uint256 netAmount = DEPOSIT_AMOUNT * (10000 - userPool.depositFee()) / 10000;
+        // Note: Deposit fees are handled by QuantillonVault, not UserPool
+        uint256 netAmount = DEPOSIT_AMOUNT;
         vm.mockCall(
             mockQEURO,
             abi.encodeWithSelector(IERC20.totalSupply.selector),
@@ -1250,7 +1251,7 @@ contract UserPoolTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function testView_WithValidParameters_ShouldGetStakingAPY() public view {
-        (uint256 stakingAPY, , , , , , ) = userPool.getPoolConfiguration();
+        (uint256 stakingAPY, , , , ) = userPool.getPoolConfiguration();
         assertGe(stakingAPY, 0);
     }
     
@@ -1267,7 +1268,7 @@ contract UserPoolTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function testView_WithValidParameters_ShouldGetDepositAPY() public view {
-        (, uint256 depositAPY, , , , , ) = userPool.getPoolConfiguration();
+        (, uint256 depositAPY, , , ) = userPool.getPoolConfiguration();
         assertGe(depositAPY, 0);
     }
     
@@ -1376,16 +1377,12 @@ contract UserPoolTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_Governance_SetPoolFees() public {
-        uint256 newDepositFee = 20; // 0.2%
-        uint256 newWithdrawalFee = 30; // 0.3%
+    function test_Governance_SetPerformanceFee() public {
         uint256 newPerformanceFee = 1500; // 15%
         
         vm.prank(governance);
-        userPool.setPoolFees(newDepositFee, newWithdrawalFee, newPerformanceFee);
+        userPool.setPerformanceFee(newPerformanceFee);
         
-        assertEq(userPool.depositFee(), newDepositFee);
-        assertEq(userPool.withdrawalFee(), newWithdrawalFee);
         assertEq(userPool.performanceFee(), newPerformanceFee);
     }
     
@@ -1401,10 +1398,10 @@ contract UserPoolTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_Governance_SetPoolFeesByNonGovernance_Revert() public {
+    function test_Governance_SetPerformanceFeeByNonGovernance_Revert() public {
         vm.prank(user1);
         vm.expectRevert();
-        userPool.setPoolFees(20, 30, 1500);
+        userPool.setPerformanceFee(1500);
     }
 
     // =============================================================================
@@ -1732,38 +1729,6 @@ contract UserPoolTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_Yield_DistributeYield() public {
-        uint256 yieldAmount = 1000 * 1e6; // 1000 USDC
-        
-        // Call distributeYield from the yieldShift address (which is mockYieldShift)
-        vm.prank(mockYieldShift);
-        userPool.distributeYield(yieldAmount);
-        
-        // Verify the event was emitted
-        // Note: The function doesn't actually distribute yield anymore (moved to stQEURO)
-        // but it should still emit the event for backward compatibility
-        // We can't easily test event emission with vm.mockCall, but the function should not revert
-    }
-
-    /**
-     * @notice Test distribute yield by non-yield shift
-     * @dev Verifies that only yield shift can distribute yield
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Yield_DistributeYieldByNonYieldShift_Revert() public {
-        uint256 yieldAmount = 1000 * 1e6; // 1000 USDC
-        
-        vm.prank(user1);
-        vm.expectRevert();
-        userPool.distributeYield(yieldAmount);
-    }
 
     /**
      * @notice Test get user info functionality
@@ -1825,8 +1790,8 @@ contract UserPoolTestSuite is Test {
         userPool.deposit(amounts, minOuts);
         
         // Update QEURO totalSupply mock to reflect the deposit
-        // The QEURO minted is based on the net amount after fees
-        uint256 netAmount = DEPOSIT_AMOUNT * (10000 - userPool.depositFee()) / 10000;
+        // The QEURO minted - deposit fees are handled by QuantillonVault
+        uint256 netAmount = DEPOSIT_AMOUNT;
         vm.mockCall(
             mockQEURO,
             abi.encodeWithSelector(IERC20.totalSupply.selector),
@@ -1935,7 +1900,8 @@ contract UserPoolTestSuite is Test {
         userPool.deposit(amounts, minOuts);
         
         // Update QEURO totalSupply mock to reflect the deposit
-        uint256 netAmount = DEPOSIT_AMOUNT * (10000 - userPool.depositFee()) / 10000;
+        // Note: Deposit fees are handled by QuantillonVault, not UserPool
+        uint256 netAmount = DEPOSIT_AMOUNT;
         vm.mockCall(
             mockQEURO,
             abi.encodeWithSelector(IERC20.totalSupply.selector),
@@ -1998,7 +1964,7 @@ contract UserPoolTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetStakingAPY() public view {
-        (uint256 stakingAPY, , , , , , ) = userPool.getPoolConfiguration();
+        (uint256 stakingAPY, , , , ) = userPool.getPoolConfiguration();
         assertGe(stakingAPY, 0);
     }
 
@@ -2015,7 +1981,7 @@ contract UserPoolTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetDepositAPY() public view {
-        (, uint256 depositAPY, , , , , ) = userPool.getPoolConfiguration();
+        (, uint256 depositAPY, , , ) = userPool.getPoolConfiguration();
         assertGe(depositAPY, 0);
     }
 
@@ -2032,10 +1998,8 @@ contract UserPoolTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetPoolConfig() public view {
-        (, , uint256 minStakeAmount_, uint256 unstakingCooldown_, uint256 depositFee_, uint256 withdrawalFee_, uint256 performanceFee_) = userPool.getPoolConfiguration();
+        (, , uint256 minStakeAmount_, uint256 unstakingCooldown_, uint256 performanceFee_) = userPool.getPoolConfiguration();
         
-        assertGe(depositFee_, 0);
-        assertGe(withdrawalFee_, 0);
         assertGe(performanceFee_, 0);
         assertGe(minStakeAmount_, 0);
         assertGe(unstakingCooldown_, 0);

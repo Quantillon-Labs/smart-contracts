@@ -173,18 +173,10 @@ contract UserPool is
     uint256 public unstakingCooldown;       // Cooldown period for unstaking
     
     // Fee configuration parameters
-    /// @notice Fee charged on deposits (in basis points)
-    /// @dev Example: 10 = 0.1% deposit fee
-    /// @dev Revenue source for the protocol
-    uint256 public depositFee;              // Deposit fee in basis points
-    
-    /// @notice Fee charged on withdrawals (in basis points)
-    /// @dev Example: 10 = 0.1% withdrawal fee
-    /// @dev Revenue source for the protocol
-    uint256 public withdrawalFee;           // Withdrawal fee in basis points
+    // Note: Mint and redemption fees are handled by QuantillonVault, not UserPool
     
     /// @notice Fee charged on yield distributions (in basis points)
-    /// @dev Example: 200 = 2% performance fee
+    /// @dev Example: 1000 = 10% performance fee on staking rewards
     /// @dev Revenue source for the protocol
     uint256 public performanceFee;          // Performance fee in basis points
 
@@ -501,9 +493,8 @@ contract UserPool is
         minStakeAmount = 100e18;    // 100 QEURO minimum
         unstakingCooldown = 7 days; // 7 days cooldown
         
-        depositFee = 0;             // No deposit fee - Vault handles minting fees
-        withdrawalFee = 0;          // No withdrawal fee - Vault handles redemption fees
-        performanceFee = 1000;      // 10% performance fee
+        // Mint and redemption fees are handled by QuantillonVault
+        performanceFee = 1000;      // 10% performance fee on staking rewards
         
         // Initialize yield tracking variables to prevent uninitialized state variable warnings
         accumulatedYieldPerShare = 0;
@@ -636,13 +627,13 @@ contract UserPool is
         view 
         returns (uint256[] memory netAmounts, uint256 totalNetAmount) 
     {
-        uint256 depositFee_ = depositFee;
+        // Note: Deposit fees are handled by QuantillonVault, not UserPool
         netAmounts = new uint256[](usdcAmounts.length);
         
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
-            uint256 fee = usdcAmount.percentageOf(depositFee_);
-            uint256 netAmount = usdcAmount - fee;
+            // No UserPool deposit fee - vault handles all fees
+            uint256 netAmount = usdcAmount;
             netAmounts[i] = netAmount;
             totalNetAmount += netAmount;
         }
@@ -874,22 +865,14 @@ contract UserPool is
         // Note: No need to check user.qeuroBalance since QEURO is held in user's wallet
         // The user must have QEURO in their wallet to call this function
         
-        // Calculate and update total deposits
-        uint256 totalEstimatedNetAmount = 0;
-        uint256 withdrawalFee_ = withdrawalFee;
-        for (uint256 i = 0; i < length;) {
-            uint256 estimatedFee = minUsdcOuts[i].percentageOf(withdrawalFee_);
-            totalEstimatedNetAmount += minUsdcOuts[i] - estimatedFee;
-            unchecked { ++i; }
-        }
-        // Note: We don't update totalDeposits during batch withdrawal for the same reasons
-        // as single withdrawal - oracle rate changes make accurate tracking impossible
+        // Note: We don't update totalDeposits during withdrawal - oracle rate changes
+        // make accurate tracking impossible. Fees are handled by QuantillonVault.
         
         // Transfer QEURO tokens using unified function
         _validateAndTransferTokens(qeuroAmounts, IERC20(address(qeuro)), true);
         
-        // Process vault redemptions
-        _processVaultRedemptions(qeuroAmounts, minUsdcOuts, usdcReceivedAmounts, withdrawalFee_);
+        // Process vault redemptions (vault handles all fees)
+        _processVaultRedemptions(qeuroAmounts, minUsdcOuts, usdcReceivedAmounts);
     }
     
     /**
@@ -897,9 +880,9 @@ contract UserPool is
      * @param qeuroAmounts Array of QEURO amounts to redeem
      * @param minUsdcOuts Array of minimum USDC amounts expected
      * @param usdcReceivedAmounts Array to store received USDC amounts
-     * @param withdrawalFee_ Cached withdrawal fee percentage
      * @dev Internal helper to reduce stack depth
      * @dev OPTIMIZATION: Uses single vault call with total amounts to avoid external calls in loop
+     * @dev NOTE: All fees are handled by QuantillonVault, not UserPool
      * @custom:security Validates vault redemption amounts and minimum outputs
      * @custom:validation Validates all amounts are positive and within limits
      * @custom:state-changes Processes vault redemptions and updates received amounts
@@ -912,8 +895,7 @@ contract UserPool is
     function _processVaultRedemptions(
         uint256[] calldata qeuroAmounts,
         uint256[] calldata minUsdcOuts,
-        uint256[] memory usdcReceivedAmounts,
-        uint256 withdrawalFee_
+        uint256[] memory usdcReceivedAmounts
     ) internal {
         uint256 length = qeuroAmounts.length;
         
@@ -928,12 +910,12 @@ contract UserPool is
         }
         
         // Single vault call instead of multiple calls in loop
+        // The vault handles all fee calculations and deductions
         vault.redeemQEURO(totalQeuroAmount, totalMinUsdcOut);
         
-        // Calculate individual amounts after single redemption
+        // Store the minUsdcOuts as received amounts (vault already applied fees)
         for (uint256 i = 0; i < length;) {
-            uint256 fee = minUsdcOuts[i].percentageOf(withdrawalFee_);
-            usdcReceivedAmounts[i] = minUsdcOuts[i] - fee;
+            usdcReceivedAmounts[i] = minUsdcOuts[i];
             unchecked { ++i; }
         }
     }
@@ -1233,26 +1215,6 @@ contract UserPool is
     // YIELD DISTRIBUTION
     // =============================================================================
 
-    /**
-     * @notice Distribute yield to stakers (called by YieldShift contract)
-     * @dev This function is deprecated - yield now goes to stQEURO
-     * @param yieldAmount Amount of yield to distribute (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function distributeYield(uint256 yieldAmount) external {
-        CommonValidationLibrary.validateCondition(msg.sender == address(yieldShift), "authorization");
-        
-        // Yield distribution moved to stQEURO contract
-        // This function kept for backward compatibility but does nothing
-        emit YieldDistributed(yieldAmount, 0, TIME_PROVIDER.currentTime());
-    }
 
     /**
      * @notice Update pending rewards for a user
@@ -1564,13 +1526,12 @@ contract UserPool is
     /**
      * @notice Get comprehensive pool configuration (consolidated view function)
      * @dev Returns all pool configuration parameters in one call to reduce contract size
+     * @dev NOTE: Mint/redemption fees are handled by QuantillonVault, not UserPool
      * @return stakingAPY_ Current staking APY in basis points
      * @return depositAPY_ Current deposit APY in basis points
      * @return minStakeAmount_ Current minimum stake amount (18 decimals)
      * @return unstakingCooldown_ Current unstaking cooldown period (seconds)
-     * @return depositFee_ Current deposit fee (basis points)
-     * @return withdrawalFee_ Current withdrawal fee (basis points)
-     * @return performanceFee_ Current performance fee (basis points)
+     * @return performanceFee_ Current performance fee on staking rewards (basis points)
      * @custom:security No security implications (view function)
      * @custom:validation No validation required
      * @custom:state-changes No state changes (view function)
@@ -1585,11 +1546,9 @@ contract UserPool is
         uint256 depositAPY_,
         uint256 minStakeAmount_,
         uint256 unstakingCooldown_,
-        uint256 depositFee_,
-        uint256 withdrawalFee_,
         uint256 performanceFee_
     ) {
-        return (stakingAPY, depositAPY, minStakeAmount, unstakingCooldown, depositFee, withdrawalFee, performanceFee);
+        return (stakingAPY, depositAPY, minStakeAmount, unstakingCooldown, performanceFee);
     }
 
     /**
@@ -1653,31 +1612,23 @@ contract UserPool is
     }
 
     /**
-     * @notice Set the fees for deposits, withdrawals, and performance
+     * @notice Set the performance fee for staking rewards
      * @dev This function is restricted to governance roles.
-     * @param _depositFee New deposit fee in basis points
-     * @param _withdrawalFee New withdrawal fee in basis points
-     * @param _performanceFee New performance fee in basis points
+     * @dev NOTE: Mint/redemption fees are set in QuantillonVault, not UserPool
+     * @param _performanceFee New performance fee on staking rewards in basis points
      * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:validation Validates performanceFee <= 2000 bps (20%)
+     * @custom:state-changes Updates performanceFee state variable
+     * @custom:events None
+     * @custom:errors Reverts if fee exceeds maximum allowed
+     * @custom:reentrancy Not applicable
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle Not applicable
      */
-    function setPoolFees(
-        uint256 _depositFee,
-        uint256 _withdrawalFee,
+    function setPerformanceFee(
         uint256 _performanceFee
     ) external onlyRole(GOVERNANCE_ROLE) {
-        CommonValidationLibrary.validatePercentage(_depositFee, 100); // Max 1%
-        CommonValidationLibrary.validatePercentage(_withdrawalFee, 200); // Max 2%
         CommonValidationLibrary.validatePercentage(_performanceFee, 2000); // Max 20%
-
-        depositFee = _depositFee;
-        withdrawalFee = _withdrawalFee;
         performanceFee = _performanceFee;
     }
 

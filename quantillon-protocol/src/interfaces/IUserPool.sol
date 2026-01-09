@@ -122,20 +122,6 @@ interface IUserPool {
      */
     function claimStakingRewards() external returns (uint256 rewardAmount);
 
-    /**
-     * @notice Distribute new yield to the user pool
-     * @dev Distributes yield to all pool participants based on their share
-     * @param yieldAmount Amount of yield in USDC equivalent
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function distributeYield(uint256 yieldAmount) external;
 
     /**
      * @notice Get a user's total deposits (USDC equivalent)
@@ -339,21 +325,20 @@ interface IUserPool {
     ) external;
 
     /**
-     * @notice Set pool fees
-     * @dev Allows governance to update fee parameters for the pool
-     * @param _depositFee Deposit fee (bps)
-     * @param _withdrawalFee Withdrawal fee (bps)
-     * @param _performanceFee Performance fee (bps)
+     * @notice Set performance fee for staking rewards
+     * @dev Allows governance to update performance fee parameter
+     * @dev NOTE: Mint/redemption fees are set in QuantillonVault, not UserPool
+     * @param _performanceFee Performance fee on staking rewards (bps)
       * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:validation Validates performanceFee <= 2000 bps (20%)
+      * @custom:state-changes Updates performanceFee state variable
+      * @custom:events None
+      * @custom:errors Reverts if fee exceeds maximum allowed
+      * @custom:reentrancy Not applicable
+      * @custom:access Restricted to GOVERNANCE_ROLE
+      * @custom:oracle Not applicable
      */
-    function setPoolFees(uint256 _depositFee, uint256 _withdrawalFee, uint256 _performanceFee) external;
+    function setPerformanceFee(uint256 _performanceFee) external;
 
     /**
      * @notice Emergency unstake for a user by admin
@@ -401,29 +386,26 @@ interface IUserPool {
     /**
      * @notice Pool configuration snapshot
      * @dev Returns current pool configuration parameters
+     * @dev NOTE: Mint/redemption fees are handled by QuantillonVault, not UserPool
      * @return _stakingAPY Staking APY (bps)
      * @return _depositAPY Deposit APY (bps)
      * @return _minStakeAmount Minimum stake amount
      * @return _unstakingCooldown Unstaking cooldown seconds
-     * @return _depositFee Deposit fee (bps)
-     * @return _withdrawalFee Withdrawal fee (bps)
-     * @return _performanceFee Performance fee (bps)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @return _performanceFee Performance fee on staking rewards (bps)
+      * @custom:security No security implications (view function)
+      * @custom:validation No validation required
+      * @custom:state-changes No state changes (view function)
+      * @custom:events No events (view function)
+      * @custom:errors No custom errors
+      * @custom:reentrancy No external calls, safe
+      * @custom:access Public (anyone can call)
+      * @custom:oracle No oracle dependencies
      */
     function getPoolConfig() external view returns (
         uint256 _stakingAPY,
         uint256 _depositAPY,
         uint256 _minStakeAmount,
         uint256 _unstakingCooldown,
-        uint256 _depositFee,
-        uint256 _withdrawalFee,
         uint256 _performanceFee
     );
 
@@ -769,35 +751,8 @@ interface IUserPool {
      */
     function unstakingCooldown() external view returns (uint256);
     
-    /**
-     * @notice Returns the deposit fee
-     * @dev Fee charged on deposits (in basis points)
-     * @return Deposit fee in basis points
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function depositFee() external view returns (uint256);
-    
-    /**
-     * @notice Returns the withdrawal fee
-     * @dev Fee charged on withdrawals (in basis points)
-     * @return Withdrawal fee in basis points
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function withdrawalFee() external view returns (uint256);
+    // NOTE: depositFee and withdrawalFee have been removed
+    // Mint and redemption fees are handled by QuantillonVault, not UserPool
     
     /**
      * @notice Returns the performance fee

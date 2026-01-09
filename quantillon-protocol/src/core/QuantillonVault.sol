@@ -1404,34 +1404,6 @@ contract QuantillonVault is
     // slither-disable-end reentrancy-no-eth
     // slither-disable-end reentrancy-benign
     
-    /**
-     * @notice Updates price deviation protection parameters
-     * @param _maxPriceDeviation New maximum price deviation in basis points
-     * @param _minBlocksBetweenUpdates New minimum blocks between updates
-     * @dev Only governance can update these security parameters
-     * @dev Note: This function requires converting constants to state variables
-     *      for full implementation. Currently a placeholder for future governance control.
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function updatePriceProtectionParams(
-        uint256 _maxPriceDeviation, 
-        uint256 _minBlocksBetweenUpdates
-    ) external onlyRole(GOVERNANCE_ROLE) {
-        if (_maxPriceDeviation > 1000) revert CommonErrorLibrary.ConfigValueTooHigh();
-        if (_minBlocksBetweenUpdates > 100) revert CommonErrorLibrary.ConfigValueTooHigh();
-        
-        // For now, this function validates parameters but doesn't update them
-        // as they are currently implemented as constants
-        
-        emit ParametersUpdated("price_protection", _maxPriceDeviation, _minBlocksBetweenUpdates);
-    }
 
     /**
      * @notice Withdraws accumulated protocol fees

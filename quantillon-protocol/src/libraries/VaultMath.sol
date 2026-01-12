@@ -83,14 +83,6 @@ library VaultMath {
      * @param toDecimals Target decimal places
      * @return scaledValue Scaled value with proper rounding
      * @dev Used for converting between token precisions (e.g., USDC 6 decimals to 18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
      */
     function scaleDecimals(
         uint256 value,
@@ -120,15 +112,6 @@ library VaultMath {
      * @param a First number
      * @param b Second number
      * @return Minimum value
-     * @dev Used for safe boundary calculations in yield management and vault operations
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
      */
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
@@ -139,15 +122,6 @@ library VaultMath {
      * @param a First number
      * @param b Second number
      * @return Maximum value
-     * @dev Used in tests and edge case calculations
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
      */
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a : b;
@@ -158,15 +132,6 @@ library VaultMath {
      * @param eurAmount Amount in EUR (18 decimals)
      * @param eurUsdRate EUR/USD exchange rate (18 decimals)
      * @return usdAmount Amount in USD (18 decimals)
-     * @dev Used in tests for currency conversion
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
      */
     function eurToUsd(
         uint256 eurAmount,
@@ -180,15 +145,6 @@ library VaultMath {
      * @param usdAmount Amount in USD (18 decimals)
      * @param eurUsdRate EUR/USD exchange rate (18 decimals)
      * @return eurAmount Amount in EUR (18 decimals)
-     * @dev Used in tests for currency conversion
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
      */
     function usdToEur(
         uint256 usdAmount,
@@ -200,17 +156,9 @@ library VaultMath {
     /**
      * @notice Calculate collateralization ratio
      * @param collateralValue Total collateral value in USD
-     * @param debtValue Total debt value in USD  
+     * @param debtValue Total debt value in USD
      * @return ratio Collateralization ratio in 18 decimals (e.g., 1.5e18 = 150%)
-     * @dev Used in tests for collateral calculations
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @dev Returns type(uint256).max when debtValue is zero (infinite ratio)
      */
     function calculateCollateralRatio(
         uint256 collateralValue,
@@ -229,15 +177,7 @@ library VaultMath {
      * @param yieldShiftBps Yield shift percentage in basis points (0-10000)
      * @return userYield Yield allocated to QEURO users
      * @return hedgerYield Yield allocated to hedgers
-     * @dev Used in tests for yield calculations
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @dev Reverts with InvalidParameter if yieldShiftBps exceeds BASIS_POINTS
      */
     function calculateYieldDistribution(
         uint256 totalYield,
@@ -255,15 +195,6 @@ library VaultMath {
      * @param value2 Second value
      * @param toleranceBps Tolerance in basis points
      * @return isWithinTolerance Whether values are within tolerance
-     * @dev Used in tests for tolerance checks
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
      */
     function isWithinTolerance(
         uint256 value1,

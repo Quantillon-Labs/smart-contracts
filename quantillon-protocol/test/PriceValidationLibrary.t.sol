@@ -104,5 +104,139 @@ contract PriceValidationLibraryTest is Test {
             assertLe(devBps, maxDeviationBps, "Deviation within bounds must not request revert");
         }
     }
+
+    // =============================================================================
+    // ADDITIONAL EDGE CASE AND FUZZ TESTS
+    // =============================================================================
+
+    /// @notice Price drop to zero should be detected
+    function test_PriceDropToZero_Detected(uint128 lastPrice) public {
+        vm.assume(lastPrice > 0);
+
+        uint256 lastUpdateBlock = block.number;
+        vm.roll(lastUpdateBlock + 2);
+
+        (bool shouldRevert, uint256 devBps) = h.check(
+            0, // current price is zero
+            lastPrice,
+            1000, // 10% max deviation
+            lastUpdateBlock,
+            1
+        );
+
+        // 100% drop should exceed any reasonable deviation limit
+        assertTrue(shouldRevert, "Price drop to zero should trigger revert");
+        assertEq(devBps, 10_000, "100% drop should be 10000 bps");
+    }
+
+    /// @notice Price spike (doubling) should be detected with low threshold
+    function test_PriceSpike_Detected(uint128 lastPrice) public {
+        vm.assume(lastPrice > 0 && lastPrice < type(uint128).max / 2);
+
+        uint256 lastUpdateBlock = block.number;
+        vm.roll(lastUpdateBlock + 2);
+
+        uint256 currentPrice = uint256(lastPrice) * 2; // 100% increase
+
+        (bool shouldRevert, uint256 devBps) = h.check(
+            currentPrice,
+            lastPrice,
+            5000, // 50% max deviation
+            lastUpdateBlock,
+            1
+        );
+
+        assertTrue(shouldRevert, "100% price spike should exceed 50% threshold");
+        assertEq(devBps, 10_000, "100% increase should be 10000 bps");
+    }
+
+    /// @notice Updates within min block window should not check deviation
+    function test_WithinMinBlockWindow_NoCheck(
+        uint128 lastPrice,
+        uint128 currentPrice
+    ) public view {
+        vm.assume(lastPrice > 0);
+
+        // Don't advance blocks - still within window
+        (bool shouldRevert, uint256 devBps) = h.check(
+            currentPrice,
+            lastPrice,
+            100, // Very tight 1% threshold
+            block.number, // Same block
+            10 // Need 10 blocks minimum
+        );
+
+        // Within window, should not trigger revert regardless of deviation
+        assertFalse(shouldRevert, "Within min block window should not revert");
+        // devBps might still be calculated but revert is false
+    }
+
+    /// @notice Fuzz: Symmetry - deviation calculation should be same for up/down moves of same magnitude
+    function testFuzz_DeviationSymmetry(uint64 basePrice, uint64 deviation) public {
+        vm.assume(basePrice > 1000);
+        vm.assume(deviation > 0 && deviation < basePrice);
+
+        uint256 lastUpdateBlock = block.number;
+        vm.roll(lastUpdateBlock + 2);
+
+        uint256 priceUp = uint256(basePrice) + deviation;
+        uint256 priceDown = uint256(basePrice) - deviation;
+
+        (, uint256 devBpsUp) = h.check(
+            priceUp,
+            basePrice,
+            10_000,
+            lastUpdateBlock,
+            1
+        );
+
+        (, uint256 devBpsDown) = h.check(
+            priceDown,
+            basePrice,
+            10_000,
+            lastUpdateBlock,
+            1
+        );
+
+        // Deviation should be same magnitude for same absolute change
+        assertEq(devBpsUp, devBpsDown, "Up and down deviations should be equal");
+    }
+
+    /// @notice Edge case: very small prices (potential precision issues)
+    function test_VerySmallPrices(uint8 smallPrice) public {
+        vm.assume(smallPrice > 0);
+
+        uint256 lastUpdateBlock = block.number;
+        vm.roll(lastUpdateBlock + 2);
+
+        // Should handle small prices without overflow/underflow
+        (bool shouldRevert, ) = h.check(
+            smallPrice,
+            smallPrice,
+            1000,
+            lastUpdateBlock,
+            1
+        );
+
+        assertFalse(shouldRevert, "Same small price should not trigger revert");
+    }
+
+    /// @notice Edge case: large prices (potential overflow)
+    function test_LargePrices() public {
+        uint256 lastUpdateBlock = block.number;
+        vm.roll(lastUpdateBlock + 2);
+
+        uint256 largePrice = type(uint128).max;
+
+        (bool shouldRevert, ) = h.check(
+            largePrice,
+            largePrice,
+            1000,
+            lastUpdateBlock,
+            1
+        );
+
+        assertFalse(shouldRevert, "Same large price should not trigger revert");
+    }
 }
 

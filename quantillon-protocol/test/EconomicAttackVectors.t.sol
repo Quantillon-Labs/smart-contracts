@@ -202,7 +202,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test that flash loan cannot manipulate collateral ratios
      * @dev Verifies collateral ratio checks are performed correctly
      */
-    function test_Economic_FlashLoanCollateralManipulation_Blocked() public view {
+    function test_Economic_FlashLoanCollateralManipulation_Blocked() public pure {
         // Collateral ratio manipulation through flash loans should be blocked
         // Protocol calculates collateral at time of operation, not just at start
 
@@ -215,7 +215,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test flash loan cannot be used to extract yield unfairly
      * @dev Verifies yield distribution is not exploitable through flash loans
      */
-    function test_Economic_FlashLoanYieldExtraction_Blocked() public view {
+    function test_Economic_FlashLoanYieldExtraction_Blocked() public pure {
         // Yield is distributed based on time-weighted positions
         // Flash loans cannot extract yield due to time requirements
 
@@ -249,7 +249,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test that extreme price deviations are handled
      * @dev Verifies circuit breakers for unusual price movements
      */
-    function test_Economic_ExtremePriceDeviation_Protected() public view {
+    function test_Economic_ExtremePriceDeviation_Protected() public pure {
         // Protocol should have circuit breakers for extreme prices
         // Max price deviation should be bounded
 
@@ -261,7 +261,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test oracle manipulation cannot profit through liquidations
      * @dev Verifies liquidation timing protections
      */
-    function test_Economic_OracleManipulationLiquidation_Blocked() public view {
+    function test_Economic_OracleManipulationLiquidation_Blocked() public pure {
         // Liquidations should have:
         // 1. Minimum collateral ratio checks
         // 2. Price freshness requirements
@@ -278,7 +278,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test that large transactions have slippage protection
      * @dev Verifies maximum slippage parameters are enforced
      */
-    function test_Economic_SandwichAttack_SlippageProtection() public view {
+    function test_Economic_SandwichAttack_SlippageProtection() public pure {
         // User operations should have slippage limits
         // Sandwich attacks cannot profit beyond slippage tolerance
 
@@ -289,7 +289,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test MEV protection through transaction ordering
      * @dev Verifies commit-reveal or other MEV mitigation
      */
-    function test_Economic_MEVProtection() public view {
+    function test_Economic_MEVProtection() public pure {
         // Protocol should have MEV mitigation mechanisms:
         // 1. Commit-reveal patterns
         // 2. Private mempools
@@ -306,7 +306,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test cross-pool arbitrage is not profitable
      * @dev Verifies pricing consistency across pools
      */
-    function test_Economic_CrossPoolArbitrage_NotProfitable() public view {
+    function test_Economic_CrossPoolArbitrage_NotProfitable() public pure {
         // Pool pricing should be consistent
         // Arbitrage opportunities should be minimal and not exploitable
 
@@ -318,7 +318,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test arbitrage through stQEURO exchange rate
      * @dev Verifies exchange rate manipulation is prevented
      */
-    function test_Economic_stQEUROArbitrage_Blocked() public view {
+    function test_Economic_stQEUROArbitrage_Blocked() public pure {
         // stQEURO exchange rate should be based on actual yield
         // Not manipulable through deposits/withdrawals
 
@@ -333,7 +333,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test yield cannot be extracted through timing attacks
      * @dev Verifies yield distribution is time-weighted
      */
-    function test_Economic_YieldTimingAttack_Blocked() public view {
+    function test_Economic_YieldTimingAttack_Blocked() public pure {
         // Yield should be distributed based on:
         // 1. Time-weighted average positions
         // 2. Minimum staking periods
@@ -346,7 +346,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test yield shift parameters are bounded
      * @dev Verifies yield shift cannot be set to exploitable values
      */
-    function test_Economic_YieldShiftBounds_Enforced() public view {
+    function test_Economic_YieldShiftBounds_Enforced() public pure {
         // YieldShift parameters should have min/max bounds
         // Cannot be set to extract all yield
 
@@ -361,7 +361,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test minimum collateralization ratio is enforced
      * @dev Verifies positions cannot be undercollateralized
      */
-    function test_Economic_MinCollateralRatio_Enforced() public view {
+    function test_Economic_MinCollateralRatio_Enforced() public pure {
         // Minimum collateral ratio should be enforced:
         // 1. At position opening
         // 2. At position modification
@@ -374,7 +374,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test maximum leverage is limited
      * @dev Verifies leverage cannot exceed safe limits
      */
-    function test_Economic_MaxLeverage_Limited() public view {
+    function test_Economic_MaxLeverage_Limited() public pure {
         // Maximum leverage should be limited to prevent:
         // 1. Excessive risk
         // 2. Cascading liquidations
@@ -391,7 +391,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test fees cannot be bypassed
      * @dev Verifies all operations charge appropriate fees
      */
-    function test_Economic_FeeBypass_Blocked() public view {
+    function test_Economic_FeeBypass_Blocked() public pure {
         // All operations should charge fees:
         // 1. Deposit fees
         // 2. Withdrawal fees
@@ -404,7 +404,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test fee accumulation is accurate
      * @dev Verifies fee collection is correct
      */
-    function test_Economic_FeeAccumulation_Accurate() public view {
+    function test_Economic_FeeAccumulation_Accurate() public pure {
         // Fee collection should:
         // 1. Be atomic with operations
         // 2. Go to correct treasury
@@ -421,7 +421,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test self-liquidation is not profitable
      * @dev Verifies liquidation penalties prevent self-liquidation attacks
      */
-    function test_Economic_SelfLiquidation_NotProfitable() public view {
+    function test_Economic_SelfLiquidation_NotProfitable() public pure {
         // Self-liquidation should not be profitable because:
         // 1. Liquidation penalty
         // 2. Protocol fees
@@ -434,7 +434,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test liquidation race conditions are handled
      * @dev Verifies concurrent liquidations are processed correctly
      */
-    function test_Economic_LiquidationRaceCondition_Handled() public view {
+    function test_Economic_LiquidationRaceCondition_Handled() public pure {
         // Multiple liquidators targeting same position should:
         // 1. Only allow one successful liquidation
         // 2. Not cause bad debt
@@ -447,7 +447,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test cascading liquidations are controlled
      * @dev Verifies cascade protection mechanisms
      */
-    function test_Economic_CascadingLiquidations_Controlled() public view {
+    function test_Economic_CascadingLiquidations_Controlled() public pure {
         // Cascading liquidations should be controlled through:
         // 1. Gradual liquidations
         // 2. Price circuit breakers
@@ -464,7 +464,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test total supply invariants
      * @dev Verifies minted tokens equal backing
      */
-    function test_Economic_SupplyBacking_Invariant() public view {
+    function test_Economic_SupplyBacking_Invariant() public pure {
         // QEURO supply should always be backed by collateral
         // stQEURO should always be backed by QEURO
 
@@ -475,7 +475,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test collateral is always sufficient
      * @dev Verifies system is never undercollateralized
      */
-    function test_Economic_CollateralSufficiency_Invariant() public view {
+    function test_Economic_CollateralSufficiency_Invariant() public pure {
         // Total collateral should always be >= total liabilities
         // Even after worst-case price movements
 
@@ -490,7 +490,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test comprehensive economic attack scenario
      * @dev Simulates a sophisticated economic attack
      */
-    function test_Economic_ComprehensiveAttack_Blocked() public view {
+    function test_Economic_ComprehensiveAttack_Blocked() public pure {
         // Sophisticated attack combining:
         // 1. Flash loan for capital
         // 2. Price manipulation
@@ -510,7 +510,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test coordinated multi-user attack
      * @dev Simulates attack using multiple accounts
      */
-    function test_Economic_CoordinatedAttack_Blocked() public view {
+    function test_Economic_CoordinatedAttack_Blocked() public pure {
         // Coordinated attack with multiple accounts:
         // 1. Spread positions across accounts
         // 2. Coordinate timing
@@ -528,7 +528,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test economic attack through governance
      * @dev Verifies governance cannot extract value
      */
-    function test_Economic_GovernanceExtraction_Blocked() public view {
+    function test_Economic_GovernanceExtraction_Blocked() public pure {
         // Governance should not be able to:
         // 1. Set exploitative fees
         // 2. Drain collateral
@@ -592,7 +592,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test fee parameters are bounded
      * @dev Verifies fee limits exist
      */
-    function test_Economic_FeeBounds() public view {
+    function test_Economic_FeeBounds() public pure {
         // Fees should have maximum bounds
         // Cannot be set to confiscatory levels
 
@@ -603,7 +603,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test collateral parameters are bounded
      * @dev Verifies collateral limits exist
      */
-    function test_Economic_CollateralBounds() public view {
+    function test_Economic_CollateralBounds() public pure {
         // Collateral ratio should have:
         // 1. Minimum (e.g., 110%)
         // 2. Maximum (e.g., 1000%)
@@ -616,7 +616,7 @@ contract EconomicAttackVectors is Test {
      * @notice Test cooldown periods are enforced
      * @dev Verifies timing restrictions exist
      */
-    function test_Economic_CooldownEnforcement() public view {
+    function test_Economic_CooldownEnforcement() public pure {
         // Cooldown periods should exist for:
         // 1. Unstaking
         // 2. Position modifications

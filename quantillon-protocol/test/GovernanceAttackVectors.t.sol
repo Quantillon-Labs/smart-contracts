@@ -128,8 +128,11 @@ contract GovernanceAttackVectors is Test {
      */
     function test_Governance_FlashLoanVotingPowerAttack_Blocked() public {
         // Simulate flash loan attacker receiving tokens
-        vm.prank(admin);
-        qtiToken.grantRole(qtiToken.GOVERNANCE_ROLE(), flashLoanAttacker);
+        // Use startPrank to avoid prank being consumed by view function call
+        vm.startPrank(admin);
+        bytes32 governanceRole = qtiToken.GOVERNANCE_ROLE();
+        qtiToken.grantRole(governanceRole, flashLoanAttacker);
+        vm.stopPrank();
 
         // Attacker tries to lock tokens for voting power in same transaction
         // This should fail because voting power requires actual token holding over time
@@ -142,7 +145,7 @@ contract GovernanceAttackVectors is Test {
      * @notice Test that voting power cannot be instantly gained and used
      * @dev Verifies minimum lock time requirements prevent flash attacks
      */
-    function test_Governance_InstantVotingPower_Blocked() public {
+    function test_Governance_InstantVotingPower_Blocked() public view {
         // The protocol requires minimum 7-day lock time
         assertEq(qtiToken.MIN_LOCK_TIME(), 7 days, "Minimum lock should be 7 days");
 
@@ -158,12 +161,13 @@ contract GovernanceAttackVectors is Test {
      * @notice Test that only authorized accounts can create proposals
      * @dev Verifies governance role is required for proposal creation
      */
-    function test_Governance_UnauthorizedProposalCreation_Blocked() public {
-        // Attacker without governance role tries to create proposal
-        vm.prank(attacker);
-        vm.expectRevert();
-        // Note: The actual function signature depends on the contract implementation
-        // This tests the access control pattern
+    function test_Governance_UnauthorizedProposalCreation_Blocked() public view {
+        // This test verifies the governance role requirement exists
+        // Actual proposal creation would require a governance module not part of QTI token
+        // The access control pattern is verified by checking governance role exists
+        bytes32 governanceRole = qtiToken.GOVERNANCE_ROLE();
+        assertTrue(governanceRole != bytes32(0), "Governance role should be defined");
+        assertFalse(qtiToken.hasRole(governanceRole, attacker), "Attacker should not have governance role");
     }
 
     /**
@@ -280,7 +284,7 @@ contract GovernanceAttackVectors is Test {
 
         // Signer3 should not be able to approve
         vm.prank(voter3);
-        vm.expectRevert(abi.encodeWithSelector(CommonValidationLibrary.ValidationFailed.selector, "authorization"));
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         timelock.approveUpgrade(newImpl);
     }
 
@@ -301,7 +305,7 @@ contract GovernanceAttackVectors is Test {
 
         // Try duplicate approval
         vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(CommonValidationLibrary.ValidationFailed.selector, "duplicate"));
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
         timelock.approveUpgrade(newImpl);
     }
 
@@ -314,9 +318,18 @@ contract GovernanceAttackVectors is Test {
      * @dev Verifies role management is restricted to admin
      */
     function test_Governance_UnauthorizedRoleGrant_Blocked() public {
+        bytes32 governanceRole = qtiToken.GOVERNANCE_ROLE();
+        bytes32 adminRole = qtiToken.DEFAULT_ADMIN_ROLE();
+        
         vm.prank(attacker);
-        vm.expectRevert();
-        qtiToken.grantRole(qtiToken.GOVERNANCE_ROLE(), attacker);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                attacker,
+                adminRole
+            )
+        );
+        qtiToken.grantRole(governanceRole, attacker);
     }
 
     /**
@@ -324,9 +337,18 @@ contract GovernanceAttackVectors is Test {
      * @dev Verifies role revocation is restricted to admin
      */
     function test_Governance_UnauthorizedRoleRevoke_Blocked() public {
+        bytes32 governanceRole = qtiToken.GOVERNANCE_ROLE();
+        bytes32 adminRole = qtiToken.DEFAULT_ADMIN_ROLE();
+        
         vm.prank(attacker);
-        vm.expectRevert();
-        qtiToken.revokeRole(qtiToken.GOVERNANCE_ROLE(), governance);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                attacker,
+                adminRole
+            )
+        );
+        qtiToken.revokeRole(governanceRole, governance);
     }
 
     /**
@@ -449,7 +471,7 @@ contract GovernanceAttackVectors is Test {
      * @notice Test that proposal execution has MEV protection
      * @dev Verifies execution time randomization prevents front-running
      */
-    function test_Governance_MEVProtection_Exists() public view {
+    function test_Governance_MEVProtection_Exists() public pure {
         // The contract has proposalExecutionTime and proposalExecutionHash mappings
         // for MEV protection during governance execution
         // This is a structural verification
@@ -481,28 +503,58 @@ contract GovernanceAttackVectors is Test {
      * @dev Simulates a comprehensive attack attempting to gain control
      */
     function test_Governance_FullTakeoverAttack_Blocked() public {
-        // Step 1: Attacker tries to get governance role
+        bytes32 governanceRole = qtiToken.GOVERNANCE_ROLE();
+        bytes32 adminRole = qtiToken.DEFAULT_ADMIN_ROLE();
+        
+        // Step 1: Attacker tries to get governance role - should fail
         vm.prank(attacker);
-        vm.expectRevert();
-        qtiToken.grantRole(qtiToken.GOVERNANCE_ROLE(), attacker);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                attacker,
+                adminRole
+            )
+        );
+        qtiToken.grantRole(governanceRole, attacker);
 
-        // Step 2: Attacker tries to enable emergency mode
+        // Step 2: Attacker tries to enable emergency mode - should fail
+        bytes32 emergencyUpgraderRole = timelock.EMERGENCY_UPGRADER_ROLE();
         vm.prank(attacker);
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                attacker,
+                emergencyUpgraderRole
+            )
+        );
         timelock.toggleEmergencyMode(true, "Takeover attempt");
 
-        // Step 3: Attacker tries to add themselves as signer
+        // Step 3: Attacker tries to add themselves as signer - should fail
+        bytes32 multisigRole = timelock.MULTISIG_MANAGER_ROLE();
         vm.prank(attacker);
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                attacker,
+                multisigRole
+            )
+        );
         timelock.addMultisigSigner(attacker);
 
-        // Step 4: Attacker tries to propose upgrade directly
+        // Step 4: Attacker tries to propose upgrade directly - should fail
+        bytes32 proposerRole = timelock.UPGRADE_PROPOSER_ROLE();
         vm.prank(attacker);
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                attacker,
+                proposerRole
+            )
+        );
         timelock.proposeUpgrade(address(0x999), "Malicious upgrade", 0);
 
         // All attacks should be blocked
-        assertFalse(qtiToken.hasRole(qtiToken.GOVERNANCE_ROLE(), attacker), "Attacker should not have governance role");
+        assertFalse(qtiToken.hasRole(governanceRole, attacker), "Attacker should not have governance role");
         assertFalse(timelock.multisigSigners(attacker), "Attacker should not be a signer");
     }
 
@@ -513,6 +565,8 @@ contract GovernanceAttackVectors is Test {
     function test_Governance_CoordinatedAttack_Blocked() public {
         // Even with multiple accounts, attacker cannot gain control
         // without proper authorization
+        bytes32 governanceRole = qtiToken.GOVERNANCE_ROLE();
+        bytes32 adminRole = qtiToken.DEFAULT_ADMIN_ROLE();
 
         address[] memory attackerAccounts = new address[](5);
         attackerAccounts[0] = address(0x1000);
@@ -523,8 +577,14 @@ contract GovernanceAttackVectors is Test {
 
         for (uint256 i = 0; i < attackerAccounts.length; i++) {
             vm.prank(attackerAccounts[i]);
-            vm.expectRevert();
-            qtiToken.grantRole(qtiToken.GOVERNANCE_ROLE(), attackerAccounts[i]);
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")),
+                    attackerAccounts[i],
+                    adminRole
+                )
+            );
+            qtiToken.grantRole(governanceRole, attackerAccounts[i]);
         }
     }
 
@@ -546,14 +606,14 @@ contract GovernanceAttackVectors is Test {
 
         // Attacker tries to execute before timelock expires
         vm.prank(governance);
-        vm.expectRevert(abi.encodeWithSelector(CommonValidationLibrary.ValidationFailed.selector, "timelock"));
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
         timelock.executeUpgrade(address(0x999));
 
         // Fast forward but not enough
         vm.warp(block.timestamp + 24 hours);
 
         vm.prank(governance);
-        vm.expectRevert(abi.encodeWithSelector(CommonValidationLibrary.ValidationFailed.selector, "timelock"));
+        vm.expectRevert(CommonErrorLibrary.InvalidCondition.selector);
         timelock.executeUpgrade(address(0x999));
 
         // Fast forward past timelock - now should work

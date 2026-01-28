@@ -174,7 +174,7 @@ contract RaceConditionTests is Test {
      * @notice Test concurrent deposits from multiple users
      * @dev Verifies deposits don't interfere with each other
      */
-    function test_RaceCondition_ConcurrentDeposits() public view {
+    function test_RaceCondition_ConcurrentDeposits() public pure {
         // Multiple users depositing simultaneously should:
         // 1. Each get their own balance tracked correctly
         // 2. Total deposits should sum correctly
@@ -190,7 +190,7 @@ contract RaceConditionTests is Test {
      * @notice Test concurrent withdrawals from multiple users
      * @dev Verifies withdrawals are processed correctly
      */
-    function test_RaceCondition_ConcurrentWithdrawals() public view {
+    function test_RaceCondition_ConcurrentWithdrawals() public pure {
         // Multiple users withdrawing simultaneously should:
         // 1. Each withdrawal should reduce only that user's balance
         // 2. Insufficient balance should fail atomically
@@ -202,7 +202,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test deposit and withdrawal happening simultaneously
      */
-    function test_RaceCondition_DepositWithdrawSimultaneous() public view {
+    function test_RaceCondition_DepositWithdrawSimultaneous() public pure {
         // When deposit and withdrawal happen in same block:
         // 1. Order should not affect correctness
         // 2. Final balances should be deterministic
@@ -218,7 +218,7 @@ contract RaceConditionTests is Test {
      * @notice Test multiple liquidators targeting same position
      * @dev Only one should succeed
      */
-    function test_RaceCondition_MultipleLiquidators() public view {
+    function test_RaceCondition_MultipleLiquidators() public pure {
         // When multiple liquidators try to liquidate same position:
         // 1. Only one should succeed
         // 2. Others should fail gracefully
@@ -232,7 +232,7 @@ contract RaceConditionTests is Test {
      * @notice Test liquidation vs margin addition race
      * @dev User adding margin while being liquidated
      */
-    function test_RaceCondition_LiquidationVsMarginAdd() public view {
+    function test_RaceCondition_LiquidationVsMarginAdd() public pure {
         // If user adds margin in same block as liquidation:
         // 1. If margin added first, liquidation might fail (healthy position)
         // 2. If liquidation first, margin add might fail (position closed)
@@ -248,7 +248,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test partial liquidation race conditions
      */
-    function test_RaceCondition_PartialLiquidation() public view {
+    function test_RaceCondition_PartialLiquidation() public pure {
         // Multiple partial liquidations on same position:
         // 1. Each should reduce position proportionally
         // 2. Sum should not exceed position size
@@ -265,7 +265,7 @@ contract RaceConditionTests is Test {
      * @notice Test yield claim race conditions
      * @dev Multiple users claiming yield simultaneously
      */
-    function test_RaceCondition_YieldClaim() public view {
+    function test_RaceCondition_YieldClaim() public pure {
         // When multiple users claim yield:
         // 1. Each gets their proportional share
         // 2. Total distributed <= total available
@@ -277,7 +277,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test yield distribution vs new deposit race
      */
-    function test_RaceCondition_YieldVsDeposit() public view {
+    function test_RaceCondition_YieldVsDeposit() public pure {
         // When yield is distributed while new deposit comes in:
         // 1. New depositor shouldn't get yield for time they weren't staked
         // 2. Existing stakers get correct share
@@ -289,7 +289,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test yield distribution timing boundary
      */
-    function test_RaceCondition_YieldDistributionTiming() public view {
+    function test_RaceCondition_YieldDistributionTiming() public pure {
         // Yield distributed at specific intervals:
         // 1. Claims just before distribution get old yield
         // 2. Claims just after get new yield
@@ -306,7 +306,7 @@ contract RaceConditionTests is Test {
      * @notice Test proposal creation race
      * @dev Multiple proposals created simultaneously
      */
-    function test_RaceCondition_ProposalCreation() public view {
+    function test_RaceCondition_ProposalCreation() public pure {
         // Multiple proposals created in same block:
         // 1. Each gets unique ID
         // 2. No ID collisions
@@ -318,7 +318,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test voting deadline race condition
      */
-    function test_RaceCondition_VotingDeadline() public view {
+    function test_RaceCondition_VotingDeadline() public pure {
         // Votes submitted at voting deadline:
         // 1. Clear cutoff based on block timestamp
         // 2. Vote at exact deadline should have defined behavior
@@ -330,7 +330,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test proposal execution race
      */
-    function test_RaceCondition_ProposalExecution() public view {
+    function test_RaceCondition_ProposalExecution() public pure {
         // Multiple attempts to execute same proposal:
         // 1. Only one should succeed
         // 2. Subsequent attempts should fail
@@ -376,7 +376,7 @@ contract RaceConditionTests is Test {
      * @notice Test operations during price update
      * @dev Operations should use consistent price within transaction
      */
-    function test_RaceCondition_PriceUpdate() public view {
+    function test_RaceCondition_PriceUpdate() public pure {
         // When price updates:
         // 1. Operations in same tx should see consistent price
         // 2. Price staleness checks prevent using old prices
@@ -388,7 +388,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test front-running price updates
      */
-    function test_RaceCondition_PriceFrontrunning() public view {
+    function test_RaceCondition_PriceFrontrunning() public pure {
         // Attacker sees price update in mempool:
         // 1. Tries to front-run with favorable transaction
         // 2. Slippage protection limits profit
@@ -405,7 +405,7 @@ contract RaceConditionTests is Test {
      * @notice Test block timestamp dependence
      * @dev Miners can manipulate timestamp within bounds
      */
-    function test_RaceCondition_TimestampManipulation() public view {
+    function test_RaceCondition_TimestampManipulation() public pure {
         // Block timestamp can be manipulated ~15 seconds
         // Protocol should:
         // 1. Not depend on precise timestamps for security
@@ -418,7 +418,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test cooldown period race
      */
-    function test_RaceCondition_CooldownPeriod() public view {
+    function test_RaceCondition_CooldownPeriod() public pure {
         // When cooldown period ends:
         // 1. Clear transition at boundary
         // 2. Actions at exact boundary have defined behavior
@@ -434,7 +434,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test stake and unstake race
      */
-    function test_RaceCondition_StakeUnstake() public view {
+    function test_RaceCondition_StakeUnstake() public pure {
         // Stake and unstake in same block:
         // 1. Should have defined order behavior
         // 2. Balances should be consistent
@@ -446,7 +446,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test voting power snapshot race
      */
-    function test_RaceCondition_VotingPowerSnapshot() public view {
+    function test_RaceCondition_VotingPowerSnapshot() public pure {
         // QTI voting power changes during proposal:
         // 1. Snapshot at proposal creation time
         // 2. Subsequent stake/unstake doesn't affect vote
@@ -462,7 +462,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test operations during upgrade
      */
-    function test_RaceCondition_DuringUpgrade() public view {
+    function test_RaceCondition_DuringUpgrade() public pure {
         // Operations submitted during upgrade:
         // 1. May use old or new implementation
         // 2. State should remain consistent
@@ -474,7 +474,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test approval and upgrade execution race
      */
-    function test_RaceCondition_ApprovalExecution() public view {
+    function test_RaceCondition_ApprovalExecution() public pure {
         // Approval and execution in same block:
         // 1. Approval must complete before execution
         // 2. Can't execute without sufficient approvals
@@ -491,19 +491,19 @@ contract RaceConditionTests is Test {
      * @notice Test pause during active operation
      */
     function test_RaceCondition_PauseDuringOperation() public {
-        // Pause the contract
-        vm.prank(admin);
-        hedgerPool.grantRole(hedgerPool.EMERGENCY_ROLE(), admin);
+        // Pause the contract - use startPrank to avoid prank being consumed by view call
+        vm.startPrank(admin);
+        bytes32 emergencyRole = hedgerPool.EMERGENCY_ROLE();
+        hedgerPool.grantRole(emergencyRole, admin);
 
-        vm.prank(admin);
         hedgerPool.pause();
 
         // Operations should fail when paused
         assertTrue(hedgerPool.paused(), "Should be paused");
 
         // Unpause
-        vm.prank(admin);
         hedgerPool.unpause();
+        vm.stopPrank();
 
         assertFalse(hedgerPool.paused(), "Should be unpaused");
     }
@@ -535,7 +535,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Simulate complex multi-party race scenario
      */
-    function test_RaceCondition_ComplexScenario() public view {
+    function test_RaceCondition_ComplexScenario() public pure {
         // Complex scenario:
         // 1. User1 deposits
         // 2. User2 withdraws
@@ -557,7 +557,7 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test that all critical operations are atomic
      */
-    function test_RaceCondition_AtomicityVerification() public view {
+    function test_RaceCondition_AtomicityVerification() public pure {
         // All critical operations should be atomic:
         // - Either fully complete or fully revert
         // - No partial state changes on failure

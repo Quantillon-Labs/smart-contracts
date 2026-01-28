@@ -297,8 +297,11 @@ contract SecureUpgradeableTest is Test {
         ERC1967Proxy proxy = new ERC1967Proxy(address(newImpl), initData);
         MockSecureUpgradeable noTimelockContract = MockSecureUpgradeable(address(proxy));
 
-        vm.prank(admin);
-        noTimelockContract.grantRole(noTimelockContract.UPGRADER_ROLE(), upgrader);
+        // Use startPrank to avoid prank being consumed by view function call
+        vm.startPrank(admin);
+        bytes32 upgraderRole = noTimelockContract.UPGRADER_ROLE();
+        noTimelockContract.grantRole(upgraderRole, upgrader);
+        vm.stopPrank();
 
         vm.prank(upgrader);
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
@@ -339,15 +342,16 @@ contract SecureUpgradeableTest is Test {
 
     function test_ExecuteUpgrade_Success() public {
         // First propose the upgrade through the proper channel
-        vm.prank(admin);
-        timelock.grantRole(timelock.UPGRADE_PROPOSER_ROLE(), admin);
+        // Use startPrank to avoid prank being consumed by view function calls
+        vm.startPrank(admin);
+        bytes32 proposerRole = timelock.UPGRADE_PROPOSER_ROLE();
+        timelock.grantRole(proposerRole, admin);
 
-        vm.prank(admin);
         timelock.proposeUpgrade(address(implementationV2), "Upgrade to V2", 0);
 
-        // Approve with multi-sig
-        vm.prank(admin); // admin is already a signer from initialization
+        // Approve with multi-sig (admin is already a signer from initialization)
         timelock.approveUpgrade(address(implementationV2));
+        vm.stopPrank();
 
         vm.prank(signer1);
         timelock.approveUpgrade(address(implementationV2));
@@ -400,8 +404,11 @@ contract SecureUpgradeableTest is Test {
         ERC1967Proxy proxy = new ERC1967Proxy(address(newImpl), initData);
         MockSecureUpgradeable noTimelockContract = MockSecureUpgradeable(address(proxy));
 
-        vm.prank(admin);
-        noTimelockContract.grantRole(noTimelockContract.UPGRADER_ROLE(), upgrader);
+        // Use startPrank to avoid prank being consumed by view function call
+        vm.startPrank(admin);
+        bytes32 upgraderRole = noTimelockContract.UPGRADER_ROLE();
+        noTimelockContract.grantRole(upgraderRole, upgrader);
+        vm.stopPrank();
 
         // Perform emergency upgrade - should succeed since no timelock
         vm.prank(upgrader);

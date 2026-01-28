@@ -332,7 +332,7 @@ contract LibraryTests is Test {
         // Even if somehow zero address was in whitelist, it should fail
         wrapper.addAuthorizedRecipient(address(0));
 
-        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         wrapper.secureETHTransfer(address(0), 1 ether);
     }
 

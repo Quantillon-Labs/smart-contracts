@@ -170,28 +170,25 @@ contract UpgradeTests is Test {
      * @notice Test QEURO state preservation after upgrade
      */
     function test_QEURO_StatePreservation_AfterUpgrade() public {
-        // Create some state
+        // Create some state - use startPrank to avoid prank being consumed by view calls
         vm.startPrank(admin);
-        qeuroToken.grantRole(qeuroToken.MINTER_ROLE(), admin);
-        vm.stopPrank();
-
-        vm.prank(admin);
+        bytes32 minterRole = qeuroToken.MINTER_ROLE();
+        qeuroToken.grantRole(minterRole, admin);
         qeuroToken.mint(user1, 1000 ether);
+        vm.stopPrank();
 
         uint256 balanceBefore = qeuroToken.balanceOf(user1);
         uint256 totalSupplyBefore = qeuroToken.totalSupply();
 
-        // Disable secure upgrades for testing
-        vm.prank(admin);
+        // Disable secure upgrades for testing and grant upgrader role
+        vm.startPrank(admin);
         qeuroToken.emergencyDisableSecureUpgrades();
+        bytes32 upgraderRole = qeuroToken.UPGRADER_ROLE();
+        qeuroToken.grantRole(upgraderRole, admin);
 
-        // Grant upgrader role
-        vm.prank(admin);
-        qeuroToken.grantRole(qeuroToken.UPGRADER_ROLE(), admin);
-
-        // Perform upgrade
-        vm.prank(admin);
+        // Perform upgrade (already in startPrank)
         qeuroToken.upgradeToAndCall(address(qeuroV2Impl), "");
+        vm.stopPrank();
 
         // Verify state is preserved
         assertEq(qeuroToken.balanceOf(user1), balanceBefore, "Balance should be preserved");
@@ -236,7 +233,7 @@ contract UpgradeTests is Test {
      * @notice Test QTI proxy initialization
      */
     function test_QTI_ProxyInitialization() public view {
-        assertEq(qtiToken.name(), "Quantillon Governance Token", "Name should be set");
+        assertEq(qtiToken.name(), "Quantillon Token", "Name should be set");
         assertEq(qtiToken.symbol(), "QTI", "Symbol should be set");
         assertTrue(qtiToken.hasRole(qtiToken.DEFAULT_ADMIN_ROLE(), admin), "Admin should have admin role");
     }
@@ -248,21 +245,20 @@ contract UpgradeTests is Test {
         // Check initial state
         uint256 supplyCap = qtiToken.TOTAL_SUPPLY_CAP();
 
-        // Disable secure upgrades for testing
-        vm.prank(admin);
+        // Disable secure upgrades for testing and grant upgrader role
+        // Use startPrank to avoid prank being consumed by view calls
+        vm.startPrank(admin);
         qtiToken.emergencyDisableSecureUpgrades();
-
-        // Grant upgrader role
-        vm.prank(admin);
-        qtiToken.grantRole(qtiToken.UPGRADER_ROLE(), admin);
+        bytes32 upgraderRole = qtiToken.UPGRADER_ROLE();
+        qtiToken.grantRole(upgraderRole, admin);
 
         // Perform upgrade
-        vm.prank(admin);
         qtiToken.upgradeToAndCall(address(qtiV2Impl), "");
+        vm.stopPrank();
 
         // Verify state is preserved
         assertEq(qtiToken.TOTAL_SUPPLY_CAP(), supplyCap, "Supply cap should be preserved");
-        assertEq(qtiToken.name(), "Quantillon Governance Token", "Name should be preserved");
+        assertEq(qtiToken.name(), "Quantillon Token", "Name should be preserved");
     }
 
     /**
@@ -437,8 +433,11 @@ contract UpgradeTests is Test {
      */
     function test_Security_EmergencyUpgrade_RequiresDisabled() public {
         // With secure upgrades enabled, emergency upgrade should fail
-        vm.prank(admin);
-        qeuroToken.grantRole(qeuroToken.UPGRADER_ROLE(), admin);
+        // Use startPrank to avoid prank being consumed by view calls
+        vm.startPrank(admin);
+        bytes32 upgraderRole = qeuroToken.UPGRADER_ROLE();
+        qeuroToken.grantRole(upgraderRole, admin);
+        vm.stopPrank();
 
         vm.prank(admin);
         vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);

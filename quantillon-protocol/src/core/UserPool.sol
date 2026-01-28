@@ -624,7 +624,7 @@ contract UserPool is
      */
     function _calculateNetAmounts(uint256[] calldata usdcAmounts) 
         internal 
-        view 
+        pure 
         returns (uint256[] memory netAmounts, uint256 totalNetAmount) 
     {
         // Note: Deposit fees are handled by QuantillonVault, not UserPool

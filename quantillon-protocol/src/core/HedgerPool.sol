@@ -1511,30 +1511,20 @@ contract HedgerPool is
     ) internal pure returns (int256 totalUnrealizedPnL, int256 realizedDelta) {
         // Step 1: Calculate total unrealized P&L (mark-to-market)
         uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
-        if (filledBefore >= qeuroValueInUSDC) {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            totalUnrealizedPnL = int256(filledBefore - qeuroValueInUSDC);
-        } else {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            totalUnrealizedPnL = -int256(qeuroValueInUSDC - filledBefore);
-        }
+        // forge-lint: disable-next-line(unsafe-typecast)
+        totalUnrealizedPnL = filledBefore >= qeuroValueInUSDC
+            ? int256(filledBefore - qeuroValueInUSDC)
+            : -int256(qeuroValueInUSDC - filledBefore);
 
         // Step 2: Calculate NET unrealized P&L (subtract already-realized portion)
         int256 netUnrealizedPnL = totalUnrealizedPnL - int256(previousRealizedPnL);
 
         // Step 3: Calculate the realized P&L delta for this redemption
-        if (netUnrealizedPnL >= 0) {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            uint256 pnlShare = qeuroAmount.mulDiv(uint256(netUnrealizedPnL), currentQeuroBacked);
-            // forge-lint: disable-next-line(unsafe-typecast)
-            realizedDelta = int256(pnlShare);
-        } else {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            uint256 absPnL = uint256(-netUnrealizedPnL);
-            uint256 pnlShare = qeuroAmount.mulDiv(absPnL, currentQeuroBacked);
-            // forge-lint: disable-next-line(unsafe-typecast)
-            realizedDelta = -int256(pnlShare);
-        }
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint256 absNetPnL = netUnrealizedPnL >= 0 ? uint256(netUnrealizedPnL) : uint256(-netUnrealizedPnL);
+        uint256 pnlShare = qeuroAmount.mulDiv(absNetPnL, currentQeuroBacked);
+        // forge-lint: disable-next-line(unsafe-typecast)
+        realizedDelta = netUnrealizedPnL >= 0 ? int256(pnlShare) : -int256(pnlShare);
     }
 
     /**

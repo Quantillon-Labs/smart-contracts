@@ -21,6 +21,7 @@ import {MockAggregatorV3} from "./ChainlinkOracle.t.sol";
 
 // Mocks
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
  * @title IntegrationTests
@@ -89,7 +90,7 @@ contract IntegrationTests is Test {
      * @notice Sets up the complete protocol deployment for integration testing
      * @dev Deploys all contracts in the correct order and wires them together
      */
-    function setUp() public {
+    function setUp() public virtual {
         // Deploy mock USDC
         mockUSDC = new MockUSDC();
         mockUSDC.mint(user1, INITIAL_USDC_AMOUNT);
@@ -493,5 +494,38 @@ contract IntegrationTests is Test {
         console.log("Total USDC deposited:", totalDeposited / 1e6);
         console.log("Total QEURO minted:", totalQEUROMinted / 1e18);
         console.log("\n=== Batch Operations Integration Test PASSED ===");
+    }
+
+    /**
+     * @notice Oracle extreme price deviation causes mint to revert
+     * @dev Vault uses PriceValidationLibrary; deviation > MAX_PRICE_DEVIATION (2%) reverts with ExcessiveSlippage
+     */
+    function test_Integration_OracleExtremePrice_RevertsMint() public virtual {
+        vm.prank(admin);
+        vault.setDevMode(false); // enable price deviation check
+
+        // One mint at normal price to set lastValidEurUsdPrice
+        vm.startPrank(user1);
+        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+        (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+        uint256 expectedQEURO = (DEPOSIT_AMOUNT * 1e30) / eurPrice;
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
+        vm.stopPrank();
+
+        // Advance blocks so deviation check runs (MIN_BLOCKS_BETWEEN_UPDATES = 1)
+        vm.roll(block.number + 2);
+
+        // Set feed to extreme price so oracle returns (1.15e18, true); vault's lastValid is 1.10e18 so vault reverts with ExcessiveSlippage
+        eurUsdFeed.setPrice(int256(1.15e8)); // 8 decimals for Chainlink feed
+        vm.prank(admin);
+        oracle.setPrices(1.15e18, 1e18);
+
+        vm.startPrank(user1);
+        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+        uint256 expectedQEURO2 = (DEPOSIT_AMOUNT * 1e30) / 1.15e18;
+        vm.expectRevert(CommonErrorLibrary.ExcessiveSlippage.selector);
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO2 * 90) / 100);
+        vm.stopPrank();
     }
 }

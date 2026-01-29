@@ -469,11 +469,10 @@ contract GovernanceAttackVectors is Test {
      * @notice Test that proposal execution has MEV protection
      * @dev Verifies execution time randomization prevents front-running
      */
-    function test_Governance_MEVProtection_Exists() public pure {
-        // The contract has proposalExecutionTime and proposalExecutionHash mappings
-        // for MEV protection during governance execution
-        // This is a structural verification
-        assertTrue(true, "MEV protection structures exist");
+    function test_Governance_MEVProtection_Exists() public view {
+        // QTIToken exposes proposalExecutionTime and proposalExecutionHash for MEV protection
+        assertEq(qtiToken.proposalExecutionTime(0), 0, "Uninitialized proposal exec time 0");
+        assertEq(qtiToken.proposalExecutionHash(0), bytes32(0), "Uninitialized proposal exec hash 0");
     }
 
     // =============================================================================

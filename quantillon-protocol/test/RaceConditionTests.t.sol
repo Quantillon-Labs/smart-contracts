@@ -10,6 +10,7 @@ import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IOracle} from "../src/interfaces/IOracle.sol";
+import {IQuantillonVault} from "../src/interfaces/IQuantillonVault.sol";
 
 /**
  * @title RaceConditionTests
@@ -141,7 +142,7 @@ contract RaceConditionTests is Test {
     }
 
     function _setupMocks() internal {
-        // Mock USDC
+        // Mock USDC balanceOf and transfer
         vm.mockCall(
             mockUSDC,
             abi.encodeWithSelector(IERC20.balanceOf.selector),
@@ -152,9 +153,30 @@ contract RaceConditionTests is Test {
             abi.encodeWithSelector(IERC20.transfer.selector),
             abi.encode(true)
         );
+        // HedgerPool calls usdc.transferFrom(hedger, vault, amount); mock exact (user1, mockVault, amount) for each test amount
         vm.mockCall(
             mockUSDC,
-            abi.encodeWithSelector(IERC20.transferFrom.selector),
+            abi.encodeWithSelector(IERC20.transferFrom.selector, user1, mockVault, 5000 * USDC_PRECISION),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            mockUSDC,
+            abi.encodeWithSelector(IERC20.transferFrom.selector, user1, mockVault, 3000 * USDC_PRECISION),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            mockUSDC,
+            abi.encodeWithSelector(IERC20.transferFrom.selector, user1, mockVault, 10000 * USDC_PRECISION),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            mockUSDC,
+            abi.encodeWithSelector(IERC20.transferFrom.selector, user1, mockVault, 2000 * USDC_PRECISION),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            mockUSDC,
+            abi.encodeWithSelector(IERC20.transferFrom.selector, user1, mockVault, 1000 * USDC_PRECISION),
             abi.encode(true)
         );
 
@@ -164,6 +186,23 @@ contract RaceConditionTests is Test {
             abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(110 * 1e16, true) // 1.10 EUR/USD
         );
+
+        // Mock Vault functions called by HedgerPool
+        vm.mockCall(
+            mockVault,
+            abi.encodeWithSelector(IQuantillonVault.addHedgerDeposit.selector),
+            abi.encode()
+        );
+        vm.mockCall(
+            mockVault,
+            abi.encodeWithSelector(IQuantillonVault.withdrawHedgerDeposit.selector),
+            abi.encode()
+        );
+        vm.mockCall(
+            mockVault,
+            abi.encodeWithSelector(IQuantillonVault.isProtocolCollateralized.selector),
+            abi.encode(true, 1000000 * USDC_PRECISION) // collateralized with 1M margin
+        );
     }
 
     // =============================================================================
@@ -171,19 +210,26 @@ contract RaceConditionTests is Test {
     // =============================================================================
 
     /**
-     * @notice Test concurrent deposits from multiple users
-     * @dev Verifies deposits don't interfere with each other
+     * @notice Test concurrent-like sequence: two operations in sequence, state consistent
+     * @dev Simulate two blocks: roll, first action; roll, second action; assert totals
      */
-    function test_RaceCondition_ConcurrentDeposits() public pure {
-        // Multiple users depositing simultaneously should:
-        // 1. Each get their own balance tracked correctly
-        // 2. Total deposits should sum correctly
-        // 3. No funds should be lost or duplicated
-
-        // In reality, blockchain transactions are sequential within a block
-        // but the order may be unpredictable (MEV, gas prices)
-
-        assertTrue(true, "Concurrent deposit protection exists");
+    function test_RaceCondition_ConcurrentDeposits() public {
+        vm.prank(admin);
+        hedgerPool.setSingleHedger(user1);
+        uint256 amount1 = 5_000 * USDC_PRECISION;
+        vm.prank(user1);
+        uint256 pos1 = hedgerPool.enterHedgePosition(amount1, 5);
+        vm.roll(block.number + 1);
+        uint256 amount2 = 3_000 * USDC_PRECISION;
+        vm.prank(user1);
+        hedgerPool.addMargin(pos1, amount2);
+        assertGe(hedgerPool.totalMargin(), amount1, "Total margin should be at least first deposit");
+        vm.roll(block.number + 600);
+        vm.prank(user1);
+        hedgerPool.removeMargin(pos1, amount2);
+        vm.prank(user1);
+        hedgerPool.exitHedgePosition(pos1);
+        assertEq(hedgerPool.totalMargin(), 0, "Total margin should be 0 after exit");
     }
 
     /**
@@ -200,14 +246,25 @@ contract RaceConditionTests is Test {
     }
 
     /**
-     * @notice Test deposit and withdrawal happening simultaneously
+     * @notice Test deposit and withdrawal timing with vm.roll
+     * @dev HedgerPool: enter position, advance blocks (liquidation cooldown), add/remove margin, exit; assert state
      */
-    function test_RaceCondition_DepositWithdrawSimultaneous() public pure {
-        // When deposit and withdrawal happen in same block:
-        // 1. Order should not affect correctness
-        // 2. Final balances should be deterministic
-
-        assertTrue(true, "Deposit/withdraw race protection exists");
+    function test_RaceCondition_DepositWithdrawSimultaneous() public {
+        uint256 marginAmount = 10_000 * USDC_PRECISION;
+        vm.prank(admin);
+        hedgerPool.setSingleHedger(user1);
+        vm.prank(user1);
+        uint256 positionId = hedgerPool.enterHedgePosition(marginAmount, 5);
+        assertTrue(hedgerPool.hasActiveHedger(), "Hedger should be active");
+        vm.roll(block.number + 600); // liquidation cooldown
+        vm.prank(user1);
+        hedgerPool.addMargin(positionId, 2_000 * USDC_PRECISION);
+        vm.prank(user1);
+        hedgerPool.removeMargin(positionId, 1_000 * USDC_PRECISION);
+        vm.prank(user1);
+        hedgerPool.exitHedgePosition(positionId);
+        assertFalse(hedgerPool.hasActiveHedger(), "Hedger should be inactive after exit");
+        assertEq(hedgerPool.totalMargin(), 0, "Total margin should be 0");
     }
 
     // =============================================================================
@@ -316,27 +373,44 @@ contract RaceConditionTests is Test {
     }
 
     /**
-     * @notice Test voting deadline race condition
+     * @notice Test voting deadline race - timelock has clear execution cutoff
+     * @dev Propose, approve, warp before 48h -> execute reverts; warp past 48h -> execute succeeds
      */
-    function test_RaceCondition_VotingDeadline() public pure {
-        // Votes submitted at voting deadline:
-        // 1. Clear cutoff based on block timestamp
-        // 2. Vote at exact deadline should have defined behavior
-        // 3. Vote after deadline should fail
-
-        assertTrue(true, "Voting deadline race protection exists");
+    function test_RaceCondition_VotingDeadline() public {
+        address newImpl = address(0x777);
+        vm.prank(admin);
+        timelock.proposeUpgrade(newImpl, "Deadline test", 0);
+        vm.prank(admin);
+        timelock.approveUpgrade(newImpl);
+        vm.prank(signer1);
+        timelock.approveUpgrade(newImpl);
+        vm.warp(block.timestamp + 48 hours - 1); // before deadline
+        vm.prank(admin);
+        vm.expectRevert();
+        timelock.executeUpgrade(newImpl);
+        vm.warp(block.timestamp + 2); // past 48h
+        vm.prank(admin);
+        timelock.executeUpgrade(newImpl);
     }
 
     /**
-     * @notice Test proposal execution race
+     * @notice Test proposal execution race - only one execution succeeds
+     * @dev Same logic as TimelockExecution: propose, approve, execute once (success), execute again (revert)
      */
-    function test_RaceCondition_ProposalExecution() public pure {
-        // Multiple attempts to execute same proposal:
-        // 1. Only one should succeed
-        // 2. Subsequent attempts should fail
-        // 3. executed flag prevents re-execution
-
-        assertTrue(true, "Proposal execution race protection exists");
+    function test_RaceCondition_ProposalExecution() public {
+        address newImpl = address(0x888);
+        vm.prank(admin);
+        timelock.proposeUpgrade(newImpl, "Proposal race test", 0);
+        vm.prank(admin);
+        timelock.approveUpgrade(newImpl);
+        vm.prank(signer1);
+        timelock.approveUpgrade(newImpl);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        timelock.executeUpgrade(newImpl);
+        vm.prank(admin);
+        vm.expectRevert();
+        timelock.executeUpgrade(newImpl);
     }
 
     /**

@@ -8,6 +8,15 @@ import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IOracle} from "../src/interfaces/IOracle.sol";
+import {FlashLoanProtectionLibrary} from "../src/libraries/FlashLoanProtectionLibrary.sol";
+
+/// @notice Harness to expose FlashLoanProtectionLibrary.validateBalanceChange for testing
+contract FlashLoanProtectionHarness {
+    function validate(uint256 beforeBalance, uint256 afterBalance, uint256 maxDecrease)
+        external pure returns (bool) {
+        return FlashLoanProtectionLibrary.validateBalanceChange(beforeBalance, afterBalance, maxDecrease);
+    }
+}
 
 /**
  * @title EconomicAttackVectors
@@ -194,15 +203,17 @@ contract EconomicAttackVectors is Test {
 
     /**
      * @notice Test that flash loan cannot manipulate collateral ratios
-     * @dev Verifies collateral ratio checks are performed correctly
+     * @dev Verifies FlashLoanProtectionLibrary rejects balance decrease beyond maxDecrease
      */
-    function test_Economic_FlashLoanCollateralManipulation_Blocked() public pure {
-        // Collateral ratio manipulation through flash loans should be blocked
-        // Protocol calculates collateral at time of operation, not just at start
-
-        // This is a structural test - actual manipulation would require
-        // having real tokens and performing operations
-        assertTrue(true, "Collateral protection exists");
+    function test_Economic_FlashLoanCollateralManipulation_Blocked() public {
+        // Deploy harness that exposes FlashLoanProtectionLibrary.validateBalanceChange
+        FlashLoanProtectionHarness harness = new FlashLoanProtectionHarness();
+        // Before: 100 USDC, after: 50 USDC, maxDecrease: 40 -> allowed decrease is 40, actual is 50 -> should fail
+        bool ok = harness.validate(100 * USDC_PRECISION, 50 * USDC_PRECISION, 40 * USDC_PRECISION);
+        assertFalse(ok, "Balance decrease beyond maxDecrease should be rejected");
+        // Within limit: before 100, after 65, maxDecrease 40 -> allowed, actual 35 -> should pass
+        bool okWithin = harness.validate(100 * USDC_PRECISION, 65 * USDC_PRECISION, 40 * USDC_PRECISION);
+        assertTrue(okWithin, "Balance decrease within maxDecrease should pass");
     }
 
     /**
@@ -223,33 +234,29 @@ contract EconomicAttackVectors is Test {
 
     /**
      * @notice Test that stale price data is rejected
-     * @dev Verifies oracle freshness checks are enforced
+     * @dev Verifies oracle returns invalid when mocked as stale; vault would revert on mint
      */
     function test_Economic_StalePriceRejection() public {
-        // Mock stale oracle data
+        // Mock stale oracle data (isValid = false)
         vm.mockCall(
             mockOracle,
             abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             // forge-lint: disable-next-line(unsafe-typecast)
             abi.encode(uint256(EUR_USD_PRICE) * 1e10, false) // false = stale
         );
-
-        // Operations should fail with stale price
-        // The actual test depends on specific function signatures
-        // This verifies the pattern exists
-        assertTrue(true, "Stale price protection exists");
+        (uint256 price, bool isValid) = IOracle(mockOracle).getEurUsdPrice();
+        assertFalse(isValid, "Stale price should return invalid");
+        assertEq(price, uint256(EUR_USD_PRICE) * 1e10, "Price value should match mock");
     }
 
     /**
      * @notice Test that extreme price deviations are handled
-     * @dev Verifies circuit breakers for unusual price movements
+     * @dev Executable test in IntegrationTests.test_Integration_OracleExtremePrice_RevertsMint; skip here (no vault in this file)
      */
-    function test_Economic_ExtremePriceDeviation_Protected() public pure {
-        // Protocol should have circuit breakers for extreme prices
-        // Max price deviation should be bounded
-
-        // Structural verification
-        assertTrue(true, "Price deviation protection exists");
+    function test_Economic_ExtremePriceDeviation_Protected() public {
+        vm.skip(true);
+        // Full executable test: deploy vault + oracle, set extreme price, expect mint to revert (ExcessiveSlippage).
+        // See IntegrationTests.test_Integration_OracleExtremePrice_RevertsMint.
     }
 
     /**

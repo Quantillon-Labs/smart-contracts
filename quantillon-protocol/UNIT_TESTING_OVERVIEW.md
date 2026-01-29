@@ -119,7 +119,7 @@ All Solidity tests live under `test/` and use Foundry's Forge test runner.
     - `test/PriceValidationLibrary.t.sol`
 
 - **Invariant-style tests**
-  - `test/QuantillonInvariants.t.sol` - Comprehensive invariant testing:
+  - `test/QuantillonInvariants.t.sol` - Comprehensive invariant testing (wired for Foundry invariant mode via `StdInvariant`, `targetContract(handler)`, `targetSelector`):
     - **15 invariant functions** covering:
       - Supply consistency (`invariant_totalSupplyConsistency`, `invariant_supplyCapRespect`)
       - Collateralization (`invariant_collateralizationRatio`, `invariant_liquidationThresholds`)

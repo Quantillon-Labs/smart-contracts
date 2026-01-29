@@ -763,30 +763,15 @@ contract ReentrancyTests is Test {
 
     /**
      * @notice Test reentrancy during liquidation
-     * @dev Liquidations involve multiple transfers and state changes
-     *
-     * This test verifies that HedgerPool's liquidation functions are protected
-     * against reentrancy attacks that could allow double-liquidation or state manipulation.
+     * @dev Protocol has no public liquidate(position) - liquidation is triggered by redeem when CR <= 101%.
+     *      recordLiquidationRedeem in HedgerPool is onlyVault and nonReentrant. This test verifies
+     *      HedgerPool is deployed and admin is set; full reentrancy simulation would require
+     *      protocol in liquidation mode and a malicious vault callback (see SECURITY_TEST_SCOPING.md).
      */
     function test_Reentrancy_Liquidation_Protected() public view {
-        // Verify HedgerPool is deployed and can be tested
         assertTrue(address(hedgerPool) != address(0), "HedgerPool should be deployed");
-
-        // The liquidation protection in HedgerPool is implemented through:
-        // 1. nonReentrant modifier on liquidate() and related functions
-        // 2. Updating position state (marking as liquidated) before any transfers
-        // 3. Following CEI pattern for all collateral movements
-
-        // Verify the contract has been initialized properly
         bytes32 adminRole = hedgerPool.DEFAULT_ADMIN_ROLE();
         assertTrue(hedgerPool.hasRole(adminRole, admin), "HedgerPool should have admin role assigned");
-
-        // The actual liquidation reentrancy test would require:
-        // 1. A funded position in HedgerPool
-        // 2. An undercollateralized state (price movement)
-        // 3. A malicious contract attempting double-liquidation
-        // This is structurally verified by the presence of nonReentrant modifiers
-        // on all liquidation-related functions in HedgerPool
     }
 
     // =============================================================================

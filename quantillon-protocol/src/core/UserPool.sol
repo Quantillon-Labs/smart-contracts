@@ -127,6 +127,9 @@ contract UserPool is
     /// @dev Used for all USDC deposits and withdrawals
     /// @dev Should be the official USDC contract on the target network
     IERC20 public usdc;
+
+    /// @notice USDC balance before flash loan check (used by flashLoanProtection modifier)
+    uint256 private _flashLoanBalanceBefore;
     
     /// @notice Main Quantillon vault for QEURO operations
     /// @dev Used for QEURO minting and burning operations
@@ -395,10 +398,18 @@ contract UserPool is
      * @dev Uses the FlashLoanProtectionLibrary to check USDC balance consistency
      */
     modifier flashLoanProtection() {
-        uint256 balanceBefore = usdc.balanceOf(address(this));
+        _flashLoanProtectionBefore();
         _;
+        _flashLoanProtectionAfter();
+    }
+
+    function _flashLoanProtectionBefore() private {
+        _flashLoanBalanceBefore = usdc.balanceOf(address(this));
+    }
+
+    function _flashLoanProtectionAfter() private view {
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0)) {
+        if (!FlashLoanProtectionLibrary.validateBalanceChange(_flashLoanBalanceBefore, balanceAfter, 0)) {
             revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
         }
     }
@@ -461,7 +472,6 @@ contract UserPool is
         CommonValidationLibrary.validateNonZeroAddress(_usdc, "token");
         CommonValidationLibrary.validateNonZeroAddress(_vault, "vault");
         CommonValidationLibrary.validateNonZeroAddress(_oracle, "oracle");
-        // YieldShift can be zero during phased deployment, set via updateYieldShift later
         if (_yieldShift != address(0)) {
             CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
         }
@@ -476,29 +486,33 @@ contract UserPool is
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
 
+        _setUserPoolContractReferences(_qeuro, _usdc, _vault, _oracle, _yieldShift, _treasury);
+
+        stakingAPY = 800;
+        depositAPY = 400;
+        minStakeAmount = 100e18;
+        unstakingCooldown = 7 days;
+        performanceFee = 1000;
+        accumulatedYieldPerShare = 0;
+        lastYieldDistribution = TIME_PROVIDER.currentTime();
+        totalYieldDistributed = 0;
+    }
+
+    /// @dev Sets contract references to reduce stack depth in initialize (via_ir stack-too-deep fix)
+    function _setUserPoolContractReferences(
+        address _qeuro,
+        address _usdc,
+        address _vault,
+        address _oracle,
+        address _yieldShift,
+        address _treasury
+    ) internal {
         qeuro = IQEUROToken(_qeuro);
         usdc = IERC20(_usdc);
         vault = IQuantillonVault(_vault);
         oracle = IOracle(_oracle);
         yieldShift = IYieldShift(_yieldShift);
-        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        // Treasury validation handled by CommonValidationLibrary
-        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
-
-        // Default parameters
-        stakingAPY = 800;           // 8% APY for staking
-        depositAPY = 400;           // 4% APY for deposits
-        minStakeAmount = 100e18;    // 100 QEURO minimum
-        unstakingCooldown = 7 days; // 7 days cooldown
-        
-        // Mint and redemption fees are handled by QuantillonVault
-        performanceFee = 1000;      // 10% performance fee on staking rewards
-        
-        // Initialize yield tracking variables to prevent uninitialized state variable warnings
-        accumulatedYieldPerShare = 0;
-        lastYieldDistribution = TIME_PROVIDER.currentTime();
-        totalYieldDistributed = 0;
     }
 
     // =============================================================================

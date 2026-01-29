@@ -153,8 +153,12 @@ contract HedgerPool is
     event RealizedPnLCalculation(uint256 indexed positionId, uint256 qeuroAmount, uint256 qeuroBacked, uint256 filledBefore, uint256 price, int256 totalUnrealizedPnL, int256 realizedDelta);
 
     modifier onlyVault() {
-        if (msg.sender != address(vault)) revert HedgerPoolErrorLibrary.OnlyVault();
+        _onlyVault();
         _;
+    }
+
+    function _onlyVault() internal view {
+        if (msg.sender != address(vault)) revert HedgerPoolErrorLibrary.OnlyVault();
     }
 
     /**

@@ -27,21 +27,21 @@ library CommonValidationLibrary {
      */
     function validateNonZeroAddress(address addr, string memory errorType) internal pure {
         if (addr == address(0)) {
-            bytes32 errorHash = keccak256(bytes(errorType));
+            bytes32 errorHash = _keccak256Bytes(errorType);
 
-            if (errorHash == keccak256("admin")) {
+            if (errorHash == _keccak256Bytes("admin")) {
                 revert CommonErrorLibrary.InvalidAdmin();
             }
-            if (errorHash == keccak256("treasury")) {
+            if (errorHash == _keccak256Bytes("treasury")) {
                 revert CommonErrorLibrary.InvalidTreasury();
             }
-            if (errorHash == keccak256("token")) {
+            if (errorHash == _keccak256Bytes("token")) {
                 revert CommonErrorLibrary.InvalidToken();
             }
-            if (errorHash == keccak256("oracle")) {
+            if (errorHash == _keccak256Bytes("oracle")) {
                 revert CommonErrorLibrary.InvalidOracle();
             }
-            if (errorHash == keccak256("vault")) {
+            if (errorHash == _keccak256Bytes("vault")) {
                 revert CommonErrorLibrary.InvalidVault();
             }
             revert CommonErrorLibrary.InvalidAddress();
@@ -130,19 +130,29 @@ library CommonValidationLibrary {
      */
     function validateCondition(bool condition, string memory errorType) internal pure {
         if (!condition) {
-            bytes32 errorHash = keccak256(bytes(errorType));
+            bytes32 errorHash = _keccak256Bytes(errorType);
 
-            if (errorHash == keccak256("oracle")) {
+            if (errorHash == _keccak256Bytes("oracle")) {
                 revert CommonErrorLibrary.InvalidOracle();
             }
-            if (errorHash == keccak256("collateralization")) {
+            if (errorHash == _keccak256Bytes("collateralization")) {
                 revert CommonErrorLibrary.InsufficientCollateralization();
             }
-            if (errorHash == keccak256("authorization")) {
+            if (errorHash == _keccak256Bytes("authorization")) {
                 revert CommonErrorLibrary.NotAuthorized();
             }
             revert CommonErrorLibrary.InvalidCondition();
         }
+    }
+
+    /// @notice Internal keccak256 of string using inline assembly (gas-efficient)
+    function _keccak256Bytes(string memory s) private pure returns (bytes32) {
+        bytes memory b = bytes(s);
+        bytes32 result;
+        assembly {
+            result := keccak256(add(b, 32), mload(b))
+        }
+        return result;
     }
 
     /**

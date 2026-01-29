@@ -243,6 +243,9 @@ contract QTIToken is
     /// @dev Address where protocol fees are collected and distributed
     /// @dev Can be updated by governance
     address public treasury;
+
+    /// @notice Balance before flash loan check (used by flashLoanProtection modifier)
+    uint256 private _flashLoanBalanceBefore;
     
     /// @notice Progressive decentralization parameters
     /// @dev Start time for the decentralization process
@@ -337,10 +340,18 @@ contract QTIToken is
      * @dev Uses the FlashLoanProtectionLibrary to check QTI balance consistency
      */
     modifier flashLoanProtection() {
-        uint256 balanceBefore = balanceOf(address(this));
+        _flashLoanProtectionBefore();
         _;
+        _flashLoanProtectionAfter();
+    }
+
+    function _flashLoanProtectionBefore() private {
+        _flashLoanBalanceBefore = balanceOf(address(this));
+    }
+
+    function _flashLoanProtectionAfter() private view {
         uint256 balanceAfter = balanceOf(address(this));
-        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0)) {
+        if (!FlashLoanProtectionLibrary.validateBalanceChange(_flashLoanBalanceBefore, balanceAfter, 0)) {
             revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
         }
     }
@@ -800,58 +811,58 @@ contract QTIToken is
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
-    function batchUnlock(address[] calldata users) 
-        external 
+    function batchUnlock(address[] calldata users)
+        external
         onlyRole(GOVERNANCE_ROLE)
-        whenNotPaused 
-        returns (uint256[] memory amounts) 
+        whenNotPaused
+        returns (uint256[] memory amounts)
     {
         if (users.length > MAX_UNLOCK_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
-        
+
         amounts = new uint256[](users.length);
-        
-        // Time-based logic using TimeProvider for consistent and testable timing
         uint256 currentTimestamp = TIME_PROVIDER.currentTime();
-        uint256 length = users.length;
-        
-        // Accumulate totals to update once outside the loop
         uint256 totalAmountToUnlock = 0;
         uint256 totalVotingPowerToRemove = 0;
-        
-        for (uint256 i = 0; i < length;) {
-            address user = users[i];
-            LockInfo storage lockInfo = locks[user];
-            
-            if (lockInfo.unlockTime > currentTimestamp) revert TokenErrorLibrary.LockNotExpired();
-            if (lockInfo.amount == 0) revert TokenErrorLibrary.NothingToUnlock();
 
-            uint256 amount = lockInfo.amount;
-            uint256 oldVotingPower = lockInfo.votingPower;
+        for (uint256 i = 0; i < users.length;) {
+            (uint256 amount, uint256 oldVotingPower) = _processOneBatchUnlock(users[i], currentTimestamp);
             amounts[i] = amount;
-            
-            // Accumulate for batch update
             totalAmountToUnlock += amount;
             totalVotingPowerToRemove += oldVotingPower;
-            
-            // Clear lock info
-            lockInfo.amount = 0;
-            lockInfo.unlockTime = 0;
-            lockInfo.votingPower = 0;
-            
-            // Transfer tokens back to user
-            _transfer(address(this), user, amount);
-            
-            emit TokensUnlocked(user, amount, oldVotingPower);
-            emit VotingPowerUpdated(user, oldVotingPower, 0);
-            
             unchecked { ++i; }
         }
-        
-        // Update global totals once outside the loop - GAS OPTIMIZATION: Single update
+
         unchecked {
             totalLocked = totalLocked - totalAmountToUnlock;
             totalVotingPower = totalVotingPower - totalVotingPowerToRemove;
         }
+    }
+
+    /**
+     * @notice Unlocks one user's lock and transfers tokens (used by batchUnlock to reduce stack depth)
+     * @param user Address to unlock for
+     * @param currentTimestamp Current time from TimeProvider
+     * @return amount Amount unlocked
+     * @return oldVotingPower Voting power removed
+     */
+    function _processOneBatchUnlock(address user, uint256 currentTimestamp)
+        internal
+        returns (uint256 amount, uint256 oldVotingPower)
+    {
+        LockInfo storage lockInfo = locks[user];
+        if (lockInfo.unlockTime > currentTimestamp) revert TokenErrorLibrary.LockNotExpired();
+        if (lockInfo.amount == 0) revert TokenErrorLibrary.NothingToUnlock();
+
+        amount = lockInfo.amount;
+        oldVotingPower = lockInfo.votingPower;
+
+        lockInfo.amount = 0;
+        lockInfo.unlockTime = 0;
+        lockInfo.votingPower = 0;
+
+        _transfer(address(this), user, amount);
+        emit TokensUnlocked(user, amount, oldVotingPower);
+        emit VotingPowerUpdated(user, oldVotingPower, 0);
     }
 
     /**

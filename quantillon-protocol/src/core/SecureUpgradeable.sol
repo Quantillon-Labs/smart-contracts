@@ -37,10 +37,14 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     // ============ Modifiers ============
     
     modifier onlyTimelock() {
+        _onlyTimelock();
+        _;
+    }
+
+    function _onlyTimelock() internal view {
         if (address(timelock) == address(0) || msg.sender != address(timelock)) {
             revert CommonErrorLibrary.NotAuthorized();
         }
-        _;
     }
     
     // ============ Initialization ============

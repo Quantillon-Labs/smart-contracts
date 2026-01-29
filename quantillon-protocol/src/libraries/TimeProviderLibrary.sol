@@ -72,12 +72,21 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
     
     /// @notice Ensures the contract is not in emergency mode
     modifier whenNotEmergency() {
-        if (emergencyMode) revert CommonErrorLibrary.EmergencyModeActive();
+        _whenNotEmergency();
         _;
     }
-    
+
+    function _whenNotEmergency() internal view {
+        if (emergencyMode) revert CommonErrorLibrary.EmergencyModeActive();
+    }
+
     /// @notice Ensures the time offset is within allowed bounds
     modifier validTimeOffset(int256 offset) {
+        _validTimeOffset(offset);
+        _;
+    }
+
+    function _validTimeOffset(int256 offset) internal pure {
         // forge-lint: disable-next-line(unsafe-typecast)
         if (offset > 0 && uint256(offset) > MAX_TIME_OFFSET) {
             revert CommonErrorLibrary.InvalidAmount();
@@ -86,7 +95,6 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         if (offset < 0 && uint256(-offset) > MAX_TIME_OFFSET) {
             revert CommonErrorLibrary.InvalidAmount();
         }
-        _;
     }
     
     // ==================== INITIALIZATION ====================

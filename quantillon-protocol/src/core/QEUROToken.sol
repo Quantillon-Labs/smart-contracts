@@ -195,6 +195,9 @@ contract QEUROToken is
     /// @dev Protocol fees from minting are sent to this contract
     address public feeCollector;
 
+    /// @notice Balance before flash loan check (used by flashLoanProtection modifier)
+    uint256 private _flashLoanBalanceBefore;
+
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
     // =============================================================================
@@ -297,10 +300,18 @@ contract QEUROToken is
      * @dev Uses the FlashLoanProtectionLibrary to check QEURO balance consistency
      */
     modifier flashLoanProtection() {
-        uint256 balanceBefore = balanceOf(address(this));
+        _flashLoanProtectionBefore();
         _;
+        _flashLoanProtectionAfter();
+    }
+
+    function _flashLoanProtectionBefore() private {
+        _flashLoanBalanceBefore = balanceOf(address(this));
+    }
+
+    function _flashLoanProtectionAfter() private view {
         uint256 balanceAfter = balanceOf(address(this));
-        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0)) {
+        if (!FlashLoanProtectionLibrary.validateBalanceChange(_flashLoanBalanceBefore, balanceAfter, 0)) {
             revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
         }
     }
@@ -389,8 +400,8 @@ contract QEUROToken is
         // Initialize state variables
         maxSupply = DEFAULT_MAX_SUPPLY;
         // forge-lint: disable-next-line(unsafe-typecast)
-        rateLimitCaps = RateLimitCaps(uint128(MAX_RATE_LIMIT), uint128(MAX_RATE_LIMIT));
-        rateLimitInfo = RateLimitInfo(0, 0, uint64(block.number));
+        rateLimitCaps = RateLimitCaps({ mint: uint128(MAX_RATE_LIMIT), burn: uint128(MAX_RATE_LIMIT) });
+        rateLimitInfo = RateLimitInfo({ currentHourMinted: 0, currentHourBurned: 0, lastRateLimitReset: uint64(block.number) });
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
@@ -765,7 +776,7 @@ contract QEUROToken is
         if (newBurnLimit > MAX_RATE_LIMIT) revert CommonErrorLibrary.RateLimitTooHigh();
 
         // forge-lint: disable-next-line(unsafe-typecast)
-        rateLimitCaps = RateLimitCaps(uint128(newMintLimit), uint128(newBurnLimit));
+        rateLimitCaps = RateLimitCaps({ mint: uint128(newMintLimit), burn: uint128(newBurnLimit) });
 
         emit RateLimitsUpdated("rate_limits", newMintLimit, newBurnLimit);
     }

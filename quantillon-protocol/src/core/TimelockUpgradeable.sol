@@ -119,10 +119,14 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     }
     
     modifier onlyEmergencyUpgrader() {
+        _onlyEmergencyUpgrader();
+        _;
+    }
+
+    function _onlyEmergencyUpgrader() internal view {
         if (!hasRole(EMERGENCY_UPGRADER_ROLE, msg.sender) || !emergencyMode) {
             revert CommonErrorLibrary.NotEmergencyRole();
         }
-        _;
     }
     
     // ============ Initialization ============

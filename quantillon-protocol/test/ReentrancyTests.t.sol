@@ -2,8 +2,6 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {QEUROToken} from "../src/core/QEUROToken.sol";
-import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {UserPool} from "../src/core/UserPool.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
@@ -155,10 +153,14 @@ contract MaliciousQEURO is IERC20 {
     // Track minters (addresses that can mint)
     mapping(address => bool) public minters;
     
-    // ERC20 metadata
-    string public constant name = "Malicious QEURO";
-    string public constant symbol = "mQEURO";
-    uint8 public constant decimals = 18;
+    // ERC20 metadata (SCREAMING_SNAKE_CASE for constants, view getters for IERC20)
+    string public constant NAME = "Malicious QEURO";
+    string public constant SYMBOL = "mQEURO";
+    uint8 public constant DECIMALS = 18;
+
+    function name() external pure returns (string memory) { return NAME; }
+    function symbol() external pure returns (string memory) { return SYMBOL; }
+    function decimals() external pure returns (uint8) { return DECIMALS; }
 
     function setMinter(address minter, bool enabled) external {
         minters[minter] = enabled;

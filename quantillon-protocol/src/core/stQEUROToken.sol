@@ -157,6 +157,9 @@ contract stQEUROToken is
     /// @dev Sum of all QEURO staked by users
     /// @dev Used for exchange rate calculations
     uint256 public totalUnderlying;
+
+    /// @notice totalUnderlying before flash loan check (used by flashLoanProtection modifier)
+    uint256 private _flashLoanTotalUnderlyingBefore;
     
     /// @notice Total yield earned by stQEURO holders
     /// @dev Sum of all yield distributed to stQEURO holders
@@ -252,10 +255,18 @@ contract stQEUROToken is
      * @dev This prevents flash loans that would drain QEURO from the contract
      */
     modifier flashLoanProtection() {
-        uint256 totalUnderlyingBefore = totalUnderlying;
+        _flashLoanProtectionBefore();
         _;
+        _flashLoanProtectionAfter();
+    }
+
+    function _flashLoanProtectionBefore() private {
+        _flashLoanTotalUnderlyingBefore = totalUnderlying;
+    }
+
+    function _flashLoanProtectionAfter() private view {
         uint256 totalUnderlyingAfter = totalUnderlying;
-        if (totalUnderlyingAfter < totalUnderlyingBefore) {
+        if (totalUnderlyingAfter < _flashLoanTotalUnderlyingBefore) {
             revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
         }
     }

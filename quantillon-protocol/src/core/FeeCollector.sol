@@ -126,12 +126,16 @@ contract FeeCollector is
     
     /// @notice Ensures only authorized contracts can collect fees
     modifier onlyFeeSource() {
-        if (!hasRole(GOVERNANCE_ROLE, msg.sender) && 
+        _onlyFeeSource();
+        _;
+    }
+
+    function _onlyFeeSource() internal view {
+        if (!hasRole(GOVERNANCE_ROLE, msg.sender) &&
             !hasRole(TREASURY_ROLE, msg.sender) &&
             !_isAuthorizedFeeSource(msg.sender)) {
             revert CommonErrorLibrary.NotAuthorized();
         }
-        _;
     }
 
     // =============================================================================

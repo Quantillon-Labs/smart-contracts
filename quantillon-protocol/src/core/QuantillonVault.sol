@@ -181,6 +181,9 @@ contract QuantillonVault is
     /// @dev Centralized fee collection and distribution
     address public feeCollector;
 
+    /// @notice USDC balance before flash loan check (used by flashLoanProtection modifier)
+    uint256 private _flashLoanBalanceBefore;
+
     /// @notice AaveVault contract for USDC yield generation
     /// @dev Used to deploy idle USDC to Aave lending pool
     IAaveVault public aaveVault;
@@ -375,10 +378,18 @@ contract QuantillonVault is
      * @dev Uses the FlashLoanProtectionLibrary to check USDC balance consistency
      */
     modifier flashLoanProtection() {
-        uint256 balanceBefore = usdc.balanceOf(address(this));
+        _flashLoanProtectionBefore();
         _;
+        _flashLoanProtectionAfter();
+    }
+
+    function _flashLoanProtectionBefore() private {
+        _flashLoanBalanceBefore = usdc.balanceOf(address(this));
+    }
+
+    function _flashLoanProtectionAfter() private view {
         uint256 balanceAfter = usdc.balanceOf(address(this));
-        if (!FlashLoanProtectionLibrary.validateBalanceChange(balanceBefore, balanceAfter, 0)) {
+        if (!FlashLoanProtectionLibrary.validateBalanceChange(_flashLoanBalanceBefore, balanceAfter, 0)) {
             revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
         }
     }

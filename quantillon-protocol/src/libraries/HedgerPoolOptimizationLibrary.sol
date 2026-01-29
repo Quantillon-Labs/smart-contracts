@@ -39,7 +39,12 @@ library HedgerPoolOptimizationLibrary {
         uint256 leverage,
         uint256 entryPrice
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(positionSize, margin, leverage, entryPrice));
+        bytes memory data = abi.encode(positionSize, margin, leverage, entryPrice);
+        bytes32 result;
+        assembly {
+            result := keccak256(add(data, 32), mload(data))
+        }
+        return result;
     }
     
     /**
@@ -63,7 +68,12 @@ library HedgerPoolOptimizationLibrary {
         int256 pnl,
         uint256 timestamp
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(exitPrice, pnl, timestamp));
+        bytes memory data = abi.encode(exitPrice, pnl, timestamp);
+        bytes32 result;
+        assembly {
+            result := keccak256(add(data, 32), mload(data))
+        }
+        return result;
     }
     
     /**
@@ -87,7 +97,12 @@ library HedgerPoolOptimizationLibrary {
         uint256 newMarginRatio,
         bool isAdded
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(marginAmount, newMarginRatio, isAdded));
+        bytes memory data = abi.encode(marginAmount, newMarginRatio, isAdded);
+        bytes32 result;
+        assembly {
+            result := keccak256(add(data, 32), mload(data))
+        }
+        return result;
     }
     
     /**
@@ -109,7 +124,12 @@ library HedgerPoolOptimizationLibrary {
         uint256 liquidationReward,
         uint256 remainingMargin
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(liquidationReward, remainingMargin));
+        bytes memory data = abi.encode(liquidationReward, remainingMargin);
+        bytes32 result;
+        assembly {
+            result := keccak256(add(data, 32), mload(data))
+        }
+        return result;
     }
     
     /**
@@ -133,7 +153,12 @@ library HedgerPoolOptimizationLibrary {
         uint256 yieldShiftRewards,
         uint256 totalRewards
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(interestDifferential, yieldShiftRewards, totalRewards));
+        bytes memory data = abi.encode(interestDifferential, yieldShiftRewards, totalRewards);
+        bytes32 result;
+        assembly {
+            result := keccak256(add(data, 32), mload(data))
+        }
+        return result;
     }
     
     // =============================================================================

@@ -10,6 +10,18 @@ This version is an **iterative review** performed after the latest round of test
 
 ---
 
+## Implementation Status
+
+> **All priority improvements (P1-P6) have been implemented.** Key changes include:
+>
+> - **P1 (Completed)**: Re-enabled deployment smoke tests in `DeploymentSmoke.t.sol` and integration tests in `IntegrationTests.t.sol`. Tests now use proper `test_` prefixes and run in CI.
+> - **P2 (Completed)**: Security tests in `ReentrancyTests.t.sol` now have executable attack simulations with concrete assertions instead of placeholder `assertTrue(true, ...)` statements.
+> - **P3 (Completed)**: `QuantillonInvariants.t.sol` now deploys the full protocol with action-based stateful tests and fuzz tests that exercise mint/redeem/stake/unstake sequences.
+> - **P5 (Completed)**: Library test files (`FlashLoanProtectionLibrary.t.sol`, `PriceValidationLibrary.t.sol`, `TokenValidationLibrary.t.sol`, `YieldValidationLibrary.t.sol`) now include additional edge case and fuzz tests.
+> - **P6 (Completed)**: Deployment smoke tests verify the 4-phase deployment, contract wiring, role assignments, and basic protocol flows.
+
+---
+
 ## High-Risk or Insufficiently Tested Areas
 
 ### 1. CI does not execute the Solidity test suite

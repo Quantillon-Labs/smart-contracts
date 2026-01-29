@@ -266,14 +266,14 @@ contract IntegrationTests is Test {
     }
     
     // =============================================================================
-    // END-TO-END INTEGRATION TESTS (temporarily disabled)
+    // END-TO-END INTEGRATION TESTS
     // =============================================================================
-    
+
     /**
-     * @dev Temporarily disabled until dedicated Aave mocks and full wiring
-     *      are available for stable E2E integration flows.
+     * @notice Complete protocol workflow integration test
+     * @dev Tests deposit -> mint -> stake -> unstake -> redeem flow
      */
-    function xtest_CompleteProtocolWorkflow_DisabledForNow() public {
+    function test_CompleteProtocolWorkflow() public {
         console.log("=== Complete Protocol Workflow Integration Test ===");
         
         uint256 initialUserUSDC = mockUSDC.balanceOf(user1);
@@ -427,9 +427,10 @@ contract IntegrationTests is Test {
     }
     
     /**
-     * @dev Temporarily disabled batch integration scenario until mocks are richer.
+     * @notice Batch operations workflow test
+     * @dev Tests multiple users performing deposits concurrently
      */
-    function xtest_BatchOperationsWorkflow_DisabledForNow() public {
+    function test_BatchOperationsWorkflow() public {
         console.log("\n=== Batch Operations Integration Test ===");
         
         address[] memory users = new address[](3);

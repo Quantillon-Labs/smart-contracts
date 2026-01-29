@@ -256,11 +256,11 @@ contract DeploymentSmokeTest is Test {
         vm.stopPrank();
     }
 
-    // ------------------------ Smoke test ------------------------
+    // ------------------------ Smoke tests ------------------------
 
-    /// @notice End‑to‑end smoke test: deploy, then run minimal flows.
-    /// @dev Temporarily disabled until dedicated Aave mocks are wired.
-    function xtest_DeploymentSmoke_BasicFlows_DisabledForNow() public {
+    /// @notice Verify that all protocol contracts can be deployed and initialized.
+    /// @dev This test validates the 4-phase deployment process without executing flows.
+    function test_DeploymentSmoke_AllContractsDeployed() public {
         deployFullProtocol();
 
         // Sanity: key contracts are deployed
@@ -272,6 +272,36 @@ contract DeploymentSmokeTest is Test {
         assertTrue(address(hedgerPool) != address(0), "HedgerPool not deployed");
         assertTrue(address(stQEURO) != address(0), "stQEURO not deployed");
         assertTrue(address(yieldShift) != address(0), "YieldShift not deployed");
+        assertTrue(address(feeCollector) != address(0), "FeeCollector not deployed");
+        assertTrue(address(oracle) != address(0), "Oracle not deployed");
+    }
+
+    /// @notice Verify contract wiring is correct after deployment.
+    function test_DeploymentSmoke_ContractWiring() public {
+        deployFullProtocol();
+
+        // Verify vault has correct references
+        assertEq(vault.hedgerPool(), address(hedgerPool), "Vault should reference HedgerPool");
+        assertEq(vault.userPool(), address(userPool), "Vault should reference UserPool");
+
+        // Verify roles are correctly assigned
+        assertTrue(qeuroToken.hasRole(qeuroToken.MINTER_ROLE(), address(vault)), "Vault should have MINTER_ROLE");
+        assertTrue(qeuroToken.hasRole(qeuroToken.BURNER_ROLE(), address(vault)), "Vault should have BURNER_ROLE");
+
+        // Verify governance roles
+        assertTrue(vault.hasRole(vault.GOVERNANCE_ROLE(), governance), "Governance should have GOVERNANCE_ROLE on vault");
+        assertTrue(userPool.hasRole(userPool.GOVERNANCE_ROLE(), governance), "Governance should have GOVERNANCE_ROLE on userPool");
+        assertTrue(hedgerPool.hasRole(hedgerPool.GOVERNANCE_ROLE(), governance), "Governance should have GOVERNANCE_ROLE on hedgerPool");
+
+        // Verify emergency roles
+        assertTrue(vault.hasRole(vault.EMERGENCY_ROLE(), emergency), "Emergency should have EMERGENCY_ROLE on vault");
+        assertTrue(userPool.hasRole(userPool.EMERGENCY_ROLE(), emergency), "Emergency should have EMERGENCY_ROLE on userPool");
+        assertTrue(hedgerPool.hasRole(hedgerPool.EMERGENCY_ROLE(), emergency), "Emergency should have EMERGENCY_ROLE on hedgerPool");
+    }
+
+    /// @notice End‑to‑end smoke test: deploy, then run minimal mint/redeem flows.
+    function test_DeploymentSmoke_BasicMintRedeem() public {
+        deployFullProtocol();
 
         // --- Minimal user deposit + mint + redeem through vault ---
         vm.startPrank(user1);
@@ -296,11 +326,20 @@ contract DeploymentSmokeTest is Test {
         vm.stopPrank();
 
         assertGt(usdcAfter, usdcBefore, "User should receive USDC on redeem");
+    }
 
-        // --- Minimal staking + unstaking roundtrip ---
-        // Give user some QEURO again via another mint
+    /// @notice Test staking and unstaking roundtrip.
+    function test_DeploymentSmoke_StakingRoundtrip() public {
+        deployFullProtocol();
+
+        // Give user some QEURO via mint
         vm.startPrank(user1);
         usdc.approve(address(vault), DEPOSIT_AMOUNT);
+
+        (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+
+        uint256 expectedQeuro = (DEPOSIT_AMOUNT * 1e12) / eurPrice;
         vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQeuro * 99) / 100);
         uint256 qeuroForStake = qeuroToken.balanceOf(user1) / 2;
 
@@ -311,13 +350,95 @@ contract DeploymentSmokeTest is Test {
         uint256 qeuroBack = stQEURO.unstake(stAmount);
         assertGt(qeuroBack, 0, "Unstake should return QEURO");
         vm.stopPrank();
+    }
 
-        // --- Basic QTI governance sanity: roles and getters ---
+    /// @notice Test QTI governance sanity checks.
+    function test_DeploymentSmoke_GovernanceSanity() public {
+        deployFullProtocol();
+
+        // Basic QTI governance sanity: roles and getters
         (uint256 totalLocked,, uint256 proposalThreshold,, uint256 decLevel) = qtiToken.getGovernanceInfo();
         // Just check getters are callable and initial values are sensible
         assertEq(totalLocked, 0, "Initial locked QTI should be 0");
         assertGt(proposalThreshold, 0, "Proposal threshold should be > 0");
         assertEq(decLevel, 0, "Initial decentralization level should be 0");
+    }
+
+    /// @notice Test oracle price retrieval.
+    function test_DeploymentSmoke_OraclePrices() public {
+        deployFullProtocol();
+
+        (uint256 eurPrice, bool eurValid) = oracle.getEurUsdPrice();
+        assertTrue(eurValid, "EUR/USD price should be valid");
+        assertEq(eurPrice, 1.10e18, "EUR/USD price should match configured value");
+
+        (uint256 usdcPrice, bool usdcValid) = oracle.getUsdcUsdPrice();
+        assertTrue(usdcValid, "USDC/USD price should be valid");
+        assertEq(usdcPrice, 1.00e18, "USDC/USD price should match configured value");
+    }
+
+    /// @notice Test emergency pause functionality across contracts.
+    function test_DeploymentSmoke_EmergencyPause() public {
+        deployFullProtocol();
+
+        // Test pause on vault
+        vm.prank(emergency);
+        vault.pause();
+        assertTrue(vault.paused(), "Vault should be paused");
+
+        vm.prank(emergency);
+        vault.unpause();
+        assertFalse(vault.paused(), "Vault should be unpaused");
+
+        // Test pause on userPool
+        vm.prank(emergency);
+        userPool.pause();
+        assertTrue(userPool.paused(), "UserPool should be paused");
+
+        vm.prank(emergency);
+        userPool.unpause();
+        assertFalse(userPool.paused(), "UserPool should be unpaused");
+
+        // Test pause on hedgerPool
+        vm.prank(emergency);
+        hedgerPool.pause();
+        assertTrue(hedgerPool.paused(), "HedgerPool should be paused");
+
+        vm.prank(emergency);
+        hedgerPool.unpause();
+        assertFalse(hedgerPool.paused(), "HedgerPool should be unpaused");
+    }
+
+    /// @notice Test multiple users can mint and the total supply is tracked correctly.
+    function test_DeploymentSmoke_MultiUserMint() public {
+        deployFullProtocol();
+
+        address user2 = address(0x8);
+        usdc.mint(user2, INITIAL_USDC_AMOUNT);
+
+        (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+
+        // User1 mints
+        vm.startPrank(user1);
+        usdc.approve(address(vault), DEPOSIT_AMOUNT);
+        uint256 expectedQeuro = (DEPOSIT_AMOUNT * 1e12) / eurPrice;
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQeuro * 99) / 100);
+        vm.stopPrank();
+
+        uint256 user1Balance = qeuroToken.balanceOf(user1);
+
+        // User2 mints
+        vm.startPrank(user2);
+        usdc.approve(address(vault), DEPOSIT_AMOUNT);
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQeuro * 99) / 100);
+        vm.stopPrank();
+
+        uint256 user2Balance = qeuroToken.balanceOf(user2);
+
+        // Verify total supply matches sum of balances
+        uint256 totalSupply = qeuroToken.totalSupply();
+        assertEq(totalSupply, user1Balance + user2Balance, "Total supply should equal sum of user balances");
     }
 }
 

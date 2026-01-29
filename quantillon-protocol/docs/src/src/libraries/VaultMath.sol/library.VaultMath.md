@@ -131,23 +131,6 @@ Scale a value between different decimal precisions with proper rounding
 
 *Used for converting between token precisions (e.g., USDC 6 decimals to 18 decimals)*
 
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
 
 ```solidity
 function scaleDecimals(uint256 value, uint8 fromDecimals, uint8 toDecimals)
@@ -174,25 +157,6 @@ function scaleDecimals(uint256 value, uint8 fromDecimals, uint8 toDecimals)
 
 Calculate minimum value between two numbers
 
-*Used for safe boundary calculations in yield management and vault operations*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
 
 ```solidity
 function min(uint256 a, uint256 b) internal pure returns (uint256);
@@ -214,25 +178,6 @@ function min(uint256 a, uint256 b) internal pure returns (uint256);
 ### max
 
 Calculate maximum value between two numbers
-
-*Used in tests and edge case calculations*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
 
 
 ```solidity
@@ -256,25 +201,6 @@ function max(uint256 a, uint256 b) internal pure returns (uint256);
 
 Convert EUR amount to USD using exchange rate
 
-*Used in tests for currency conversion*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
 
 ```solidity
 function eurToUsd(uint256 eurAmount, uint256 eurUsdRate) internal pure returns (uint256 usdAmount);
@@ -296,25 +222,6 @@ function eurToUsd(uint256 eurAmount, uint256 eurUsdRate) internal pure returns (
 ### usdToEur
 
 Convert USD amount to EUR using exchange rate
-
-*Used in tests for currency conversion*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
 
 
 ```solidity
@@ -338,24 +245,7 @@ function usdToEur(uint256 usdAmount, uint256 eurUsdRate) internal pure returns (
 
 Calculate collateralization ratio
 
-*Used in tests for collateral calculations*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
+*Returns type(uint256).max when debtValue is zero (infinite ratio)*
 
 
 ```solidity
@@ -379,24 +269,7 @@ function calculateCollateralRatio(uint256 collateralValue, uint256 debtValue) in
 
 Calculate yield distribution between users and hedgers
 
-*Used in tests for yield calculations*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
+*Reverts with InvalidParameter if yieldShiftBps exceeds BASIS_POINTS*
 
 
 ```solidity
@@ -423,25 +296,6 @@ function calculateYieldDistribution(uint256 totalYield, uint256 yieldShiftBps)
 ### isWithinTolerance
 
 Check if a value is within a certain percentage of another value
-
-*Used in tests for tolerance checks*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
 
 
 ```solidity

@@ -971,16 +971,8 @@ contract YieldShift is
     ) {
         totalYieldDistributed_ = totalYieldDistributed;
         
-        (uint256 totalUsers, uint256 totalStakes, uint256 totalDeposits, uint256 totalRewards) = userPool.getPoolMetrics();
-        // Note: totalStakes, totalDeposits, and totalRewards are intentionally unused for performance metrics
-        // Assembly equivalent of: /* totalStakes, totalDeposits, totalRewards */ (but preserves variables for future use)
-        // Gas optimization: pop() costs only 3 gas each vs compiler warnings
-        assembly {
-            // Suppress unused variable warnings
-            pop(totalStakes)
-            pop(totalDeposits)
-            pop(totalRewards)
-        }
+        // slither-disable-next-line unused-return
+        (uint256 totalUsers, , , ) = userPool.getPoolMetrics();
         bool hasActiveHedger = hedgerPool.hasActiveHedger();
         
         averageUserYield = totalUsers > 0 ? 

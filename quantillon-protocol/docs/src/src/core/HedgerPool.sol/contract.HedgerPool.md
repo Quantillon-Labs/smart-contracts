@@ -206,6 +206,13 @@ uint256 public constant MAX_MARGIN_RATIO = 5000;
 ```
 
 
+### DEFAULT_MIN_MARGIN_RATIO_BPS
+
+```solidity
+uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 500;
+```
+
+
 ### MAX_UINT128_VALUE
 
 ```solidity
@@ -240,6 +247,13 @@ uint256 public constant MAX_REWARD_PERIOD = 365 days;
 
 ```solidity
 modifier onlyVault();
+```
+
+### _onlyVault
+
+
+```solidity
+function _onlyVault() internal view;
 ```
 
 ### constructor
@@ -775,7 +789,7 @@ Updates core hedging parameters for risk management
 **Notes:**
 - Validates governance role and parameter constraints
 
-- Validates minRatio >= 500, maxLev <= 20
+- Validates minRatio >= DEFAULT_MIN_MARGIN_RATIO_BPS, maxLev <= 20
 
 - Updates minMarginRatio and maxLeverage state variables
 
@@ -1513,6 +1527,125 @@ function _processRedeem(
 |`filledBefore`|`uint256`|Filled volume before redemption (used for P&L calculation)|
 |`price`|`uint256`|Current EUR/USD oracle price for redemption (18 decimals)|
 |`qeuroAmount`|`uint256`|QEURO amount being redeemed (18 decimals)|
+
+
+### _calculateRedeemPnL
+
+Calculates unrealized and realized P&L for redemption
+
+
+```solidity
+function _calculateRedeemPnL(
+    uint256 currentQeuroBacked,
+    uint256 filledBefore,
+    uint256 price,
+    uint256 qeuroAmount,
+    int128 previousRealizedPnL
+) internal pure returns (int256 totalUnrealizedPnL, int256 realizedDelta);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`currentQeuroBacked`|`uint256`|Current QEURO backed by position|
+|`filledBefore`|`uint256`|Filled volume before redemption|
+|`price`|`uint256`|Current EUR/USD price|
+|`qeuroAmount`|`uint256`|Amount of QEURO being redeemed|
+|`previousRealizedPnL`|`int128`|Previously realized P&L|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`totalUnrealizedPnL`|`int256`|Total unrealized P&L (mark-to-market)|
+|`realizedDelta`|`int256`|Realized P&L delta for this redemption|
+
+
+### _applyRealizedPnLToMargin
+
+Applies realized P&L to position margin
+
+
+```solidity
+function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`posId`|`uint256`|Position ID|
+|`pos`|`HedgePosition`|Position storage reference|
+|`realizedDelta`|`int256`|Realized P&L amount (positive = profit, negative = loss)|
+
+
+### _applyProfitToMargin
+
+Applies profit to hedger margin
+
+
+```solidity
+function _applyProfitToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`posId`|`uint256`|Position ID|
+|`pos`|`HedgePosition`|Position storage reference|
+|`realizedDelta`|`int256`|Positive realized P&L amount|
+
+
+### _applyLossToMargin
+
+Applies loss to hedger margin
+
+
+```solidity
+function _applyLossToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`posId`|`uint256`|Position ID|
+|`pos`|`HedgePosition`|Position storage reference|
+|`realizedDelta`|`int256`|Negative realized P&L amount|
+
+
+### _updatePositionSize
+
+Updates position size based on current margin and leverage
+
+
+```solidity
+function _updatePositionSize(HedgePosition storage pos) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pos`|`HedgePosition`|Position storage reference|
+
+
+### _calculateMarginRatio
+
+Calculates margin ratio for a position
+
+
+```solidity
+function _calculateMarginRatio(HedgePosition storage pos) internal view returns (uint256);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pos`|`HedgePosition`|Position storage reference|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Margin ratio in basis points (0 if position has no size)|
 
 
 ### _validatePositionClosureSafety

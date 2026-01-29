@@ -269,40 +269,6 @@ function claimStakingRewards() external returns (uint256 rewardAmount);
 |`rewardAmount`|`uint256`|Amount of rewards claimed|
 
 
-### distributeYield
-
-Distribute new yield to the user pool
-
-*Distributes yield to all pool participants based on their share*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
-
-```solidity
-function distributeYield(uint256 yieldAmount) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Amount of yield in USDC equivalent|
-
-
 ### getUserDeposits
 
 Get a user's total deposits (USDC equivalent)
@@ -742,40 +708,40 @@ function updateStakingParameters(
 |`_unstakingCooldown`|`uint256`|Unstaking cooldown in seconds|
 
 
-### setPoolFees
+### setPerformanceFee
 
-Set pool fees
+Set performance fee for staking rewards
 
-*Allows governance to update fee parameters for the pool*
+*Allows governance to update performance fee parameter*
+
+*NOTE: Mint/redemption fees are set in QuantillonVault, not UserPool*
 
 **Notes:**
 - Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- Validates performanceFee <= 2000 bps (20%)
 
-- Updates contract state variables
+- Updates performanceFee state variable
 
-- Emits relevant events for state changes
+- None
 
-- Throws custom errors for invalid conditions
+- Reverts if fee exceeds maximum allowed
 
-- Protected by reentrancy guard
+- Not applicable
 
-- Restricted to authorized roles
+- Restricted to GOVERNANCE_ROLE
 
-- Requires fresh oracle price data
+- Not applicable
 
 
 ```solidity
-function setPoolFees(uint256 _depositFee, uint256 _withdrawalFee, uint256 _performanceFee) external;
+function setPerformanceFee(uint256 _performanceFee) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_depositFee`|`uint256`|Deposit fee (bps)|
-|`_withdrawalFee`|`uint256`|Withdrawal fee (bps)|
-|`_performanceFee`|`uint256`|Performance fee (bps)|
+|`_performanceFee`|`uint256`|Performance fee on staking rewards (bps)|
 
 
 ### emergencyUnstake
@@ -874,22 +840,24 @@ Pool configuration snapshot
 
 *Returns current pool configuration parameters*
 
+*NOTE: Mint/redemption fees are handled by QuantillonVault, not UserPool*
+
 **Notes:**
-- Validates input parameters and enforces security checks
+- No security implications (view function)
 
-- Validates input parameters and business logic constraints
+- No validation required
 
-- Updates contract state variables
+- No state changes (view function)
 
-- Emits relevant events for state changes
+- No events (view function)
 
-- Throws custom errors for invalid conditions
+- No custom errors
 
-- Protected by reentrancy guard
+- No external calls, safe
 
-- Restricted to authorized roles
+- Public (anyone can call)
 
-- Requires fresh oracle price data
+- No oracle dependencies
 
 
 ```solidity
@@ -901,8 +869,6 @@ function getPoolConfig()
         uint256 _depositAPY,
         uint256 _minStakeAmount,
         uint256 _unstakingCooldown,
-        uint256 _depositFee,
-        uint256 _withdrawalFee,
         uint256 _performanceFee
     );
 ```
@@ -914,9 +880,7 @@ function getPoolConfig()
 |`_depositAPY`|`uint256`|Deposit APY (bps)|
 |`_minStakeAmount`|`uint256`|Minimum stake amount|
 |`_unstakingCooldown`|`uint256`|Unstaking cooldown seconds|
-|`_depositFee`|`uint256`|Deposit fee (bps)|
-|`_withdrawalFee`|`uint256`|Withdrawal fee (bps)|
-|`_performanceFee`|`uint256`|Performance fee (bps)|
+|`_performanceFee`|`uint256`|Performance fee on staking rewards (bps)|
 
 
 ### isPoolActive
@@ -1682,74 +1646,6 @@ function unstakingCooldown() external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|Unstaking cooldown in seconds|
-
-
-### depositFee
-
-Returns the deposit fee
-
-*Fee charged on deposits (in basis points)*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
-
-```solidity
-function depositFee() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Deposit fee in basis points|
-
-
-### withdrawalFee
-
-Returns the withdrawal fee
-
-*Fee charged on withdrawals (in basis points)*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
-
-```solidity
-function withdrawalFee() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Withdrawal fee in basis points|
 
 
 ### performanceFee

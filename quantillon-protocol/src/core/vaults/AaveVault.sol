@@ -1068,16 +1068,8 @@ contract AaveVault is
         exposureRatio = totalAssets > 0 ? aaveBalance.mulDiv(10000, totalAssets) : 0;
         concentrationRisk = exposureRatio > 8000 ? 3 : exposureRatio > 6000 ? 2 : 1;
 
-        (uint256 totalLiquidity, uint256 utilizationRate, uint256 availableLiquidity, uint256 totalStableDebt) = this.getAaveMarketData();
-        // Note: totalLiquidity, availableLiquidity, and totalStableDebt are intentionally unused for risk metrics
-        // Assembly equivalent of: /* totalLiquidity, availableLiquidity, totalStableDebt */ (but preserves variables for future use)
-        // Gas optimization: pop() costs only 3 gas each vs compiler warnings
-        assembly {
-            // Suppress unused variable warnings
-            pop(totalLiquidity)
-            pop(availableLiquidity)
-            pop(totalStableDebt)
-        }
+        // slither-disable-next-line unused-return
+        (, uint256 utilizationRate, , ) = this.getAaveMarketData();
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
     }
 

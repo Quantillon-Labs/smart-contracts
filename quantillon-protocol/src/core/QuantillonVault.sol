@@ -837,86 +837,103 @@ contract QuantillonVault is
         // Get total QEURO supply for pro-rata calculation
         uint256 totalSupply = qeuro.totalSupply();
         if (totalSupply == 0) revert CommonErrorLibrary.InvalidAmount();
-        
+
         // Get oracle price for fair value comparison (premium vs haircut)
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-        
-        // In liquidation mode, use ACTUAL USDC in vault for pro-rata distribution
-        // Formula: payout = (qeuroAmount / totalSupply) × totalCollateral
-        // This may be less than fair value (haircut) or more (premium) depending on CR
-        uint256 totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
-        
-        // Get hedger margin for later distribution of losses
-        uint256 hedgerCollateral = 0;
-        if (address(hedgerPool) != address(0)) {
-            hedgerCollateral = hedgerPool.totalMargin();
-        }
-        
+
         // Calculate pro-rata payout based on actual USDC available
+        uint256 totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
         uint256 usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
-        
+
         // Slippage check
         if (usdcPayout < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
-        
-        // Check if total available USDC is sufficient
-        uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
-        if (totalAvailable < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
-        
-        // If vault doesn't have enough USDC, withdraw from Aave
-        if (totalUsdcHeld < usdcPayout && totalUsdcInAave > 0 && address(aaveVault) != address(0)) {
-            uint256 deficit = usdcPayout - totalUsdcHeld;
-            _withdrawUsdcFromAave(deficit);
-        }
-        
-        // Re-check after potential Aave withdrawal
-        if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
-        
-        // Calculate fees before state changes (if fees are enabled during liquidation)
-        uint256 fee = 0;
-        uint256 netUsdcPayout = usdcPayout;
-        if (TAKES_FEES_DURING_LIQUIDATION) {
-            fee = usdcPayout.mulDiv(redemptionFee, 1e18);
-            netUsdcPayout = usdcPayout - fee;
-        }
-        
+
+        // Ensure sufficient USDC (withdraw from Aave if needed)
+        _ensureSufficientUsdcForPayout(usdcPayout);
+
+        // Calculate fees and net payout
+        (uint256 fee, uint256 netUsdcPayout) = _calculateLiquidationFees(usdcPayout);
+
         // Determine if premium or haircut
         uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
         bool isPremium = usdcPayout >= fairValueUsdc;
-        
+
         // EFFECTS - Update state
         unchecked {
             totalUsdcHeld -= usdcPayout;
             totalMinted -= qeuroAmount;
         }
-        
-        // In liquidation mode, hedger loses margin proportionally to QEURO redeemed
-        // Use recordLiquidationRedeem which directly reduces margin by (qeuroAmount/totalSupply) * hedgerMargin
-        if (address(hedgerPool) != address(0) && hedgerCollateral > 0) {
-            try hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply) {} catch {}
-        }
-        
+
+        // Notify hedger pool of liquidation redemption
+        _notifyHedgerPoolLiquidation(qeuroAmount, totalSupply);
+
         // Emit liquidation event (emit net payout after fees)
-        emit LiquidationRedeemed(
-            msg.sender,
-            qeuroAmount,
-            netUsdcPayout,
-            collateralizationRatioBps,
-            isPremium
-        );
-        
+        emit LiquidationRedeemed(msg.sender, qeuroAmount, netUsdcPayout, collateralizationRatioBps, isPremium);
+
         // INTERACTIONS - All external calls after state updates
         qeuro.burn(msg.sender, qeuroAmount);
         usdc.safeTransfer(msg.sender, netUsdcPayout);
-        
-        // Transfer fee to fee collector (if fees are enabled and fee > 0)
-        if (TAKES_FEES_DURING_LIQUIDATION && fee > 0) {
-            // Approve FeeCollector to pull the fee
-            bool success = usdc.approve(feeCollector, fee);
-            if (!success) revert CommonErrorLibrary.TokenTransferFailed();
-            // Call FeeCollector to collect the fee with proper tracking
-            FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
+
+        // Transfer fee to fee collector
+        _transferLiquidationFees(fee);
+    }
+
+    /**
+     * @notice Ensures vault has sufficient USDC for payout, withdrawing from Aave if needed
+     * @param usdcAmount Amount of USDC needed
+     */
+    function _ensureSufficientUsdcForPayout(uint256 usdcAmount) internal {
+        uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
+        if (totalAvailable < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
+
+        // If vault doesn't have enough USDC, withdraw from Aave
+        if (totalUsdcHeld < usdcAmount && totalUsdcInAave > 0 && address(aaveVault) != address(0)) {
+            uint256 deficit = usdcAmount - totalUsdcHeld;
+            _withdrawUsdcFromAave(deficit);
         }
+
+        // Re-check after potential Aave withdrawal
+        if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
+    }
+
+    /**
+     * @notice Calculates liquidation fees if enabled
+     * @param usdcPayout Gross payout amount
+     * @return fee Fee amount (0 if fees disabled)
+     * @return netPayout Net payout after fees
+     */
+    function _calculateLiquidationFees(uint256 usdcPayout) internal view returns (uint256 fee, uint256 netPayout) {
+        if (TAKES_FEES_DURING_LIQUIDATION) {
+            fee = usdcPayout.mulDiv(redemptionFee, 1e18);
+            netPayout = usdcPayout - fee;
+        } else {
+            fee = 0;
+            netPayout = usdcPayout;
+        }
+    }
+
+    /**
+     * @notice Notifies hedger pool of liquidation redemption for margin adjustment
+     * @param qeuroAmount Amount of QEURO being redeemed
+     * @param totalSupply Total QEURO supply for pro-rata calculation
+     */
+    function _notifyHedgerPoolLiquidation(uint256 qeuroAmount, uint256 totalSupply) internal {
+        if (address(hedgerPool) == address(0)) return;
+        uint256 hedgerCollateral = hedgerPool.totalMargin();
+        if (hedgerCollateral == 0) return;
+        try hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply) {} catch {}
+    }
+
+    /**
+     * @notice Transfers liquidation fees to fee collector if applicable
+     * @param fee Fee amount to transfer
+     */
+    function _transferLiquidationFees(uint256 fee) internal {
+        if (!TAKES_FEES_DURING_LIQUIDATION || fee == 0) return;
+        bool success = usdc.approve(feeCollector, fee);
+        if (!success) revert CommonErrorLibrary.TokenTransferFailed();
+        FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
     }
     // slither-disable-end reentrancy-no-eth
     // slither-disable-end reentrancy-benign
@@ -949,95 +966,14 @@ contract QuantillonVault is
     ) external nonReentrant whenNotPaused {
         // CHECKS
         CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
-        
+
         // Check protocol is in liquidation mode (CR <= 101%)
         uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
         uint256 collateralizationRatioBps = currentRatio18Dec / 1e16;
         if (collateralizationRatioBps > CRITICAL_COLLATERALIZATION_RATIO_BPS) revert CommonErrorLibrary.NotInLiquidationMode();
-        
-        // Get total QEURO supply
-        uint256 totalSupply = qeuro.totalSupply();
-        if (totalSupply == 0) revert CommonErrorLibrary.InvalidAmount();
-        
-        // Get oracle price for collateral calculation
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-        
-        // In liquidation mode, use ACTUAL USDC in vault for pro-rata distribution
-        // This ensures users get their fair share of what's actually available
-        // NOT the market value of QEURO (which would be higher than actual collateral)
-        uint256 totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
-        
-        // Get hedger margin for later distribution of losses
-        uint256 hedgerCollateral = 0;
-        if (address(hedgerPool) != address(0)) {
-            hedgerCollateral = hedgerPool.totalMargin();
-        }
-        
-        // Calculate pro-rata payout based on actual USDC available
-        uint256 usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
-        
-        // Slippage check
-        if (usdcPayout < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
-        
-        // Check if total available USDC is sufficient (should always be true since we use actual balance)
-        uint256 totalAvailable = totalCollateralUsdc;
-        if (totalAvailable < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
-        
-        // If vault doesn't have enough USDC, withdraw from Aave
-        if (totalUsdcHeld < usdcPayout && totalUsdcInAave > 0 && address(aaveVault) != address(0)) {
-            uint256 deficit = usdcPayout - totalUsdcHeld;
-            _withdrawUsdcFromAave(deficit);
-        }
-        
-        // Re-check after potential Aave withdrawal
-        if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
-        
-        // Calculate fees before state changes (if fees are enabled during liquidation)
-        uint256 fee = 0;
-        uint256 netUsdcPayout = usdcPayout;
-        if (TAKES_FEES_DURING_LIQUIDATION) {
-            fee = usdcPayout.mulDiv(redemptionFee, 1e18);
-            netUsdcPayout = usdcPayout - fee;
-        }
-        
-        // Determine if premium or haircut
-        uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
-        bool isPremium = usdcPayout >= fairValueUsdc;
-        
-        // EFFECTS - Update all state before external calls
-        unchecked {
-            totalUsdcHeld -= usdcPayout;
-            totalMinted -= qeuroAmount;
-        }
-        
-        // In liquidation mode, hedger loses margin proportionally to QEURO redeemed
-        // Use recordLiquidationRedeem which directly reduces margin by (qeuroAmount/totalSupply) * hedgerMargin
-        if (address(hedgerPool) != address(0) && hedgerCollateral > 0) {
-            try hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply) {} catch {}
-        }
-        
-        // Emit event (emit net payout after fees)
-        emit LiquidationRedeemed(
-            msg.sender,
-            qeuroAmount,
-            netUsdcPayout,
-            collateralizationRatioBps,
-            isPremium
-        );
-        
-        // INTERACTIONS - All external calls after state updates
-        qeuro.burn(msg.sender, qeuroAmount);
-        usdc.safeTransfer(msg.sender, netUsdcPayout);
-        
-        // Transfer fee to fee collector (if fees are enabled and fee > 0)
-        if (TAKES_FEES_DURING_LIQUIDATION && fee > 0) {
-            // Approve FeeCollector to pull the fee
-            bool success = usdc.approve(feeCollector, fee);
-            if (!success) revert CommonErrorLibrary.TokenTransferFailed();
-            // Call FeeCollector to collect the fee with proper tracking
-            FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
-        }
+
+        // Delegate to shared liquidation logic
+        _redeemLiquidationMode(qeuroAmount, minUsdcOut, collateralizationRatioBps);
     }
     // slither-disable-end reentrancy-no-eth
     // slither-disable-end reentrancy-benign

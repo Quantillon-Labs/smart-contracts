@@ -19,24 +19,9 @@ team@quantillon.money
 
 Validates that an address is not zero
 
-*Checks if the provided address is the zero address and reverts with appropriate error*
-
-**Notes:**
-- Prevents zero address vulnerabilities in critical operations
-
-- Ensures all addresses are properly initialized
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws specific custom errors based on errorType
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Checks if the provided address is the zero address and reverts with appropriate error.
+Uses string comparison which is gas-intensive but maintains backward compatibility.
+For new code, prefer using validateNonZeroAddressWithType() with AddressType enum.*
 
 
 ```solidity
@@ -54,24 +39,7 @@ function validateNonZeroAddress(address addr, string memory errorType) internal 
 
 Validates that an amount is positive
 
-*Ensures the amount is greater than zero to prevent zero-value operations*
-
-**Notes:**
-- Prevents zero-amount vulnerabilities and invalid operations
-
-- Ensures amounts are meaningful for business logic
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InvalidAmount if amount is zero
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with InvalidAmount if amount is zero*
 
 
 ```solidity
@@ -88,24 +56,7 @@ function validatePositiveAmount(uint256 amount) internal pure;
 
 Validates that an amount is above minimum threshold
 
-*Ensures the amount meets the minimum requirement for the operation*
-
-**Notes:**
-- Prevents operations with insufficient amounts
-
-- Ensures amounts meet business requirements
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InsufficientBalance if amount is below minimum
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with InsufficientBalance if amount is below minimum*
 
 
 ```solidity
@@ -123,24 +74,7 @@ function validateMinAmount(uint256 amount, uint256 minAmount) internal pure;
 
 Validates that an amount is below maximum threshold
 
-*Ensures the amount does not exceed the maximum allowed limit*
-
-**Notes:**
-- Prevents operations that exceed system limits
-
-- Ensures amounts stay within acceptable bounds
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws AboveLimit if amount exceeds maximum
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with AboveLimit if amount exceeds maximum*
 
 
 ```solidity
@@ -156,26 +90,9 @@ function validateMaxAmount(uint256 amount, uint256 maxAmount) internal pure;
 
 ### validatePercentage
 
-Validates that a percentage is within valid range (0-100%)
+Validates that a percentage is within valid range
 
-*Ensures percentage values are within acceptable bounds for fees and rates*
-
-**Notes:**
-- Prevents invalid percentage values that could break system logic
-
-- Ensures percentages are within business rules
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws AboveLimit if percentage exceeds maximum
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with AboveLimit if percentage exceeds maximum*
 
 
 ```solidity
@@ -193,24 +110,7 @@ function validatePercentage(uint256 percentage, uint256 maxPercentage) internal 
 
 Validates that a duration is within valid range
 
-*Ensures time-based parameters are within acceptable bounds*
-
-**Notes:**
-- Prevents invalid time parameters that could affect system stability
-
-- Ensures durations meet business requirements
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws HoldingPeriodNotMet or AboveLimit based on validation failure
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with HoldingPeriodNotMet if too short, AboveLimit if too long*
 
 
 ```solidity
@@ -229,24 +129,7 @@ function validateDuration(uint256 duration, uint256 minDuration, uint256 maxDura
 
 Validates that a price is valid (greater than zero)
 
-*Ensures price values are meaningful and not zero*
-
-**Notes:**
-- Prevents zero-price vulnerabilities in financial operations
-
-- Ensures prices are valid for calculations
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InvalidPrice if price is zero
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with InvalidPrice if price is zero*
 
 
 ```solidity
@@ -265,23 +148,6 @@ Validates that a boolean condition is true
 
 *Generic condition validator that throws specific errors based on error type*
 
-**Notes:**
-- Prevents invalid conditions from proceeding in critical operations
-
-- Ensures business logic conditions are met
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws specific custom errors based on errorType
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
-
 
 ```solidity
 function validateCondition(bool condition, string memory errorType) internal pure;
@@ -294,28 +160,20 @@ function validateCondition(bool condition, string memory errorType) internal pur
 |`errorType`|`string`|The type of error to throw if condition is false|
 
 
+### _keccak256Bytes
+
+Internal keccak256 of string using inline assembly (gas-efficient)
+
+
+```solidity
+function _keccak256Bytes(string memory s) private pure returns (bytes32);
+```
+
 ### validateCountLimit
 
 Validates that a count is within limits
 
-*Ensures count-based operations don't exceed system limits*
-
-**Notes:**
-- Prevents operations that exceed system capacity limits
-
-- Ensures counts stay within acceptable bounds
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws TooManyPositions if count exceeds maximum
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with TooManyPositions if count exceeds or equals maximum*
 
 
 ```solidity
@@ -333,24 +191,7 @@ function validateCountLimit(uint256 count, uint256 maxCount) internal pure;
 
 Validates that a balance is sufficient
 
-*Ensures there's enough balance to perform the required operation*
-
-**Notes:**
-- Prevents operations with insufficient funds
-
-- Ensures sufficient balance for operations
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InsufficientBalance if balance is below required amount
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with InsufficientBalance if balance is below required amount*
 
 
 ```solidity
@@ -370,23 +211,6 @@ Validates that an address is not a contract (for security)
 
 *Prevents sending funds to potentially malicious contracts*
 
-**Notes:**
-- Prevents arbitrary-send vulnerabilities
-
-- Ensures address is not a contract
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InvalidAddress if address is a contract
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
-
 
 ```solidity
 function validateNotContract(address addr, string memory errorType) internal view;
@@ -403,24 +227,7 @@ function validateNotContract(address addr, string memory errorType) internal vie
 
 Validates treasury address is not zero address
 
-*Prevents setting treasury to zero address which could cause loss of funds*
-
-**Notes:**
-- Prevents loss of funds by ensuring treasury is properly set
-
-- Ensures treasury address is valid for fund operations
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws ZeroAddress if treasury is zero address
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with ZeroAddress if treasury is zero address*
 
 
 ```solidity
@@ -437,24 +244,7 @@ function validateTreasuryAddress(address treasury) internal pure;
 
 Validates slippage protection for token swaps/trades
 
-*Ensures received amount is within acceptable tolerance of expected*
-
-**Notes:**
-- Prevents excessive slippage attacks in token operations
-
-- Ensures received amount meets minimum expectations
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InvalidParameter if slippage exceeds tolerance
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with InvalidParameter if slippage exceeds tolerance*
 
 
 ```solidity
@@ -473,24 +263,7 @@ function validateSlippage(uint256 received, uint256 expected, uint256 tolerance)
 
 Validates that a value meets minimum threshold requirements
 
-*Used for minimum deposits, stakes, withdrawals, etc.*
-
-**Notes:**
-- Prevents operations below minimum thresholds
-
-- Ensures values meet business requirements
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws BelowThreshold if value is below minimum
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with BelowThreshold if value is below minimum*
 
 
 ```solidity
@@ -508,24 +281,7 @@ function validateThresholdValue(uint256 value, uint256 threshold) internal pure;
 
 Validates fee amount against maximum allowed fee
 
-*Ensures fees don't exceed protocol limits (typically in basis points)*
-
-**Notes:**
-- Prevents excessive fees that could harm users
-
-- Ensures fees stay within protocol limits
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InvalidParameter if fee exceeds maximum
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with InvalidParameter if fee exceeds maximum*
 
 
 ```solidity
@@ -543,24 +299,7 @@ function validateFee(uint256 fee, uint256 maxFee) internal pure;
 
 Validates threshold value against maximum limit
 
-*Used for liquidation thresholds, margin ratios, etc.*
-
-**Notes:**
-- Prevents thresholds that could destabilize the system
-
-- Ensures thresholds stay within acceptable bounds
-
-- No state changes - pure function
-
-- No events emitted
-
-- Throws InvalidParameter if threshold exceeds maximum
-
-- Not applicable - pure function
-
-- Internal library function
-
-- No oracle dependencies
+*Reverts with InvalidParameter if threshold exceeds maximum*
 
 
 ```solidity

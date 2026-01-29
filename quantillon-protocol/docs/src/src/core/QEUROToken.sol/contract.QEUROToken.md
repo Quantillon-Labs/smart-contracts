@@ -290,6 +290,15 @@ address public feeCollector;
 ```
 
 
+### _flashLoanBalanceBefore
+Balance before flash loan check (used by flashLoanProtection modifier)
+
+
+```solidity
+uint256 private _flashLoanBalanceBefore;
+```
+
+
 ## Functions
 ### flashLoanProtection
 
@@ -300,6 +309,20 @@ Modifier to protect against flash loan attacks
 
 ```solidity
 modifier flashLoanProtection();
+```
+
+### _flashLoanProtectionBefore
+
+
+```solidity
+function _flashLoanProtectionBefore() private;
+```
+
+### _flashLoanProtectionAfter
+
+
+```solidity
+function _flashLoanProtectionAfter() private view;
 ```
 
 ### constructor

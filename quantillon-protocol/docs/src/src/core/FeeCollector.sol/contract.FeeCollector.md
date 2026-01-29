@@ -152,6 +152,13 @@ Ensures only authorized contracts can collect fees
 modifier onlyFeeSource();
 ```
 
+### _onlyFeeSource
+
+
+```solidity
+function _onlyFeeSource() internal view;
+```
+
 ### initialize
 
 Initializes the FeeCollector contract

@@ -1146,7 +1146,6 @@ contract QTIToken is
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    // slither-disable-next-line low-level-calls
     function executeProposal(uint256 proposalId) external nonReentrant {
         Proposal storage proposal = proposals[proposalId];
         if (TIME_PROVIDER.currentTime() < proposal.endTime) revert CommonErrorLibrary.VotingNotEnded();

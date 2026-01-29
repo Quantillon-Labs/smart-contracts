@@ -35,8 +35,7 @@ jobs:
 
       - name: Generate docs with correct GitHub URLs
         env:
-          FOUNDRY_PROFILE: docs 
-          RUST_MIN_STACK: 50331648      
+          RUST_MIN_STACK: 50331648
         run: |
           cd quantillon-protocol
           rm -rf docs

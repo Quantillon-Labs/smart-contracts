@@ -206,6 +206,15 @@ uint256 public totalUnderlying;
 ```
 
 
+### _flashLoanTotalUnderlyingBefore
+totalUnderlying before flash loan check (used by flashLoanProtection modifier)
+
+
+```solidity
+uint256 private _flashLoanTotalUnderlyingBefore;
+```
+
+
 ### totalYieldEarned
 Total yield earned by stQEURO holders
 
@@ -303,6 +312,20 @@ Modifier to protect against flash loan attacks
 
 ```solidity
 modifier flashLoanProtection();
+```
+
+### _flashLoanProtectionBefore
+
+
+```solidity
+function _flashLoanProtectionBefore() private;
+```
+
+### _flashLoanProtectionAfter
+
+
+```solidity
+function _flashLoanProtectionAfter() private view;
 ```
 
 ### constructor

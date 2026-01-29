@@ -119,6 +119,15 @@ IERC20 public usdc;
 ```
 
 
+### _flashLoanBalanceBefore
+USDC balance before flash loan check (used by flashLoanProtection modifier)
+
+
+```solidity
+uint256 private _flashLoanBalanceBefore;
+```
+
+
 ### vault
 Main Quantillon vault for QEURO operations
 
@@ -230,36 +239,10 @@ uint256 public unstakingCooldown;
 ```
 
 
-### depositFee
-Fee charged on deposits (in basis points)
-
-*Example: 10 = 0.1% deposit fee*
-
-*Revenue source for the protocol*
-
-
-```solidity
-uint256 public depositFee;
-```
-
-
-### withdrawalFee
-Fee charged on withdrawals (in basis points)
-
-*Example: 10 = 0.1% withdrawal fee*
-
-*Revenue source for the protocol*
-
-
-```solidity
-uint256 public withdrawalFee;
-```
-
-
 ### performanceFee
 Fee charged on yield distributions (in basis points)
 
-*Example: 200 = 2% performance fee*
+*Example: 1000 = 10% performance fee on staking rewards*
 
 *Revenue source for the protocol*
 
@@ -467,6 +450,20 @@ Modifier to protect against flash loan attacks
 modifier flashLoanProtection();
 ```
 
+### _flashLoanProtectionBefore
+
+
+```solidity
+function _flashLoanProtectionBefore() private;
+```
+
+### _flashLoanProtectionAfter
+
+
+```solidity
+function _flashLoanProtectionAfter() private view;
+```
+
 ### constructor
 
 Constructor for UserPool contract
@@ -550,6 +547,22 @@ function initialize(
 |`_timelock`|`address`|Address of the timelock contract|
 |`_treasury`|`address`|Address of the treasury contract|
 
+
+### _setUserPoolContractReferences
+
+*Sets contract references to reduce stack depth in initialize (via_ir stack-too-deep fix)*
+
+
+```solidity
+function _setUserPoolContractReferences(
+    address _qeuro,
+    address _usdc,
+    address _vault,
+    address _oracle,
+    address _yieldShift,
+    address _treasury
+) internal;
+```
 
 ### deposit
 
@@ -696,7 +709,7 @@ Internal function to calculate net amounts after fees
 ```solidity
 function _calculateNetAmounts(uint256[] calldata usdcAmounts)
     internal
-    view
+    pure
     returns (uint256[] memory netAmounts, uint256 totalNetAmount);
 ```
 **Parameters**
@@ -922,6 +935,8 @@ Processes vault redemptions for batch withdrawal
 
 *OPTIMIZATION: Uses single vault call with total amounts to avoid external calls in loop*
 
+*NOTE: All fees are handled by QuantillonVault, not UserPool*
+
 **Notes:**
 - Validates vault redemption amounts and minimum outputs
 
@@ -944,8 +959,7 @@ Processes vault redemptions for batch withdrawal
 function _processVaultRedemptions(
     uint256[] calldata qeuroAmounts,
     uint256[] calldata minUsdcOuts,
-    uint256[] memory usdcReceivedAmounts,
-    uint256 withdrawalFee_
+    uint256[] memory usdcReceivedAmounts
 ) internal;
 ```
 **Parameters**
@@ -955,7 +969,6 @@ function _processVaultRedemptions(
 |`qeuroAmounts`|`uint256[]`|Array of QEURO amounts to redeem|
 |`minUsdcOuts`|`uint256[]`|Array of minimum USDC amounts expected|
 |`usdcReceivedAmounts`|`uint256[]`|Array to store received USDC amounts|
-|`withdrawalFee_`|`uint256`|Cached withdrawal fee percentage|
 
 
 ### _executeBatchTransfers
@@ -1173,40 +1186,6 @@ function batchRewardClaim(address[] calldata users)
 |Name|Type|Description|
 |----|----|-----------|
 |`rewardAmounts`|`uint256[]`|Array of reward amounts claimed for each user (18 decimals)|
-
-
-### distributeYield
-
-Distribute yield to stakers (called by YieldShift contract)
-
-*This function is deprecated - yield now goes to stQEURO*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to authorized roles
-
-- Requires fresh oracle price data
-
-
-```solidity
-function distributeYield(uint256 yieldAmount) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Amount of yield to distribute (18 decimals)|
 
 
 ### _updatePendingRewards
@@ -1590,6 +1569,8 @@ Get comprehensive pool configuration (consolidated view function)
 
 *Returns all pool configuration parameters in one call to reduce contract size*
 
+*NOTE: Mint/redemption fees are handled by QuantillonVault, not UserPool*
+
 **Notes:**
 - No security implications (view function)
 
@@ -1617,8 +1598,6 @@ function getPoolConfiguration()
         uint256 depositAPY_,
         uint256 minStakeAmount_,
         uint256 unstakingCooldown_,
-        uint256 depositFee_,
-        uint256 withdrawalFee_,
         uint256 performanceFee_
     );
 ```
@@ -1630,9 +1609,7 @@ function getPoolConfiguration()
 |`depositAPY_`|`uint256`|Current deposit APY in basis points|
 |`minStakeAmount_`|`uint256`|Current minimum stake amount (18 decimals)|
 |`unstakingCooldown_`|`uint256`|Current unstaking cooldown period (seconds)|
-|`depositFee_`|`uint256`|Current deposit fee (basis points)|
-|`withdrawalFee_`|`uint256`|Current withdrawal fee (basis points)|
-|`performanceFee_`|`uint256`|Current performance fee (basis points)|
+|`performanceFee_`|`uint256`|Current performance fee on staking rewards (basis points)|
 
 
 ### calculateProjectedRewards
@@ -1714,42 +1691,40 @@ function updateStakingParameters(uint256 newStakingAPY, uint256 newMinStakeAmoun
 |`newUnstakingCooldown`|`uint256`|New unstaking cooldown period (seconds)|
 
 
-### setPoolFees
+### setPerformanceFee
 
-Set the fees for deposits, withdrawals, and performance
+Set the performance fee for staking rewards
 
 *This function is restricted to governance roles.*
+
+*NOTE: Mint/redemption fees are set in QuantillonVault, not UserPool*
 
 **Notes:**
 - Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- Validates performanceFee <= 2000 bps (20%)
 
-- Updates contract state variables
+- Updates performanceFee state variable
 
-- Emits relevant events for state changes
+- None
 
-- Throws custom errors for invalid conditions
+- Reverts if fee exceeds maximum allowed
 
-- Protected by reentrancy guard
+- Not applicable
 
-- Restricted to authorized roles
+- Restricted to GOVERNANCE_ROLE
 
-- Requires fresh oracle price data
+- Not applicable
 
 
 ```solidity
-function setPoolFees(uint256 _depositFee, uint256 _withdrawalFee, uint256 _performanceFee)
-    external
-    onlyRole(GOVERNANCE_ROLE);
+function setPerformanceFee(uint256 _performanceFee) external onlyRole(GOVERNANCE_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_depositFee`|`uint256`|New deposit fee in basis points|
-|`_withdrawalFee`|`uint256`|New withdrawal fee in basis points|
-|`_performanceFee`|`uint256`|New performance fee in basis points|
+|`_performanceFee`|`uint256`|New performance fee on staking rewards in basis points|
 
 
 ### updateYieldShift

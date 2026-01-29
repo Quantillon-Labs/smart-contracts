@@ -106,6 +106,13 @@ Ensures the contract is not in emergency mode
 modifier whenNotEmergency();
 ```
 
+### _whenNotEmergency
+
+
+```solidity
+function _whenNotEmergency() internal view;
+```
+
 ### validTimeOffset
 
 Ensures the time offset is within allowed bounds
@@ -113,6 +120,13 @@ Ensures the time offset is within allowed bounds
 
 ```solidity
 modifier validTimeOffset(int256 offset);
+```
+
+### _validTimeOffset
+
+
+```solidity
+function _validTimeOffset(int256 offset) internal pure;
 ```
 
 ### constructor

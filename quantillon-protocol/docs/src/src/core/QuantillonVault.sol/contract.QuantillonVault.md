@@ -136,10 +136,10 @@ uint256 private constant MIN_COLLATERALIZATION_RATIO_FOR_MINTING = 105e18;
 ```
 
 
-### CRITICAL_COLLATERALIZATION_RATIO
+### CRITICAL_COLLATERALIZATION_RATIO_BPS
 
 ```solidity
-uint256 private constant CRITICAL_COLLATERALIZATION_RATIO = 101e18;
+uint256 private constant CRITICAL_COLLATERALIZATION_RATIO_BPS = 10100;
 ```
 
 
@@ -241,6 +241,15 @@ Fee collector contract for protocol fees
 
 ```solidity
 address public feeCollector;
+```
+
+
+### _flashLoanBalanceBefore
+USDC balance before flash loan check (used by flashLoanProtection modifier)
+
+
+```solidity
+uint256 private _flashLoanBalanceBefore;
 ```
 
 
@@ -415,6 +424,20 @@ Modifier to protect against flash loan attacks
 
 ```solidity
 modifier flashLoanProtection();
+```
+
+### _flashLoanProtectionBefore
+
+
+```solidity
+function _flashLoanProtectionBefore() private;
+```
+
+### _flashLoanProtectionAfter
+
+
+```solidity
+function _flashLoanProtectionAfter() private view;
 ```
 
 ### constructor
@@ -708,6 +731,74 @@ function _redeemLiquidationMode(uint256 qeuroAmount, uint256 minUsdcOut, uint256
 |`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
 |`minUsdcOut`|`uint256`|Minimum USDC expected (slippage protection)|
 |`collateralizationRatioBps`|`uint256`|Current CR in basis points (for event emission)|
+
+
+### _ensureSufficientUsdcForPayout
+
+Ensures vault has sufficient USDC for payout, withdrawing from Aave if needed
+
+
+```solidity
+function _ensureSufficientUsdcForPayout(uint256 usdcAmount) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC needed|
+
+
+### _calculateLiquidationFees
+
+Calculates liquidation fees if enabled
+
+
+```solidity
+function _calculateLiquidationFees(uint256 usdcPayout) internal view returns (uint256 fee, uint256 netPayout);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcPayout`|`uint256`|Gross payout amount|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`fee`|`uint256`|Fee amount (0 if fees disabled)|
+|`netPayout`|`uint256`|Net payout after fees|
+
+
+### _notifyHedgerPoolLiquidation
+
+Notifies hedger pool of liquidation redemption for margin adjustment
+
+
+```solidity
+function _notifyHedgerPoolLiquidation(uint256 qeuroAmount, uint256 totalSupply) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO being redeemed|
+|`totalSupply`|`uint256`|Total QEURO supply for pro-rata calculation|
+
+
+### _transferLiquidationFees
+
+Transfers liquidation fees to fee collector if applicable
+
+
+```solidity
+function _transferLiquidationFees(uint256 fee) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`fee`|`uint256`|Fee amount to transfer|
 
 
 ### redeemQEUROLiquidation
@@ -1234,46 +1325,6 @@ function _withdrawUsdcFromAave(uint256 usdcAmount) internal returns (uint256 usd
 |Name|Type|Description|
 |----|----|-----------|
 |`usdcWithdrawn`|`uint256`|Actual amount of USDC withdrawn|
-
-
-### updatePriceProtectionParams
-
-Updates price deviation protection parameters
-
-*Only governance can update these security parameters*
-
-*Note: This function requires converting constants to state variables
-for full implementation. Currently a placeholder for future governance control.*
-
-**Notes:**
-- Validates input parameters and enforces security checks
-
-- Validates input parameters and business logic constraints
-
-- Updates contract state variables
-
-- Emits relevant events for state changes
-
-- Throws custom errors for invalid conditions
-
-- Protected by reentrancy guard
-
-- Restricted to GOVERNANCE_ROLE
-
-- No oracle dependencies
-
-
-```solidity
-function updatePriceProtectionParams(uint256 _maxPriceDeviation, uint256 _minBlocksBetweenUpdates)
-    external
-    onlyRole(GOVERNANCE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_maxPriceDeviation`|`uint256`|New maximum price deviation in basis points|
-|`_minBlocksBetweenUpdates`|`uint256`|New minimum blocks between updates|
 
 
 ### withdrawProtocolFees

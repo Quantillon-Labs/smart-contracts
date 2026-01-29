@@ -166,6 +166,13 @@ modifier onlyMultisigSigner();
 modifier onlyEmergencyUpgrader();
 ```
 
+### _onlyEmergencyUpgrader
+
+
+```solidity
+function _onlyEmergencyUpgrader() internal view;
+```
+
 ### initialize
 
 Initializes the timelock contract with admin privileges

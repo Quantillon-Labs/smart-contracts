@@ -49,6 +49,13 @@ bool public secureUpgradesEnabled;
 modifier onlyTimelock();
 ```
 
+### _onlyTimelock
+
+
+```solidity
+function _onlyTimelock() internal view;
+```
+
 ### __SecureUpgradeable_init
 
 Initializes the SecureUpgradeable contract

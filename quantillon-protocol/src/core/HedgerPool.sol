@@ -1471,140 +1471,180 @@ contract HedgerPool is
     function _processRedeem(uint256 posId, HedgePosition storage pos, uint256 share, uint256 filledBefore, uint256 price, uint256 qeuroAmount) internal {
         if (share > 0 && qeuroAmount > 0 && price > 0) {
             uint256 currentQeuroBacked = uint256(pos.qeuroBacked);
-            
+
             if (currentQeuroBacked > 0 && filledBefore > 0) {
-                // Step 1: Calculate total unrealized P&L (mark-to-market)
-                // Formula: totalUnrealizedPnL = filledVolume - (qeuroBacked × price / 1e30)
-                uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
-                int256 totalUnrealizedPnL;
-                if (filledBefore >= qeuroValueInUSDC) {
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    totalUnrealizedPnL = int256(filledBefore - qeuroValueInUSDC);
-                } else {
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    totalUnrealizedPnL = -int256(qeuroValueInUSDC - filledBefore);
-                }
-
-                // Step 2: Calculate NET unrealized P&L (subtract already-realized portion)
-                // The margin has already been adjusted by realized P&L during previous redemptions,
-                // so we subtract realizedPnL to avoid double-counting.
-                int256 netUnrealizedPnL = totalUnrealizedPnL - int256(pos.realizedPnL);
-
-                // Step 3: Calculate the realized P&L delta for this redemption
-                // Formula: realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
-                // qeuroAmount (18 dec) × netUnrealizedPnL (6 dec) / qeuroBacked (18 dec) = 6 dec
-                int256 realizedDelta;
-                if (netUnrealizedPnL >= 0) {
-                    // Multiply qeuroAmount (18 decimals) by netUnrealizedPnL (6 decimals) = 24 decimals
-                    // Divide by currentQeuroBacked (18 decimals) = 6 decimals
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    uint256 pnlShare = qeuroAmount.mulDiv(uint256(netUnrealizedPnL), currentQeuroBacked);
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    realizedDelta = int256(pnlShare);
-                } else {
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    uint256 absPnL = uint256(-netUnrealizedPnL);
-                    uint256 pnlShare = qeuroAmount.mulDiv(absPnL, currentQeuroBacked);
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    realizedDelta = -int256(pnlShare);
-                }
+                // Calculate P&L values
+                (int256 totalUnrealizedPnL, int256 realizedDelta) = _calculateRedeemPnL(
+                    currentQeuroBacked, filledBefore, price, qeuroAmount, pos.realizedPnL
+                );
 
                 // Record realized P&L
                 // forge-lint: disable-next-line(unsafe-typecast)
                 pos.realizedPnL += int128(realizedDelta);
                 emit RealizedPnLRecorded(posId, realizedDelta, int256(pos.realizedPnL));
                 emit RealizedPnLCalculation(posId, qeuroAmount, currentQeuroBacked, filledBefore, price, totalUnrealizedPnL, realizedDelta);
-                
-                // If realized P&L is positive (profit), add it to hedger margin
-                // This ensures the hedger margin balance reflects realized profits.
-                // The profit belongs to the hedger, so their margin (collateral) is increased.
-                if (realizedDelta > 0) {
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    uint256 profitAmount = uint256(realizedDelta);
-                    uint256 currentMargin = uint256(pos.margin);
-                    uint256 newMargin = currentMargin + profitAmount;
 
-                    // Update margin (cap at max uint96)
-                    if (newMargin > type(uint96).max) {
-                        pos.margin = type(uint96).max;
-                        totalMargin = totalMargin - currentMargin + type(uint96).max;
-                    } else {
-                        // forge-lint: disable-next-line(unsafe-typecast)
-                        pos.margin = uint96(newMargin);
-                        totalMargin += profitAmount;
-                    }
-
-                    // Recalculate positionSize to maintain leverage ratio
-                    uint256 leverageValue = uint256(pos.leverage);
-                    uint256 newPositionSize = uint256(pos.margin) * leverageValue;
-                    if (newPositionSize > type(uint96).max) {
-                        pos.positionSize = type(uint96).max;
-                    } else {
-                        // forge-lint: disable-next-line(unsafe-typecast)
-                        pos.positionSize = uint96(newPositionSize);
-                    }
-                    
-                    // Emit margin update event
-                    uint256 newMarginRatio = pos.margin > 0 && pos.positionSize > 0
-                        ? (uint256(pos.margin) * 10000) / uint256(pos.positionSize)
-                        : 0;
-                    emit MarginUpdated(
-                        pos.hedger,
-                        posId,
-                        HedgerPoolOptimizationLibrary.packMarginData(profitAmount, newMarginRatio, true)
-                    );
-                }
-                
-                // If realized P&L is negative (loss), reduce hedger margin by the loss amount
-                // This ensures the hedger margin balance reflects realized losses.
-                // The loss is absorbed by the hedger, so their margin (collateral) is reduced.
-                // NOTE: We do NOT reduce totalExposure here because no USDC is withdrawn from the vault.
-                // The loss is already accounted for in the redemption payout, but the hedger's margin
-                // must be reduced to reflect that they absorbed the loss.
-                if (realizedDelta < 0) {
-                    // forge-lint: disable-next-line(unsafe-typecast)
-                    uint256 lossAmount = uint256(-realizedDelta);
-                    uint256 currentMargin = uint256(pos.margin);
-
-                    // Reduce margin by loss amount, but don't go below zero
-                    if (lossAmount > currentMargin) {
-                        // If loss exceeds margin, reduce margin to zero
-                        totalMargin -= currentMargin;
-                        pos.margin = 0;
-                        pos.positionSize = 0; // Position size becomes zero when margin is zero
-                    } else {
-                        // Normal case: reduce margin by loss amount
-                        uint256 newMargin = currentMargin - lossAmount;
-                        // forge-lint: disable-next-line(unsafe-typecast)
-                        pos.margin = uint96(newMargin);
-
-                        // Recalculate positionSize to maintain leverage ratio
-                        // NOTE: We update positionSize for internal consistency, but do NOT reduce totalExposure
-                        // because the actual exposure (filledVolume) hasn't changed - only the margin backing it
-                        uint256 leverageValue = uint256(pos.leverage);
-                        uint256 newPositionSize = newMargin * leverageValue;
-
-                        // forge-lint: disable-next-line(unsafe-typecast)
-                        pos.positionSize = uint96(newPositionSize);
-                        totalMargin -= lossAmount;
-                        // Do NOT reduce totalExposure here - the loss is already accounted for in redemption payout
-                        // totalExposure should only change when hedger explicitly removes margin (withdraws USDC)
-                    }
-                    
-                    // Emit margin update event
-                    uint256 newMarginRatio = pos.margin > 0 && pos.positionSize > 0
-                        ? (uint256(pos.margin) * 10000) / uint256(pos.positionSize)
-                        : 0;
-                    emit MarginUpdated(
-                        pos.hedger,
-                        posId,
-                        HedgerPoolOptimizationLibrary.packMarginData(lossAmount, newMarginRatio, false)
-                    );
-                }
+                // Apply P&L to margin
+                _applyRealizedPnLToMargin(posId, pos, realizedDelta);
             }
         }
         _applyFillChange(posId, pos, share, false);
         // Note: unrealized P&L will be updated in _decreaseFilledVolume after qeuroBacked is updated
+    }
+
+    /**
+     * @notice Calculates unrealized and realized P&L for redemption
+     * @param currentQeuroBacked Current QEURO backed by position
+     * @param filledBefore Filled volume before redemption
+     * @param price Current EUR/USD price
+     * @param qeuroAmount Amount of QEURO being redeemed
+     * @param previousRealizedPnL Previously realized P&L
+     * @return totalUnrealizedPnL Total unrealized P&L (mark-to-market)
+     * @return realizedDelta Realized P&L delta for this redemption
+     */
+    function _calculateRedeemPnL(
+        uint256 currentQeuroBacked,
+        uint256 filledBefore,
+        uint256 price,
+        uint256 qeuroAmount,
+        int128 previousRealizedPnL
+    ) internal pure returns (int256 totalUnrealizedPnL, int256 realizedDelta) {
+        // Step 1: Calculate total unrealized P&L (mark-to-market)
+        uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
+        if (filledBefore >= qeuroValueInUSDC) {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            totalUnrealizedPnL = int256(filledBefore - qeuroValueInUSDC);
+        } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            totalUnrealizedPnL = -int256(qeuroValueInUSDC - filledBefore);
+        }
+
+        // Step 2: Calculate NET unrealized P&L (subtract already-realized portion)
+        int256 netUnrealizedPnL = totalUnrealizedPnL - int256(previousRealizedPnL);
+
+        // Step 3: Calculate the realized P&L delta for this redemption
+        if (netUnrealizedPnL >= 0) {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            uint256 pnlShare = qeuroAmount.mulDiv(uint256(netUnrealizedPnL), currentQeuroBacked);
+            // forge-lint: disable-next-line(unsafe-typecast)
+            realizedDelta = int256(pnlShare);
+        } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            uint256 absPnL = uint256(-netUnrealizedPnL);
+            uint256 pnlShare = qeuroAmount.mulDiv(absPnL, currentQeuroBacked);
+            // forge-lint: disable-next-line(unsafe-typecast)
+            realizedDelta = -int256(pnlShare);
+        }
+    }
+
+    /**
+     * @notice Applies realized P&L to position margin
+     * @param posId Position ID
+     * @param pos Position storage reference
+     * @param realizedDelta Realized P&L amount (positive = profit, negative = loss)
+     */
+    function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
+        if (realizedDelta > 0) {
+            _applyProfitToMargin(posId, pos, realizedDelta);
+        } else if (realizedDelta < 0) {
+            _applyLossToMargin(posId, pos, realizedDelta);
+        }
+    }
+
+    /**
+     * @notice Applies profit to hedger margin
+     * @param posId Position ID
+     * @param pos Position storage reference
+     * @param realizedDelta Positive realized P&L amount
+     */
+    function _applyProfitToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint256 profitAmount = uint256(realizedDelta);
+        uint256 currentMargin = uint256(pos.margin);
+        uint256 newMargin = currentMargin + profitAmount;
+
+        // Update margin (cap at max uint96)
+        if (newMargin > type(uint96).max) {
+            pos.margin = type(uint96).max;
+            totalMargin = totalMargin - currentMargin + type(uint96).max;
+        } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            pos.margin = uint96(newMargin);
+            totalMargin += profitAmount;
+        }
+
+        // Recalculate positionSize to maintain leverage ratio
+        _updatePositionSize(pos);
+
+        // Emit margin update event
+        uint256 newMarginRatio = _calculateMarginRatio(pos);
+        emit MarginUpdated(
+            pos.hedger,
+            posId,
+            HedgerPoolOptimizationLibrary.packMarginData(profitAmount, newMarginRatio, true)
+        );
+    }
+
+    /**
+     * @notice Applies loss to hedger margin
+     * @param posId Position ID
+     * @param pos Position storage reference
+     * @param realizedDelta Negative realized P&L amount
+     */
+    function _applyLossToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint256 lossAmount = uint256(-realizedDelta);
+        uint256 currentMargin = uint256(pos.margin);
+
+        // Reduce margin by loss amount, but don't go below zero
+        if (lossAmount > currentMargin) {
+            // If loss exceeds margin, reduce margin to zero
+            totalMargin -= currentMargin;
+            pos.margin = 0;
+            pos.positionSize = 0;
+        } else {
+            // Normal case: reduce margin by loss amount
+            uint256 newMargin = currentMargin - lossAmount;
+            // forge-lint: disable-next-line(unsafe-typecast)
+            pos.margin = uint96(newMargin);
+            totalMargin -= lossAmount;
+
+            // Recalculate positionSize to maintain leverage ratio
+            _updatePositionSize(pos);
+        }
+
+        // Emit margin update event
+        uint256 newMarginRatio = _calculateMarginRatio(pos);
+        emit MarginUpdated(
+            pos.hedger,
+            posId,
+            HedgerPoolOptimizationLibrary.packMarginData(lossAmount, newMarginRatio, false)
+        );
+    }
+
+    /**
+     * @notice Updates position size based on current margin and leverage
+     * @param pos Position storage reference
+     */
+    function _updatePositionSize(HedgePosition storage pos) internal {
+        uint256 leverageValue = uint256(pos.leverage);
+        uint256 newPositionSize = uint256(pos.margin) * leverageValue;
+        if (newPositionSize > type(uint96).max) {
+            pos.positionSize = type(uint96).max;
+        } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            pos.positionSize = uint96(newPositionSize);
+        }
+    }
+
+    /**
+     * @notice Calculates margin ratio for a position
+     * @param pos Position storage reference
+     * @return Margin ratio in basis points (0 if position has no size)
+     */
+    function _calculateMarginRatio(HedgePosition storage pos) internal view returns (uint256) {
+        if (pos.margin == 0 || pos.positionSize == 0) return 0;
+        return (uint256(pos.margin) * 10000) / uint256(pos.positionSize);
     }
 
     /**

@@ -311,6 +311,15 @@ address public treasury;
 ```
 
 
+### _flashLoanBalanceBefore
+Balance before flash loan check (used by flashLoanProtection modifier)
+
+
+```solidity
+uint256 private _flashLoanBalanceBefore;
+```
+
+
 ### decentralizationStartTime
 Progressive decentralization parameters
 
@@ -388,6 +397,20 @@ Modifier to protect against flash loan attacks
 
 ```solidity
 modifier flashLoanProtection();
+```
+
+### _flashLoanProtectionBefore
+
+
+```solidity
+function _flashLoanProtectionBefore() private;
+```
+
+### _flashLoanProtectionAfter
+
+
+```solidity
+function _flashLoanProtectionAfter() private view;
 ```
 
 ### constructor
@@ -917,6 +940,31 @@ function batchUnlock(address[] calldata users)
 |Name|Type|Description|
 |----|----|-----------|
 |`amounts`|`uint256[]`|Array of QTI amounts unlocked|
+
+
+### _processOneBatchUnlock
+
+Unlocks one user's lock and transfers tokens (used by batchUnlock to reduce stack depth)
+
+
+```solidity
+function _processOneBatchUnlock(address user, uint256 currentTimestamp)
+    internal
+    returns (uint256 amount, uint256 oldVotingPower);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Address to unlock for|
+|`currentTimestamp`|`uint256`|Current time from TimeProvider|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Amount unlocked|
+|`oldVotingPower`|`uint256`|Voting power removed|
 
 
 ### batchTransfer

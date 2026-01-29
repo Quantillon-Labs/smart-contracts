@@ -7,7 +7,6 @@ import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**

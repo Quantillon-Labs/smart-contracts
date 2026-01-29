@@ -6,9 +6,7 @@ import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimelockUpgradeable} from "../src/core/TimelockUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
-import {CommonValidationLibrary} from "../src/libraries/CommonValidationLibrary.sol";
 
 /**
  * @title GovernanceAttackVectors

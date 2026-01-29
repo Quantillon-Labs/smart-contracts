@@ -17,7 +17,6 @@ import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
-import {TokenErrorLibrary} from "../libraries/TokenErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";

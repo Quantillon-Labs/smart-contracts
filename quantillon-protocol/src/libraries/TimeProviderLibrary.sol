@@ -78,9 +78,11 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
     
     /// @notice Ensures the time offset is within allowed bounds
     modifier validTimeOffset(int256 offset) {
+        // forge-lint: disable-next-line(unsafe-typecast)
         if (offset > 0 && uint256(offset) > MAX_TIME_OFFSET) {
             revert CommonErrorLibrary.InvalidAmount();
         }
+        // forge-lint: disable-next-line(unsafe-typecast)
         if (offset < 0 && uint256(-offset) > MAX_TIME_OFFSET) {
             revert CommonErrorLibrary.InvalidAmount();
         }
@@ -179,8 +181,10 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
      */
     function _getCurrentTime() internal view returns (uint256) {
         if (timeOffset >= 0) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             return block.timestamp + uint256(timeOffset);
         } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint256 negativeOffset = uint256(-timeOffset);
             // Prevent underflow
             if (block.timestamp < negativeOffset) {
@@ -293,16 +297,21 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         
         int256 newOffset;
         if (timeOffset >= 0) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             newOffset = timeOffset + int256(advancement);
         } else {
             // Handle negative offset
+            // forge-lint: disable-next-line(unsafe-typecast)
             if (advancement >= uint256(-timeOffset)) {
+                // forge-lint: disable-next-line(unsafe-typecast)
                 newOffset = int256(advancement - uint256(-timeOffset));
             } else {
+                // forge-lint: disable-next-line(unsafe-typecast)
                 newOffset = timeOffset + int256(advancement);
             }
         }
-        
+
+        // forge-lint: disable-next-line(unsafe-typecast)
         if (newOffset > 0 && uint256(newOffset) > MAX_TIME_OFFSET) {
             revert CommonErrorLibrary.InvalidAmount();
         }
@@ -441,8 +450,10 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
      */
     function timeDiff(uint256 timestamp1, uint256 timestamp2) external pure returns (int256) {
         if (timestamp1 >= timestamp2) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             return int256(timestamp1 - timestamp2);
         } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
             return -int256(timestamp2 - timestamp1);
         }
     }

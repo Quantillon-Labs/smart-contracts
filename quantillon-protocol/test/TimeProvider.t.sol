@@ -247,11 +247,13 @@ contract TimeProviderTest is Test {
         vm.startPrank(governance);
         
         // Test maximum positive offset
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 maxOffset = int256(MAX_TIME_OFFSET);
         timeProvider.setTimeOffset(maxOffset, "Max positive offset");
         assertEq(timeProvider.timeOffset(), maxOffset);
-        
+
         // Test maximum negative offset
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 minOffset = -int256(MAX_TIME_OFFSET);
         timeProvider.setTimeOffset(minOffset, "Max negative offset");
         assertEq(timeProvider.timeOffset(), minOffset);
@@ -276,10 +278,12 @@ contract TimeProviderTest is Test {
         
         // Test exceeding positive maximum
         vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
+        // forge-lint: disable-next-line(unsafe-typecast)
         timeProvider.setTimeOffset(int256(MAX_TIME_OFFSET) + 1, "Too positive");
-        
+
         // Test exceeding negative maximum
         vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
+        // forge-lint: disable-next-line(unsafe-typecast)
         timeProvider.setTimeOffset(-int256(MAX_TIME_OFFSET) - 1, "Too negative");
         
         vm.stopPrank();
@@ -717,17 +721,21 @@ contract TimeProviderTest is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function testFuzz_SetTimeOffset(int128 offset) public {
+        // forge-lint: disable-next-line(unsafe-typecast)
         vm.assume(offset >= -int128(uint128(MAX_TIME_OFFSET)));
+        // forge-lint: disable-next-line(unsafe-typecast)
         vm.assume(offset <= int128(uint128(MAX_TIME_OFFSET)));
-        
+
         vm.prank(governance);
         timeProvider.setTimeOffset(offset, "Fuzz test");
-        
+
         assertEq(timeProvider.timeOffset(), offset);
-        
+
         if (offset >= 0) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             assertEq(timeProvider.currentTime(), block.timestamp + uint256(int256(offset)));
         } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint256 negOffset = uint256(-int256(offset));
             if (block.timestamp >= negOffset) {
                 assertEq(timeProvider.currentTime(), block.timestamp - negOffset);
@@ -854,6 +862,7 @@ contract TimeProviderTest is Test {
         
         // Perform many operations to test stability
         for (uint256 i = 1; i <= 10; i++) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             timeProvider.setTimeOffset(int256(i * 100), "Stress test iteration");
             assertEq(timeProvider.adjustmentCounter(), i);
         }

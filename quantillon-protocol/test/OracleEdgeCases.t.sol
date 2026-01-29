@@ -129,6 +129,7 @@ contract OracleEdgeCases is Test {
         uint256 newPrice = 115000000;     // 1.15 USD (8 decimals) - 4.5% increase
         
         // Set initial price and force oracle update
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(initialPrice));
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
         vm.prank(emergencyRole);
@@ -139,6 +140,7 @@ contract OracleEdgeCases is Test {
         assertEq(price1, initialPrice * 1e10); // Oracle returns 18-decimal format
         
         // Rapidly change price in same block (within deviation limits)
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(newPrice));
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
         vm.prank(emergencyRole);
@@ -183,6 +185,7 @@ contract OracleEdgeCases is Test {
         uint256 price2 = 115000000; // 1.15 USD (8 decimals)
         
         // Set initial price and force oracle update
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(price1));
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
         vm.prank(emergencyRole);
@@ -191,6 +194,7 @@ contract OracleEdgeCases is Test {
         // Simulate price update during execution
         vm.startPrank(oracleManager);
         oracle.updatePriceBounds(MIN_PRICE, MAX_PRICE);
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(price2));
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
         oracle.updatePriceBounds(MIN_PRICE, MAX_PRICE);
@@ -238,6 +242,7 @@ contract OracleEdgeCases is Test {
         
         // Set stale price (2 hours old)
         uint256 staleTimestamp = block.timestamp - 7200; // 10001 - 7200 = 2801
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(110 * PRECISION));
         mockEurUsdFeed.setUpdatedAt(staleTimestamp);
         
@@ -283,6 +288,7 @@ contract OracleEdgeCases is Test {
         uint256 extremePrice = 200 * PRECISION; // 200 USD, 82% increase from 1.1
         
         // Set extreme price movement
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(extremePrice));
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
         
@@ -394,6 +400,7 @@ contract OracleEdgeCases is Test {
     function test_Oracle_ExtremeDecimals() public {
         // Test with very high precision but close to current price (1.1)
         uint256 highPrecisionPrice = 110000000 + 12345; // 1.10012345 USD in 8 decimals
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(highPrecisionPrice));
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
         
@@ -485,6 +492,7 @@ contract OracleEdgeCases is Test {
         
         // Recover both feeds (resetCircuitBreaker needs both feeds working)
         mockEurUsdFeed.setShouldRevert(false);
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(110000000)); // 1.10 USD (8 decimals)
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
         
@@ -535,6 +543,7 @@ contract OracleEdgeCases is Test {
         
         // Recover with new price (close to current price to avoid deviation issues)
         mockEurUsdFeed.setShouldRevert(false);
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(115000000)); // 1.15 USD (8 decimals)
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
         
@@ -794,6 +803,7 @@ contract OracleEdgeCases is Test {
      */
     function test_Oracle_BelowMinimumBoundary() public {
         uint256 belowMin = MIN_PRICE - 1;
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(belowMin));
         
         (uint256 price, bool valid) = oracle.getEurUsdPrice();
@@ -829,6 +839,7 @@ contract OracleEdgeCases is Test {
      */
     function test_Oracle_AboveMaximumBoundary() public {
         uint256 aboveMax = MAX_PRICE + 1;
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(aboveMax));
         
         (uint256 price, bool valid) = oracle.getEurUsdPrice();
@@ -868,6 +879,7 @@ contract OracleEdgeCases is Test {
      */
     function test_Oracle_FutureTimestamp() public {
         uint256 futureTimestamp = block.timestamp + 3600; // 1 hour in future
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(110 * PRECISION));
         mockEurUsdFeed.setUpdatedAt(futureTimestamp);
         
@@ -905,6 +917,7 @@ contract OracleEdgeCases is Test {
     function test_Oracle_TimestampOverflow() public {
         // Test with maximum timestamp
         uint256 maxTimestamp = type(uint256).max;
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(110 * PRECISION));
         mockEurUsdFeed.setUpdatedAt(maxTimestamp);
         

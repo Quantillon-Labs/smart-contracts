@@ -182,7 +182,9 @@ library YieldShiftCalculationLibrary {
         for (uint256 i = 0; i < snapshots.length; i++) {
             // Extract data from packed snapshot (assuming 128 bits each)
             uint256 snapshot = snapshots[i];
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint128 userPoolSize = uint128(snapshot);
+            // forge-lint: disable-next-line(unsafe-typecast)
             uint128 hedgerPoolSize = uint128(snapshot >> 128);
             
             // Calculate weight based on time proximity (simplified)

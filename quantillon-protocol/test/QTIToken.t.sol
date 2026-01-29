@@ -1006,7 +1006,8 @@ contract QTITokenTestSuite is Test {
         address[] memory users = new address[](51);
         
         for (uint256 i = 0; i < 51; i++) {
-            users[i] = address(uint160(i + 1000)); // Generate unique addresses
+            users[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
         }
 
         vm.prank(governance);
@@ -1032,7 +1033,8 @@ contract QTITokenTestSuite is Test {
         uint256[] memory amounts = new uint256[](101);
         
         for (uint256 i = 0; i < 101; i++) {
-            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            recipients[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
             amounts[i] = 1e18;
         }
 

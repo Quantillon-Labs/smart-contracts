@@ -3,18 +3,11 @@ pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
-import {QEUROToken} from "../src/core/QEUROToken.sol";
-import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {UserPool} from "../src/core/UserPool.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
-import {QuantillonVault} from "../src/core/QuantillonVault.sol";
-import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
-import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IOracle} from "../src/interfaces/IOracle.sol";
-import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
-import {CommonValidationLibrary} from "../src/libraries/CommonValidationLibrary.sol";
 
 /**
  * @title EconomicAttackVectors
@@ -177,6 +170,7 @@ contract EconomicAttackVectors is Test {
         vm.mockCall(
             mockOracle,
             abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            // forge-lint: disable-next-line(unsafe-typecast)
             abi.encode(uint256(price) * 1e10, true) // Convert to 18 decimals
         );
     }
@@ -236,6 +230,7 @@ contract EconomicAttackVectors is Test {
         vm.mockCall(
             mockOracle,
             abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            // forge-lint: disable-next-line(unsafe-typecast)
             abi.encode(uint256(EUR_USD_PRICE) * 1e10, false) // false = stale
         );
 

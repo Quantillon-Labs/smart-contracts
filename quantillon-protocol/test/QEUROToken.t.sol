@@ -601,7 +601,9 @@ contract QEUROTokenTestSuite is Test {
         uint256[] memory amounts = new uint256[](101);
         
         for (uint256 i = 0; i < 101; i++) {
-            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            // forge-lint: disable-next-line(unsafe-typecast)
+            recipients[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
             amounts[i] = 1e18;
         }
 
@@ -628,7 +630,8 @@ contract QEUROTokenTestSuite is Test {
         uint256[] memory amounts = new uint256[](101);
         
         for (uint256 i = 0; i < 101; i++) {
-            froms[i] = address(uint160(i + 1000)); // Generate unique addresses
+            froms[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
             amounts[i] = 1e18;
         }
 
@@ -655,7 +658,8 @@ contract QEUROTokenTestSuite is Test {
         uint256[] memory amounts = new uint256[](101);
         
         for (uint256 i = 0; i < 101; i++) {
-            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            recipients[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
             amounts[i] = 1e18;
         }
 
@@ -681,7 +685,8 @@ contract QEUROTokenTestSuite is Test {
         address[] memory accounts = new address[](51);
         
         for (uint256 i = 0; i < 51; i++) {
-            accounts[i] = address(uint160(i + 1000)); // Generate unique addresses
+            accounts[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
         }
 
         vm.prank(compliance);
@@ -707,7 +712,8 @@ contract QEUROTokenTestSuite is Test {
         uint256[] memory amounts = new uint256[](100);
         
         for (uint256 i = 0; i < 100; i++) {
-            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            recipients[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
             amounts[i] = 1e18;
         }
 
@@ -737,7 +743,8 @@ contract QEUROTokenTestSuite is Test {
         address[] memory accounts = new address[](50);
         
         for (uint256 i = 0; i < 50; i++) {
-            accounts[i] = address(uint160(i + 1000)); // Generate unique addresses
+            accounts[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
         }
 
         vm.prank(compliance);

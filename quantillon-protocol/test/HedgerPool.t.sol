@@ -1506,6 +1506,7 @@ contract HedgerPoolTestSuite is Test {
         assertLt(realizedDelta, 0, "Realized P&L delta should be negative (loss)");
         
         // Convert loss to positive amount for margin reduction calculation
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint256 realizedLossAmount = uint256(-realizedDelta);
         
         // Margin should be reduced by the loss (but not go below zero)
@@ -1603,6 +1604,7 @@ contract HedgerPoolTestSuite is Test {
         assertGt(realizedDelta, 0, "Realized P&L delta should be positive (profit)");
         
         // Convert profit to amount for margin increase calculation
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint256 realizedProfitAmount = uint256(realizedDelta);
         
         // Margin should be increased by the profit amount
@@ -1684,9 +1686,11 @@ contract HedgerPoolTestSuite is Test {
         // When qeuroBacked == 0, total unrealized = -filledVolume
         (, , , uint96 margin, , , , , int128 realizedPnL, , , ) = hedgerPool.positions(positionId);
         int256 netUnrealizedPnL = expectedUnrealizedPnL - int256(realizedPnL);
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 expectedEffectiveMargin = int256(uint256(margin)) + netUnrealizedPnL;
-        
+
         if (expectedEffectiveMargin > 0) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             assertEq(effectiveCollateral, uint256(expectedEffectiveMargin),
                 "Effective collateral should match margin + net unrealized P&L");
         } else {

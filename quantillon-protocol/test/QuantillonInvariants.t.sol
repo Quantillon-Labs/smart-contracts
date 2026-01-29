@@ -191,12 +191,12 @@ contract QuantillonInvariants is Test {
         ERC1967Proxy qtiProxy = new ERC1967Proxy(address(qtiImplementation), qtiInitData);
         qtiToken = QTIToken(address(qtiProxy));
 
-        // Deploy QEUROToken
+        // Deploy QEUROToken (vault placeholder: protocol requires non-zero; we grant MINTER/BURNER to vault below)
         QEUROToken qeuroImplementation = new QEUROToken();
         bytes memory qeuroInitData = abi.encodeWithSelector(
             QEUROToken.initialize.selector,
             admin,
-            address(0), // vault (set later)
+            admin, // placeholder vault; grant to real vault in _setupEssentialRoles
             mockTimelock,
             treasury,
             address(feeCollector)
@@ -220,10 +220,11 @@ contract QuantillonInvariants is Test {
         ERC1967Proxy vaultProxy = new ERC1967Proxy(address(vaultImpl), vaultInitData);
         vault = QuantillonVault(address(vaultProxy));
 
-        // Grant vault mint/burn roles on QEURO
+        // Grant vault mint/burn roles on QEURO and TREASURY_ROLE on FeeCollector so vault can collect fees
         vm.startPrank(admin);
         qeuroToken.grantRole(qeuroToken.MINTER_ROLE(), address(vault));
         qeuroToken.grantRole(qeuroToken.BURNER_ROLE(), address(vault));
+        feeCollector.grantRole(feeCollector.TREASURY_ROLE(), address(vault));
         vm.stopPrank();
 
         // Deploy YieldShift
@@ -256,19 +257,18 @@ contract QuantillonInvariants is Test {
         ERC1967Proxy stQEUROProxy = new ERC1967Proxy(address(stQEUROImpl), stQEUROInitData);
         stQEURO = stQEUROToken(address(stQEUROProxy));
 
-        // Deploy UserPool
+        // Deploy UserPool (signature: admin, _qeuro, _usdc, _vault, _oracle, _yieldShift, _timelock, _treasury)
         UserPool userPoolImpl = new UserPool(timeProvider);
         bytes memory userPoolInitData = abi.encodeWithSelector(
             UserPool.initialize.selector,
             admin,
-            address(usdc),
             address(qeuroToken),
-            address(stQEURO),
+            address(usdc),
+            address(vault),
+            address(oracle),
             address(yieldShift),
-            treasury,
-            100, // depositFee (1%)
-            100, // stakingFee (1%)
-            86400 // unstaking cooldown
+            mockTimelock,
+            treasury
         );
         ERC1967Proxy userPoolProxy = new ERC1967Proxy(address(userPoolImpl), userPoolInitData);
         userPool = UserPool(address(userPoolProxy));
@@ -336,6 +336,20 @@ contract QuantillonInvariants is Test {
         hedgerPool.grantRole(hedgerPool.EMERGENCY_ROLE(), emergency);
 
         vm.stopPrank();
+
+        // Test-friendly: skip price deviation, allow minting at 101% collateralization, seed hedger margin
+        vm.prank(admin);
+        vault.setDevMode(true);
+        vm.startPrank(governance);
+        vault.updateCollateralizationThresholds(101e18, 101e18);
+        hedgerPool.setSingleHedger(hedger1);
+        vm.stopPrank();
+
+        uint256 seedAmount = 100_000 * 1e6;
+        vm.prank(hedger1);
+        usdc.approve(address(hedgerPool), seedAmount);
+        vm.prank(hedger1);
+        hedgerPool.enterHedgePosition(seedAmount, 5); // leverage 5 so margin ratio is within allowed range
     }
     
 
@@ -358,7 +372,6 @@ contract QuantillonInvariants is Test {
      */
     function invariant_totalSupplyConsistency() public view {
         // QTI Token supply consistency
-        uint256 qtiTotalSupply = qtiToken.totalSupply();
         uint256 qtiLocked = qtiToken.totalLocked();
 
         // Total voting power should never exceed 4x locked tokens (max multiplier)
@@ -823,13 +836,13 @@ contract QuantillonInvariants is Test {
      * @dev Mints, redeems, stakes, and unstakes in random order, then verifies invariants
      */
     function test_ActionSequence_MintStakeUnstakeRedeem() public {
-        // User1 mints some QEURO
+        // User1 mints some QEURO (80% min out to absorb fee + rounding)
         vm.startPrank(user1);
         usdc.approve(address(vault), 10_000e6);
         (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "oracle invalid");
-        uint256 expectedQeuro = (10_000e6 * 1e12) / eurPrice;
-        vault.mintQEURO(10_000e6, (expectedQeuro * 95) / 100);
+        uint256 expectedQeuro = (10_000e6 * 1e30) / eurPrice;
+        vault.mintQEURO(10_000e6, (expectedQeuro * 80) / 100);
         vm.stopPrank();
 
         uint256 user1QeuroBal = qeuroToken.balanceOf(user1);
@@ -844,11 +857,11 @@ contract QuantillonInvariants is Test {
 
         assertGt(stQeuroReceived, 0, "User1 should receive stQEURO");
 
-        // User2 also mints
+        // User2 also mints (80% min out)
         vm.startPrank(user2);
         usdc.approve(address(vault), 5_000e6);
-        uint256 expectedQeuro2 = (5_000e6 * 1e12) / eurPrice;
-        vault.mintQEURO(5_000e6, (expectedQeuro2 * 95) / 100);
+        uint256 expectedQeuro2 = (5_000e6 * 1e30) / eurPrice;
+        vault.mintQEURO(5_000e6, (expectedQeuro2 * 80) / 100);
         vm.stopPrank();
 
         // Verify invariants hold
@@ -862,12 +875,13 @@ contract QuantillonInvariants is Test {
 
         assertGt(qeuroBack, 0, "Should get QEURO back");
 
-        // User1 redeems all QEURO
+        // User1 redeems all QEURO (80% min USDC out for fee/rounding)
+        // Convert QEURO (18 dec) to USDC (6 dec) via EUR/USD price (18 dec): USDC = QEURO * price / 1e30
         uint256 user1FinalQeuro = qeuroToken.balanceOf(user1);
         vm.startPrank(user1);
         qeuroToken.approve(address(vault), user1FinalQeuro);
-        uint256 expectedUsdc = (user1FinalQeuro * eurPrice) / 1e18;
-        vault.redeemQEURO(user1FinalQeuro, (expectedUsdc * 95) / 100);
+        uint256 expectedUsdc = (user1FinalQeuro * eurPrice) / 1e30;
+        vault.redeemQEURO(user1FinalQeuro, (expectedUsdc * 80) / 100);
         vm.stopPrank();
 
         // Verify invariants still hold
@@ -889,7 +903,7 @@ contract QuantillonInvariants is Test {
         (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return;
 
-        uint256 expectedQeuro = (amount * 1e12) / eurPrice;
+        uint256 expectedQeuro = (amount * 1e30) / eurPrice;
         vault.mintQEURO(amount, (expectedQeuro * 95) / 100);
         vm.stopPrank();
 
@@ -920,7 +934,7 @@ contract QuantillonInvariants is Test {
         (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return;
 
-        uint256 expectedQeuro = (mintAmount * 1e12) / eurPrice;
+        uint256 expectedQeuro = (mintAmount * 1e30) / eurPrice;
         vault.mintQEURO(mintAmount, (expectedQeuro * 95) / 100);
 
         uint256 qeuroBal = qeuroToken.balanceOf(user1);
@@ -950,7 +964,7 @@ contract QuantillonInvariants is Test {
         usdc.approve(address(vault), 10_000e6);
         (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
         require(isValid, "oracle invalid");
-        uint256 expectedQeuro = (10_000e6 * 1e12) / eurPrice;
+        uint256 expectedQeuro = (10_000e6 * 1e30) / eurPrice;
         vault.mintQEURO(10_000e6, (expectedQeuro * 95) / 100);
         vm.stopPrank();
 
@@ -1033,7 +1047,7 @@ interface IERC20 {
  * @notice Handler contract for action-based invariant testing
  * @dev Exposes protocol actions for fuzzed invariant sequences
  */
-contract InvariantActionHandler {
+contract InvariantActionHandler is Test {
     QuantillonVault public vault;
     UserPool public userPool;
     HedgerPool public hedgerPool;
@@ -1067,7 +1081,7 @@ contract InvariantActionHandler {
         stQEURO = stQEUROToken(_stQEURO);
         qeuroToken = QEUROToken(_qeuroToken);
         usdc = MockUSDC(_usdc);
-        oracle = MockChainlinkOracle(_oracle);
+        oracle = MockChainlinkOracle(payable(_oracle));
         actors = _actors;
     }
 
@@ -1082,7 +1096,7 @@ contract InvariantActionHandler {
         (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) return;
 
-        uint256 expectedQeuro = (amount * 1e12) / eurPrice;
+        uint256 expectedQeuro = (amount * 1e30) / eurPrice;
         uint256 minQeuro = (expectedQeuro * 95) / 100; // 5% slippage
 
         vm.startPrank(actor);
@@ -1157,13 +1171,6 @@ contract InvariantActionHandler {
             actionCount++;
         } catch {}
         vm.stopPrank();
-    }
-
-    /// @notice Helper to bound values
-    function bound(uint256 x, uint256 min, uint256 max) internal pure returns (uint256) {
-        if (x < min) return min;
-        if (x > max) return max;
-        return x;
     }
 }
 

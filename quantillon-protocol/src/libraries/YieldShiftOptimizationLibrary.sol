@@ -426,24 +426,30 @@ library YieldShiftOptimizationLibrary {
             
             // Add new element at the end
             newHistory[length - 1] = PoolSnapshot({
+                // forge-lint: disable-next-line(unsafe-typecast)
                 timestamp: uint64(currentTime),
+                // forge-lint: disable-next-line(unsafe-typecast)
                 userPoolSize: isUserPool ? uint128(poolSize) : 0,
+                // forge-lint: disable-next-line(unsafe-typecast)
                 hedgerPoolSize: isUserPool ? 0 : uint128(poolSize)
             });
         } else {
             // Create new array with one more element
             newHistory = new PoolSnapshot[](length + 1);
-            
+
             // Copy existing elements
             for (uint256 i = 0; i < length;) {
                 newHistory[i] = poolHistory[i];
                 unchecked { ++i; }
             }
-            
+
             // Add new element at the end
             newHistory[length] = PoolSnapshot({
+                // forge-lint: disable-next-line(unsafe-typecast)
                 timestamp: uint64(currentTime),
+                // forge-lint: disable-next-line(unsafe-typecast)
                 userPoolSize: isUserPool ? uint128(poolSize) : 0,
+                // forge-lint: disable-next-line(unsafe-typecast)
                 hedgerPoolSize: isUserPool ? 0 : uint128(poolSize)
             });
         }

@@ -145,6 +145,7 @@ library HedgerPoolLogicLibrary {
         // the remaining filledVolume represents a loss that should be shown as unrealized P&L
         if (qeuroBacked == 0) {
             // Return negative filledVolume as unrealized loss
+            // forge-lint: disable-next-line(unsafe-typecast)
             return -int256(filledVolume);
         }
 
@@ -155,12 +156,14 @@ library HedgerPoolLogicLibrary {
         // qeuroBacked * currentPrice gives USDC value in 36 decimals
         // Divide by 1e30 to convert to 6 decimals (USDC)
         uint256 qeuroValueInUSDC = qeuroBacked.mulDiv(currentPrice, 1e30);
-        
+
         // Calculate P&L: filledVolume - qeuroValueInUSDC
         // Both are in 6 decimals, result is in 6 decimals
         if (filledVolume >= qeuroValueInUSDC) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             return int256(filledVolume - qeuroValueInUSDC);
         } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
             return -int256(qeuroValueInUSDC - filledVolume);
         }
     }
@@ -212,19 +215,23 @@ library HedgerPoolLogicLibrary {
         // The margin has already been adjusted by realized P&L during redemptions,
         // so we subtract realizedPnL to avoid double-counting.
         // This matches the formula used in isPositionLiquidatable and scenario scripts.
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 netUnrealizedPnL = totalUnrealizedPnL - int256(realizedPnL);
-        
+
         // Effective margin = margin + net unrealized P&L
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 effectiveMargin = int256(margin) + netUnrealizedPnL;
         if (effectiveMargin <= 0) return 0;
-        
+
         // Required margin is based on exact QEURO backed × current price
         // mintedExposure = qeuroBacked × currentPrice / 1e30 (converts to 6 decimals USDC)
         uint256 mintedExposure = uint256(qeuroBacked).mulDiv(currentPrice, 1e30);
         uint256 requiredMargin = mintedExposure.mulDiv(minMarginRatio, 10000);
-        
+
         // Available collateral = effectiveMargin - requiredMargin
+        // forge-lint: disable-next-line(unsafe-typecast)
         if (uint256(effectiveMargin) <= requiredMargin) return 0;
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint256 availableCollateral = uint256(effectiveMargin) - requiredMargin;
         
         // Capacity = availableCollateral / minMarginRatio × 10000
@@ -280,22 +287,25 @@ library HedgerPoolLogicLibrary {
         // Calculate net unrealized P&L (total unrealized - realized)
         // The margin has already been adjusted by realized P&L during redemptions,
         // so we subtract realizedPnL to avoid double-counting.
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 netUnrealizedPnL = totalUnrealizedPnL - int256(realizedPnL);
-        
+
         // Effective margin = margin + net unrealized P&L
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 effectiveMargin = int256(margin) + netUnrealizedPnL;
-        
+
         // If effective margin is zero or negative, position is definitely liquidatable
         if (effectiveMargin <= 0) return true;
-        
+
         // Calculate current QEURO value in USDC: (qeuroBacked × currentPrice) / 1e30
         // qeuroBacked (18 dec) × currentPrice (18 dec) = 36 dec, divide by 1e30 → 6 dec
         uint256 qeuroValueInUSDC = (uint256(qeuroBacked) * currentPrice) / 1e30;
-        
+
         if (qeuroValueInUSDC == 0) return false;
-        
+
         // Calculate margin ratio: effectiveMargin / qeuroValueInUSDC × 10000
         // Position is liquidatable if marginRatio < liquidationThreshold
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint256 marginRatio = uint256(effectiveMargin).mulDiv(10000, qeuroValueInUSDC);
         return marginRatio < liquidationThreshold;
     }

@@ -551,6 +551,7 @@ contract ChainlinkOracleTestSuite is Test {
     function test_PriceFetching_PriceDeviationCheck() public {
         // Set a price that deviates more than MAX_PRICE_DEVIATION
         uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS; // 6% deviation
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(deviatedPrice * 1e10)); // Convert to 8 decimals
         
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
@@ -639,10 +640,11 @@ contract ChainlinkOracleTestSuite is Test {
         // Set a price that deviates more than MAX_PRICE_DEVIATION (6% deviation)
         uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS;
         // Convert from 18 decimals to 8 decimals for Chainlink feed
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(deviatedPrice / 1e10));
         // Update timestamp to ensure it's valid
         mockEurUsdFeed.setUpdatedAt(block.timestamp);
-        
+
         // Call getEurUsdPrice to update the cache with the deviated price
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         
@@ -669,9 +671,10 @@ contract ChainlinkOracleTestSuite is Test {
         vm.prank(admin);
         oracle.setDevMode(false);
         assertFalse(oracle.devModeEnabled());
-        
+
         // Set a price that deviates more than MAX_PRICE_DEVIATION
         uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS; // 6% deviation
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(deviatedPrice * 1e10)); // Convert to 8 decimals
         
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
@@ -697,10 +700,11 @@ contract ChainlinkOracleTestSuite is Test {
         // Enable dev mode first
         vm.prank(admin);
         oracle.setDevMode(true);
-        
+
         // Set a deviated price
         uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS;
         // Convert from 18 decimals to 8 decimals for Chainlink feed
+        // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(deviatedPrice / 1e10));
         // Update timestamp to ensure it's valid
         mockEurUsdFeed.setUpdatedAt(block.timestamp);

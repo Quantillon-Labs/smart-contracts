@@ -7,7 +7,6 @@ import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
-import {TokenErrorLibrary} from "../src/libraries/TokenErrorLibrary.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
@@ -688,7 +687,8 @@ contract stQEUROTokenTestSuite is Test {
         uint256[] memory amounts = new uint256[](101);
         
         for (uint256 i = 0; i < 101; i++) {
-            recipients[i] = address(uint160(i + 1000)); // Generate unique addresses
+            recipients[i] // forge-lint: disable-next-line(unsafe-typecast)
+            = address(uint160(i + 1000)); // Generate unique addresses
             amounts[i] = 1e18;
         }
 

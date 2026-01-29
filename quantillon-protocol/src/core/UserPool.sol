@@ -18,7 +18,6 @@ import {IOracle} from "../interfaces/IOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
-import {VaultErrorLibrary} from "../libraries/VaultErrorLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
@@ -732,6 +731,7 @@ contract UserPool is
         }
         
         // Update user state once (single update outside loop)
+        // forge-lint: disable-next-line(unsafe-typecast)
         user.depositHistory += uint96(totalUsdcAmount);
         // Note: user.qeuroBalance is not updated since QEURO goes to user's wallet
         
@@ -773,8 +773,11 @@ contract UserPool is
             
             // Track detailed deposit information with oracle ratio
             userDeposits[msg.sender].push(UserDepositInfo({
+                // forge-lint: disable-next-line(unsafe-typecast)
                 usdcAmount: uint128(usdcAmount),
+                // forge-lint: disable-next-line(unsafe-typecast)
                 qeuroReceived: uint128(qeuroMinted),
+                // forge-lint: disable-next-line(unsafe-typecast)
                 timestamp: uint64(currentTime),
                 oracleRatio: oracleRatio,
                 blockNumber: currentBlock
@@ -960,8 +963,11 @@ contract UserPool is
         for (uint256 i = 0; i < length;) {
             // Track detailed withdrawal information with oracle ratio
             userWithdrawals[msg.sender].push(UserWithdrawalInfo({
+                // forge-lint: disable-next-line(unsafe-typecast)
                 qeuroAmount: uint128(qeuroAmounts[i]),
+                // forge-lint: disable-next-line(unsafe-typecast)
                 usdcReceived: uint128(usdcReceivedAmounts[i]),
+                // forge-lint: disable-next-line(unsafe-typecast)
                 timestamp: uint64(currentTime),
                 oracleRatio: oracleRatio,
                 blockNumber: currentBlock
@@ -1024,10 +1030,12 @@ contract UserPool is
         
         // Transfer total QEURO from user using unified function
         _validateAndTransferTokens(qeuroAmounts, IERC20(address(qeuro)), true);
-        
+
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint64 currentTimestamp = uint64(currentTime);
-        
+
         // Update user staking info with total amount (single update)
+        // forge-lint: disable-next-line(unsafe-typecast)
         user.stakedAmount += uint128(totalQeuroAmount);
         user.lastStakeTime = currentTimestamp;
         
@@ -1064,9 +1072,11 @@ contract UserPool is
         
         // Update pending rewards
         _updatePendingRewards(msg.sender, currentTime);
-        
+
         // Set unstaking request
+        // forge-lint: disable-next-line(unsafe-typecast)
         user.unstakeRequestTime = uint64(currentTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         user.unstakeAmount = uint128(qeuroAmount);
     }
 
@@ -1092,8 +1102,9 @@ contract UserPool is
         );
 
         uint256 amount = user.unstakeAmount;
-        
+
         // Update user staking info
+        // forge-lint: disable-next-line(unsafe-typecast)
         user.stakedAmount -= uint128(amount);
         user.unstakeAmount = 0;
         user.unstakeRequestTime = 0;
@@ -1165,6 +1176,7 @@ contract UserPool is
         
         // Cache timestamp to avoid external calls in loop
         uint256 currentTime = TIME_PROVIDER.currentTime();
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint64 currentTimestamp = uint64(currentTime);
         
         // Store users with non-zero rewards to minimize external calls
@@ -1268,8 +1280,10 @@ contract UserPool is
             // Calculate yield-based rewards
             uint256 yieldReward = uint256(userdata.stakedAmount)
                 .mulDiv(accumulatedYieldPerShare, 1e18);
-            
+
+            // forge-lint: disable-next-line(unsafe-typecast)
             userdata.pendingRewards += uint128(stakingReward + yieldReward);
+            // forge-lint: disable-next-line(unsafe-typecast)
             userdata.lastStakeTime = uint64(currentTime);
             userLastRewardBlock[user] = currentBlock;
         }
@@ -1428,6 +1442,7 @@ contract UserPool is
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         // Scale by 1e6 to fit in uint32 (max value ~4.2B)
         // Oracle price is in 8 decimals, so we scale by 1e6 to get 2 decimals precision
+        // forge-lint: disable-next-line(unsafe-typecast)
         return uint32(oraclePrice / 1e6);
     }
 

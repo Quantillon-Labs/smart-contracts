@@ -9,7 +9,6 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {IOracle} from "../src/interfaces/IOracle.sol";
-import {IHedgerPool} from "../src/interfaces/IHedgerPool.sol";
 import {IUserPool} from "../src/interfaces/IUserPool.sol";
 import {VaultErrorLibrary} from "../src/libraries/VaultErrorLibrary.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";

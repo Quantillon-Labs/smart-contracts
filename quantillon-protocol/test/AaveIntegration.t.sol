@@ -7,19 +7,14 @@ pragma solidity 0.8.24;
 // Verifies that USDC deposited during QEURO minting is automatically deployed to Aave
 // =============================================================================
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {UserPool} from "../src/core/UserPool.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
-import {AaveVault} from "../src/core/vaults/AaveVault.sol";
 import {FeeCollector} from "../src/core/FeeCollector.sol";
-import {IChainlinkOracle} from "../src/interfaces/IChainlinkOracle.sol";
-import {IHedgerPool} from "../src/interfaces/IHedgerPool.sol";
-import {IQuantillonVault} from "../src/interfaces/IQuantillonVault.sol";
-import {IAaveVault} from "../src/interfaces/IAaveVault.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 
@@ -262,6 +257,7 @@ contract MockAaveVault {
      */
     function deployToAave(uint256 amount) external returns (uint256) {
         // Transfer USDC from caller to this contract (simulating Aave deposit)
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         usdc.transferFrom(msg.sender, address(this), amount);
         principalDeposited += amount;
         totalDeployed += amount;
@@ -288,6 +284,7 @@ contract MockAaveVault {
             principalDeposited -= withdrawAmount;
             totalWithdrawn += withdrawAmount;
             // Transfer USDC back to caller
+            // forge-lint: disable-next-line(erc20-unchecked-transfer)
             usdc.transfer(msg.sender, withdrawAmount);
         }
         return withdrawAmount;

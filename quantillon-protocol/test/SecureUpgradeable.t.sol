@@ -8,7 +8,6 @@ import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ITimelockUpgradeable} from "../src/interfaces/ITimelockUpgradeable.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title MockSecureUpgradeable

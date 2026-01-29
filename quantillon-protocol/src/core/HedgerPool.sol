@@ -236,6 +236,7 @@ contract HedgerPool is
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
 
+        // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.minMarginRatio = uint64(DEFAULT_MIN_MARGIN_RATIO_BPS);  // 5% minimum margin ratio (20x max leverage)
         coreParams.maxLeverage = 20;      // 20x maximum leverage (5% minimum margin)
         coreParams.entryFee = 0;
@@ -324,12 +325,18 @@ contract HedgerPool is
         positionId = 1;
         HedgePosition storage position = positions[positionId];
         position.hedger = msg.sender;
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.positionSize = uint96(positionSize);
         position.filledVolume = 0;
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.margin = uint96(netMargin);
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.entryTime = uint32(currentTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.lastUpdateTime = uint32(currentTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.leverage = uint16(leverage);
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
@@ -425,6 +432,7 @@ contract HedgerPool is
         );
 
         // Calculate payout amounts
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint256 grossPayout = uint256(int256(cachedMargin) + pnl);
         uint256 exitFeeAmount = grossPayout.percentageOf(coreParams.exitFee);
         uint256 netPayout = grossPayout - exitFeeAmount;
@@ -503,7 +511,9 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validateMaxMarginRatio(newMarginRatio, MAX_MARGIN_RATIO);
 
         // Update state variables before external calls (Checks-Effects-Interactions pattern)
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.margin = uint96(newMargin);
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.positionSize = uint96(newPositionSize);
 
         totalMargin += netAmount;
@@ -599,7 +609,9 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validateMarginRatio(newMarginRatio, coreParams.minMarginRatio);
         HedgerPoolValidationLibrary.validateMaxMarginRatio(newMarginRatio, MAX_MARGIN_RATIO);
 
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.margin = uint96(newMargin);
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.positionSize = uint96(newPositionSize);
 
         totalMargin -= amount;
@@ -702,25 +714,30 @@ contract HedgerPool is
         
         // Update margin (reduce by loss amount)
         uint256 newMargin = currentMargin - hedgerLoss;
+        // forge-lint: disable-next-line(unsafe-typecast)
         pos.margin = uint96(newMargin);
         totalMargin -= hedgerLoss;
-        
+
         // Record as realized P&L (loss is negative)
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 realizedDelta = -int256(hedgerLoss);
+        // forge-lint: disable-next-line(unsafe-typecast)
         pos.realizedPnL += int128(realizedDelta);
         emit RealizedPnLRecorded(positionId, realizedDelta, int256(pos.realizedPnL));
-        
+
         // Reduce qeuroBacked proportionally
         uint256 qeuroShare = qeuroAmount;
         if (qeuroShare > uint256(pos.qeuroBacked)) qeuroShare = uint256(pos.qeuroBacked);
+        // forge-lint: disable-next-line(unsafe-typecast)
         pos.qeuroBacked = pos.qeuroBacked - uint128(qeuroShare);
-        
+
         // Reduce filledVolume proportionally
         // filledVolume reduction = (qeuroAmount / totalSupply) * filledVolume
         uint256 currentFilled = uint256(pos.filledVolume);
         if (currentFilled > 0) {
             uint256 filledReduction = qeuroAmount.mulDiv(currentFilled, totalQeuroSupply);
             if (filledReduction > currentFilled) filledReduction = currentFilled;
+            // forge-lint: disable-next-line(unsafe-typecast)
             pos.filledVolume = uint96(currentFilled - filledReduction);
             totalFilledExposure -= filledReduction;
         }
@@ -766,15 +783,17 @@ contract HedgerPool is
             uint256(rewardState.pendingRewards)
         );
         
+        // forge-lint: disable-next-line(unsafe-typecast)
         rewardState.pendingRewards = uint128(newPendingRewards);
         hedgerLastRewardBlock[hedger] = newLastRewardBlock;
-        
+
         interestDifferential = rewardState.pendingRewards;
         yieldShiftRewards = yieldShift.getHedgerPendingYield(hedger);
         totalRewards = interestDifferential + yieldShiftRewards;
-        
+
         if (totalRewards > 0) {
             rewardState.pendingRewards = 0;
+            // forge-lint: disable-next-line(unsafe-typecast)
             rewardState.lastRewardClaim = uint64(TIME_PROVIDER.currentTime());
             
             if (yieldShiftRewards > 0) {
@@ -835,9 +854,11 @@ contract HedgerPool is
         // The margin has already been adjusted by realized P&L during redemptions,
         // so we subtract realizedPnL to avoid double-counting.
         int256 netUnrealizedPnL = totalUnrealizedPnL - int256(position.realizedPnL);
-        
+
         // Effective collateral = margin + net unrealized P&L
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 e = int256(uint256(position.margin)) + netUnrealizedPnL;
+        // forge-lint: disable-next-line(unsafe-typecast)
         if (e > 0) t = uint256(e);
     }
 
@@ -880,7 +901,9 @@ contract HedgerPool is
         _validateRole(GOVERNANCE_ROLE);
         if (minRatio < DEFAULT_MIN_MARGIN_RATIO_BPS) revert CommonErrorLibrary.ConfigValueTooLow();
         if (maxLev > 20) revert CommonErrorLibrary.ConfigValueTooHigh();
+        // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.minMarginRatio = uint64(minRatio);
+        // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.maxLeverage = uint16(maxLev);
     }
 
@@ -901,7 +924,9 @@ contract HedgerPool is
     function updateInterestRates(uint256 eurRate, uint256 usdRate) external {
         _validateRole(GOVERNANCE_ROLE);
         if (eurRate > 2000 || usdRate > 2000) revert CommonErrorLibrary.ConfigValueTooHigh();
+        // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.eurInterestRate = uint16(eurRate);
+        // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.usdInterestRate = uint16(usdRate);
     }
 
@@ -925,8 +950,11 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validateFee(entry, 100);
         HedgerPoolValidationLibrary.validateFee(exit, 100);
         HedgerPoolValidationLibrary.validateFee(margin, 50);
+        // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.entryFee = uint16(entry);
+        // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.exitFee = uint16(exit);
+        // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.marginFee = uint16(margin);
     }
 
@@ -1225,7 +1253,9 @@ contract HedgerPool is
     function _isPositionHealthyForFill(HedgePosition storage p, uint256 price) internal view returns (bool) {
         if (p.filledVolume == 0) return true;
         // Only consider unrealized P&L for health check, not realized P&L (which is already locked in)
+        // forge-lint: disable-next-line(unsafe-typecast)
         int256 eff = int256(uint256(p.margin)) + HedgerPoolLogicLibrary.calculatePnL(uint256(p.filledVolume), uint256(p.qeuroBacked), price);
+        // forge-lint: disable-next-line(unsafe-typecast)
         return eff > 0 && uint256(eff).mulDiv(10000, uint256(p.filledVolume)) >= coreParams.minMarginRatio;
     }
 
@@ -1269,6 +1299,7 @@ contract HedgerPool is
         uint256 prevFilled = uint256(position.filledVolume);
         _applyFillChange(positionId, position, usdcAmount, true);
         _updateEntryPriceAfterFill(position, prevFilled, usdcAmount, currentPrice);
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.qeuroBacked += uint128(qeuroAmount);
         totalFilledExposure += usdcAmount;
     }
@@ -1322,8 +1353,9 @@ contract HedgerPool is
         // Use qeuroShare (full amount) for P&L calculation to realize all remaining unrealized P&L
         // This ensures we realize P&L for ALL QEURO being redeemed, regardless of filledVolume
         _processRedeem(positionId, pos, share, filled, redeemPrice, qeuroShare);
-        
+
         // Decrease qeuroBacked
+        // forge-lint: disable-next-line(unsafe-typecast)
         pos.qeuroBacked = qeuroShare <= uint256(pos.qeuroBacked) ? pos.qeuroBacked - uint128(qeuroShare) : 0;
         totalFilledExposure -= share;
     }
@@ -1351,6 +1383,7 @@ contract HedgerPool is
         // Note: positionSize check removed - capacity is now based on collateral, not position size
         // The collateral-based capacity check happens in _increaseFilledVolume before this function
         if (!increase && previous < delta) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
+        // forge-lint: disable-next-line(unsafe-typecast)
         position.filledVolume = uint96(updated);
         emit HedgerFillUpdated(positionId, previous, updated);
     }
@@ -1374,9 +1407,11 @@ contract HedgerPool is
     function _updateEntryPriceAfterFill(HedgePosition storage pos, uint256 prevFilled, uint256 delta, uint256 price) internal {
         if (delta == 0) return;
         if (price == 0 || price > type(uint96).max) revert CommonErrorLibrary.InvalidOraclePrice();
+        // forge-lint: disable-next-line(unsafe-typecast)
         if (prevFilled == 0 || pos.filledVolume == 0) { pos.entryPrice = uint96(price); return; }
         // Weighted average: newEntry = totalUSDC * oldEntry * price / (prevUSDC * price + delta * oldEntry)
         uint256 old = uint256(pos.entryPrice);
+        // forge-lint: disable-next-line(unsafe-typecast)
         pos.entryPrice = uint96((uint256(pos.filledVolume) * old * price) / (prevFilled * price + delta * old));
     }
 
@@ -1439,16 +1474,18 @@ contract HedgerPool is
                 uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
                 int256 totalUnrealizedPnL;
                 if (filledBefore >= qeuroValueInUSDC) {
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     totalUnrealizedPnL = int256(filledBefore - qeuroValueInUSDC);
                 } else {
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     totalUnrealizedPnL = -int256(qeuroValueInUSDC - filledBefore);
                 }
-                
+
                 // Step 2: Calculate NET unrealized P&L (subtract already-realized portion)
                 // The margin has already been adjusted by realized P&L during previous redemptions,
                 // so we subtract realizedPnL to avoid double-counting.
                 int256 netUnrealizedPnL = totalUnrealizedPnL - int256(pos.realizedPnL);
-                
+
                 // Step 3: Calculate the realized P&L delta for this redemption
                 // Formula: realizedDelta = (qeuroAmount / qeuroBacked) × netUnrealizedPnL
                 // qeuroAmount (18 dec) × netUnrealizedPnL (6 dec) / qeuroBacked (18 dec) = 6 dec
@@ -1456,15 +1493,20 @@ contract HedgerPool is
                 if (netUnrealizedPnL >= 0) {
                     // Multiply qeuroAmount (18 decimals) by netUnrealizedPnL (6 decimals) = 24 decimals
                     // Divide by currentQeuroBacked (18 decimals) = 6 decimals
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     uint256 pnlShare = qeuroAmount.mulDiv(uint256(netUnrealizedPnL), currentQeuroBacked);
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     realizedDelta = int256(pnlShare);
                 } else {
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     uint256 absPnL = uint256(-netUnrealizedPnL);
                     uint256 pnlShare = qeuroAmount.mulDiv(absPnL, currentQeuroBacked);
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     realizedDelta = -int256(pnlShare);
                 }
-                
+
                 // Record realized P&L
+                // forge-lint: disable-next-line(unsafe-typecast)
                 pos.realizedPnL += int128(realizedDelta);
                 emit RealizedPnLRecorded(posId, realizedDelta, int256(pos.realizedPnL));
                 emit RealizedPnLCalculation(posId, qeuroAmount, currentQeuroBacked, filledBefore, price, totalUnrealizedPnL, realizedDelta);
@@ -1473,25 +1515,28 @@ contract HedgerPool is
                 // This ensures the hedger margin balance reflects realized profits.
                 // The profit belongs to the hedger, so their margin (collateral) is increased.
                 if (realizedDelta > 0) {
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     uint256 profitAmount = uint256(realizedDelta);
                     uint256 currentMargin = uint256(pos.margin);
                     uint256 newMargin = currentMargin + profitAmount;
-                    
+
                     // Update margin (cap at max uint96)
                     if (newMargin > type(uint96).max) {
                         pos.margin = type(uint96).max;
                         totalMargin = totalMargin - currentMargin + type(uint96).max;
                     } else {
+                        // forge-lint: disable-next-line(unsafe-typecast)
                         pos.margin = uint96(newMargin);
                         totalMargin += profitAmount;
                     }
-                    
+
                     // Recalculate positionSize to maintain leverage ratio
                     uint256 leverageValue = uint256(pos.leverage);
                     uint256 newPositionSize = uint256(pos.margin) * leverageValue;
                     if (newPositionSize > type(uint96).max) {
                         pos.positionSize = type(uint96).max;
                     } else {
+                        // forge-lint: disable-next-line(unsafe-typecast)
                         pos.positionSize = uint96(newPositionSize);
                     }
                     
@@ -1513,9 +1558,10 @@ contract HedgerPool is
                 // The loss is already accounted for in the redemption payout, but the hedger's margin
                 // must be reduced to reflect that they absorbed the loss.
                 if (realizedDelta < 0) {
+                    // forge-lint: disable-next-line(unsafe-typecast)
                     uint256 lossAmount = uint256(-realizedDelta);
                     uint256 currentMargin = uint256(pos.margin);
-                    
+
                     // Reduce margin by loss amount, but don't go below zero
                     if (lossAmount > currentMargin) {
                         // If loss exceeds margin, reduce margin to zero
@@ -1525,14 +1571,16 @@ contract HedgerPool is
                     } else {
                         // Normal case: reduce margin by loss amount
                         uint256 newMargin = currentMargin - lossAmount;
+                        // forge-lint: disable-next-line(unsafe-typecast)
                         pos.margin = uint96(newMargin);
-                        
+
                         // Recalculate positionSize to maintain leverage ratio
                         // NOTE: We update positionSize for internal consistency, but do NOT reduce totalExposure
                         // because the actual exposure (filledVolume) hasn't changed - only the margin backing it
                         uint256 leverageValue = uint256(pos.leverage);
                         uint256 newPositionSize = newMargin * leverageValue;
-                        
+
+                        // forge-lint: disable-next-line(unsafe-typecast)
                         pos.positionSize = uint96(newPositionSize);
                         totalMargin -= lossAmount;
                         // Do NOT reduce totalExposure here - the loss is already accounted for in redemption payout

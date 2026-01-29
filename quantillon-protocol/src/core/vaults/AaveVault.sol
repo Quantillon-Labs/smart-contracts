@@ -670,6 +670,7 @@ contract AaveVault is
         
         if (netYield > 0) {
             usdc.safeIncreaseAllowance(address(yieldShift), netYield);
+            // forge-lint: disable-next-line(unsafe-typecast)
             yieldShift.addYield(netYield, bytes32("aave"));
         }
         

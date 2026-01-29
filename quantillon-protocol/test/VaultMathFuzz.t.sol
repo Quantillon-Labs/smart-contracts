@@ -3,7 +3,6 @@ pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {VaultMath} from "../src/libraries/VaultMath.sol";
-import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
  * @title VaultMathFuzz

@@ -2,7 +2,6 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {StdStorage, stdStorage} from "forge-std/Test.sol";
 import {QEUROToken} from "../src/core/QEUROToken.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {UserPool} from "../src/core/UserPool.sol";

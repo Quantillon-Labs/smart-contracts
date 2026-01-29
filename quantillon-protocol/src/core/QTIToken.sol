@@ -17,7 +17,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 // Custom libraries for bytecode reduction
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {TokenErrorLibrary} from "../libraries/TokenErrorLibrary.sol";
-import {GovernanceErrorLibrary} from "../libraries/GovernanceErrorLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {TokenLibrary} from "../libraries/TokenLibrary.sol";
@@ -472,12 +471,17 @@ contract QTIToken is
 
         uint256 newAmount = uint256(lockInfo.amount) + amount;
         if (newAmount > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
-        
+
         // Now safe to cast
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.amount = uint96(newAmount);
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.unlockTime = uint32(newUnlockTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.initialVotingPower = uint96(newVotingPower);
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.lockTime = uint32(lockTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.votingPower = uint96(newVotingPower);
         
         // Use checked arithmetic for critical state
@@ -744,11 +748,16 @@ contract QTIToken is
     ) internal {
         if (totalNewAmount > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
         if (totalNewVotingPower > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
-        
+
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.amount = uint96(totalNewAmount);
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.unlockTime = uint32(newUnlockTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.initialVotingPower = uint96(totalNewVotingPower);
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.lockTime = uint32(lockTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.votingPower = uint96(totalNewVotingPower);
     }
     
@@ -1440,6 +1449,7 @@ contract QTIToken is
         // Update stored voting power with overflow check
         uint256 oldVotingPower = lockInfo.votingPower;
         if (newVotingPower > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
+        // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.votingPower = uint96(newVotingPower);
         
         // Update total voting power - Use checked arithmetic for critical state

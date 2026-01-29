@@ -4,7 +4,6 @@ pragma solidity 0.8.24;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 import {FeeCollector} from "../src/core/FeeCollector.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";

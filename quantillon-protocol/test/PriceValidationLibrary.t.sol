@@ -113,8 +113,9 @@ contract PriceValidationLibraryTest is Test {
     function test_PriceDropToZero_Detected(uint128 lastPrice) public {
         vm.assume(lastPrice > 0);
 
-        uint256 lastUpdateBlock = block.number;
-        vm.roll(lastUpdateBlock + 2);
+        // Use fixed block numbers so the library's block check is satisfied in all runs
+        uint256 lastUpdateBlock = 1;
+        vm.roll(lastUpdateBlock + 10);
 
         (bool shouldRevert, uint256 devBps) = h.check(
             0, // current price is zero
@@ -133,8 +134,9 @@ contract PriceValidationLibraryTest is Test {
     function test_PriceSpike_Detected(uint128 lastPrice) public {
         vm.assume(lastPrice > 0 && lastPrice < type(uint128).max / 2);
 
-        uint256 lastUpdateBlock = block.number;
-        vm.roll(lastUpdateBlock + 2);
+        // Use fixed block numbers so the library's block check is satisfied in all runs
+        uint256 lastUpdateBlock = 1;
+        vm.roll(lastUpdateBlock + 10);
 
         uint256 currentPrice = uint256(lastPrice) * 2; // 100% increase
 
@@ -158,7 +160,7 @@ contract PriceValidationLibraryTest is Test {
         vm.assume(lastPrice > 0);
 
         // Don't advance blocks - still within window
-        (bool shouldRevert, uint256 devBps) = h.check(
+        (bool shouldRevert, ) = h.check(
             currentPrice,
             lastPrice,
             100, // Very tight 1% threshold

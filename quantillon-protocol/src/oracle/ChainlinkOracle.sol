@@ -455,7 +455,8 @@ contract ChainlinkOracle is
      */
     function _scalePrice(int256 rawPrice, uint8 decimals) internal pure returns (uint256) {
         if (rawPrice <= 0) return 0;
-        
+
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint256 price = uint256(rawPrice);
         
         if (decimals == 18) {

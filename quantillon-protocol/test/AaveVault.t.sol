@@ -4,7 +4,6 @@ pragma solidity 0.8.24;
 import {Test, console2} from "forge-std/Test.sol";
 import {AaveVault} from "../src/core/vaults/AaveVault.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {VaultErrorLibrary} from "../src/libraries/VaultErrorLibrary.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 
@@ -363,6 +362,7 @@ contract MockAavePool {
         return ReserveData({
             configuration: 0,
             liquidityIndex: 1e27,
+            // forge-lint: disable-next-line(unsafe-typecast)
             currentLiquidityRate: uint128(currentLiquidityRate),
             variableBorrowIndex: 1e27,
             currentVariableBorrowRate: 500 * 1e23, // 5% borrow rate

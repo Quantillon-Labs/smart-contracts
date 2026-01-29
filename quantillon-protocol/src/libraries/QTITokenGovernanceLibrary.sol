@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {GovernanceErrorLibrary} from "./GovernanceErrorLibrary.sol";
 import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
 import {CommonValidationLibrary} from "./CommonValidationLibrary.sol";
 
@@ -340,11 +339,16 @@ library QTITokenGovernanceLibrary {
     ) external pure returns (LockInfo memory updatedLockInfo) {
         if (totalNewAmount > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
         if (totalNewVotingPower > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
-        
+
+        // forge-lint: disable-next-line(unsafe-typecast)
         updatedLockInfo.amount = uint96(totalNewAmount);
+        // forge-lint: disable-next-line(unsafe-typecast)
         updatedLockInfo.unlockTime = uint32(newUnlockTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         updatedLockInfo.initialVotingPower = uint96(totalNewVotingPower);
+        // forge-lint: disable-next-line(unsafe-typecast)
         updatedLockInfo.lockTime = uint32(lockTime);
+        // forge-lint: disable-next-line(unsafe-typecast)
         updatedLockInfo.votingPower = uint96(totalNewVotingPower);
     }
     

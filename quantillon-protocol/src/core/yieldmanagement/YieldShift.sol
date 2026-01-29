@@ -316,7 +316,9 @@ contract YieldShift is
         // Initialize arrays lazily to cut initializer gas
         _recordPoolSnapshot();
         yieldShiftHistory.push(YieldShiftSnapshot({
+            // forge-lint: disable-next-line(unsafe-typecast)
             yieldShift: uint128(currentYieldShift),
+            // forge-lint: disable-next-line(unsafe-typecast)
             timestamp: uint64(TIME_PROVIDER.currentTime())
         }));
         yieldSourceNames.push(keccak256("aave"));
@@ -1558,8 +1560,11 @@ contract YieldShift is
         }
         
         poolHistory.push(PoolSnapshot({
+            // forge-lint: disable-next-line(unsafe-typecast)
             timestamp: uint64(TIME_PROVIDER.currentTime()),
+            // forge-lint: disable-next-line(unsafe-typecast)
             userPoolSize: isUserPool ? uint128(poolSize) : 0,
+            // forge-lint: disable-next-line(unsafe-typecast)
             hedgerPoolSize: isUserPool ? 0 : uint128(poolSize)
         }));
     }

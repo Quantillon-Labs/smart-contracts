@@ -224,8 +224,10 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      */
     function _scalePrice(int256 price, uint8 feedDecimals) internal pure returns (uint256) {
         if (feedDecimals >= 18) {
+            // forge-lint: disable-next-line(unsafe-typecast)
             return uint256(price) / (10 ** (feedDecimals - 18));
         } else {
+            // forge-lint: disable-next-line(unsafe-typecast)
             return uint256(price) * (10 ** (18 - feedDecimals));
         }
     }

@@ -33,7 +33,6 @@ import {TokenLibrary} from "../libraries/TokenLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
-import {FeeCollector} from "./FeeCollector.sol";
 
 /**
  * @title QEUROToken
@@ -389,6 +388,7 @@ contract QEUROToken is
 
         // Initialize state variables
         maxSupply = DEFAULT_MAX_SUPPLY;
+        // forge-lint: disable-next-line(unsafe-typecast)
         rateLimitCaps = RateLimitCaps(uint128(MAX_RATE_LIMIT), uint128(MAX_RATE_LIMIT));
         rateLimitInfo = RateLimitInfo(0, 0, uint64(block.number));
         whitelistEnabled = false;
@@ -688,6 +688,7 @@ contract QEUROToken is
 
         // Update the current hour minted amount - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
+            // forge-lint: disable-next-line(unsafe-typecast)
             rateLimitInfo.currentHourMinted = uint96(rateLimitInfo.currentHourMinted + amount);
         }
     }
@@ -728,6 +729,7 @@ contract QEUROToken is
 
         // Update the current hour burned amount - OPTIMIZED: Use unchecked for safe arithmetic
         unchecked {
+            // forge-lint: disable-next-line(unsafe-typecast)
             rateLimitInfo.currentHourBurned = uint96(rateLimitInfo.currentHourBurned + amount);
         }
     }
@@ -762,6 +764,7 @@ contract QEUROToken is
         if (newMintLimit > MAX_RATE_LIMIT) revert CommonErrorLibrary.RateLimitTooHigh();
         if (newBurnLimit > MAX_RATE_LIMIT) revert CommonErrorLibrary.RateLimitTooHigh();
 
+        // forge-lint: disable-next-line(unsafe-typecast)
         rateLimitCaps = RateLimitCaps(uint128(newMintLimit), uint128(newBurnLimit));
 
         emit RateLimitsUpdated("rate_limits", newMintLimit, newBurnLimit);

@@ -50,6 +50,7 @@ contract TreasuryRecoveryLibraryTest is Test {
 
         // Fund harness with some tokens and ETH
         vm.startPrank(token.owner());
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         token.transfer(address(harness), 1_000e6);
         vm.stopPrank();
 

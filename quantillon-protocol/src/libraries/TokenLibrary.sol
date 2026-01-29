@@ -2,7 +2,6 @@
 pragma solidity 0.8.24;
 
 import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
-import {TokenErrorLibrary} from "./TokenErrorLibrary.sol";
 
 /**
  * @title TokenLibrary

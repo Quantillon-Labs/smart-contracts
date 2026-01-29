@@ -354,6 +354,7 @@ contract GasResourceEdgeCases is Test {
         
         // Test maximum amount transfers
         vm.startPrank(user1);
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         usdc.transfer(user2, usdc.balanceOf(user1));
         vm.stopPrank();
         
@@ -576,6 +577,7 @@ contract GasResourceEdgeCases is Test {
         
         // Test insufficient balance (should fail efficiently)
         vm.expectRevert("Insufficient balance");
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         usdc.transfer(user2, INITIAL_USDC_AMOUNT + 1);
         
         // Test insufficient allowance (should fail efficiently)
@@ -584,6 +586,7 @@ contract GasResourceEdgeCases is Test {
         
         vm.startPrank(user2);
         vm.expectRevert("Insufficient allowance");
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
         usdc.transferFrom(user1, user2, 2000 * USDC_PRECISION);
         vm.stopPrank();
     }

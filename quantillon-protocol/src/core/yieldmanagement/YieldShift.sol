@@ -971,8 +971,8 @@ contract YieldShift is
     ) {
         totalYieldDistributed_ = totalYieldDistributed;
 
-        (uint256 totalUsers, uint256 _averageDeposit, uint256 _stakingRatio, uint256 _poolTVL) =
-            userPool.getPoolMetrics();
+        // slither-disable-next-line unused-return -- only totalUsers needed for averageUserYield
+        (uint256 totalUsers, , , ) = userPool.getPoolMetrics();
         bool hasActiveHedger = hedgerPool.hasActiveHedger();
         
         averageUserYield = totalUsers > 0 ? 

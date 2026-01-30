@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { marked } from "marked";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,16 +71,8 @@ const FOOTER_HTML = `
 </footer>
 `;
 
-// List of markdown files that were copied as .html and need conversion
-const MARKDOWN_HTML_FILES = [
-  "API.html",
-  "API-Reference.html",
-  "Quick-Start.html",
-  "Integration-Examples.html",
-  "Security.html",
-  "Architecture.html",
-  "Deployment.html",
-];
+// Custom documentation pages are now built by mdBook with proper navigation
+// No need to convert markdown files manually anymore
 
 function walk(dir, fn) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -91,97 +82,7 @@ function walk(dir, fn) {
   }
 }
 
-function convertMarkdownFiles() {
-  for (const filename of MARKDOWN_HTML_FILES) {
-    const filePath = path.join(DOCS_DIR, filename);
-    if (!fs.existsSync(filePath)) {
-      console.log(`Skipping ${filename} (not found)`);
-      continue;
-    }
-
-    const content = fs.readFileSync(filePath, "utf8");
-
-    // Check if it's still markdown (not already HTML)
-    if (content.trim().startsWith("<!DOCTYPE") || content.trim().startsWith("<html")) {
-      console.log(`Skipping ${filename} (already HTML)`);
-      continue;
-    }
-
-    // Convert markdown to HTML
-    const htmlContent = marked.parse(content);
-
-    // Wrap in a full mdBook-compatible HTML template
-    const fullHtml = `<!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#ffffff">
-${META_TAGS}
-    <link rel="icon" href="/favicon.png">
-    <link rel="shortcut icon" href="/favicon.ico">
-    <link rel="stylesheet" href="/css/variables.css">
-    <link rel="stylesheet" href="/css/general.css">
-    <link rel="stylesheet" href="/css/chrome.css">
-    <link rel="stylesheet" href="/css/print.css" media="print">
-    <link rel="stylesheet" href="/fonts/fonts.css">
-    <link rel="stylesheet" href="/highlight.css">
-    <link rel="stylesheet" href="/tomorrow-night.css">
-    <link rel="stylesheet" href="/ayu-highlight.css">
-    <link rel="stylesheet" href="/book.css">
-    <link rel="stylesheet" href="/doc-theme.css">
-    <!-- Mermaid for diagrams -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            mermaid.initialize({ startOnLoad: true, theme: 'dark' });
-            // Convert code blocks with class "language-mermaid" to mermaid divs
-            document.querySelectorAll('pre code.language-mermaid').forEach(function(el) {
-                const pre = el.parentElement;
-                const div = document.createElement('div');
-                div.className = 'mermaid';
-                div.textContent = el.textContent;
-                pre.parentElement.replaceChild(div, pre);
-            });
-            mermaid.init(undefined, '.mermaid');
-        });
-    </script>
-    <script>
-        const path_to_root = "";
-        const default_light_theme = "light";
-        const default_dark_theme = "navy";
-    </script>
-</head>
-<body>
-<div id="mdbook-body-container">
-    <script>
-        const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
-        let theme;
-        try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
-        if (theme === null || theme === undefined) { theme = default_theme; }
-        const html = document.documentElement;
-        html.classList.remove('light');
-        html.classList.add(theme);
-        html.classList.add("js");
-    </script>
-${HEADER_HTML}
-    <div id="content" class="content">
-        <main>
-            ${htmlContent}
-        </main>
-    </div>
-${FOOTER_HTML}
-</div>
-<script src="/clipboard.min.js"></script>
-<script src="/highlight.js"></script>
-<script src="/book.js"></script>
-</body>
-</html>`;
-
-    fs.writeFileSync(filePath, fullHtml, "utf8");
-    console.log(`Converted ${filename} from Markdown to HTML`);
-  }
-}
+// convertMarkdownFiles() removed - mdBook now builds custom pages with proper navigation
 
 function ensureThemeAtRoot() {
   const themeSrc = path.join(__dirname, "doc-theme.css");
@@ -283,8 +184,7 @@ function main() {
   ensureThemeAtRoot();
   copyCustomFiles();
 
-  // Convert markdown files that were copied as .html
-  convertMarkdownFiles();
+  // Custom markdown files are now built by mdBook with proper navigation
 
   walk(DOCS_DIR, (f) => {
     if (f.endsWith(".html")) patchHtml(f);

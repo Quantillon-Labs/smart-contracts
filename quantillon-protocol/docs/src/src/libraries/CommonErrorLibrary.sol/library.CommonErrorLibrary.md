@@ -1,17 +1,20 @@
 # CommonErrorLibrary
+**Title:**
+CommonErrorLibrary
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Common errors used across multiple contracts in Quantillon Protocol
 
-*Main characteristics:
+Main characteristics:
 - Most frequently used errors across all contracts
 - Reduces contract size by importing only needed errors
 - Replaces require statements with custom errors for gas efficiency
-- Used by 15+ contracts*
+- Used by 15+ contracts
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Errors

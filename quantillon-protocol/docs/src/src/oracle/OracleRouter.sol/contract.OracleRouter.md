@@ -2,20 +2,23 @@
 **Inherits:**
 [IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
 
+**Title:**
+OracleRouter
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Router contract that allows admin to switch between Chainlink and Stork oracles
 
-*Key features:
+Key features:
 - Holds references to both ChainlinkOracle and StorkOracle
 - Routes all IOracle calls to the currently active oracle
 - Admin can switch between oracles via switchOracle()
 - Implements IOracle interface (generic, oracle-agnostic)
-- Protocol contracts use IOracle interface for oracle-agnostic integration*
+- Protocol contracts use IOracle interface for oracle-agnostic integration
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -24,7 +27,7 @@ Role to manage oracle configurations
 
 
 ```solidity
-bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
+bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE")
 ```
 
 
@@ -33,7 +36,7 @@ Role for emergency actions
 
 
 ```solidity
-bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
@@ -42,7 +45,7 @@ Role for contract upgrades
 
 
 ```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE")
 ```
 
 
@@ -51,7 +54,7 @@ Chainlink oracle contract reference
 
 
 ```solidity
-IChainlinkOracle public chainlinkOracle;
+IChainlinkOracle public chainlinkOracle
 ```
 
 
@@ -60,7 +63,7 @@ Stork oracle contract reference
 
 
 ```solidity
-IStorkOracle public storkOracle;
+IStorkOracle public storkOracle
 ```
 
 
@@ -69,7 +72,7 @@ Currently active oracle type
 
 
 ```solidity
-OracleType public activeOracle;
+OracleType public activeOracle
 ```
 
 
@@ -78,7 +81,7 @@ Treasury address for ETH recovery
 
 
 ```solidity
-address public treasury;
+address public treasury
 ```
 
 
@@ -87,24 +90,24 @@ address public treasury;
 
 Initializes the router contract with both oracle addresses
 
-*Sets up all core dependencies, roles, and default oracle selection*
+Sets up all core dependencies, roles, and default oracle selection
 
 **Notes:**
-- Validates all addresses are not zero, grants admin roles
+- security: Validates all addresses are not zero, grants admin roles
 
-- Validates all input addresses are not address(0)
+- validation: Validates all input addresses are not address(0)
 
-- Initializes all state variables, sets default oracle
+- state-changes: Initializes all state variables, sets default oracle
 
-- Emits OracleSwitched during initialization
+- events: Emits OracleSwitched during initialization
 
-- Throws validation errors if addresses are zero
+- errors: Throws validation errors if addresses are zero
 
-- Protected by initializer modifier
+- reentrancy: Protected by initializer modifier
 
-- Public - only callable once during deployment
+- access: Public - only callable once during deployment
 
-- Initializes references to ChainlinkOracle and StorkOracle contracts
+- oracle: Initializes references to ChainlinkOracle and StorkOracle contracts
 
 
 ```solidity
@@ -131,7 +134,24 @@ function initialize(
 
 Update treasury address
 
-*Only admin can update treasury address*
+Only admin can update treasury address
+
+**Notes:**
+- security: Restricted to DEFAULT_ADMIN_ROLE
+
+- validation: _treasury not zero
+
+- state-changes: treasury
+
+- events: TreasuryUpdated
+
+- errors: InvalidAddress if zero
+
+- reentrancy: No external calls
+
+- access: DEFAULT_ADMIN_ROLE
+
+- oracle: None
 
 
 ```solidity
@@ -148,7 +168,24 @@ function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE)
 
 Removes pause and resumes oracle operations
 
-*Only emergency role can unpause the router*
+Only emergency role can unpause the router
+
+**Notes:**
+- security: Restricted to EMERGENCY_ROLE
+
+- validation: None
+
+- state-changes: Pausable state
+
+- events: Unpaused
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: EMERGENCY_ROLE
+
+- oracle: None
 
 
 ```solidity
@@ -158,6 +195,25 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 ### _getActiveOracle
 
 Gets the currently active oracle contract
+
+Returns chainlinkOracle or storkOracle based on activeOracle enum
+
+**Notes:**
+- security: View only
+
+- validation: None
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: Internal
+
+- oracle: Returns oracle reference
 
 
 ```solidity
@@ -174,6 +230,25 @@ function _getActiveOracle() internal view returns (IOracle);
 
 Gets the currently active oracle type
 
+Returns activeOracle enum value
+
+**Notes:**
+- security: View only
+
+- validation: None
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: Anyone
+
+- oracle: None
+
 
 ```solidity
 function getActiveOracle() external view returns (OracleType);
@@ -188,6 +263,25 @@ function getActiveOracle() external view returns (OracleType);
 ### getOracleAddresses
 
 Gets the addresses of both oracle contracts
+
+Returns chainlinkOracle and storkOracle addresses
+
+**Notes:**
+- security: View only
+
+- validation: None
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: Anyone
+
+- oracle: None
 
 
 ```solidity
@@ -220,6 +314,25 @@ function _authorizeUpgrade(address newImplementation) internal override onlyRole
 
 Recovers tokens accidentally sent to the contract to treasury only
 
+Delegates to TreasuryRecoveryLibrary.recoverToken
+
+**Notes:**
+- security: DEFAULT_ADMIN_ROLE; sends to treasury only
+
+- validation: Treasury and amount
+
+- state-changes: Token balance of treasury
+
+- events: Via TreasuryRecoveryLibrary
+
+- errors: Via library
+
+- reentrancy: External call to token and treasury
+
+- access: DEFAULT_ADMIN_ROLE
+
+- oracle: None
+
 
 ```solidity
 function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -236,6 +349,25 @@ function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_A
 
 Recover ETH to treasury address only
 
+Delegates to TreasuryRecoveryLibrary.recoverETH; emits ETHRecovered
+
+**Notes:**
+- security: DEFAULT_ADMIN_ROLE; sends to treasury only
+
+- validation: Treasury not zero
+
+- state-changes: ETH balance of treasury
+
+- events: ETHRecovered
+
+- errors: Via library
+
+- reentrancy: External call to treasury
+
+- access: DEFAULT_ADMIN_ROLE
+
+- oracle: None
+
 
 ```solidity
 function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -245,6 +377,25 @@ function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Pauses all oracle operations
 
+Calls _pause(); only EMERGENCY_ROLE
+
+**Notes:**
+- security: EMERGENCY_ROLE only
+
+- validation: None
+
+- state-changes: Pausable state
+
+- events: Paused
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: EMERGENCY_ROLE
+
+- oracle: None
+
 
 ```solidity
 function pause() external onlyRole(EMERGENCY_ROLE);
@@ -253,6 +404,25 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 ### switchOracle
 
 Switches the active oracle between Chainlink and Stork
+
+Validates newOracle != activeOracle and oracle address not zero; emits OracleSwitched
+
+**Notes:**
+- security: ORACLE_MANAGER_ROLE only
+
+- validation: newOracle != activeOracle; oracle address not zero
+
+- state-changes: activeOracle
+
+- events: OracleSwitched
+
+- errors: Require message if same oracle
+
+- reentrancy: No external calls
+
+- access: ORACLE_MANAGER_ROLE
+
+- oracle: None
 
 
 ```solidity
@@ -269,9 +439,30 @@ function switchOracle(OracleType newOracle) external onlyRole(ORACLE_MANAGER_ROL
 
 Updates the oracle contract addresses
 
+Validates both addresses; updates chainlinkOracle and storkOracle; emits OracleAddressesUpdated
+
+**Notes:**
+- security: ORACLE_MANAGER_ROLE only
+
+- validation: Both addresses not zero
+
+- state-changes: chainlinkOracle, storkOracle
+
+- events: OracleAddressesUpdated
+
+- errors: InvalidOracle if zero
+
+- reentrancy: No external calls
+
+- access: ORACLE_MANAGER_ROLE
+
+- oracle: None
+
 
 ```solidity
-function updateOracleAddresses(address _chainlinkOracle, address _storkOracle) external onlyRole(ORACLE_MANAGER_ROLE);
+function updateOracleAddresses(address _chainlinkOracle, address _storkOracle)
+    external
+    onlyRole(ORACLE_MANAGER_ROLE);
 ```
 **Parameters**
 
@@ -284,6 +475,25 @@ function updateOracleAddresses(address _chainlinkOracle, address _storkOracle) e
 ### getEurUsdPrice
 
 Retrieves the current EUR/USD price with full validation
+
+Delegates to active oracle getEurUsdPrice()
+
+**Notes:**
+- security: Delegates to trusted oracle
+
+- validation: Via oracle
+
+- state-changes: May update oracle state (e.g. last price)
+
+- events: None
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle
+
+- access: Anyone
+
+- oracle: Delegates to active oracle
 
 
 ```solidity
@@ -301,6 +511,25 @@ function getEurUsdPrice() external override returns (uint256 price, bool isValid
 
 Retrieves the USDC/USD price with validation
 
+Delegates to active oracle getUsdcUsdPrice()
+
+**Notes:**
+- security: View; delegates to oracle
+
+- validation: Via oracle
+
+- state-changes: None
+
+- events: None
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle (view)
+
+- access: Anyone
+
+- oracle: Delegates to active oracle
+
 
 ```solidity
 function getUsdcUsdPrice() external view override returns (uint256 price, bool isValid);
@@ -316,6 +545,25 @@ function getUsdcUsdPrice() external view override returns (uint256 price, bool i
 ### getOracleHealth
 
 Returns overall oracle health signals
+
+Delegates to active oracle getOracleHealth()
+
+**Notes:**
+- security: Delegates to oracle
+
+- validation: Via oracle
+
+- state-changes: May update oracle state
+
+- events: None
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle
+
+- access: Anyone
+
+- oracle: Delegates to active oracle
 
 
 ```solidity
@@ -333,6 +581,25 @@ function getOracleHealth() external override returns (bool isHealthy, bool eurUs
 ### getEurUsdDetails
 
 Detailed information about the EUR/USD price
+
+Delegates to active oracle getEurUsdDetails()
+
+**Notes:**
+- security: Delegates to oracle
+
+- validation: Via oracle
+
+- state-changes: May update oracle state
+
+- events: None
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle
+
+- access: Anyone
+
+- oracle: Delegates to active oracle
 
 
 ```solidity
@@ -356,13 +623,38 @@ function getEurUsdDetails()
 
 Current configuration and circuit breaker state
 
+Delegates to active oracle getOracleConfig()
+
+**Notes:**
+- security: View; delegates to oracle
+
+- validation: Via oracle
+
+- state-changes: None
+
+- events: None
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle (view)
+
+- access: Anyone
+
+- oracle: Delegates to active oracle
+
 
 ```solidity
 function getOracleConfig()
     external
     view
     override
-    returns (uint256 minPrice, uint256 maxPrice, uint256 maxStaleness, uint256 usdcTolerance, bool circuitBreakerActive);
+    returns (
+        uint256 minPrice,
+        uint256 maxPrice,
+        uint256 maxStaleness,
+        uint256 usdcTolerance,
+        bool circuitBreakerActive
+    );
 ```
 **Returns**
 
@@ -378,6 +670,25 @@ function getOracleConfig()
 ### getPriceFeedAddresses
 
 Addresses and decimals of the underlying feeds
+
+Delegates to active oracle getPriceFeedAddresses()
+
+**Notes:**
+- security: View; delegates to oracle
+
+- validation: Via oracle
+
+- state-changes: None
+
+- events: None
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle (view)
+
+- access: Anyone
+
+- oracle: Delegates to active oracle
 
 
 ```solidity
@@ -401,6 +712,25 @@ function getPriceFeedAddresses()
 
 Connectivity check for both feeds
 
+Delegates to active oracle checkPriceFeedConnectivity()
+
+**Notes:**
+- security: View; delegates to oracle
+
+- validation: Via oracle
+
+- state-changes: None
+
+- events: None
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle (view)
+
+- access: Anyone
+
+- oracle: Delegates to active oracle
+
 
 ```solidity
 function checkPriceFeedConnectivity()
@@ -423,6 +753,25 @@ function checkPriceFeedConnectivity()
 
 Updates EUR/USD min and max acceptable prices
 
+Delegates to active oracle updatePriceBounds
+
+**Notes:**
+- security: ORACLE_MANAGER_ROLE only
+
+- validation: Via oracle
+
+- state-changes: Oracle state
+
+- events: Via oracle
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle
+
+- access: ORACLE_MANAGER_ROLE
+
+- oracle: Delegates to active oracle
+
 
 ```solidity
 function updatePriceBounds(uint256 _minPrice, uint256 _maxPrice) external onlyRole(ORACLE_MANAGER_ROLE);
@@ -439,6 +788,25 @@ function updatePriceBounds(uint256 _minPrice, uint256 _maxPrice) external onlyRo
 
 Updates the allowed USDC deviation from $1.00 in basis points
 
+Delegates to active oracle updateUsdcTolerance
+
+**Notes:**
+- security: ORACLE_MANAGER_ROLE only
+
+- validation: Via oracle
+
+- state-changes: Oracle state
+
+- events: Via oracle
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle
+
+- access: ORACLE_MANAGER_ROLE
+
+- oracle: Delegates to active oracle
+
 
 ```solidity
 function updateUsdcTolerance(uint256 newToleranceBps) external onlyRole(ORACLE_MANAGER_ROLE);
@@ -454,7 +822,24 @@ function updateUsdcTolerance(uint256 newToleranceBps) external onlyRole(ORACLE_M
 
 Updates price feed addresses (Chainlink only)
 
-*Reverts for Stork oracle - use oracle-specific methods instead*
+Reverts for Stork oracle - use oracle-specific methods instead
+
+**Notes:**
+- security: Only Chainlink path; reverts for Stork
+
+- validation: Via ChainlinkOracle
+
+- state-changes: Oracle feed addresses
+
+- events: Via oracle
+
+- errors: Reverts for Stork
+
+- reentrancy: External call to ChainlinkOracle
+
+- access: Caller must have role on oracle (router does not check)
+
+- oracle: Delegates to ChainlinkOracle only
 
 
 ```solidity
@@ -472,6 +857,25 @@ function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external;
 
 Clears circuit breaker and attempts to resume live prices
 
+Delegates to active oracle resetCircuitBreaker()
+
+**Notes:**
+- security: Anyone can reset (oracle may restrict)
+
+- validation: Via oracle
+
+- state-changes: Oracle circuit breaker state
+
+- events: Via oracle
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle
+
+- access: Anyone
+
+- oracle: Delegates to active oracle
+
 
 ```solidity
 function resetCircuitBreaker() external;
@@ -480,6 +884,25 @@ function resetCircuitBreaker() external;
 ### triggerCircuitBreaker
 
 Manually triggers circuit breaker to use fallback prices
+
+Delegates to active oracle triggerCircuitBreaker()
+
+**Notes:**
+- security: ORACLE_MANAGER_ROLE only
+
+- validation: Via oracle
+
+- state-changes: Oracle circuit breaker state
+
+- events: Via oracle
+
+- errors: Via oracle
+
+- reentrancy: External call to oracle
+
+- access: ORACLE_MANAGER_ROLE
+
+- oracle: Delegates to active oracle
 
 
 ```solidity
@@ -490,7 +913,7 @@ function triggerCircuitBreaker() external onlyRole(ORACLE_MANAGER_ROLE);
 ### OracleSwitched
 Emitted when the active oracle is switched
 
-*OPTIMIZED: Indexed oracle type for efficient filtering*
+OPTIMIZED: Indexed oracle type for efficient filtering
 
 
 ```solidity

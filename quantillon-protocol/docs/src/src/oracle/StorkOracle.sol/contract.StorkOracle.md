@@ -2,19 +2,22 @@
 **Inherits:**
 [IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
 
+**Title:**
+StorkOracle
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 EUR/USD and USDC/USD price manager for Quantillon Protocol using Stork Network
 
-*Key features:
+Key features:
 - Fetch EUR/USD price from Stork Network
 - Validate USDC/USD (should remain close to $1.00)
 - Circuit breakers against outlier prices
 - Fallbacks in case of oracle outage
-- Data freshness checks*
+- Data freshness checks
 
-*DEPLOYMENT REQUIREMENTS:
+DEPLOYMENT REQUIREMENTS:
 Before deploying, you must obtain the following from Stork Network:
 1. Stork contract address on Base mainnet (the main Stork oracle contract)
 2. EUR/USD feed ID (bytes32 identifier for EUR/USD price feed)
@@ -28,10 +31,10 @@ Documentation: https://docs.stork.network/
 Email: support at stork.network (if available)
 ALTERNATIVE: Consider using Stork's Chainlink adapter for easier integration:
 - GitHub: https://github.com/Stork-Oracle/stork-external
-- This would allow using Chainlink's familiar interface with Stork data*
+- This would allow using Chainlink's familiar interface with Stork data
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## State Variables
@@ -40,7 +43,7 @@ Role to manage oracle configurations
 
 
 ```solidity
-bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
+bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE")
 ```
 
 
@@ -49,7 +52,7 @@ Role for emergency actions
 
 
 ```solidity
-bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
@@ -58,29 +61,29 @@ Role for contract upgrades
 
 
 ```solidity
-bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE")
 ```
 
 
 ### MAX_PRICE_STALENESS
 Maximum duration before a price is considered stale (1 hour)
 
-*3600 seconds = reasonable limit for real-time DeFi*
+3600 seconds = reasonable limit for real-time DeFi
 
 
 ```solidity
-uint256 public constant MAX_PRICE_STALENESS = 3600;
+uint256 public constant MAX_PRICE_STALENESS = 3600
 ```
 
 
 ### MAX_PRICE_DEVIATION
 Maximum allowed deviation from previous price (5%)
 
-*500 basis points = 5% in basis points (500/10000)*
+500 basis points = 5% in basis points (500/10000)
 
 
 ```solidity
-uint256 public constant MAX_PRICE_DEVIATION = 500;
+uint256 public constant MAX_PRICE_DEVIATION = 500
 ```
 
 
@@ -89,18 +92,18 @@ Basis for basis points calculations
 
 
 ```solidity
-uint256 public constant BASIS_POINTS = 10000;
+uint256 public constant BASIS_POINTS = 10000
 ```
 
 
 ### MAX_TIMESTAMP_DRIFT
 Maximum timestamp drift tolerance (15 minutes)
 
-*Prevents timestamp manipulation attacks by miners*
+Prevents timestamp manipulation attacks by miners
 
 
 ```solidity
-uint256 public constant MAX_TIMESTAMP_DRIFT = 900;
+uint256 public constant MAX_TIMESTAMP_DRIFT = 900
 ```
 
 
@@ -109,41 +112,41 @@ Interface to Stork EUR/USD price feed
 
 
 ```solidity
-IStorkFeed public eurUsdPriceFeed;
+IStorkFeed public eurUsdPriceFeed
 ```
 
 
 ### usdcUsdPriceFeed
 Interface to Stork USDC/USD price feed
 
-*Used for USDC price validation and cross-checking*
+Used for USDC price validation and cross-checking
 
 
 ```solidity
-IStorkFeed public usdcUsdPriceFeed;
+IStorkFeed public usdcUsdPriceFeed
 ```
 
 
 ### STORK_FEED_DECIMALS
 Stork price feed decimals (constant)
 
-*Stork feeds use 18 decimals precision (value is multiplied by 10^18)
-This is verified based on Stork's documentation*
+Stork feeds use 18 decimals precision (value is multiplied by 10^18)
+This is verified based on Stork's documentation
 
 
 ```solidity
-uint8 public constant STORK_FEED_DECIMALS = 18;
+uint8 public constant STORK_FEED_DECIMALS = 18
 ```
 
 
 ### treasury
 Treasury address for ETH recovery
 
-*SECURITY: Only this address can receive ETH from recoverETH function*
+SECURITY: Only this address can receive ETH from recoverETH function
 
 
 ```solidity
-address public treasury;
+address public treasury
 ```
 
 
@@ -152,7 +155,7 @@ EUR/USD feed ID for Stork
 
 
 ```solidity
-bytes32 public eurUsdFeedId;
+bytes32 public eurUsdFeedId
 ```
 
 
@@ -161,40 +164,40 @@ USDC/USD feed ID for Stork
 
 
 ```solidity
-bytes32 public usdcUsdFeedId;
+bytes32 public usdcUsdFeedId
 ```
 
 
 ### minEurUsdPrice
 Minimum accepted EUR/USD price (lower circuit breaker)
 
-*Initialized to 0.80 USD per EUR (extreme crisis)*
+Initialized to 0.80 USD per EUR (extreme crisis)
 
 
 ```solidity
-uint256 public minEurUsdPrice;
+uint256 public minEurUsdPrice
 ```
 
 
 ### maxEurUsdPrice
 Maximum accepted EUR/USD price (upper circuit breaker)
 
-*Initialized to 1.40 USD per EUR (extreme scenario)*
+Initialized to 1.40 USD per EUR (extreme scenario)
 
 
 ```solidity
-uint256 public maxEurUsdPrice;
+uint256 public maxEurUsdPrice
 ```
 
 
 ### lastValidEurUsdPrice
 Last valid EUR/USD price recorded (18 decimals)
 
-*Used as fallback if oracle is down*
+Used as fallback if oracle is down
 
 
 ```solidity
-uint256 public lastValidEurUsdPrice;
+uint256 public lastValidEurUsdPrice
 ```
 
 
@@ -203,18 +206,18 @@ Timestamp of the last valid price update
 
 
 ```solidity
-uint256 public lastPriceUpdateTime;
+uint256 public lastPriceUpdateTime
 ```
 
 
 ### lastPriceUpdateBlock
 Block number of the last valid price update
 
-*Used for block-based staleness checks to prevent timestamp manipulation*
+Used for block-based staleness checks to prevent timestamp manipulation
 
 
 ```solidity
-uint256 public lastPriceUpdateBlock;
+uint256 public lastPriceUpdateBlock
 ```
 
 
@@ -223,40 +226,40 @@ Circuit breaker status (true = triggered, fixed prices)
 
 
 ```solidity
-bool public circuitBreakerTriggered;
+bool public circuitBreakerTriggered
 ```
 
 
 ### usdcToleranceBps
 USDC/USD tolerance (USDC should remain close to $1.00)
 
-*200 basis points = 2% (USDC can vary between 0.98 and 1.02)*
+200 basis points = 2% (USDC can vary between 0.98 and 1.02)
 
 
 ```solidity
-uint256 public usdcToleranceBps;
+uint256 public usdcToleranceBps
 ```
 
 
 ### devModeEnabled
 Dev mode flag to disable spread deviation checks
 
-*When enabled, price deviation checks are skipped (dev/testing only)*
+When enabled, price deviation checks are skipped (dev/testing only)
 
 
 ```solidity
-bool public devModeEnabled;
+bool public devModeEnabled
 ```
 
 
 ### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
-*Used to replace direct block.timestamp usage for testability and consistency*
+Used to replace direct block.timestamp usage for testability and consistency
 
 
 ```solidity
-TimeProvider public immutable TIME_PROVIDER;
+TimeProvider public immutable TIME_PROVIDER
 ```
 
 
@@ -265,30 +268,30 @@ TimeProvider public immutable TIME_PROVIDER;
 
 Constructor for StorkOracle contract
 
-*Initializes the TimeProvider and disables initializers for proxy pattern*
+Initializes the TimeProvider and disables initializers for proxy pattern
 
 **Notes:**
-- Validates TimeProvider address is not zero
+- security: Validates TimeProvider address is not zero
 
-- Validates _TIME_PROVIDER is not address(0)
+- validation: Validates _TIME_PROVIDER is not address(0)
 
-- Sets TIME_PROVIDER immutable variable and disables initializers
+- state-changes: Sets TIME_PROVIDER immutable variable and disables initializers
 
-- No events emitted
+- events: No events emitted
 
-- Throws "Zero address" if _TIME_PROVIDER is address(0)
+- errors: Throws "Zero address" if _TIME_PROVIDER is address(0)
 
-- Not applicable - constructor
+- reentrancy: Not applicable - constructor
 
-- Public - anyone can deploy
+- access: Public - anyone can deploy
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
-- constructor
+- oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
-constructor(TimeProvider _TIME_PROVIDER);
+constructor(TimeProvider _TIME_PROVIDER) ;
 ```
 **Parameters**
 
@@ -301,24 +304,24 @@ constructor(TimeProvider _TIME_PROVIDER);
 
 Initializes the oracle contract with Stork price feeds
 
-*Sets up all core dependencies, roles, and default configuration parameters*
+Sets up all core dependencies, roles, and default configuration parameters
 
 **Notes:**
-- Validates all addresses are not zero, grants admin roles
+- security: Validates all addresses are not zero, grants admin roles
 
-- Validates all input addresses are not address(0)
+- validation: Validates all input addresses are not address(0)
 
-- Initializes all state variables, sets default price bounds
+- state-changes: Initializes all state variables, sets default price bounds
 
-- Emits PriceUpdated during initial price update
+- events: Emits PriceUpdated during initial price update
 
-- Throws "Oracle: Admin cannot be zero" if admin is address(0)
+- errors: Throws "Oracle: Admin cannot be zero" if admin is address(0)
 
-- Protected by initializer modifier
+- reentrancy: Protected by initializer modifier
 
-- Public - only callable once during deployment
+- access: Public - only callable once during deployment
 
-- Initializes Stork price feed interfaces
+- oracle: Initializes Stork price feed interfaces
 
 
 ```solidity
@@ -345,24 +348,24 @@ function initialize(
 
 Update treasury address
 
-*SECURITY: Only admin can update treasury address*
+SECURITY: Only admin can update treasury address
 
 **Notes:**
-- Validates treasury address is non-zero
+- security: Validates treasury address is non-zero
 
-- Validates _treasury is not address(0)
+- validation: Validates _treasury is not address(0)
 
-- Updates treasury state variable
+- state-changes: Updates treasury state variable
 
-- Emits TreasuryUpdated event
+- events: Emits TreasuryUpdated event
 
-- Throws if treasury is zero address
+- errors: Throws if treasury is zero address
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependency
+- oracle: No oracle dependency
 
 
 ```solidity
@@ -379,24 +382,24 @@ function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE)
 
 Removes pause and resumes oracle operations
 
-*Allows emergency role to unpause the oracle after resolving issues*
+Allows emergency role to unpause the oracle after resolving issues
 
 **Notes:**
-- Resumes oracle operations after emergency pause
+- security: Resumes oracle operations after emergency pause
 
-- Validates contract was previously paused
+- validation: Validates contract was previously paused
 
-- Sets paused state to false
+- state-changes: Sets paused state to false
 
-- Emits Unpaused event
+- events: Emits Unpaused event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- Resumes normal oracle price queries
+- oracle: Resumes normal oracle price queries
 
 
 ```solidity
@@ -407,24 +410,24 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 
 Performs division with proper rounding to nearest integer
 
-*Adds half the divisor before division to achieve proper rounding*
+Adds half the divisor before division to achieve proper rounding
 
 **Notes:**
-- Validates denominator is non-zero
+- security: Validates denominator is non-zero
 
-- Validates b > 0 to prevent division by zero
+- validation: Validates b > 0 to prevent division by zero
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws if denominator is zero
+- errors: Throws if denominator is zero
 
-- Not protected - pure function
+- reentrancy: Not protected - pure function
 
-- Internal - only callable within contract
+- access: Internal - only callable within contract
 
-- No oracle dependency
+- oracle: No oracle dependency
 
 
 ```solidity
@@ -448,24 +451,24 @@ function _divRound(uint256 a, uint256 b) internal pure returns (uint256);
 
 Validates if a timestamp is recent enough to prevent manipulation attacks
 
-*Checks timestamp is not in future and not too old beyond staleness + drift limits*
+Checks timestamp is not in future and not too old beyond staleness + drift limits
 
 **Notes:**
-- Prevents timestamp manipulation attacks by miners
+- security: Prevents timestamp manipulation attacks by miners
 
-- Checks timestamp is not in future and within staleness limits
+- validation: Checks timestamp is not in future and within staleness limits
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns false for invalid timestamps
+- errors: No errors thrown, returns false for invalid timestamps
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Internal - only callable within contract
+- access: Internal - only callable within contract
 
-- Uses TimeProvider for current time validation
+- oracle: Uses TimeProvider for current time validation
 
 
 ```solidity
@@ -488,24 +491,24 @@ function _validateTimestamp(uint256 reportedTime) internal view returns (bool);
 
 Updates and validates internal prices
 
-*Internal function called during initialization and resets, fetches fresh prices from Stork*
+Internal function called during initialization and resets, fetches fresh prices from Stork
 
 **Notes:**
-- Validates prices, checks bounds, and triggers circuit breaker if needed
+- security: Validates prices, checks bounds, and triggers circuit breaker if needed
 
-- Validates timestamp freshness, price bounds, and deviation limits
+- validation: Validates timestamp freshness, price bounds, and deviation limits
 
-- Updates lastValidEurUsdPrice, lastPriceUpdateTime, and circuitBreakerTriggered
+- state-changes: Updates lastValidEurUsdPrice, lastPriceUpdateTime, and circuitBreakerTriggered
 
-- Emits PriceUpdated or CircuitBreakerTriggered events
+- events: Emits PriceUpdated or CircuitBreakerTriggered events
 
-- No errors thrown, uses circuit breaker for invalid prices
+- errors: No errors thrown, uses circuit breaker for invalid prices
 
-- Not protected - internal function
+- reentrancy: Not protected - internal function
 
-- Internal - only callable within contract
+- access: Internal - only callable within contract
 
-- Fetches prices from Stork feed contracts for EUR/USD and USDC/USD
+- oracle: Fetches prices from Stork feed contracts for EUR/USD and USDC/USD
 
 
 ```solidity
@@ -516,24 +519,24 @@ function _updatePrices() internal;
 
 Scale price to 18 decimals for consistency
 
-*Converts Stork price from its native decimals to 18 decimals with proper rounding*
+Converts Stork price from its native decimals to 18 decimals with proper rounding
 
 **Notes:**
-- Handles negative prices by returning 0
+- security: Handles negative prices by returning 0
 
-- Validates rawPrice is positive before scaling
+- validation: Validates rawPrice is positive before scaling
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns 0 for negative prices
+- errors: No errors thrown, returns 0 for negative prices
 
-- Not protected - pure function
+- reentrancy: Not protected - pure function
 
-- Internal - only callable within contract
+- access: Internal - only callable within contract
 
-- Scales Stork price data to 18 decimals standard
+- oracle: Scales Stork price data to 18 decimals standard
 
 
 ```solidity
@@ -557,24 +560,24 @@ function _scalePrice(int256 rawPrice, uint8 decimals) internal pure returns (uin
 
 Retrieves the oracle global health status
 
-*Checks freshness of both price feeds and overall system health*
+Checks freshness of both price feeds and overall system health
 
 **Notes:**
-- Provides health status for monitoring and circuit breaker decisions
+- security: Provides health status for monitoring and circuit breaker decisions
 
-- Checks feed freshness, circuit breaker state, and pause status
+- validation: Checks feed freshness, circuit breaker state, and pause status
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns false for unhealthy feeds
+- errors: No errors thrown, returns false for unhealthy feeds
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Queries Stork feed contracts for EUR/USD and USDC/USD health status
+- oracle: Queries Stork feed contracts for EUR/USD and USDC/USD health status
 
 
 ```solidity
@@ -593,24 +596,24 @@ function getOracleHealth() external view returns (bool isHealthy, bool eurUsdFre
 
 Retrieves detailed information about the EUR/USD price
 
-*Provides comprehensive EUR/USD price information including validation status*
+Provides comprehensive EUR/USD price information including validation status
 
 **Notes:**
-- Provides detailed price information for debugging and monitoring
+- security: Provides detailed price information for debugging and monitoring
 
-- Checks price freshness and bounds validation
+- validation: Checks price freshness and bounds validation
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Queries Stork feed contract for detailed EUR/USD price information
+- oracle: Queries Stork feed contract for detailed EUR/USD price information
 
 
 ```solidity
@@ -634,31 +637,37 @@ function getEurUsdDetails()
 
 Retrieves current configuration parameters
 
-*Returns all key configuration values for oracle operations*
+Returns all key configuration values for oracle operations
 
 **Notes:**
-- Returns configuration for security monitoring
+- security: Returns configuration for security monitoring
 
-- No validation - read-only configuration
+- validation: No validation - read-only configuration
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Returns configuration parameters for Stork oracle
+- oracle: Returns configuration parameters for Stork oracle
 
 
 ```solidity
 function getOracleConfig()
     external
     view
-    returns (uint256 minPrice, uint256 maxPrice, uint256 maxStaleness, uint256 usdcTolerance, bool circuitBreakerActive);
+    returns (
+        uint256 minPrice,
+        uint256 maxPrice,
+        uint256 maxStaleness,
+        uint256 usdcTolerance,
+        bool circuitBreakerActive
+    );
 ```
 **Returns**
 
@@ -675,24 +684,24 @@ function getOracleConfig()
 
 Retrieves addresses of the Stork price feeds used
 
-*Returns feed addresses and their decimal configurations*
+Returns feed addresses and their decimal configurations
 
 **Notes:**
-- Returns feed addresses for verification
+- security: Returns feed addresses for verification
 
-- No validation - read-only information
+- validation: No validation - read-only information
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Returns Stork feed contract addresses and decimals (18 for both)
+- oracle: Returns Stork feed contract addresses and decimals (18 for both)
 
 
 ```solidity
@@ -715,24 +724,24 @@ function getPriceFeedAddresses()
 
 Tests connectivity to the Stork price feeds
 
-*Tests if both price feeds are responding and returns latest round information*
+Tests if both price feeds are responding and returns latest round information
 
 **Notes:**
-- Tests feed connectivity for health monitoring
+- security: Tests feed connectivity for health monitoring
 
-- No validation - connectivity test only
+- validation: No validation - connectivity test only
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns false for disconnected feeds
+- errors: No errors thrown, returns false for disconnected feeds
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Tests connectivity to Stork feed contracts for both feeds
+- oracle: Tests connectivity to Stork feed contracts for both feeds
 
 
 ```solidity
@@ -770,24 +779,24 @@ function _authorizeUpgrade(address newImplementation) internal override onlyRole
 
 Recovers tokens accidentally sent to the contract to treasury only
 
-*Emergency function to recover ERC20 tokens that are not part of normal operations*
+Emergency function to recover ERC20 tokens that are not part of normal operations
 
 **Notes:**
-- Transfers tokens to treasury, prevents accidental loss
+- security: Transfers tokens to treasury, prevents accidental loss
 
-- Validates token and amount are non-zero
+- validation: Validates token and amount are non-zero
 
-- Transfers tokens from contract to treasury
+- state-changes: Transfers tokens from contract to treasury
 
-- Emits TokenRecovered event (via library)
+- events: Emits TokenRecovered event (via library)
 
-- Throws if token is zero address or transfer fails
+- errors: Throws if token is zero address or transfer fails
 
-- Protected by library reentrancy guard
+- reentrancy: Protected by library reentrancy guard
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependency
+- oracle: No oracle dependency
 
 
 ```solidity
@@ -805,24 +814,24 @@ function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_A
 
 Recover ETH to treasury address only
 
-*SECURITY: Restricted to treasury to prevent arbitrary ETH transfers*
+SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
 
 **Notes:**
-- Transfers ETH to treasury, prevents accidental loss
+- security: Transfers ETH to treasury, prevents accidental loss
 
-- Validates contract has ETH balance
+- validation: Validates contract has ETH balance
 
-- Transfers ETH from contract to treasury
+- state-changes: Transfers ETH from contract to treasury
 
-- Emits ETHRecovered event
+- events: Emits ETHRecovered event
 
-- Throws if transfer fails
+- errors: Throws if transfer fails
 
-- Protected by library reentrancy guard
+- reentrancy: Protected by library reentrancy guard
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependency
+- oracle: No oracle dependency
 
 
 ```solidity
@@ -833,25 +842,25 @@ function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Resets the circuit breaker and resumes oracle usage
 
-*Emergency action after resolving an incident.
-Restarts price updates and disables fallback mode.*
+Emergency action after resolving an incident.
+Restarts price updates and disables fallback mode.
 
 **Notes:**
-- Resets circuit breaker after manual intervention
+- security: Resets circuit breaker after manual intervention
 
-- Validates circuit breaker was previously triggered
+- validation: Validates circuit breaker was previously triggered
 
-- Resets circuitBreakerTriggered flag and updates prices
+- state-changes: Resets circuitBreakerTriggered flag and updates prices
 
-- Emits CircuitBreakerReset event
+- events: Emits CircuitBreakerReset event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- Resumes normal Stork oracle price queries
+- oracle: Resumes normal Stork oracle price queries
 
 
 ```solidity
@@ -862,25 +871,25 @@ function resetCircuitBreaker() external onlyRole(EMERGENCY_ROLE);
 
 Manually triggers the circuit breaker
 
-*Used when the team detects an issue with the oracles.
-Forces the use of the last known valid price.*
+Used when the team detects an issue with the oracles.
+Forces the use of the last known valid price.
 
 **Notes:**
-- Manually activates circuit breaker for emergency situations
+- security: Manually activates circuit breaker for emergency situations
 
-- No validation - emergency function
+- validation: No validation - emergency function
 
-- Sets circuitBreakerTriggered flag to true
+- state-changes: Sets circuitBreakerTriggered flag to true
 
-- Emits CircuitBreakerTriggered event
+- events: Emits CircuitBreakerTriggered event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- Switches to fallback prices instead of live Stork oracle queries
+- oracle: Switches to fallback prices instead of live Stork oracle queries
 
 
 ```solidity
@@ -891,24 +900,24 @@ function triggerCircuitBreaker() external onlyRole(EMERGENCY_ROLE);
 
 Pauses all oracle operations
 
-*Emergency function to pause oracle in case of critical issues*
+Emergency function to pause oracle in case of critical issues
 
 **Notes:**
-- Emergency pause to halt all oracle operations
+- security: Emergency pause to halt all oracle operations
 
-- No validation - emergency function
+- validation: No validation - emergency function
 
-- Sets paused state to true
+- state-changes: Sets paused state to true
 
-- Emits Paused event
+- events: Emits Paused event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- Halts all Stork oracle price queries
+- oracle: Halts all Stork oracle price queries
 
 
 ```solidity
@@ -919,30 +928,30 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 
 Retrieves the current EUR/USD price with full validation
 
-*Validation process:
+Validation process:
 1. Check circuit breaker status
 2. Fetch from Stork
 3. Freshness check (< 1 hour)
 4. Convert to 18 decimals
 5. Check min/max bounds
-6. Return valid price or fallback*
+6. Return valid price or fallback
 
 **Notes:**
-- Validates price freshness and bounds before returning
+- security: Validates price freshness and bounds before returning
 
-- Checks price staleness, circuit breaker state, and bounds
+- validation: Checks price staleness, circuit breaker state, and bounds
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns isValid=false for invalid prices
+- errors: No errors thrown, returns isValid=false for invalid prices
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Queries Stork feed contract for EUR/USD price
+- oracle: Queries Stork feed contract for EUR/USD price
 
 
 ```solidity
@@ -960,25 +969,25 @@ function getEurUsdPrice() external view returns (uint256 price, bool isValid);
 
 Retrieves the USDC/USD price with validation
 
-*USDC is expected to maintain parity with USD.
-A large deviation indicates a systemic issue.*
+USDC is expected to maintain parity with USD.
+A large deviation indicates a systemic issue.
 
 **Notes:**
-- Validates price is within tolerance of $1.00
+- security: Validates price is within tolerance of $1.00
 
-- Checks price staleness and deviation from $1.00
+- validation: Checks price staleness and deviation from $1.00
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns isValid=false for invalid prices
+- errors: No errors thrown, returns isValid=false for invalid prices
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Queries Stork feed contract for USDC/USD price
+- oracle: Queries Stork feed contract for USDC/USD price
 
 
 ```solidity
@@ -996,24 +1005,24 @@ function getUsdcUsdPrice() external view returns (uint256 price, bool isValid);
 
 Updates price bounds for the circuit breaker
 
-*Allows oracle manager to adjust price thresholds based on market conditions*
+Allows oracle manager to adjust price thresholds based on market conditions
 
 **Notes:**
-- Validates min < max and reasonable bounds
+- security: Validates min < max and reasonable bounds
 
-- Validates price bounds are within acceptable range
+- validation: Validates price bounds are within acceptable range
 
-- Updates minEurUsdPrice and maxEurUsdPrice state variables
+- state-changes: Updates minEurUsdPrice and maxEurUsdPrice state variables
 
-- Emits PriceBoundsUpdated event
+- events: Emits PriceBoundsUpdated event
 
-- Throws if minPrice >= maxPrice or invalid bounds
+- errors: Throws if minPrice >= maxPrice or invalid bounds
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- No oracle dependency - configuration update only
+- oracle: No oracle dependency - configuration update only
 
 
 ```solidity
@@ -1031,24 +1040,24 @@ function updatePriceBounds(uint256 _minPrice, uint256 _maxPrice) external onlyRo
 
 Updates the tolerance for USDC/USD
 
-*Allows oracle manager to adjust USDC price tolerance around $1.00*
+Allows oracle manager to adjust USDC price tolerance around $1.00
 
 **Notes:**
-- Validates tolerance is within reasonable limits
+- security: Validates tolerance is within reasonable limits
 
-- Validates tolerance is not zero and within max bounds (10%)
+- validation: Validates tolerance is not zero and within max bounds (10%)
 
-- Updates usdcToleranceBps state variable
+- state-changes: Updates usdcToleranceBps state variable
 
-- No events emitted
+- events: No events emitted
 
-- Throws if tolerance is invalid or out of bounds
+- errors: Throws if tolerance is invalid or out of bounds
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- No oracle dependency - configuration update only
+- oracle: No oracle dependency - configuration update only
 
 
 ```solidity
@@ -1065,25 +1074,25 @@ function updateUsdcTolerance(uint256 newToleranceBps) external onlyRole(ORACLE_M
 
 Updates the Stork feed address and feed IDs
 
-*Allows oracle manager to update feed address and feed IDs for maintenance or upgrades
-Note: Stork uses a single contract address with different feed IDs*
+Allows oracle manager to update feed address and feed IDs for maintenance or upgrades
+Note: Stork uses a single contract address with different feed IDs
 
 **Notes:**
-- Validates feed address is non-zero and contract exists
+- security: Validates feed address is non-zero and contract exists
 
-- Validates all addresses are not address(0)
+- validation: Validates all addresses are not address(0)
 
-- Updates eurUsdPriceFeed, usdcUsdPriceFeed, and feed IDs
+- state-changes: Updates eurUsdPriceFeed, usdcUsdPriceFeed, and feed IDs
 
-- Emits PriceFeedsUpdated event
+- events: Emits PriceFeedsUpdated event
 
-- Throws if feed address is zero or invalid
+- errors: Throws if feed address is zero or invalid
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- Updates Stork feed contract references
+- oracle: Updates Stork feed contract references
 
 
 ```solidity
@@ -1106,26 +1115,26 @@ Toggles dev mode to disable spread deviation checks
 
 Toggles dev mode to disable price deviation checks
 
-*DEV ONLY: When enabled, price deviation checks are skipped for testing*
+DEV ONLY: When enabled, price deviation checks are skipped for testing
 
-*Dev mode allows testing with price deviations that would normally trigger circuit breaker*
+Dev mode allows testing with price deviations that would normally trigger circuit breaker
 
 **Notes:**
-- Disables price deviation checks - use only for testing
+- security: Disables price deviation checks - use only for testing
 
-- No validation - admin function
+- validation: No validation - admin function
 
-- Updates devModeEnabled flag
+- state-changes: Updates devModeEnabled flag
 
-- Emits DevModeToggled event
+- events: Emits DevModeToggled event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - no external calls
+- reentrancy: Not protected - no external calls
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependency - configuration update only
+- oracle: No oracle dependency - configuration update only
 
 
 ```solidity
@@ -1142,7 +1151,7 @@ function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 ### PriceUpdated
 Emitted on each valid price update
 
-*OPTIMIZED: Indexed timestamp for efficient time-based filtering*
+OPTIMIZED: Indexed timestamp for efficient time-based filtering
 
 
 ```solidity
@@ -1152,7 +1161,7 @@ event PriceUpdated(uint256 eurUsdPrice, uint256 usdcUsdPrice, uint256 indexed ti
 ### CircuitBreakerTriggered
 Emitted when the circuit breaker is triggered
 
-*OPTIMIZED: Indexed reason for efficient filtering by trigger type*
+OPTIMIZED: Indexed reason for efficient filtering by trigger type
 
 
 ```solidity
@@ -1170,7 +1179,7 @@ event CircuitBreakerReset(address indexed admin);
 ### PriceBoundsUpdated
 Emitted when price bounds are modified
 
-*OPTIMIZED: Indexed bound type for efficient filtering*
+OPTIMIZED: Indexed bound type for efficient filtering
 
 
 ```solidity

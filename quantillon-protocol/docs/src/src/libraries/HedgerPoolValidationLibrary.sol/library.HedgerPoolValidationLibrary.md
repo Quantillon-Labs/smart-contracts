@@ -1,17 +1,20 @@
 # HedgerPoolValidationLibrary
+**Title:**
+HedgerPoolValidationLibrary
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 HedgerPool-specific validation functions for Quantillon Protocol
 
-*Main characteristics:
+Main characteristics:
 - Validation functions specific to HedgerPool operations
 - Trading position management validations
 - Liquidation system validations
-- Margin and leverage validation functions*
+- Margin and leverage validation functions
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -19,24 +22,24 @@ team@quantillon.money
 
 Validates leverage parameters for trading positions
 
-*Ensures leverage is within acceptable bounds (> 0 and <= max)*
+Ensures leverage is within acceptable bounds (> 0 and <= max)
 
 **Notes:**
-- Prevents excessive leverage that could cause system instability
+- security: Prevents excessive leverage that could cause system instability
 
-- Ensures leverage is within acceptable risk bounds
+- validation: Ensures leverage is within acceptable risk bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidLeverage or LeverageTooHigh based on validation
+- errors: Throws InvalidLeverage or LeverageTooHigh based on validation
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -54,24 +57,24 @@ function validateLeverage(uint256 leverage, uint256 maxLeverage) internal pure;
 
 Validates margin ratio to ensure sufficient collateralization
 
-*Prevents positions from being under-collateralized*
+Prevents positions from being under-collateralized
 
 **Notes:**
-- Prevents under-collateralized positions that could cause liquidations
+- security: Prevents under-collateralized positions that could cause liquidations
 
-- Ensures sufficient margin for position safety
+- validation: Ensures sufficient margin for position safety
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws MarginRatioTooLow if ratio is below minimum
+- errors: Throws MarginRatioTooLow if ratio is below minimum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -89,24 +92,24 @@ function validateMarginRatio(uint256 marginRatio, uint256 minRatio) internal pur
 
 Validates margin ratio against maximum limit to prevent excessive collateralization
 
-*Prevents positions from being over-collateralized (leverage too low)*
+Prevents positions from being over-collateralized (leverage too low)
 
 **Notes:**
-- Prevents over-collateralization that could reduce capital efficiency
+- security: Prevents over-collateralization that could reduce capital efficiency
 
-- Ensures margin ratio stays within acceptable bounds
+- validation: Ensures margin ratio stays within acceptable bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws MarginRatioTooHigh if ratio exceeds maximum
+- errors: Throws MarginRatioTooHigh if ratio exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -124,24 +127,24 @@ function validateMaxMarginRatio(uint256 marginRatio, uint256 maxRatio) internal 
 
 Validates that a position is active before operations
 
-*Prevents operations on closed or invalid positions*
+Prevents operations on closed or invalid positions
 
 **Notes:**
-- Prevents operations on inactive positions
+- security: Prevents operations on inactive positions
 
-- Ensures position is active before modifications
+- validation: Ensures position is active before modifications
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws PositionNotActive if position is inactive
+- errors: Throws PositionNotActive if position is inactive
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -158,24 +161,24 @@ function validatePositionActive(bool isActive) internal pure;
 
 Validates position ownership before allowing operations
 
-*Security check to ensure only position owner can modify it*
+Security check to ensure only position owner can modify it
 
 **Notes:**
-- Prevents unauthorized position modifications
+- security: Prevents unauthorized position modifications
 
-- Ensures only position owner can modify position
+- validation: Ensures only position owner can modify position
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws PositionOwnerMismatch if caller is not owner
+- errors: Throws PositionOwnerMismatch if caller is not owner
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -193,24 +196,24 @@ function validatePositionOwner(address owner, address caller) internal pure;
 
 Validates all position parameters against maximum limits
 
-*Ensures all position parameters are within acceptable bounds*
+Ensures all position parameters are within acceptable bounds
 
 **Notes:**
-- Prevents position parameters that could destabilize system
+- security: Prevents position parameters that could destabilize system
 
-- Ensures all position parameters are within limits
+- validation: Ensures all position parameters are within limits
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws specific errors for each parameter that exceeds limits
+- errors: Throws specific errors for each parameter that exceeds limits
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -243,24 +246,24 @@ function validatePositionParams(
 
 Validates total margin and exposure limits
 
-*Ensures combined totals don't exceed system-wide limits*
+Ensures combined totals don't exceed system-wide limits
 
 **Notes:**
-- Prevents system-wide limits from being exceeded
+- security: Prevents system-wide limits from being exceeded
 
-- Ensures combined totals stay within system limits
+- validation: Ensures combined totals stay within system limits
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws TotalMarginExceedsMaximum or TotalExposureExceedsMaximum
+- errors: Throws TotalMarginExceedsMaximum or TotalExposureExceedsMaximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -289,24 +292,24 @@ function validateTotals(
 
 Validates timestamp fits in uint32 for storage optimization
 
-*Prevents timestamp overflow when casting to uint32*
+Prevents timestamp overflow when casting to uint32
 
 **Notes:**
-- Prevents timestamp overflow that could cause data corruption
+- security: Prevents timestamp overflow that could cause data corruption
 
-- Ensures timestamp fits within uint32 bounds
+- validation: Ensures timestamp fits within uint32 bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws TimestampOverflow if timestamp exceeds uint32 max
+- errors: Throws TimestampOverflow if timestamp exceeds uint32 max
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -323,24 +326,24 @@ function validateTimestamp(uint256 timestamp) internal pure;
 
 Validates new margin amount against maximum limit
 
-*Ensures margin additions don't exceed individual position limits*
+Ensures margin additions don't exceed individual position limits
 
 **Notes:**
-- Prevents margin additions that exceed position limits
+- security: Prevents margin additions that exceed position limits
 
-- Ensures new margin stays within position limits
+- validation: Ensures new margin stays within position limits
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws NewMarginExceedsMaximum if new margin exceeds limit
+- errors: Throws NewMarginExceedsMaximum if new margin exceeds limit
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -358,24 +361,24 @@ function validateNewMargin(uint256 newMargin, uint256 maxMargin) internal pure;
 
 Validates pending rewards against maximum accumulation limit
 
-*Prevents excessive reward accumulation that could cause overflow*
+Prevents excessive reward accumulation that could cause overflow
 
 **Notes:**
-- Prevents reward overflow that could cause system issues
+- security: Prevents reward overflow that could cause system issues
 
-- Ensures pending rewards stay within accumulation limits
+- validation: Ensures pending rewards stay within accumulation limits
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws PendingRewardsExceedMaximum if rewards exceed limit
+- errors: Throws PendingRewardsExceedMaximum if rewards exceed limit
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -393,24 +396,24 @@ function validatePendingRewards(uint256 newRewards, uint256 maxRewards) internal
 
 Validates fee amount against maximum allowed fee
 
-*Ensures fees don't exceed protocol limits (typically in basis points)*
+Ensures fees don't exceed protocol limits (typically in basis points)
 
 **Notes:**
-- Prevents excessive fees that could harm users
+- security: Prevents excessive fees that could harm users
 
-- Ensures fees stay within protocol limits
+- validation: Ensures fees stay within protocol limits
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws FeeTooHigh if fee exceeds maximum
+- errors: Throws FeeTooHigh if fee exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -428,24 +431,24 @@ function validateFee(uint256 fee, uint256 maxFee) internal pure;
 
 Validates treasury address is not zero address
 
-*Prevents setting treasury to zero address which could cause loss of funds*
+Prevents setting treasury to zero address which could cause loss of funds
 
 **Notes:**
-- Prevents loss of funds by ensuring treasury is properly set
+- security: Prevents loss of funds by ensuring treasury is properly set
 
-- Ensures treasury address is valid for fund operations
+- validation: Ensures treasury address is valid for fund operations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws ZeroAddress if treasury is zero address
+- errors: Throws ZeroAddress if treasury is zero address
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

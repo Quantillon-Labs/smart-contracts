@@ -1,10 +1,13 @@
 # HedgerPoolLogicLibrary
+**Title:**
+HedgerPoolLogicLibrary
+
 **Author:**
 Quantillon Labs
 
 Logic functions for HedgerPool to reduce contract size
 
-*Core P&L Calculation Formulas:
+Core P&L Calculation Formulas:
 1. TOTAL UNREALIZED P&L (mark-to-market of current position):
 totalUnrealizedPnL = FilledVolume - (QEUROBacked × OraclePrice / 1e30)
 - Positive when price drops (hedger profits from short EUR position)
@@ -19,7 +22,7 @@ effectiveMargin = margin + netUnrealizedPnL
 - Used for collateralization checks and available collateral calculations
 4. LIQUIDATION MODE (CR ≤ 101%):
 In liquidation mode, the entire hedger margin is considered at risk.
-unrealizedPnL = -margin, meaning effectiveMargin = 0*
+unrealizedPnL = -margin, meaning effectiveMargin = 0
 
 
 ## Functions
@@ -27,24 +30,24 @@ unrealizedPnL = -margin, meaning effectiveMargin = 0*
 
 Validates position parameters and calculates derived values
 
-*Validates all position constraints and calculates fee, margin, and position size*
+Validates all position constraints and calculates fee, margin, and position size
 
 **Notes:**
-- Validates all position constraints and limits
+- security: Validates all position constraints and limits
 
-- Ensures amounts, leverage, and ratios are within limits
+- validation: Ensures amounts, leverage, and ratios are within limits
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- Throws various validation errors if constraints not met
+- errors: Throws various validation errors if constraints not met
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Uses provided eurUsdPrice parameter
+- oracle: Uses provided eurUsdPrice parameter
 
 
 ```solidity
@@ -94,33 +97,36 @@ function validateAndCalculatePositionParams(
 
 Calculates TOTAL unrealized P&L for a hedge position (mark-to-market)
 
-*Formula: TotalUnrealizedP&L = FilledVolume - (QEUROBacked × OraclePrice / 1e30)
+Formula: TotalUnrealizedP&L = FilledVolume - (QEUROBacked × OraclePrice / 1e30)
 Hedgers are SHORT EUR (they owe QEURO to users). When price rises, they lose.
 - Price UP → qeuroValueInUSDC increases → P&L becomes more negative → hedger loses
 - Price DOWN → qeuroValueInUSDC decreases → P&L becomes more positive → hedger profits
 This returns the TOTAL unrealized P&L for the current position state.
-To get NET unrealized P&L (after partial redemptions), subtract realizedPnL from this value.*
+To get NET unrealized P&L (after partial redemptions), subtract realizedPnL from this value.
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- Validates filledVolume and currentPrice are non-zero
+- validation: Validates filledVolume and currentPrice are non-zero
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None (pure function)
+- events: None (pure function)
 
-- None (returns 0 for edge cases)
+- errors: None (returns 0 for edge cases)
 
-- Not applicable (pure function)
+- reentrancy: Not applicable (pure function)
 
-- Internal library function
+- access: Internal library function
 
-- Uses provided currentPrice parameter (must be fresh oracle data)
+- oracle: Uses provided currentPrice parameter (must be fresh oracle data)
 
 
 ```solidity
-function calculatePnL(uint256 filledVolume, uint256 qeuroBacked, uint256 currentPrice) internal pure returns (int256);
+function calculatePnL(uint256 filledVolume, uint256 qeuroBacked, uint256 currentPrice)
+    internal
+    pure
+    returns (int256);
 ```
 **Parameters**
 
@@ -141,7 +147,7 @@ function calculatePnL(uint256 filledVolume, uint256 qeuroBacked, uint256 current
 
 Calculates collateral-based capacity for a position
 
-*Returns how much additional USDC exposure a position can absorb
+Returns how much additional USDC exposure a position can absorb
 Formula breakdown:
 1. totalUnrealizedPnL = calculatePnL(filledVolume, qeuroBacked, currentPrice)
 2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
@@ -149,24 +155,24 @@ Formula breakdown:
 3. effectiveMargin = margin + netUnrealizedPnL
 4. requiredMargin = (qeuroBacked × currentPrice / 1e30) × minMarginRatio / 10000
 5. availableCollateral = effectiveMargin - requiredMargin
-6. capacity = availableCollateral × 10000 / minMarginRatio*
+6. capacity = availableCollateral × 10000 / minMarginRatio
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- Validates currentPrice > 0 and minMarginRatio > 0
+- validation: Validates currentPrice > 0 and minMarginRatio > 0
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None (pure function)
+- events: None (pure function)
 
-- None (returns 0 for invalid inputs)
+- errors: None (returns 0 for invalid inputs)
 
-- Not applicable (pure function)
+- reentrancy: Not applicable (pure function)
 
-- Internal library function
+- access: Internal library function
 
-- Uses provided currentPrice parameter (must be fresh oracle data)
+- oracle: Uses provided currentPrice parameter (must be fresh oracle data)
 
 
 ```solidity
@@ -174,6 +180,7 @@ function calculateCollateralCapacity(
     uint256 margin,
     uint256 filledVolume,
     uint256,
+    /* entryPrice */
     uint256 currentPrice,
     uint256 minMarginRatio,
     int128 realizedPnL,
@@ -203,7 +210,7 @@ function calculateCollateralCapacity(
 
 Determines if a position is eligible for liquidation
 
-*Checks if position margin ratio falls below the liquidation threshold
+Checks if position margin ratio falls below the liquidation threshold
 Formula breakdown:
 1. totalUnrealizedPnL = calculatePnL(filledVolume, qeuroBacked, currentPrice)
 2. netUnrealizedPnL = totalUnrealizedPnL - realizedPnL
@@ -211,24 +218,24 @@ Formula breakdown:
 3. effectiveMargin = margin + netUnrealizedPnL
 4. qeuroValueInUSDC = qeuroBacked × currentPrice / 1e30
 5. marginRatio = effectiveMargin × 10000 / qeuroValueInUSDC
-6. liquidatable = marginRatio < liquidationThreshold*
+6. liquidatable = marginRatio < liquidationThreshold
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- Validates currentPrice > 0 and liquidationThreshold > 0
+- validation: Validates currentPrice > 0 and liquidationThreshold > 0
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None (pure function)
+- events: None (pure function)
 
-- None (returns false for invalid inputs)
+- errors: None (returns false for invalid inputs)
 
-- Not applicable (pure function)
+- reentrancy: Not applicable (pure function)
 
-- Internal library function
+- access: Internal library function
 
-- Uses provided currentPrice parameter (must be fresh oracle data)
+- oracle: Uses provided currentPrice parameter (must be fresh oracle data)
 
 
 ```solidity
@@ -236,6 +243,7 @@ function isPositionLiquidatable(
     uint256 margin,
     uint256 filledVolume,
     uint256,
+    /* entryPrice */
     uint256 currentPrice,
     uint256 liquidationThreshold,
     uint128 qeuroBacked,
@@ -265,24 +273,24 @@ function isPositionLiquidatable(
 
 Calculates reward updates for hedgers based on interest rate differentials
 
-*Computes new pending rewards based on time elapsed and interest rates*
+Computes new pending rewards based on time elapsed and interest rates
 
 **Notes:**
-- No security validations required for pure function
+- security: No security validations required for pure function
 
-- None required for pure function
+- validation: None required for pure function
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- None
+- errors: None
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity
@@ -320,24 +328,24 @@ function calculateRewardUpdate(
 
 Validates margin operations and calculates new margin values
 
-*Validates margin addition/removal and calculates resulting margin ratio*
+Validates margin addition/removal and calculates resulting margin ratio
 
 **Notes:**
-- Validates margin constraints and limits
+- security: Validates margin constraints and limits
 
-- Ensures margin operations are within limits
+- validation: Ensures margin operations are within limits
 
-- None (pure function)
+- state-changes: None (pure function)
 
-- None
+- events: None
 
-- Throws InsufficientMargin or validation errors
+- errors: Throws InsufficientMargin or validation errors
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- External pure function
+- access: External pure function
 
-- Not applicable
+- oracle: Not applicable
 
 
 ```solidity

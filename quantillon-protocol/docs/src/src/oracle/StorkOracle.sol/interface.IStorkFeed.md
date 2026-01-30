@@ -1,7 +1,7 @@
 # IStorkFeed
 Stork Network oracle feed interface
 
-*This interface is based on Stork's EVM contract API
+This interface is based on Stork's EVM contract API
 VERIFICATION STATUS:
 ✅ Function getTemporalNumericValueV1 - Verified matches Stork's contract
 ✅ Struct TemporalNumericValue - Verified matches Stork's contract
@@ -19,10 +19,10 @@ Resources:
 - GitHub: https://github.com/Stork-Oracle/stork-external
 - Official SDK: storknetwork/stork-evm-sdk (npm package)
 NOTE: Stork also provides Chainlink and Pyth adapters that may be easier to integrate.
-Consider using StorkChainlinkAdapter if you want to use Chainlink's familiar interface.*
+Consider using StorkChainlinkAdapter if you want to use Chainlink's familiar interface.
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -30,26 +30,26 @@ team@quantillon.money
 
 Gets the latest temporal numeric value for a given feed ID
 
-*Feed IDs are specific to each price pair (e.g., EUR/USD, USDC/USD)
+Feed IDs are specific to each price pair (e.g., EUR/USD, USDC/USD)
 Obtain feed IDs from Stork's Asset ID Registry: https://docs.stork.network/resources/asset-id-registry
-✅ Verified: Function signature matches Stork's contract*
+✅ Verified: Function signature matches Stork's contract
 
 **Notes:**
-- Interface function - no security implications
+- security: Interface function - no security implications
 
-- No validation - interface definition
+- validation: No validation - interface definition
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Interface for Stork feed contract
+- oracle: Interface for Stork feed contract
 
 
 ```solidity
@@ -72,7 +72,7 @@ function getTemporalNumericValueV1(bytes32 id) external view returns (TemporalNu
 ### TemporalNumericValue
 Temporal numeric value structure returned by Stork feeds
 
-*Verified to match Stork's StorkStructs.TemporalNumericValue*
+Verified to match Stork's StorkStructs.TemporalNumericValue
 
 
 ```solidity

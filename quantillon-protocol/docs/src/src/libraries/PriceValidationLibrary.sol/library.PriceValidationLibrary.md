@@ -1,16 +1,19 @@
 # PriceValidationLibrary
+**Title:**
+PriceValidationLibrary
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Library for price validation and deviation checks
 
-*Main characteristics:
+Main characteristics:
 - Price deviation checks to prevent flash loan attacks
 - Block-based validation for price freshness
-- Reduces code duplication across contracts*
+- Reduces code duplication across contracts
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -18,24 +21,24 @@ team@quantillon.money
 
 Checks if price deviation exceeds maximum allowed
 
-*Only checks deviation if enough blocks have passed since last update*
+Only checks deviation if enough blocks have passed since last update
 
 **Notes:**
-- Prevents flash loan attacks by validating price deviations
+- security: Prevents flash loan attacks by validating price deviations
 
-- Validates price changes are within acceptable bounds
+- validation: Validates price changes are within acceptable bounds
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown - returns boolean flag
+- errors: No errors thrown - returns boolean flag
 
-- Not applicable - view function
+- reentrancy: Not applicable - view function
 
-- Internal library function - no access restrictions
+- access: Internal library function - no access restrictions
 
-- Uses provided price parameters (no direct oracle calls)
+- oracle: Uses provided price parameters (no direct oracle calls)
 
 
 ```solidity

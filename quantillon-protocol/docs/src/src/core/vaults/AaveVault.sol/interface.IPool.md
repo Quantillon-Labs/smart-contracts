@@ -1,9 +1,12 @@
 # IPool
+**Title:**
+AaveVault
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -11,24 +14,24 @@ team@quantillon.money
 
 Supply assets to Aave protocol
 
-*Supplies assets to Aave protocol on behalf of a user*
+Supplies assets to Aave protocol on behalf of a user
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -48,24 +51,24 @@ function supply(address asset, uint256 amount, address onBehalfOf, uint16 referr
 
 Withdraw assets from Aave protocol
 
-*Withdraws assets from Aave protocol to a specified address*
+Withdraws assets from Aave protocol to a specified address
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -90,24 +93,24 @@ function withdraw(address asset, uint256 amount, address to) external returns (u
 
 Get reserve data for an asset
 
-*Returns reserve data for a specific asset in Aave protocol*
+Returns reserve data for a specific asset in Aave protocol
 
 **Notes:**
-- Validates input parameters and enforces security checks
+- security: Validates input parameters and enforces security checks
 
-- Validates input parameters and business logic constraints
+- validation: Validates input parameters and business logic constraints
 
-- Updates contract state variables
+- state-changes: Updates contract state variables
 
-- Emits relevant events for state changes
+- events: Emits relevant events for state changes
 
-- Throws custom errors for invalid conditions
+- errors: Throws custom errors for invalid conditions
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to authorized roles
+- access: Restricted to authorized roles
 
-- Requires fresh oracle price data
+- oracle: Requires fresh oracle price data
 
 
 ```solidity

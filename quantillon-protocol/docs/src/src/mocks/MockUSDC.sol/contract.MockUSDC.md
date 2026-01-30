@@ -2,16 +2,19 @@
 **Inherits:**
 ERC20, Ownable
 
+**Title:**
+MockUSDC
+
 This is a simplified ERC20 token that mimics USDC behavior
 
-*Mock USDC token for testing and development*
+Mock USDC token for testing and development
 
 
 ## State Variables
 ### _DECIMALS
 
 ```solidity
-uint8 private constant _DECIMALS = 6;
+uint8 private constant _DECIMALS = 6
 ```
 
 
@@ -25,7 +28,7 @@ constructor() ERC20("USD Coin", "USDC") Ownable(msg.sender);
 
 ### decimals
 
-*Returns the number of decimals used to get its user representation.*
+Returns the number of decimals used to get its user representation.
 
 
 ```solidity
@@ -34,7 +37,7 @@ function decimals() public pure override returns (uint8);
 
 ### mint
 
-*Mint tokens to a specific address (for testing)*
+Mint tokens to a specific address (for testing)
 
 
 ```solidity
@@ -50,7 +53,7 @@ function mint(address to, uint256 amount) external onlyOwner;
 
 ### faucet
 
-*Faucet function for easy testing - anyone can call this*
+Faucet function for easy testing - anyone can call this
 
 
 ```solidity

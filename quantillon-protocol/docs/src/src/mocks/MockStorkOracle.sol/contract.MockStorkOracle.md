@@ -2,117 +2,120 @@
 **Inherits:**
 [IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable
 
+**Title:**
+MockStorkOracle
+
 **Author:**
 Quantillon Labs
 
 Mock oracle that implements IStorkOracle interface but uses mock data
 
-*Used for localhost testing - provides same interface as StorkOracle*
+Used for localhost testing - provides same interface as StorkOracle
 
 
 ## State Variables
 ### EMERGENCY_ROLE
 
 ```solidity
-bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
 ### ORACLE_MANAGER_ROLE
 
 ```solidity
-bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
+bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE")
 ```
 
 
 ### treasury
 
 ```solidity
-address public treasury;
+address public treasury
 ```
 
 
 ### originalAdmin
 
 ```solidity
-address private originalAdmin;
+address private originalAdmin
 ```
 
 
 ### MIN_EUR_USD_PRICE
 
 ```solidity
-uint256 public constant MIN_EUR_USD_PRICE = 0.5e18;
+uint256 public constant MIN_EUR_USD_PRICE = 0.5e18
 ```
 
 
 ### MAX_EUR_USD_PRICE
 
 ```solidity
-uint256 public constant MAX_EUR_USD_PRICE = 2.0e18;
+uint256 public constant MAX_EUR_USD_PRICE = 2.0e18
 ```
 
 
 ### MIN_USDC_USD_PRICE
 
 ```solidity
-uint256 public constant MIN_USDC_USD_PRICE = 0.95e18;
+uint256 public constant MIN_USDC_USD_PRICE = 0.95e18
 ```
 
 
 ### MAX_USDC_USD_PRICE
 
 ```solidity
-uint256 public constant MAX_USDC_USD_PRICE = 1.05e18;
+uint256 public constant MAX_USDC_USD_PRICE = 1.05e18
 ```
 
 
 ### MAX_PRICE_DEVIATION
 
 ```solidity
-uint256 public constant MAX_PRICE_DEVIATION = 500;
+uint256 public constant MAX_PRICE_DEVIATION = 500
 ```
 
 
 ### lastValidEurUsdPrice
 
 ```solidity
-uint256 public lastValidEurUsdPrice;
+uint256 public lastValidEurUsdPrice
 ```
 
 
 ### lastValidUsdcUsdPrice
 
 ```solidity
-uint256 public lastValidUsdcUsdPrice;
+uint256 public lastValidUsdcUsdPrice
 ```
 
 
 ### lastPriceUpdateBlock
 
 ```solidity
-uint256 public lastPriceUpdateBlock;
+uint256 public lastPriceUpdateBlock
 ```
 
 
 ### MIN_BLOCKS_BETWEEN_UPDATES
 
 ```solidity
-uint256 public constant MIN_BLOCKS_BETWEEN_UPDATES = 1;
+uint256 public constant MIN_BLOCKS_BETWEEN_UPDATES = 1
 ```
 
 
 ### circuitBreakerTriggered
 
 ```solidity
-bool public circuitBreakerTriggered;
+bool public circuitBreakerTriggered
 ```
 
 
 ### devModeEnabled
 
 ```solidity
-bool public devModeEnabled;
+bool public devModeEnabled
 ```
 
 
@@ -120,11 +123,11 @@ bool public devModeEnabled;
 ### constructor
 
 **Note:**
-constructor
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
-constructor();
+constructor() ;
 ```
 
 ### initialize
@@ -212,7 +215,7 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 
 Recovers ETH sent to the contract
 
-*Only sends ETH to the original admin address to prevent arbitrary sends*
+Only sends ETH to the original admin address to prevent arbitrary sends
 
 
 ```solidity
@@ -285,7 +288,13 @@ function getOracleConfig()
     external
     view
     override
-    returns (uint256 minPrice, uint256 maxPrice, uint256 maxStaleness, uint256 usdcTolerance, bool circuitBreakerActive);
+    returns (
+        uint256 minPrice,
+        uint256 maxPrice,
+        uint256 maxStaleness,
+        uint256 usdcTolerance,
+        bool circuitBreakerActive
+    );
 ```
 
 ### getPriceFeedAddresses
@@ -358,7 +367,7 @@ function recoverToken(address token, uint256 amount) external view override only
 
 Set the EUR/USD price for testing purposes
 
-*Only available in mock oracle for testing*
+Only available in mock oracle for testing
 
 
 ```solidity
@@ -375,7 +384,7 @@ function setPrice(uint256 _price) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Set the USDC/USD price for testing purposes
 
-*Only available in mock oracle for testing*
+Only available in mock oracle for testing
 
 
 ```solidity
@@ -392,7 +401,7 @@ function setUsdcUsdPrice(uint256 _price) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 Set both EUR/USD and USDC/USD prices for testing purposes
 
-*Only available in mock oracle for testing*
+Only available in mock oracle for testing
 
 
 ```solidity
@@ -410,7 +419,7 @@ function setPrices(uint256 _eurUsdPrice, uint256 _usdcUsdPrice) external onlyRol
 
 Toggles dev mode to disable spread deviation checks
 
-*DEV ONLY: When enabled, price deviation checks are skipped for testing*
+DEV ONLY: When enabled, price deviation checks are skipped for testing
 
 
 ```solidity

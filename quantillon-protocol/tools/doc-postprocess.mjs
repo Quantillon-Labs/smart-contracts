@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { marked } from "marked";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,11 +72,67 @@ const FOOTER_HTML = `
 </footer>
 `;
 
+// List of markdown files that were copied as .html and need conversion
+const MARKDOWN_HTML_FILES = [
+  "API.html",
+  "API-Reference.html",
+  "Quick-Start.html",
+  "Integration-Examples.html",
+  "Security.html",
+  "Architecture.html",
+  "Deployment.html",
+];
+
 function walk(dir, fn) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, fn);
     else fn(full);
+  }
+}
+
+function convertMarkdownFiles() {
+  for (const filename of MARKDOWN_HTML_FILES) {
+    const filePath = path.join(DOCS_DIR, filename);
+    if (!fs.existsSync(filePath)) {
+      console.log(`Skipping ${filename} (not found)`);
+      continue;
+    }
+
+    const content = fs.readFileSync(filePath, "utf8");
+
+    // Check if it's still markdown (not already HTML)
+    if (content.trim().startsWith("<!DOCTYPE") || content.trim().startsWith("<html")) {
+      console.log(`Skipping ${filename} (already HTML)`);
+      continue;
+    }
+
+    // Convert markdown to HTML
+    const htmlContent = marked.parse(content);
+
+    // Wrap in a basic HTML template that matches forge doc style
+    const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${META_TAGS}
+</head>
+<body class="nav-chapters">
+${HEADER_HTML}
+<main>
+    <div class="content">
+        <div class="page">
+            ${htmlContent}
+        </div>
+    </div>
+</main>
+${FOOTER_HTML}
+</body>
+</html>`;
+
+    fs.writeFileSync(filePath, fullHtml, "utf8");
+    console.log(`Converted ${filename} from Markdown to HTML`);
   }
 }
 
@@ -178,6 +235,9 @@ function main() {
   }
   ensureThemeAtRoot();
   copyCustomFiles();
+
+  // Convert markdown files that were copied as .html
+  convertMarkdownFiles();
 
   walk(DOCS_DIR, (f) => {
     if (f.endsWith(".html")) patchHtml(f);

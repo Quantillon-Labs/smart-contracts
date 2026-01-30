@@ -1,17 +1,20 @@
 # YieldValidationLibrary
+**Title:**
+YieldValidationLibrary
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Yield-specific validation functions for Quantillon Protocol
 
-*Main characteristics:
+Main characteristics:
 - Validation functions specific to yield operations
 - Yield shift mechanism validations
 - Slippage protection validations
-- Yield distribution validations*
+- Yield distribution validations
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -19,24 +22,24 @@ team@quantillon.money
 
 Validates yield shift percentage (0-100%)
 
-*Ensures yield shift is within valid range of 0-10000 basis points*
+Ensures yield shift is within valid range of 0-10000 basis points
 
 **Notes:**
-- Prevents invalid yield shifts that could destabilize yield distribution
+- security: Prevents invalid yield shifts that could destabilize yield distribution
 
-- Ensures yield shift is within valid percentage range
+- validation: Ensures yield shift is within valid percentage range
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter if shift exceeds 100%
+- errors: Throws InvalidParameter if shift exceeds 100%
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -53,24 +56,24 @@ function validateYieldShift(uint256 shift) internal pure;
 
 Validates adjustment speed for yield shift mechanisms
 
-*Prevents excessively fast adjustments that could destabilize the system*
+Prevents excessively fast adjustments that could destabilize the system
 
 **Notes:**
-- Prevents rapid adjustments that could destabilize yield mechanisms
+- security: Prevents rapid adjustments that could destabilize yield mechanisms
 
-- Ensures adjustment speed stays within safe bounds
+- validation: Ensures adjustment speed stays within safe bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter if speed exceeds maximum
+- errors: Throws InvalidParameter if speed exceeds maximum
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -88,24 +91,24 @@ function validateAdjustmentSpeed(uint256 speed, uint256 maxSpeed) internal pure;
 
 Validates target ratio for yield distribution mechanisms
 
-*Ensures ratio is positive and within acceptable bounds*
+Ensures ratio is positive and within acceptable bounds
 
 **Notes:**
-- Prevents invalid ratios that could break yield distribution
+- security: Prevents invalid ratios that could break yield distribution
 
-- Ensures ratio is positive and within acceptable bounds
+- validation: Ensures ratio is positive and within acceptable bounds
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws InvalidParameter or AboveLimit based on validation
+- errors: Throws InvalidParameter or AboveLimit based on validation
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -123,24 +126,24 @@ function validateTargetRatio(uint256 ratio, uint256 maxRatio) internal pure;
 
 Validates slippage protection for token swaps/trades
 
-*Ensures received amount is within acceptable tolerance of expected*
+Ensures received amount is within acceptable tolerance of expected
 
 **Notes:**
-- Prevents excessive slippage attacks in yield operations
+- security: Prevents excessive slippage attacks in yield operations
 
-- Ensures received amount meets minimum expectations
+- validation: Ensures received amount meets minimum expectations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws ExcessiveSlippage if slippage exceeds tolerance
+- errors: Throws ExcessiveSlippage if slippage exceeds tolerance
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity
@@ -159,24 +162,24 @@ function validateSlippage(uint256 received, uint256 expected, uint256 tolerance)
 
 Validates treasury address is not zero address
 
-*Prevents setting treasury to zero address which could cause loss of funds*
+Prevents setting treasury to zero address which could cause loss of funds
 
 **Notes:**
-- Prevents loss of funds by ensuring treasury is properly set
+- security: Prevents loss of funds by ensuring treasury is properly set
 
-- Ensures treasury address is valid for fund operations
+- validation: Ensures treasury address is valid for fund operations
 
-- No state changes - pure function
+- state-changes: No state changes - pure function
 
-- No events emitted
+- events: No events emitted
 
-- Throws ZeroAddress if treasury is zero address
+- errors: Throws ZeroAddress if treasury is zero address
 
-- Not applicable - pure function
+- reentrancy: Not applicable - pure function
 
-- Internal library function
+- access: Internal library function
 
-- No oracle dependencies
+- oracle: No oracle dependencies
 
 
 ```solidity

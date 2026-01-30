@@ -1,14 +1,17 @@
 # IOracle
+**Title:**
+IOracle
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Generic interface for Quantillon Protocol oracle contracts
 
-*This interface is oracle-agnostic and can work with Chainlink, Stork, or any other oracle implementation
-The OracleRouter implements this interface and delegates to the active oracle (Chainlink or Stork)*
+This interface is oracle-agnostic and can work with Chainlink, Stork, or any other oracle implementation
+The OracleRouter implements this interface and delegates to the active oracle (Chainlink or Stork)
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -16,24 +19,24 @@ team@quantillon.money
 
 Gets the current EUR/USD price with validation
 
-*Retrieves and validates EUR/USD price from the active oracle with freshness checks*
+Retrieves and validates EUR/USD price from the active oracle with freshness checks
 
 **Notes:**
-- Validates price freshness and bounds before returning
+- security: Validates price freshness and bounds before returning
 
-- Checks price staleness and circuit breaker state
+- validation: Checks price staleness and circuit breaker state
 
-- May update lastValidPrice if price is valid
+- state-changes: May update lastValidPrice if price is valid
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns isValid=false for invalid prices
+- errors: No errors thrown, returns isValid=false for invalid prices
 
-- Not protected - read-only operation
+- reentrancy: Not protected - read-only operation
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Queries active oracle (Chainlink or Stork) for EUR/USD price
+- oracle: Queries active oracle (Chainlink or Stork) for EUR/USD price
 
 
 ```solidity
@@ -51,24 +54,24 @@ function getEurUsdPrice() external returns (uint256 price, bool isValid);
 
 Gets the current USDC/USD price with validation
 
-*Retrieves and validates USDC/USD price from the active oracle with tolerance checks*
+Retrieves and validates USDC/USD price from the active oracle with tolerance checks
 
 **Notes:**
-- Validates price is within tolerance of $1.00
+- security: Validates price is within tolerance of $1.00
 
-- Checks price staleness and deviation from $1.00
+- validation: Checks price staleness and deviation from $1.00
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns isValid=false for invalid prices
+- errors: No errors thrown, returns isValid=false for invalid prices
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Queries active oracle (Chainlink or Stork) for USDC/USD price
+- oracle: Queries active oracle (Chainlink or Stork) for USDC/USD price
 
 
 ```solidity
@@ -86,24 +89,24 @@ function getUsdcUsdPrice() external view returns (uint256 price, bool isValid);
 
 Returns overall oracle health signals
 
-*Checks the health status of both price feeds and overall oracle state*
+Checks the health status of both price feeds and overall oracle state
 
 **Notes:**
-- Provides health status for monitoring and circuit breaker decisions
+- security: Provides health status for monitoring and circuit breaker decisions
 
-- Checks feed freshness, circuit breaker state, and pause status
+- validation: Checks feed freshness, circuit breaker state, and pause status
 
-- May update internal state during health check
+- state-changes: May update internal state during health check
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - read-only operation
+- reentrancy: Not protected - read-only operation
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Queries active oracle health status for both feeds
+- oracle: Queries active oracle health status for both feeds
 
 
 ```solidity
@@ -122,24 +125,24 @@ function getOracleHealth() external returns (bool isHealthy, bool eurUsdFresh, b
 
 Detailed information about the EUR/USD price
 
-*Provides comprehensive EUR/USD price information including validation status*
+Provides comprehensive EUR/USD price information including validation status
 
 **Notes:**
-- Provides detailed price information for debugging and monitoring
+- security: Provides detailed price information for debugging and monitoring
 
-- Checks price freshness and bounds validation
+- validation: Checks price freshness and bounds validation
 
-- May update internal state during price check
+- state-changes: May update internal state during price check
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - read-only operation
+- reentrancy: Not protected - read-only operation
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Queries active oracle for detailed EUR/USD price information
+- oracle: Queries active oracle for detailed EUR/USD price information
 
 
 ```solidity
@@ -162,31 +165,37 @@ function getEurUsdDetails()
 
 Current configuration and circuit breaker state
 
-*Returns current oracle configuration parameters and circuit breaker status*
+Returns current oracle configuration parameters and circuit breaker status
 
 **Notes:**
-- Returns configuration for security monitoring
+- security: Returns configuration for security monitoring
 
-- No validation - read-only configuration
+- validation: No validation - read-only configuration
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Returns configuration from active oracle
+- oracle: Returns configuration from active oracle
 
 
 ```solidity
 function getOracleConfig()
     external
     view
-    returns (uint256 minPrice, uint256 maxPrice, uint256 maxStaleness, uint256 usdcTolerance, bool circuitBreakerActive);
+    returns (
+        uint256 minPrice,
+        uint256 maxPrice,
+        uint256 maxStaleness,
+        uint256 usdcTolerance,
+        bool circuitBreakerActive
+    );
 ```
 **Returns**
 
@@ -203,24 +212,24 @@ function getOracleConfig()
 
 Addresses and decimals of the underlying feeds
 
-*Returns the addresses and decimal precision of both price feeds*
+Returns the addresses and decimal precision of both price feeds
 
 **Notes:**
-- Returns feed addresses for verification
+- security: Returns feed addresses for verification
 
-- No validation - read-only information
+- validation: No validation - read-only information
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown
+- errors: No errors thrown
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Returns feed addresses from active oracle
+- oracle: Returns feed addresses from active oracle
 
 
 ```solidity
@@ -243,24 +252,24 @@ function getPriceFeedAddresses()
 
 Connectivity check for both feeds
 
-*Tests connectivity to both price feeds and returns latest round information*
+Tests connectivity to both price feeds and returns latest round information
 
 **Notes:**
-- Tests feed connectivity for health monitoring
+- security: Tests feed connectivity for health monitoring
 
-- No validation - connectivity test only
+- validation: No validation - connectivity test only
 
-- No state changes - view function
+- state-changes: No state changes - view function
 
-- No events emitted
+- events: No events emitted
 
-- No errors thrown, returns false for disconnected feeds
+- errors: No errors thrown, returns false for disconnected feeds
 
-- Not protected - view function
+- reentrancy: Not protected - view function
 
-- Public - no access restrictions
+- access: Public - no access restrictions
 
-- Tests connectivity to active oracle feeds
+- oracle: Tests connectivity to active oracle feeds
 
 
 ```solidity

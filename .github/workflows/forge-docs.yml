@@ -38,6 +38,17 @@ jobs:
           RUST_MIN_STACK: 50331648
         run: |
           cd quantillon-protocol
+
+          # SAVE custom markdown files BEFORE deleting docs
+          echo "Saving custom markdown documentation files..."
+          mkdir -p /tmp/custom-docs
+          for f in API.md API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Deployment.md favicon.png favicon.ico; do
+            if [ -f "docs/$f" ]; then
+              cp "docs/$f" "/tmp/custom-docs/$f"
+              echo "Saved $f"
+            fi
+          done
+
           rm -rf docs
           
           # Store the original remote URL
@@ -63,6 +74,15 @@ jobs:
               echo "Fallback documentation created"
           fi
           
+          # RESTORE custom markdown files after forge doc generation
+          echo "Restoring custom markdown documentation files..."
+          for f in API.md API-Reference.md Quick-Start.md Integration-Examples.md Security.md Architecture.md Deployment.md; do
+            if [ -f "/tmp/custom-docs/$f" ]; then
+              cp "/tmp/custom-docs/$f" "docs/$f"
+              echo "Restored $f"
+            fi
+          done
+
           # Copy markdown documentation files to the book directory
           echo "Copying markdown documentation files..."
           if [ -f "docs/API.md" ]; then
@@ -127,18 +147,18 @@ jobs:
           
           # Copy our custom favicon files to override the default forge icons
           echo "Copying custom favicon files..."
-          if [ -f "docs/favicon.png" ]; then
-              cp docs/favicon.png docs/book/favicon.png
+          if [ -f "/tmp/custom-docs/favicon.png" ]; then
+              cp /tmp/custom-docs/favicon.png docs/book/favicon.png
               echo "Custom favicon.png copied successfully"
           else
-              echo "Warning: favicon.png not found in docs directory"
+              echo "Warning: favicon.png not found"
           fi
-          
-          if [ -f "docs/favicon.ico" ]; then
-              cp docs/favicon.ico docs/book/favicon.ico
+
+          if [ -f "/tmp/custom-docs/favicon.ico" ]; then
+              cp /tmp/custom-docs/favicon.ico docs/book/favicon.ico
               echo "Custom favicon.ico copied successfully"
           else
-              echo "Warning: favicon.ico not found in docs directory"
+              echo "Warning: favicon.ico not found"
           fi
           
           echo "== top of docs =="
@@ -168,6 +188,7 @@ jobs:
       - name: Post-process HTML
         run: |
           cd quantillon-protocol
+          npm install
           node tools/doc-postprocess.mjs ./docs/book
 
       # REQUIRED by GitHub Pages before uploading the artifact

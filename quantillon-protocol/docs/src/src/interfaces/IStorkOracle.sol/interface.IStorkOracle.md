@@ -2,16 +2,19 @@
 **Inherits:**
 [IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md)
 
+**Title:**
+IStorkOracle
+
 **Author:**
 Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 
 Interface for the Quantillon Stork-based oracle
 
-*Extends IOracle with Stork-specific functions
-This interface is specific to StorkOracle implementation*
+Extends IOracle with Stork-specific functions
+This interface is specific to StorkOracle implementation
 
 **Note:**
-team@quantillon.money
+security-contact: team@quantillon.money
 
 
 ## Functions
@@ -19,24 +22,24 @@ team@quantillon.money
 
 Initializes the oracle with admin and Stork feed addresses
 
-*Sets up the oracle with initial configuration and assigns roles to admin*
+Sets up the oracle with initial configuration and assigns roles to admin
 
 **Notes:**
-- Validates all addresses are non-zero, grants admin roles
+- security: Validates all addresses are non-zero, grants admin roles
 
-- Validates all input addresses are not address(0)
+- validation: Validates all input addresses are not address(0)
 
-- Initializes all state variables, sets default price bounds
+- state-changes: Initializes all state variables, sets default price bounds
 
-- Emits PriceUpdated during initial price update
+- events: Emits PriceUpdated during initial price update
 
-- Throws "Oracle: Admin cannot be zero" if admin is address(0)
+- errors: Throws "Oracle: Admin cannot be zero" if admin is address(0)
 
-- Protected by initializer modifier
+- reentrancy: Protected by initializer modifier
 
-- Public - only callable once during deployment
+- access: Public - only callable once during deployment
 
-- Initializes Stork price feed interfaces
+- oracle: Initializes Stork price feed interfaces
 
 
 ```solidity
@@ -63,24 +66,24 @@ function initialize(
 
 Updates EUR/USD min and max acceptable prices
 
-*Updates the price bounds for EUR/USD validation with security checks*
+Updates the price bounds for EUR/USD validation with security checks
 
 **Notes:**
-- Validates min < max and reasonable bounds
+- security: Validates min < max and reasonable bounds
 
-- Validates price bounds are within acceptable range
+- validation: Validates price bounds are within acceptable range
 
-- Updates minPrice and maxPrice state variables
+- state-changes: Updates minPrice and maxPrice state variables
 
-- Emits PriceBoundsUpdated event
+- events: Emits PriceBoundsUpdated event
 
-- Throws if minPrice >= maxPrice or invalid bounds
+- errors: Throws if minPrice >= maxPrice or invalid bounds
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- No oracle dependency - configuration update only
+- oracle: No oracle dependency - configuration update only
 
 
 ```solidity
@@ -98,24 +101,24 @@ function updatePriceBounds(uint256 _minPrice, uint256 _maxPrice) external;
 
 Updates the allowed USDC deviation from $1.00 in basis points
 
-*Updates the USDC price tolerance for validation with security checks*
+Updates the USDC price tolerance for validation with security checks
 
 **Notes:**
-- Validates tolerance is within reasonable limits
+- security: Validates tolerance is within reasonable limits
 
-- Validates tolerance is not zero and within max bounds
+- validation: Validates tolerance is not zero and within max bounds
 
-- Updates usdcTolerance state variable
+- state-changes: Updates usdcTolerance state variable
 
-- Emits UsdcToleranceUpdated event
+- events: Emits UsdcToleranceUpdated event
 
-- Throws if tolerance is invalid or out of bounds
+- errors: Throws if tolerance is invalid or out of bounds
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- No oracle dependency - configuration update only
+- oracle: No oracle dependency - configuration update only
 
 
 ```solidity
@@ -132,24 +135,24 @@ function updateUsdcTolerance(uint256 newToleranceBps) external;
 
 Updates Stork feed addresses and feed IDs
 
-*Updates the addresses and feed IDs of both Stork price feeds with validation*
+Updates the addresses and feed IDs of both Stork price feeds with validation
 
 **Notes:**
-- Validates feed address is non-zero and contract exists
+- security: Validates feed address is non-zero and contract exists
 
-- Validates all addresses are not address(0)
+- validation: Validates all addresses are not address(0)
 
-- Updates eurUsdPriceFeed, usdcUsdPriceFeed, and feed IDs
+- state-changes: Updates eurUsdPriceFeed, usdcUsdPriceFeed, and feed IDs
 
-- Emits PriceFeedsUpdated event
+- events: Emits PriceFeedsUpdated event
 
-- Throws if feed address is zero or invalid
+- errors: Throws if feed address is zero or invalid
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- Updates Stork feed contract references
+- oracle: Updates Stork feed contract references
 
 
 ```solidity
@@ -168,24 +171,24 @@ function updatePriceFeeds(address _storkFeedAddress, bytes32 _eurUsdFeedId, byte
 
 Clears circuit breaker and attempts to resume live prices
 
-*Resets the circuit breaker state to allow normal price operations*
+Resets the circuit breaker state to allow normal price operations
 
 **Notes:**
-- Resets circuit breaker after manual intervention
+- security: Resets circuit breaker after manual intervention
 
-- Validates circuit breaker was previously triggered
+- validation: Validates circuit breaker was previously triggered
 
-- Resets circuitBreakerTriggered flag
+- state-changes: Resets circuitBreakerTriggered flag
 
-- Emits CircuitBreakerReset event
+- events: Emits CircuitBreakerReset event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- Resumes normal oracle price queries
+- oracle: Resumes normal oracle price queries
 
 
 ```solidity
@@ -196,24 +199,24 @@ function resetCircuitBreaker() external;
 
 Manually triggers circuit breaker to use fallback prices
 
-*Activates circuit breaker to switch to fallback price mode for safety*
+Activates circuit breaker to switch to fallback price mode for safety
 
 **Notes:**
-- Manually activates circuit breaker for emergency situations
+- security: Manually activates circuit breaker for emergency situations
 
-- No validation - emergency function
+- validation: No validation - emergency function
 
-- Sets circuitBreakerTriggered flag to true
+- state-changes: Sets circuitBreakerTriggered flag to true
 
-- Emits CircuitBreakerTriggered event
+- events: Emits CircuitBreakerTriggered event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to ORACLE_MANAGER_ROLE
+- access: Restricted to ORACLE_MANAGER_ROLE
 
-- Switches to fallback prices instead of live oracle queries
+- oracle: Switches to fallback prices instead of live oracle queries
 
 
 ```solidity
@@ -224,24 +227,24 @@ function triggerCircuitBreaker() external;
 
 Pauses all oracle operations
 
-*Pauses the oracle contract to halt all price operations*
+Pauses the oracle contract to halt all price operations
 
 **Notes:**
-- Emergency pause to halt all oracle operations
+- security: Emergency pause to halt all oracle operations
 
-- No validation - emergency function
+- validation: No validation - emergency function
 
-- Sets paused state to true
+- state-changes: Sets paused state to true
 
-- Emits Paused event
+- events: Emits Paused event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- Halts all oracle price queries
+- oracle: Halts all oracle price queries
 
 
 ```solidity
@@ -252,24 +255,24 @@ function pause() external;
 
 Unpauses oracle operations
 
-*Resumes oracle operations after being paused*
+Resumes oracle operations after being paused
 
 **Notes:**
-- Resumes oracle operations after pause
+- security: Resumes oracle operations after pause
 
-- Validates contract was previously paused
+- validation: Validates contract was previously paused
 
-- Sets paused state to false
+- state-changes: Sets paused state to false
 
-- Emits Unpaused event
+- events: Emits Unpaused event
 
-- No errors thrown
+- errors: No errors thrown
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to EMERGENCY_ROLE
+- access: Restricted to EMERGENCY_ROLE
 
-- Resumes normal oracle price queries
+- oracle: Resumes normal oracle price queries
 
 
 ```solidity
@@ -280,24 +283,24 @@ function unpause() external;
 
 Recovers ERC20 tokens sent to the oracle contract by mistake
 
-*Allows recovery of ERC20 tokens accidentally sent to the oracle contract*
+Allows recovery of ERC20 tokens accidentally sent to the oracle contract
 
 **Notes:**
-- Transfers tokens to treasury, prevents accidental loss
+- security: Transfers tokens to treasury, prevents accidental loss
 
-- Validates token and amount are non-zero
+- validation: Validates token and amount are non-zero
 
-- Transfers tokens from contract to treasury
+- state-changes: Transfers tokens from contract to treasury
 
-- Emits TokenRecovered event
+- events: Emits TokenRecovered event
 
-- Throws if token is zero address or transfer fails
+- errors: Throws if token is zero address or transfer fails
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependency
+- oracle: No oracle dependency
 
 
 ```solidity
@@ -315,24 +318,24 @@ function recoverToken(address token, uint256 amount) external;
 
 Recovers ETH sent to the oracle contract by mistake
 
-*Allows recovery of ETH accidentally sent to the oracle contract*
+Allows recovery of ETH accidentally sent to the oracle contract
 
 **Notes:**
-- Transfers ETH to treasury, prevents accidental loss
+- security: Transfers ETH to treasury, prevents accidental loss
 
-- Validates contract has ETH balance
+- validation: Validates contract has ETH balance
 
-- Transfers ETH from contract to treasury
+- state-changes: Transfers ETH from contract to treasury
 
-- Emits ETHRecovered event
+- events: Emits ETHRecovered event
 
-- Throws if transfer fails
+- errors: Throws if transfer fails
 
-- Protected by reentrancy guard
+- reentrancy: Protected by reentrancy guard
 
-- Restricted to DEFAULT_ADMIN_ROLE
+- access: Restricted to DEFAULT_ADMIN_ROLE
 
-- No oracle dependency
+- oracle: No oracle dependency
 
 
 ```solidity

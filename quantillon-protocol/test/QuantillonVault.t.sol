@@ -344,9 +344,13 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldCalculateMintAmount() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Mint amount calculation test placeholder");
+    function testView_WithValidParameters_ShouldCalculateMintAmount() public {
+        uint256 usdcAmount = MINT_AMOUNT; // 1000 USDC (6 decimals)
+        (uint256 qeuroAmount, uint256 fee) = vault.calculateMintAmount(usdcAmount);
+        assertGt(qeuroAmount, 0, "calculateMintAmount should return positive QEURO amount");
+        assertGe(fee, 0, "Fee should be non-negative");
+        uint256 expectedFee = Math.mulDiv(usdcAmount, vault.mintFee(), 1e18);
+        assertEq(fee, expectedFee, "Fee should match vault mintFee ratio");
     }
     
     /**
@@ -361,9 +365,13 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldCalculateRedeemAmount() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Redeem amount calculation test placeholder");
+    function testView_WithValidParameters_ShouldCalculateRedeemAmount() public {
+        uint256 qeuroAmount = 100 * 1e18; // 100 QEURO (18 decimals)
+        (uint256 usdcAmount, uint256 fee) = vault.calculateRedeemAmount(qeuroAmount);
+        assertGt(usdcAmount, 0, "calculateRedeemAmount should return positive USDC amount");
+        assertGe(fee, 0, "Fee should be non-negative");
+        // Gross USDC = qeuroAmount * eurUsdPrice / 1e18, then / 1e12 for 6 decimals; fee = gross * redemptionFee / 1e18
+        assertLe(fee, usdcAmount + fee, "Fee should not exceed gross redeem amount");
     }
     
     /**

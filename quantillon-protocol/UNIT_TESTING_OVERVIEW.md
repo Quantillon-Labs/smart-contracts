@@ -1,10 +1,12 @@
+# Unit Testing Overview — Quantillon Protocol
+
 ## Scope
 
 This document describes the **current state of testing** for the `quantillon-protocol` Solidity smart contracts as implemented in this repository.
 
 It is **purely descriptive** and does **not** contain recommendations or future plans.
 
-The content has been updated to reflect the test suite state **after** the latest round of improvements including: CI wiring, integration test refactors, new fuzz suites, dedicated library tests, deployment smoke tests, action-based invariant tests, and decimal scaling fixes.
+The content reflects the test suite state **after** the latest round of improvements, including: integration and deployment smoke tests, combined attack vector tests, liquidation scenario tests (partial, same-block, CR boundary), invariant handler wiring for Foundry invariant mode, placeholder replacement with executable assertions or explicit `vm.skip` and rationale, CI workflow, and Foundry config alignment.
 
 ---
 
@@ -12,12 +14,14 @@ The content has been updated to reflect the test suite state **after** the lates
 
 | Metric | Value |
 |--------|-------|
-| Total test functions | 1,045 |
-| Total tests passing | 1,169 (including fuzz runs) |
+| Total test functions (test_ + testFuzz_ + invariant_) | ~1,109 |
+| Test files (`.t.sol`) | 43 |
 | Disabled tests (xtest_) | 0 |
-| Test files | 41 |
-| Fuzz test suites | 6 |
-| Invariant functions | 15 |
+| Dedicated fuzz test file | `VaultMathFuzz.t.sol` |
+| Invariant test file | `QuantillonInvariants.t.sol` (15 invariant functions) |
+| Fuzz tests | In `VaultMathFuzz.t.sol`, `QuantillonInvariants.t.sol`, `TimeProvider.t.sol`, `YieldValidationLibrary.t.sol`, `TokenValidationLibrary.t.sol`, and library test files |
+
+*Note: `forge test` may report a higher number of tests run due to fuzz iterations.*
 
 ---
 
@@ -29,114 +33,108 @@ The content has been updated to reflect the test suite state **after** the lates
       - `src = "src"`, `test = "test"`, `out = "out"`, `libs = ["lib"]`
       - `solc_version = "0.8.24"`, `evm_version = "paris"`
       - Optimizer enabled with `optimizer_runs = 200` and `via_ir = true` for the default profile
-      - `FOUNDRY_PROFILE=coverage` profile defined for coverage runs with dedicated settings
-      - `FOUNDRY_PROFILE=test` profile defined with `optimizer = false`, `via_ir = false`
-    - Fuzzing and invariant profiles:
+      - `[profile.coverage]` for coverage runs
+      - `[profile.test]` with `optimizer = false`, `via_ir = false`
+    - Fuzzing and invariant:
       - `[profile.default.fuzz]` with `runs = 1000`
       - `[profile.default.invariant]` with `runs = 256`, `depth = 15`, `fail_on_revert = false`
+    - Lint and doc: `[lint]` with `exclude_lints`; `[doc]` with `out` and `ignore` (per Foundry schema)
 
 - **Assertion / utility library**
   - `forge-std/Test.sol` used across tests for:
     - `vm` cheatcodes
-    - assertion helpers (`assertEq`, `assertGt`, `assertTrue`, `assertGe`, `assertLe`, `assertFalse`, `assertApproxEqRel`, etc.)
-    - logging via `console` in some tests
+    - Assertion helpers (`assertEq`, `assertGt`, `assertTrue`, `assertGe`, `assertLe`, `assertFalse`, `assertApproxEqRel`, etc.)
+    - Logging via `console` where needed
 
 - **Security and analysis tooling**
-  - **Slither** - Configured via `slither.config.json`, invoked via `make slither`
-  - **Mythril** - Invoked via `make mythril`
-  - **NatSpec validation** - `make validate-natspec` runs `scripts/validate-natspec.js`
-  - **Gas analysis** - `make gas-analysis` and `make benchmark-gas`
-  - **Contract size and warning analysis** - `make analyze-contract-sizes` and `make analyze-warnings`
+  - **Slither** — configured via `slither.config.json`, invoked via `make slither`
+  - **Mythril** — invoked via `make mythril`
+  - **NatSpec validation** — `make validate-natspec` runs `scripts/validate-natspec.js`
+  - **Gas analysis** — `make gas-analysis`, `make benchmark-gas`
+  - **Contract size and warnings** — `make analyze-contract-sizes`, `make analyze-warnings`
 
 - **Makefile integration**
-  - `make test` wraps `forge test`
-  - `make coverage` wraps `FOUNDRY_PROFILE=coverage forge coverage --report lcov --ir-minimum`
-  - `make all` runs: `build`, `test`, `coverage`, `slither`, `docs`, `gas-analysis`, `analyze-warnings`, `analyze-contract-sizes`
-  - `make ci` runs: `build`, `test`, `slither`, `validate-natspec`, `gas-analysis`, `analyze-warnings`, `analyze-contract-sizes`
+  - `make test` — runs `forge test`
+  - `make coverage` — runs `FOUNDRY_PROFILE=coverage forge coverage --report lcov --ir-minimum`
+  - `make all` — build, test, coverage, slither, docs, gas-analysis, analyze-warnings, analyze-contract-sizes
+  - `make ci` — build, test, slither, validate-natspec, gas-analysis, analyze-warnings, analyze-contract-sizes
 
 ---
 
 ## Test Types and Locations
 
-All Solidity tests live under `test/` and use Foundry's Forge test runner.
+All Solidity tests live under `test/` and use Foundry’s Forge test runner.
 
-### High-level categories
+### Unit tests
 
-- **Unit tests**
-  - Located primarily in:
-    - `test/QEUROToken.t.sol`, `test/QEUROTokenBasic.t.sol`
-    - `test/QTIToken.t.sol`
-    - `test/stQEUROToken.t.sol`
-    - `test/FeeCollector.t.sol`
-    - `test/TimeProvider.t.sol`
-    - `test/ChainlinkOracle.t.sol`, `test/StorkOracle.t.sol`, `test/OracleRouter.t.sol`
-    - `test/VaultMath.t.sol`, `test/LibraryTests.t.sol`
-    - `test/SecureUpgradeable.t.sol`, `test/TimelockUpgradeable.t.sol`
-    - `test/AaveVault.t.sol`
-  - Dedicated library test suites:
-    - `test/FlashLoanProtectionLibrary.t.sol`
-    - `test/TreasuryRecoveryLibrary.t.sol`
-    - `test/AccessControlLibrary.t.sol`
-    - `test/PriceValidationLibrary.t.sol`
-    - `test/YieldValidationLibrary.t.sol`
-    - `test/TokenValidationLibrary.t.sol`
-  - These focus on single contracts or libraries with direct calls and assertions on state changes, events, error selectors, and boundary cases.
+- **Core tokens and fee**
+  - `test/QEUROToken.t.sol`, `test/QEUROTokenBasic.t.sol`
+  - `test/QTIToken.t.sol`
+  - `test/stQEUROToken.t.sol`
+  - `test/FeeCollector.t.sol`
+- **Time and oracles**
+  - `test/TimeProvider.t.sol`
+  - `test/ChainlinkOracle.t.sol`, `test/StorkOracle.t.sol`, `test/OracleRouter.t.sol`, `test/OracleEdgeCases.t.sol`
+- **Vault and math**
+  - `test/VaultMath.t.sol`, `test/LibraryTests.t.sol`
+  - `test/QuantillonVault.t.sol`
+- **Upgradeability**
+  - `test/SecureUpgradeable.t.sol`, `test/TimelockUpgradeable.t.sol`
+- **Pools and yield**
+  - `test/UserPool.t.sol`, `test/HedgerPool.t.sol`
+  - `test/YieldShift.t.sol`
+  - `test/AaveVault.t.sol`
+- **Libraries (dedicated suites)**
+  - `test/FlashLoanProtectionLibrary.t.sol`
+  - `test/TreasuryRecoveryLibrary.t.sol`
+  - `test/AccessControlLibrary.t.sol`
+  - `test/PriceValidationLibrary.t.sol`
+  - `test/YieldValidationLibrary.t.sol`
+  - `test/TokenValidationLibrary.t.sol`
 
-- **Integration / system workflow tests**
-  - **Active and fully enabled** integration suites:
-    - `test/IntegrationTests.t.sol` - Deploys real contracts via `ERC1967Proxy`, wires all dependencies, and executes complete protocol workflows including:
-      - `test_CompleteProtocolWorkflow` - Full deposit → mint → stake → unstake → redeem flow
-      - `test_BatchOperationsWorkflow` - Multiple users performing concurrent operations
-    - `test/DeploymentSmoke.t.sol` - 4-phase deployment smoke tests:
-      - `test_DeploymentSmoke_AllContractsDeployed` - Verifies all contracts deploy successfully
-      - `test_DeploymentSmoke_ContractWiring` - Validates contract references and role assignments
-      - `test_DeploymentSmoke_BasicMintRedeem` - End-to-end mint/redeem flow
-      - `test_DeploymentSmoke_StakingRoundtrip` - Stake/unstake operations
-      - `test_DeploymentSmoke_GovernanceSanity` - QTI governance parameter checks
-      - `test_DeploymentSmoke_OraclePrices` - Oracle price retrieval verification
-      - `test_DeploymentSmoke_EmergencyPause` - Pause/unpause functionality
-      - `test_DeploymentSmoke_MultiUserMint` - Multiple user minting and supply tracking
-  - Additional integration suites:
-    - `test/IntegrationEdgeCases.t.sol`
-    - `test/HedgerVaultIntegration.t.sol`, `test/HedgerVaultRegression.t.sol`
-    - `test/AaveIntegration.t.sol`
-    - `test/YieldStakingEdgeCases.t.sol`, `test/TimeBlockEdgeCases.t.sol`, `test/GasResourceEdgeCases.t.sol`
+These focus on single contracts or libraries with direct calls and assertions on state, events, errors, and boundary cases.
 
-- **Security-focused tests**
-  - `test/ReentrancyTests.t.sol` - Reentrancy scenarios with concrete attack simulations using `MaliciousToken` and `MaliciousQEURO` contracts
-  - `test/EconomicAttackVectors.t.sol` - Economic attack scenarios (oracle manipulation, under-collateralization, yield abuse)
-  - `test/GovernanceAttackVectors.t.sol` - Governance-related attacks (voting power abuse, threshold implications)
-  - `test/RaceConditionTests.t.sol` - Race conditions and concurrent action patterns
-  - `test/UpgradeTests.t.sol` - Upgrade paths and proxy-based upgrades
+### Integration / system workflow tests
 
-- **Fuzz / property-based tests**
-  - `test/VaultMathFuzz.t.sol` - Fuzzing for `mulDiv`, `percentageOf`, `scaleDecimals`, min/max helpers
-  - `test/PriceValidationFuzz.t.sol` - Price deviation checks and bounds
-  - `test/YieldValidationFuzz.t.sol` - Yield shift, adjustment speed, target ratio, slippage parameters
-  - `test/UserPoolStakingFuzz.t.sol` - Staking rewards, cooldowns, and penalties
-  - Library fuzz tests in:
-    - `test/FlashLoanProtectionLibrary.t.sol`
-    - `test/PriceValidationLibrary.t.sol`
+- **Full workflow**
+  - `test/IntegrationTests.t.sol` — deploys via `ERC1967Proxy`, wires dependencies, runs full flows (e.g. deposit → mint → stake → unstake → redeem, batch operations).
+- **Deployment smoke**
+  - `test/DeploymentSmoke.t.sol` — 4-phase deployment smoke tests: all contracts deployed, wiring, basic mint/redeem, staking roundtrip, governance sanity, oracle prices, emergency pause, multi-user mint.
+- **Edge and integration**
+  - `test/IntegrationEdgeCases.t.sol`
+  - `test/HedgerVaultIntegration.t.sol`, `test/HedgerVaultRegression.t.sol`
+  - `test/AaveIntegration.t.sol`
+  - `test/YieldStakingEdgeCases.t.sol`, `test/TimeBlockEdgeCases.t.sol`, `test/GasResourceEdgeCases.t.sol`
+- **Liquidation**
+  - `test/LiquidationScenarios.t.sol` — end-to-end liquidation mode (CR ≤ 101%), pro-rata redemption, HedgerPool state, pause revert.
+- **Combined attacks**
+  - `test/CombinedAttackVectors.t.sol` — multi-step scenarios: flash loan + oracle manipulation blocked, governance-only param updates, yield extraction during volatility with bounded redemption.
 
-- **Invariant-style tests**
-  - `test/QuantillonInvariants.t.sol` - Comprehensive invariant testing (wired for Foundry invariant mode via `StdInvariant`, `targetContract(handler)`, `targetSelector`):
-    - **15 invariant functions** covering:
-      - Supply consistency (`invariant_totalSupplyConsistency`, `invariant_supplyCapRespect`)
-      - Collateralization (`invariant_collateralizationRatio`, `invariant_liquidationThresholds`)
-      - Yield distribution (`invariant_yieldDistributionIntegrity`, `invariant_yieldShiftParameters`)
-      - Governance (`invariant_governancePowerConsistency`, `invariant_governanceParameters`)
-      - Emergency state (`invariant_emergencyStateConsistency`, `invariant_pauseStateConsistency`)
-      - Access control (`invariant_accessControlConsistency`)
-      - Math (`invariant_mathematicalConsistency`)
-      - Integration (`invariant_crossContractIntegration`, `invariant_gasOptimization`)
-      - Liquidation (`invariant_liquidationStateConsistency`)
-    - **Action-based stateful tests**:
-      - `test_ActionSequence_MintStakeUnstakeRedeem` - Full protocol action sequence
-      - `test_EmergencyPauseIntegrity` - Emergency pause behaviour
-    - **Fuzz tests**:
-      - `testFuzz_MintMaintainsSupplyConsistency` - Randomized mint amounts
-      - `testFuzz_StakeUnstakeRoundtrip` - Stake/unstake with randomized fractions
-    - **InvariantActionHandler contract** - Exposes `actionMint`, `actionRedeem`, `actionStake`, `actionUnstake` for fuzzed sequences
+### Security-focused tests
+
+- `test/ReentrancyTests.t.sol` — reentrancy scenarios with attacker contracts
+- `test/EconomicAttackVectors.t.sol` — economic attack scenarios
+- `test/GovernanceAttackVectors.t.sol` — governance attack scenarios
+- `test/RaceConditionTests.t.sol` — race conditions and concurrent patterns
+- `test/UpgradeTests.t.sol` — upgrade paths and proxy upgrades
+
+### Fuzz / property-based tests
+
+- **Dedicated fuzz file**
+  - `test/VaultMathFuzz.t.sol` — fuzzing `mulDiv`, `percentageOf`, `scaleDecimals`, min/max, EUR/USD helpers, collateral ratio, yield distribution.
+- **Fuzz inside other suites**
+  - `test/QuantillonInvariants.t.sol` — `testFuzz_MintMaintainsSupplyConsistency`, `testFuzz_StakeUnstakeRoundtrip`
+  - `test/TimeProvider.t.sol` — time offset and advance fuzz
+  - `test/YieldValidationLibrary.t.sol`, `test/TokenValidationLibrary.t.sol` — validation fuzz
+  - Library test files (e.g. `FlashLoanProtectionLibrary.t.sol`, `PriceValidationLibrary.t.sol`) where applicable
+
+### Invariant tests
+
+- **`test/QuantillonInvariants.t.sol`**
+  - **Wired for Foundry invariant mode**: `setUp()` calls `targetContract(address(handler))` and `targetSelector(FuzzSelector({...}))` so Forge can drive randomized action sequences.
+  - **InvariantActionHandler** exposes `actionMint`, `actionRedeem`, `actionStake`, `actionUnstake` for fuzzed sequences.
+  - **15 invariant functions** covering: supply consistency, supply cap, collateralization, liquidation thresholds, yield distribution, yield shift params, governance power/params, emergency/pause state, access control, math consistency, cross-contract integration, gas, liquidation state. One invariant (`invariant_gasOptimization`) uses `vm.skip` with rationale; `test_allInvariants()` is non-view so it can call it.
+  - **Action-based / fuzz**: `test_ActionSequence_*`, `test_EmergencyPauseIntegrity`, `testFuzz_MintMaintainsSupplyConsistency`, `testFuzz_StakeUnstakeRoundtrip`.
 
 ---
 
@@ -145,13 +143,13 @@ All Solidity tests live under `test/` and use Foundry's Forge test runner.
 ### Core protocol contracts (`src/core/`)
 
 | Contract | Primary Test Files |
-|----------|-------------------|
+|----------|--------------------|
 | `QEUROToken.sol` | `QEUROToken.t.sol`, `QEUROTokenBasic.t.sol` |
 | `QTIToken.sol` | `QTIToken.t.sol` |
 | `stQEUROToken.sol` | `stQEUROToken.t.sol` |
-| `QuantillonVault.sol` | `QuantillonVault.t.sol`, `IntegrationTests.t.sol`, `HedgerVaultIntegration.t.sol` |
+| `QuantillonVault.sol` | `QuantillonVault.t.sol`, `IntegrationTests.t.sol`, `HedgerVaultIntegration.t.sol`, `LiquidationScenarios.t.sol`, `CombinedAttackVectors.t.sol` |
 | `UserPool.sol` | `UserPool.t.sol`, `IntegrationEdgeCases.t.sol`, `YieldStakingEdgeCases.t.sol` |
-| `HedgerPool.sol` | `HedgerPool.t.sol`, `HedgerVaultIntegration.t.sol`, `HedgerVaultRegression.t.sol` |
+| `HedgerPool.sol` | `HedgerPool.t.sol`, `HedgerVaultIntegration.t.sol`, `HedgerVaultRegression.t.sol`, `LiquidationScenarios.t.sol` |
 | `AaveVault.sol` | `AaveVault.t.sol`, `AaveIntegration.t.sol` |
 | `YieldShift.sol` | `YieldShift.t.sol`, `IntegrationTests.t.sol` |
 | `FeeCollector.sol` | `FeeCollector.t.sol` |
@@ -159,7 +157,7 @@ All Solidity tests live under `test/` and use Foundry's Forge test runner.
 ### Oracle layer (`src/oracle/`)
 
 | Contract | Primary Test Files |
-|----------|-------------------|
+|----------|--------------------|
 | `ChainlinkOracle.sol` | `ChainlinkOracle.t.sol`, `OracleEdgeCases.t.sol` |
 | `StorkOracle.sol` | `StorkOracle.t.sol` |
 | `OracleRouter.sol` | `OracleRouter.t.sol`, `OracleEdgeCases.t.sol` |
@@ -167,7 +165,7 @@ All Solidity tests live under `test/` and use Foundry's Forge test runner.
 ### Libraries (`src/libraries/`)
 
 | Library | Primary Test Files |
-|---------|-------------------|
+|---------|--------------------|
 | `VaultMath.sol` | `VaultMath.t.sol`, `VaultMathFuzz.t.sol` |
 | `FlashLoanProtectionLibrary.sol` | `FlashLoanProtectionLibrary.t.sol` |
 | `TreasuryRecoveryLibrary.sol` | `TreasuryRecoveryLibrary.t.sol` |
@@ -182,9 +180,9 @@ Other libraries are exercised indirectly via core contract tests.
 
 ## How Tests Are Executed Locally
 
-- **Global test run**
+- **Full test run**
   ```bash
-  make test  # or: forge test
+  make test   # or: forge test
   ```
 
 - **Coverage**
@@ -192,14 +190,14 @@ Other libraries are exercised indirectly via core contract tests.
   make coverage
   ```
 
-- **Selective / targeted runs**
+- **Targeted runs**
   ```bash
   forge test --match-contract QuantillonVault
   forge test --match-test testFuzz_
   forge test --match-contract IntegrationTests -vvv
   ```
 
-- **Security and auxiliary checks**
+- **Security and auxiliary**
   ```bash
   make slither
   make mythril
@@ -211,47 +209,38 @@ Other libraries are exercised indirectly via core contract tests.
 
 ## How Tests Are Executed in CI
 
-- **GitHub Actions workflows**
-  - `quantillon-protocol-tests.yml`:
-    - **Triggers**: Push to `main`, PRs targeting `main`, nightly cron
-    - **test job**: Runs `make build` + `make test` on every push/PR
-    - **ci-heavy job** (nightly): Runs full `make ci` including Slither, NatSpec validation, gas analysis
-  - `forge-docs.yml`: Documentation generation only (no test execution)
+- **Makefile**
+  - Light path: `make build && make test`
+  - Full CI: `make ci` (build, test, slither, validate-natspec, gas-analysis, analyze-warnings, analyze-contract-sizes)
 
-- **CI commands**
-  - Light path (every push/PR): `make build && make test`
-  - Heavy path (nightly): `make ci`
+- **GitHub Actions**
+  - `.github/workflows/tests.yml` runs on push and pull_request to `main` and `master`: installs Foundry (`foundry-rs/foundry-toolchain@v1`), then `make build` and `make test`. Full checks (`make ci`) can be run locally or in a separate workflow.
 
 ---
 
-## Existing Testing Conventions and Patterns
+## Testing Conventions and Patterns
 
-- **Naming conventions**
+- **Naming**
   - Test files: `<ContractOrDomainName>.t.sol`
   - Test functions: `test_<Description>`, `testFuzz_<Description>`, `invariant_<Description>`
-  - All tests use standard `test_` prefix (no disabled `xtest_` functions remain)
+  - No disabled `xtest_` functions in the suite
 
-- **Test structure**
-  - `contract <Name> is Test { ... }`
-  - `setUp()` deploys implementations, proxies, mocks, and wires roles
-  - Deployment helpers: `_deployEssentialContracts`, `_setupEssentialRoles`, `deployFullProtocol`
-  - Section groupings with comment banners
+- **Structure**
+  - Test contracts inherit `Test` from `forge-std/Test.sol`
+  - `setUp()` deploys implementations, proxies, mocks, and assigns roles
+  - Helpers such as `_deployEssentialContracts`, `_setupEssentialRoles`, `deployFullProtocol` are used where appropriate
+  - Section comments used to group tests
 
-- **Assertion and logging style**
+- **Assertions and logging**
   - Assertions: `assertEq`, `assertGt`, `assertGe`, `assertLe`, `assertTrue`, `assertFalse`, `assertApproxEqRel`
-  - Logging: `console.log` for step-by-step tracing in integration tests
+  - `console.log` used for step-by-step tracing in integration tests when useful
 
-- **Proxy and upgradeability patterns**
-  - Tests deploy `ERC1967Proxy` with initialization calldata
-  - Validate role assignments, initializer restrictions, upgrade paths
+- **Proxy and upgradeability**
+  - Tests deploy `ERC1967Proxy` with initializer calldata and validate roles, initializer restrictions, and upgrade paths
 
-- **Security test conventions**
-  - Mock attacker contracts (`ReentrancyAttacker`, `MaliciousToken`, `MaliciousQEURO`)
-  - `vm.mockCall` for external token simulation
-  - Scenarios grouped by attack class
+- **Security tests**
+  - Mock attacker contracts (e.g. reentrancy attacker, malicious tokens) and `vm.mockCall` for external simulations; scenarios grouped by attack class. Some scenarios use `vm.skip(true, "…")` with a short rationale when the test requires full protocol deployment or a harness that is not available; no bare `assertTrue(true, …)` placeholders remain.
 
-- **Fuzz and invariant conventions**
-  - Fuzz tests use `testFuzz_*` with typed parameters and `vm.assume` constraints
-  - Invariant tests use `invariant_*` naming
-  - `test_allInvariants()` runs all invariant checks in sequence
-  - `InvariantActionHandler` provides action-based fuzz testing interface
+- **Fuzz and invariants**
+  - Fuzz: `testFuzz_*` with typed parameters and `vm.assume` where needed
+  - Invariants: `invariant_*` naming; `InvariantActionHandler` used as the target for Foundry invariant fuzzing with `targetContract` and `targetSelector` in `setUp()`

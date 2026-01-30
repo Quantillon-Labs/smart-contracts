@@ -2046,10 +2046,8 @@ contract QTITokenTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testSecurity_MEVProtectionForGovernance_ShouldBeProtected() public pure {
-        // TODO: Implement MEV protection tests after contract functions are updated
-        // This test is temporarily disabled due to missing contract functions
-        assertTrue(true, "MEV protection test placeholder");
+    function testSecurity_MEVProtectionForGovernance_ShouldBeProtected() public {
+        vm.skip(true, "MEV protection tests pending contract MEV hooks");
     }
 
     /**
@@ -2064,10 +2062,8 @@ contract QTITokenTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testSecurity_MEVProtectionPreventsImmediateExecution_ShouldPreventExecution() public pure {
-        // TODO: Implement MEV protection tests after contract functions are updated
-        // This test is temporarily disabled due to missing contract functions
-        assertTrue(true, "MEV protection test placeholder");
+    function testSecurity_MEVProtectionPreventsImmediateExecution_ShouldPreventExecution() public {
+        vm.skip(true, "MEV protection tests pending contract MEV hooks");
     }
 
     /**
@@ -2082,10 +2078,8 @@ contract QTITokenTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testSecurity_ExecutionHashVerification_ShouldPreventUnauthorizedExecution() public pure {
-        // TODO: Implement MEV protection tests after contract functions are updated
-        // This test is temporarily disabled due to missing contract functions
-        assertTrue(true, "MEV protection test placeholder");
+    function testSecurity_ExecutionHashVerification_ShouldPreventUnauthorizedExecution() public {
+        vm.skip(true, "MEV protection tests pending contract MEV hooks");
     }
 }
 

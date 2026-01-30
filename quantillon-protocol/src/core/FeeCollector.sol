@@ -130,6 +130,18 @@ contract FeeCollector is
         _;
     }
 
+    /**
+     * @notice Reverts if caller is not an authorized fee source (governance, treasury, or whitelisted)
+     * @dev Used by onlyFeeSource modifier; checks GOVERNANCE_ROLE, TREASURY_ROLE, or _isAuthorizedFeeSource
+     * @custom:security Access control only; no state change
+     * @custom:validation Caller must have fee-source role or be whitelisted
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors NotAuthorized if caller not authorized
+     * @custom:reentrancy No external calls
+     * @custom:access Internal; used by modifier
+     * @custom:oracle None
+     */
     function _onlyFeeSource() internal view {
         if (!hasRole(GOVERNANCE_ROLE, msg.sender) &&
             !hasRole(TREASURY_ROLE, msg.sender) &&

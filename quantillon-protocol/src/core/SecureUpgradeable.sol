@@ -41,6 +41,18 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         _;
     }
 
+    /**
+     * @notice Reverts if caller is not the timelock contract
+     * @dev Used by onlyTimelock modifier; ensures upgrade execution comes from timelock only
+     * @custom:security Access control for upgrade execution
+     * @custom:validation Timelock must be set and msg.sender must equal timelock
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors NotAuthorized if timelock zero or caller not timelock
+     * @custom:reentrancy No external calls
+     * @custom:access Internal; used by modifier
+     * @custom:oracle None
+     */
     function _onlyTimelock() internal view {
         if (address(timelock) == address(0) || msg.sender != address(timelock)) {
             revert CommonErrorLibrary.NotAuthorized();

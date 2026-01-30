@@ -510,16 +510,9 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_yieldDistributionIntegrity() public pure {
-        // Verify yield distribution integrity
-        // Note: This test is simplified when YieldShift and stQEURO are not deployed
-        // In a full deployment, this would verify:
-        // - Total yield distributed ≤ total yield received
-        // - stQEURO exchange rate consistency (95% - 105%)
-        // - Yield distribution fairness
-        
-        // For now, we verify the structural integrity
-        assertTrue(true, "Yield distribution integrity check passed");
+    function invariant_yieldDistributionIntegrity() public view {
+        // Structural check: yield distribution bounds (full check in IntegrationTests / YieldShift tests)
+        assertTrue(address(yieldShift) != address(0), "YieldShift deployed");
     }
     
     /**
@@ -534,16 +527,9 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_yieldShiftParameters() public pure {
-        // Verify yield shift parameters are properly configured
-        // Note: This test is simplified when YieldShift is not deployed
-        // In a full deployment, this would verify:
-        // - Base yield shift ≤ max yield shift
-        // - Max yield shift ≤ 100%
-        // - Yield shift parameters are reasonable
-        
-        // For now, we verify the structural integrity
-        assertTrue(true, "Yield shift parameters check passed");
+    function invariant_yieldShiftParameters() public view {
+        // Structural check: YieldShift deployed (parameter bounds in YieldValidationLibrary tests)
+        assertTrue(address(yieldShift) != address(0), "YieldShift deployed");
     }
     
     // =============================================================================
@@ -643,16 +629,11 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_pauseStateConsistency() public pure {
-        // Verify pause state consistency across contracts
-        // Note: This test is simplified when Oracle is not deployed
-        // In a full deployment, this would verify:
-        // - Pause states are consistent with emergency conditions
-        // - Oracle failures trigger appropriate pause mechanisms
-        // - Emergency pause functionality works correctly
-        
-        // For now, we verify the structural integrity
-        assertTrue(true, "Pause state consistency check passed");
+    function invariant_pauseStateConsistency() public view {
+        // Pause state consistency: vault and hedgerPool both have pause state
+        assertTrue(address(vault) != address(0) && address(hedgerPool) != address(0), "Contracts deployed");
+        vault.paused();
+        hedgerPool.paused();
     }
     
 
@@ -797,13 +778,9 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function invariant_gasOptimization() public pure {
-        // Check that storage reads are optimized
-        // Check that loops are bounded
-        // Check that expensive operations are minimized
-        
-        // This is a structural check - actual gas usage depends on operations
-        assertTrue(true, "Gas optimization checks passed");
+    function invariant_gasOptimization() public {
+        // Structural check; actual gas usage is environment-dependent (see make gas-analysis)
+        vm.skip(true, "Gas optimization is structural; use make gas-analysis for measurements");
     }
     
     // =============================================================================
@@ -822,7 +799,7 @@ contract QuantillonInvariants is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_allInvariants() public view {
+    function test_allInvariants() public {
         invariant_totalSupplyConsistency();
         invariant_supplyCapRespect();
         invariant_governancePowerConsistency();

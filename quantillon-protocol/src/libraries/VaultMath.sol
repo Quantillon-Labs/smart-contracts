@@ -83,6 +83,14 @@ library VaultMath {
      * @param toDecimals Target decimal places
      * @return scaledValue Scaled value with proper rounding
      * @dev Used for converting between token precisions (e.g., USDC 6 decimals to 18 decimals)
+     * @custom:security Pure; no overflow for typical decimals
+     * @custom:validation fromDecimals/toDecimals are uint8
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal library
+     * @custom:oracle None
      */
     function scaleDecimals(
         uint256 value,
@@ -109,9 +117,18 @@ library VaultMath {
 
     /**
      * @notice Calculate minimum value between two numbers
+     * @dev Returns the smaller of a and b
      * @param a First number
      * @param b Second number
      * @return Minimum value
+     * @custom:security Pure; no overflow
+     * @custom:validation None
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal library
+     * @custom:oracle None
      */
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
@@ -119,9 +136,18 @@ library VaultMath {
 
     /**
      * @notice Calculate maximum value between two numbers
+     * @dev Returns the larger of a and b
      * @param a First number
      * @param b Second number
      * @return Maximum value
+     * @custom:security Pure; no overflow
+     * @custom:validation None
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal library
+     * @custom:oracle None
      */
     function max(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a : b;
@@ -129,9 +155,18 @@ library VaultMath {
 
     /**
      * @notice Convert EUR amount to USD using exchange rate
+     * @dev usdAmount = eurAmount * eurUsdRate / PRECISION
      * @param eurAmount Amount in EUR (18 decimals)
      * @param eurUsdRate EUR/USD exchange rate (18 decimals)
      * @return usdAmount Amount in USD (18 decimals)
+     * @custom:security Uses mulDiv; no division by zero if rate > 0
+     * @custom:validation Caller must ensure eurUsdRate > 0
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal library
+     * @custom:oracle Rate passed in; no live oracle
      */
     function eurToUsd(
         uint256 eurAmount,
@@ -142,9 +177,18 @@ library VaultMath {
 
     /**
      * @notice Convert USD amount to EUR using exchange rate
+     * @dev eurAmount = usdAmount * PRECISION / eurUsdRate
      * @param usdAmount Amount in USD (18 decimals)
      * @param eurUsdRate EUR/USD exchange rate (18 decimals)
      * @return eurAmount Amount in EUR (18 decimals)
+     * @custom:security Uses mulDiv; reverts if eurUsdRate is zero
+     * @custom:validation Caller must ensure eurUsdRate > 0
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors DivisionByZero if eurUsdRate is 0
+     * @custom:reentrancy No external calls
+     * @custom:access Internal library
+     * @custom:oracle Rate passed in; no live oracle
      */
     function usdToEur(
         uint256 usdAmount,
@@ -159,6 +203,14 @@ library VaultMath {
      * @param debtValue Total debt value in USD
      * @return ratio Collateralization ratio in 18 decimals (e.g., 1.5e18 = 150%)
      * @dev Returns type(uint256).max when debtValue is zero (infinite ratio)
+     * @custom:security Pure; no overflow for typical values
+     * @custom:validation debtValue 0 returns max
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal library
+     * @custom:oracle None
      */
     function calculateCollateralRatio(
         uint256 collateralValue,
@@ -178,6 +230,14 @@ library VaultMath {
      * @return userYield Yield allocated to QEURO users
      * @return hedgerYield Yield allocated to hedgers
      * @dev Reverts with InvalidParameter if yieldShiftBps exceeds BASIS_POINTS
+     * @custom:security Pure; hedgerYield + userYield = totalYield
+     * @custom:validation yieldShiftBps <= BASIS_POINTS
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors InvalidParameter if yieldShiftBps > BASIS_POINTS
+     * @custom:reentrancy No external calls
+     * @custom:access Internal library
+     * @custom:oracle None
      */
     function calculateYieldDistribution(
         uint256 totalYield,
@@ -191,10 +251,19 @@ library VaultMath {
 
     /**
      * @notice Check if a value is within a certain percentage of another value
+     * @dev difference <= percentageOf(larger, toleranceBps)
      * @param value1 First value
      * @param value2 Second value
      * @param toleranceBps Tolerance in basis points
      * @return isWithinTolerance Whether values are within tolerance
+     * @custom:security Pure; uses percentageOf
+     * @custom:validation toleranceBps <= MAX_PERCENTAGE implied by percentageOf
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal library
+     * @custom:oracle None
      */
     function isWithinTolerance(
         uint256 value1,

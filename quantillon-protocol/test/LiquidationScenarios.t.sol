@@ -32,6 +32,7 @@ contract LiquidationScenarios is IntegrationTests {
     // With 500 USDC hedger + 10k user = 10.5k collateral
     // At 2.0 EUR/USD, backing requirement = ~18k, so CR < 101%
     uint256 constant SMALL_HEDGER_DEPOSIT = 500 * 1e6; // 500 USDC
+    address public user2 = address(0x10);
 
     /**
      * @notice Override setUp to use a smaller hedger deposit for liquidation testing
@@ -45,8 +46,12 @@ contract LiquidationScenarios is IntegrationTests {
 
         // Deploy mock Chainlink price feeds
         eurUsdFeed = new MockAggregatorV3(8);
+        // casting to int256 is safe: EUR_USD_PRICE is a test constant within int256 range
+        // forge-lint: disable-next-line(unsafe-typecast)
         eurUsdFeed.setPrice(int256(EUR_USD_PRICE));
         usdcUsdFeed = new MockAggregatorV3(8);
+        // casting to int256 is safe: USDC_USD_PRICE is a test constant within int256 range
+        // forge-lint: disable-next-line(unsafe-typecast)
         usdcUsdFeed.setPrice(int256(USDC_USD_PRICE));
 
         // Deploy TimeProvider
@@ -251,10 +256,8 @@ contract LiquidationScenarios is IntegrationTests {
      * @notice Override inherited test - not applicable with liquidation-focused setup
      * @dev This test is already covered in IntegrationTests with the standard setup
      */
-    function test_Integration_OracleExtremePrice_RevertsMint() public pure override {
-        // Skip - this test uses different setup assumptions that don't apply here
-        // The original test is covered by IntegrationTests
-        assertTrue(true, "Test skipped - covered by IntegrationTests");
+    function test_Integration_OracleExtremePrice_RevertsMint() public override {
+        vm.skip(true, "Covered by IntegrationTests with standard setup");
     }
 
     /**
@@ -284,5 +287,114 @@ contract LiquidationScenarios is IntegrationTests {
         vm.expectRevert();
         vault.redeemQEURO(qeuroBal, 0);
         vm.stopPrank();
+    }
+
+    /**
+     * @notice Partial redemption in liquidation mode: user redeems only part of QEURO
+     * @dev Pro-rata USDC out; vault and HedgerPool state consistent
+     */
+    function test_LiquidationMode_PartialRedemption() public {
+        vm.startPrank(user1);
+        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+        (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+        uint256 expectedQEURO = (DEPOSIT_AMOUNT * 1e30) / eurPrice;
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
+        uint256 qeuroBal = qeuroToken.balanceOf(user1);
+        vm.stopPrank();
+
+        eurUsdFeed.setPrice(int256(2.0e8));
+        vm.prank(admin);
+        oracle.setPrices(2.0e18, 1e18);
+
+        (bool isInLiquidation,,,) = vault.getLiquidationStatus();
+        assertTrue(isInLiquidation, "Protocol should be in liquidation mode");
+
+        uint256 hedgerMarginBefore = hedgerPool.totalMargin();
+        uint256 redeemHalf = qeuroBal / 2;
+
+        vm.startPrank(user1);
+        qeuroToken.approve(address(vault), redeemHalf);
+        uint256 usdcBefore = mockUSDC.balanceOf(user1);
+        vault.redeemQEURO(redeemHalf, 0);
+        vm.stopPrank();
+
+        uint256 usdcReceived = mockUSDC.balanceOf(user1) - usdcBefore;
+        assertGt(usdcReceived, 0, "User should receive USDC for partial redeem");
+        assertLe(hedgerPool.totalMargin(), hedgerMarginBefore, "Hedger margin should decrease or stay same");
+    }
+
+    /**
+     * @notice Multiple redemptions in same block: two users redeem in liquidation mode
+     * @dev Both succeed; supply and margin state consistent
+     */
+    function test_LiquidationMode_MultipleRedemptionsSameBlock() public {
+        vm.prank(address(this));
+        mockUSDC.mint(user2, INITIAL_USDC_AMOUNT);
+
+        vm.startPrank(user1);
+        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+        (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+        uint256 expectedQEURO = (DEPOSIT_AMOUNT * 1e30) / eurPrice;
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+        (eurPrice, isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+        expectedQEURO = (DEPOSIT_AMOUNT * 1e30) / eurPrice;
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
+        vm.stopPrank();
+
+        eurUsdFeed.setPrice(int256(2.0e8));
+        vm.prank(admin);
+        oracle.setPrices(2.0e18, 1e18);
+
+        uint256 supplyBefore = qeuroToken.totalSupply();
+
+        vm.startPrank(user1);
+        uint256 bal1 = qeuroToken.balanceOf(user1);
+        qeuroToken.approve(address(vault), bal1);
+        vault.redeemQEURO(bal1, 0);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        uint256 bal2 = qeuroToken.balanceOf(user2);
+        qeuroToken.approve(address(vault), bal2);
+        vault.redeemQEURO(bal2, 0);
+        vm.stopPrank();
+
+        assertEq(qeuroToken.totalSupply(), supplyBefore - bal1 - bal2, "Supply should decrease by both redemptions");
+    }
+
+    /**
+     * @notice CR boundary: just above 101% → not in liquidation; just below → in liquidation
+     * @dev Set oracle price so CR crosses 101% threshold
+     */
+    function test_LiquidationMode_CRBoundary() public {
+        vm.startPrank(user1);
+        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+        (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+        uint256 expectedQEURO = (DEPOSIT_AMOUNT * 1e30) / eurPrice;
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
+        vm.stopPrank();
+
+        // Price ~1.13: CR just above 101% (collateral 10.5k, backing ~10.4k)
+        eurUsdFeed.setPrice(int256(1.13e8));
+        vm.prank(admin);
+        oracle.setPrices(1.13e18, 1e18);
+        (bool inLiq1,,,) = vault.getLiquidationStatus();
+        // At 1.13, backing = 10k/1.10*1.13 = ~10.27k; CR = 10.5/10.27 > 1.01
+        assertFalse(inLiq1, "CR just above 101% should not be in liquidation");
+
+        // Price 1.15: CR drops below 101%
+        eurUsdFeed.setPrice(int256(1.15e8));
+        vm.prank(admin);
+        oracle.setPrices(1.15e18, 1e18);
+        (bool inLiq2,,,) = vault.getLiquidationStatus();
+        assertTrue(inLiq2, "CR just below 101% should be in liquidation");
     }
 }

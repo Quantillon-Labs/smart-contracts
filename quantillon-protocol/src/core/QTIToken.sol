@@ -840,10 +840,19 @@ contract QTIToken is
 
     /**
      * @notice Unlocks one user's lock and transfers tokens (used by batchUnlock to reduce stack depth)
+     * @dev Clears lock state, transfers QTI from contract to user, emits TokensUnlocked and VotingPowerUpdated
      * @param user Address to unlock for
      * @param currentTimestamp Current time from TimeProvider
      * @return amount Amount unlocked
      * @return oldVotingPower Voting power removed
+     * @custom:security Lock expiry and non-zero amount checked; internal only
+     * @custom:validation unlockTime <= currentTimestamp, lockInfo.amount > 0
+     * @custom:state-changes locks[user], _transfer
+     * @custom:events TokensUnlocked, VotingPowerUpdated
+     * @custom:errors LockNotExpired, NothingToUnlock
+     * @custom:reentrancy ERC20 transfer; caller expected under nonReentrant
+     * @custom:access Internal
+     * @custom:oracle None; timestamp passed in
      */
     function _processOneBatchUnlock(address user, uint256 currentTimestamp)
         internal
@@ -1159,7 +1168,8 @@ contract QTIToken is
 
         // Execute the proposal data
         if (proposal.data.length > 0) {
-            (bool success, ) = address(this).call(proposal.data); // slither-disable-line low-level-calls
+            // slither-disable-next-line low-level-calls
+            (bool success, ) = address(this).call(proposal.data);
             if (!success) {
                 // Use Address.verifyCallResult to bubble up revert reason without assembly
                 _verifyCallResult(success);

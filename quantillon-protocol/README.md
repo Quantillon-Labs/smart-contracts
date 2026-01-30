@@ -104,6 +104,8 @@ make test
 make slither
 ```
 
+**Testing conventions:** Run `make test` before pushing; run `make ci` for full checks (build, test, Slither, NatSpec, gas and size analysis). CI (GitHub Actions) runs `make build && make test` on push and pull requests to main. Use `test_*`, `testFuzz_*`, and `invariant_*` naming; avoid new `assertTrue(true, ...)` placeholders—convert or explicitly skip with rationale. See [UNIT_TESTING_OVERVIEW.md](UNIT_TESTING_OVERVIEW.md) for test structure and [TESTING_IMPROVEMENT_PLAN.md](TESTING_IMPROVEMENT_PLAN.md) for gaps and recommendations.
+
 ## 🚀 Deployment
 
 ### 🔐 Multi-Phase Deployment Strategy

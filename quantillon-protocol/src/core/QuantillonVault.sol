@@ -881,7 +881,16 @@ contract QuantillonVault is
 
     /**
      * @notice Ensures vault has sufficient USDC for payout, withdrawing from Aave if needed
+     * @dev Withdraws from Aave to cover deficit; reverts if totalAvailable < usdcAmount
      * @param usdcAmount Amount of USDC needed
+     * @custom:security Internal; may call Aave withdrawal
+     * @custom:validation totalAvailable >= usdcAmount after withdrawal
+     * @custom:state-changes totalUsdcHeld, totalUsdcInAave via _withdrawUsdcFromAave
+     * @custom:events Via _withdrawUsdcFromAave
+     * @custom:errors InsufficientBalance if cannot meet usdcAmount
+     * @custom:reentrancy External call to Aave; caller in CEI context
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _ensureSufficientUsdcForPayout(uint256 usdcAmount) internal {
         uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
@@ -899,9 +908,18 @@ contract QuantillonVault is
 
     /**
      * @notice Calculates liquidation fees if enabled
+     * @dev fee = usdcPayout * redemptionFee / 1e18 when TAKES_FEES_DURING_LIQUIDATION; else 0
      * @param usdcPayout Gross payout amount
      * @return fee Fee amount (0 if fees disabled)
      * @return netPayout Net payout after fees
+     * @custom:security View only
+     * @custom:validation Uses redemptionFee and TAKES_FEES_DURING_LIQUIDATION
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy None
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _calculateLiquidationFees(uint256 usdcPayout) internal view returns (uint256 fee, uint256 netPayout) {
         if (TAKES_FEES_DURING_LIQUIDATION) {
@@ -915,8 +933,17 @@ contract QuantillonVault is
 
     /**
      * @notice Notifies hedger pool of liquidation redemption for margin adjustment
+     * @dev Calls hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply); no-op if hedgerPool zero or no margin
      * @param qeuroAmount Amount of QEURO being redeemed
      * @param totalSupply Total QEURO supply for pro-rata calculation
+     * @custom:security Try/catch; failure does not revert redemption
+     * @custom:validation Skips if hedgerPool is zero or totalMargin is 0
+     * @custom:state-changes HedgerPool state via recordLiquidationRedeem
+     * @custom:events Via HedgerPool
+     * @custom:errors Swallowed by try/catch
+     * @custom:reentrancy External call to HedgerPool
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _notifyHedgerPoolLiquidation(uint256 qeuroAmount, uint256 totalSupply) internal {
         if (address(hedgerPool) == address(0)) return;
@@ -927,7 +954,16 @@ contract QuantillonVault is
 
     /**
      * @notice Transfers liquidation fees to fee collector if applicable
+     * @dev Approves USDC to FeeCollector and calls collectFees; no-op if fees disabled or fee is 0
      * @param fee Fee amount to transfer
+     * @custom:security Requires approve and collectFees to succeed
+     * @custom:validation TAKES_FEES_DURING_LIQUIDATION and fee > 0
+     * @custom:state-changes USDC balance of feeCollector
+     * @custom:events Via FeeCollector
+     * @custom:errors TokenTransferFailed if approve fails
+     * @custom:reentrancy External call to FeeCollector
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _transferLiquidationFees(uint256 fee) internal {
         if (!TAKES_FEES_DURING_LIQUIDATION || fee == 0) return;

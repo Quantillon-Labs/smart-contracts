@@ -1224,9 +1224,8 @@ contract ChainlinkOracleTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testHealthMonitoring_WithHealthyOracle_ShouldReturnHealthyStatus() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Oracle health test placeholder");
+    function testHealthMonitoring_WithHealthyOracle_ShouldReturnHealthyStatus() public {
+        vm.skip(true, "Placeholder; interface mismatch; covered by OracleEdgeCases");
     }
     
     /**
@@ -1379,9 +1378,8 @@ contract ChainlinkOracleTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testHealthMonitoring_WithValidParameters_ShouldCheckPriceFeedConnectivity() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Price feed connectivity test placeholder");
+    function testHealthMonitoring_WithValidParameters_ShouldCheckPriceFeedConnectivity() public {
+        vm.skip(true, "Placeholder; interface mismatch; covered by OracleEdgeCases");
     }
 
     // =============================================================================

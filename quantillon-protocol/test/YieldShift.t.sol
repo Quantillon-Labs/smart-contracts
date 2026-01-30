@@ -654,9 +654,8 @@ contract YieldShiftTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testYieldDistribution_WithValidParameters_ShouldUpdateYieldDistribution() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Yield distribution update test placeholder");
+    function testYieldDistribution_WithValidParameters_ShouldUpdateYieldDistribution() public {
+        vm.skip(true, "Placeholder; interface mismatch; covered by YieldValidationLibrary / IntegrationTests");
     }
     
     /**
@@ -1051,9 +1050,8 @@ contract YieldShiftTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testPoolMetrics_WithValidParameters_ShouldCalculateOptimalYieldShift() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Optimal yield shift calculation test placeholder");
+    function testPoolMetrics_WithValidParameters_ShouldCalculateOptimalYieldShift() public {
+        vm.skip(true, "Placeholder; interface mismatch; covered by YieldValidationLibrary / IntegrationTests");
     }
 
     // =============================================================================
@@ -1552,9 +1550,8 @@ contract YieldShiftTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testViewFunctions_WithValidParameters_ShouldGetHistoricalYieldShift() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Historical yield shift test placeholder");
+    function testViewFunctions_WithValidParameters_ShouldGetHistoricalYieldShift() public {
+        vm.skip(true, "Placeholder; interface mismatch; covered by YieldValidationLibrary / IntegrationTests");
     }
 
     // =============================================================================

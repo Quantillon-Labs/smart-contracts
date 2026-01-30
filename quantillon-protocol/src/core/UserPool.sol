@@ -498,7 +498,24 @@ contract UserPool is
         totalYieldDistributed = 0;
     }
 
-    /// @dev Sets contract references to reduce stack depth in initialize (via_ir stack-too-deep fix)
+    /**
+     * @notice Sets core contract references after initialization to reduce stack depth
+     * @dev Called from initialize to avoid stack-too-deep; assigns qeuro, usdc, vault, oracle, yieldShift, treasury
+     * @param _qeuro QEURO token address
+     * @param _usdc USDC token address
+     * @param _vault QuantillonVault address
+     * @param _oracle Oracle address
+     * @param _yieldShift YieldShift address
+     * @param _treasury Treasury address
+     * @custom:security Internal; only callable during init
+     * @custom:validation Addresses set by initializer
+     * @custom:state-changes Updates contract reference state
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal; only from initialize
+     * @custom:oracle None
+     */
     function _setUserPoolContractReferences(
         address _qeuro,
         address _usdc,

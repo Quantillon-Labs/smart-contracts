@@ -103,4 +103,36 @@ contract CombinedAttackVectors is IntegrationTests {
         uint256 usdcReceived = mockUSDC.balanceOf(user1) - userUsdcBefore;
         assertLe(usdcReceived, vaultUsdcBefore, "User cannot receive more than vault had");
     }
+
+    /**
+     * @notice Redeem path with extreme oracle price: deviation causes revert or bounded output
+     * @dev User mints at normal price; oracle is then set to extreme (e.g. very low EUR/USD);
+     *      redeem with tight slippage should revert (ExcessiveSlippage or invalid oracle).
+     */
+    function test_Combined_RedeemWithExtremePrice_RevertsOrBounded() public {
+        vm.prank(admin);
+        vault.setDevMode(false);
+
+        vm.startPrank(user1);
+        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+        (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+        uint256 expectedQEURO = (DEPOSIT_AMOUNT * 1e30) / eurPrice;
+        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
+        uint256 qeuroBal = qeuroToken.balanceOf(user1);
+        vm.stopPrank();
+
+        // Set extreme low EUR price (e.g. 0.50 USD per EUR)
+        eurUsdFeed.setPrice(int256(0.50e8));
+        vm.prank(admin);
+        oracle.setPrices(0.50e18, 1e18);
+
+        vm.startPrank(user1);
+        qeuroToken.approve(address(vault), qeuroBal);
+        // minOut unrealistically high so redeem reverts (ExcessiveSlippage)
+        uint256 unreasonableMinOut = 100_000 * 1e6; // 100k USDC minimum
+        vm.expectRevert();
+        vault.redeemQEURO(qeuroBal, unreasonableMinOut);
+        vm.stopPrank();
+    }
 }

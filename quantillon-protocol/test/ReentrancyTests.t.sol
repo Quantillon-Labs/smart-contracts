@@ -419,12 +419,10 @@ contract ReentrancyTests is Test {
      * @dev Simulates reentrancy attack during ETH transfers
      */
     function test_Reentrancy_ETHTransfer_Protected() public {
-        // Setup attacker to try reentrancy
         vm.deal(address(attacker), 10 ether);
-
-        // Even if a contract sends ETH, reentrancy should be blocked
-        // by ReentrancyGuard on state-changing functions
-        assertTrue(true, "ETH transfer reentrancy protection exists");
+        // Protocol is ERC20-based; no payable/receive path that sends ETH during user operations.
+        // ETH reentrancy surface not applicable; ReentrancyGuard still protects state-changing calls.
+        vm.skip(true, "Protocol does not send ETH during user ops; ETH reentrancy surface not applicable");
     }
 
     // =============================================================================
@@ -555,33 +553,12 @@ contract ReentrancyTests is Test {
      * during an external call. This test verifies state updates happen before external calls.
      */
     function test_Reentrancy_ReadOnly_Protected() public {
-        // This test verifies that state is consistent when view functions are called
-        // during an external operation. The protection is achieved by:
-        // 1. Following CEI (Checks-Effects-Interactions) pattern
-        // 2. Updating state before making external calls
+        // A full deposit here would require vault, oracle, and QEURO mocks (userPoolWithMaliciousToken
+        // uses mock addresses; deposit() calls vault.mintQEURO and oracle.getEurUsdPrice and reverts).
+        // CEI and state consistency are verified in UserPool.deposit flow and IntegrationTests.
+        vm.skip(true, "Read-only reentrancy test requires full protocol (vault, oracle); CEI verified in deposit flow and IntegrationTests");
 
-        // Setup: create a situation where we can observe state during a callback
-        uint256 depositAmount = 1_000 ether;
-        maliciousToken.mint(user1, depositAmount * 2);
-
-        // Get initial pool state
-        (, , , uint256 initialTotalDeposits, , , ) = userPoolWithMaliciousToken.getUserInfo(user1);
-
-        // Verify initial state is zero
-        assertEq(initialTotalDeposits, 0, "Initial deposits should be zero");
-
-        // Verify that the pool's state tracking remains consistent
-        // even when external calls are made during operations
-        uint256 poolBalanceBefore = maliciousToken.balanceOf(address(userPoolWithMaliciousToken));
-
-        // The MaliciousToken callback is disabled for this test to verify normal operation
-        maliciousToken.disableCallback();
-
-        // Verify pool balance tracking is consistent
-        assertEq(poolBalanceBefore, 0, "Pool should have no tokens initially");
-
-        // State consistency check: pool tracks its own token balance correctly
-        assertTrue(true, "Read-only reentrancy protection verified through CEI pattern");
+        assertTrue(address(userPoolWithMaliciousToken) != address(0), "Pool deployed");
     }
 
     // =============================================================================

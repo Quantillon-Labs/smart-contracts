@@ -233,16 +233,64 @@ contract RaceConditionTests is Test {
     }
 
     /**
-     * @notice Test concurrent withdrawals from multiple users
-     * @dev Verifies withdrawals are processed correctly
+     * @notice Test two users enter then exit in sequence; state consistent after both exits
+     * @dev Simulates concurrent-withdrawal scenario with HedgerPool: user1 enter/exit, user2 enter/exit, total margin 0
      */
-    function test_RaceCondition_ConcurrentWithdrawals() public pure {
-        // Multiple users withdrawing simultaneously should:
-        // 1. Each withdrawal should reduce only that user's balance
-        // 2. Insufficient balance should fail atomically
-        // 3. Total pool balance should remain consistent
+    function test_RaceCondition_ConcurrentWithdrawals() public {
+        vm.mockCall(
+            mockUSDC,
+            abi.encodeWithSelector(IERC20.transferFrom.selector, user2, mockVault, 3_000 * USDC_PRECISION),
+            abi.encode(true)
+        );
+        uint256 amount1 = 5_000 * USDC_PRECISION;
+        uint256 amount2 = 3_000 * USDC_PRECISION;
 
-        assertTrue(true, "Concurrent withdrawal protection exists");
+        vm.prank(admin);
+        hedgerPool.setSingleHedger(user1);
+        vm.prank(user1);
+        uint256 pos1 = hedgerPool.enterHedgePosition(amount1, 5);
+        vm.roll(block.number + 600);
+        vm.prank(user1);
+        hedgerPool.exitHedgePosition(pos1);
+
+        vm.prank(admin);
+        hedgerPool.setSingleHedger(user2);
+        vm.prank(user2);
+        uint256 pos2 = hedgerPool.enterHedgePosition(amount2, 5);
+        vm.roll(block.number + 600);
+        vm.prank(user2);
+        hedgerPool.exitHedgePosition(pos2);
+
+        assertEq(hedgerPool.totalMargin(), 0, "Total margin 0 after both exits");
+        assertFalse(hedgerPool.hasActiveHedger(), "No active hedger after exits");
+    }
+
+    /**
+     * @notice Test pause during operation: user enters position, admin pauses, user exit reverts
+     * @dev Verifies whenNotPaused blocks exit/removeMargin after pause
+     */
+    function test_RaceCondition_PauseDuringOperation_ExitReverts() public {
+        vm.prank(admin);
+        hedgerPool.setSingleHedger(user1);
+        vm.prank(user1);
+        uint256 positionId = hedgerPool.enterHedgePosition(10_000 * USDC_PRECISION, 5);
+        vm.roll(block.number + 600);
+
+        // admin has EMERGENCY_ROLE from init; prank applies only to next call so use startPrank for pause/unpause
+        vm.startPrank(admin);
+        hedgerPool.pause();
+        vm.stopPrank();
+        assertTrue(hedgerPool.paused(), "HedgerPool should be paused");
+
+        vm.prank(user1);
+        vm.expectRevert();
+        hedgerPool.exitHedgePosition(positionId);
+
+        vm.prank(admin);
+        hedgerPool.unpause();
+        vm.prank(user1);
+        hedgerPool.exitHedgePosition(positionId);
+        assertEq(hedgerPool.totalMargin(), 0, "Exit succeeds after unpause");
     }
 
     /**
@@ -275,43 +323,23 @@ contract RaceConditionTests is Test {
      * @notice Test multiple liquidators targeting same position
      * @dev Only one should succeed
      */
-    function test_RaceCondition_MultipleLiquidators() public pure {
-        // When multiple liquidators try to liquidate same position:
-        // 1. Only one should succeed
-        // 2. Others should fail gracefully
-        // 3. No double liquidation should occur
-        // 4. Liquidator who succeeds gets the reward
-
-        assertTrue(true, "Multiple liquidator race protection exists");
+    function test_RaceCondition_MultipleLiquidators() public {
+        vm.skip(true, "Requires full protocol; see LiquidationScenarios / IntegrationTests");
     }
 
     /**
      * @notice Test liquidation vs margin addition race
      * @dev User adding margin while being liquidated
      */
-    function test_RaceCondition_LiquidationVsMarginAdd() public pure {
-        // If user adds margin in same block as liquidation:
-        // 1. If margin added first, liquidation might fail (healthy position)
-        // 2. If liquidation first, margin add might fail (position closed)
-        // 3. Outcome depends on transaction ordering
-
-        // Protection:
-        // - Atomic state checks
-        // - Clear ordering rules
-
-        assertTrue(true, "Liquidation vs margin race protection exists");
+    function test_RaceCondition_LiquidationVsMarginAdd() public {
+        vm.skip(true, "Requires full protocol; see LiquidationScenarios");
     }
 
     /**
      * @notice Test partial liquidation race conditions
      */
-    function test_RaceCondition_PartialLiquidation() public pure {
-        // Multiple partial liquidations on same position:
-        // 1. Each should reduce position proportionally
-        // 2. Sum should not exceed position size
-        // 3. Remaining position should stay consistent
-
-        assertTrue(true, "Partial liquidation race protection exists");
+    function test_RaceCondition_PartialLiquidation() public {
+        vm.skip(true, "Requires full protocol; see LiquidationScenarios");
     }
 
     // =============================================================================
@@ -322,37 +350,22 @@ contract RaceConditionTests is Test {
      * @notice Test yield claim race conditions
      * @dev Multiple users claiming yield simultaneously
      */
-    function test_RaceCondition_YieldClaim() public pure {
-        // When multiple users claim yield:
-        // 1. Each gets their proportional share
-        // 2. Total distributed <= total available
-        // 3. No double claiming possible
-
-        assertTrue(true, "Yield claim race protection exists");
+    function test_RaceCondition_YieldClaim() public {
+        vm.skip(true, "Requires full protocol; see IntegrationTests / YieldStakingEdgeCases");
     }
 
     /**
      * @notice Test yield distribution vs new deposit race
      */
-    function test_RaceCondition_YieldVsDeposit() public pure {
-        // When yield is distributed while new deposit comes in:
-        // 1. New depositor shouldn't get yield for time they weren't staked
-        // 2. Existing stakers get correct share
-        // 3. Time-weighted calculations handle this correctly
-
-        assertTrue(true, "Yield vs deposit race protection exists");
+    function test_RaceCondition_YieldVsDeposit() public {
+        vm.skip(true, "Requires full protocol; see IntegrationTests");
     }
 
     /**
      * @notice Test yield distribution timing boundary
      */
-    function test_RaceCondition_YieldDistributionTiming() public pure {
-        // Yield distributed at specific intervals:
-        // 1. Claims just before distribution get old yield
-        // 2. Claims just after get new yield
-        // 3. Boundary cases handle correctly
-
-        assertTrue(true, "Yield timing race protection exists");
+    function test_RaceCondition_YieldDistributionTiming() public {
+        vm.skip(true, "Requires full protocol; see YieldStakingEdgeCases / TimeBlockEdgeCases");
     }
 
     // =============================================================================
@@ -360,16 +373,30 @@ contract RaceConditionTests is Test {
     // =============================================================================
 
     /**
-     * @notice Test proposal creation race
-     * @dev Multiple proposals created simultaneously
+     * @notice Test proposal creation race - multiple proposals can coexist and each is executable
+     * @dev Propose two upgrades, approve both, warp past 48h, execute both; no cross-interference
      */
-    function test_RaceCondition_ProposalCreation() public pure {
-        // Multiple proposals created in same block:
-        // 1. Each gets unique ID
-        // 2. No ID collisions
-        // 3. All properly tracked
-
-        assertTrue(true, "Proposal creation race protection exists");
+    function test_RaceCondition_ProposalCreation() public {
+        address implA = address(0xA1);
+        address implB = address(0xB2);
+        vm.prank(admin);
+        timelock.proposeUpgrade(implA, "Upgrade A", 0);
+        vm.prank(admin);
+        timelock.proposeUpgrade(implB, "Upgrade B", 0);
+        vm.prank(admin);
+        timelock.approveUpgrade(implA);
+        vm.prank(signer1);
+        timelock.approveUpgrade(implA);
+        vm.prank(admin);
+        timelock.approveUpgrade(implB);
+        vm.prank(signer1);
+        timelock.approveUpgrade(implB);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        timelock.executeUpgrade(implA);
+        vm.prank(admin);
+        timelock.executeUpgrade(implB);
+        // Both proposals executed; no race between multiple proposals
     }
 
     /**
@@ -450,25 +477,15 @@ contract RaceConditionTests is Test {
      * @notice Test operations during price update
      * @dev Operations should use consistent price within transaction
      */
-    function test_RaceCondition_PriceUpdate() public pure {
-        // When price updates:
-        // 1. Operations in same tx should see consistent price
-        // 2. Price staleness checks prevent using old prices
-        // 3. Circuit breakers handle extreme price changes
-
-        assertTrue(true, "Price update race protection exists");
+    function test_RaceCondition_PriceUpdate() public {
+        vm.skip(true, "Requires full protocol with vault/oracle; see CombinedAttackVectors / OracleEdgeCases");
     }
 
     /**
      * @notice Test front-running price updates
      */
-    function test_RaceCondition_PriceFrontrunning() public pure {
-        // Attacker sees price update in mempool:
-        // 1. Tries to front-run with favorable transaction
-        // 2. Slippage protection limits profit
-        // 3. MEV protection mechanisms help
-
-        assertTrue(true, "Price frontrunning protection exists");
+    function test_RaceCondition_PriceFrontrunning() public {
+        vm.skip(true, "Requires full protocol; see CombinedAttackVectors");
     }
 
     // =============================================================================
@@ -476,29 +493,31 @@ contract RaceConditionTests is Test {
     // =============================================================================
 
     /**
-     * @notice Test block timestamp dependence
-     * @dev Miners can manipulate timestamp within bounds
+     * @notice Test block timestamp dependence - timelock enforces 48h delay regardless of warp
+     * @dev vm.warp before 48h: execute reverts; warp past 48h: execute succeeds
      */
-    function test_RaceCondition_TimestampManipulation() public pure {
-        // Block timestamp can be manipulated ~15 seconds
-        // Protocol should:
-        // 1. Not depend on precise timestamps for security
-        // 2. Use block numbers where appropriate
-        // 3. Have tolerance for timestamp variance
-
-        assertTrue(true, "Timestamp manipulation protection exists");
+    function test_RaceCondition_TimestampManipulation() public {
+        address newImpl = address(0x715);
+        vm.prank(admin);
+        timelock.proposeUpgrade(newImpl, "Timestamp test", 0);
+        vm.prank(admin);
+        timelock.approveUpgrade(newImpl);
+        vm.prank(signer1);
+        timelock.approveUpgrade(newImpl);
+        vm.warp(block.timestamp + 48 hours - 1);
+        vm.prank(admin);
+        vm.expectRevert();
+        timelock.executeUpgrade(newImpl);
+        vm.warp(block.timestamp + 2);
+        vm.prank(admin);
+        timelock.executeUpgrade(newImpl);
     }
 
     /**
      * @notice Test cooldown period race
      */
-    function test_RaceCondition_CooldownPeriod() public pure {
-        // When cooldown period ends:
-        // 1. Clear transition at boundary
-        // 2. Actions at exact boundary have defined behavior
-        // 3. Timestamp tolerance accounted for
-
-        assertTrue(true, "Cooldown race protection exists");
+    function test_RaceCondition_CooldownPeriod() public {
+        vm.skip(true, "Requires full protocol; see UserPool / HedgerPool tests");
     }
 
     // =============================================================================
@@ -508,25 +527,15 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test stake and unstake race
      */
-    function test_RaceCondition_StakeUnstake() public pure {
-        // Stake and unstake in same block:
-        // 1. Should have defined order behavior
-        // 2. Balances should be consistent
-        // 3. Rewards should be calculated correctly
-
-        assertTrue(true, "Stake/unstake race protection exists");
+    function test_RaceCondition_StakeUnstake() public {
+        vm.skip(true, "Requires full protocol; see IntegrationTests / stQEUROToken");
     }
 
     /**
      * @notice Test voting power snapshot race
      */
-    function test_RaceCondition_VotingPowerSnapshot() public pure {
-        // QTI voting power changes during proposal:
-        // 1. Snapshot at proposal creation time
-        // 2. Subsequent stake/unstake doesn't affect vote
-        // 3. Clear cutoff for power calculation
-
-        assertTrue(true, "Voting power snapshot race protection exists");
+    function test_RaceCondition_VotingPowerSnapshot() public {
+        vm.skip(true, "Requires full protocol; see QTIToken / GovernanceAttackVectors");
     }
 
     // =============================================================================
@@ -536,25 +545,15 @@ contract RaceConditionTests is Test {
     /**
      * @notice Test operations during upgrade
      */
-    function test_RaceCondition_DuringUpgrade() public pure {
-        // Operations submitted during upgrade:
-        // 1. May use old or new implementation
-        // 2. State should remain consistent
-        // 3. No funds should be lost
-
-        assertTrue(true, "Upgrade race protection exists");
+    function test_RaceCondition_DuringUpgrade() public {
+        vm.skip(true, "Requires full protocol; see UpgradeTests");
     }
 
     /**
      * @notice Test approval and upgrade execution race
      */
-    function test_RaceCondition_ApprovalExecution() public pure {
-        // Approval and execution in same block:
-        // 1. Approval must complete before execution
-        // 2. Can't execute without sufficient approvals
-        // 3. Ordering is enforced
-
-        assertTrue(true, "Approval/execution race protection exists");
+    function test_RaceCondition_ApprovalExecution() public {
+        vm.skip(true, "Requires full protocol; see TimelockUpgradeable tests");
     }
 
     // =============================================================================
@@ -609,34 +608,14 @@ contract RaceConditionTests is Test {
     /**
      * @notice Simulate complex multi-party race scenario
      */
-    function test_RaceCondition_ComplexScenario() public pure {
-        // Complex scenario:
-        // 1. User1 deposits
-        // 2. User2 withdraws
-        // 3. Liquidator1 tries to liquidate User3
-        // 4. User3 adds margin
-        // 5. Yield is distributed
-        // 6. Admin pauses contract
-        //
-        // All potentially in same block
-
-        // Each operation should:
-        // - Be atomic
-        // - Not corrupt state
-        // - Handle failures gracefully
-
-        assertTrue(true, "Complex race scenario protection exists");
+    function test_RaceCondition_ComplexScenario() public {
+        vm.skip(true, "Requires full protocol; see IntegrationTests / LiquidationScenarios");
     }
 
     /**
      * @notice Test that all critical operations are atomic
      */
-    function test_RaceCondition_AtomicityVerification() public pure {
-        // All critical operations should be atomic:
-        // - Either fully complete or fully revert
-        // - No partial state changes on failure
-        // - State is always consistent
-
-        assertTrue(true, "Atomicity verification passed");
+    function test_RaceCondition_AtomicityVerification() public {
+        vm.skip(true, "Requires full protocol; see IntegrationTests");
     }
 }

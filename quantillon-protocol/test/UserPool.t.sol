@@ -1233,9 +1233,8 @@ contract UserPoolTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldCalculateProjectedRewards() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Projected rewards calculation test placeholder");
+    function testView_WithValidParameters_ShouldCalculateProjectedRewards() public {
+        vm.skip(true, "Placeholder; interface mismatch; covered by UserPool / YieldStakingEdgeCases");
     }
     
     /**
@@ -1284,9 +1283,8 @@ contract UserPoolTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldGetPoolConfig() public pure {
-        // Placeholder test - actual function calls removed due to contract interface mismatch
-        assertTrue(true, "Pool config test placeholder");
+    function testView_WithValidParameters_ShouldGetPoolConfig() public {
+        vm.skip(true, "Placeholder; interface mismatch; getPoolConfiguration covered above");
     }
 
     // =============================================================================

@@ -76,6 +76,18 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         _;
     }
 
+    /**
+     * @notice Reverts if contract is in emergency mode
+     * @dev Used by whenNotEmergency modifier; blocks operations when emergencyMode is true
+     * @custom:security Prevents operations during emergency
+     * @custom:validation emergencyMode must be false
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors EmergencyModeActive if emergencyMode
+     * @custom:reentrancy No external calls
+     * @custom:access Internal; used by modifier
+     * @custom:oracle None
+     */
     function _whenNotEmergency() internal view {
         if (emergencyMode) revert CommonErrorLibrary.EmergencyModeActive();
     }
@@ -86,6 +98,19 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         _;
     }
 
+    /**
+     * @notice Reverts if time offset exceeds MAX_TIME_OFFSET (absolute value)
+     * @dev Used by validTimeOffset modifier; bounds allowed time manipulation
+     * @param offset Signed time offset in seconds
+     * @custom:security Bounds check only
+     * @custom:validation |offset| <= MAX_TIME_OFFSET
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors InvalidAmount if offset out of bounds
+     * @custom:reentrancy No external calls
+     * @custom:access Internal; used by modifier
+     * @custom:oracle None
+     */
     function _validTimeOffset(int256 offset) internal pure {
         // forge-lint: disable-next-line(unsafe-typecast)
         if (offset > 0 && uint256(offset) > MAX_TIME_OFFSET) {

@@ -54,12 +54,8 @@ contract VaultMathFuzz is Test {
      * @dev Note: vm.expectRevert doesn't work with internal pure functions as they are inlined.
      *      This test verifies the function behavior through try/catch pattern.
      */
-    function testFuzz_MulDiv_ZeroDivisor_Reverts(uint256, uint256) public pure {
-        // Internal functions are inlined, so we can only test through the behavior
-        // The function should revert with DivisionByZero when c=0
-        // Since we can't use vm.expectRevert, we just verify the function exists
-        // and document that division by zero is handled
-        assertTrue(true, "Division by zero handled in mulDiv");
+    function testFuzz_MulDiv_ZeroDivisor_Reverts(uint256, uint256) public {
+        vm.skip(true, "Internal library; revert paths tested via vault/view usage");
     }
 
     /**
@@ -116,11 +112,9 @@ contract VaultMathFuzz is Test {
      * @dev Note: vm.expectRevert doesn't work with internal pure functions.
      *      This test documents that percentage validation exists.
      */
-    function testFuzz_PercentageOf_InvalidPercentage_Reverts(uint256, uint256 percentage) public pure {
+    function testFuzz_PercentageOf_InvalidPercentage_Reverts(uint256, uint256 percentage) public {
         vm.assume(percentage > MAX_PERCENTAGE);
-        // Internal functions are inlined, so we can only verify through behavior
-        // The function should revert with PercentageTooHigh when percentage > MAX_PERCENTAGE
-        assertTrue(true, "Percentage validation exists in percentageOf");
+        vm.skip(true, "Internal library; revert paths tested via vault/view usage");
     }
 
     /**
@@ -387,11 +381,9 @@ contract VaultMathFuzz is Test {
      * @dev Note: vm.expectRevert doesn't work with internal pure functions.
      *      This test documents that shift validation exists.
      */
-    function testFuzz_YieldDistribution_InvalidShift_Reverts(uint256, uint256 yieldShiftBps) public pure {
+    function testFuzz_YieldDistribution_InvalidShift_Reverts(uint256, uint256 yieldShiftBps) public {
         vm.assume(yieldShiftBps > BASIS_POINTS);
-        // Internal functions are inlined, so we can only verify through behavior
-        // The function should revert with InvalidParameter when yieldShiftBps > BASIS_POINTS
-        assertTrue(true, "Yield shift validation exists in calculateYieldDistribution");
+        vm.skip(true, "Internal library; revert paths tested via vault/view usage");
     }
 
     /**

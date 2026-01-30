@@ -123,6 +123,18 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         _;
     }
 
+    /**
+     * @notice Reverts if caller is not emergency upgrader or emergency mode is not active
+     * @dev Used by onlyEmergencyUpgrader modifier; allows emergency upgrades only when enabled
+     * @custom:security Restricts emergency upgrade path to EMERGENCY_UPGRADER_ROLE when emergencyMode
+     * @custom:validation Caller must have role and emergencyMode must be true
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors NotEmergencyRole if not authorized or not emergency mode
+     * @custom:reentrancy No external calls
+     * @custom:access Internal; used by modifier
+     * @custom:oracle None
+     */
     function _onlyEmergencyUpgrader() internal view {
         if (!hasRole(EMERGENCY_UPGRADER_ROLE, msg.sender) || !emergencyMode) {
             revert CommonErrorLibrary.NotEmergencyRole();

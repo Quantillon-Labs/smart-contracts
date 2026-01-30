@@ -27,14 +27,13 @@ ethereum = "https://eth.llamarpc.com"
 arbitrum = "https://arb1.arbitrum.io/rpc"
 anvil = "http://127.0.0.1:8545"
 
-[profile.lint]
+[lint]
 # Exclude mixed-case-variable so build output is not flooded with style suggestions
 exclude_lints = ["mixed-case-variable", "mixed-case-function"]
 
 [doc]
 out = "docs"
-include = ["src/**"]
-ignore  = ["lib/**", "test/**", "scripts/**", "node_modules/**"]
+ignore = ["lib/**", "test/**", "scripts/**", "node_modules/**"]
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/api" }
@@ -50,17 +49,6 @@ runs = 1000
 runs = 256
 depth = 15
 fail_on_revert = false
-
-# Remappings for dependencies
-remappings = [
-    "@openzeppelin/=lib/openzeppelin-contracts/",
-    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
-    "@chainlink/=lib/chainlink-brownie-contracts/",
-    "@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/",
-    "@foundry-devops/=lib/foundry-devops/",
-    "forge-std/=lib/forge-std/src/"
-]
-
 
 # Production profile for deployment
 [profile.production]

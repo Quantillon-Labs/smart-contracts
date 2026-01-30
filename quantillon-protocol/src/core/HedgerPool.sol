@@ -157,6 +157,18 @@ contract HedgerPool is
         _;
     }
 
+    /**
+     * @notice Reverts if caller is not the vault contract
+     * @dev Used by onlyVault modifier; restricts vault-only callbacks (e.g. realized P&L)
+     * @custom:security Access control for vault callbacks
+     * @custom:validation msg.sender must equal vault
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors OnlyVault if caller not vault
+     * @custom:reentrancy No external calls
+     * @custom:access Internal; used by modifier
+     * @custom:oracle None
+     */
     function _onlyVault() internal view {
         if (msg.sender != address(vault)) revert HedgerPoolErrorLibrary.OnlyVault();
     }
@@ -1064,8 +1076,11 @@ contract HedgerPool is
      * @custom:oracle Not applicable
      */
     function recover(address token, uint256 amount) external {
-        if (token == address(0)) AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
-        else AdminFunctionsLibrary.recoverToken(address(this), token, amount, treasury, DEFAULT_ADMIN_ROLE);
+        if (token == address(0)) {
+            AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
+        } else {
+            AdminFunctionsLibrary.recoverToken(address(this), token, amount, treasury, DEFAULT_ADMIN_ROLE);
+        }
     }
 
     /**
@@ -1085,11 +1100,19 @@ contract HedgerPool is
     function updateAddress(uint8 slot, address addr) external {
         _validateRole(GOVERNANCE_ROLE);
         if (addr == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        if (slot == 0) { treasury = addr; emit TreasuryUpdated(addr); }
-        else if (slot == 1) { vault = IQuantillonVault(addr); emit VaultUpdated(addr); }
-        else if (slot == 2) oracle = IOracle(addr);
-        else if (slot == 3) yieldShift = IYieldShift(addr);
-        else revert HedgerPoolErrorLibrary.InvalidPosition();
+        if (slot == 0) {
+            treasury = addr;
+            emit TreasuryUpdated(addr);
+        } else if (slot == 1) {
+            vault = IQuantillonVault(addr);
+            emit VaultUpdated(addr);
+        } else if (slot == 2) {
+            oracle = IOracle(addr);
+        } else if (slot == 3) {
+            yieldShift = IYieldShift(addr);
+        } else {
+            revert HedgerPoolErrorLibrary.InvalidPosition();
+        }
     }
 
     /**
@@ -1494,6 +1517,7 @@ contract HedgerPool is
 
     /**
      * @notice Calculates unrealized and realized P&L for redemption
+     * @dev Mark-to-market total unrealized P&L, subtract previous realized, then pro-rata share for qeuroAmount
      * @param currentQeuroBacked Current QEURO backed by position
      * @param filledBefore Filled volume before redemption
      * @param price Current EUR/USD price
@@ -1501,6 +1525,14 @@ contract HedgerPool is
      * @param previousRealizedPnL Previously realized P&L
      * @return totalUnrealizedPnL Total unrealized P&L (mark-to-market)
      * @return realizedDelta Realized P&L delta for this redemption
+     * @custom:security Pure math; no external calls
+     * @custom:validation Caller must pass consistent position data
+     * @custom:state-changes None (pure)
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy N/A pure
+     * @custom:access Internal
+     * @custom:oracle Price passed in; no live oracle call
      */
     function _calculateRedeemPnL(
         uint256 currentQeuroBacked,
@@ -1511,9 +1543,12 @@ contract HedgerPool is
     ) internal pure returns (int256 totalUnrealizedPnL, int256 realizedDelta) {
         // Step 1: Calculate total unrealized P&L (mark-to-market)
         uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
-        // forge-lint: disable-next-line(unsafe-typecast)
         totalUnrealizedPnL = filledBefore >= qeuroValueInUSDC
+            // casting to int256 is safe: difference of two uint256s fits int256 in this branch
+            // forge-lint: disable-next-line(unsafe-typecast)
             ? int256(filledBefore - qeuroValueInUSDC)
+            // casting to int256 is safe: difference is non-negative, negated for signed PnL
+            // forge-lint: disable-next-line(unsafe-typecast)
             : -int256(qeuroValueInUSDC - filledBefore);
 
         // Step 2: Calculate NET unrealized P&L (subtract already-realized portion)
@@ -1529,9 +1564,18 @@ contract HedgerPool is
 
     /**
      * @notice Applies realized P&L to position margin
+     * @dev Delegates to _applyProfitToMargin or _applyLossToMargin based on sign of realizedDelta
      * @param posId Position ID
      * @param pos Position storage reference
      * @param realizedDelta Realized P&L amount (positive = profit, negative = loss)
+     * @custom:security Internal; updates margin and totalMargin
+     * @custom:validation Sign of realizedDelta determines path
+     * @custom:state-changes pos.margin, totalMargin, positionSize; may emit MarginUpdated
+     * @custom:events MarginUpdated via _applyProfitToMargin/_applyLossToMargin
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
         if (realizedDelta > 0) {
@@ -1543,9 +1587,18 @@ contract HedgerPool is
 
     /**
      * @notice Applies profit to hedger margin
+     * @dev Increases pos.margin and totalMargin; caps at uint96.max; updates positionSize and emits MarginUpdated
      * @param posId Position ID
      * @param pos Position storage reference
      * @param realizedDelta Positive realized P&L amount
+     * @custom:security Margin capped at type(uint96).max
+     * @custom:validation realizedDelta > 0 assumed by caller
+     * @custom:state-changes pos.margin, totalMargin, pos.positionSize
+     * @custom:events MarginUpdated
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _applyProfitToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
         // forge-lint: disable-next-line(unsafe-typecast)
@@ -1577,9 +1630,18 @@ contract HedgerPool is
 
     /**
      * @notice Applies loss to hedger margin
+     * @dev Decreases pos.margin and totalMargin; margin never goes below zero; may zero positionSize
      * @param posId Position ID
      * @param pos Position storage reference
      * @param realizedDelta Negative realized P&L amount
+     * @custom:security Margin floor at zero
+     * @custom:validation realizedDelta < 0 assumed by caller
+     * @custom:state-changes pos.margin, totalMargin, pos.positionSize
+     * @custom:events MarginUpdated
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _applyLossToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
         // forge-lint: disable-next-line(unsafe-typecast)
@@ -1614,7 +1676,16 @@ contract HedgerPool is
 
     /**
      * @notice Updates position size based on current margin and leverage
+     * @dev positionSize = margin * leverage; capped at type(uint96).max
      * @param pos Position storage reference
+     * @custom:security Caps positionSize at uint96.max
+     * @custom:validation Uses current pos.margin and pos.leverage
+     * @custom:state-changes pos.positionSize
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _updatePositionSize(HedgePosition storage pos) internal {
         uint256 leverageValue = uint256(pos.leverage);
@@ -1629,8 +1700,17 @@ contract HedgerPool is
 
     /**
      * @notice Calculates margin ratio for a position
+     * @dev (margin * 10000) / positionSize in basis points; 0 if margin or positionSize is 0
      * @param pos Position storage reference
      * @return Margin ratio in basis points (0 if position has no size)
+     * @custom:security View only
+     * @custom:validation Division by zero avoided by early return
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal
+     * @custom:oracle None
      */
     function _calculateMarginRatio(HedgePosition storage pos) internal view returns (uint256) {
         if (pos.margin == 0 || pos.positionSize == 0) return 0;

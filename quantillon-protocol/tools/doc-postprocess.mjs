@@ -110,24 +110,71 @@ function convertMarkdownFiles() {
     // Convert markdown to HTML
     const htmlContent = marked.parse(content);
 
-    // Wrap in a basic HTML template that matches forge doc style
-    const fullHtml = `<!DOCTYPE html>
-<html lang="en">
+    // Wrap in a full mdBook-compatible HTML template
+    const fullHtml = `<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
 ${META_TAGS}
+    <link rel="icon" href="/favicon.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/general.css">
+    <link rel="stylesheet" href="/css/chrome.css">
+    <link rel="stylesheet" href="/css/print.css" media="print">
+    <link rel="stylesheet" href="/fonts/fonts.css">
+    <link rel="stylesheet" href="/highlight.css">
+    <link rel="stylesheet" href="/tomorrow-night.css">
+    <link rel="stylesheet" href="/ayu-highlight.css">
+    <link rel="stylesheet" href="/book.css">
+    <link rel="stylesheet" href="/doc-theme.css">
+    <!-- Mermaid for diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+            // Convert code blocks with class "language-mermaid" to mermaid divs
+            document.querySelectorAll('pre code.language-mermaid').forEach(function(el) {
+                const pre = el.parentElement;
+                const div = document.createElement('div');
+                div.className = 'mermaid';
+                div.textContent = el.textContent;
+                pre.parentElement.replaceChild(div, pre);
+            });
+            mermaid.init(undefined, '.mermaid');
+        });
+    </script>
+    <script>
+        const path_to_root = "";
+        const default_light_theme = "light";
+        const default_dark_theme = "navy";
+    </script>
 </head>
-<body class="nav-chapters">
+<body>
+<div id="mdbook-body-container">
+    <script>
+        const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+        let theme;
+        try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+        if (theme === null || theme === undefined) { theme = default_theme; }
+        const html = document.documentElement;
+        html.classList.remove('light');
+        html.classList.add(theme);
+        html.classList.add("js");
+    </script>
 ${HEADER_HTML}
-<main>
-    <div class="content">
-        <div class="page">
+    <div id="content" class="content">
+        <main>
             ${htmlContent}
-        </div>
+        </main>
     </div>
-</main>
 ${FOOTER_HTML}
+</div>
+<script src="/clipboard.min.js"></script>
+<script src="/highlight.js"></script>
+<script src="/book.js"></script>
 </body>
 </html>`;
 

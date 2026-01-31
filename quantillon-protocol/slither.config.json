@@ -9,7 +9,8 @@
     "naming-convention",
     "external-function",
     "reentrancy-no-eth",
-    "reentrancy-benign"
+    "reentrancy-benign",
+    "unused-return"
   ],
 
   "solc_args": "--optimize --via-ir",

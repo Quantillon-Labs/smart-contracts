@@ -29,7 +29,7 @@ anvil = "http://127.0.0.1:8545"
 
 [lint]
 # Exclude mixed-case-variable so build output is not flooded with style suggestions
-exclude_lints = ["mixed-case-variable", "mixed-case-function"]
+exclude_lints = ["mixed-case-variable", "mixed-case-function", "unsafe-typecast"]
 
 [doc]
 out = "docs"

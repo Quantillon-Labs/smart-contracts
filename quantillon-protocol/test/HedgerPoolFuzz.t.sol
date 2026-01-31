@@ -75,18 +75,16 @@ contract HedgerPoolFuzz is Test {
         vm.assume(entryPrice > 0);
         vm.assume(currentPrice > 0);
 
-        // Calculate filled volume at entry price
-        uint256 filledVolume = uint256(qeuroBacked) * uint256(entryPrice) / 1e30 * QEURO_DECIMALS / 1e12;
+        // Library: filledVolume (USDC 6 dec), qeuroBacked (18 dec), currentPrice (18 dec). PnL = filledVolume - qeuroBacked*currentPrice/1e30.
+        // At entry: filledVolume = qeuroBacked*entryPrice/1e30 (same scale).
+        uint256 qeuroBacked18 = uint256(qeuroBacked) * QEURO_DECIMALS;
+        uint256 entryPrice18 = uint256(entryPrice) * 1e10;
+        uint256 currentPrice18 = uint256(currentPrice) * 1e10;
+        uint256 filledVolume = qeuroBacked18 * entryPrice18 / 1e30;
         vm.assume(filledVolume > 0);
 
-        int256 pnl = _calculatePnL(
-            filledVolume,
-            uint256(qeuroBacked) * QEURO_DECIMALS,
-            uint256(currentPrice) * 1e10
-        );
+        int256 pnl = _calculatePnL(filledVolume, qeuroBacked18, currentPrice18);
 
-        // Price up = hedger loses (short position)
-        // Price down = hedger profits
         if (currentPrice > entryPrice) {
             assertLe(pnl, 0, "Price up should cause loss or break-even");
         } else if (currentPrice < entryPrice) {
@@ -166,7 +164,7 @@ contract HedgerPoolFuzz is Test {
         uint64 qeuroBacked,
         uint64 price,
         uint16 threshold
-    ) public {
+    ) public pure {
         vm.assume(qeuroBacked > 0);
         vm.assume(price > 1e10);
         vm.assume(threshold > 0);
@@ -178,7 +176,8 @@ contract HedgerPoolFuzz is Test {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             uint256(margin) * USDC_DECIMALS,
             filledVolume,
-            uint256(price) * 1e10,
+            uint256(price) * 1e10,  // entryPrice
+            uint256(price) * 1e10,  // currentPrice
             uint256(threshold),
             uint128(uint256(qeuroBacked) * QEURO_DECIMALS),
             0
@@ -200,11 +199,12 @@ contract HedgerPoolFuzz is Test {
         uint64 filledVolume,
         uint64 price,
         uint16 threshold
-    ) public {
+    ) public pure {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             uint256(margin) * USDC_DECIMALS,
             uint256(filledVolume) * USDC_DECIMALS,
-            uint256(price) * 1e10,
+            uint256(price) * 1e10,  // entryPrice
+            uint256(price) * 1e10,  // currentPrice
             uint256(threshold),
             0, // Zero QEURO backed
             0
@@ -221,11 +221,12 @@ contract HedgerPoolFuzz is Test {
         uint64 filledVolume,
         uint64 qeuroBacked,
         uint16 threshold
-    ) public {
+    ) public pure {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             uint256(margin) * USDC_DECIMALS,
             uint256(filledVolume) * USDC_DECIMALS,
-            0, // Zero price
+            0, // entryPrice
+            0, // currentPrice = 0
             uint256(threshold),
             uint128(uint256(qeuroBacked) * QEURO_DECIMALS),
             0
@@ -246,7 +247,7 @@ contract HedgerPoolFuzz is Test {
         uint64 filledVolume,
         uint64 price,
         uint64 qeuroBacked
-    ) public {
+    ) public pure {
         vm.assume(price > 0);
 
         uint256 capacity = HedgerPoolLogicLibrary.calculateCollateralCapacity(
@@ -271,7 +272,7 @@ contract HedgerPoolFuzz is Test {
         uint64 qeuroBacked1,
         uint64 qeuroBacked2,
         uint64 price
-    ) public {
+    ) public pure {
         vm.assume(price > 1e10);
         vm.assume(margin > 0);
         vm.assume(qeuroBacked1 < qeuroBacked2);
@@ -315,7 +316,7 @@ contract HedgerPoolFuzz is Test {
         uint64 exposure2,
         uint16 eurRate,
         uint16 usdRate
-    ) public {
+    ) public pure {
         vm.assume(exposure1 < exposure2);
         vm.assume(exposure2 > 0);
         vm.assume(usdRate > eurRate); // Positive interest differential
@@ -350,7 +351,7 @@ contract HedgerPoolFuzz is Test {
         uint64 exposure,
         uint16 eurRate,
         uint16 usdRate
-    ) public {
+    ) public pure {
         vm.assume(exposure > 0);
         vm.assume(eurRate >= usdRate); // Negative or zero differential
 
@@ -374,7 +375,7 @@ contract HedgerPoolFuzz is Test {
         uint64 exposure,
         uint32 blocks1,
         uint32 blocks2
-    ) public {
+    ) public pure {
         vm.assume(exposure > 0);
         vm.assume(blocks1 < blocks2);
         vm.assume(blocks2 > 0);
@@ -416,10 +417,12 @@ contract HedgerPoolFuzz is Test {
         uint64 currentMargin,
         uint64 addAmount,
         uint64 positionSize
-    ) public {
+    ) public pure {
         vm.assume(positionSize > 0);
-        vm.assume(uint256(currentMargin) + uint256(addAmount) <= MAX_MARGIN);
+        vm.assume(uint256(currentMargin) + uint256(addAmount) <= MAX_MARGIN / USDC_DECIMALS);
         vm.assume(currentMargin > 0);
+        // New margin ratio must meet minimum (5%): (currentMargin+addAmount)/positionSize >= MIN_MARGIN_RATIO/10000
+        vm.assume((uint256(currentMargin) + uint256(addAmount)) * BASIS_POINTS >= uint256(positionSize) * MIN_MARGIN_RATIO);
 
         (uint256 newMargin, uint256 newRatio) = HedgerPoolLogicLibrary.validateMarginOperation(
             uint256(currentMargin) * USDC_DECIMALS,
@@ -440,9 +443,10 @@ contract HedgerPoolFuzz is Test {
     function testFuzz_MarginRemoval_MaintainsMinRatio(
         uint64 currentMargin,
         uint64 positionSize
-    ) public {
+    ) public pure {
         vm.assume(positionSize > 0);
         vm.assume(currentMargin > 0);
+        vm.assume(uint256(currentMargin) * USDC_DECIMALS <= MAX_MARGIN);
 
         uint256 currentMarginScaled = uint256(currentMargin) * USDC_DECIMALS;
         uint256 positionSizeScaled = uint256(positionSize) * USDC_DECIMALS;

@@ -106,7 +106,7 @@ contract ExtremeBoundaryTests is Test {
     /**
      * @notice Test unlock time calculation well before uint32 max
      */
-    function test_UnlockTime_WellBeforeUint32Max_Works() public {
+    function test_UnlockTime_WellBeforeUint32Max_Works() public pure {
         uint256 currentTime = MAX_UINT32 - 365 days;
         uint256 lockTime = 30 days;
 

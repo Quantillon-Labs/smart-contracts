@@ -56,7 +56,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test P&L calculation with zero filled volume returns zero
      */
-    function test_CalculatePnL_ZeroFilledVolume_ReturnsZero() public {
+    function test_CalculatePnL_ZeroFilledVolume_ReturnsZero() public pure {
         int256 pnl = _calculatePnL(0, 1000 * QEURO_DECIMALS, EUR_USD_PRICE_1_10);
         assertEq(pnl, 0, "Zero filled volume should return zero P&L");
     }
@@ -64,7 +64,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test P&L calculation with zero price returns zero
      */
-    function test_CalculatePnL_ZeroPrice_ReturnsZero() public {
+    function test_CalculatePnL_ZeroPrice_ReturnsZero() public pure {
         int256 pnl = _calculatePnL(1000 * USDC_DECIMALS, 1000 * QEURO_DECIMALS, 0);
         assertEq(pnl, 0, "Zero price should return zero P&L");
     }
@@ -72,7 +72,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test P&L calculation with zero QEURO backed returns negative filled volume
      */
-    function test_CalculatePnL_ZeroQeuroBacked_ReturnsNegativeFilledVolume() public {
+    function test_CalculatePnL_ZeroQeuroBacked_ReturnsNegativeFilledVolume() public pure {
         uint256 filledVolume = 1000 * USDC_DECIMALS;
         int256 pnl = _calculatePnL(filledVolume, 0, EUR_USD_PRICE_1_10);
         assertEq(pnl, -int256(filledVolume), "Zero QEURO should return negative filled volume");
@@ -82,7 +82,7 @@ contract HedgerPoolLogicLibraryTest is Test {
      * @notice Test P&L calculation when price drops (hedger profits)
      * @dev When price drops, QEURO value in USDC decreases, hedger profits
      */
-    function test_CalculatePnL_PriceDrops_PositivePnL() public {
+    function test_CalculatePnL_PriceDrops_PositivePnL() public pure {
         // Entry: 1000 USDC for 1000 QEURO at 1.00 price
         // Current price: 0.90
         // QEURO value: 1000 * 0.90 = 900 USDC
@@ -100,7 +100,7 @@ contract HedgerPoolLogicLibraryTest is Test {
      * @notice Test P&L calculation when price rises (hedger loses)
      * @dev When price rises, QEURO value in USDC increases, hedger loses
      */
-    function test_CalculatePnL_PriceRises_NegativePnL() public {
+    function test_CalculatePnL_PriceRises_NegativePnL() public pure {
         // Entry: 1000 USDC for 1000 QEURO at 1.00 price
         // Current price: 1.20
         // QEURO value: 1000 * 1.20 = 1200 USDC
@@ -116,7 +116,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test P&L calculation when price unchanged
      */
-    function test_CalculatePnL_PriceUnchanged_ZeroPnL() public {
+    function test_CalculatePnL_PriceUnchanged_ZeroPnL() public pure {
         uint256 filledVolume = 1000 * USDC_DECIMALS;
         uint256 qeuroBacked = 1000 * QEURO_DECIMALS;
 
@@ -132,7 +132,7 @@ contract HedgerPoolLogicLibraryTest is Test {
         uint128 filledVolume,
         uint128 qeuroBacked,
         uint128 price
-    ) public {
+    ) public pure {
         vm.assume(price > 0);
         vm.assume(filledVolume > 0);
         vm.assume(qeuroBacked > 0);
@@ -150,10 +150,11 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test liquidation check with zero QEURO backed returns false
      */
-    function test_IsPositionLiquidatable_ZeroQeuroBacked_ReturnsFalse() public {
+    function test_IsPositionLiquidatable_ZeroQeuroBacked_ReturnsFalse() public pure {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             1000 * USDC_DECIMALS, // margin
             1000 * USDC_DECIMALS, // filledVolume
+            EUR_USD_PRICE_1_00,   // entryPrice (unused when qeuroBacked=0)
             EUR_USD_PRICE_1_00,   // currentPrice
             LIQUIDATION_THRESHOLD,
             0,                    // qeuroBacked = 0
@@ -165,11 +166,12 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test liquidation check with zero price returns false
      */
-    function test_IsPositionLiquidatable_ZeroPrice_ReturnsFalse() public {
+    function test_IsPositionLiquidatable_ZeroPrice_ReturnsFalse() public pure {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             1000 * USDC_DECIMALS,
             1000 * USDC_DECIMALS,
-            0,                    // price = 0
+            0,                    // entryPrice
+            0,                    // currentPrice = 0
             LIQUIDATION_THRESHOLD,
             uint128(1000 * QEURO_DECIMALS),
             0
@@ -180,7 +182,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test healthy position is not liquidatable
      */
-    function test_IsPositionLiquidatable_HealthyPosition_ReturnsFalse() public {
+    function test_IsPositionLiquidatable_HealthyPosition_ReturnsFalse() public pure {
         // 10% margin ratio is above 3% liquidation threshold
         uint256 margin = 100 * USDC_DECIMALS;
         uint256 filledVolume = 1000 * USDC_DECIMALS;
@@ -189,7 +191,8 @@ contract HedgerPoolLogicLibraryTest is Test {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             margin,
             filledVolume,
-            EUR_USD_PRICE_1_00,
+            EUR_USD_PRICE_1_00,   // entryPrice
+            EUR_USD_PRICE_1_00,   // currentPrice
             LIQUIDATION_THRESHOLD,
             qeuroBacked,
             0
@@ -200,7 +203,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test undercollateralized position is liquidatable
      */
-    function test_IsPositionLiquidatable_Undercollateralized_ReturnsTrue() public {
+    function test_IsPositionLiquidatable_Undercollateralized_ReturnsTrue() public pure {
         // 2% margin ratio is below 3% liquidation threshold
         uint256 margin = 20 * USDC_DECIMALS;
         uint256 filledVolume = 1000 * USDC_DECIMALS;
@@ -209,7 +212,8 @@ contract HedgerPoolLogicLibraryTest is Test {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             margin,
             filledVolume,
-            EUR_USD_PRICE_1_00,
+            EUR_USD_PRICE_1_00,   // entryPrice
+            EUR_USD_PRICE_1_00,   // currentPrice
             LIQUIDATION_THRESHOLD,
             qeuroBacked,
             0
@@ -220,7 +224,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test position with large losses becomes liquidatable
      */
-    function test_IsPositionLiquidatable_LargeLoss_ReturnsTrue() public {
+    function test_IsPositionLiquidatable_LargeLoss_ReturnsTrue() public pure {
         // Start with 10% margin but price rise causes large losses
         uint256 margin = 100 * USDC_DECIMALS;
         uint256 filledVolume = 1000 * USDC_DECIMALS;
@@ -230,7 +234,8 @@ contract HedgerPoolLogicLibraryTest is Test {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             margin,
             filledVolume,
-            140 * 1e16, // 1.40 price causes 400 USDC loss on 1000 QEURO position
+            EUR_USD_PRICE_1_00,   // entryPrice (1.00)
+            140 * 1e16,           // currentPrice 1.40 causes 400 USDC loss on 1000 QEURO position
             LIQUIDATION_THRESHOLD,
             qeuroBacked,
             0
@@ -241,7 +246,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test realized P&L affects liquidation status
      */
-    function test_IsPositionLiquidatable_WithRealizedPnL_CorrectCalculation() public {
+    function test_IsPositionLiquidatable_WithRealizedPnL_CorrectCalculation() public pure {
         uint256 margin = 100 * USDC_DECIMALS;
         uint256 filledVolume = 1000 * USDC_DECIMALS;
         uint128 qeuroBacked = uint128(800 * QEURO_DECIMALS); // Partial redemption
@@ -250,7 +255,8 @@ contract HedgerPoolLogicLibraryTest is Test {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             margin,
             filledVolume,
-            EUR_USD_PRICE_1_00,
+            EUR_USD_PRICE_1_00,   // entryPrice
+            EUR_USD_PRICE_1_00,   // currentPrice
             LIQUIDATION_THRESHOLD,
             qeuroBacked,
             realizedPnL
@@ -267,7 +273,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test capacity with zero price returns zero
      */
-    function test_CalculateCollateralCapacity_ZeroPrice_ReturnsZero() public {
+    function test_CalculateCollateralCapacity_ZeroPrice_ReturnsZero() public pure {
         uint256 capacity = HedgerPoolLogicLibrary.calculateCollateralCapacity(
             1000 * USDC_DECIMALS, // margin
             1000 * USDC_DECIMALS, // filledVolume
@@ -283,7 +289,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test capacity with zero margin ratio returns zero
      */
-    function test_CalculateCollateralCapacity_ZeroMarginRatio_ReturnsZero() public {
+    function test_CalculateCollateralCapacity_ZeroMarginRatio_ReturnsZero() public pure {
         uint256 capacity = HedgerPoolLogicLibrary.calculateCollateralCapacity(
             1000 * USDC_DECIMALS,
             1000 * USDC_DECIMALS,
@@ -299,7 +305,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test capacity calculation with healthy position
      */
-    function test_CalculateCollateralCapacity_HealthyPosition_ReturnsPositiveCapacity() public {
+    function test_CalculateCollateralCapacity_HealthyPosition_ReturnsPositiveCapacity() public pure {
         uint256 margin = 200 * USDC_DECIMALS; // 20% margin
         uint256 filledVolume = 1000 * USDC_DECIMALS;
         uint128 qeuroBacked = uint128(1000 * QEURO_DECIMALS);
@@ -320,7 +326,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test capacity with negative effective margin returns zero
      */
-    function test_CalculateCollateralCapacity_NegativeEffectiveMargin_ReturnsZero() public {
+    function test_CalculateCollateralCapacity_NegativeEffectiveMargin_ReturnsZero() public pure {
         uint256 margin = 50 * USDC_DECIMALS; // Small margin
         uint256 filledVolume = 1000 * USDC_DECIMALS;
         uint128 qeuroBacked = uint128(1000 * QEURO_DECIMALS);
@@ -346,7 +352,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test reward calculation with zero exposure returns unchanged rewards
      */
-    function test_CalculateRewardUpdate_ZeroExposure_ReturnsCurrentRewards() public {
+    function test_CalculateRewardUpdate_ZeroExposure_ReturnsCurrentRewards() public pure {
         (uint256 newRewards, uint256 newBlock) = HedgerPoolLogicLibrary.calculateRewardUpdate(
             0,    // totalExposure = 0
             300,  // eurInterestRate
@@ -364,7 +370,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test reward calculation with zero last reward block
      */
-    function test_CalculateRewardUpdate_ZeroLastRewardBlock_ReturnsCurrentRewards() public {
+    function test_CalculateRewardUpdate_ZeroLastRewardBlock_ReturnsCurrentRewards() public pure {
         (uint256 newRewards, uint256 newBlock) = HedgerPoolLogicLibrary.calculateRewardUpdate(
             1000 * USDC_DECIMALS,
             300,
@@ -382,7 +388,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test reward calculation with positive interest differential
      */
-    function test_CalculateRewardUpdate_PositiveDifferential_IncreasesRewards() public {
+    function test_CalculateRewardUpdate_PositiveDifferential_IncreasesRewards() public pure {
         uint256 totalExposure = 1000000 * USDC_DECIMALS; // 1M USDC
         uint256 eurInterestRate = 300; // 3%
         uint256 usdInterestRate = 500; // 5%
@@ -407,7 +413,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test reward calculation with EUR rate higher than USD rate
      */
-    function test_CalculateRewardUpdate_NegativeDifferential_NoRewardIncrease() public {
+    function test_CalculateRewardUpdate_NegativeDifferential_NoRewardIncrease() public pure {
         (uint256 newRewards,) = HedgerPoolLogicLibrary.calculateRewardUpdate(
             1000000 * USDC_DECIMALS,
             500,  // EUR rate higher
@@ -424,7 +430,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test reward calculation respects max reward period
      */
-    function test_CalculateRewardUpdate_ExceedsMaxPeriod_CapsTimeElapsed() public {
+    function test_CalculateRewardUpdate_ExceedsMaxPeriod_CapsTimeElapsed() public pure {
         uint256 maxPeriod = 100; // 100 seconds max
 
         (uint256 rewardsLimited,) = HedgerPoolLogicLibrary.calculateRewardUpdate(
@@ -457,7 +463,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test margin addition increases margin
      */
-    function test_ValidateMarginOperation_Addition_IncreasesMargin() public {
+    function test_ValidateMarginOperation_Addition_IncreasesMargin() public pure {
         uint256 currentMargin = 1000 * USDC_DECIMALS;
         uint256 amount = 500 * USDC_DECIMALS;
         uint256 positionSize = 10000 * USDC_DECIMALS;
@@ -478,7 +484,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     /**
      * @notice Test margin removal decreases margin
      */
-    function test_ValidateMarginOperation_Removal_DecreasesMargin() public {
+    function test_ValidateMarginOperation_Removal_DecreasesMargin() public pure {
         uint256 currentMargin = 1000 * USDC_DECIMALS;
         uint256 amount = 300 * USDC_DECIMALS;
         uint256 positionSize = 10000 * USDC_DECIMALS;
@@ -504,7 +510,7 @@ contract HedgerPoolLogicLibraryTest is Test {
         uint256 amount = 200 * USDC_DECIMALS; // Would leave 4%, below 5% min
         uint256 positionSize = 10000 * USDC_DECIMALS;
 
-        vm.expectRevert(HedgerPoolErrorLibrary.InsufficientMarginRatio.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.MarginRatioTooLow.selector);
         HedgerPoolLogicLibrary.validateMarginOperation(
             currentMargin,
             amount,
@@ -542,7 +548,7 @@ contract HedgerPoolLogicLibraryTest is Test {
         uint256 amount = 200 * USDC_DECIMALS; // Would exceed max
         uint256 positionSize = 10000 * USDC_DECIMALS;
 
-        vm.expectRevert(HedgerPoolErrorLibrary.MaxMarginExceeded.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.NewMarginExceedsMaximum.selector);
         HedgerPoolLogicLibrary.validateMarginOperation(
             currentMargin,
             amount,
@@ -565,7 +571,7 @@ contract HedgerPoolLogicLibraryTest is Test {
         uint64 qeuroBacked,
         uint64 entryPrice,
         uint64 currentPrice
-    ) public {
+    ) public pure {
         vm.assume(filledVolume > 0);
         vm.assume(qeuroBacked > 0);
         vm.assume(entryPrice > 0);
@@ -590,7 +596,7 @@ contract HedgerPoolLogicLibraryTest is Test {
     function testFuzz_ValidateMarginOperation_RatioCalculation(
         uint64 margin,
         uint64 positionSize
-    ) public {
+    ) public pure {
         vm.assume(margin > 0);
         vm.assume(positionSize > margin); // Position larger than margin
         vm.assume(uint256(margin) * 10000 / uint256(positionSize) >= MIN_MARGIN_RATIO); // Meet min ratio
@@ -610,9 +616,9 @@ contract HedgerPoolLogicLibraryTest is Test {
         // New margin should be sum
         assertEq(newMargin, uint256(margin) + smallAddition, "New margin calculation");
 
-        // Ratio should be correct
+        // Ratio should match (allow 1 unit for mulDiv rounding)
         uint256 expectedRatio = newMargin * 10000 / uint256(positionSize);
-        assertEq(newRatio, expectedRatio, "Ratio calculation");
+        assertApproxEqAbs(newRatio, expectedRatio, 1, "Ratio calculation");
     }
 
     /**
@@ -622,7 +628,7 @@ contract HedgerPoolLogicLibraryTest is Test {
         uint64 margin,
         uint64 qeuroBacked,
         uint64 price
-    ) public {
+    ) public pure {
         vm.assume(price > 1e10); // Reasonable minimum price
         vm.assume(qeuroBacked > 0);
         vm.assume(margin > 0);
@@ -632,7 +638,8 @@ contract HedgerPoolLogicLibraryTest is Test {
         bool liquidatable = HedgerPoolLogicLibrary.isPositionLiquidatable(
             uint256(margin),
             filledVolume,
-            uint256(price),
+            uint256(price),       // entryPrice
+            uint256(price),       // currentPrice
             LIQUIDATION_THRESHOLD,
             uint128(qeuroBacked),
             0

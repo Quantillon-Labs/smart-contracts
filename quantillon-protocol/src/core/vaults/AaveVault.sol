@@ -1068,7 +1068,6 @@ contract AaveVault is
         exposureRatio = totalAssets > 0 ? aaveBalance.mulDiv(10000, totalAssets) : 0;
         concentrationRisk = exposureRatio > 8000 ? 3 : exposureRatio > 6000 ? 2 : 1;
 
-        // slither-disable-next-line unused-return -- only utilizationRate needed for liquidityRisk
         (, uint256 utilizationRate, , ) = this.getAaveMarketData();
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
     }

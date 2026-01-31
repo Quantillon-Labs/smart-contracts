@@ -29,9 +29,8 @@ npm install
 ### Network Configuration
 
 **Testnet RPC URLs**:
-- Goerli: `https://goerli.infura.io/v3/YOUR_PROJECT_ID`
-- Sepolia: `https://sepolia.infura.io/v3/YOUR_PROJECT_ID`
-- Base Goerli: `https://goerli.base.org`
+- Ethereum Sepolia: `https://sepolia.infura.io/v3/YOUR_PROJECT_ID`
+- Base Sepolia: `https://sepolia.base.org`
 
 **Mainnet RPC URLs**:
 - Ethereum: `https://mainnet.infura.io/v3/YOUR_PROJECT_ID`
@@ -140,7 +139,7 @@ Deployment Order:
 ```bash
 # Network Configuration
 RPC_URL_MAINNET=https://mainnet.infura.io/v3/YOUR_PROJECT_ID
-RPC_URL_GOERLI=https://goerli.infura.io/v3/YOUR_PROJECT_ID
+RPC_URL_BASE_SEPOLIA=https://sepolia.base.org
 RPC_URL_BASE=https://mainnet.base.org
 
 # Private Keys (use environment variables in production)
@@ -445,34 +444,18 @@ main()
 
 ### Testnet Deployment
 
-**Goerli Testnet**:
+**Base Sepolia Testnet**:
 ```bash
-# Set network
-export NETWORK=goerli
+# Deploy to Base Sepolia with verification
+make deploy-base-sepolia
 
-# Deploy contracts
-npx hardhat run scripts/deploy.js --network goerli
-
-# Configure contracts
-npx hardhat run scripts/configure.js --network goerli
-
-# Verify contracts
-npx hardhat verify --network goerli
+# Or using the deployment script directly
+./scripts/deployment/deploy.sh base-sepolia --verify
 ```
 
-**Sepolia Testnet**:
+**Ethereum Sepolia Testnet**:
 ```bash
-# Set network
-export NETWORK=sepolia
-
-# Deploy contracts
-npx hardhat run scripts/deploy.js --network sepolia
-
-# Configure contracts
-npx hardhat run scripts/configure.js --network sepolia
-
-# Verify contracts
-npx hardhat verify --network sepolia
+./scripts/deployment/deploy.sh ethereum-sepolia --with-mocks --verify
 ```
 
 ### Mainnet Deployment

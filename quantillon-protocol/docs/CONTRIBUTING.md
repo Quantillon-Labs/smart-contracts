@@ -355,8 +355,8 @@ All code examples must be tested:
 # Test JavaScript examples
 node test-examples.js
 
-# Test Solidity examples
-forge test --match-contract ExampleTest
+# Test Solidity examples (use a real test contract name)
+forge test --match-contract QuantillonVault
 
 # Validate Markdown
 markdownlint docs/*.md

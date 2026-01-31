@@ -59,13 +59,21 @@ help:
 	@echo ""
 	@echo "📝 Note: All deployments use standard environment variables"
 
-# Environment setup
+# Environment setup (uses .env.localhost if .env.example is not present)
 setup-env:
 	@echo "🔐 Setting up environment from template..."
 	@if [ ! -f .env ]; then \
-		cp .env.example .env; \
-		echo "✅ Created .env from template"; \
-		echo "📝 Please edit .env with your actual values"; \
+		if [ -f .env.example ]; then \
+			cp .env.example .env; \
+		else \
+			cp .env.localhost .env 2>/dev/null || true; \
+		fi; \
+		if [ -f .env ]; then \
+			echo "✅ Created .env from template"; \
+			echo "📝 Please edit .env with your actual values"; \
+		else \
+			echo "⚠️  No template found. Copy .env.localhost (or .env.base-sepolia) to .env"; \
+		fi; \
 	else \
 		echo "⚠️  .env already exists, skipping template copy"; \
 	fi

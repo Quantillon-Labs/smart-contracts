@@ -3,24 +3,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org/)
 [![Foundry](https://img.shields.io/badge/Foundry-Latest-orange.svg)](https://getfoundry.sh/)
-[![Tests](https://img.shields.io/badge/Tests-807%20passed%20%7C%200%20failed-green.svg)](https://github.com/quantillon/smart-contracts)
-[![Security](https://img.shields.io/badge/Security-0%20Critical%20%7C%200%20Medium-green.svg)](https://github.com/quantillon/smart-contracts)
-[![Security](https://img.shields.io/badge/Environment-Secure-green.svg)](https://github.com/quantillon)
+[![Tests](https://img.shields.io/badge/Tests-1300%2B%20passed%20%7C%200%20failed-green.svg)](https://github.com/Quantillon-Labs/smart-contracts)
+[![Security](https://img.shields.io/badge/Security-0%20Critical%20%7C%200%20Medium-green.svg)](https://github.com/Quantillon-Labs/smart-contracts)
+[![Security](https://img.shields.io/badge/Environment-Secure-green.svg)](https://github.com/Quantillon-Labs/smart-contracts)
 
 > **Euro-pegged stablecoin protocol with dual-pool architecture, yield generation, and governance mechanisms**
 
 ## 📖 Overview
 
-Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability.
-
-### Recent Improvements
-
-- ✅ **807 tests passing** - Comprehensive test coverage with 100% pass rate
-- ✅ **Code optimization** - Consolidated error libraries and removed duplicate code
-- ✅ **Gas efficiency** - Custom errors replace `require()` strings for better gas usage
-- ✅ **Stack optimization** - Fixed stack too deep issues through struct-based refactoring
-- ✅ **Validation consolidation** - Centralized validation functions in `CommonValidationLibrary`
-- ✅ **Error standardization** - Unified error handling across all contracts
+Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro-pegged stablecoin. The protocol features a dual-pool architecture that separates user deposits from hedging operations, enabling efficient yield generation while maintaining stability. The codebase includes 1,300+ tests, custom errors and centralized validation libraries, and role-based access control.
 
 ## 📚 Documentation
 
@@ -42,8 +33,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **Yield-Bearing Wrapper**: stQEURO token that automatically accrues yield for holders
 - **Aave Integration**: Automated yield farming through Aave protocol integration
 - **Comprehensive Security**: Role-based access control, reentrancy protection, and emergency pause mechanisms
-- **Optimized Codebase**: Consolidated error libraries, deduplicated validation functions, and gas-optimized error handling
-- **🔐 Secure Environment Variables**: Enterprise-grade security with standard .env files
+- **Gas-Optimized Design**: Custom errors, centralized validation, and consolidated error libraries
 
 ## 🏗️ Architecture
 
@@ -72,7 +62,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 ### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/quantillon/smart-contracts.git
+git clone https://github.com/Quantillon-Labs/smart-contracts.git
 cd smart-contracts/quantillon-protocol
 npm install
 ```
@@ -82,13 +72,11 @@ npm install
 ### 2. Environment Configuration
 
 ```bash
-# Copy environment template
-cp .env.example .env
+# Copy an environment template for your target network
+cp .env.localhost .env   # for local Anvil development
 
 # Fill in your values (API keys, private keys, etc.)
-# Edit .env with your actual configuration
-
-# Environment variables are ready to use
+# Other templates: .env.base-sepolia, .env.ethereum-sepolia
 ```
 
 ### 3. Build and Test
@@ -104,7 +92,7 @@ make test
 make slither
 ```
 
-**Testing conventions:** Run `make test` before pushing; run `make ci` for full checks (build, test, Slither, NatSpec, gas and size analysis). CI (GitHub Actions) runs `make build && make test` on push and pull requests to main. Use `test_*`, `testFuzz_*`, and `invariant_*` naming; avoid new `assertTrue(true, ...)` placeholders—convert or explicitly skip with rationale. See [UNIT_TESTING_OVERVIEW.md](UNIT_TESTING_OVERVIEW.md) for test structure and [TESTING_IMPROVEMENT_PLAN.md](TESTING_IMPROVEMENT_PLAN.md) for gaps and recommendations.
+**Testing conventions:** Run `make test` before pushing; run `make ci` for full checks (build, test, Slither, NatSpec, gas and size analysis). CI (GitHub Actions) runs `make build && make test` on push and pull requests to main. Use `test_*`, `testFuzz_*`, and `invariant_*` naming; avoid new `assertTrue(true, ...)` placeholders—convert or explicitly skip with rationale. See the `test/` directory for test structure and coverage.
 
 ## 🚀 Deployment
 
@@ -191,8 +179,8 @@ forge test --match-contract QuantillonVault
 # Integration tests
 forge test --match-contract IntegrationTests
 
-# Security tests
-forge test --match-contract SecurityTests
+# Reentrancy and security-oriented tests
+forge test --match-contract ReentrancyTests
 ```
 
 ### Gas Analysis
@@ -255,7 +243,7 @@ make gas-analysis
 ### Code Quality
 
 - **NatSpec Documentation**: Comprehensive documentation for all functions
-- **Test Coverage**: Extensive test suite with 807+ tests (100% passing)
+- **Test Coverage**: Extensive test suite with 1,300+ tests (100% passing)
 - **Security Analysis**: Regular security audits and static analysis
 - **Gas Optimization**: Optimized for deployment size and execution cost
 - **Error Handling**: Custom errors for gas efficiency and better error messages

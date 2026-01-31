@@ -75,13 +75,13 @@ Step-by-step instructions for deploying and configuring the protocol.
 ### Testing
 ```bash
 # Run all tests
-npm test
+make test
 
 # Run specific test suite
-npm test -- --grep "QuantillonVault"
+forge test --match-contract QuantillonVault
 
 # Run with coverage
-npm run test:coverage
+make coverage
 ```
 
 ### Security Analysis
@@ -98,11 +98,11 @@ make security
 
 ### Documentation Generation
 ```bash
-# Generate NatSpec documentation
-npm run docs
+# Generate HTML documentation (forge doc)
+make docs
 
-# Generate API documentation
-npm run docs:api
+# Validate NatSpec coverage
+make validate-natspec
 ```
 
 ---
@@ -110,13 +110,10 @@ npm run docs:api
 ## 📊 Protocol Metrics
 
 ### Current Status
-- **Test Coverage**: 100% (678/678 tests passing)
-- **Security Issues**: 0 critical/medium priority
-- **Mythril Analysis**: 0 vulnerabilities detected (10 contracts analyzed)
-- **Compilation Warnings**: 0
-- **Gas Optimization**: Optimized
-- **Documentation Coverage**: Comprehensive NatSpec (1872/1872 functions documented)
-- **Edge Case Testing**: 104 comprehensive edge case tests
+- **Test Suite**: 1,300+ tests passing (unit, fuzz, integration, invariants)
+- **Security**: 0 critical/medium Slither findings; Mythril analysis on key contracts
+- **Build**: Zero compilation warnings; gas-optimized (custom errors, consolidated validation)
+- **Documentation**: Comprehensive NatSpec coverage; extensive edge case and boundary tests
 
 ### Contract Sizes
 - **QuantillonVault**: ~45KB
@@ -137,7 +134,8 @@ npm run docs:api
 - **Arbitrum**: Coming soon
 
 ### Testnets
-- **Base Testnet**: Available for testing
+- **Base Sepolia**: Supported (use `make deploy-base-sepolia` or `./scripts/deployment/deploy.sh base-sepolia --verify`)
+- **Ethereum Sepolia**: Supported for testing
 
 ---
 
@@ -223,6 +221,6 @@ This documentation is licensed under the [MIT License](LICENSE).
 
 ---
 
-*This documentation is maintained by Quantillon Labs and updated regularly. Last updated: September 2025*
+*This documentation is maintained by Quantillon Labs and updated regularly.*
 
 **Quantillon Protocol** - Building the future of decentralized finance with euro-pegged stability and intelligent yield management.

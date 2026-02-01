@@ -166,8 +166,8 @@ validate-natspec:
 	@cd scripts && npm install --silent
 	@cd scripts && node validate-natspec.js
 
-# CI/CD pipeline command
-ci: build test slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes
+# CI/CD pipeline command (scripts encrypted via git-crypt, only build/test available in public CI)
+ci: build test
 	@echo "🚀 CI/CD pipeline completed!"
 
 # Deployment commands using the unified deploy.sh script

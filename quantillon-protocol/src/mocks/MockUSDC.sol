@@ -35,11 +35,11 @@ contract MockUSDC is ERC20, Ownable {
     }
     
     /**
-     * @dev Faucet function for easy testing - anyone can call this
+     * @dev Faucet function for easy testing - anyone can call this (max 100k USDC per call)
      * @param amount The amount of tokens to mint to caller
      */
     function faucet(uint256 amount) external {
-        require(amount <= 1000 * 10**_DECIMALS, "MockUSDC: Faucet limit exceeded");
+        require(amount <= 100_000 * 10**_DECIMALS, "MockUSDC: Faucet limit exceeded");
         _mint(msg.sender, amount);
     }
 }

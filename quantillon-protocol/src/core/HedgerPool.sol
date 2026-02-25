@@ -618,12 +618,15 @@ contract HedgerPool is
         }
 
         // Validate margin ratio after removal (based on new position size)
-        // This ensures the position maintains proper leverage structure
-        uint256 newMarginRatio = newPositionSize > 0
-            ? newMargin.mulDiv(10000, newPositionSize)
-            : 0;
-        HedgerPoolValidationLibrary.validateMarginRatio(newMarginRatio, coreParams.minMarginRatio);
-        HedgerPoolValidationLibrary.validateMaxMarginRatio(newMarginRatio, MAX_MARGIN_RATIO);
+        // Skip when position has no active exposure (all QEURO redeemed) — ratio is meaningless
+        uint256 newMarginRatio;
+        if (position.qeuroBacked > 0 || position.filledVolume > 0) {
+            newMarginRatio = newPositionSize > 0
+                ? newMargin.mulDiv(10000, newPositionSize)
+                : 0;
+            HedgerPoolValidationLibrary.validateMarginRatio(newMarginRatio, coreParams.minMarginRatio);
+            HedgerPoolValidationLibrary.validateMaxMarginRatio(newMarginRatio, MAX_MARGIN_RATIO);
+        }
 
         // forge-lint: disable-next-line(unsafe-typecast)
         position.margin = uint96(newMargin);
@@ -1722,7 +1725,7 @@ contract HedgerPool is
      * @dev Checks if protocol remains collateralized after removing this position's margin
      * @param positionMargin Amount of margin in the position being closed
      * @custom:security Internal function - prevents protocol undercollateralization from position closures
-     * @custom:validation Checks vault is set, protocol is collateralized, and remaining margin > positionMargin
+     * @custom:validation Checks vault is set, QEURO supply > 0, protocol is collateralized, and remaining margin > positionMargin
      * @custom:state-changes None - view function
      * @custom:events None
      * @custom:errors Reverts with PositionClosureRestricted if closing would cause undercollateralization
@@ -1732,6 +1735,8 @@ contract HedgerPool is
      */
     function _validatePositionClosureSafety(uint256 positionMargin) internal view {
         if (address(vault) == address(0)) return;
+        // If no QEURO is outstanding, closing is always safe (nothing to collateralize)
+        if (vault.totalMinted() == 0) return;
         (bool isCollateralized, uint256 reportedMargin) = vault.isProtocolCollateralized();
         if (!isCollateralized || reportedMargin <= positionMargin) revert HedgerPoolErrorLibrary.PositionClosureRestricted();
     }

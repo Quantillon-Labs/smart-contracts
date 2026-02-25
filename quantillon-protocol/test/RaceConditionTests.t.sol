@@ -203,6 +203,11 @@ contract RaceConditionTests is Test {
             abi.encodeWithSelector(IQuantillonVault.isProtocolCollateralized.selector),
             abi.encode(true, 1000000 * USDC_PRECISION) // collateralized with 1M margin
         );
+        vm.mockCall(
+            mockVault,
+            abi.encodeWithSelector(IQuantillonVault.totalMinted.selector),
+            abi.encode(uint256(1000000 * 1e18)) // 1M QEURO outstanding
+        );
     }
 
     // =============================================================================

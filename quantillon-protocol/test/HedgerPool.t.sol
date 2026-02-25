@@ -204,6 +204,13 @@ contract HedgerPoolTestSuite is Test {
             abi.encode()
         );
         
+        // Mock vault totalMinted() — non-zero so position closure safety check runs
+        vm.mockCall(
+            address(0x999),
+            abi.encodeWithSelector(bytes4(keccak256("totalMinted()"))),
+            abi.encode(uint256(1000000e18))
+        );
+        
         // Mock QEURO totalSupply call
         vm.mockCall(
             address(0x777),
@@ -1434,9 +1441,10 @@ contract HedgerPoolTestSuite is Test {
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
 
-        // Removing the entire stored margin would drop margin ratio to zero
+        // When position has no active exposure (qeuroBacked == 0, filledVolume == 0),
+        // removing all margin is allowed — there is nothing to collateralize.
+        // The margin ratio check is skipped when there is no exposure.
         vm.startPrank(hedger1);
-        vm.expectRevert(HedgerPoolErrorLibrary.MarginRatioTooLow.selector);
         hedgerPool.removeMargin(positionId, netMargin);
         vm.stopPrank();
     }
@@ -2646,6 +2654,7 @@ contract MockQuantillonVault {
     uint256 public minCollateralizationRatioForMinting = 10500; // 105%
     address public userPool;
     uint256 public totalMargin = 0;
+    uint256 public totalMinted = 1000000e18; // Default: 1M QEURO outstanding
     
     /**
      * @notice Initializes the mock vault with a user pool address
@@ -2714,6 +2723,10 @@ contract MockQuantillonVault {
      */
     function setMinCollateralizationRatio(uint256 _ratio) external {
         minCollateralizationRatioForMinting = _ratio;
+    }
+    
+    function setTotalMinted(uint256 _totalMinted) external {
+        totalMinted = _totalMinted;
     }
     
     /**
@@ -2869,6 +2882,13 @@ contract HedgerPoolPositionClosureTest is Test {
             address(0x999),
             abi.encodeWithSelector(0x0986821f), // withdrawHedgerDeposit(address,uint256) selector
             abi.encode()
+        );
+        
+        // Mock vault totalMinted() — non-zero so position closure safety check runs
+        vm.mockCall(
+            address(0x999),
+            abi.encodeWithSelector(bytes4(keccak256("totalMinted()"))),
+            abi.encode(uint256(1000000e18))
         );
         
         // Mock QEURO totalSupply call

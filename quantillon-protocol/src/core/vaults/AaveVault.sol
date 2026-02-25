@@ -477,7 +477,10 @@ contract AaveVault is
     function _validateWithdrawalConstraints(uint256 withdrawAmount, uint256 aaveBalance) internal view {
         if (!emergencyMode) {
             uint256 remainingBalance = aaveBalance - withdrawAmount;
-            uint256 minBalance = principalDeposited.mulDiv(rebalanceThreshold, 10000);
+            // Use post-withdrawal principal for minimum balance calculation;
+            // the original principalDeposited is stale when closing out entirely
+            uint256 remainingPrincipal = withdrawAmount >= principalDeposited ? 0 : principalDeposited - withdrawAmount;
+            uint256 minBalance = remainingPrincipal.mulDiv(rebalanceThreshold, 10000);
             if (remainingBalance < minBalance) revert VaultErrorLibrary.WouldBreachMinimum();
         }
     }

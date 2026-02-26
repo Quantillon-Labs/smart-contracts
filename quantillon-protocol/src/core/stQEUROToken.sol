@@ -352,7 +352,7 @@ contract stQEUROToken is
         lastUpdateTime = TIME_PROVIDER.currentTime();
         
         // Initial parameters
-        yieldFee = 1000; // 10% fee on yield
+        yieldFee = 0; // No fee on yield by default, set via admin panel
         minYieldThreshold = 1000e6; // 1000 USDC minimum to update
         maxUpdateFrequency = 1 hours; // Max 1 hour between updates
     }

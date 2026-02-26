@@ -331,7 +331,7 @@ contract AaveVault is
 
         maxAaveExposure = 50_000_000e6;
         harvestThreshold = 1000e6;
-        yieldFee = 1000;
+        yieldFee = 0;
         rebalanceThreshold = 500;
         utilizationLimit = 9500;
         emergencyExitThreshold = 110;

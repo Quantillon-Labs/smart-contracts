@@ -492,7 +492,7 @@ contract UserPool is
         depositAPY = 400;
         minStakeAmount = 100e18;
         unstakingCooldown = 7 days;
-        performanceFee = 1000;
+        performanceFee = 0;
         accumulatedYieldPerShare = 0;
         lastYieldDistribution = TIME_PROVIDER.currentTime();
         totalYieldDistributed = 0;

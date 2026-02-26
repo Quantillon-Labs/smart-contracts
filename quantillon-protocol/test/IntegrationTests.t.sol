@@ -324,7 +324,8 @@ contract IntegrationTests is Test {
         
         // Verify vault received USDC (full amount minus mint fee sent to FeeCollector)
         uint256 vaultUSDCAfter = mockUSDC.balanceOf(address(vault));
-        uint256 expectedVaultIncrease = DEPOSIT_AMOUNT - (DEPOSIT_AMOUNT * 1e15 / 1e18); // 0.1% fee
+        uint256 currentMintFee = vault.mintFee();
+        uint256 expectedVaultIncrease = DEPOSIT_AMOUNT - (DEPOSIT_AMOUNT * currentMintFee / 1e18);
         assertEq(vaultUSDCAfter - initialVaultUSDC, expectedVaultIncrease, "Vault should receive USDC minus fee");
         
         // =============================================================================

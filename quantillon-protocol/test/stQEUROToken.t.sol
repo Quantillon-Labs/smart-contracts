@@ -913,8 +913,10 @@ contract stQEUROTokenTestSuite is Test {
         uint256 newRate = stQEURO.exchangeRate();
         assertGt(newRate, 1e18);
         
-        // Check total yield earned
-        assertEq(stQEURO.totalYieldEarned(), YIELD_AMOUNT * 9 / 10); // 90% after 10% fee
+        // Check total yield earned (yield minus fee from contract)
+        uint256 fee = stQEURO.yieldFee();
+        uint256 expectedNet = YIELD_AMOUNT - (YIELD_AMOUNT * fee / 10000);
+        assertEq(stQEURO.totalYieldEarned(), expectedNet);
     }
     
     /**

@@ -485,9 +485,9 @@ contract QuantillonVault is
         treasury = _timelock; // Set treasury to timelock
         feeCollector = _feeCollector; // Set fee collector
 
-        // Default protocol parameters
-        mintFee = 1e15;                 // 0.1% mint fee (taken from USDC deposit)
-        redemptionFee = 1e15;           // 0.1% redemption fee
+        // Default protocol parameters (fees start at 0, can be set via admin panel)
+        mintFee = 0;
+        redemptionFee = 0;
         
         // Default collateralization parameters (in 18 decimals format for maximum precision)
         minCollateralizationRatioForMinting = MIN_COLLATERALIZATION_RATIO_FOR_MINTING;  // 105.000000% - minimum ratio for minting

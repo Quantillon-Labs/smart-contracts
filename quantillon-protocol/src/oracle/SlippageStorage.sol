@@ -136,6 +136,7 @@ contract SlippageStorage is
      * @param depthEur Total ask depth in EUR (18 decimals)
      * @param worstCaseBps Worst-case slippage across buckets (bps)
      * @param spreadBps Bid-ask spread (bps)
+     * @param bucketBps Per-size slippage in bps, fixed order: [10k, 50k, 100k, 250k, 1M]
      * @custom:security WRITER_ROLE, whenNotPaused, rate-limited
      * @custom:events Emits SlippageUpdated
      * @custom:errors RateLimitTooHigh if within interval and deviation below threshold
@@ -144,7 +145,8 @@ contract SlippageStorage is
         uint128 midPrice,
         uint128 depthEur,
         uint16  worstCaseBps,
-        uint16  spreadBps
+        uint16  spreadBps,
+        uint16[5] calldata bucketBps
     ) external override onlyRole(WRITER_ROLE) whenNotPaused {
         uint48 lastTs = _snapshot.timestamp;
 
@@ -174,7 +176,12 @@ contract SlippageStorage is
             worstCaseBps: worstCaseBps,
             spreadBps: spreadBps,
             timestamp: ts,
-            blockNumber: bn
+            blockNumber: bn,
+            bps10k:  bucketBps[0],
+            bps50k:  bucketBps[1],
+            bps100k: bucketBps[2],
+            bps250k: bucketBps[3],
+            bps1M:   bucketBps[4]
         });
 
         emit SlippageUpdated(midPrice, worstCaseBps, spreadBps, depthEur, ts);
@@ -227,6 +234,15 @@ contract SlippageStorage is
     /// @notice Get the current slippage snapshot
     function getSlippage() external view override returns (SlippageSnapshot memory snapshot) {
         return _snapshot;
+    }
+
+    /// @notice Get per-bucket slippage bps in canonical order [10k, 50k, 100k, 250k, 1M]
+    function getBucketBps() external view override returns (uint16[5] memory bucketBps) {
+        bucketBps[0] = _snapshot.bps10k;
+        bucketBps[1] = _snapshot.bps50k;
+        bucketBps[2] = _snapshot.bps100k;
+        bucketBps[3] = _snapshot.bps250k;
+        bucketBps[4] = _snapshot.bps1M;
     }
 
     /// @notice Get seconds since the last on-chain update

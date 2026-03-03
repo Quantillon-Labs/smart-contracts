@@ -14,6 +14,12 @@ interface ISlippageStorage {
     // ============ Structs ============
 
     /// @notice Packed on-chain slippage snapshot (2 storage slots)
+    /// @dev Storage layout (must not be reordered — UUPS upgrade-safe):
+    ///      Slot 0 (32 bytes): midPrice (uint128) + depthEur (uint128)
+    ///      Slot 1 (26/32 bytes): worstCaseBps (2) + spreadBps (2) + timestamp (6) +
+    ///             blockNumber (6) + bps10k (2) + bps50k (2) + bps100k (2) + bps250k (2) + bps1M (2)
+    ///      Individual uint16 fields are used instead of uint16[5] because Solidity
+    ///      arrays always start a new storage slot, which would waste a full slot.
     struct SlippageSnapshot {
         uint128 midPrice;       // EUR/USD mid price (18 decimals)
         uint128 depthEur;       // Total ask depth in EUR (18 decimals)
@@ -21,6 +27,11 @@ interface ISlippageStorage {
         uint16  spreadBps;      // Bid-ask spread (bps)
         uint48  timestamp;      // Block timestamp of update
         uint48  blockNumber;    // Block number of update
+        uint16  bps10k;         // Slippage bps for 10k EUR bucket
+        uint16  bps50k;         // Slippage bps for 50k EUR bucket
+        uint16  bps100k;        // Slippage bps for 100k EUR bucket
+        uint16  bps250k;        // Slippage bps for 250k EUR bucket
+        uint16  bps1M;          // Slippage bps for 1M EUR bucket
     }
 
     // ============ Events ============
@@ -66,11 +77,13 @@ interface ISlippageStorage {
     /// @param depthEur Total ask depth in EUR (18 decimals)
     /// @param worstCaseBps Worst-case slippage across buckets (bps)
     /// @param spreadBps Bid-ask spread (bps)
+    /// @param bucketBps Per-size slippage in bps, fixed order: [10k, 50k, 100k, 250k, 1M]
     function updateSlippage(
         uint128 midPrice,
         uint128 depthEur,
         uint16  worstCaseBps,
-        uint16  spreadBps
+        uint16  spreadBps,
+        uint16[5] calldata bucketBps
     ) external;
 
     // ============ Config Functions ============
@@ -96,6 +109,10 @@ interface ISlippageStorage {
     /// @notice Get the current slippage snapshot
     /// @return snapshot The latest SlippageSnapshot struct
     function getSlippage() external view returns (SlippageSnapshot memory snapshot);
+
+    /// @notice Get per-bucket slippage bps in canonical order [10k, 50k, 100k, 250k, 1M]
+    /// @return bucketBps Array of 5 uint16 bps values
+    function getBucketBps() external view returns (uint16[5] memory bucketBps);
 
     /// @notice Get seconds since the last on-chain update
     /// @return age Seconds since last update (0 if never updated)

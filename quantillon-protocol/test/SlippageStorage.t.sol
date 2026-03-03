@@ -51,6 +51,11 @@ contract SlippageStorageTest is Test {
     uint16  constant WORST_BPS  = 25;
     uint16  constant SPREAD_BPS = 3;
 
+    /// @dev Default per-bucket bps: [10k, 50k, 100k, 250k, 1M]
+    function _defaultBuckets() internal pure returns (uint16[5] memory) {
+        return [uint16(5), uint16(10), uint16(15), uint16(20), uint16(25)];
+    }
+
     // ============ Setup ============
 
     function setUp() public {
@@ -136,7 +141,7 @@ contract SlippageStorageTest is Test {
         vm.expectEmit(true, true, true, true);
         // forge-lint: disable-next-line(unsafe-typecast)
         emit ISlippageStorage.SlippageUpdated(MID_PRICE, WORST_BPS, SPREAD_BPS, DEPTH_EUR, uint48(block.timestamp));
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         ISlippageStorage.SlippageSnapshot memory s = store.getSlippage();
         assertEq(s.midPrice, MID_PRICE);
@@ -150,7 +155,7 @@ contract SlippageStorageTest is Test {
     function test_updateSlippage_revertsIfNotWriter() public {
         vm.prank(outsider);
         vm.expectRevert();
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
     }
 
     function test_updateSlippage_revertsIfPaused() public {
@@ -159,7 +164,7 @@ contract SlippageStorageTest is Test {
 
         vm.prank(writer);
         vm.expectRevert();
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
     }
 
     // =========================================================================
@@ -168,65 +173,65 @@ contract SlippageStorageTest is Test {
 
     function test_updateSlippage_allowsFirstUpdate() public {
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
         assertEq(store.getSlippage().worstCaseBps, WORST_BPS);
     }
 
     function test_updateSlippage_revertsIfWithinMinIntervalSameBps() public {
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         // 30s later — within the 60s interval, same bps
         vm.warp(block.timestamp + 30);
         vm.prank(writer);
         vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
     }
 
     function test_updateSlippage_succeedsAfterMinInterval() public {
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         // 61s later — past the 60s interval
         vm.warp(block.timestamp + 61);
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
         assertEq(store.getSlippage().worstCaseBps, WORST_BPS);
     }
 
     function test_updateSlippage_succeedsWithinIntervalIfDeviationAboveThreshold() public {
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         // 10s later — within interval, but big move (25 -> 76 = 51 bps diff > 50 threshold)
         vm.warp(block.timestamp + 10);
         vm.prank(writer);
         uint16 bigBps = WORST_BPS + DEVIATION_THRESHOLD + 1; // 76
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, bigBps, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, bigBps, SPREAD_BPS, _defaultBuckets());
         assertEq(store.getSlippage().worstCaseBps, bigBps);
     }
 
     function test_updateSlippage_revertsWithinIntervalIfDeviationBelowThreshold() public {
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         // 10s later — within interval, small move (25 -> 74 = 49 bps diff <= 50 threshold)
         vm.warp(block.timestamp + 10);
         vm.prank(writer);
         uint16 smallBps = WORST_BPS + DEVIATION_THRESHOLD; // 75, diff = 50 = threshold, not above
         vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, smallBps, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, smallBps, SPREAD_BPS, _defaultBuckets());
     }
 
     function test_updateSlippage_deviationBypassWorksDownward() public {
         // Start at 100 bps
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, 100, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, 100, SPREAD_BPS, _defaultBuckets());
 
         // 5s later — drop from 100 to 40, diff = 60 > 50 threshold
         vm.warp(block.timestamp + 5);
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, 40, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, 40, SPREAD_BPS, _defaultBuckets());
         assertEq(store.getSlippage().worstCaseBps, 40);
     }
 
@@ -284,7 +289,7 @@ contract SlippageStorageTest is Test {
 
         vm.prank(writer);
         vm.expectRevert();
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
     }
 
     function test_unpause_succeedsAsEmergency() public {
@@ -295,7 +300,7 @@ contract SlippageStorageTest is Test {
         store.unpause();
 
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
         assertEq(store.getSlippage().worstCaseBps, WORST_BPS);
     }
 
@@ -311,7 +316,7 @@ contract SlippageStorageTest is Test {
 
     function test_getSlippage_returnsCurrentSnapshot() public {
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         ISlippageStorage.SlippageSnapshot memory s = store.getSlippage();
         assertEq(s.midPrice, MID_PRICE);
@@ -326,7 +331,7 @@ contract SlippageStorageTest is Test {
 
     function test_getSlippageAge_returnsCorrectAgeAfterUpdate() public {
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         vm.warp(block.timestamp + 120);
         assertEq(store.getSlippageAge(), 120);
@@ -396,7 +401,7 @@ contract SlippageStorageTest is Test {
     function test_upgrade_succeedsAsUpgrader() public {
         // Write some data first
         vm.prank(writer);
-        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         // Deploy a new implementation
         SlippageStorage newImpl = new SlippageStorage();
@@ -404,10 +409,12 @@ contract SlippageStorageTest is Test {
         vm.prank(admin);
         store.upgradeToAndCall(address(newImpl), "");
 
-        // State is preserved after upgrade
+        // State is preserved after upgrade (including bucket bps)
         ISlippageStorage.SlippageSnapshot memory s = store.getSlippage();
         assertEq(s.midPrice, MID_PRICE);
         assertEq(s.worstCaseBps, WORST_BPS);
+        assertEq(s.bps10k, 5);
+        assertEq(s.bps1M, 25);
     }
 
     function test_upgrade_revertsIfNotUpgrader() public {
@@ -416,6 +423,75 @@ contract SlippageStorageTest is Test {
         vm.prank(outsider);
         vm.expectRevert();
         store.upgradeToAndCall(address(newImpl), "");
+    }
+
+    // =========================================================================
+    // BUCKET BPS
+    // =========================================================================
+
+    function test_updateSlippage_storesAllBucketBps() public {
+        uint16[5] memory buckets = [uint16(3), uint16(7), uint16(12), uint16(18), uint16(30)];
+        vm.prank(writer);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, buckets);
+
+        ISlippageStorage.SlippageSnapshot memory s = store.getSlippage();
+        assertEq(s.bps10k,  3);
+        assertEq(s.bps50k,  7);
+        assertEq(s.bps100k, 12);
+        assertEq(s.bps250k, 18);
+        assertEq(s.bps1M,   30);
+    }
+
+    function test_getBucketBps_returnsCanonicalOrder() public {
+        uint16[5] memory buckets = [uint16(3), uint16(7), uint16(12), uint16(18), uint16(30)];
+        vm.prank(writer);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, buckets);
+
+        uint16[5] memory result = store.getBucketBps();
+        assertEq(result[0], 3,  "10k bucket");
+        assertEq(result[1], 7,  "50k bucket");
+        assertEq(result[2], 12, "100k bucket");
+        assertEq(result[3], 18, "250k bucket");
+        assertEq(result[4], 30, "1M bucket");
+    }
+
+    function test_getBucketBps_returnsZerosBeforeFirstUpdate() public view {
+        uint16[5] memory result = store.getBucketBps();
+        for (uint256 i = 0; i < 5; i++) {
+            assertEq(result[i], 0);
+        }
+    }
+
+    function test_updateSlippage_bucketBpsOverwrittenOnSecondUpdate() public {
+        uint16[5] memory first  = [uint16(1), uint16(2), uint16(3), uint16(4), uint16(5)];
+        uint16[5] memory second = [uint16(10), uint16(20), uint16(30), uint16(40), uint16(50)];
+
+        vm.prank(writer);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, first);
+
+        vm.warp(block.timestamp + 61);
+        vm.prank(writer);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, second);
+
+        uint16[5] memory result = store.getBucketBps();
+        assertEq(result[0], 10);
+        assertEq(result[4], 50);
+    }
+
+    function test_rateLimitStillUsesWorstCaseBpsNotBuckets() public {
+        // Rate limit uses worstCaseBps, not individual bucket values.
+        // Even if buckets change dramatically, rate limit only checks worstCaseBps.
+        uint16[5] memory low  = [uint16(1), uint16(2), uint16(3), uint16(4), uint16(5)];
+        uint16[5] memory high = [uint16(100), uint16(200), uint16(300), uint16(400), uint16(500)];
+
+        vm.prank(writer);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, low);
+
+        // Within interval, same worstCaseBps but different buckets — should still revert
+        vm.warp(block.timestamp + 10);
+        vm.prank(writer);
+        vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, high);
     }
 }
 

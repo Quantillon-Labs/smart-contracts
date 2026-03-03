@@ -53,7 +53,7 @@ function mint(address to, uint256 amount) external onlyOwner;
 
 ### faucet
 
-Faucet function for easy testing - anyone can call this
+Faucet function for easy testing - anyone can call this (max 100k USDC per call)
 
 
 ```solidity

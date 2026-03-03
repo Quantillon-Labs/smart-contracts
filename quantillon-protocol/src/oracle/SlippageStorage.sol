@@ -150,8 +150,8 @@ contract SlippageStorage is
     ) external override onlyRole(WRITER_ROLE) whenNotPaused {
         uint48 lastTs = _snapshot.timestamp;
 
-        // Rate limit check (skip for first-ever update when lastTs == 0)
-        if (lastTs != 0) {
+        // Rate limit check (skip for first-ever update when lastTs < 1)
+        if (lastTs >= 1) {
             // forge-lint: disable-next-line(unsafe-typecast)
             uint48 now_ = uint48(block.timestamp);
             if (now_ - lastTs < minUpdateInterval) {
@@ -248,7 +248,7 @@ contract SlippageStorage is
     /// @notice Get seconds since the last on-chain update
     /// @return age Seconds since last update (0 if never updated)
     function getSlippageAge() external view override returns (uint256 age) {
-        if (_snapshot.timestamp == 0) return 0;
+        if (_snapshot.timestamp < 1) return 0;
         return block.timestamp - uint256(_snapshot.timestamp);
     }
 

@@ -4,7 +4,6 @@ pragma solidity 0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {HedgerPoolLogicLibrary} from "../src/libraries/HedgerPoolLogicLibrary.sol";
 import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.sol";
-import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 /**
  * @title HedgerPoolLogicLibraryTest

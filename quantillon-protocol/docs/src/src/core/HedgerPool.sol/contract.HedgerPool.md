@@ -1799,7 +1799,7 @@ Checks if protocol remains collateralized after removing this position's margin
 **Notes:**
 - security: Internal function - prevents protocol undercollateralization from position closures
 
-- validation: Checks vault is set, protocol is collateralized, and remaining margin > positionMargin
+- validation: Checks vault is set, QEURO supply > 0, protocol is collateralized, and remaining margin > positionMargin
 
 - state-changes: None - view function
 

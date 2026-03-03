@@ -618,8 +618,9 @@ contract HedgerPool is
         }
 
         // Validate margin ratio after removal (based on new position size)
-        // Skip when position has no active exposure (all QEURO redeemed) — ratio is meaningless
-        uint256 newMarginRatio;
+        // Skip when position has no active exposure (all QEURO redeemed) — ratio is meaningless.
+        // Initialize to zero so events have a well-defined value even when we skip validation.
+        uint256 newMarginRatio = 0;
         if (position.qeuroBacked > 0 || position.filledVolume > 0) {
             newMarginRatio = newPositionSize > 0
                 ? newMargin.mulDiv(10000, newPositionSize)

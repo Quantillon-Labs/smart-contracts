@@ -1168,7 +1168,6 @@ contract QTIToken is
 
         // Execute the proposal data
         if (proposal.data.length > 0) {
-            // slither-disable-next-line low-level-calls
             (bool success, ) = address(this).call(proposal.data);
             if (!success) {
                 // Use Address.verifyCallResult to bubble up revert reason without assembly

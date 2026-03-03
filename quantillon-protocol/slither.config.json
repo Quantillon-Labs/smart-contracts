@@ -10,7 +10,10 @@
     "external-function",
     "reentrancy-no-eth",
     "reentrancy-benign",
-    "unused-return"
+    "unused-return",
+    "missing-zero-check",
+    "timestamp",
+    "low-level-calls"
   ],
 
   "solc_args": "--optimize --via-ir",

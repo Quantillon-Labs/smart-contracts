@@ -55,16 +55,26 @@ graph TB
 - Time-locked administrative functions
 - Multi-signature requirements for critical operations
 
-**Key Roles**:
+**Key Roles per contract**:
 ```solidity
-bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
-bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
-bytes32 public constant VAULT_ROLE = keccak256("VAULT_ROLE");
-bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
-bytes32 public constant COMPLIANCE_ROLE = keccak256("COMPLIANCE_ROLE");
-bytes32 public constant LIQUIDATOR_ROLE = keccak256("LIQUIDATOR_ROLE");
-bytes32 public constant TIME_MANAGER_ROLE = keccak256("TIME_MANAGER_ROLE");
+// QEUROToken
+MINTER_ROLE       = keccak256("MINTER_ROLE");      // Vault: mint QEURO
+BURNER_ROLE       = keccak256("BURNER_ROLE");      // Vault: burn QEURO
+PAUSER_ROLE       = keccak256("PAUSER_ROLE");      // Emergency: pause token
+COMPLIANCE_ROLE   = keccak256("COMPLIANCE_ROLE");  // Blacklist/whitelist management
+
+// QuantillonVault / UserPool / HedgerPool / YieldShift / AaveVault
+GOVERNANCE_ROLE         = keccak256("GOVERNANCE_ROLE");         // Parameter updates, wiring
+EMERGENCY_ROLE          = keccak256("EMERGENCY_ROLE");          // Emergency pause/withdraw
+VAULT_OPERATOR_ROLE     = keccak256("VAULT_OPERATOR_ROLE");     // Vault: Aave deployment
+HEDGER_ROLE             = keccak256("HEDGER_ROLE");             // HedgerPool: open positions
+
+// FeeCollector
+TREASURY_ROLE     = keccak256("TREASURY_ROLE");    // Fee withdrawal
+
+// OracleRouter / ChainlinkOracle / StorkOracle
+ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE"); // Feed address updates, oracle switching
+UPGRADER_ROLE       = keccak256("UPGRADER_ROLE");       // UUPS upgrades
 ```
 
 ### 2. Reentrancy Protection
@@ -521,4 +531,4 @@ make security
 
 ---
 
-*This security guide is maintained by Quantillon Labs and updated regularly. Last updated: January 2025*
+*This security guide is maintained by Quantillon Labs and updated regularly.*

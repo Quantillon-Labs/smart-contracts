@@ -56,12 +56,26 @@ interface ISlippageStorage {
 
     // ============ Write Functions ============
 
-    /// @notice Initialize the contract
-    /// @param admin Address with DEFAULT_ADMIN_ROLE
-    /// @param writer Address with WRITER_ROLE (publisher service wallet)
-    /// @param minInterval Minimum seconds between updates (rate limit)
-    /// @param deviationThreshold Deviation in bps that bypasses rate limit
-    /// @param treasury Treasury address for recovery functions
+    /**
+     * @notice Initialize the SlippageStorage contract
+     * @dev Sets up roles, rate-limit parameters, and treasury. Admin receives
+     *      DEFAULT_ADMIN_ROLE, MANAGER_ROLE, EMERGENCY_ROLE, and UPGRADER_ROLE.
+     *      Writer receives WRITER_ROLE. Callable only once via proxy deployment.
+     * @param admin Address receiving DEFAULT_ADMIN_ROLE and all management roles
+     * @param writer Address receiving WRITER_ROLE (the off-chain publisher service wallet)
+     * @param minInterval Minimum seconds between successive writes (0..MAX_UPDATE_INTERVAL)
+     * @param deviationThreshold Deviation in bps that bypasses rate limit (0..MAX_DEVIATION_THRESHOLD)
+     * @param treasury Treasury address for token/ETH recovery
+     * @custom:security Validates admin, writer, and treasury are non-zero; enforces config bounds
+     * @custom:validation Validates admin/writer/treasury != address(0); interval and threshold within max
+     * @custom:state-changes Grants roles, sets minUpdateInterval, deviationThresholdBps, treasury
+     * @custom:events No events emitted
+     * @custom:errors Reverts with ZeroAddress if admin/writer/treasury is zero;
+     *               reverts with ConfigValueTooHigh if interval or threshold exceeds max
+     * @custom:reentrancy Protected by initializer modifier (callable only once)
+     * @custom:access Public - only callable once during proxy deployment
+     * @custom:oracle No oracle dependencies
+     */
     function initialize(
         address admin,
         address writer,
@@ -70,14 +84,25 @@ interface ISlippageStorage {
         address treasury
     ) external;
 
-    /// @notice Publish a new slippage snapshot on-chain
-    /// @dev WRITER_ROLE only. Rate-limited: rejects if within minUpdateInterval
-    ///      unless |newWorstCaseBps - lastWorstCaseBps| > deviationThresholdBps.
-    /// @param midPrice EUR/USD mid price (18 decimals)
-    /// @param depthEur Total ask depth in EUR (18 decimals)
-    /// @param worstCaseBps Worst-case slippage across buckets (bps)
-    /// @param spreadBps Bid-ask spread (bps)
-    /// @param bucketBps Per-size slippage in bps, fixed order: [10k, 50k, 100k, 250k, 1M]
+    /**
+     * @notice Publish a new slippage snapshot on-chain
+     * @dev Rate-limited: if within minUpdateInterval since last update, only allows
+     *      the write when |newWorstCaseBps - lastWorstCaseBps| > deviationThresholdBps.
+     *      First update always succeeds (timestamp == 0 means no prior data).
+     * @param midPrice EUR/USD mid price (18 decimals)
+     * @param depthEur Total ask depth in EUR (18 decimals)
+     * @param worstCaseBps Worst-case slippage across buckets (bps)
+     * @param spreadBps Bid-ask spread (bps)
+     * @param bucketBps Per-size slippage in bps, fixed order: [10k, 50k, 100k, 250k, 1M]
+     * @custom:security Requires WRITER_ROLE; blocked when paused; rate-limited by minUpdateInterval
+     * @custom:validation Checks elapsed time since last update; validates deviation if within interval
+     * @custom:state-changes Overwrites _snapshot with new values, timestamp, and block number
+     * @custom:events Emits SlippageUpdated(midPrice, worstCaseBps, spreadBps, depthEur, timestamp)
+     * @custom:errors Reverts with RateLimitTooHigh if within interval and deviation is below threshold
+     * @custom:reentrancy Not protected - no external calls made during execution
+     * @custom:access Restricted to WRITER_ROLE; blocked when contract is paused
+     * @custom:oracle No on-chain oracle dependency; data is pushed by the off-chain Slippage Monitor
+     */
     function updateSlippage(
         uint128 midPrice,
         uint128 depthEur,
@@ -88,51 +113,173 @@ interface ISlippageStorage {
 
     // ============ Config Functions ============
 
-    /// @notice Update the minimum interval between updates
-    /// @param newInterval New interval in seconds
+    /**
+     * @notice Update the minimum interval between successive slippage writes
+     * @dev Setting to 0 disables the rate limit; MAX_UPDATE_INTERVAL caps at 1 hour.
+     * @param newInterval New minimum interval in seconds (0..MAX_UPDATE_INTERVAL)
+     * @custom:security Requires MANAGER_ROLE; enforces upper bound MAX_UPDATE_INTERVAL
+     * @custom:validation Validates newInterval <= MAX_UPDATE_INTERVAL
+     * @custom:state-changes Updates minUpdateInterval state variable
+     * @custom:events Emits ConfigUpdated("minUpdateInterval", oldValue, newValue)
+     * @custom:errors Reverts with ConfigValueTooHigh if newInterval > MAX_UPDATE_INTERVAL
+     * @custom:reentrancy Not protected - no external calls made
+     * @custom:access Restricted to MANAGER_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function setMinUpdateInterval(uint48 newInterval) external;
 
-    /// @notice Update the deviation threshold that bypasses rate limit
-    /// @param newThreshold New threshold in bps
+    /**
+     * @notice Update the worst-case bps deviation threshold that bypasses the rate limit
+     * @dev When |newWorstCaseBps - lastWorstCaseBps| > threshold, rate limit is bypassed.
+     * @param newThreshold New deviation threshold in bps (0..MAX_DEVIATION_THRESHOLD)
+     * @custom:security Requires MANAGER_ROLE; enforces upper bound MAX_DEVIATION_THRESHOLD (500 bps)
+     * @custom:validation Validates newThreshold <= MAX_DEVIATION_THRESHOLD
+     * @custom:state-changes Updates deviationThresholdBps state variable
+     * @custom:events Emits ConfigUpdated("deviationThresholdBps", oldValue, newValue)
+     * @custom:errors Reverts with ConfigValueTooHigh if newThreshold > MAX_DEVIATION_THRESHOLD
+     * @custom:reentrancy Not protected - no external calls made
+     * @custom:access Restricted to MANAGER_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function setDeviationThreshold(uint16 newThreshold) external;
 
     // ============ Emergency Functions ============
 
-    /// @notice Pause the contract (blocks updateSlippage)
+    /**
+     * @notice Pause the contract, blocking all slippage updates
+     * @dev Once paused, updateSlippage reverts until unpaused.
+     * @custom:security Requires EMERGENCY_ROLE; prevents unauthorized pausing
+     * @custom:validation No input validation required
+     * @custom:state-changes Sets OpenZeppelin Pausable internal paused flag to true
+     * @custom:events Emits Paused(account) from OpenZeppelin PausableUpgradeable
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - no external calls made
+     * @custom:access Restricted to EMERGENCY_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function pause() external;
 
-    /// @notice Unpause the contract
+    /**
+     * @notice Unpause the contract, resuming slippage updates
+     * @dev Restores normal operation; WRITER_ROLE can immediately publish again.
+     * @custom:security Requires EMERGENCY_ROLE; prevents unauthorized unpausing
+     * @custom:validation No input validation required
+     * @custom:state-changes Sets OpenZeppelin Pausable internal paused flag to false
+     * @custom:events Emits Unpaused(account) from OpenZeppelin PausableUpgradeable
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - no external calls made
+     * @custom:access Restricted to EMERGENCY_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function unpause() external;
 
     // ============ View Functions ============
 
-    /// @notice Get the current slippage snapshot
-    /// @return snapshot The latest SlippageSnapshot struct
+    /**
+     * @notice Get the full current slippage snapshot
+     * @dev Returns a zero-valued struct if updateSlippage has never been called.
+     * @return snapshot The latest SlippageSnapshot stored on-chain
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no restrictions
+     * @custom:oracle No oracle dependencies - reads stored state only
+     */
     function getSlippage() external view returns (SlippageSnapshot memory snapshot);
 
-    /// @notice Get per-bucket slippage bps in canonical order [10k, 50k, 100k, 250k, 1M]
-    /// @return bucketBps Array of 5 uint16 bps values
+    /**
+     * @notice Get per-bucket slippage in bps in canonical size order
+     * @dev Returns buckets in fixed order: [10k EUR, 50k EUR, 100k EUR, 250k EUR, 1M EUR].
+     *      All values are zero if updateSlippage has never been called.
+     * @return bucketBps Array of 5 slippage values in bps for each order size bucket
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no restrictions
+     * @custom:oracle No oracle dependencies - reads stored state only
+     */
     function getBucketBps() external view returns (uint16[5] memory bucketBps);
 
-    /// @notice Get seconds since the last on-chain update
-    /// @return age Seconds since last update (0 if never updated)
+    /**
+     * @notice Get seconds elapsed since the last on-chain slippage update
+     * @dev Returns 0 if no update has ever been published (timestamp == 0).
+     * @return age Seconds since last updateSlippage call, or 0 if never updated
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no restrictions
+     * @custom:oracle No oracle dependencies - reads stored timestamp only
+     */
     function getSlippageAge() external view returns (uint256 age);
 
-    /// @notice Get the current minimum update interval
-    /// @return interval Seconds
+    /**
+     * @notice Get the current minimum update interval
+     * @dev Rate limit applied to consecutive updateSlippage calls.
+     * @return interval Minimum seconds required between successive writes
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no restrictions
+     * @custom:oracle No oracle dependencies
+     */
     function minUpdateInterval() external view returns (uint48 interval);
 
-    /// @notice Get the current deviation threshold
-    /// @return threshold Bps
+    /**
+     * @notice Get the current deviation threshold that bypasses the rate limit
+     * @dev When |newWorstCaseBps - lastWorstCaseBps| exceeds this, rate limit is bypassed.
+     * @return threshold Current deviation threshold in bps
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public - no restrictions
+     * @custom:oracle No oracle dependencies
+     */
     function deviationThresholdBps() external view returns (uint16 threshold);
 
     // ============ Recovery Functions ============
 
-    /// @notice Recover ERC20 tokens accidentally sent to the contract
-    /// @param token Token address
-    /// @param amount Amount to recover
+    /**
+     * @notice Recover ERC20 tokens accidentally sent to this contract
+     * @dev Transfers the specified amount to the treasury address.
+     * @param token ERC20 token contract address to recover
+     * @param amount Amount of tokens to transfer to treasury (token decimals)
+     * @custom:security Requires DEFAULT_ADMIN_ROLE; prevents unauthorized token withdrawals
+     * @custom:validation Implicitly validated via SafeERC20 transfer
+     * @custom:state-changes No internal state changes; transfers token balance externally
+     * @custom:events No events emitted from this contract
+     * @custom:errors Reverts if ERC20 transfer fails (SafeERC20 revert)
+     * @custom:reentrancy Not protected - external ERC20 call; admin-only mitigates risk
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function recoverToken(address token, uint256 amount) external;
 
-    /// @notice Recover ETH accidentally sent to the contract
+    /**
+     * @notice Recover ETH accidentally sent to this contract
+     * @dev Transfers the entire ETH balance to the treasury address.
+     * @custom:security Requires DEFAULT_ADMIN_ROLE; prevents unauthorized ETH withdrawals
+     * @custom:validation No input validation required; uses address(this).balance
+     * @custom:state-changes No internal state changes; transfers ETH balance externally
+     * @custom:events Emits ETHRecovered(treasury, amount)
+     * @custom:errors Reverts if ETH transfer fails
+     * @custom:reentrancy Not protected - external ETH transfer; admin-only mitigates risk
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
+     * @custom:oracle No oracle dependencies
+     */
     function recoverETH() external;
 }

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Quantillon Protocol is a comprehensive DeFi ecosystem built on Ethereum, featuring a euro-pegged stablecoin (QEURO), governance token (QTI), and advanced yield management system. This document provides detailed API documentation for all public interfaces.
+The Quantillon Protocol is a comprehensive DeFi ecosystem built on Base, featuring a euro-pegged stablecoin (QEURO), governance token (QTI), and advanced yield management system. This document provides detailed API documentation for all public interfaces.
 
 ## Table of Contents
 
@@ -10,6 +10,7 @@ The Quantillon Protocol is a comprehensive DeFi ecosystem built on Ethereum, fea
    - [QuantillonVault](#quantillonvault)
    - [QEUROToken](#qeurotoken)
    - [QTIToken](#qtitoken)
+   - [FeeCollector](#feecollector)
    - [UserPool](#userpool)
    - [HedgerPool](#hedgerpool)
    - [stQEUROToken](#stqeurotoken)
@@ -17,8 +18,10 @@ The Quantillon Protocol is a comprehensive DeFi ecosystem built on Ethereum, fea
    - [AaveVault](#aavevault)
 3. [Yield Management](#yield-management)
    - [YieldShift](#yieldshift)
-4. [Oracle](#oracle)
+4. [Oracle System](#oracle-system)
+   - [OracleRouter](#oraclerouter)
    - [ChainlinkOracle](#chainlinkoracle)
+   - [StorkOracle](#storkoracle)
 5. [Utilities](#utilities)
    - [TimeProvider](#timeprovider)
 6. [Error Codes](#error-codes)
@@ -590,11 +593,66 @@ event YieldDistributed(uint256 totalAmount, uint256 timestamp);
 
 ---
 
+---
+
+## Fee Management
+
+### FeeCollector
+
+Centralized protocol fee collection and distribution.
+
+#### Functions
+
+##### `collectFee(address token, uint256 amount)`
+Records a collected fee from a protocol contract.
+
+**Parameters:**
+- `token` (address): Token address (e.g. USDC)
+- `amount` (uint256): Fee amount collected
+
+**Access:** Authorized protocol contracts only
+
+##### `distributeFees(address token)`
+Distributes collected fees to treasury, dev fund, and community fund according to configured ratios.
+
+**Parameters:**
+- `token` (address): Token to distribute
+
+**Access:** `GOVERNANCE_ROLE`
+
+##### `updateFeeRatios(uint256 treasury, uint256 dev, uint256 community)`
+Updates fee distribution ratios.
+
+**Parameters:**
+- `treasury` (uint256): Treasury ratio (basis points, default 6000 = 60%)
+- `dev` (uint256): Dev fund ratio (basis points, default 2500 = 25%)
+- `community` (uint256): Community fund ratio (basis points, default 1500 = 15%)
+
+**Access:** `GOVERNANCE_ROLE`
+
+**Requirements:**
+- `treasury + dev + community == 10000`
+
+##### `withdrawFees(address token)`
+Withdraws collected fees to the caller's role-permitted address.
+
+**Access:** `TREASURY_ROLE`
+
+#### Events
+
+```solidity
+event FeeCollected(address indexed token, uint256 amount);
+event FeesDistributed(address indexed token, uint256 treasury, uint256 dev, uint256 community);
+event FeeRatiosUpdated(uint256 treasury, uint256 dev, uint256 community);
+```
+
+---
+
 ## Vault Contracts
 
 ### AaveVault
 
-Manages yield generation through Aave protocol integration.
+Manages yield generation through Aave v3 protocol integration.
 
 #### Functions
 
@@ -732,28 +790,67 @@ event HedgerYieldClaimed(uint256 amount);
 
 ---
 
-## Oracle
+## Oracle System
 
-### ChainlinkOracle
+The oracle system consists of three contracts. All protocol contracts interact only with **OracleRouter** via the `IOracle` interface — the underlying oracle source can be switched by governance without any changes to the protocol.
 
-Provides price feeds for EUR/USD and USDC/USD.
+### OracleRouter
+
+Routes price requests to the currently active oracle (ChainlinkOracle or StorkOracle).
 
 #### Functions
 
-##### `getEurUsdPrice() → (uint256, bool)`
-Gets current EUR/USD price.
+##### `getLatestPrice() → (uint256, bool)`
+Gets the current EUR/USD price from the active oracle.
 
 **Returns:**
-- `uint256`: Price (8 decimals)
+- `uint256`: EUR/USD price (18 decimals)
 - `bool`: Whether price is valid and fresh
 
 **Access:** Public view
 
-##### `getUsdcUsdPrice() → (uint256, bool)`
-Gets current USDC/USD price.
+##### `switchOracle(uint8 newOracleType)`
+Switches the active oracle between Chainlink (0) and Stork (1).
+
+**Parameters:**
+- `newOracleType` (uint8): `0` = Chainlink, `1` = Stork
+
+**Access:** `ORACLE_MANAGER_ROLE`
+
+##### `setOracleAddresses(address chainlink, address stork)`
+Updates the underlying oracle contract addresses.
+
+**Parameters:**
+- `chainlink` (address): ChainlinkOracle proxy address
+- `stork` (address): StorkOracle proxy address
+
+**Access:** `ORACLE_MANAGER_ROLE`
+
+#### Events
+
+```solidity
+event OracleSwitched(uint8 oldOracle, uint8 newOracle, address caller);
+event OracleAddressesUpdated(address newChainlink, address newStork);
+```
+
+---
+
+### ChainlinkOracle
+
+EUR/USD and USDC/USD price feeds via Chainlink AggregatorV3.
+
+**Validation rules:**
+- Max staleness: 3600 seconds (1 hour)
+- Max deviation: 500 basis points (5%)
+- Timestamp drift detection: 900 seconds (15 minutes)
+
+#### Functions
+
+##### `getLatestPrice() → (uint256, bool)`
+Gets current EUR/USD price from Chainlink.
 
 **Returns:**
-- `uint256`: Price (8 decimals)
+- `uint256`: EUR/USD price (18 decimals)
 - `bool`: Whether price is valid and fresh
 
 **Access:** Public view
@@ -762,37 +859,51 @@ Gets current USDC/USD price.
 Updates Chainlink price feed addresses.
 
 **Parameters:**
-- `eurUsdFeed` (address): EUR/USD price feed address
-- `usdcUsdFeed` (address): USDC/USD price feed address
+- `eurUsdFeed` (address): EUR/USD Chainlink aggregator address
+- `usdcUsdFeed` (address): USDC/USD Chainlink aggregator address
 
-**Access:** Admin role only
-
-##### `updatePriceBounds(uint256 minPrice, uint256 maxPrice)`
-Updates price bounds for validation.
-
-**Parameters:**
-- `minPrice` (uint256): Minimum acceptable price
-- `maxPrice` (uint256): Maximum acceptable price
-
-**Access:** Admin role only
-
-##### `triggerCircuitBreaker()`
-Triggers circuit breaker for emergency price protection.
-
-**Access:** Emergency role only
-
-##### `resetCircuitBreaker()`
-Resets circuit breaker.
-
-**Access:** Admin role only
+**Access:** `ORACLE_MANAGER_ROLE`
 
 #### Events
 
 ```solidity
 event PriceFeedsUpdated(address eurUsdFeed, address usdcUsdFeed);
-event PriceBoundsUpdated(uint256 minPrice, uint256 maxPrice);
 event CircuitBreakerTriggered(uint256 timestamp);
 event CircuitBreakerReset(uint256 timestamp);
+```
+
+---
+
+### StorkOracle
+
+EUR/USD and USDC/USD price feeds via Stork Network. Same `IOracle` interface as ChainlinkOracle.
+
+**Validation rules:** identical to ChainlinkOracle (staleness, deviation, timestamp drift).
+
+#### Functions
+
+##### `getLatestPrice() → (uint256, bool)`
+Gets current EUR/USD price from Stork Network.
+
+**Returns:**
+- `uint256`: EUR/USD price (18 decimals)
+- `bool`: Whether price is valid and fresh
+
+**Access:** Public view
+
+##### `updateFeedIds(bytes32 eurUsdId, bytes32 usdcUsdId)`
+Updates Stork feed IDs.
+
+**Parameters:**
+- `eurUsdId` (bytes32): EUR/USD Stork feed ID (default: `keccak256("EURUSD")`)
+- `usdcUsdId` (bytes32): USDC/USD Stork feed ID (default: `keccak256("USDCUSD")`)
+
+**Access:** `ORACLE_MANAGER_ROLE`
+
+#### Events
+
+```solidity
+event FeedIdsUpdated(bytes32 eurUsdId, bytes32 usdcUsdId);
 ```
 
 ---

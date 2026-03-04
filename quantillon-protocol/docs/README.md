@@ -49,24 +49,25 @@ Step-by-step instructions for deploying and configuring the protocol.
 ## 🏗️ Protocol Components
 
 ### Core Contracts
-- **QuantillonVault** - Main vault for QEURO minting/redeeming
-- **QEUROToken** - Euro-pegged stablecoin with compliance features
-- **QTIToken** - Governance token with vote-escrow mechanics
-- **UserPool** - User deposits, staking, and yield distribution
-- **HedgerPool** - Leveraged hedging positions for risk management
-- **stQEUROToken** - Staked QEURO with yield distribution
-
-### Vault Contracts
-- **AaveVault** - Yield generation through Aave protocol integration
+- **QuantillonVault** - Main vault: USDC ↔ QEURO swaps, ≥105% collateralization, liquidation at 101%
+- **QEUROToken** - Euro-pegged stablecoin: mint/burn via vault, rate limiting, compliance (blacklist/whitelist)
+- **QTIToken** - Governance token: vote-escrow, fixed 100M supply, up to 4× voting power multiplier
+- **FeeCollector** - Protocol fee aggregation and distribution (60% treasury / 25% dev / 15% community)
+- **UserPool** - User deposits (USDC), QEURO staking, yield distribution with 7-day holding period
+- **HedgerPool** - EUR/USD short positions for hedgers, margin management, liquidation at 101% CR
+- **stQEUROToken** - Yield-bearing QEURO wrapper: exchange rate accrues yield, no lock-up
 
 ### Yield Management
-- **YieldShift** - Intelligent yield distribution between pools
+- **AaveVault** - USDC yield farming via Aave v3: supply, harvest rewards, emergency withdrawal
+- **YieldShift** - Dynamic yield allocation between UserPool and HedgerPool; TWAP-based balancing
 
-### Oracle
-- **ChainlinkOracle** - Price feeds for EUR/USD and USDC/USD
+### Oracle System
+- **OracleRouter** - Oracle-agnostic router implementing `IOracle`; routes to Chainlink or Stork (switchable by governance)
+- **ChainlinkOracle** - EUR/USD + USDC/USD via Chainlink AggregatorV3; 1-hour staleness; 5% deviation circuit breaker
+- **StorkOracle** - EUR/USD + USDC/USD via Stork Network; same validation as Chainlink
 
 ### Utilities
-- **TimeProvider** - Time utilities with offset capabilities
+- **TimeProvider** - Centralized `block.timestamp` wrapper used by all time-sensitive contracts
 
 ---
 
@@ -128,14 +129,13 @@ make validate-natspec
 ## 🌐 Network Support
 
 ### Mainnet
-- **Ethereum**: Coming soon
-- **Base**: Coming soon
-- **Polygon**: Coming soon
-- **Arbitrum**: Coming soon
+- **Base**: `./scripts/deployment/deploy.sh base --verify --production`
 
 ### Testnets
-- **Base Sepolia**: Supported (use `make deploy-base-sepolia` or `./scripts/deployment/deploy.sh base-sepolia --verify`)
-- **Ethereum Sepolia**: Supported for testing
+- **Base Sepolia**: `./scripts/deployment/deploy.sh base-sepolia --verify`
+
+### Local Development
+- **Localhost (Anvil)**: `./scripts/deployment/deploy.sh localhost --with-mocks`
 
 ---
 

@@ -42,14 +42,18 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
 | **QEUROToken** | Euro-pegged stablecoin | Mint/burn controls, rate limiting, compliance features, 18 decimals |
-| **QTIToken** | Governance token | Vote-escrow mechanics, fixed supply, lock periods, voting power multipliers |
-| **QuantillonVault** | Main vault | Overcollateralized minting, liquidation system, fee management |
-| **UserPool** | User deposits | Staking rewards, yield distribution, deposit/withdrawal management |
-| **HedgerPool** | Hedging operations | EUR/USD positions, margin management, liquidation system |
-| **stQEUROToken** | Yield-bearing wrapper | Automatic yield accrual, exchange rate mechanism |
-| **AaveVault** | Aave integration | Automated yield farming, risk management, emergency controls |
-| **YieldShift** | Yield management | Dynamic yield distribution, pool rebalancing, performance metrics |
-| **ChainlinkOracle** | Price feeds | EUR/USD and USDC/USD price feeds with circuit breakers |
+| **QTIToken** | Governance token | Vote-escrow mechanics, fixed supply (100M), lock periods, 4× voting power |
+| **QuantillonVault** | Main vault | Overcollateralized minting (≥105%), liquidation at 101%, fee management |
+| **FeeCollector** | Fee distribution | 60/25/15 split to treasury/dev/community, per-token accounting |
+| **UserPool** | User deposits | USDC deposits, QEURO staking, unstaking cooldown, yield distribution |
+| **HedgerPool** | Hedging operations | EUR/USD short positions, margin management, liquidation at 101% CR |
+| **stQEUROToken** | Yield-bearing wrapper | Automatic yield accrual via exchange rate, no lock-up |
+| **AaveVault** | Aave v3 integration | Automated USDC yield farming, reward harvesting, emergency controls |
+| **YieldShift** | Yield management | Dynamic distribution between pools, 7-day holding period, TWAP-based allocation |
+| **OracleRouter** | Oracle routing | Routes between Chainlink and Stork oracles, switchable by governance |
+| **ChainlinkOracle** | Chainlink price feeds | EUR/USD and USDC/USD via Chainlink, 1 hr staleness check, circuit breakers |
+| **StorkOracle** | Stork price feeds | EUR/USD and USDC/USD via Stork Network, same validation as Chainlink |
+| **TimeProvider** | Time utilities | Centralized `block.timestamp` wrapper for consistent time management |
 
 ## 🚀 Quick Start
 
@@ -73,10 +77,9 @@ npm install
 
 ```bash
 # Copy an environment template for your target network
-cp .env.localhost .env   # for local Anvil development
-
-# Fill in your values (API keys, private keys, etc.)
-# Other templates: .env.base-sepolia, .env.ethereum-sepolia
+cp .env.localhost .env        # for local Anvil development
+cp .env.base-sepolia .env     # for Base Sepolia testnet
+cp .env.base .env             # for Base mainnet
 ```
 
 ### 3. Build and Test
@@ -96,28 +99,9 @@ make slither
 
 ## 🚀 Deployment
 
-### 🔐 Multi-Phase Deployment Strategy
+### 🔐 Unified Deployment
 
-The protocol uses a **4-phase atomic deployment** (A→B→C→D) to stay within Base Sepolia/Mainnet's 24.9M gas limit per transaction:
-
-| Phase | Gas | Contracts | Purpose |
-|-------|-----|-----------|---------|
-| **A** | ~17M | TimeProvider, Oracle, QEURO, FeeCollector, Vault | Core infrastructure |
-| **B** | ~16M | QTI, AaveVault, stQEURO | Token layer |
-| **C** | ~11M | UserPool, HedgerPool | Pool layer |
-| **D** | ~7M | YieldShift + wiring | Yield management |
-
-**Key Features:**
-- ✅ All phases well under 24.9M limit (8-13M gas headroom)
-- ✅ Automatic address passing between phases
-- ✅ Minimal initialization with governance setters for post-deployment wiring
-- ✅ Frontend address updater merges all phase broadcasts automatically
-
-See [Deployment Guide](https://smartcontracts.quantillon.money/Deployment.html) for complete details.
-
-### 🔐 Secure Deployment
-
-The protocol uses standard environment variable configuration:
+All 13 contracts are deployed in a single `forge script` invocation via `DeployQuantillon.s.sol`. Deployed addresses are written to `deployments/{chainId}/addresses.json`.
 
 ```bash
 # Deploy to localhost with mock contracts
@@ -127,13 +111,7 @@ The protocol uses standard environment variable configuration:
 ./scripts/deployment/deploy.sh base-sepolia --verify
 
 # Deploy to Base mainnet (production)
-./scripts/deployment/deploy.sh base --verify
-
-# Deploy to Ethereum Sepolia testnet
-./scripts/deployment/deploy.sh ethereum-sepolia --with-mocks --verify
-
-# Deploy to Ethereum mainnet (production)
-./scripts/deployment/deploy.sh ethereum --verify
+./scripts/deployment/deploy.sh base --verify --production
 ```
 
 ### 📋 Deployment Options
@@ -150,10 +128,10 @@ The protocol uses standard environment variable configuration:
 ### 🔧 Deployment Features
 
 - **🔐 Secure Environment Variables**: Manage secrets with standard `.env` files (never commit them)
-- **🌐 Multi-Network Support**: Localhost, Base Sepolia, and Base Mainnet
+- **🌐 Multi-Network Support**: Localhost (31337), Base Sepolia (84532), Base Mainnet (8453)
 - **🎭 Granular Mock Control**: Choose which contracts to mock (`--with-mocks`, `--with-mock-usdc`, `--with-mock-oracle`)
-- **✅ Contract Verification**: Automatic verification on block explorers
-- **🧪 Dry-Run Capability**: Test deployments without broadcasting
+- **✅ Contract Verification**: Automatic verification on block explorers via `--verify`
+- **🧪 Dry-Run Capability**: Test deployments without broadcasting via `--dry-run`
 - **⚡ Smart Caching**: Compilation cache preserved by default for faster deployments (use `--clean-cache` to force full rebuild)
 - **📝 Post-Deployment Tasks**: Automatic ABI copying and address updates
 

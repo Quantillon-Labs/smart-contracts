@@ -8,7 +8,7 @@ This guide will help you quickly integrate with the Quantillon Protocol smart co
 
 ## Prerequisites
 
-- Node.js 16+ and npm/yarn
+- Node.js 18+ and npm/yarn
 - Web3 library (web3.js, ethers.js, or web3.py)
 - Ethereum wallet (MetaMask, WalletConnect, etc.)
 - USDC tokens for testing

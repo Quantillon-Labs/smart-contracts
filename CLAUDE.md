@@ -171,11 +171,9 @@ contract MyContract is Initializable, SecureUpgradeable {
 
 ## Deployment Strategy
 
-4-phase atomic deployment (stays within 24.9M gas limit):
-- **Phase A** (~17M): TimeProvider, Oracle, QEURO, FeeCollector, Vault
-- **Phase B** (~16M): QTI, AaveVault, stQEURO
-- **Phase C** (~11M): UserPool, HedgerPool
-- **Phase D** (~7M): YieldShift + wiring
+Single unified deployment script (`DeployQuantillon.s.sol`) deploys all 13 contracts in one forge invocation.
+Deployed addresses are written to `deployments/{chainId}/addresses.json` via `vm.writeJson()`.
+Networks: localhost (31337), Base Sepolia (84532), Base Mainnet (8453).
 
 ## Testing Standards
 

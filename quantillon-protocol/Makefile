@@ -171,33 +171,22 @@ ci: build test
 	@echo "🚀 CI/CD pipeline completed!"
 
 # Deployment commands using the unified deploy.sh script
+# deploy.sh handles ABIs and frontend address updates automatically in post-deployment.
 
 # Deploy to localhost
 deploy-localhost:
 	@echo "🌐 Deploying to localhost with mock contracts..."
 	@./scripts/deployment/deploy.sh localhost --with-mocks
-	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/deployment/copy-abis.sh
-	@echo "📍 Updating frontend addresses..."
-	@./scripts/deployment/update-frontend-addresses.sh
 
 # Deploy to Base Sepolia
 deploy-base-sepolia:
 	@echo "🌐 Deploying to Base Sepolia with verification..."
 	@./scripts/deployment/deploy.sh base-sepolia --verify
-	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/deployment/copy-abis.sh
-	@echo "📍 Updating frontend addresses..."
-	@./scripts/deployment/update-frontend-addresses.sh
 
 # Deploy to Base mainnet
 deploy-base:
 	@echo "🌐 Deploying to Base mainnet with production settings..."
-	@./scripts/deployment/deploy.sh base --production --verify
-	@echo "📋 Copying ABIs to frontend..."
-	@./scripts/deployment/copy-abis.sh
-	@echo "📍 Updating frontend addresses..."
-	@./scripts/deployment/update-frontend-addresses.sh
+	@./scripts/deployment/deploy.sh base --verify --production
 
 # Dry run deployment (test without broadcasting)
 deploy-dry-run:

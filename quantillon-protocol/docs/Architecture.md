@@ -21,8 +21,9 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
 │ • Retail Users  │───▶│ • QuantillonVault│    │ • AaveVault     │
 │ • Institutional │    │ • QEUROToken    │    │ • YieldShift    │
 │ • Liquidity     │    │ • QTIToken      │    └─────────────────┘
-│   Providers     │    │ • UserPool      │             │
-└─────────────────┘    │ • HedgerPool    │             │
+│   Providers     │    │ • FeeCollector  │             │
+└─────────────────┘    │ • UserPool      │             │
+                       │ • HedgerPool    │             │
                        │ • stQEUROToken  │             │
                        └─────────────────┘             │
                                 │                      │
@@ -30,7 +31,7 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
                        │Infrastructure   │             │
                        │Layer            │             │
                        ├─────────────────┤             │
-                       │ • ChainlinkOracle│            │
+                       │ • OracleRouter  │             │
                        │ • TimeProvider  │             │
                        │ • Security Libs │             │
                        └─────────────────┘             │
@@ -40,7 +41,8 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
                        ├─────────────────┤             │
                        │ • Aave Protocol │◀────────────┘
                        │ • Chainlink     │
-                       │ • Ethereum      │
+                       │ • Stork Network │
+                       │ • Base Network  │
                        └─────────────────┘
 ```
 
@@ -135,16 +137,53 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
 **Purpose**: Yield-bearing wrapper for QEURO with automatic yield accrual.
 
 **Key Features**:
-- Automatic yield distribution
-- Exchange rate mechanism
+- Automatic yield distribution via exchange rate
+- Exchange rate = (totalUnderlying + totalYieldEarned) / totalSupply
+- No lock-up period — unstake at any time
 - Virtual protection against donation attacks
-- Yield claiming system
-- Treasury management
 
 **Architecture Patterns**:
 - **Wrapper Pattern**: Enhanced token functionality
-- **Yield Distribution**: Proportional yield allocation
+- **Yield Distribution**: Exchange rate increases as yield accrues
 - **Virtual Protection**: Attack prevention mechanisms
+
+### 7. FeeCollector
+
+**Purpose**: Centralized fee collection and distribution across the protocol.
+
+**Key Features**:
+- Collects fees from QuantillonVault (mint/redeem fees)
+- Distributes to three beneficiaries: treasury (60%), dev fund (25%), community (15%)
+- Governance-controlled ratio updates
+- Per-token fee accounting
+
+**Architecture Patterns**:
+- **Pull Pattern**: Beneficiaries withdraw collected fees
+- **Split Pattern**: Configurable fee ratio distribution
+
+### 8. OracleRouter
+
+**Purpose**: Oracle-agnostic price routing — all protocol contracts interact with OracleRouter via `IOracle`.
+
+**Key Features**:
+- Routes price requests to the active oracle (Chainlink or Stork)
+- Governance can switch between oracles at runtime without changing protocol contracts
+- Both oracles implement the same `IOracle` interface
+- Event emitted on oracle switch (`OracleSwitched`)
+
+### 9. ChainlinkOracle / StorkOracle
+
+**Purpose**: EUR/USD and USDC/USD price feeds with circuit breakers.
+
+**Key Features**:
+- **ChainlinkOracle**: Uses Chainlink AggregatorV3 feeds; 1-hour staleness check; 5% deviation circuit breaker
+- **StorkOracle**: Uses Stork Network `TemporalNumericValue` feeds; identical staleness/deviation validation
+- Both support EUR/USD and USDC/USD feeds
+- Mock versions available (`MockChainlinkOracle`, `MockStorkOracle`) for local/testnet
+
+### 10. TimeProvider
+
+**Purpose**: Centralized `block.timestamp` wrapper for consistent time management across all contracts.
 
 ---
 
@@ -188,14 +227,16 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
 ### Access Control System
 
 **Role-Based Access Control (RBAC)**:
-- `DEFAULT_ADMIN_ROLE`: Super admin privileges
-- `EMERGENCY_ROLE`: Emergency operations
-- `GOVERNANCE_ROLE`: Protocol governance
-- `VAULT_ROLE`: Vault operations
-- `YIELD_MANAGER_ROLE`: Yield management
-- `COMPLIANCE_ROLE`: Compliance operations
-- `LIQUIDATOR_ROLE`: Liquidation operations
-- `TIME_MANAGER_ROLE`: Time management
+- `MINTER_ROLE` / `BURNER_ROLE`: QEUROToken — vault-only mint/burn
+- `PAUSER_ROLE`: QEUROToken emergency pause
+- `COMPLIANCE_ROLE`: QEUROToken blacklist/whitelist management
+- `GOVERNANCE_ROLE`: Parameter updates and contract wiring across all core contracts
+- `EMERGENCY_ROLE`: Emergency pause and withdrawal across all core contracts
+- `VAULT_OPERATOR_ROLE`: QuantillonVault — authorize Aave deployment
+- `HEDGER_ROLE`: HedgerPool — open and manage hedging positions
+- `TREASURY_ROLE`: FeeCollector — fee withdrawal
+- `ORACLE_MANAGER_ROLE`: OracleRouter/ChainlinkOracle/StorkOracle — feed updates, oracle switching
+- `UPGRADER_ROLE`: Oracle contracts — UUPS upgrades
 
 ### Security Patterns
 
@@ -337,17 +378,18 @@ Governance Flow:
 
 ### External Integrations
 
-**Chainlink Oracle**:
-- EUR/USD price feed
-- USDC/USD price feed
-- Staleness validation
-- Circuit breaker integration
+**Oracle System (OracleRouter + ChainlinkOracle + StorkOracle)**:
+- OracleRouter implements `IOracle` — all protocol contracts use this interface
+- Active oracle is switchable by governance (Chainlink ↔ Stork) without contract changes
+- ChainlinkOracle: EUR/USD + USDC/USD via Chainlink AggregatorV3; 1 hr staleness check; 5% deviation circuit breaker
+- StorkOracle: EUR/USD + USDC/USD via Stork Network; same staleness/deviation validation
+- MockChainlinkOracle + MockStorkOracle available for local/testnet development
 
 **Aave Protocol**:
-- USDC lending integration
-- Yield harvesting
-- Risk management
-- Emergency withdrawal
+- USDC lending integration via AaveVault
+- Yield harvesting and distribution
+- Risk management (exposure limits)
+- Emergency withdrawal mechanisms
 
 **ERC-20 Standards**:
 - Full ERC-20 compliance

@@ -347,13 +347,8 @@ contract FeeCollector is
     ) {
         treasuryAmount = balance * treasuryRatio / 10000;
         devFundAmount = balance * devFundRatio / 10000;
-        communityAmount = balance * communityRatio / 10000;
-        
-        // Ensure total doesn't exceed balance (handle rounding)
-        uint256 totalDistributed = treasuryAmount + devFundAmount + communityAmount;
-        if (totalDistributed > balance) {
-            communityAmount = balance - treasuryAmount - devFundAmount;
-        }
+        // Give community fund the remainder to eliminate rounding dust
+        communityAmount = balance - treasuryAmount - devFundAmount;
     }
 
     /**
@@ -557,7 +552,11 @@ contract FeeCollector is
         treasury = _treasury;
         devFund = _devFund;
         communityFund = _communityFund;
-        
+
+        authorizedETHRecipients[_treasury] = true;
+        authorizedETHRecipients[_devFund] = true;
+        authorizedETHRecipients[_communityFund] = true;
+
         emit FundAddressesUpdated(_treasury, _devFund, _communityFund);
     }
     

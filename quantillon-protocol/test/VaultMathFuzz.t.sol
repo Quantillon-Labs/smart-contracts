@@ -60,18 +60,11 @@ contract VaultMathFuzz is Test {
 
     /**
      * @notice Fuzz test mulDiv identity property
-     * @dev a * 1 / 1 should equal a (with possible rounding)
-     *      Note: mulDiv adds 1 when remainder >= divisor/2, and for divisor=1,
-     *      remainder=0 and divisor/2=0, so 0>=0 is true, causing +1 rounding.
+     * @dev a * 1 / 1 should equal a (exact truncation, no rounding)
      */
     function testFuzz_MulDiv_Identity(uint256 a) public pure {
-        // Avoid overflow when adding 1 to result
-        vm.assume(a < type(uint256).max);
-        
         uint256 result = VaultMath.mulDiv(a, 1, 1);
-        // mulDiv has rounding behavior: when c=1, it always rounds up by 1
-        // because remainder (a % 1 = 0) >= c/2 (1/2 = 0) is true
-        assertEq(result, a + 1, "Identity property with rounding");
+        assertEq(result, a, "Identity property: mulDiv(a,1,1) == a");
     }
 
     /**

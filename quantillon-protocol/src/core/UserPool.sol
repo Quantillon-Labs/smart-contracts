@@ -286,6 +286,9 @@ contract UserPool is
 
     // Block-based tracking to prevent timestamp manipulation
     mapping(address => uint256) public userLastRewardBlock;
+
+    /// @notice Pending USDC withdrawals for users whose transfers failed (e.g. USDC blacklist)
+    mapping(address => uint256) public pendingUsdcWithdrawals;
     uint256 public constant BLOCKS_PER_DAY = 7200; // Assuming 12 second blocks
     uint256 public constant MAX_REWARD_PERIOD = 365 days; // Maximum reward period
 
@@ -341,13 +344,19 @@ contract UserPool is
     /// @param timestamp Block timestamp when withdrawal was made
     /// @param blockNumber Block number when withdrawal was made
     event UserWithdrawalTracked(
-        address indexed user, 
-        uint256 qeuroAmount, 
-        uint256 usdcReceived, 
-        uint256 oracleRatio, 
-        uint256 timestamp, 
+        address indexed user,
+        uint256 qeuroAmount,
+        uint256 usdcReceived,
+        uint256 oracleRatio,
+        uint256 timestamp,
         uint256 blockNumber
     );
+
+    /// @notice Emitted when a USDC transfer to a user fails (e.g. USDC blacklist) and is queued
+    event WithdrawalPending(address indexed user, uint256 amount);
+
+    /// @notice Emitted when a user claims their pending USDC withdrawal
+    event PendingWithdrawalClaimed(address indexed user, uint256 amount);
     
     /// @notice Emitted when a user stakes QEURO
     /// @param user Address of the user who staked
@@ -945,11 +954,15 @@ contract UserPool is
         
         // Single vault call instead of multiple calls in loop
         // The vault handles all fee calculations and deductions
+        uint256 usdcBefore = usdc.balanceOf(address(this));
         vault.redeemQEURO(totalQeuroAmount, totalMinUsdcOut);
-        
-        // Store the minUsdcOuts as received amounts (vault already applied fees)
+        uint256 totalReceived = usdc.balanceOf(address(this)) - usdcBefore;
+
+        // Distribute actual received USDC proportionally to each withdrawal
         for (uint256 i = 0; i < length;) {
-            usdcReceivedAmounts[i] = minUsdcOuts[i];
+            usdcReceivedAmounts[i] = totalQeuroAmount > 0
+                ? qeuroAmounts[i].mulDiv(totalReceived, totalQeuroAmount)
+                : 0;
             unchecked { ++i; }
         }
     }
@@ -1012,14 +1025,40 @@ contract UserPool is
             unchecked { ++i; }
         }
         
-        // INTERACTIONS - All external calls after state updates
-        for (uint256 i = 0; i < length;) {
-            usdc.safeTransfer(msg.sender, usdcReceivedAmounts[i]);
-            unchecked { ++i; }
+        // INTERACTIONS - Single transfer to avoid external calls in loop (Slither calls-loop)
+        // Use low-level call to handle USDC blacklist gracefully; failed transfer goes to pending map
+        if (totalWithdrawn > 0) {
+            (bool ok,) = address(usdc).call(
+                abi.encodeCall(IERC20.transfer, (msg.sender, totalWithdrawn))
+            );
+            if (!ok) {
+                pendingUsdcWithdrawals[msg.sender] += totalWithdrawn;
+                emit WithdrawalPending(msg.sender, totalWithdrawn);
+            }
         }
     }
     // slither-disable-end reentrancy-no-eth
     // slither-disable-end reentrancy-benign
+
+    /**
+     * @notice Claim USDC that could not be transferred during withdrawal (e.g. USDC blacklist)
+     * @dev Allows users to pull USDC that was queued in `pendingUsdcWithdrawals` after a failed transfer
+     * @custom:security Protected by nonReentrant and whenNotPaused; only claims caller’s own pending balance
+     * @custom:validation Reverts if the caller has no pending USDC balance to claim
+     * @custom:state-changes Sets `pendingUsdcWithdrawals[msg.sender]` to zero and transfers USDC to the caller
+     * @custom:events Emits `PendingWithdrawalClaimed` with the claimed amount
+     * @custom:errors Reverts with `InsufficientBalance` if amount is zero
+     * @custom:reentrancy Protected by nonReentrant; uses SafeERC20 for token transfer
+     * @custom:access Public function callable by any user for their own pending withdrawal
+     * @custom:oracle No oracle dependencies
+     */
+    function claimPendingWithdrawal() external nonReentrant whenNotPaused {
+        uint256 amount = pendingUsdcWithdrawals[msg.sender];
+        if (amount == 0) revert CommonErrorLibrary.InsufficientBalance();
+        pendingUsdcWithdrawals[msg.sender] = 0;
+        usdc.safeTransfer(msg.sender, amount);
+        emit PendingWithdrawalClaimed(msg.sender, amount);
+    }
 
     // =============================================================================
     // STAKING FUNCTIONS
@@ -1455,26 +1494,37 @@ contract UserPool is
     }
     
     /**
-     * @notice Get current oracle ratio scaled by 1e6 for storage efficiency
-     * @return Oracle ratio scaled by 1e6 (e.g., 1.08 becomes 1080000)
-     * @dev Used internally for tracking oracle ratios in deposit/withdrawal records
-     * @dev Scaled to fit in uint32 for gas efficiency
-     * @custom:security No security implications (view function)
-     * @custom:validation No validation required
-     * @custom:state-changes No state changes (view function)
-     * @custom:events No events (view function)
-     * @custom:errors No custom errors
-     * @custom:reentrancy No external calls, safe
+     * @notice Get current oracle EUR/USD ratio scaled down for compact storage
+     * @return Oracle ratio scaled to two decimals (e.g., 1.08 EUR/USD becomes 108)
+     * @dev Used internally for tracking oracle ratios in deposit/withdrawal records.
+     *      Supports both 18-decimal prices (production `IOracle`) and 8-decimal
+     *      prices (legacy mocks) by normalizing to an 8-decimal representation
+     *      before scaling down by 1e6.
+     * @custom:security No direct security implications – read-only helper
+     * @custom:validation Reverts if the underlying oracle reports an invalid price
+     * @custom:state-changes No state changes – internal helper
+     * @custom:events No events emitted
+     * @custom:errors Reverts with `InvalidOraclePrice` if `isValid` is false
+     * @custom:reentrancy No external stateful calls besides the oracle read
      * @custom:access Internal function
-     * @custom:oracle Depends on oracle for current EUR/USD rate
+     * @custom:oracle Depends on `IOracle.getEurUsdPrice` for the current EUR/USD rate
      */
     function _getOracleRatioScaled() internal returns (uint32) {
         (uint256 oraclePrice, bool isValid) = oracle.getEurUsdPrice();
-        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-        // Scale by 1e6 to fit in uint32 (max value ~4.2B)
-        // Oracle price is in 8 decimals, so we scale by 1e6 to get 2 decimals precision
+        if (!isValid || oraclePrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+
+        uint256 normalized;
+        if (oraclePrice > 1e12) {
+            // Assume 18-decimal price (e.g. 1.08e18) – normalize to 8 decimals
+            normalized = oraclePrice / 1e10;
+        } else {
+            // Assume already in 8 decimals (e.g. 1.08e8 from legacy mocks)
+            normalized = oraclePrice;
+        }
+
+        // Scale to two decimals: 1.08e8 / 1e6 = 108
         // forge-lint: disable-next-line(unsafe-typecast)
-        return uint32(oraclePrice / 1e6);
+        return uint32(normalized / 1e6);
     }
 
     /**
@@ -1702,27 +1752,28 @@ contract UserPool is
 
     /**
      * @notice Emergency unstake for a specific user (restricted to emergency roles)
-     * @dev This function is intended for emergency situations where a user's
-     *      staked QEURO needs to be forcibly unstaked.
-     * @param user Address of the user to unstake
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @dev Forcibly unstakes a user’s full staked balance and sends it to the specified recipient
+     * @param user Address of the user whose staked QEURO will be unstaked
+     * @param recipient Address that will receive the unstaked QEURO (defaults to `user` when zero)
+     * @custom:security Restricted to EMERGENCY_ROLE to prevent arbitrary unstaking
+     * @custom:validation If `recipient` is address(0) it is automatically replaced with `user`
+     * @custom:state-changes Sets `userdata.stakedAmount` to zero and decreases `totalStakes` by the unstaked amount
+     * @custom:events Emits no specific event; external monitoring should rely on QEURO transfers
+     * @custom:errors No custom errors; function is a best-effort emergency escape hatch
+     * @custom:reentrancy Protected by onlyRole but not nonReentrant; single SafeERC20 transfer at the end
+     * @custom:access Restricted to EMERGENCY_ROLE
+     * @custom:oracle No oracle dependencies
      */
-    function emergencyUnstake(address user) external onlyRole(EMERGENCY_ROLE) {
+    function emergencyUnstake(address user, address recipient) external onlyRole(EMERGENCY_ROLE) {
+        if (recipient == address(0)) recipient = user;
         UserInfo storage userdata = userInfo[user];
         uint256 amount = userdata.stakedAmount;
-        
+
         if (amount > 0) {
             userdata.stakedAmount = 0;
             totalStakes -= amount;
-    
-            IERC20(address(qeuro)).safeTransfer(user, amount);
+
+            IERC20(address(qeuro)).safeTransfer(recipient, amount);
         }
     }
 

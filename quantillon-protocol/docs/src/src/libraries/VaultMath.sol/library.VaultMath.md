@@ -87,6 +87,49 @@ function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 
 |`result`|`uint256`|a * b / c with proper rounding|
 
 
+### mulDivUp
+
+Multiply two numbers and divide by a third, rounding the result up
+
+Ceiling variant of [mulDiv](/src/libraries/VaultMath.sol/library.VaultMath.md#muldiv). If there is any non-zero remainder after division,
+the result is increased by 1 to round towards positive infinity.
+
+**Notes:**
+- security: Uses [mulDiv](/src/libraries/VaultMath.sol/library.VaultMath.md#muldiv) internally for overflow and division-by-zero protection
+
+- validation: Caller must ensure `c` is non-zero; reverts via [mulDiv](/src/libraries/VaultMath.sol/library.VaultMath.md#muldiv) otherwise
+
+- state-changes: No state changes - pure function
+
+- events: No events emitted
+
+- errors: Reverts with DivisionByZero or MultiplicationOverflow via [mulDiv](/src/libraries/VaultMath.sol/library.VaultMath.md#muldiv) on invalid inputs
+
+- reentrancy: Not applicable - pure function
+
+- access: Internal library function
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function mulDivUp(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`a`|`uint256`|First multiplicand|
+|`b`|`uint256`|Second multiplicand|
+|`c`|`uint256`|Divisor|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`result`|`uint256`|a * b / c, rounded up when there is a remainder|
+
+
 ### percentageOf
 
 Calculate percentage of a value

@@ -135,6 +135,33 @@ address public singleHedger
 ```
 
 
+### minPositionHoldBlocks
+Minimum blocks a position must be held before closing (~60s on mainnet)
+
+
+```solidity
+uint256 public minPositionHoldBlocks = 5
+```
+
+
+### minMarginAmount
+Minimum USDC margin required to open a position (prevents dust / unliquidatable positions)
+
+
+```solidity
+uint256 public minMarginAmount = 100e6
+```
+
+
+### pendingRewardWithdrawals
+Pending reward withdrawals for hedgers whose direct transfer failed (e.g. USDC blacklist)
+
+
+```solidity
+mapping(address => uint256) public pendingRewardWithdrawals
+```
+
+
 ### positions
 
 ```solidity
@@ -728,6 +755,21 @@ function claimHedgingRewards()
 |`totalRewards`|`uint256`|Total rewards claimed|
 
 
+### withdrawPendingRewards
+
+Withdraw rewards that could not be pushed due to USDC transfer failure (e.g. blacklist)
+
+
+```solidity
+function withdrawPendingRewards(address recipient) external nonReentrant;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`recipient`|`address`|Address to receive the pending rewards (allows blacklisted hedgers to use an alternative address)|
+
+
 ### getTotalEffectiveHedgerCollateral
 
 Calculates total effective hedger collateral (margin + P&L) for the hedger position
@@ -840,6 +882,74 @@ function updateHedgingParameters(uint256 minRatio, uint256 maxLev) external;
 |----|----|-----------|
 |`minRatio`|`uint256`|New minimum margin ratio in basis points (e.g., 500 = 5%)|
 |`maxLev`|`uint256`|New maximum leverage multiplier (e.g., 20 = 20x)|
+
+
+### setMinPositionHoldBlocks
+
+Sets the minimum number of blocks a position must be held before closing
+
+Governance-level risk parameter to prevent oracle front-running via immediate open/close cycles
+
+**Notes:**
+- security: Restricted to GOVERNANCE_ROLE; affects when hedgers can exit but does not move funds directly
+
+- validation: Caller is responsible for providing a sane, network-appropriate block count
+
+- state-changes: Updates `minPositionHoldBlocks` which is enforced in `exitHedgePosition`
+
+- events: No events emitted for parameter updates
+
+- errors: Reverts with NotAuthorized if caller lacks GOVERNANCE_ROLE
+
+- reentrancy: Not protected - no external calls
+
+- access: Restricted to GOVERNANCE_ROLE
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function setMinPositionHoldBlocks(uint256 _blocks) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_blocks`|`uint256`|New minimum number of blocks a position must remain open before it can be closed|
+
+
+### setMinMarginAmount
+
+Sets the minimum margin (USDC) required to open a position
+
+Governance-level control to prevent dust / unliquidatable positions by enforcing a minimum USDC margin
+
+**Notes:**
+- security: Restricted to GOVERNANCE_ROLE; impacts who can open positions but does not move funds directly
+
+- validation: Caller must choose an amount consistent with protocol risk parameters and USDC decimals
+
+- state-changes: Updates `minMarginAmount` used by `enterHedgePosition` validation
+
+- events: No events emitted for parameter updates
+
+- errors: Reverts with NotAuthorized if caller lacks GOVERNANCE_ROLE
+
+- reentrancy: Not protected - no external calls
+
+- access: Restricted to GOVERNANCE_ROLE
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function setMinMarginAmount(uint256 _amount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_amount`|`uint256`|New minimum margin required in USDC (6 decimals)|
 
 
 ### updateInterestRates
@@ -1951,6 +2061,7 @@ struct HedgePosition {
     uint16 leverage;
     bool isActive;
     uint128 qeuroBacked; // Exact QEURO amount backed by this position (18 decimals)
+    uint64 openBlock; // Block number when position was opened (for min hold period)
 }
 ```
 

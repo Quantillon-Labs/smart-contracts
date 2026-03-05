@@ -56,6 +56,7 @@ library HedgerPoolErrorLibrary {
     error InsufficientHedgerCapacity();
     error NoActiveHedgerLiquidity();
     error HedgerHasActivePosition();
+    error MinHoldPeriodNotElapsed();
     
     
     // Fee Errors

@@ -2284,6 +2284,18 @@ event UsdcDeployedToAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
 |`usdcAmount`|`uint256`|Amount of USDC deployed to Aave|
 |`totalUsdcInAave`|`uint256`|New total USDC in Aave after deployment|
 
+### AaveDeploymentFailed
+
+```solidity
+event AaveDeploymentFailed(uint256 amount, bytes reason);
+```
+
+### HedgerSyncFailed
+
+```solidity
+event HedgerSyncFailed(string operation, uint256 amount, uint256 price, bytes reason);
+```
+
 ### UsdcWithdrawnFromAave
 Emitted when USDC is withdrawn from Aave
 

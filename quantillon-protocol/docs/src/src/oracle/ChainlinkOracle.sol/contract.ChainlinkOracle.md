@@ -124,6 +124,28 @@ AggregatorV3Interface public usdcUsdPriceFeed
 ```
 
 
+### sequencerUptimeFeed
+Optional Chainlink L2 sequencer uptime feed (Base/Arbitrum/etc)
+
+Set to address(0) on L1 (check skipped). On Base set to the Chainlink sequencer feed.
+
+
+```solidity
+AggregatorV3Interface public sequencerUptimeFeed
+```
+
+
+### sequencerGracePeriod
+Grace period after sequencer restart before prices are trusted again
+
+Recommended: 3600 seconds (1 hour) to allow stale data to flush
+
+
+```solidity
+uint256 public sequencerGracePeriod
+```
+
+
 ### treasury
 Treasury address for ETH recovery
 
@@ -1107,6 +1129,42 @@ function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 |`enabled`|`bool`|True to enable dev mode, false to disable|
 
 
+### setSequencerUptimeFeed
+
+Configure the L2 sequencer uptime feed for Base/Arbitrum deployments
+
+Set `feed` to address(0) on L1 to skip the sequencer check.
+On Base mainnet use: 0xBCF85224fc0756B9Fa45aA7892E69A2E01D7580D
+
+**Notes:**
+- security: Restricted to ORACLE_MANAGER_ROLE; sequencer checks gate oracle usage on L2s
+
+- validation: Caller must choose a grace period that is long enough to flush stale data
+
+- state-changes: Updates `sequencerUptimeFeed` and `sequencerGracePeriod`
+
+- events: Emits `SequencerFeedUpdated` with the new configuration
+
+- errors: No custom errors; relies on AccessControl for authorization checks
+
+- reentrancy: Not protected - no external calls beyond assigning storage and emitting an event
+
+- access: Restricted to ORACLE_MANAGER_ROLE
+
+- oracle: Configures an auxiliary Chainlink feed used in `getEurUsdPrice`
+
+
+```solidity
+function setSequencerUptimeFeed(address feed, uint256 gracePeriod) external onlyRole(ORACLE_MANAGER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`feed`|`address`|Chainlink sequencer uptime feed address (address(0) to disable)|
+|`gracePeriod`|`uint256`|Seconds to wait after sequencer restart before trusting prices again|
+
+
 ## Events
 ### PriceUpdated
 Emitted on each valid price update
@@ -1190,4 +1248,12 @@ event DevModeToggled(bool enabled, address indexed caller);
 |----|----|-----------|
 |`enabled`|`bool`|Whether dev mode is enabled or disabled|
 |`caller`|`address`|Address that triggered the toggle|
+
+### SequencerFeedUpdated
+Emitted when the sequencer uptime feed is updated
+
+
+```solidity
+event SequencerFeedUpdated(address indexed feed, uint256 gracePeriod);
+```
 

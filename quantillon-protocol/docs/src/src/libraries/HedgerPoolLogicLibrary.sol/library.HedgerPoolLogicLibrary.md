@@ -298,11 +298,11 @@ function calculateRewardUpdate(
     uint256 totalExposure,
     uint256 eurInterestRate,
     uint256 usdInterestRate,
-    uint256 lastRewardBlock,
-    uint256 currentBlock,
+    uint256 lastRewardTime,
+    uint256 currentTime,
     uint256 maxRewardPeriod,
     uint256 currentPendingRewards
-) external pure returns (uint256 newPendingRewards, uint256 newLastRewardBlock);
+) external pure returns (uint256 newPendingRewards, uint256 newLastRewardTime);
 ```
 **Parameters**
 
@@ -311,9 +311,9 @@ function calculateRewardUpdate(
 |`totalExposure`|`uint256`|Total exposure for the hedger position|
 |`eurInterestRate`|`uint256`|EUR interest rate in basis points|
 |`usdInterestRate`|`uint256`|USD interest rate in basis points|
-|`lastRewardBlock`|`uint256`|Block number of last reward calculation|
-|`currentBlock`|`uint256`|Current block number|
-|`maxRewardPeriod`|`uint256`|Maximum reward period in blocks|
+|`lastRewardTime`|`uint256`|Timestamp of last reward calculation|
+|`currentTime`|`uint256`|Current timestamp|
+|`maxRewardPeriod`|`uint256`|Maximum reward period in seconds|
 |`currentPendingRewards`|`uint256`|Current pending rewards amount|
 
 **Returns**
@@ -321,7 +321,7 @@ function calculateRewardUpdate(
 |Name|Type|Description|
 |----|----|-----------|
 |`newPendingRewards`|`uint256`|Updated pending rewards amount|
-|`newLastRewardBlock`|`uint256`|Updated last reward block|
+|`newLastRewardTime`|`uint256`|Updated last reward timestamp|
 
 
 ### validateMarginOperation

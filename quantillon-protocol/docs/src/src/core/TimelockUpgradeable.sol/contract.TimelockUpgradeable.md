@@ -143,6 +143,24 @@ bool public emergencyMode
 ```
 
 
+### _multisigSignersList
+Ordered list of multisig signers for approval clearing
+
+
+```solidity
+address[] internal _multisigSignersList
+```
+
+
+### _pendingUpgradesList
+Ordered list of pending upgrade addresses for signer clearing
+
+
+```solidity
+address[] internal _pendingUpgradesList
+```
+
+
 ### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
@@ -702,7 +720,11 @@ function getMultisigSigners() external view returns (address[] memory signers);
 
 Clear all approvals for an implementation
 
+Clear all approvals for a specific implementation
+
 Clears all approvals for a specific implementation
+
+Resets approval counts for a pending upgrade and removes it from the ordered pending list
 
 **Notes:**
 - security: No security checks needed
@@ -721,6 +743,22 @@ Clears all approvals for a specific implementation
 
 - oracle: No oracle dependencies
 
+- security: Internal helper used after execute/cancel paths; assumes caller already validated upgrade existence
+
+- validation: Assumes `implementation` is currently tracked in `_pendingUpgradesList`
+
+- state-changes: Sets `upgradeApprovalCount[implementation]` to zero and clears all signer approvals
+
+- events: No events emitted directly; caller is responsible for emitting high-level events
+
+- errors: None - function is best-effort cleanup
+
+- reentrancy: Not applicable - internal function with no external calls
+
+- access: Internal function only
+
+- oracle: No oracle dependencies
+
 
 ```solidity
 function _clearUpgradeApprovals(address implementation) internal;
@@ -730,6 +768,40 @@ function _clearUpgradeApprovals(address implementation) internal;
 |Name|Type|Description|
 |----|----|-----------|
 |`implementation`|`address`|Address of the implementation|
+
+
+### _removePendingUpgrade
+
+Remove an implementation from the ordered list of pending upgrades
+
+Uses swap-and-pop to maintain a compact array of pending upgrades for efficient iteration
+
+**Notes:**
+- security: Internal helper; assumes caller has already validated that the upgrade is pending
+
+- validation: Performs a linear scan over `_pendingUpgradesList` and stops at first match
+
+- state-changes: Updates `_pendingUpgradesList` by replacing the removed element with the last one and shrinking the array
+
+- events: No events emitted directly; high-level events are emitted by caller functions
+
+- errors: None - function silently returns if no match is found
+
+- reentrancy: Not applicable - internal function with no external calls
+
+- access: Internal function only
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _removePendingUpgrade(address implementation) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`implementation`|`address`|Address of the implementation to remove from `_pendingUpgradesList`|
 
 
 ### _clearSignerApprovals

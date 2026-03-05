@@ -405,6 +405,15 @@ mapping(address => uint256) public userLastRewardBlock
 ```
 
 
+### pendingUsdcWithdrawals
+Pending USDC withdrawals for users whose transfers failed (e.g. USDC blacklist)
+
+
+```solidity
+mapping(address => uint256) public pendingUsdcWithdrawals
+```
+
+
 ### BLOCKS_PER_DAY
 
 ```solidity
@@ -1049,6 +1058,34 @@ function _executeBatchTransfers(
 |`currentTime`|`uint256`|Current timestamp for events|
 
 
+### claimPendingWithdrawal
+
+Claim USDC that could not be transferred during withdrawal (e.g. USDC blacklist)
+
+Allows users to pull USDC that was queued in `pendingUsdcWithdrawals` after a failed transfer
+
+**Notes:**
+- security: Protected by nonReentrant and whenNotPaused; only claims caller’s own pending balance
+
+- validation: Reverts if the caller has no pending USDC balance to claim
+
+- state-changes: Sets `pendingUsdcWithdrawals[msg.sender]` to zero and transfers USDC to the caller
+
+- events: Emits `PendingWithdrawalClaimed` with the claimed amount
+
+- errors: Reverts with `InsufficientBalance` if amount is zero
+
+- reentrancy: Protected by nonReentrant; uses SafeERC20 for token transfer
+
+- access: Public function callable by any user for their own pending withdrawal
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function claimPendingWithdrawal() external nonReentrant whenNotPaused;
+```
+
 ### stake
 
 Stakes QEURO tokens (unified single/batch function)
@@ -1446,28 +1483,29 @@ function getUserWithdrawals(address user) external view returns (UserWithdrawalI
 
 ### _getOracleRatioScaled
 
-Get current oracle ratio scaled by 1e6 for storage efficiency
+Get current oracle EUR/USD ratio scaled down for compact storage
 
-Used internally for tracking oracle ratios in deposit/withdrawal records
-
-Scaled to fit in uint32 for gas efficiency
+Used internally for tracking oracle ratios in deposit/withdrawal records.
+Supports both 18-decimal prices (production `IOracle`) and 8-decimal
+prices (legacy mocks) by normalizing to an 8-decimal representation
+before scaling down by 1e6.
 
 **Notes:**
-- security: No security implications (view function)
+- security: No direct security implications – read-only helper
 
-- validation: No validation required
+- validation: Reverts if the underlying oracle reports an invalid price
 
-- state-changes: No state changes (view function)
+- state-changes: No state changes – internal helper
 
-- events: No events (view function)
+- events: No events emitted
 
-- errors: No custom errors
+- errors: Reverts with `InvalidOraclePrice` if `isValid` is false
 
-- reentrancy: No external calls, safe
+- reentrancy: No external stateful calls besides the oracle read
 
 - access: Internal function
 
-- oracle: Depends on oracle for current EUR/USD rate
+- oracle: Depends on `IOracle.getEurUsdPrice` for the current EUR/USD rate
 
 
 ```solidity
@@ -1477,7 +1515,7 @@ function _getOracleRatioScaled() internal returns (uint32);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint32`|Oracle ratio scaled by 1e6 (e.g., 1.08 becomes 1080000)|
+|`<none>`|`uint32`|Oracle ratio scaled to two decimals (e.g., 1.08 EUR/USD becomes 108)|
 
 
 ### getTotalStakes
@@ -1808,35 +1846,35 @@ function updateYieldShift(address _yieldShift) external onlyRole(GOVERNANCE_ROLE
 
 Emergency unstake for a specific user (restricted to emergency roles)
 
-This function is intended for emergency situations where a user's
-staked QEURO needs to be forcibly unstaked.
+Forcibly unstakes a user’s full staked balance and sends it to the specified recipient
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- security: Restricted to EMERGENCY_ROLE to prevent arbitrary unstaking
 
-- validation: Validates input parameters and business logic constraints
+- validation: If `recipient` is address(0) it is automatically replaced with `user`
 
-- state-changes: Updates contract state variables
+- state-changes: Sets `userdata.stakedAmount` to zero and decreases `totalStakes` by the unstaked amount
 
-- events: Emits relevant events for state changes
+- events: Emits no specific event; external monitoring should rely on QEURO transfers
 
-- errors: Throws custom errors for invalid conditions
+- errors: No custom errors; function is a best-effort emergency escape hatch
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Protected by onlyRole but not nonReentrant; single SafeERC20 transfer at the end
 
-- access: Restricted to authorized roles
+- access: Restricted to EMERGENCY_ROLE
 
-- oracle: Requires fresh oracle price data
+- oracle: No oracle dependencies
 
 
 ```solidity
-function emergencyUnstake(address user) external onlyRole(EMERGENCY_ROLE);
+function emergencyUnstake(address user, address recipient) external onlyRole(EMERGENCY_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`user`|`address`|Address of the user to unstake|
+|`user`|`address`|Address of the user whose staked QEURO will be unstaked|
+|`recipient`|`address`|Address that will receive the unstaked QEURO (defaults to `user` when zero)|
 
 
 ### pause
@@ -2084,6 +2122,22 @@ event UserWithdrawalTracked(
 |`oracleRatio`|`uint256`|Oracle ratio at time of withdrawal (scaled by 1e6)|
 |`timestamp`|`uint256`|Block timestamp when withdrawal was made|
 |`blockNumber`|`uint256`|Block number when withdrawal was made|
+
+### WithdrawalPending
+Emitted when a USDC transfer to a user fails (e.g. USDC blacklist) and is queued
+
+
+```solidity
+event WithdrawalPending(address indexed user, uint256 amount);
+```
+
+### PendingWithdrawalClaimed
+Emitted when a user claims their pending USDC withdrawal
+
+
+```solidity
+event PendingWithdrawalClaimed(address indexed user, uint256 amount);
+```
 
 ### QEUROStaked
 Emitted when a user stakes QEURO

@@ -430,7 +430,7 @@ contract HedgerPoolTestSuite is Test {
      * @custom:oracle Not applicable
      */
     function _syncPositionFill(uint256 positionId) internal {
-        (, uint96 positionSize, , , , , , , , , , ) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , , , , , , , , , , ) = hedgerPool.positions(positionId);
         _syncVaultFill(uint256(positionSize));
     }
 
@@ -604,7 +604,7 @@ contract HedgerPoolTestSuite is Test {
         assertEq(positionId, 1);
         
         // Check position details
-        (address hedger, uint96 positionSize, , uint96 margin, uint96 entryPrice, , , , , uint16 leverage, bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, uint96 positionSize, , uint96 margin, uint96 entryPrice, , , , , uint16 leverage, bool isActive, , ) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         assertEq(hedger, hedger1);
         // Position size is calculated dynamically based on net margin and leverage
@@ -715,7 +715,7 @@ contract HedgerPoolTestSuite is Test {
         assertTrue(positionId > 0);
         
         // Verify position details
-        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive, , ) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         assertTrue(positionSize > 0);
         assertTrue(margin > 0);
@@ -751,7 +751,7 @@ contract HedgerPoolTestSuite is Test {
         assertTrue(positionId > 0);
         
         // Verify position details
-        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (, uint96 positionSize, , uint96 margin, , , , , , , bool isActive, , ) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         assertTrue(positionSize > 0);
         assertTrue(margin > 0);
@@ -839,7 +839,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Check that position was closed
-        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, , ) = hedgerPool.positions(positionId);
         assertFalse(isActive);
         
         // Check P&L (can be negative due to fees and price movement)
@@ -921,7 +921,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Verify position was closed
-        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, , ) = hedgerPool.positions(positionId);
         assertFalse(isActive, "Position should be closed");
         
         console2.log("P&L:", pnl);
@@ -982,7 +982,7 @@ contract HedgerPoolTestSuite is Test {
         int256 pnl = hedgerPool.exitHedgePosition(positionId);
         
         // Verify position was closed
-        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, , ) = hedgerPool.positions(positionId);
         assertFalse(isActive, "Position should be closed");
         
         console2.log("P&L:", pnl);
@@ -1049,7 +1049,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.addMargin(positionId, additionalMargin);
         
         // Check position margin was updated
-        (,,, uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (,,, uint96 margin, , , , , , , bool isActive, , ) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
         uint256 netAdditionalMargin = additionalMargin * (10000 - params.marginFee) / 10000;
@@ -1089,6 +1089,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             uint16 leverage,
             bool _isActive,
+            ,
         ) = hedgerPool.positions(positionId);
         _isActive;
 
@@ -1114,6 +1115,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             uint16 leverageAfter,
             bool _isActiveAfter,
+            ,
         ) = hedgerPool.positions(positionId);
         _isActiveAfter;
 
@@ -1163,6 +1165,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             bool isActive,
+            ,
         ) = hedgerPool.positions(positionId);
         isActive;
 
@@ -1303,7 +1306,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.removeMargin(positionId, marginToRemove);
         
         // Check position margin was updated
-        (,,, uint96 margin, , , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (,,, uint96 margin, , , , , , , bool isActive, , ) = hedgerPool.positions(positionId);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
         assertEq(margin, netMargin - marginToRemove);
@@ -1342,6 +1345,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             uint16 leverage,
             bool _isActive,
+            ,
         ) = hedgerPool.positions(positionId);
         _isActive;
 
@@ -1363,6 +1367,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             uint16 leverageAfter,
             bool _isActiveAfter,
+            ,
         ) = hedgerPool.positions(positionId);
         _isActiveAfter;
 
@@ -1404,6 +1409,7 @@ contract HedgerPoolTestSuite is Test {
             ,
             ,
             bool _isActive,
+            ,
         ) = hedgerPool.positions(positionId);
         _isActive;
 
@@ -1469,7 +1475,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Get initial margin and entry price
-        (, , , , uint96 entryPrice, , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (, , , , uint96 entryPrice, , , , , , bool isActive, , ) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         
         // Fill the position by simulating a user mint
@@ -1478,7 +1484,7 @@ contract HedgerPoolTestSuite is Test {
         _syncVaultFillWithPrice(fillAmount, entryPrice);
         
         // Verify position is filled
-        (, , uint96 filledVolume, , , , , , , , , uint128 qeuroBacked) = hedgerPool.positions(positionId);
+        (, , uint96 filledVolume, , , , , , , , , uint128 qeuroBacked, ) = hedgerPool.positions(positionId);
         assertGt(filledVolume, 0);
         assertGt(qeuroBacked, 0);
         
@@ -1497,7 +1503,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 usdcToRedeem = (qeuroToRedeem * newPrice) / 1e30; // Convert to USDC (6 decimals)
         
         // Record margin, realized P&L, and totalExposure before redemption
-        (, , , uint96 marginBefore, , , , , int128 realizedPnLBefore, , , ) = hedgerPool.positions(positionId);
+        (, , , uint96 marginBefore, , , , , int128 realizedPnLBefore, , , , ) = hedgerPool.positions(positionId);
         uint256 totalMarginBefore = hedgerPool.totalMargin();
         uint256 totalExposureBefore = hedgerPool.totalExposure();
         
@@ -1505,7 +1511,7 @@ contract HedgerPoolTestSuite is Test {
         _syncVaultRedeem(usdcToRedeem, newPrice, qeuroToRedeem);
         
         // Verify margin was reduced
-        (, , , uint96 marginAfter, , , , , int128 realizedPnLAfter, , , ) = hedgerPool.positions(positionId);
+        (, , , uint96 marginAfter, , , , , int128 realizedPnLAfter, , , , ) = hedgerPool.positions(positionId);
         uint256 totalMarginAfter = hedgerPool.totalMargin();
         uint256 totalExposureAfter = hedgerPool.totalExposure();
         
@@ -1533,7 +1539,7 @@ contract HedgerPoolTestSuite is Test {
         }
         
         // Position size should be recalculated to maintain leverage ratio when margin changes
-        (, uint96 positionSizeAfter, , , , , , , , uint16 leverage, , ) = hedgerPool.positions(positionId);
+        (, uint96 positionSizeAfter, , , , , , , , uint16 leverage, , , ) = hedgerPool.positions(positionId);
         if (marginAfter > 0) {
             uint256 expectedPositionSize = uint256(marginAfter) * uint256(leverage);
             assertEq(uint256(positionSizeAfter), expectedPositionSize,
@@ -1567,7 +1573,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Get initial margin and entry price
-        (, , , , uint96 entryPrice, , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (, , , , uint96 entryPrice, , , , , , bool isActive, , ) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         
         // Fill the position by simulating a user mint
@@ -1576,7 +1582,7 @@ contract HedgerPoolTestSuite is Test {
         _syncVaultFillWithPrice(fillAmount, entryPrice);
         
         // Verify position is filled
-        (, , uint96 filledVolume, , , , , , , , , uint128 qeuroBacked) = hedgerPool.positions(positionId);
+        (, , uint96 filledVolume, , , , , , , , , uint128 qeuroBacked, ) = hedgerPool.positions(positionId);
         assertGt(filledVolume, 0);
         assertGt(qeuroBacked, 0);
         
@@ -1595,7 +1601,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 usdcToRedeem = (qeuroToRedeem * newPrice) / 1e30; // Convert to USDC (6 decimals)
         
         // Record margin, realized P&L, and leverage before redemption
-        (, , , uint96 marginBefore, , , , , int128 realizedPnLBefore, uint16 leverage, , ) = hedgerPool.positions(positionId);
+        (, , , uint96 marginBefore, , , , , int128 realizedPnLBefore, uint16 leverage, , , ) = hedgerPool.positions(positionId);
         uint256 totalMarginBefore = hedgerPool.totalMargin();
         uint256 totalExposureBefore = hedgerPool.totalExposure();
         
@@ -1603,7 +1609,7 @@ contract HedgerPoolTestSuite is Test {
         _syncVaultRedeem(usdcToRedeem, newPrice, qeuroToRedeem);
         
         // Verify margin was increased
-        (, uint96 positionSizeAfter, , uint96 marginAfter, , , , , int128 realizedPnLAfter, , , ) = hedgerPool.positions(positionId);
+        (, uint96 positionSizeAfter, , uint96 marginAfter, , , , , int128 realizedPnLAfter, , , , ) = hedgerPool.positions(positionId);
         uint256 totalMarginAfter = hedgerPool.totalMargin();
         uint256 totalExposureAfter = hedgerPool.totalExposure();
         
@@ -1650,7 +1656,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Get entry price
-        (, , , , uint96 entryPrice, , , , , , bool isActive, ) = hedgerPool.positions(positionId);
+        (, , , , uint96 entryPrice, , , , , , bool isActive, , ) = hedgerPool.positions(positionId);
         assertTrue(isActive);
         
         // Fill the position by simulating a user mint
@@ -1658,7 +1664,7 @@ contract HedgerPoolTestSuite is Test {
         _syncVaultFillWithPrice(fillAmount, entryPrice);
         
         // Verify position is filled
-        (, , uint96 filledVolumeBefore, , , , , , , , , uint128 qeuroBackedBefore) = hedgerPool.positions(positionId);
+        (, , uint96 filledVolumeBefore, , , , , , , , , uint128 qeuroBackedBefore, ) = hedgerPool.positions(positionId);
         assertGt(filledVolumeBefore, 0);
         assertGt(qeuroBackedBefore, 0);
         
@@ -1678,7 +1684,7 @@ contract HedgerPoolTestSuite is Test {
         _syncVaultRedeem(usdcToRedeem, redeemPrice, qeuroToRedeem);
         
         // Verify qeuroBacked is now zero
-        (, , uint96 filledVolumeAfter, , , , , , , , , uint128 qeuroBackedAfter) = hedgerPool.positions(positionId);
+        (, , uint96 filledVolumeAfter, , , , , , , , , uint128 qeuroBackedAfter, ) = hedgerPool.positions(positionId);
         assertEq(qeuroBackedAfter, 0, "QEURO backed should be zero after full redemption");
         
         // When qeuroBacked == 0, calculatePnL should return -filledVolume
@@ -1692,7 +1698,7 @@ contract HedgerPoolTestSuite is Test {
         // Effective collateral = margin + net unrealized P&L
         // Net unrealized P&L = total unrealized - realized
         // When qeuroBacked == 0, total unrealized = -filledVolume
-        (, , , uint96 margin, , , , , int128 realizedPnL, , , ) = hedgerPool.positions(positionId);
+        (, , , uint96 margin, , , , , int128 realizedPnL, , , , ) = hedgerPool.positions(positionId);
         int256 netUnrealizedPnL = expectedUnrealizedPnL - int256(realizedPnL);
         // forge-lint: disable-next-line(unsafe-typecast)
         int256 expectedEffectiveMargin = int256(uint256(margin)) + netUnrealizedPnL;
@@ -1786,7 +1792,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
         
         // Get position info
-        (address hedger, uint256 positionSize, , uint256 margin, uint256 entryPrice, uint256 entryTime, , , , uint256 leverage, bool isActive, ) = hedgerPool.positions(positionId);
+        (address hedger, uint256 positionSize, , uint256 margin, uint256 entryPrice, uint256 entryTime, , , , uint256 leverage, bool isActive, , ) = hedgerPool.positions(positionId);
         
         assertEq(hedger, hedger1);
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
@@ -2010,7 +2016,7 @@ contract HedgerPoolTestSuite is Test {
         hedgerPool.emergencyClosePosition(hedger1, positionId);
         
         // Check that position was closed
-        (,,,,,,,,,, bool isActive, ) = hedgerPool.positions(positionId);
+        (,,,,,,,,,, bool isActive, , ) = hedgerPool.positions(positionId);
         assertFalse(isActive);
     }
     

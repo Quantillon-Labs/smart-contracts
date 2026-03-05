@@ -99,6 +99,14 @@ contract ChainlinkOracle is
     /// @dev Should be the official USDC/USD Chainlink feed
     AggregatorV3Interface public usdcUsdPriceFeed;
 
+    /// @notice Optional Chainlink L2 sequencer uptime feed (Base/Arbitrum/etc)
+    /// @dev Set to address(0) on L1 (check skipped). On Base set to the Chainlink sequencer feed.
+    AggregatorV3Interface public sequencerUptimeFeed;
+
+    /// @notice Grace period after sequencer restart before prices are trusted again
+    /// @dev Recommended: 3600 seconds (1 hour) to allow stale data to flush
+    uint256 public sequencerGracePeriod;
+
     /// @notice Treasury address for ETH recovery
     /// @dev SECURITY: Only this address can receive ETH from recoverETH function
     address public treasury;
@@ -174,6 +182,9 @@ contract ChainlinkOracle is
     /// @param enabled Whether dev mode is enabled or disabled
     /// @param caller Address that triggered the toggle
     event DevModeToggled(bool enabled, address indexed caller);
+
+    /// @notice Emitted when the sequencer uptime feed is updated
+    event SequencerFeedUpdated(address indexed feed, uint256 gracePeriod);
 
     // =============================================================================
     // INITIALIZER - Initial contract configuration
@@ -257,6 +268,9 @@ contract ChainlinkOracle is
 
         // Tolerance for USDC (should remain close to $1.00)
         usdcToleranceBps = 200;    // 2% tolerance (0.98 - 1.02)
+
+        // Sequencer uptime feed (address(0) on L1 — check skipped)
+        sequencerGracePeriod = 3600; // 1 hour grace period after sequencer restart
 
         // Initialize with current price
         _updatePrices();
@@ -912,6 +926,15 @@ contract ChainlinkOracle is
             return (lastValidEurUsdPrice, false);
         }
 
+        // L2 sequencer uptime check (skipped on L1 when feed is address(0))
+        if (address(sequencerUptimeFeed) != address(0)) {
+            (, int256 seqAnswer, uint256 seqStartedAt,,) = sequencerUptimeFeed.latestRoundData();
+            // seqAnswer == 0 means sequencer is up; non-zero means down
+            if (seqAnswer != 0 || block.timestamp - seqStartedAt < sequencerGracePeriod) {
+                return (lastValidEurUsdPrice, false);
+            }
+        }
+
         // Fetch data from Chainlink
         (uint80 roundId, int256 rawPrice, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = eurUsdPriceFeed.latestRoundData();
         
@@ -1086,5 +1109,26 @@ contract ChainlinkOracle is
     function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         devModeEnabled = enabled;
         emit DevModeToggled(enabled, msg.sender);
+    }
+
+    /**
+     * @notice Configure the L2 sequencer uptime feed for Base/Arbitrum deployments
+     * @dev Set `feed` to address(0) on L1 to skip the sequencer check.
+     *      On Base mainnet use: 0xBCF85224fc0756B9Fa45aA7892E69A2E01D7580D
+     * @param feed Chainlink sequencer uptime feed address (address(0) to disable)
+     * @param gracePeriod Seconds to wait after sequencer restart before trusting prices again
+     * @custom:security Restricted to ORACLE_MANAGER_ROLE; sequencer checks gate oracle usage on L2s
+     * @custom:validation Caller must choose a grace period that is long enough to flush stale data
+     * @custom:state-changes Updates `sequencerUptimeFeed` and `sequencerGracePeriod`
+     * @custom:events Emits `SequencerFeedUpdated` with the new configuration
+     * @custom:errors No custom errors; relies on AccessControl for authorization checks
+     * @custom:reentrancy Not protected - no external calls beyond assigning storage and emitting an event
+     * @custom:access Restricted to ORACLE_MANAGER_ROLE
+     * @custom:oracle Configures an auxiliary Chainlink feed used in `getEurUsdPrice`
+     */
+    function setSequencerUptimeFeed(address feed, uint256 gracePeriod) external onlyRole(ORACLE_MANAGER_ROLE) {
+        sequencerUptimeFeed = AggregatorV3Interface(feed);
+        sequencerGracePeriod = gracePeriod;
+        emit SequencerFeedUpdated(feed, gracePeriod);
     }
 }

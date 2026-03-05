@@ -340,6 +340,7 @@ library HedgerPoolOptimizationLibrary {
         }
 
         // Calculate remaining margin and future ratio
+        if (positionMargin > currentTotalMargin) return false;
         uint256 remainingHedgerMargin = currentTotalMargin - positionMargin;
         uint256 futureRatio = ((userDeposits + remainingHedgerMargin) * 10000) / userDeposits;
 

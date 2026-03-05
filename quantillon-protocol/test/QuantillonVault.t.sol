@@ -284,7 +284,12 @@ contract QuantillonVaultTestSuite is Test {
             abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
             abi.encode(EUR_USD_PRICE, true)
         );
-        
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IOracle.getUsdcUsdPrice.selector),
+            abi.encode(1e18, true)
+        );
+
         // Mock FeeCollector collectFees function
         vm.mockCall(
             address(0x999), // feeCollector address
@@ -1014,6 +1019,16 @@ contract QuantillonVaultTestSuite is Test {
         // First mint some QEURO
         vm.prank(user1);
         vault.mintQEURO(MINT_AMOUNT, 0);
+
+        // In this test suite QEURO.mint is mocked, so totalSupply does not
+        // change automatically. For metrics we still want to validate the
+        // live-supply based implementation, so we mock totalSupply here to
+        // a positive value to represent outstanding debt.
+        vm.mockCall(
+            address(qeuroToken),
+            abi.encodeWithSelector(IERC20.totalSupply.selector),
+            abi.encode(uint256(1000e18))
+        );
         
         // Get vault metrics
         (uint256 totalUsdcHeld_, uint256 totalMinted_, uint256 totalDebtValue, , ) = vault.getVaultMetrics();

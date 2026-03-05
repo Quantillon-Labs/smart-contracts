@@ -142,6 +142,10 @@ contract MockOracle {
     function getEurUsdPrice() external view returns (uint256, bool) {
         return (price, true);
     }
+
+    function getUsdcUsdPrice() external pure returns (uint256, bool) {
+        return (1e18, true);
+    }
     
     /**
      * @notice Sets the mock EUR/USD price

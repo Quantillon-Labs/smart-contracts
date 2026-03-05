@@ -65,6 +65,12 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /// @notice Whether emergency mode is active
     bool public emergencyMode;
 
+    /// @notice Ordered list of multisig signers for approval clearing
+    address[] internal _multisigSignersList;
+
+    /// @notice Ordered list of pending upgrade addresses for signer clearing
+    address[] internal _pendingUpgradesList;
+
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
     TimeProvider public immutable TIME_PROVIDER;
@@ -209,7 +215,8 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
             isEmergency: false,
             proposer: msg.sender
         });
-        
+        _pendingUpgradesList.push(newImplementation);
+
         emit UpgradeProposed(newImplementation, proposedAt, executableAt, description, msg.sender);
     }
     
@@ -398,10 +405,20 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         
         multisigSigners[signer] = false;
         multisigSignerCount--;
-        
+
+        // Remove from ordered list (swap-and-pop)
+        uint256 len = _multisigSignersList.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (_multisigSignersList[i] == signer) {
+                _multisigSignersList[i] = _multisigSignersList[len - 1];
+                _multisigSignersList.pop();
+                break;
+            }
+        }
+
         // Clear any approvals from this signer
         _clearSignerApprovals(signer);
-        
+
         emit MultisigSignerRemoved(signer);
     }
     
@@ -525,10 +542,49 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:access Internal function
      * @custom:oracle No oracle dependencies
      */
+    /**
+     * @notice Clear all approvals for a specific implementation
+     * @param implementation Address of the implementation whose approvals should be cleared
+     * @dev Resets approval counts for a pending upgrade and removes it from the ordered pending list
+     * @custom:security Internal helper used after execute/cancel paths; assumes caller already validated upgrade existence
+     * @custom:validation Assumes `implementation` is currently tracked in `_pendingUpgradesList`
+     * @custom:state-changes Sets `upgradeApprovalCount[implementation]` to zero and clears all signer approvals
+     * @custom:events No events emitted directly; caller is responsible for emitting high-level events
+     * @custom:errors None - function is best-effort cleanup
+     * @custom:reentrancy Not applicable - internal function with no external calls
+     * @custom:access Internal function only
+     * @custom:oracle No oracle dependencies
+     */
     function _clearUpgradeApprovals(address implementation) internal {
-        // In a production environment, you'd iterate through all signers
-        // For now, we just reset the count
         upgradeApprovalCount[implementation] = 0;
+        for (uint256 i = 0; i < _multisigSignersList.length; i++) {
+            upgradeApprovals[_multisigSignersList[i]][implementation] = false;
+        }
+        _removePendingUpgrade(implementation);
+    }
+
+    /**
+     * @notice Remove an implementation from the ordered list of pending upgrades
+     * @param implementation Address of the implementation to remove from `_pendingUpgradesList`
+     * @dev Uses swap-and-pop to maintain a compact array of pending upgrades for efficient iteration
+     * @custom:security Internal helper; assumes caller has already validated that the upgrade is pending
+     * @custom:validation Performs a linear scan over `_pendingUpgradesList` and stops at first match
+     * @custom:state-changes Updates `_pendingUpgradesList` by replacing the removed element with the last one and shrinking the array
+     * @custom:events No events emitted directly; high-level events are emitted by caller functions
+     * @custom:errors None - function silently returns if no match is found
+     * @custom:reentrancy Not applicable - internal function with no external calls
+     * @custom:access Internal function only
+     * @custom:oracle No oracle dependencies
+     */
+    function _removePendingUpgrade(address implementation) internal {
+        uint256 len = _pendingUpgradesList.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (_pendingUpgradesList[i] == implementation) {
+                _pendingUpgradesList[i] = _pendingUpgradesList[len - 1];
+                _pendingUpgradesList.pop();
+                break;
+            }
+        }
     }
     
     /**
@@ -545,8 +601,13 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies
      */
     function _clearSignerApprovals(address signer) internal {
-        // In a production environment, you'd iterate through all pending upgrades
-        // For now, this is a placeholder
+        for (uint256 i = 0; i < _pendingUpgradesList.length; i++) {
+            address impl = _pendingUpgradesList[i];
+            if (upgradeApprovals[signer][impl]) {
+                upgradeApprovals[signer][impl] = false;
+                upgradeApprovalCount[impl] -= 1;
+            }
+        }
     }
     
     /**
@@ -565,6 +626,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     function _addMultisigSigner(address signer) internal {
         multisigSigners[signer] = true;
         multisigSignerCount++;
+        _multisigSignersList.push(signer);
     }
     
     // ============ Override Functions ============

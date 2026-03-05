@@ -275,7 +275,7 @@ library UserPoolStakingLibrary {
         if (stakingRatio < 2000) { // Less than 20% staked
             depositAPY = baseAPY + 500; // +5% bonus
         } else if (stakingRatio > 8000) { // More than 80% staked
-            depositAPY = baseAPY - 300; // -3% reduction
+            depositAPY = baseAPY > 300 ? baseAPY - 300 : 0; // -3% reduction
         } else {
             depositAPY = baseAPY;
         }
@@ -313,7 +313,7 @@ library UserPoolStakingLibrary {
         if (stakingRatio < 2000) { // Less than 20% staked
             stakingAPY = baseAPY + 1000; // +10% bonus
         } else if (stakingRatio > 8000) { // More than 80% staked
-            stakingAPY = baseAPY - 500; // -5% reduction
+            stakingAPY = baseAPY > 500 ? baseAPY - 500 : 0; // -5% reduction
         } else {
             stakingAPY = baseAPY;
         }

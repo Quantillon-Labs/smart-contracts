@@ -350,7 +350,7 @@ contract stQEUROToken is
         // Initialize exchange rate at 1:1
         exchangeRate = 1e18;
         lastUpdateTime = TIME_PROVIDER.currentTime();
-        
+
         // Initial parameters
         yieldFee = 0; // No fee on yield by default, set via admin panel
         minYieldThreshold = 1000e6; // 1000 USDC minimum to update
@@ -980,7 +980,7 @@ contract stQEUROToken is
             uint256 qeuroAmount = stQEUROBalance.mulDiv(exchangeRate, 1e18);
             
             _burn(user, stQEUROBalance);
-            totalUnderlying = totalUnderlying - qeuroAmount;
+            totalUnderlying = totalUnderlying > qeuroAmount ? totalUnderlying - qeuroAmount : 0;
             
     
             // safeTransfer() will revert on failure, preventing silent failures

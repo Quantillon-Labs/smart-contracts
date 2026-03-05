@@ -617,10 +617,10 @@ contract OracleRouter is
      * @custom:events Via oracle
      * @custom:errors Reverts for Stork
      * @custom:reentrancy External call to ChainlinkOracle
-     * @custom:access Caller must have role on oracle (router does not check)
+     * @custom:access ORACLE_MANAGER_ROLE
      * @custom:oracle Delegates to ChainlinkOracle only
      */
-    function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external {
+    function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external onlyRole(ORACLE_MANAGER_ROLE) {
         if (activeOracle == OracleType.CHAINLINK) {
             chainlinkOracle.updatePriceFeeds(_eurUsdFeed, _usdcUsdFeed);
         } else {
@@ -637,10 +637,10 @@ contract OracleRouter is
      * @custom:events Via oracle
      * @custom:errors Via oracle
      * @custom:reentrancy External call to oracle
-     * @custom:access Anyone
+     * @custom:access ORACLE_MANAGER_ROLE
      * @custom:oracle Delegates to active oracle
      */
-    function resetCircuitBreaker() external {
+    function resetCircuitBreaker() external onlyRole(ORACLE_MANAGER_ROLE) {
         if (activeOracle == OracleType.CHAINLINK) {
             chainlinkOracle.resetCircuitBreaker();
         } else {

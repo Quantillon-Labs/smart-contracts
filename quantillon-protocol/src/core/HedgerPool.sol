@@ -97,6 +97,15 @@ contract HedgerPool is
     /// @dev This replaces the previous multi-hedger whitelist model
     address public singleHedger;
 
+    /// @notice Minimum blocks a position must be held before closing (~60s on mainnet)
+    uint256 public minPositionHoldBlocks = 5;
+
+    /// @notice Minimum USDC margin required to open a position (prevents dust / unliquidatable positions)
+    uint256 public minMarginAmount = 100e6; // 100 USDC
+
+    /// @notice Pending reward withdrawals for hedgers whose direct transfer failed (e.g. USDC blacklist)
+    mapping(address => uint256) public pendingRewardWithdrawals;
+
     struct HedgePosition {
         address hedger;
         uint96 positionSize;
@@ -110,6 +119,7 @@ contract HedgerPool is
         uint16 leverage;
         bool isActive;
         uint128 qeuroBacked;     // Exact QEURO amount backed by this position (18 decimals)
+        uint64 openBlock;        // Block number when position was opened (for min hold period)
     }
 
     struct HedgerRewardState {
@@ -302,6 +312,7 @@ contract HedgerPool is
         // CHECKS
         // Single hedger model: only the configured hedger address can open positions
         if (msg.sender != singleHedger) revert CommonErrorLibrary.NotAuthorized();
+        if (usdcAmount < minMarginAmount) revert HedgerPoolErrorLibrary.InsufficientMargin();
         
         // Ensure hedger doesn't already have an active position
         if (hedgerActivePositionId[msg.sender] != 0) {
@@ -356,6 +367,8 @@ contract HedgerPool is
         position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
         position.isActive = true;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        position.openBlock = uint64(block.number);
         hedgerActivePositionId[msg.sender] = positionId;
 
         totalMargin += netMargin;
@@ -411,6 +424,11 @@ contract HedgerPool is
         HedgerPoolValidationLibrary.validatePositionOwner(position.hedger, msg.sender);
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
+        // Enforce minimum hold period to prevent oracle front-running
+        if (block.number < uint256(position.openBlock) + minPositionHoldBlocks) {
+            revert HedgerPoolErrorLibrary.MinHoldPeriodNotElapsed();
+        }
+
         // Cache oracle price at start to avoid reentrancy issues
         uint256 currentPrice = _getValidOraclePrice();
 
@@ -448,8 +466,8 @@ contract HedgerPool is
         );
 
         // Calculate payout amounts
-        // forge-lint: disable-next-line(unsafe-typecast)
-        uint256 grossPayout = uint256(int256(cachedMargin) + pnl);
+        int256 rawPayout = int256(cachedMargin) + pnl;
+        uint256 grossPayout = rawPayout > 0 ? uint256(rawPayout) : 0;
         uint256 exitFeeAmount = grossPayout.percentageOf(coreParams.exitFee);
         uint256 netPayout = grossPayout - exitFeeAmount;
 
@@ -739,8 +757,8 @@ contract HedgerPool is
         totalMargin -= hedgerLoss;
 
         // Record as realized P&L (loss is negative)
-        // forge-lint: disable-next-line(unsafe-typecast)
         int256 realizedDelta = -int256(hedgerLoss);
+        if (realizedDelta < type(int128).min || realizedDelta > type(int128).max) revert CommonErrorLibrary.InvalidAmount();
         // forge-lint: disable-next-line(unsafe-typecast)
         pos.realizedPnL += int128(realizedDelta);
         emit RealizedPnLRecorded(positionId, realizedDelta, int256(pos.realizedPnL));
@@ -797,15 +815,21 @@ contract HedgerPool is
         HedgerRewardState storage rewardState = hedgerRewards[hedger];
 
         // In single-hedger mode we use the protocol-wide exposure as reward base
-        (uint256 newPendingRewards, uint256 newLastRewardBlock) = HedgerPoolLogicLibrary.calculateRewardUpdate(
+        uint256 currentTime = TIME_PROVIDER.currentTime();
+        // Migration guard: if stored value looks like a block number (< 1e9) reset to now with no reward
+        uint256 lastRewardTime = hedgerLastRewardBlock[hedger];
+        if (lastRewardTime > 0 && lastRewardTime < 1_000_000_000) {
+            lastRewardTime = currentTime;
+        }
+        (uint256 newPendingRewards, uint256 newLastRewardTime) = HedgerPoolLogicLibrary.calculateRewardUpdate(
             totalExposure, coreParams.eurInterestRate, coreParams.usdInterestRate,
-            hedgerLastRewardBlock[hedger], block.number, MAX_REWARD_PERIOD, 
+            lastRewardTime, currentTime, MAX_REWARD_PERIOD,
             uint256(rewardState.pendingRewards)
         );
-        
+
         // forge-lint: disable-next-line(unsafe-typecast)
         rewardState.pendingRewards = uint128(newPendingRewards);
-        hedgerLastRewardBlock[hedger] = newLastRewardBlock;
+        hedgerLastRewardBlock[hedger] = newLastRewardTime;
 
         interestDifferential = rewardState.pendingRewards;
         yieldShiftRewards = yieldShift.getHedgerPendingYield(hedger);
@@ -815,19 +839,61 @@ contract HedgerPool is
             rewardState.pendingRewards = 0;
             // forge-lint: disable-next-line(unsafe-typecast)
             rewardState.lastRewardClaim = uint64(TIME_PROVIDER.currentTime());
-            
+
             if (yieldShiftRewards > 0) {
                 uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);
                 if (claimedAmount == 0) revert CommonErrorLibrary.YieldClaimFailed();
             }
-            
-            usdc.safeTransfer(hedger, totalRewards);
-            
+
+            uint256 available = usdc.balanceOf(address(this));
+            if (available < totalRewards) {
+                // Not enough USDC in the pool – record as pending pull-based rewards
+                pendingRewardWithdrawals[hedger] += totalRewards;
+            } else {
+                // Attempt push transfer; on failure (e.g. USDC blacklist) store for later pull
+                try usdc.transfer(hedger, totalRewards) returns (bool success) {
+                    if (!success) {
+                        pendingRewardWithdrawals[hedger] += totalRewards;
+                    }
+                } catch {
+                    pendingRewardWithdrawals[hedger] += totalRewards;
+                }
+            }
+
             emit HedgingRewardsClaimed(
                 hedger,
                 HedgerPoolOptimizationLibrary.packRewardData(interestDifferential, yieldShiftRewards, totalRewards)
             );
         }
+    }
+
+    /**
+     * @notice Withdraw rewards that could not be pushed due to USDC transfer failure (e.g. blacklist)
+     * @dev Pull-based fallback for hedgers whose push transfer failed in `claimHedgingRewards`.
+     *      Uses the `pendingRewardWithdrawals` mapping as a per-hedger escrow and sends the
+     *      entire pending amount to the provided `recipient` address.
+     * @param recipient Address that will receive the pending rewards; allows a blacklisted
+     *        hedger to specify an alternative, non-blacklisted address.
+     * @custom:security Protected by `nonReentrant` and SafeERC20; only the hedger (msg.sender)
+     *                  can withdraw their own pending rewards.
+     * @custom:validation Reverts if `recipient` is the zero address or the caller has no
+     *                    pending rewards recorded.
+     * @custom:state-changes Sets `pendingRewardWithdrawals[msg.sender]` to zero and transfers
+     *                       the pending USDC amount to `recipient`.
+     * @custom:events No events emitted; off-chain indexers should track `pendingRewardWithdrawals`
+     *                and standard ERC20 `Transfer` events.
+     * @custom:errors Reverts with `ZeroAddress` when `recipient` is zero, and `InvalidAmount`
+     *                when there is no pending reward; SafeERC20 may bubble up token errors.
+     * @custom:reentrancy Protected by `nonReentrant`; external interaction is a single USDC transfer.
+     * @custom:access External function callable by any hedger for their own pending rewards only.
+     * @custom:oracle No oracle dependencies.
+     */
+    function withdrawPendingRewards(address recipient) external nonReentrant {
+        if (recipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        uint256 amount = pendingRewardWithdrawals[msg.sender];
+        if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
+        pendingRewardWithdrawals[msg.sender] = 0;
+        usdc.safeTransfer(recipient, amount);
     }
 
     /**
@@ -925,6 +991,42 @@ contract HedgerPool is
         coreParams.minMarginRatio = uint64(minRatio);
         // forge-lint: disable-next-line(unsafe-typecast)
         coreParams.maxLeverage = uint16(maxLev);
+    }
+
+    /**
+     * @notice Sets the minimum number of blocks a position must be held before closing
+     * @dev Governance-level risk parameter to prevent oracle front-running via immediate open/close cycles
+     * @param _blocks New minimum number of blocks a position must remain open before it can be closed
+     * @custom:security Restricted to GOVERNANCE_ROLE; affects when hedgers can exit but does not move funds directly
+     * @custom:validation Caller is responsible for providing a sane, network-appropriate block count
+     * @custom:state-changes Updates `minPositionHoldBlocks` which is enforced in `exitHedgePosition`
+     * @custom:events No events emitted for parameter updates
+     * @custom:errors Reverts with NotAuthorized if caller lacks GOVERNANCE_ROLE
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function setMinPositionHoldBlocks(uint256 _blocks) external {
+        _validateRole(GOVERNANCE_ROLE);
+        minPositionHoldBlocks = _blocks;
+    }
+
+    /**
+     * @notice Sets the minimum margin (USDC) required to open a position
+     * @dev Governance-level control to prevent dust / unliquidatable positions by enforcing a minimum USDC margin
+     * @param _amount New minimum margin required in USDC (6 decimals)
+     * @custom:security Restricted to GOVERNANCE_ROLE; impacts who can open positions but does not move funds directly
+     * @custom:validation Caller must choose an amount consistent with protocol risk parameters and USDC decimals
+     * @custom:state-changes Updates `minMarginAmount` used by `enterHedgePosition` validation
+     * @custom:events No events emitted for parameter updates
+     * @custom:errors Reverts with NotAuthorized if caller lacks GOVERNANCE_ROLE
+     * @custom:reentrancy Not protected - no external calls
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:oracle No oracle dependencies
+     */
+    function setMinMarginAmount(uint256 _amount) external {
+        _validateRole(GOVERNANCE_ROLE);
+        minMarginAmount = _amount;
     }
 
     /**
@@ -1506,6 +1608,7 @@ contract HedgerPool is
                 );
 
                 // Record realized P&L
+                if (realizedDelta < type(int128).min || realizedDelta > type(int128).max) revert CommonErrorLibrary.InvalidAmount();
                 // forge-lint: disable-next-line(unsafe-typecast)
                 pos.realizedPnL += int128(realizedDelta);
                 emit RealizedPnLRecorded(posId, realizedDelta, int256(pos.realizedPnL));

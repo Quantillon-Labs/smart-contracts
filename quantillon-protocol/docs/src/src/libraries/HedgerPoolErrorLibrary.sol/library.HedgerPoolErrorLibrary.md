@@ -222,6 +222,12 @@ error NoActiveHedgerLiquidity();
 error HedgerHasActivePosition();
 ```
 
+### MinHoldPeriodNotElapsed
+
+```solidity
+error MinHoldPeriodNotElapsed();
+```
+
 ### EntryFeeTooHigh
 
 ```solidity

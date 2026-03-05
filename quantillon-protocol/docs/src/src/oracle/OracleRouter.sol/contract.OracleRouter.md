@@ -837,13 +837,13 @@ Reverts for Stork oracle - use oracle-specific methods instead
 
 - reentrancy: External call to ChainlinkOracle
 
-- access: Caller must have role on oracle (router does not check)
+- access: ORACLE_MANAGER_ROLE
 
 - oracle: Delegates to ChainlinkOracle only
 
 
 ```solidity
-function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external;
+function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external onlyRole(ORACLE_MANAGER_ROLE);
 ```
 **Parameters**
 
@@ -872,13 +872,13 @@ Delegates to active oracle resetCircuitBreaker()
 
 - reentrancy: External call to oracle
 
-- access: Anyone
+- access: ORACLE_MANAGER_ROLE
 
 - oracle: Delegates to active oracle
 
 
 ```solidity
-function resetCircuitBreaker() external;
+function resetCircuitBreaker() external onlyRole(ORACLE_MANAGER_ROLE);
 ```
 
 ### triggerCircuitBreaker

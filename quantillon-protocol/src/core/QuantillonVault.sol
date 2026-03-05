@@ -363,6 +363,8 @@ contract QuantillonVault is
     /// @param usdcAmount Amount of USDC deployed to Aave
     /// @param totalUsdcInAave New total USDC in Aave after deployment
     event UsdcDeployedToAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
+    event AaveDeploymentFailed(uint256 amount, bytes reason);
+    event HedgerSyncFailed(string operation, uint256 amount, uint256 price, bytes reason);
 
     /// @notice Emitted when USDC is withdrawn from Aave
     /// @param usdcAmount Amount of USDC withdrawn from Aave
@@ -541,7 +543,11 @@ contract QuantillonVault is
         // Cache all oracle calls at start to avoid reentrancy issues
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-        
+
+        // Reject minting if USDC is depegged to prevent undercollateralization
+        (, bool usdcIsValid) = oracle.getUsdcUsdPrice();
+        if (!usdcIsValid) revert CommonErrorLibrary.InvalidOraclePrice();
+
         // Check if we can mint (this also calls oracle internally, but we've already cached the price)
         if (!canMint()) revert CommonErrorLibrary.InsufficientCollateralization();
         
@@ -575,10 +581,8 @@ contract QuantillonVault is
         _updatePriceTimestamp(isValid);
 
         // Update vault accounting
-        unchecked {
-            totalUsdcHeld += netAmount;
-            totalMinted += qeuroToMint;
-        }
+        totalUsdcHeld += netAmount;
+        totalMinted += qeuroToMint;
 
         // Inform HedgerPool after vault accounting is updated
         // Pass netAmount (after fee) to recordUserMint, as the fee is paid by the buyer, not the hedger
@@ -628,7 +632,9 @@ contract QuantillonVault is
         if (totalUsdcHeld < usdcAmount) return;
         
         // Try to deploy to Aave, but don't block minting if it fails
-        try this._executeAaveDeployment(usdcAmount) {} catch {}
+        try this._executeAaveDeployment(usdcAmount) {} catch (bytes memory reason) {
+            emit AaveDeploymentFailed(usdcAmount, reason);
+        }
     }
     
     /**
@@ -649,10 +655,8 @@ contract QuantillonVault is
         if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
         
         // Update state before external calls
-        unchecked {
-            totalUsdcHeld -= usdcAmount;
-            totalUsdcInAave += usdcAmount;
-        }
+        totalUsdcHeld -= usdcAmount;
+        totalUsdcInAave += usdcAmount;
         
         emit UsdcDeployedToAave(usdcAmount, totalUsdcInAave);
         
@@ -731,27 +735,27 @@ contract QuantillonVault is
         // Calculate USDC to return using validated oracle price
         uint256 usdcToReturn = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
         usdcToReturn = usdcToReturn / 1e12; // Convert from 18 to 6 decimals
-        
-        if (usdcToReturn < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
-        
+
+        // Calculate fees before slippage check so minUsdcOut applies to the actual net payout
+        uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
+        uint256 netUsdcToReturn = usdcToReturn - fee;
+
+        if (netUsdcToReturn < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
+
         // Check if total available USDC (vault + Aave) is sufficient
         uint256 totalAvailable = totalUsdcHeld + totalUsdcInAave;
         if (totalAvailable < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
-        
+
         // If vault doesn't have enough USDC, withdraw from Aave
         if (totalUsdcHeld < usdcToReturn && totalUsdcInAave > 0 && address(aaveVault) != address(0)) {
             uint256 deficit = usdcToReturn - totalUsdcHeld;
             _withdrawUsdcFromAave(deficit);
         }
-        
+
         // Re-check after potential Aave withdrawal
         if (totalUsdcHeld < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
 
         if (address(hedgerPool) == address(0)) revert CommonErrorLibrary.InvalidVault();
-
-        // Calculate fees before state changes
-        uint256 fee = usdcToReturn.mulDiv(redemptionFee, 1e18);
-        uint256 netUsdcToReturn = usdcToReturn - fee;
 
         // EFFECTS - Update all state before external calls
         // Update price cache
@@ -760,10 +764,10 @@ contract QuantillonVault is
         _updatePriceTimestamp(isValid);
 
         // Update vault balances
-        unchecked {
-            totalUsdcHeld -= usdcToReturn;
-            totalMinted -= qeuroAmount;
-        }
+        totalUsdcHeld -= usdcToReturn;
+        // Reduce tracked minted supply by the redeemed amount; revert if inconsistent
+        if (totalMinted < qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
+        totalMinted -= qeuroAmount;
         
         // Inform HedgerPool after internal state is updated
         _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice, qeuroAmount);
@@ -778,8 +782,7 @@ contract QuantillonVault is
         // Transfer fee to fee collector (if fees are enabled and fee > 0)
         if (TAKES_FEES_DURING_LIQUIDATION && fee > 0) {
             // Approve FeeCollector to pull the fee
-            bool success = usdc.approve(feeCollector, fee);
-            if (!success) revert CommonErrorLibrary.TokenTransferFailed();
+            usdc.safeIncreaseAllowance(feeCollector, fee);
             // Call FeeCollector to collect the fee with proper tracking
             FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
         }
@@ -860,10 +863,10 @@ contract QuantillonVault is
         bool isPremium = usdcPayout >= fairValueUsdc;
 
         // EFFECTS - Update state
-        unchecked {
-            totalUsdcHeld -= usdcPayout;
-            totalMinted -= qeuroAmount;
-        }
+        if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
+        totalUsdcHeld -= usdcPayout;
+        if (totalMinted < qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
+        totalMinted -= qeuroAmount;
 
         // Notify hedger pool of liquidation redemption
         _notifyHedgerPoolLiquidation(qeuroAmount, totalSupply);
@@ -1053,8 +1056,11 @@ contract QuantillonVault is
         totalUsdcAvailable_ = totalUsdcHeld + totalUsdcInAave;
 
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        if (isValid && totalMinted > 0) {
-            totalDebtValue = totalMinted.mulDiv(eurUsdPrice, 1e18);
+        // Use live QEURO totalSupply as the authoritative debt base so metrics
+        // stay in sync even if MINTER_ROLE/BURNER_ROLE operates outside this vault.
+        uint256 _liveSupply = qeuro.totalSupply();
+        if (isValid && _liveSupply > 0) {
+            totalDebtValue = _liveSupply.mulDiv(eurUsdPrice, 1e18);
         } else {
             totalDebtValue = 0;
         }
@@ -1933,7 +1939,9 @@ contract QuantillonVault is
         if (amount == 0) {
             return;
         }
-        try hedgerPool.recordUserMint(amount, fillPrice, qeuroAmount) {} catch {}
+        try hedgerPool.recordUserMint(amount, fillPrice, qeuroAmount) {} catch (bytes memory reason) {
+            emit HedgerSyncFailed("mint", amount, fillPrice, reason);
+        }
     }
 
     /**
@@ -1955,7 +1963,9 @@ contract QuantillonVault is
         if (amount == 0) {
             return;
         }
-        try hedgerPool.recordUserRedeem(amount, redeemPrice, qeuroAmount) {} catch {}
+        try hedgerPool.recordUserRedeem(amount, redeemPrice, qeuroAmount) {} catch (bytes memory reason) {
+            emit HedgerSyncFailed("redeem", amount, redeemPrice, reason);
+        }
     }
 
     // =============================================================================

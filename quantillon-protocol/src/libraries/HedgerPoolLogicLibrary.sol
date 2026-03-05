@@ -316,12 +316,12 @@ library HedgerPoolLogicLibrary {
      * @param totalExposure Total exposure for the hedger position
      * @param eurInterestRate EUR interest rate in basis points
      * @param usdInterestRate USD interest rate in basis points
-     * @param lastRewardBlock Block number of last reward calculation
-     * @param currentBlock Current block number
-     * @param maxRewardPeriod Maximum reward period in blocks
+     * @param lastRewardTime Timestamp of last reward calculation
+     * @param currentTime Current timestamp
+     * @param maxRewardPeriod Maximum reward period in seconds
      * @param currentPendingRewards Current pending rewards amount
      * @return newPendingRewards Updated pending rewards amount
-     * @return newLastRewardBlock Updated last reward block
+     * @return newLastRewardTime Updated last reward timestamp
      * @custom:security No security validations required for pure function
      * @custom:validation None required for pure function
      * @custom:state-changes None (pure function)
@@ -335,37 +335,36 @@ library HedgerPoolLogicLibrary {
         uint256 totalExposure,
         uint256 eurInterestRate,
         uint256 usdInterestRate,
-        uint256 lastRewardBlock,
-        uint256 currentBlock,
+        uint256 lastRewardTime,
+        uint256 currentTime,
         uint256 maxRewardPeriod,
         uint256 currentPendingRewards
-    ) external pure returns (uint256 newPendingRewards, uint256 newLastRewardBlock) {
+    ) external pure returns (uint256 newPendingRewards, uint256 newLastRewardTime) {
         if (totalExposure == 0) {
-            return (currentPendingRewards, currentBlock);
+            return (currentPendingRewards, currentTime);
         }
-        
-        if (lastRewardBlock < 1) {
-            return (currentPendingRewards, currentBlock);
+
+        if (lastRewardTime < 1) {
+            return (currentPendingRewards, currentTime);
         }
-        
-        uint256 blocksElapsed = currentBlock - lastRewardBlock;
-        uint256 timeElapsed = blocksElapsed * 12;
-        
+
+        uint256 timeElapsed = currentTime - lastRewardTime;
+
         if (timeElapsed > maxRewardPeriod) {
             timeElapsed = maxRewardPeriod;
         }
-        
-        uint256 interestDifferential = usdInterestRate > eurInterestRate ? 
+
+        uint256 interestDifferential = usdInterestRate > eurInterestRate ?
             usdInterestRate - eurInterestRate : 0;
-        
+
+        // Fix #14: single-fraction to avoid intermediate truncation
         uint256 reward = totalExposure
-            .mulDiv(interestDifferential, 10000)
-            .mulDiv(timeElapsed, 365 days);
-        
+            .mulDiv(interestDifferential * timeElapsed, 10000 * 365 days);
+
         newPendingRewards = currentPendingRewards + reward;
         if (newPendingRewards < currentPendingRewards) revert HedgerPoolErrorLibrary.RewardOverflow();
-        
-        newLastRewardBlock = currentBlock;
+
+        newLastRewardTime = currentTime;
     }
 
     /**

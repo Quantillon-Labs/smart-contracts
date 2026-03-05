@@ -55,7 +55,8 @@ library YieldShiftCalculationLibrary {
         } else {
             // Hedger pool is larger than target - shift more yield to users
             deviation = targetPoolRatio - poolRatio;
-            optimalShift = baseYieldShift - (deviation * 100) / targetPoolRatio;
+            uint256 reduction = (deviation * 100) / targetPoolRatio;
+            optimalShift = reduction < baseYieldShift ? baseYieldShift - reduction : 0;
         }
         
         // Clamp to valid range

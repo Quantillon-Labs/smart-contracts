@@ -492,9 +492,8 @@ contract UserPoolTestSuite is Test {
         
         // With the oracle mock setup, qeuroMinted will be calculated based on 1.08 EUR/USD rate
         // The actual calculation in UserPool uses: (usdcAmount * 1e30) / eurUsdPrice
-        // For 100k USDC at 1.08 EUR/USD: (100000 * 1e6 * 1e30) / 108000000 = 925925925925925925925925925925925
-        // But the actual value from the test is 92592592592592592592593, so let's use that
-        uint256 expectedQeuro = 92592592592592592592593;
+        // mulDiv now truncates (no rounding up), so result is floor division
+        uint256 expectedQeuro = 92592592592592592592592;
         assertEq(qeuroMinted[0], expectedQeuro);
         
         // Check user info was updated
@@ -1501,7 +1500,7 @@ contract UserPoolTestSuite is Test {
         
         // Emergency unstake
         vm.prank(emergency);
-        userPool.emergencyUnstake(user1);
+        userPool.emergencyUnstake(user1, address(0));
         
         // Check user stakes
         (, uint256 stakes, , , , , ) = userPool.getUserInfo(user1);
@@ -1526,7 +1525,7 @@ contract UserPoolTestSuite is Test {
     function test_Emergency_EmergencyUnstakeByNonEmergency_Revert() public {
         vm.prank(user1);
         vm.expectRevert();
-        userPool.emergencyUnstake(user1);
+        userPool.emergencyUnstake(user1, address(0));
     }
 
     // =============================================================================

@@ -299,7 +299,7 @@ library QTITokenGovernanceLibrary {
         finalUnlockTime = existingUnlockTime;
         
         for (uint256 i = 0; i < amounts.length;) {
-            uint256 newUnlockTime = _calculateUnlockTime(currentTimestamp, lockTimes[i], existingUnlockTime);
+            uint256 newUnlockTime = _calculateUnlockTime(currentTimestamp, lockTimes[i], finalUnlockTime);
             uint256 newVotingPower = _calculateVotingPower(amounts[i], lockTimes[i]);
             
             veQTIAmounts[i] = newVotingPower;

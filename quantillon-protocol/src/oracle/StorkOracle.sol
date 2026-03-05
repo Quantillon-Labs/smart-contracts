@@ -940,6 +940,12 @@ contract StorkOracle is
      * @custom:reentrancy Not protected - view function
      * @custom:access Public - no access restrictions
      * @custom:oracle Queries Stork feed contract for EUR/USD price
+     * @dev SECURITY NOTE: Stork is a pull oracle — on-chain prices are updated by keeper transactions.
+     *      An attacker monitoring the off-chain Stork stream can front-run a pending price update by
+     *      opening a HedgerPool position at the stale price before the update lands. Existing mitigations:
+     *      (1) MAX_PRICE_DEVIATION circuit breaker caps the per-update magnitude;
+     *      (2) minPositionHoldBlocks in HedgerPool enforces a minimum hold period after entry.
+     *      For stronger guarantees, consider a commit-reveal entry scheme or using Stork's push model.
      */
     function getEurUsdPrice() external view returns (uint256 price, bool isValid) {
         // If circuit breaker is active or contract is paused, use the last valid price

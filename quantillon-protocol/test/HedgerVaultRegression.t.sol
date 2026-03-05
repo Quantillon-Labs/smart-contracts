@@ -357,6 +357,7 @@ contract HedgerVaultRegressionTest is Test {
             ,
             uint16 positionLeverageRaw,
             bool isActive,
+            ,
         ) = hedgerPool.positions(positionId);
         
         assertEq(owner, hedger, "Position owner should match");
@@ -438,7 +439,7 @@ contract HedgerVaultRegressionTest is Test {
         assertGt(finalVaultUsdc, initialVaultUsdc, "Vault USDC should increase after margin addition");
         
         // Verify position margin increased
-        (, , , uint96 marginRaw, , , , , , , , ) = hedgerPool.positions(positionId);
+        (, , , uint96 marginRaw, , , , , , , , , ) = hedgerPool.positions(positionId);
         assertGt(uint256(marginRaw), initialUsdcAmount, "Position margin should increase");
     }
     

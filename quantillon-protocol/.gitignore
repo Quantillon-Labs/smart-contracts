@@ -10,9 +10,7 @@
 # 🔐 ENVIRONMENT VARIABLES & SECRETS
 # =============================================================================
 
-# Dotenvx encrypted environment files
-.env*
-.env
+# Environment files are tracked but encrypted via git-crypt (see .gitattributes)
 
 # =============================================================================
 # 🔑 PRIVATE KEYS & CREDENTIALS
@@ -194,7 +192,4 @@ build-output.log
 #
 # =============================================================================
 
-# Environment files
-.env
-.env.*
-!.env.example
+# Environment files are tracked but encrypted via git-crypt (see .gitattributes)

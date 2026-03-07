@@ -759,6 +759,32 @@ function claimHedgingRewards()
 
 Withdraw rewards that could not be pushed due to USDC transfer failure (e.g. blacklist)
 
+Pull-based fallback for hedgers whose push transfer failed in `claimHedgingRewards`.
+Uses the `pendingRewardWithdrawals` mapping as a per-hedger escrow and sends the
+entire pending amount to the provided `recipient` address.
+
+**Notes:**
+- security: Protected by `nonReentrant` and SafeERC20; only the hedger (msg.sender)
+can withdraw their own pending rewards.
+
+- validation: Reverts if `recipient` is the zero address or the caller has no
+pending rewards recorded.
+
+- state-changes: Sets `pendingRewardWithdrawals[msg.sender]` to zero and transfers
+the pending USDC amount to `recipient`.
+
+- events: No events emitted; off-chain indexers should track `pendingRewardWithdrawals`
+and standard ERC20 `Transfer` events.
+
+- errors: Reverts with `ZeroAddress` when `recipient` is zero, and `InvalidAmount`
+when there is no pending reward; SafeERC20 may bubble up token errors.
+
+- reentrancy: Protected by `nonReentrant`; external interaction is a single USDC transfer.
+
+- access: External function callable by any hedger for their own pending rewards only.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function withdrawPendingRewards(address recipient) external nonReentrant;
@@ -767,7 +793,7 @@ function withdrawPendingRewards(address recipient) external nonReentrant;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`recipient`|`address`|Address to receive the pending rewards (allows blacklisted hedgers to use an alternative address)|
+|`recipient`|`address`|Address that will receive the pending rewards; allows a blacklisted hedger to specify an alternative, non-blacklisted address.|
 
 
 ### getTotalEffectiveHedgerCollateral

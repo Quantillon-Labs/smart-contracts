@@ -753,6 +753,17 @@ contract TimelockUpgradeableTest is Test {
     function test_GetMultisigSigners() public view {
         address[] memory signers = timelock.getMultisigSigners();
         assertEq(signers.length, 2, "Should return 2 signers");
+        assertTrue(_contains(signers, admin), "Admin should be present");
+        assertTrue(_contains(signers, signer1), "Signer1 should be present");
+    }
+
+    function test_GetMultisigSigners_AfterAddingSigner() public {
+        vm.prank(multisigManager);
+        timelock.addMultisigSigner(signer2);
+
+        address[] memory signers = timelock.getMultisigSigners();
+        assertEq(signers.length, 3, "Should return 3 signers");
+        assertTrue(_contains(signers, signer2), "Signer2 should be present");
     }
 
     // =============================================================================
@@ -925,5 +936,12 @@ contract TimelockUpgradeableTest is Test {
         assertTrue(timelock.getPendingUpgrade(newImpl1).implementation != address(0), "Upgrade 1 should be pending");
         assertTrue(timelock.getPendingUpgrade(newImpl2).implementation != address(0), "Upgrade 2 should be pending");
         assertTrue(timelock.getPendingUpgrade(newImpl3).implementation != address(0), "Upgrade 3 should be pending");
+    }
+
+    function _contains(address[] memory signers, address target) internal pure returns (bool) {
+        for (uint256 i = 0; i < signers.length; i++) {
+            if (signers[i] == target) return true;
+        }
+        return false;
     }
 }

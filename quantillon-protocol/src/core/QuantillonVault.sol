@@ -493,8 +493,9 @@ contract QuantillonVault is
         
         // Default collateralization parameters (in 18 decimals format for maximum precision)
         minCollateralizationRatioForMinting = MIN_COLLATERALIZATION_RATIO_FOR_MINTING;  // 105.000000% - minimum ratio for minting
-        // Convert CRITICAL_COLLATERALIZATION_RATIO_BPS (10100 bps) to 18 decimals: 10100 / 10000 * 1e18 = 101 * 1e16
-        criticalCollateralizationRatio = (CRITICAL_COLLATERALIZATION_RATIO_BPS * 1e18) / 10000;   // 101.000000% - critical ratio for liquidation
+        // Convert bps to protocol ratio format where 100% = 1e20.
+        // 10100 bps => 10100 * 1e16 = 101000000000000000000 (101%)
+        criticalCollateralizationRatio = CRITICAL_COLLATERALIZATION_RATIO_BPS * 1e16;
         
         // Initialize price tracking for flash loan protection
         lastValidEurUsdPrice = 0;       // Will be set on first price fetch
@@ -548,7 +549,7 @@ contract QuantillonVault is
         (, bool usdcIsValid) = oracle.getUsdcUsdPrice();
         if (!usdcIsValid) revert CommonErrorLibrary.InvalidOraclePrice();
 
-        // Check if we can mint (this also calls oracle internally, but we've already cached the price)
+        // Check if we can mint based on current state
         if (!canMint()) revert CommonErrorLibrary.InsufficientCollateralization();
         
         // Price deviation check using cached price (skip if dev mode is enabled)
@@ -571,6 +572,23 @@ contract QuantillonVault is
         uint256 netAmount = usdcAmount - fee;
         uint256 qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
         if (qeuroToMint < minQeuroOut) revert CommonErrorLibrary.ExcessiveSlippage();
+
+        // Critical safety check: enforce collateralization on projected post-mint state.
+        // Bootstrap exception: allow first mint only when the system has zero existing collateral.
+        // This preserves startup behavior while preventing one-shot dilution attacks once collateral exists.
+        uint256 currentSupply = qeuro.totalSupply();
+        uint256 collateralBeforeMint = totalUsdcHeld + totalUsdcInAave;
+        bool isBootstrapMint = currentSupply == 0 && collateralBeforeMint == 0;
+        if (!isBootstrapMint) {
+            uint256 projectedSupply = currentSupply + qeuroToMint;
+            uint256 projectedCollateral = collateralBeforeMint + netAmount;
+            uint256 projectedBackingRequirement = projectedSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
+            if (projectedBackingRequirement == 0) revert CommonErrorLibrary.InvalidAmount();
+            uint256 projectedCollateralizationRatio = projectedCollateral.mulDiv(1e20, projectedBackingRequirement);
+            if (projectedCollateralizationRatio < minCollateralizationRatioForMinting) {
+                revert CommonErrorLibrary.InsufficientCollateralization();
+            }
+        }
 
         if (address(hedgerPool) == address(0)) revert CommonErrorLibrary.InvalidVault();
 
@@ -702,12 +720,14 @@ contract QuantillonVault is
         // CHECKS
         CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
 
-        // Check if protocol is in liquidation mode (CR <= 101%)
+        // Check if protocol is in liquidation mode using the configurable critical threshold
         uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
         uint256 collateralizationRatioBps = currentRatio18Dec / 1e16;
         
-        // Route to liquidation mode if CR <= 101%
-        if (collateralizationRatioBps <= CRITICAL_COLLATERALIZATION_RATIO_BPS && collateralizationRatioBps > 0) {
+        uint256 criticalRatioBps = criticalCollateralizationRatio / 1e16;
+
+        // Route to liquidation mode if current CR is at/below configured critical threshold
+        if (collateralizationRatioBps > 0 && collateralizationRatioBps <= criticalRatioBps) {
             _redeemLiquidationMode(qeuroAmount, minUsdcOut, collateralizationRatioBps);
             return;
         }
@@ -1006,10 +1026,11 @@ contract QuantillonVault is
         // CHECKS
         CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
 
-        // Check protocol is in liquidation mode (CR <= 101%)
+        // Check protocol is in liquidation mode using the configurable critical threshold
         uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
         uint256 collateralizationRatioBps = currentRatio18Dec / 1e16;
-        if (collateralizationRatioBps > CRITICAL_COLLATERALIZATION_RATIO_BPS) revert CommonErrorLibrary.NotInLiquidationMode();
+        uint256 criticalRatioBps = criticalCollateralizationRatio / 1e16;
+        if (collateralizationRatioBps > criticalRatioBps) revert CommonErrorLibrary.NotInLiquidationMode();
 
         // Delegate to shared liquidation logic
         _redeemLiquidationMode(qeuroAmount, minUsdcOut, collateralizationRatioBps);
@@ -1719,8 +1740,10 @@ contract QuantillonVault is
         // Total collateral = actual USDC in vault (user deposits + hedger margin)
         totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
         
-        // Liquidation mode when CR <= 101% (10100 bps)
-        isInLiquidation = collateralizationRatioBps <= CRITICAL_COLLATERALIZATION_RATIO_BPS;
+        uint256 criticalRatioBps = criticalCollateralizationRatio / 1e16;
+
+        // Liquidation mode when CR <= configured critical threshold
+        isInLiquidation = collateralizationRatioBps <= criticalRatioBps;
     }
 
     /**

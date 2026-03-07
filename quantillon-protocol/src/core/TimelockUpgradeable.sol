@@ -379,9 +379,8 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         CommonValidationLibrary.validateNonZeroAddress(signer, "signer");
         CommonValidationLibrary.validateCondition(!multisigSigners[signer], "duplicate");
         CommonValidationLibrary.validateCountLimit(multisigSignerCount, MAX_MULTISIG_SIGNERS);
-        
-        multisigSigners[signer] = true;
-        multisigSignerCount++;
+
+        _addMultisigSigner(signer);
         
         emit MultisigSignerAdded(signer);
     }
@@ -520,11 +519,11 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies
      */
     function getMultisigSigners() external view returns (address[] memory signers) {
-        signers = new address[](multisigSignerCount);
-        
-        // This is a simplified version - in production, you'd want to maintain a separate array
-        // For now, we'll return an empty array as this is just for demonstration
-        return signers;
+        uint256 len = _multisigSignersList.length;
+        signers = new address[](len);
+        for (uint256 i = 0; i < len; i++) {
+            signers[i] = _multisigSignersList[i];
+        }
     }
     
     // ============ Internal Functions ============

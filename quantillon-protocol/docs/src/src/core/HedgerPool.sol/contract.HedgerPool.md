@@ -927,179 +927,25 @@ function hasActiveHedger() external view returns (bool);
 |`<none>`|`bool`|True if hedger has an active position, false otherwise|
 
 
-### updateHedgingParameters
+### configureRiskAndFees
 
-Updates core hedging parameters for risk management
-
-Allows governance to adjust risk parameters based on market conditions
-
-**Notes:**
-- security: Validates governance role and parameter constraints
-
-- validation: Validates minRatio >= DEFAULT_MIN_MARGIN_RATIO_BPS, maxLev <= 20
-
-- state-changes: Updates minMarginRatio and maxLeverage state variables
-
-- events: No events emitted for parameter updates
-
-- errors: Throws ConfigValueTooLow, ConfigValueTooHigh
-
-- reentrancy: Not protected - no external calls
-
-- access: Restricted to GOVERNANCE_ROLE
-
-- oracle: No oracle dependencies for parameter updates
+Configures risk and fee parameters in a single governance transaction.
 
 
 ```solidity
-function updateHedgingParameters(uint256 minRatio, uint256 maxLev) external;
+function configureRiskAndFees(HedgerRiskConfig calldata cfg) external;
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`minRatio`|`uint256`|New minimum margin ratio in basis points (e.g., 500 = 5%)|
-|`maxLev`|`uint256`|New maximum leverage multiplier (e.g., 20 = 20x)|
+### configureDependencies
 
+Configures dependency addresses in a single governance transaction.
 
-### setMinPositionHoldBlocks
-
-Sets the minimum number of blocks a position must be held before closing
-
-Governance-level risk parameter to prevent oracle front-running via immediate open/close cycles
-
-**Notes:**
-- security: Restricted to GOVERNANCE_ROLE; affects when hedgers can exit but does not move funds directly
-
-- validation: Caller is responsible for providing a sane, network-appropriate block count
-
-- state-changes: Updates `minPositionHoldBlocks` which is enforced in `exitHedgePosition`
-
-- events: No events emitted for parameter updates
-
-- errors: Reverts with NotAuthorized if caller lacks GOVERNANCE_ROLE
-
-- reentrancy: Not protected - no external calls
-
-- access: Restricted to GOVERNANCE_ROLE
-
-- oracle: No oracle dependencies
+Changing `feeCollector` requires both governance and default-admin authority.
 
 
 ```solidity
-function setMinPositionHoldBlocks(uint256 _blocks) external;
+function configureDependencies(HedgerDependencyConfig calldata cfg) external;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_blocks`|`uint256`|New minimum number of blocks a position must remain open before it can be closed|
-
-
-### setMinMarginAmount
-
-Sets the minimum margin (USDC) required to open a position
-
-Governance-level control to prevent dust / unliquidatable positions by enforcing a minimum USDC margin
-
-**Notes:**
-- security: Restricted to GOVERNANCE_ROLE; impacts who can open positions but does not move funds directly
-
-- validation: Caller must choose an amount consistent with protocol risk parameters and USDC decimals
-
-- state-changes: Updates `minMarginAmount` used by `enterHedgePosition` validation
-
-- events: No events emitted for parameter updates
-
-- errors: Reverts with NotAuthorized if caller lacks GOVERNANCE_ROLE
-
-- reentrancy: Not protected - no external calls
-
-- access: Restricted to GOVERNANCE_ROLE
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function setMinMarginAmount(uint256 _amount) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_amount`|`uint256`|New minimum margin required in USDC (6 decimals)|
-
-
-### updateInterestRates
-
-Updates interest rates for EUR and USD
-
-Allows governance to adjust interest rates used for reward calculations
-
-**Notes:**
-- security: Validates governance role and rate limits
-
-- validation: Validates eurRate <= 2000 and usdRate <= 2000
-
-- state-changes: Updates coreParams.eurInterestRate and coreParams.usdInterestRate
-
-- events: No events emitted for rate updates
-
-- errors: Throws ConfigValueTooHigh if rates exceed 2000
-
-- reentrancy: Not protected - no external calls
-
-- access: Restricted to GOVERNANCE_ROLE
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function updateInterestRates(uint256 eurRate, uint256 usdRate) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`eurRate`|`uint256`|EUR interest rate in basis points (max 2000 = 20%)|
-|`usdRate`|`uint256`|USD interest rate in basis points (max 2000 = 20%)|
-
-
-### setHedgingFees
-
-Sets hedge position fees (entry, exit, margin)
-
-Allows governance to adjust fee rates for position operations
-
-**Notes:**
-- security: Validates governance role and fee limits
-
-- validation: Validates entry <= 100, exit <= 100, margin <= 50
-
-- state-changes: Updates coreParams.entryFee, coreParams.exitFee, coreParams.marginFee
-
-- events: No events emitted for fee updates
-
-- errors: Throws validation errors if fees exceed limits
-
-- reentrancy: Not protected - no external calls
-
-- access: Restricted to GOVERNANCE_ROLE
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function setHedgingFees(uint256 entry, uint256 exit, uint256 margin) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`entry`|`uint256`|Entry fee rate in basis points (max 100 = 1%)|
-|`exit`|`uint256`|Exit fee rate in basis points (max 100 = 1%)|
-|`margin`|`uint256`|Margin operation fee rate in basis points (max 50 = 0.5%)|
-
 
 ### emergencyClosePosition
 
@@ -1235,41 +1081,6 @@ function recover(address token, uint256 amount) external;
 |`amount`|`uint256`|Amount of tokens to recover (0 for all ETH)|
 
 
-### updateAddress
-
-Updates contract addresses (0=treasury, 1=vault, 2=oracle, 3=yieldShift)
-
-Allows governance to update critical contract addresses
-
-**Notes:**
-- security: Validates governance role and non-zero address
-
-- validation: Validates slot is valid (0-3) and addr != address(0)
-
-- state-changes: Updates treasury, vault, oracle, or yieldShift address
-
-- events: Emits TreasuryUpdated or VaultUpdated for slots 0 and 1
-
-- errors: Throws ZeroAddress if addr is zero, InvalidPosition if slot is invalid
-
-- reentrancy: Not protected - no external calls
-
-- access: Restricted to GOVERNANCE_ROLE
-
-- oracle: Updates oracle address if slot == 2
-
-
-```solidity
-function updateAddress(uint8 slot, address addr) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`slot`|`uint8`|Address slot to update (0=treasury, 1=vault, 2=oracle, 3=yieldShift)|
-|`addr`|`address`|New address for the slot|
-
-
 ### setSingleHedger
 
 Sets the single hedger address allowed to open positions
@@ -1304,21 +1115,6 @@ function setSingleHedger(address hedger) external;
 |`hedger`|`address`|Address of the single hedger|
 
 
-### proposeSingleHedger
-
-INFO-2: Explicit delayed single-hedger rotation proposal.
-
-
-```solidity
-function proposeSingleHedger(address hedger) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Address proposed to become the next single hedger.|
-
-
 ### applySingleHedgerRotation
 
 INFO-2: Applies a previously proposed single-hedger rotation after delay.
@@ -1327,36 +1123,6 @@ INFO-2: Applies a previously proposed single-hedger rotation after delay.
 ```solidity
 function applySingleHedgerRotation() external;
 ```
-
-### setFeeCollector
-
-MED-6: Set the FeeCollector address that receives margin fees
-
-
-```solidity
-function setFeeCollector(address _feeCollector) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_feeCollector`|`address`|Address of the FeeCollector contract|
-
-
-### updateRewardFeeSplit
-
-Updates the share of protocol fees routed to the local reward reserve.
-
-
-```solidity
-function updateRewardFeeSplit(uint256 newSplit) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`newSplit`|`uint256`|Fee split in 1e18 precision (1e18 = 100%).|
-
 
 ### fundRewardReserve
 
@@ -1802,56 +1568,6 @@ function _processRedeem(
 |`qeuroAmount`|`uint256`|QEURO amount being redeemed (18 decimals)|
 
 
-### _calculateRedeemPnL
-
-Calculates unrealized and realized P&L for redemption
-
-Mark-to-market total unrealized P&L, subtract previous realized, then pro-rata share for qeuroAmount
-
-**Notes:**
-- security: Pure math; no external calls
-
-- validation: Caller must pass consistent position data
-
-- state-changes: None (pure)
-
-- events: None
-
-- errors: None
-
-- reentrancy: N/A pure
-
-- access: Internal
-
-- oracle: Price passed in; no live oracle call
-
-
-```solidity
-function _calculateRedeemPnL(
-    uint256 currentQeuroBacked,
-    uint256 filledBefore,
-    uint256 price,
-    uint256 qeuroAmount,
-    int128 previousRealizedPnL
-) internal pure returns (int256 realizedDelta);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`currentQeuroBacked`|`uint256`|Current QEURO backed by position|
-|`filledBefore`|`uint256`|Filled volume before redemption|
-|`price`|`uint256`|Current EUR/USD price|
-|`qeuroAmount`|`uint256`|Amount of QEURO being redeemed|
-|`previousRealizedPnL`|`int128`|Previously realized P&L|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`realizedDelta`|`int256`|Realized P&L delta for this redemption|
-
-
 ### _applyRealizedPnLToMargin
 
 Applies realized P&L to position margin and emits MarginUpdated
@@ -1936,38 +1652,12 @@ event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
 event ETHRecovered(address indexed to, uint256 indexed amount);
 ```
 
-### TreasuryUpdated
-
-```solidity
-event TreasuryUpdated(address indexed treasury);
-```
-
-### VaultUpdated
-
-```solidity
-event VaultUpdated(address indexed vault);
-```
-
 ### RewardReserveFunded
 MED-2: Emitted when USDC is deposited into the reward reserve
 
 
 ```solidity
 event RewardReserveFunded(address indexed funder, uint256 amount);
-```
-
-### FeeCollectorUpdated
-MED-6: Emitted when the FeeCollector address is updated
-
-
-```solidity
-event FeeCollectorUpdated(address indexed feeCollector);
-```
-
-### RewardFeeSplitUpdated
-
-```solidity
-event RewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
 ```
 
 ### SingleHedgerRotationProposed
@@ -1997,6 +1687,35 @@ struct CoreParams {
     uint16 eurInterestRate;
     uint16 usdInterestRate;
     uint8 reserved;
+}
+```
+
+### HedgerRiskConfig
+
+```solidity
+struct HedgerRiskConfig {
+    uint256 minMarginRatio;
+    uint256 maxLeverage;
+    uint256 minPositionHoldBlocks;
+    uint256 minMarginAmount;
+    uint256 eurInterestRate;
+    uint256 usdInterestRate;
+    uint256 entryFee;
+    uint256 exitFee;
+    uint256 marginFee;
+    uint256 rewardFeeSplit;
+}
+```
+
+### HedgerDependencyConfig
+
+```solidity
+struct HedgerDependencyConfig {
+    address treasury;
+    address vault;
+    address oracle;
+    address yieldShift;
+    address feeCollector;
 }
 ```
 

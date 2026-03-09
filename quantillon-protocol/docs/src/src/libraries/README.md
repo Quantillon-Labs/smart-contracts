@@ -10,6 +10,7 @@
 - [HedgerPoolErrorLibrary](HedgerPoolErrorLibrary.sol/library.HedgerPoolErrorLibrary.md)
 - [HedgerPoolLogicLibrary](HedgerPoolLogicLibrary.sol/library.HedgerPoolLogicLibrary.md)
 - [HedgerPoolOptimizationLibrary](HedgerPoolOptimizationLibrary.sol/library.HedgerPoolOptimizationLibrary.md)
+- [HedgerPoolRedeemMathLibrary](HedgerPoolRedeemMathLibrary.sol/library.HedgerPoolRedeemMathLibrary.md)
 - [HedgerPoolValidationLibrary](HedgerPoolValidationLibrary.sol/library.HedgerPoolValidationLibrary.md)
 - [PriceValidationLibrary](PriceValidationLibrary.sol/library.PriceValidationLibrary.md)
 - [QTITokenGovernanceLibrary](QTITokenGovernanceLibrary.sol/library.QTITokenGovernanceLibrary.md)

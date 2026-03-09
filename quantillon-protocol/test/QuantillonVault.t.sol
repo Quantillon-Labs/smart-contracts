@@ -358,7 +358,7 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldCalculateMintAmount() public {
+    function testView_WithValidParameters_ShouldCalculateMintAmount() public view {
         uint256 usdcAmount = MINT_AMOUNT; // 1000 USDC (6 decimals)
         (uint256 qeuroAmount, uint256 fee) = vault.calculateMintAmount(usdcAmount);
         assertGt(qeuroAmount, 0, "calculateMintAmount should return positive QEURO amount");
@@ -379,7 +379,7 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testView_WithValidParameters_ShouldCalculateRedeemAmount() public {
+    function testView_WithValidParameters_ShouldCalculateRedeemAmount() public view {
         uint256 qeuroAmount = 100 * 1e18; // 100 QEURO (18 decimals)
         (uint256 usdcAmount, uint256 fee) = vault.calculateRedeemAmount(qeuroAmount);
         assertGt(usdcAmount, 0, "calculateRedeemAmount should return positive USDC amount");
@@ -1067,7 +1067,7 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_View_CalculateMintAmount() public {
+    function test_View_CalculateMintAmount() public view {
         uint256 usdcAmount = MINT_AMOUNT;
         
         (uint256 qeuroAmount, uint256 fee) = vault.calculateMintAmount(usdcAmount);
@@ -1090,7 +1090,7 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_View_CalculateRedeemAmount() public {
+    function test_View_CalculateRedeemAmount() public view {
         uint256 qeuroAmount = REDEEM_AMOUNT;
         
         (uint256 usdcAmount, uint256 fee) = vault.calculateRedeemAmount(qeuroAmount);

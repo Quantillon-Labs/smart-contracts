@@ -1038,6 +1038,16 @@ contract HedgerPool is
 
     /**
      * @notice Configures risk and fee parameters in a single governance transaction.
+     * @dev Applies a full snapshot update for risk bounds, fee rates, and reserve split configuration.
+     * @param cfg Struct containing risk and fee values to apply.
+     * @custom:security Restricted to governance; validates all bounds before state updates.
+     * @custom:validation Enforces leverage/fee/rate limits and reward split cap.
+     * @custom:state-changes Updates `coreParams`, `minPositionHoldBlocks`, `minMarginAmount`, and `rewardFeeSplit`.
+     * @custom:events No dedicated event emitted.
+     * @custom:errors Reverts on invalid role or any out-of-range config value.
+     * @custom:reentrancy Not applicable - no external calls.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle No oracle interaction.
      */
     function configureRiskAndFees(HedgerRiskConfig calldata cfg) external {
         _validateRole(GOVERNANCE_ROLE);
@@ -1074,6 +1084,15 @@ contract HedgerPool is
     /**
      * @notice Configures dependency addresses in a single governance transaction.
      * @dev Changing `feeCollector` requires both governance and default-admin authority.
+     * @param cfg Struct containing dependency addresses to apply.
+     * @custom:security Restricted to governance; extra admin gate for fee collector changes.
+     * @custom:validation Validates all dependency addresses are non-zero.
+     * @custom:state-changes Updates `treasury`, `vault`, `oracle`, `yieldShift`, and `feeCollector`.
+     * @custom:events No dedicated event emitted.
+     * @custom:errors Reverts on invalid role, unauthorized fee collector change, or zero addresses.
+     * @custom:reentrancy Not applicable - no external calls.
+     * @custom:access Restricted to `GOVERNANCE_ROLE` (plus `DEFAULT_ADMIN_ROLE` for fee collector change).
+     * @custom:oracle Updates the oracle dependency address.
      */
     function configureDependencies(HedgerDependencyConfig calldata cfg) external {
         _validateRole(GOVERNANCE_ROLE);
@@ -1229,7 +1248,18 @@ contract HedgerPool is
         emit SingleHedgerRotationProposed(singleHedger, hedger, singleHedgerPendingAt);
     }
 
-    /// @notice INFO-2: Applies a previously proposed single-hedger rotation after delay.
+    /**
+     * @notice INFO-2: Applies a previously proposed single-hedger rotation after delay.
+     * @dev Finalizes the delayed rotation configured via `setSingleHedger`.
+     * @custom:security Restricted to governance and guarded by pending-state + delay checks.
+     * @custom:validation Requires a pending hedger and elapsed `SINGLE_HEDGER_ROTATION_DELAY`.
+     * @custom:state-changes Updates `singleHedger` and clears pending rotation fields.
+     * @custom:events Emits `SingleHedgerRotationApplied`.
+     * @custom:errors Reverts when no pending rotation exists or delay has not elapsed.
+     * @custom:reentrancy Not applicable - no external calls.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle No oracle interaction.
+     */
     function applySingleHedgerRotation() external {
         _validateRole(GOVERNANCE_ROLE);
         if (pendingSingleHedger == address(0) || singleHedgerPendingAt == 0) revert CommonErrorLibrary.NotActive();
@@ -1242,9 +1272,19 @@ contract HedgerPool is
         emit SingleHedgerRotationApplied(previousHedger, singleHedger);
     }
 
-    /// @notice MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.
-    /// @dev Permissionless funding path; caller must approve USDC before calling.
-    /// @param amount Amount of USDC to deposit (6 decimals)
+    /**
+     * @notice MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.
+     * @dev Permissionless funding path; caller must approve USDC before calling.
+     * @param amount Amount of USDC to deposit (6 decimals).
+     * @custom:security Uses nonReentrant protection and pulls tokens from caller.
+     * @custom:validation Reverts when `amount` is zero.
+     * @custom:state-changes Transfers USDC into HedgerPool reward reserves.
+     * @custom:events Emits `RewardReserveFunded`.
+     * @custom:errors Reverts on zero amount or failed token transfer.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle No oracle interaction.
+     */
     function fundRewardReserve(uint256 amount) external nonReentrant {
         if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
         usdc.safeTransferFrom(msg.sender, address(this), amount);
@@ -1345,6 +1385,7 @@ contract HedgerPool is
      * @custom:security Internal function - assumes position is valid and active
      * @custom:validation Validates totalFilledExposure >= cachedFilledVolume before decrementing
      * @custom:state-changes Clears position filledVolume, decrements totalFilledExposure
+     * @custom:events No events emitted
      * @custom:errors Reverts with InsufficientHedgerCapacity if totalFilledExposure < cachedFilledVolume
      * @custom:reentrancy Protected by nonReentrant on all public entry points
      * @custom:access Internal - only callable within contract
@@ -1621,6 +1662,14 @@ contract HedgerPool is
      * @param posId Position ID
      * @param pos Position storage reference
      * @param realizedDelta Realized P&L amount (positive = profit, negative = loss)
+     * @custom:security Internal accounting helper called after redemption validations.
+     * @custom:validation Handles zero delta and relies on library-validated transition bounds.
+     * @custom:state-changes Updates `totalMargin`, `pos.margin`, and `pos.positionSize`.
+     * @custom:events Emits `MarginUpdated` when `realizedDelta != 0`.
+     * @custom:errors Reverts only through downstream arithmetic/library checks.
+     * @custom:reentrancy Not applicable - internal function with no external calls.
+     * @custom:access Internal helper only.
+     * @custom:oracle No oracle interaction.
      */
     function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
         if (realizedDelta == 0) return;

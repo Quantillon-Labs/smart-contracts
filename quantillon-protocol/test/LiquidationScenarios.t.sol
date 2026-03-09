@@ -349,7 +349,8 @@ contract LiquidationScenarios is IntegrationTests {
         vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
         uint256 user1Minted = qeuroToken.balanceOf(user1);
         uint256 user2Share = user1Minted / 2;
-        qeuroToken.transfer(user2, user2Share);
+        bool transferred = qeuroToken.transfer(user2, user2Share);
+        require(transferred, "transfer failed");
         vm.stopPrank();
 
         _setOraclePriceAndRefreshCache(2.0e18);

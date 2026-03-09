@@ -1231,7 +1231,16 @@ contract QuantillonVault is
 
     /**
      * @notice Updates the fee share routed to HedgerPool reward reserve.
+     * @dev Governance-controlled split applied in `_routeProtocolFees`.
      * @param newSplit Share in 1e18 precision (1e18 = 100%).
+     * @custom:security Restricted to governance and bounded by max split constant.
+     * @custom:validation Reverts when `newSplit` exceeds `MAX_HEDGER_REWARD_FEE_SPLIT`.
+     * @custom:state-changes Updates `hedgerRewardFeeSplit`.
+     * @custom:events Emits `HedgerRewardFeeSplitUpdated`.
+     * @custom:errors Reverts with `ConfigValueTooHigh` on invalid split.
+     * @custom:reentrancy Not applicable - simple state update.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle No oracle interaction.
      */
     function updateHedgerRewardFeeSplit(uint256 newSplit) external onlyRole(GOVERNANCE_ROLE) {
         if (newSplit > MAX_HEDGER_REWARD_FEE_SPLIT) revert CommonErrorLibrary.ConfigValueTooHigh();
@@ -1376,6 +1385,14 @@ contract QuantillonVault is
      * @notice Harvests accrued Aave interest through AaveVault and routes yield via YieldShift.
      * @dev HIGH-2 / NEW-1 remediation entrypoint for explicit yield synchronization.
      * @return harvestedYield Amount harvested by AaveVault (USDC 6 decimals).
+     * @custom:security Restricted to governance and guarded by `nonReentrant`.
+     * @custom:validation Requires configured AaveVault address.
+     * @custom:state-changes May update Aave-side accounting and emits local harvest event.
+     * @custom:events Emits `AaveInterestHarvested`.
+     * @custom:errors Reverts when AaveVault is unset or downstream harvest call fails.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle No direct oracle interaction.
      */
     function harvestAaveInterest() external onlyRole(GOVERNANCE_ROLE) nonReentrant returns (uint256 harvestedYield) {
         if (address(aaveVault) == address(0)) revert CommonErrorLibrary.ZeroAddress();
@@ -1653,8 +1670,19 @@ contract QuantillonVault is
         }
     }
 
-    /// @notice Returns current Aave collateral balance including accrued yield when available.
-    /// @dev Falls back to tracked principal if the external balance query is unavailable.
+    /**
+     * @notice Returns current Aave collateral balance including accrued yield when available.
+     * @dev Falls back to tracked principal if the external balance query is unavailable.
+     * @return collateralBalance Aave-side collateral balance in USDC units (6 decimals).
+     * @custom:security View helper with defensive fallback path.
+     * @custom:validation Returns tracked principal when Aave balance query reverts.
+     * @custom:state-changes None - view function.
+     * @custom:events None.
+     * @custom:errors None - errors are caught via try/catch fallback.
+     * @custom:reentrancy Not applicable - view function.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle interaction.
+     */
     function _getAaveCollateralBalance() internal view returns (uint256) {
         if (address(aaveVault) == address(0)) {
             return totalUsdcInAave;
@@ -1666,15 +1694,37 @@ contract QuantillonVault is
         }
     }
 
-    /// @notice HIGH-2/NEW-1: total protocol collateral including accrued Aave interest.
-    /// @dev Uses on-chain Aave balance (principal + yield) with a principal fallback path.
+    /**
+     * @notice HIGH-2/NEW-1: total protocol collateral including accrued Aave interest.
+     * @dev Uses on-chain Aave balance (principal + yield) with a principal fallback path.
+     * @return totalCollateral Combined vault-held + Aave-held collateral in USDC units (6 decimals).
+     * @custom:security View helper used by CR calculations and withdrawal checks.
+     * @custom:validation Relies on `_getAaveCollateralBalance` fallback behavior.
+     * @custom:state-changes None - view function.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable - view function.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle interaction.
+     */
     function _getTotalCollateralWithAccruedYield() internal view returns (uint256) {
         return totalUsdcHeld + _getAaveCollateralBalance();
     }
 
-    /// @notice MED-2: routes protocol fees between HedgerPool reserve and FeeCollector at source.
-    /// @param fee Total fee amount in USDC (6 decimals)
-    /// @param sourceType Source tag passed through to FeeCollector accounting
+    /**
+     * @notice MED-2: routes protocol fees between HedgerPool reserve and FeeCollector at source.
+     * @dev Splits fee flow using `hedgerRewardFeeSplit` and transfers shares to each destination.
+     * @param fee Total fee amount in USDC (6 decimals).
+     * @param sourceType Source tag passed through to FeeCollector accounting.
+     * @custom:security Validates required dependency addresses before routing each share.
+     * @custom:validation No-op when `fee == 0`; reverts on unset required destinations.
+     * @custom:state-changes Increases allowances and forwards fee shares to HedgerPool/FeeCollector.
+     * @custom:events Emits `ProtocolFeeRouted`.
+     * @custom:errors Reverts when HedgerPool/FeeCollector dependencies are unset for non-zero shares.
+     * @custom:reentrancy Internal function; external calls are to configured protocol dependencies.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle interaction.
+     */
     function _routeProtocolFees(uint256 fee, string memory sourceType) internal {
         if (fee == 0) return;
 
@@ -1767,21 +1817,52 @@ contract QuantillonVault is
         return currentRatio >= minCollateralizationRatioForMinting;
     }
     
-    /// @notice LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price
-    /// @dev Uses lastValidEurUsdPrice so it can be called from view contexts and off-chain with zero gas
+    /**
+     * @notice LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price.
+     * @dev Delegates to `getProtocolCollateralizationRatio()` and performs no state refresh.
+     * @return ratio Current collateralization ratio in 1e18-scaled percentage format.
+     * @custom:security View-only wrapper.
+     * @custom:validation Inherits validation/fallback behavior from delegated function.
+     * @custom:state-changes None - view function.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable - view function.
+     * @custom:access Public.
+     * @custom:oracle Uses cached oracle price.
+     */
     function getProtocolCollateralizationRatioView() public view returns (uint256 ratio) {
         return getProtocolCollateralizationRatio();
     }
 
-    /// @notice LOW-4: Pure view variant of canMint using cached oracle price
-    /// @dev Uses lastValidEurUsdPrice so it can be called from view contexts and off-chain with zero gas
+    /**
+     * @notice LOW-4: Pure view variant of canMint using cached oracle price.
+     * @dev Delegates to `canMint()` and performs no state refresh.
+     * @return mintAllowed True when mint preconditions currently pass.
+     * @custom:security View-only wrapper.
+     * @custom:validation Inherits price-cache and hedger-liveness checks from delegated function.
+     * @custom:state-changes None - view function.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable - view function.
+     * @custom:access Public.
+     * @custom:oracle Uses cached oracle price.
+     */
     function canMintView() public view returns (bool) {
         return canMint();
     }
 
-    /// @notice LOW-5: Seeds the oracle price cache so minting checks have a baseline.
-    /// @dev Governance MUST call this once immediately after deployment, before any user mints.
-    ///      Until this is called, `lastValidEurUsdPrice == 0` and mint attempts revert with `NotInitialized`.
+    /**
+     * @notice LOW-5: Seeds the oracle price cache so minting checks have a baseline.
+     * @dev Governance MUST call this once immediately after deployment, before any user mints.
+     * @custom:security Restricted to governance.
+     * @custom:validation Requires configured oracle and a valid fetched price.
+     * @custom:state-changes Sets `lastValidEurUsdPrice`, `lastPriceUpdateBlock`, and `lastPriceUpdateTime`.
+     * @custom:events Emits `PriceCacheUpdated`.
+     * @custom:errors Reverts when oracle is unset or returns an invalid price.
+     * @custom:reentrancy Not applicable - no external callbacks.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle Pulls current EUR/USD price from configured oracle.
+     */
     function initializePriceCache() external onlyRole(GOVERNANCE_ROLE) {
         if (address(oracle) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
@@ -2054,6 +2135,17 @@ contract QuantillonVault is
     /**
      * @notice Internal helper to notify HedgerPool about user mints.
      * @dev LOW-5 / INFO-2: mint path must fail if hedger synchronization fails.
+     * @param amount Gross USDC amount allocated to hedger fills (6 decimals).
+     * @param fillPrice EUR/USD price used for fill accounting (18 decimals).
+     * @param qeuroAmount QEURO minted amount to track against hedger exposure (18 decimals).
+     * @custom:security Internal hard-fail synchronization helper.
+     * @custom:validation No-op on zero amount; otherwise requires downstream HedgerPool success.
+     * @custom:state-changes No direct state changes in vault; delegates accounting updates to HedgerPool.
+     * @custom:events None in vault.
+     * @custom:errors Propagates HedgerPool reverts to preserve atomicity.
+     * @custom:reentrancy Not applicable - internal helper.
+     * @custom:access Internal helper.
+     * @custom:oracle Uses provided cached/fetched fill price from caller context.
      */
     function _syncMintWithHedgersOrRevert(uint256 amount, uint256 fillPrice, uint256 qeuroAmount) internal {
         if (amount == 0) return;
@@ -2116,7 +2208,18 @@ contract QuantillonVault is
         emit DevModeProposed(enabled, devModePendingAt);
     }
 
-    /// @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+    /**
+     * @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+     * @dev Finalizes the pending proposal created by `proposeDevMode`.
+     * @custom:security Restricted to default admin and time-locked via `DEV_MODE_DELAY`.
+     * @custom:validation Requires active pending proposal and elapsed delay.
+     * @custom:state-changes Updates `devModeEnabled` and clears `devModePendingAt`.
+     * @custom:events Emits `DevModeToggled`.
+     * @custom:errors Reverts when no proposal is pending or delay is not satisfied.
+     * @custom:reentrancy Not applicable - simple state transition.
+     * @custom:access Restricted to `DEFAULT_ADMIN_ROLE`.
+     * @custom:oracle No oracle interaction.
+     */
     function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (devModePendingAt == 0) revert CommonErrorLibrary.InvalidAmount();
         if (block.timestamp < devModePendingAt) revert CommonErrorLibrary.NotActive();

@@ -29,19 +29,20 @@ contract FixedOracle {
 }
 
 contract HedgerPoolHarness {
-    IERC20 public immutable usdc;
-    QuantillonVault public immutable vault;
+    IERC20 public immutable USDC;
+    QuantillonVault public immutable VAULT;
     uint256 public totalMargin;
 
     constructor(IERC20 _usdc, QuantillonVault _vault) {
-        usdc = _usdc;
-        vault = _vault;
+        USDC = _usdc;
+        VAULT = _vault;
     }
 
     function seedMargin(uint256 amount) external {
-        usdc.transferFrom(msg.sender, address(vault), amount);
+        bool transferred = USDC.transferFrom(msg.sender, address(VAULT), amount);
+        require(transferred, "transferFrom failed");
         totalMargin += amount;
-        vault.addHedgerDeposit(amount);
+        VAULT.addHedgerDeposit(amount);
     }
 
     function recordUserMint(uint256, uint256, uint256) external {}

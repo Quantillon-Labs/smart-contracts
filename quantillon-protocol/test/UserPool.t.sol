@@ -226,22 +226,22 @@ contract UserPoolTestSuite is Test {
         // Setup mock YieldShift calls for all users
         vm.mockCall(
             mockYieldShift,
-            abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector, address(userPool)),
+            abi.encodeWithSelector(IYieldShift.userPendingYield.selector, address(userPool)),
             abi.encode(0)
         );
         vm.mockCall(
             mockYieldShift,
-            abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector, user1),
+            abi.encodeWithSelector(IYieldShift.userPendingYield.selector, user1),
             abi.encode(uint256(1000e18)) // 1000 QEURO pending yield
         );
         vm.mockCall(
             mockYieldShift,
-            abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector, user2),
+            abi.encodeWithSelector(IYieldShift.userPendingYield.selector, user2),
             abi.encode(uint256(500e18)) // 500 QEURO pending yield
         );
         vm.mockCall(
             mockYieldShift,
-            abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector, user3),
+            abi.encodeWithSelector(IYieldShift.userPendingYield.selector, user3),
             abi.encode(uint256(200e18)) // 200 QEURO pending yield
         );
         

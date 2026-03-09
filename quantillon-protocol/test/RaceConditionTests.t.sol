@@ -260,7 +260,7 @@ contract RaceConditionTests is Test {
 
         // Subsequent single-hedger changes are delayed and require explicit apply
         vm.prank(admin);
-        hedgerPool.proposeSingleHedger(user2);
+        hedgerPool.setSingleHedger(user2);
         vm.warp(block.timestamp + hedgerPool.SINGLE_HEDGER_ROTATION_DELAY() + 1);
         vm.prank(admin);
         hedgerPool.applySingleHedgerRotation();

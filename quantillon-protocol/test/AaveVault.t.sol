@@ -597,7 +597,7 @@ contract MockRewardsController {
  * @notice Mock YieldShift contract for testing
  */
 contract MockYieldShift {
-    uint256 public currentYieldShift = 5000; // 50%
+    uint256 private _currentYieldShift = 5000; // 50%
     
     /**
      * @notice Adds yield to the system
@@ -630,8 +630,8 @@ contract MockYieldShift {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function getCurrentYieldShift() external view returns (uint256) {
-        return currentYieldShift;
+    function currentYieldShift() external view returns (uint256) {
+        return _currentYieldShift;
     }
     
     /**
@@ -648,7 +648,7 @@ contract MockYieldShift {
      * @custom:oracle No oracle dependencies
      */
     function setCurrentYieldShift(uint256 newShift) external {
-        currentYieldShift = newShift;
+        _currentYieldShift = newShift;
     }
 }
 

@@ -63,6 +63,24 @@ contract HedgerPoolTestSuite is Test {
     uint256 public constant EUR_USD_PRICE = 110 * 1e16; // 1.10 USD per EUR
     uint256 public constant EUR_USD_PRICE_HIGH = 120 * 1e16; // 1.20 USD per EUR
     uint256 public constant EUR_USD_PRICE_LOW = 100 * 1e16; // 1.00 USD per EUR
+
+    // Local mirrors of HedgerPool batch-configurable state used by test helpers.
+    uint256 private cfgMinMarginRatio = 500;
+    uint256 private cfgMaxLeverage = 20;
+    uint256 private cfgMinPositionHoldBlocks;
+    uint256 private cfgMinMarginAmount = 100e6;
+    uint256 private cfgEurInterestRate = 350;
+    uint256 private cfgUsdInterestRate = 450;
+    uint256 private cfgEntryFee;
+    uint256 private cfgExitFee;
+    uint256 private cfgMarginFee;
+    uint256 private cfgRewardFeeSplit = 2e17;
+
+    address private depTreasury;
+    address private depVault;
+    address private depOracle;
+    address private depYieldShift;
+    address private depFeeCollector;
     
     struct CoreParamsSnapshot {
         uint64 minMarginRatio;
@@ -262,10 +280,16 @@ contract HedgerPoolTestSuite is Test {
         // Set single hedger for testing
         vm.prank(governance);
         hedgerPool.setSingleHedger(hedger1);
+
+        depTreasury = admin;
+        depVault = address(0x999);
+        depOracle = mockOracle;
+        depYieldShift = mockYieldShift;
+        depFeeCollector = admin;
         
         // Set hedging fees for testing
         vm.prank(governance);
-        hedgerPool.setHedgingFees(60, 40, 15); // 0.6% entry, 0.4% exit, 0.15% margin
+        _setHedgingFees(60, 40, 15); // 0.6% entry, 0.4% exit, 0.15% margin
         
         // Setup mock balances for testing
         vm.mockCall(
@@ -322,7 +346,7 @@ contract HedgerPoolTestSuite is Test {
         // Setup mock yield shift calls
         vm.mockCall(
             mockYieldShift,
-            abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector),
+            abi.encodeWithSelector(IYieldShift.userPendingYield.selector),
             abi.encode(uint256(1000e18)) // 1000 QTI pending yield
         );
         
@@ -359,6 +383,108 @@ contract HedgerPoolTestSuite is Test {
     function _setSingleHedger(address hedger) internal {
         vm.prank(governance);
         hedgerPool.setSingleHedger(hedger);
+    }
+
+    function _setHedgingFees(uint256 entryFee, uint256 exitFee, uint256 marginFee) internal {
+        cfgEntryFee = entryFee;
+        cfgExitFee = exitFee;
+        cfgMarginFee = marginFee;
+        hedgerPool.configureRiskAndFees(
+            HedgerPool.HedgerRiskConfig({
+                minMarginRatio: cfgMinMarginRatio,
+                maxLeverage: cfgMaxLeverage,
+                minPositionHoldBlocks: cfgMinPositionHoldBlocks,
+                minMarginAmount: cfgMinMarginAmount,
+                eurInterestRate: cfgEurInterestRate,
+                usdInterestRate: cfgUsdInterestRate,
+                entryFee: entryFee,
+                exitFee: exitFee,
+                marginFee: marginFee,
+                rewardFeeSplit: cfgRewardFeeSplit
+            })
+        );
+    }
+
+    function _updateHedgingParameters(uint256 minMarginRatio, uint256 maxLeverage) internal {
+        cfgMinMarginRatio = minMarginRatio;
+        cfgMaxLeverage = maxLeverage;
+        hedgerPool.configureRiskAndFees(
+            HedgerPool.HedgerRiskConfig({
+                minMarginRatio: minMarginRatio,
+                maxLeverage: maxLeverage,
+                minPositionHoldBlocks: cfgMinPositionHoldBlocks,
+                minMarginAmount: cfgMinMarginAmount,
+                eurInterestRate: cfgEurInterestRate,
+                usdInterestRate: cfgUsdInterestRate,
+                entryFee: cfgEntryFee,
+                exitFee: cfgExitFee,
+                marginFee: cfgMarginFee,
+                rewardFeeSplit: cfgRewardFeeSplit
+            })
+        );
+    }
+
+    function _updateInterestRates(uint256 eurInterestRate, uint256 usdInterestRate) internal {
+        cfgEurInterestRate = eurInterestRate;
+        cfgUsdInterestRate = usdInterestRate;
+        hedgerPool.configureRiskAndFees(
+            HedgerPool.HedgerRiskConfig({
+                minMarginRatio: cfgMinMarginRatio,
+                maxLeverage: cfgMaxLeverage,
+                minPositionHoldBlocks: cfgMinPositionHoldBlocks,
+                minMarginAmount: cfgMinMarginAmount,
+                eurInterestRate: eurInterestRate,
+                usdInterestRate: usdInterestRate,
+                entryFee: cfgEntryFee,
+                exitFee: cfgExitFee,
+                marginFee: cfgMarginFee,
+                rewardFeeSplit: cfgRewardFeeSplit
+            })
+        );
+    }
+
+    function _updateRewardFeeSplit(uint256 rewardSplit) internal {
+        cfgRewardFeeSplit = rewardSplit;
+        hedgerPool.configureRiskAndFees(
+            HedgerPool.HedgerRiskConfig({
+                minMarginRatio: cfgMinMarginRatio,
+                maxLeverage: cfgMaxLeverage,
+                minPositionHoldBlocks: cfgMinPositionHoldBlocks,
+                minMarginAmount: cfgMinMarginAmount,
+                eurInterestRate: cfgEurInterestRate,
+                usdInterestRate: cfgUsdInterestRate,
+                entryFee: cfgEntryFee,
+                exitFee: cfgExitFee,
+                marginFee: cfgMarginFee,
+                rewardFeeSplit: rewardSplit
+            })
+        );
+    }
+
+    function _setFeeCollector(address collector) internal {
+        depFeeCollector = collector;
+        hedgerPool.configureDependencies(
+            HedgerPool.HedgerDependencyConfig({
+                treasury: depTreasury,
+                vault: depVault,
+                oracle: depOracle,
+                yieldShift: depYieldShift,
+                feeCollector: collector
+            })
+        );
+    }
+
+    function _updateVaultAddress(address newVault) internal {
+        depVault = newVault;
+        hedgerPool.configureDependencies(
+            HedgerPool.HedgerDependencyConfig({
+                treasury: depTreasury,
+                vault: newVault,
+                oracle: depOracle,
+                yieldShift: depYieldShift,
+                feeCollector: depFeeCollector
+            })
+        );
     }
 
     /**
@@ -651,21 +777,10 @@ contract HedgerPoolTestSuite is Test {
         
         // Set hedger1 as the single hedger
         _setSingleHedger(hedger1);
-        
-        // The position might still open successfully with very small amounts
-        // Let's just verify it doesn't revert with a different error
+
         vm.prank(hedger1);
-        try hedgerPool.enterHedgePosition(smallMargin, 5) {
-            // If it succeeds, that's fine - the test is about ensuring no unexpected errors
-            console2.log("Position opened with very small margin");
-        } catch Error(string memory reason) {
-            // If it reverts, check it's not an unexpected error
-            assertTrue(
-                keccak256(bytes(reason)) == keccak256(bytes("HedgerPool: Insufficient margin ratio")) ||
-                keccak256(bytes(reason)) == keccak256(bytes("HedgerPool: Amount must be positive")),
-                "Unexpected revert reason"
-            );
-        }
+        vm.expectRevert(HedgerPoolErrorLibrary.InsufficientMargin.selector);
+        hedgerPool.enterHedgePosition(smallMargin, 5);
     }
     
     /**
@@ -1781,7 +1896,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 mockedYieldShiftReward = 2_500e6;
         vm.mockCall(
             mockYieldShift,
-            abi.encodeWithSelector(IYieldShift.getHedgerPendingYield.selector, hedger1),
+            abi.encodeWithSelector(IYieldShift.hedgerPendingYield.selector, hedger1),
             abi.encode(mockedYieldShiftReward)
         );
         vm.mockCall(
@@ -1809,9 +1924,9 @@ contract HedgerPoolTestSuite is Test {
 
         address collector = address(0xFEE1);
         vm.prank(admin);
-        hedgerPool.setFeeCollector(collector);
+        _setFeeCollector(collector);
         vm.prank(governance);
-        hedgerPool.updateRewardFeeSplit(5e17); // 50% to reserve
+        _updateRewardFeeSplit(5e17); // 50% to reserve
 
         vm.mockCall(
             collector,
@@ -1930,7 +2045,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 newMaxLeverage = 8; // 8x
         
         vm.prank(governance);
-        hedgerPool.updateHedgingParameters(
+        _updateHedgingParameters(
             newMinMarginRatio,
             newMaxLeverage
         );
@@ -1955,7 +2070,7 @@ contract HedgerPoolTestSuite is Test {
     function test_Governance_UpdateHedgingParametersByNonGovernance_Revert() public {
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.updateHedgingParameters(1500, 8);
+        _updateHedgingParameters(1500, 8);
     }
     
     /**
@@ -1976,7 +2091,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 newMarginFee = 15; // 0.15%
         
         vm.prank(governance);
-        hedgerPool.setHedgingFees(newEntryFee, newExitFee, newMarginFee);
+        _setHedgingFees(newEntryFee, newExitFee, newMarginFee);
         
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
         assertEq(params.entryFee, newEntryFee);
@@ -1999,7 +2114,61 @@ contract HedgerPoolTestSuite is Test {
     function test_Governance_SetHedgingFeesByNonGovernance_Revert() public {
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.setHedgingFees(60, 40, 15);
+        _setHedgingFees(60, 40, 15);
+    }
+
+    function test_Governance_ConfigureRiskAndFeesBatch_SetsAllFields() public {
+        HedgerPool.HedgerRiskConfig memory cfg = HedgerPool.HedgerRiskConfig({
+            minMarginRatio: 1500,
+            maxLeverage: 8,
+            minPositionHoldBlocks: 12,
+            minMarginAmount: 250e6,
+            eurInterestRate: 500,
+            usdInterestRate: 300,
+            entryFee: 40,
+            exitFee: 30,
+            marginFee: 20,
+            rewardFeeSplit: 3e17
+        });
+
+        vm.prank(governance);
+        hedgerPool.configureRiskAndFees(cfg);
+
+        CoreParamsSnapshot memory params = _coreParamsSnapshot();
+        assertEq(params.minMarginRatio, cfg.minMarginRatio);
+        assertEq(params.maxLeverage, cfg.maxLeverage);
+        assertEq(params.entryFee, cfg.entryFee);
+        assertEq(params.exitFee, cfg.exitFee);
+        assertEq(params.marginFee, cfg.marginFee);
+        assertEq(params.eurInterestRate, cfg.eurInterestRate);
+        assertEq(params.usdInterestRate, cfg.usdInterestRate);
+        assertEq(hedgerPool.minPositionHoldBlocks(), cfg.minPositionHoldBlocks);
+        assertEq(hedgerPool.minMarginAmount(), cfg.minMarginAmount);
+        assertEq(hedgerPool.rewardFeeSplit(), cfg.rewardFeeSplit);
+    }
+
+    function test_Governance_ConfigureDependencies_RejectsZeroAddress() public {
+        HedgerPool.HedgerDependencyConfig memory cfg = HedgerPool.HedgerDependencyConfig({
+            treasury: address(0),
+            vault: depVault,
+            oracle: depOracle,
+            yieldShift: depYieldShift,
+            feeCollector: depFeeCollector
+        });
+
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
+        hedgerPool.configureDependencies(cfg);
+    }
+
+    function test_Governance_DeprecatedSettersUnavailable() public {
+        (bool ok1,) = address(hedgerPool).call(abi.encodeWithSignature("updateRewardFeeSplit(uint256)", 1e18));
+        (bool ok2,) = address(hedgerPool).call(abi.encodeWithSignature("setFeeCollector(address)", address(0xBEEF)));
+        (bool ok3,) = address(hedgerPool).call(abi.encodeWithSignature("proposeSingleHedger(address)", hedger2));
+
+        assertFalse(ok1);
+        assertFalse(ok2);
+        assertFalse(ok3);
     }
 
     // =============================================================================
@@ -2208,7 +2377,7 @@ contract HedgerPoolTestSuite is Test {
         uint256 newUsdRate = 300; // 3%
         
         vm.prank(governance);
-        hedgerPool.updateInterestRates(newEurRate, newUsdRate);
+        _updateInterestRates(newEurRate, newUsdRate);
         
         // Check that rates were updated
         CoreParamsSnapshot memory params = _coreParamsSnapshot();
@@ -2234,7 +2403,7 @@ contract HedgerPoolTestSuite is Test {
         
         vm.prank(hedger1);
         vm.expectRevert();
-        hedgerPool.updateInterestRates(newEurRate, newUsdRate);
+        _updateInterestRates(newEurRate, newUsdRate);
     }
 
 
@@ -3160,7 +3329,15 @@ contract HedgerPoolPositionClosureTest is Test {
     function testVaultUpdateFunction() public {
         // Test that the vault can be updated by governance
         vm.startPrank(admin);
-        hedgerPool.updateAddress(1, address(0x999));
+        hedgerPool.configureDependencies(
+            HedgerPool.HedgerDependencyConfig({
+                treasury: hedgerPool.treasury(),
+                vault: address(0x999),
+                oracle: address(hedgerPool.oracle()),
+                yieldShift: address(hedgerPool.yieldShift()),
+                feeCollector: admin
+            })
+        );
         vm.stopPrank();
         
         // Verify the vault was updated

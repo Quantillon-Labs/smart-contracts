@@ -22,6 +22,7 @@ import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {HedgerPoolLogicLibrary} from "../libraries/HedgerPoolLogicLibrary.sol";
 import {HedgerPoolOptimizationLibrary} from "../libraries/HedgerPoolOptimizationLibrary.sol";
+import {HedgerPoolRedeemMathLibrary} from "../libraries/HedgerPoolRedeemMathLibrary.sol";
 import {FeeCollector} from "./FeeCollector.sol";
 
 /**
@@ -88,6 +89,27 @@ contract HedgerPool is
         uint8 reserved;
     }
     CoreParams public coreParams;
+
+    struct HedgerRiskConfig {
+        uint256 minMarginRatio;
+        uint256 maxLeverage;
+        uint256 minPositionHoldBlocks;
+        uint256 minMarginAmount;
+        uint256 eurInterestRate;
+        uint256 usdInterestRate;
+        uint256 entryFee;
+        uint256 exitFee;
+        uint256 marginFee;
+        uint256 rewardFeeSplit;
+    }
+
+    struct HedgerDependencyConfig {
+        address treasury;
+        address vault;
+        address oracle;
+        address yieldShift;
+        address feeCollector;
+    }
 
     uint256 public totalMargin;
     uint256 public totalExposure;
@@ -173,13 +195,8 @@ contract HedgerPool is
     event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
     event ETHRecovered(address indexed to, uint256 indexed amount);
-    event TreasuryUpdated(address indexed treasury);
-    event VaultUpdated(address indexed vault);
     /// @notice MED-2: Emitted when USDC is deposited into the reward reserve
     event RewardReserveFunded(address indexed funder, uint256 amount);
-    /// @notice MED-6: Emitted when the FeeCollector address is updated
-    event FeeCollectorUpdated(address indexed feeCollector);
-    event RewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
     event SingleHedgerRotationProposed(address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt);
     event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
 
@@ -880,7 +897,7 @@ contract HedgerPool is
             rewardState.pendingRewards = 0;
         }
 
-        yieldShiftRewards = yieldShift.getHedgerPendingYield(hedger);
+        yieldShiftRewards = yieldShift.hedgerPendingYield(hedger);
 
         // NEW-1 fix: settle YieldShift rewards exactly once through YieldShift.
         if (yieldShiftRewards > 0) {
@@ -1020,114 +1037,60 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Updates core hedging parameters for risk management
-     * @dev Allows governance to adjust risk parameters based on market conditions
-     * @param minRatio New minimum margin ratio in basis points (e.g., 500 = 5%)
-     * @param maxLev New maximum leverage multiplier (e.g., 20 = 20x)
-     * @custom:security Validates governance role and parameter constraints
-     * @custom:validation Validates minRatio >= DEFAULT_MIN_MARGIN_RATIO_BPS, maxLev <= 20
-     * @custom:state-changes Updates minMarginRatio and maxLeverage state variables
-     * @custom:events No events emitted for parameter updates
-     * @custom:errors Throws ConfigValueTooLow, ConfigValueTooHigh
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies for parameter updates
+     * @notice Configures risk and fee parameters in a single governance transaction.
      */
-    function updateHedgingParameters(uint256 minRatio, uint256 maxLev) external {
+    function configureRiskAndFees(HedgerRiskConfig calldata cfg) external {
         _validateRole(GOVERNANCE_ROLE);
-        if (minRatio < DEFAULT_MIN_MARGIN_RATIO_BPS) revert CommonErrorLibrary.ConfigValueTooLow();
-        if (maxLev > 20) revert CommonErrorLibrary.ConfigValueTooHigh();
+
+        if (cfg.minMarginRatio < DEFAULT_MIN_MARGIN_RATIO_BPS) revert CommonErrorLibrary.ConfigValueTooLow();
+        if (cfg.minMarginRatio > type(uint64).max) revert CommonErrorLibrary.ConfigValueTooHigh();
+        if (cfg.maxLeverage > 20) revert CommonErrorLibrary.ConfigValueTooHigh();
+        if (cfg.eurInterestRate > 2000 || cfg.usdInterestRate > 2000) revert CommonErrorLibrary.ConfigValueTooHigh();
+        HedgerPoolValidationLibrary.validateFee(cfg.entryFee, 100);
+        HedgerPoolValidationLibrary.validateFee(cfg.exitFee, 100);
+        HedgerPoolValidationLibrary.validateFee(cfg.marginFee, 50);
+        if (cfg.rewardFeeSplit > MAX_REWARD_FEE_SPLIT) revert CommonErrorLibrary.ConfigValueTooHigh();
+
         // forge-lint: disable-next-line(unsafe-typecast)
-        coreParams.minMarginRatio = uint64(minRatio);
+        coreParams.minMarginRatio = uint64(cfg.minMarginRatio);
         // forge-lint: disable-next-line(unsafe-typecast)
-        coreParams.maxLeverage = uint16(maxLev);
+        coreParams.maxLeverage = uint16(cfg.maxLeverage);
+        // forge-lint: disable-next-line(unsafe-typecast)
+        coreParams.eurInterestRate = uint16(cfg.eurInterestRate);
+        // forge-lint: disable-next-line(unsafe-typecast)
+        coreParams.usdInterestRate = uint16(cfg.usdInterestRate);
+        // forge-lint: disable-next-line(unsafe-typecast)
+        coreParams.entryFee = uint16(cfg.entryFee);
+        // forge-lint: disable-next-line(unsafe-typecast)
+        coreParams.exitFee = uint16(cfg.exitFee);
+        // forge-lint: disable-next-line(unsafe-typecast)
+        coreParams.marginFee = uint16(cfg.marginFee);
+
+        minPositionHoldBlocks = cfg.minPositionHoldBlocks;
+        minMarginAmount = cfg.minMarginAmount;
+        rewardFeeSplit = cfg.rewardFeeSplit;
     }
 
     /**
-     * @notice Sets the minimum number of blocks a position must be held before closing
-     * @dev Governance-level risk parameter to prevent oracle front-running via immediate open/close cycles
-     * @param _blocks New minimum number of blocks a position must remain open before it can be closed
-     * @custom:security Restricted to GOVERNANCE_ROLE; affects when hedgers can exit but does not move funds directly
-     * @custom:validation Caller is responsible for providing a sane, network-appropriate block count
-     * @custom:state-changes Updates `minPositionHoldBlocks` which is enforced in `exitHedgePosition`
-     * @custom:events No events emitted for parameter updates
-     * @custom:errors Reverts with NotAuthorized if caller lacks GOVERNANCE_ROLE
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
+     * @notice Configures dependency addresses in a single governance transaction.
+     * @dev Changing `feeCollector` requires both governance and default-admin authority.
      */
-    function setMinPositionHoldBlocks(uint256 _blocks) external {
+    function configureDependencies(HedgerDependencyConfig calldata cfg) external {
         _validateRole(GOVERNANCE_ROLE);
-        minPositionHoldBlocks = _blocks;
-    }
+        bool isAdmin = hasRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        if (!isAdmin && cfg.feeCollector != feeCollector) revert CommonErrorLibrary.NotAuthorized();
 
-    /**
-     * @notice Sets the minimum margin (USDC) required to open a position
-     * @dev Governance-level control to prevent dust / unliquidatable positions by enforcing a minimum USDC margin
-     * @param _amount New minimum margin required in USDC (6 decimals)
-     * @custom:security Restricted to GOVERNANCE_ROLE; impacts who can open positions but does not move funds directly
-     * @custom:validation Caller must choose an amount consistent with protocol risk parameters and USDC decimals
-     * @custom:state-changes Updates `minMarginAmount` used by `enterHedgePosition` validation
-     * @custom:events No events emitted for parameter updates
-     * @custom:errors Reverts with NotAuthorized if caller lacks GOVERNANCE_ROLE
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function setMinMarginAmount(uint256 _amount) external {
-        _validateRole(GOVERNANCE_ROLE);
-        minMarginAmount = _amount;
-    }
+        AccessControlLibrary.validateAddress(cfg.treasury);
+        AccessControlLibrary.validateAddress(cfg.vault);
+        AccessControlLibrary.validateAddress(cfg.oracle);
+        AccessControlLibrary.validateAddress(cfg.yieldShift);
+        AccessControlLibrary.validateAddress(cfg.feeCollector);
 
-    /**
-     * @notice Updates interest rates for EUR and USD
-     * @dev Allows governance to adjust interest rates used for reward calculations
-     * @param eurRate EUR interest rate in basis points (max 2000 = 20%)
-     * @param usdRate USD interest rate in basis points (max 2000 = 20%)
-     * @custom:security Validates governance role and rate limits
-     * @custom:validation Validates eurRate <= 2000 and usdRate <= 2000
-     * @custom:state-changes Updates coreParams.eurInterestRate and coreParams.usdInterestRate
-     * @custom:events No events emitted for rate updates
-     * @custom:errors Throws ConfigValueTooHigh if rates exceed 2000
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function updateInterestRates(uint256 eurRate, uint256 usdRate) external {
-        _validateRole(GOVERNANCE_ROLE);
-        if (eurRate > 2000 || usdRate > 2000) revert CommonErrorLibrary.ConfigValueTooHigh();
-        // forge-lint: disable-next-line(unsafe-typecast)
-        coreParams.eurInterestRate = uint16(eurRate);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        coreParams.usdInterestRate = uint16(usdRate);
-    }
-
-    /**
-     * @notice Sets hedge position fees (entry, exit, margin)
-     * @dev Allows governance to adjust fee rates for position operations
-     * @param entry Entry fee rate in basis points (max 100 = 1%)
-     * @param exit Exit fee rate in basis points (max 100 = 1%)
-     * @param margin Margin operation fee rate in basis points (max 50 = 0.5%)
-     * @custom:security Validates governance role and fee limits
-     * @custom:validation Validates entry <= 100, exit <= 100, margin <= 50
-     * @custom:state-changes Updates coreParams.entryFee, coreParams.exitFee, coreParams.marginFee
-     * @custom:events No events emitted for fee updates
-     * @custom:errors Throws validation errors if fees exceed limits
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function setHedgingFees(uint256 entry, uint256 exit, uint256 margin) external {
-        _validateRole(GOVERNANCE_ROLE);
-        HedgerPoolValidationLibrary.validateFee(entry, 100);
-        HedgerPoolValidationLibrary.validateFee(exit, 100);
-        HedgerPoolValidationLibrary.validateFee(margin, 50);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        coreParams.entryFee = uint16(entry);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        coreParams.exitFee = uint16(exit);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        coreParams.marginFee = uint16(margin);
+        treasury = cfg.treasury;
+        vault = IQuantillonVault(cfg.vault);
+        oracle = IOracle(cfg.oracle);
+        yieldShift = IYieldShift(cfg.yieldShift);
+        feeCollector = cfg.feeCollector;
     }
 
     /**
@@ -1237,38 +1200,6 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Updates contract addresses (0=treasury, 1=vault, 2=oracle, 3=yieldShift)
-     * @dev Allows governance to update critical contract addresses
-     * @param slot Address slot to update (0=treasury, 1=vault, 2=oracle, 3=yieldShift)
-     * @param addr New address for the slot
-     * @custom:security Validates governance role and non-zero address
-     * @custom:validation Validates slot is valid (0-3) and addr != address(0)
-     * @custom:state-changes Updates treasury, vault, oracle, or yieldShift address
-     * @custom:events Emits TreasuryUpdated or VaultUpdated for slots 0 and 1
-     * @custom:errors Throws ZeroAddress if addr is zero, InvalidPosition if slot is invalid
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle Updates oracle address if slot == 2
-     */
-    function updateAddress(uint8 slot, address addr) external {
-        _validateRole(GOVERNANCE_ROLE);
-        if (addr == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        if (slot == 0) {
-            treasury = addr;
-            emit TreasuryUpdated(addr);
-        } else if (slot == 1) {
-            vault = IQuantillonVault(addr);
-            emit VaultUpdated(addr);
-        } else if (slot == 2) {
-            oracle = IOracle(addr);
-        } else if (slot == 3) {
-            yieldShift = IYieldShift(addr);
-        } else {
-            revert HedgerPoolErrorLibrary.InvalidPosition();
-        }
-    }
-
-    /**
      * @notice Sets the single hedger address allowed to open positions
      * @dev Replaces the previous multi-hedger whitelist model with a single hedger
      * @param hedger Address of the single hedger
@@ -1298,16 +1229,6 @@ contract HedgerPool is
         emit SingleHedgerRotationProposed(singleHedger, hedger, singleHedgerPendingAt);
     }
 
-    /// @notice INFO-2: Explicit delayed single-hedger rotation proposal.
-    /// @param hedger Address proposed to become the next single hedger.
-    function proposeSingleHedger(address hedger) external {
-        _validateRole(GOVERNANCE_ROLE);
-        if (hedger == address(0)) revert CommonErrorLibrary.InvalidAddress();
-        pendingSingleHedger = hedger;
-        singleHedgerPendingAt = block.timestamp + SINGLE_HEDGER_ROTATION_DELAY;
-        emit SingleHedgerRotationProposed(singleHedger, hedger, singleHedgerPendingAt);
-    }
-
     /// @notice INFO-2: Applies a previously proposed single-hedger rotation after delay.
     function applySingleHedgerRotation() external {
         _validateRole(GOVERNANCE_ROLE);
@@ -1319,25 +1240,6 @@ contract HedgerPool is
         pendingSingleHedger = address(0);
         singleHedgerPendingAt = 0;
         emit SingleHedgerRotationApplied(previousHedger, singleHedger);
-    }
-
-    /// @notice MED-6: Set the FeeCollector address that receives margin fees
-    /// @param _feeCollector Address of the FeeCollector contract
-    function setFeeCollector(address _feeCollector) external {
-        _validateRole(DEFAULT_ADMIN_ROLE);
-        if (_feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        feeCollector = _feeCollector;
-        emit FeeCollectorUpdated(_feeCollector);
-    }
-
-    /// @notice Updates the share of protocol fees routed to the local reward reserve.
-    /// @param newSplit Fee split in 1e18 precision (1e18 = 100%).
-    function updateRewardFeeSplit(uint256 newSplit) external {
-        _validateRole(GOVERNANCE_ROLE);
-        if (newSplit > MAX_REWARD_FEE_SPLIT) revert CommonErrorLibrary.ConfigValueTooHigh();
-        uint256 oldSplit = rewardFeeSplit;
-        rewardFeeSplit = newSplit;
-        emit RewardFeeSplitUpdated(oldSplit, newSplit);
     }
 
     /// @notice MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.
@@ -1696,7 +1598,7 @@ contract HedgerPool is
 
             if (currentQeuroBacked > 0 && filledBefore > 0) {
                 // Calculate realized P&L delta for this redemption
-                int256 realizedDelta = _calculateRedeemPnL(
+                int256 realizedDelta = HedgerPoolRedeemMathLibrary.calculateRedeemPnL(
                     currentQeuroBacked, filledBefore, price, qeuroAmount, pos.realizedPnL
                 );
 
@@ -1714,52 +1616,6 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Calculates unrealized and realized P&L for redemption
-     * @dev Mark-to-market total unrealized P&L, subtract previous realized, then pro-rata share for qeuroAmount
-     * @param currentQeuroBacked Current QEURO backed by position
-     * @param filledBefore Filled volume before redemption
-     * @param price Current EUR/USD price
-     * @param qeuroAmount Amount of QEURO being redeemed
-     * @param previousRealizedPnL Previously realized P&L
-     * @return realizedDelta Realized P&L delta for this redemption
-     * @custom:security Pure math; no external calls
-     * @custom:validation Caller must pass consistent position data
-     * @custom:state-changes None (pure)
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy N/A pure
-     * @custom:access Internal
-     * @custom:oracle Price passed in; no live oracle call
-     */
-    function _calculateRedeemPnL(
-        uint256 currentQeuroBacked,
-        uint256 filledBefore,
-        uint256 price,
-        uint256 qeuroAmount,
-        int128 previousRealizedPnL
-    ) internal pure returns (int256 realizedDelta) {
-        // Step 1: Calculate total unrealized P&L (mark-to-market)
-        uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
-        int256 totalUnrealizedPnL = filledBefore >= qeuroValueInUSDC
-            // casting to int256 is safe: difference of two uint256s fits int256 in this branch
-            // forge-lint: disable-next-line(unsafe-typecast)
-            ? int256(filledBefore - qeuroValueInUSDC)
-            // casting to int256 is safe: difference is non-negative, negated for signed PnL
-            // forge-lint: disable-next-line(unsafe-typecast)
-            : -int256(qeuroValueInUSDC - filledBefore);
-
-        // Step 2: Calculate NET unrealized P&L (subtract already-realized portion)
-        int256 netUnrealizedPnL = totalUnrealizedPnL - int256(previousRealizedPnL);
-
-        // Step 3: Calculate the realized P&L delta for this redemption
-        // forge-lint: disable-next-line(unsafe-typecast)
-        uint256 absNetPnL = netUnrealizedPnL >= 0 ? uint256(netUnrealizedPnL) : uint256(-netUnrealizedPnL);
-        uint256 pnlShare = qeuroAmount.mulDiv(absNetPnL, currentQeuroBacked);
-        // forge-lint: disable-next-line(unsafe-typecast)
-        realizedDelta = netUnrealizedPnL >= 0 ? int256(pnlShare) : -int256(pnlShare);
-    }
-
-    /**
      * @notice Applies realized P&L to position margin and emits MarginUpdated
      * @dev Handles both profit and loss branches in a single path to keep bytecode compact.
      * @param posId Position ID
@@ -1768,51 +1624,27 @@ contract HedgerPool is
      */
     function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
         if (realizedDelta == 0) return;
+        HedgerPoolRedeemMathLibrary.MarginTransition memory transition = HedgerPoolRedeemMathLibrary.computeMarginTransition(
+            totalMargin,
+            uint256(pos.margin),
+            uint256(pos.leverage),
+            realizedDelta
+        );
 
-        bool isProfit = realizedDelta > 0;
-        uint256 deltaAmount;
-        uint256 currentMargin = uint256(pos.margin);
-        uint256 nextMargin;
-
-        if (isProfit) {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            deltaAmount = uint256(realizedDelta);
-            nextMargin = currentMargin + deltaAmount;
-            if (nextMargin > type(uint96).max) nextMargin = type(uint96).max;
-            totalMargin = totalMargin - currentMargin + nextMargin;
-        } else {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            deltaAmount = uint256(-realizedDelta);
-            if (deltaAmount >= currentMargin) {
-                totalMargin -= currentMargin;
-                pos.margin = 0;
-                pos.positionSize = 0;
-                emit MarginUpdated(
-                    pos.hedger,
-                    posId,
-                    HedgerPoolOptimizationLibrary.packMarginData(deltaAmount, 0, false)
-                );
-                return;
-            }
-
-            nextMargin = currentMargin - deltaAmount;
-            totalMargin -= deltaAmount;
-        }
-
-        // nextMargin is bounded to uint96.max in both branches
+        totalMargin = transition.totalMarginAfter;
         // forge-lint: disable-next-line(unsafe-typecast)
-        pos.margin = uint96(nextMargin);
-
-        uint256 newPositionSize = nextMargin * uint256(pos.leverage);
-        if (newPositionSize > type(uint96).max) newPositionSize = type(uint96).max;
+        pos.margin = uint96(transition.nextMargin);
         // forge-lint: disable-next-line(unsafe-typecast)
-        pos.positionSize = uint96(newPositionSize);
+        pos.positionSize = uint96(transition.nextPositionSize);
 
-        uint256 newMarginRatio = newPositionSize == 0 ? 0 : (nextMargin * 10000) / newPositionSize;
         emit MarginUpdated(
             pos.hedger,
             posId,
-            HedgerPoolOptimizationLibrary.packMarginData(deltaAmount, newMarginRatio, isProfit)
+            HedgerPoolOptimizationLibrary.packMarginData(
+                transition.deltaAmount,
+                transition.newMarginRatio,
+                transition.isProfit
+            )
         );
     }
 

@@ -398,6 +398,11 @@ contract YieldShiftTestSuite is Test {
     uint256 public constant TWAP_PERIOD = 24 hours;
     uint256 public constant MAX_TIME_ELAPSED = 365 days;
 
+    uint256 private cfgBaseYieldShift = BASE_YIELD_SHIFT;
+    uint256 private cfgMaxYieldShift = MAX_YIELD_SHIFT;
+    uint256 private cfgAdjustmentSpeed = ADJUSTMENT_SPEED;
+    uint256 private cfgTargetPoolRatio = TARGET_POOL_RATIO;
+
     // =============================================================================
     // TEST VARIABLES
     // =============================================================================
@@ -427,6 +432,11 @@ contract YieldShiftTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function setUp() public {
+        cfgBaseYieldShift = BASE_YIELD_SHIFT;
+        cfgMaxYieldShift = MAX_YIELD_SHIFT;
+        cfgAdjustmentSpeed = ADJUSTMENT_SPEED;
+        cfgTargetPoolRatio = TARGET_POOL_RATIO;
+
         // Deploy mock contracts
         usdc = new MockUSDC();
         userPool = new MockUserPool();
@@ -491,19 +501,19 @@ contract YieldShiftTestSuite is Test {
         // Authorize different addresses for different yield sources
         // Authorize yieldManager for test_source yield
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(yieldManager, keccak256("test_source"));
+        _authorizeYieldSource(yieldManager, keccak256("test_source"));
         
         // Authorize aaveVault for aave yield
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(address(aaveVault), keccak256("aave"));
+        _authorizeYieldSource(address(aaveVault), keccak256("aave"));
         
         // Authorize user for fees yield
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(user, keccak256("fees"));
+        _authorizeYieldSource(user, keccak256("fees"));
         
         // Authorize hedger for interest_differential yield
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(hedger, keccak256("interest_differential"));
+        _authorizeYieldSource(hedger, keccak256("interest_differential"));
         
         // Note: Authorization verification removed temporarily for debugging
         
@@ -524,6 +534,55 @@ contract YieldShiftTestSuite is Test {
         
         vm.prank(hedger);
         usdc.approve(address(yieldShift), type(uint256).max);
+    }
+
+    function _authorizeYieldSource(address source, bytes32 yieldType) internal {
+        yieldShift.setYieldSourceAuthorization(source, yieldType, true);
+    }
+
+    function _revokeYieldSource(address source) internal {
+        yieldShift.setYieldSourceAuthorization(source, bytes32(0), false);
+    }
+
+    function _setYieldShiftParameters(uint256 newBaseShift, uint256 newMaxShift, uint256 newAdjustmentSpeed) internal {
+        cfgBaseYieldShift = newBaseShift;
+        cfgMaxYieldShift = newMaxShift;
+        cfgAdjustmentSpeed = newAdjustmentSpeed;
+        yieldShift.configureYieldModel(
+            YieldShift.YieldModelConfig({
+                baseYieldShift: newBaseShift,
+                maxYieldShift: newMaxShift,
+                adjustmentSpeed: newAdjustmentSpeed,
+                targetPoolRatio: cfgTargetPoolRatio
+            })
+        );
+    }
+
+    function _setTargetPoolRatio(uint256 newTargetPoolRatio) internal {
+        cfgTargetPoolRatio = newTargetPoolRatio;
+        yieldShift.configureYieldModel(
+            YieldShift.YieldModelConfig({
+                baseYieldShift: cfgBaseYieldShift,
+                maxYieldShift: cfgMaxYieldShift,
+                adjustmentSpeed: cfgAdjustmentSpeed,
+                targetPoolRatio: newTargetPoolRatio
+            })
+        );
+    }
+
+    function _getYieldShiftConfig()
+        internal
+        view
+        returns (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed_, uint256 lastUpdate)
+    {
+        baseShift = yieldShift.baseYieldShift();
+        maxShift = yieldShift.maxYieldShift();
+        adjustmentSpeed_ = yieldShift.adjustmentSpeed();
+        lastUpdate = yieldShift.lastUpdateTime();
+    }
+
+    function _isYieldDistributionActive() internal view returns (bool) {
+        return !yieldShift.paused();
     }
 
     // =============================================================================
@@ -675,7 +734,7 @@ contract YieldShiftTestSuite is Test {
         
         // Authorize yieldManager for test_source
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(yieldManager, keccak256("test_source"));
+        _authorizeYieldSource(yieldManager, keccak256("test_source"));
         
         // Mint USDC to yieldManager
         usdc.mint(yieldManager, yieldAmount);
@@ -685,7 +744,7 @@ contract YieldShiftTestSuite is Test {
         usdc.approve(address(yieldShift), yieldAmount);
         
         // Record initial state
-        uint256 initialTotalYield = yieldShift.getTotalYieldGenerated();
+        uint256 initialTotalYield = yieldShift.totalYieldGenerated();
         (uint256 initialUserYield, uint256 initialHedgerYield,) = yieldShift.getYieldDistributionBreakdown();
         
         // Add yield
@@ -693,7 +752,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.addYield(yieldAmount, keccak256("test_source"));
         
         // Check that total yield was increased
-        assertEq(yieldShift.getTotalYieldGenerated(), initialTotalYield + yieldAmount);
+        assertEq(yieldShift.totalYieldGenerated(), initialTotalYield + yieldAmount);
         
         // Check that yield was distributed based on current shift
         (uint256 newUserYield, uint256 newHedgerYield,) = yieldShift.getYieldDistributionBreakdown();
@@ -736,7 +795,7 @@ contract YieldShiftTestSuite is Test {
     function test_YieldDistribution_AddYieldZeroAmount_Revert() public {
         // Authorize yieldManager for test_source
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(yieldManager, keccak256("test_source"));
+        _authorizeYieldSource(yieldManager, keccak256("test_source"));
         
         vm.prank(yieldManager);
         vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
@@ -784,7 +843,7 @@ contract YieldShiftTestSuite is Test {
         
         // Authorize a source for yield
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(userWithoutUSDC, keccak256("test_source"));
+        _authorizeYieldSource(userWithoutUSDC, keccak256("test_source"));
         
         // Try to add yield without having USDC
         vm.prank(userWithoutUSDC);
@@ -809,7 +868,7 @@ contract YieldShiftTestSuite is Test {
         
         // Authorize a source for yield
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(user, keccak256("test_source"));
+        _authorizeYieldSource(user, keccak256("test_source"));
         
         // Mint USDC to user
         usdc.mint(user, yieldAmount);
@@ -819,7 +878,7 @@ contract YieldShiftTestSuite is Test {
         usdc.approve(address(yieldShift), yieldAmount);
         
         // Record initial state
-        uint256 initialTotalYield = yieldShift.getTotalYieldGenerated();
+        uint256 initialTotalYield = yieldShift.totalYieldGenerated();
         (uint256 initialUserYield, uint256 initialHedgerYield,) = yieldShift.getYieldDistributionBreakdown();
         
         // Add yield successfully
@@ -827,7 +886,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.addYield(yieldAmount, keccak256("test_source"));
         
         // Check that total yield was increased
-        assertEq(yieldShift.getTotalYieldGenerated(), initialTotalYield + yieldAmount);
+        assertEq(yieldShift.totalYieldGenerated(), initialTotalYield + yieldAmount);
         
         // Check that yield was distributed based on current shift
         (uint256 newUserYield, uint256 newHedgerYield,) = yieldShift.getYieldDistributionBreakdown();
@@ -850,14 +909,14 @@ contract YieldShiftTestSuite is Test {
     function test_YieldSourceAuthorization_Management() public {
         // Test authorization
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(user, keccak256("test_source"));
+        _authorizeYieldSource(user, keccak256("test_source"));
         
         assertTrue(yieldShift.isYieldSourceAuthorized(user, keccak256("test_source")));
         assertFalse(yieldShift.isYieldSourceAuthorized(user, keccak256("other_source")));
         
         // Test revocation
         vm.prank(admin);
-        yieldShift.revokeYieldSource(user);
+        _revokeYieldSource(user);
         
         assertFalse(yieldShift.isYieldSourceAuthorized(user, keccak256("test_source")));
     }
@@ -896,7 +955,7 @@ contract YieldShiftTestSuite is Test {
         
         // Record initial balances
         uint256 initialUserBalance = usdc.balanceOf(user);
-        uint256 initialPendingYield = yieldShift.getUserPendingYield(user);
+        uint256 initialPendingYield = yieldShift.userPendingYield(user);
         
         // Claim yield
         vm.prank(user);
@@ -905,7 +964,7 @@ contract YieldShiftTestSuite is Test {
         // Check that yield was claimed
         assertEq(claimedAmount, initialPendingYield);
         assertEq(usdc.balanceOf(user), initialUserBalance + claimedAmount);
-        assertEq(yieldShift.getUserPendingYield(user), 0);
+        assertEq(yieldShift.userPendingYield(user), 0);
     }
     
     /**
@@ -938,7 +997,7 @@ contract YieldShiftTestSuite is Test {
         
         // Record initial balances
         uint256 initialHedgerBalance = usdc.balanceOf(hedger);
-        uint256 initialPendingYield = yieldShift.getHedgerPendingYield(hedger);
+        uint256 initialPendingYield = yieldShift.hedgerPendingYield(hedger);
         
         // Claim yield
         vm.prank(hedger);
@@ -947,7 +1006,7 @@ contract YieldShiftTestSuite is Test {
         // Check that yield was claimed
         assertEq(claimedAmount, initialPendingYield);
         assertEq(usdc.balanceOf(hedger), initialHedgerBalance + claimedAmount);
-        assertEq(yieldShift.getHedgerPendingYield(hedger), 0);
+        assertEq(yieldShift.hedgerPendingYield(hedger), 0);
     }
     
     /**
@@ -1116,10 +1175,10 @@ contract YieldShiftTestSuite is Test {
         uint256 newAdjustmentSpeed = 200; // 2%
         
         vm.prank(governance);
-        yieldShift.setYieldShiftParameters(newBaseShift, newMaxShift, newAdjustmentSpeed);
+        _setYieldShiftParameters(newBaseShift, newMaxShift, newAdjustmentSpeed);
         
         // Check that parameters were updated
-        (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed,) = yieldShift.getYieldShiftConfig();
+        (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed,) = _getYieldShiftConfig();
         assertEq(baseShift, newBaseShift);
         assertEq(maxShift, newMaxShift);
         assertEq(adjustmentSpeed, newAdjustmentSpeed);
@@ -1140,7 +1199,7 @@ contract YieldShiftTestSuite is Test {
     function test_Governance_SetYieldShiftParametersUnauthorized_Revert() public {
         vm.prank(user);
         vm.expectRevert();
-        yieldShift.setYieldShiftParameters(6000, 9500, 200);
+        _setYieldShiftParameters(6000, 9500, 200);
     }
     
     /**
@@ -1159,22 +1218,22 @@ contract YieldShiftTestSuite is Test {
         // Test base shift too high
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        yieldShift.setYieldShiftParameters(15000, 9500, 200);
+        _setYieldShiftParameters(15000, 9500, 200);
         
         // Test max shift too high
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        yieldShift.setYieldShiftParameters(6000, 15000, 200);
+        _setYieldShiftParameters(6000, 15000, 200);
         
         // Test max shift less than base shift
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.InvalidShiftRange.selector);
-        yieldShift.setYieldShiftParameters(6000, 4000, 200);
+        _setYieldShiftParameters(6000, 4000, 200);
         
         // Test adjustment speed too high
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        yieldShift.setYieldShiftParameters(6000, 9500, 1500);
+        _setYieldShiftParameters(6000, 9500, 1500);
     }
     
     /**
@@ -1193,7 +1252,7 @@ contract YieldShiftTestSuite is Test {
         uint256 newTargetRatio = 12000; // 1.2:1
         
         vm.prank(governance);
-        yieldShift.setTargetPoolRatio(newTargetRatio);
+        _setTargetPoolRatio(newTargetRatio);
         
         // Check that target ratio was updated (we can verify this through pool metrics)
         (,,, uint256 targetRatio) = yieldShift.getPoolMetrics();
@@ -1216,12 +1275,57 @@ contract YieldShiftTestSuite is Test {
         // Test zero target ratio
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        yieldShift.setTargetPoolRatio(0);
+        _setTargetPoolRatio(0);
         
         // Test target ratio too high
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.AboveLimit.selector);
-        yieldShift.setTargetPoolRatio(60000);
+        _setTargetPoolRatio(60000);
+    }
+
+    function test_Governance_ConfigureYieldModelBatch_SetsAllFields() public {
+        YieldShift.YieldModelConfig memory cfg = YieldShift.YieldModelConfig({
+            baseYieldShift: 5500,
+            maxYieldShift: 9800,
+            adjustmentSpeed: 250,
+            targetPoolRatio: 12500
+        });
+
+        vm.prank(governance);
+        yieldShift.configureYieldModel(cfg);
+
+        assertEq(yieldShift.baseYieldShift(), cfg.baseYieldShift);
+        assertEq(yieldShift.maxYieldShift(), cfg.maxYieldShift);
+        assertEq(yieldShift.adjustmentSpeed(), cfg.adjustmentSpeed);
+        assertEq(yieldShift.targetPoolRatio(), cfg.targetPoolRatio);
+    }
+
+    function test_Governance_ConfigureDependencies_RejectsZeroAddress() public {
+        YieldShift.YieldDependencyConfig memory cfg = YieldShift.YieldDependencyConfig({
+            userPool: address(0),
+            hedgerPool: address(hedgerPool),
+            aaveVault: address(aaveVault),
+            stQEURO: address(stQEURO),
+            treasury: admin
+        });
+
+        vm.prank(governance);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
+        yieldShift.configureDependencies(cfg);
+    }
+
+    function test_Governance_DeprecatedSettersUnavailable() public {
+        (bool ok1,) = address(yieldShift).call(
+            abi.encodeWithSignature("setYieldShiftParameters(uint256,uint256,uint256)", 5000, 9000, 100)
+        );
+        (bool ok2,) = address(yieldShift).call(abi.encodeWithSignature("setTargetPoolRatio(uint256)", 10000));
+        (bool ok3,) = address(yieldShift).call(
+            abi.encodeWithSignature("authorizeYieldSource(address,bytes32)", yieldManager, keccak256("test_source"))
+        );
+
+        assertFalse(ok1);
+        assertFalse(ok2);
+        assertFalse(ok3);
     }
 
     // =============================================================================
@@ -1318,13 +1422,13 @@ contract YieldShiftTestSuite is Test {
         vm.prank(emergencyRole);
         yieldShift.pauseYieldDistribution();
         
-        assertFalse(yieldShift.isYieldDistributionActive());
+        assertFalse(_isYieldDistributionActive());
         
         // Resume yield distribution
         vm.prank(emergencyRole);
         yieldShift.resumeYieldDistribution();
         
-        assertTrue(yieldShift.isYieldDistributionActive());
+        assertTrue(_isYieldDistributionActive());
     }
     
     /**
@@ -1367,7 +1471,7 @@ contract YieldShiftTestSuite is Test {
         aaveVault.setYieldAmount(aaveYield);
         
         // Record initial state
-        uint256 initialTotalYield = yieldShift.getTotalYieldGenerated();
+        uint256 initialTotalYield = yieldShift.totalYieldGenerated();
         
         // Test the individual components instead of the full function to avoid reentrancy issues
         // 1. Test that aaveVault.harvestAaveYield() works
@@ -1379,7 +1483,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.addYield(aaveYield, keccak256("aave"));
         
         // Check that yield was added
-        assertEq(yieldShift.getTotalYieldGenerated(), initialTotalYield + aaveYield);
+        assertEq(yieldShift.totalYieldGenerated(), initialTotalYield + aaveYield);
     }
     
     /**
@@ -1404,7 +1508,7 @@ contract YieldShiftTestSuite is Test {
         // We'll test the function's existence and basic behavior without triggering the problematic TWAP calculations
         try yieldShift.checkAndUpdateYieldDistribution() {
             // Function executed successfully
-            uint256 currentYieldShift = yieldShift.getCurrentYieldShift();
+            uint256 currentYieldShift = yieldShift.currentYieldShift();
             assertGe(currentYieldShift, 0);
             assertLe(currentYieldShift, 10000);
         } catch {
@@ -1438,7 +1542,7 @@ contract YieldShiftTestSuite is Test {
         vm.prank(governance);
         try yieldShift.forceUpdateYieldDistribution() {
             // Function executed successfully
-            uint256 currentYieldShift = yieldShift.getCurrentYieldShift();
+            uint256 currentYieldShift = yieldShift.currentYieldShift();
             assertGe(currentYieldShift, 0);
             assertLe(currentYieldShift, 10000);
         } catch {
@@ -1825,8 +1929,8 @@ contract YieldShiftTestSuite is Test {
         yieldShift.updateYieldAllocation(hedger, allocationAmount, false);
         
         // Check that allocations were updated
-        uint256 userPendingYield = yieldShift.getUserPendingYield(user);
-        uint256 hedgerPendingYield = yieldShift.getHedgerPendingYield(hedger);
+        uint256 userPendingYield = yieldShift.userPendingYield(user);
+        uint256 hedgerPendingYield = yieldShift.hedgerPendingYield(hedger);
         
         assertEq(userPendingYield, allocationAmount);
         assertEq(hedgerPendingYield, allocationAmount);
@@ -1865,7 +1969,7 @@ contract YieldShiftTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetYieldShiftConfig() public view {
-        (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed_, uint256 lastUpdate) = yieldShift.getYieldShiftConfig();
+        (uint256 baseShift, uint256 maxShift, uint256 adjustmentSpeed_, uint256 lastUpdate) = _getYieldShiftConfig();
         
         assertGt(baseShift, 0);
         assertGt(maxShift, 0);
@@ -1886,7 +1990,7 @@ contract YieldShiftTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_View_IsYieldDistributionActive() public {
-        bool isActive = yieldShift.isYieldDistributionActive();
+        bool isActive = _isYieldDistributionActive();
         assertTrue(isActive); // Should be active by default
         
         // Pause yield distribution
@@ -1894,7 +1998,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.pauseYieldDistribution();
         
         // Check that yield distribution is not active when paused
-        isActive = yieldShift.isYieldDistributionActive();
+        isActive = _isYieldDistributionActive();
         assertFalse(isActive);
         
         // Resume yield distribution
@@ -1902,7 +2006,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.resumeYieldDistribution();
         
         // Check that yield distribution is active again
-        isActive = yieldShift.isYieldDistributionActive();
+        isActive = _isYieldDistributionActive();
         assertTrue(isActive);
     }
 
@@ -1925,7 +2029,7 @@ contract YieldShiftTestSuite is Test {
         
         // Try first authorization call
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(yieldManager, keccak256("test_source"));
+        _authorizeYieldSource(yieldManager, keccak256("test_source"));
         
         // Check after first call
         isAuthorized = yieldShift.isYieldSourceAuthorized(yieldManager, keccak256("test_source"));
@@ -1933,7 +2037,7 @@ contract YieldShiftTestSuite is Test {
         
         // Try second authorization call
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(yieldManager, keccak256("aave"));
+        _authorizeYieldSource(yieldManager, keccak256("aave"));
         
         // Check after second call
         bool isAuthorizedAave = yieldShift.isYieldSourceAuthorized(yieldManager, keccak256("aave"));
@@ -2145,7 +2249,7 @@ contract YieldShiftTestSuite is Test {
     function test_ManualAuthorization_Setup() public {
         // Manually authorize yieldManager for test_source
         vm.prank(admin);
-        yieldShift.authorizeYieldSource(yieldManager, keccak256("test_source"));
+        _authorizeYieldSource(yieldManager, keccak256("test_source"));
         
         // Verify authorization
         assertTrue(yieldShift.isYieldSourceAuthorized(yieldManager, keccak256("test_source")));
@@ -2156,7 +2260,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.addYield(yieldAmount, keccak256("test_source"));
         
         // Verify yield was added
-        assertEq(yieldShift.getTotalYieldGenerated(), yieldAmount);
+        assertEq(yieldShift.totalYieldGenerated(), yieldAmount);
     }
 
     /**
@@ -2178,7 +2282,7 @@ contract YieldShiftTestSuite is Test {
         
         // Try to authorize manually and catch any errors
         vm.prank(admin);
-        try yieldShift.authorizeYieldSource(yieldManager, keccak256("test_source")) {
+        try yieldShift.setYieldSourceAuthorization(yieldManager, keccak256("test_source"), true) {
             console2.log("authorizeYieldSource succeeded");
         } catch Error(string memory reason) {
             console2.log("authorizeYieldSource failed with reason:", reason);
@@ -2224,7 +2328,7 @@ contract YieldShiftTestSuite is Test {
         uint256 gasUsed = gasBefore - gasleft();
         
         // Verify the function executed successfully by checking the yield shift was updated
-        uint256 currentYieldShift = yieldShift.getCurrentYieldShift();
+        uint256 currentYieldShift = yieldShift.currentYieldShift();
         assertGt(currentYieldShift, 0, "Yield shift should be positive");
         assertLt(currentYieldShift, 10000, "Yield shift should be within bounds");
         
@@ -2308,10 +2412,10 @@ contract YieldShiftTestSuite is Test {
         
         // Test that yield distribution calculations are consistent
         yieldShift.updateYieldDistribution();
-        uint256 currentYieldShift = yieldShift.getCurrentYieldShift();
+        uint256 currentYieldShift = yieldShift.currentYieldShift();
         
         yieldShift.checkAndUpdateYieldDistribution();
-        uint256 updatedYieldShift = yieldShift.getCurrentYieldShift();
+        uint256 updatedYieldShift = yieldShift.currentYieldShift();
         
         // Test that historical yield shift calculations are consistent
         yieldShift.getHistoricalYieldShift(12 hours); // Call to ensure state is consistent
@@ -2326,11 +2430,11 @@ contract YieldShiftTestSuite is Test {
         // Test edge cases by calling functions with different time periods
         vm.warp(block.timestamp + 1 hours);
         yieldShift.updateYieldDistribution();
-        assertGt(yieldShift.getCurrentYieldShift(), 0, "Short period should work");
+        assertGt(yieldShift.currentYieldShift(), 0, "Short period should work");
         
         vm.warp(block.timestamp + 7 days);
         yieldShift.updateYieldDistribution();
-        assertGt(yieldShift.getCurrentYieldShift(), 0, "Long period should work");
+        assertGt(yieldShift.currentYieldShift(), 0, "Long period should work");
     }
 }
 

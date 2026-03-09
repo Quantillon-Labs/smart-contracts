@@ -3,797 +3,127 @@ pragma solidity 0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/**
- * @title IHedgerPool
- * @notice Interface for the Quantillon HedgerPool contract
- * @dev Provides EUR/USD hedging functionality with leverage and margin management
- * @custom:security-contact team@quantillon.money
- */
 interface IHedgerPool {
-    // Initialization
-    
-    /**
-     * @notice Initializes the HedgerPool with contracts and parameters
-     * @dev Sets up the HedgerPool with initial configuration and assigns roles to admin
-     * @param admin Admin address receiving roles
-     * @param _usdc USDC token address
-     * @param _oracle Oracle contract address
-     * @param _yieldShift YieldShift contract address
-     * @param _timelock Timelock contract address
-     * @param _treasury Treasury address
-     * @param _vault QuantillonVault contract address
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Initializes all contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by initializer modifier
-     * @custom:access Restricted to initializer modifier
-     * @custom:oracle No oracle dependencies
-     */
-    function initialize(address admin, address _usdc, address _oracle, address _yieldShift, address _timelock, address _treasury, address _vault) external;
-    
-    // Core hedging functions
-    
-    /**
-     * @notice Opens a new hedge position with specified USDC amount and leverage
-     * @dev Creates a new hedge position with margin requirements and leverage validation
-     * @param usdcAmount The amount of USDC to use for the position (6 decimals)
-     * @param leverage The leverage multiplier for the position (e.g., 5 for 5x leverage)
-     * @return positionId The unique ID of the created position
-     * @custom:security Validates oracle price freshness, enforces margin ratios and leverage limits
-     * @custom:validation Validates usdcAmount > 0, leverage <= maxLeverage, position count limits
-     * @custom:state-changes Creates new HedgePosition, updates hedger totals, increments position counters
-     * @custom:events Emits HedgePositionOpened with position details
-     * @custom:errors Throws InvalidAmount if amount is 0, LeverageTooHigh if exceeds max
-     * @custom:reentrancy Protected by secureNonReentrant modifier
-     * @custom:access Public - no access restrictions
-     * @custom:oracle Requires fresh EUR/USD price for position entry
-     */
+    struct HedgerRiskConfig {
+        uint256 minMarginRatio;
+        uint256 maxLeverage;
+        uint256 minPositionHoldBlocks;
+        uint256 minMarginAmount;
+        uint256 eurInterestRate;
+        uint256 usdInterestRate;
+        uint256 entryFee;
+        uint256 exitFee;
+        uint256 marginFee;
+        uint256 rewardFeeSplit;
+    }
+
+    struct HedgerDependencyConfig {
+        address treasury;
+        address vault;
+        address oracle;
+        address yieldShift;
+        address feeCollector;
+    }
+
+    function initialize(
+        address admin,
+        address _usdc,
+        address _oracle,
+        address _yieldShift,
+        address _timelock,
+        address _treasury,
+        address _vault
+    ) external;
+
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) external returns (uint256 positionId);
-    
-    /**
-     * @notice Closes an existing hedge position
-     * @dev Closes a hedge position and calculates PnL based on current EUR/USD price
-     * @param positionId The ID of the position to close
-     * @return pnl The profit or loss from the position (positive for profit, negative for loss)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
     function exitHedgePosition(uint256 positionId) external returns (int256 pnl);
-    
-    // Margin management
-    
-    /**
-     * @notice Adds additional margin to an existing position
-     * @dev Adds USDC margin to an existing hedge position to improve margin ratio
-     * @param positionId The ID of the position to add margin to
-     * @param amount The amount of USDC to add as margin
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
     function addMargin(uint256 positionId, uint256 amount) external;
-    
-    /**
-     * @notice Removes margin from an existing position
-     * @dev Removes USDC margin from an existing hedge position, subject to minimum margin requirements
-     * @param positionId The ID of the position to remove margin from
-     * @param amount The amount of USDC margin to remove
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
     function removeMargin(uint256 positionId, uint256 amount) external;
 
-    /**
-     * @notice Synchronizes hedger fills with a user mint
-     * @dev Callable only by QuantillonVault to allocate fills proportionally
-     * @param usdcAmount Net USDC amount minted into QEURO (6 decimals)
-     * @param fillPrice EUR/USD oracle price (18 decimals) used for the mint
-     * @param qeuroAmount QEURO amount that was minted (18 decimals)
-     * @custom:security Restricted to the vault; validates amount > 0
-     * @custom:validation Amount and price must be positive
-     * @custom:state-changes Updates per-position fills and total exposure
-     * @custom:events None
-     * @custom:errors Reverts with capacity-related errors when overfilled
-     * @custom:reentrancy Implementations must guard state before external calls
-     * @custom:access Vault-only
-     * @custom:oracle Uses provided fill price
-     */
     function recordUserMint(uint256 usdcAmount, uint256 fillPrice, uint256 qeuroAmount) external;
-
-    /**
-     * @notice Synchronizes hedger fills with a user redemption
-     * @dev Callable only by QuantillonVault to release fills proportionally
-     * @param usdcAmount Gross USDC amount returned to the user (6 decimals)
-     * @param redeemPrice EUR/USD oracle price (18 decimals) observed by the vault
-     * @param qeuroAmount QEURO amount that was redeemed (18 decimals)
-     * @custom:security Restricted to the vault; validates amount > 0
-     * @custom:validation Amount and price must be positive
-     * @custom:state-changes Reduces per-position fills and total exposure
-     * @custom:events Emits `MarginUpdated` when realized P&L changes margin
-     * @custom:errors Reverts if insufficient filled exposure remains
-     * @custom:reentrancy Implementations must guard state before external calls
-     * @custom:access Vault-only
-     * @custom:oracle Uses provided redeem price
-     */
     function recordUserRedeem(uint256 usdcAmount, uint256 redeemPrice, uint256 qeuroAmount) external;
-    
-    /**
-     * @notice Records a liquidation mode redemption - directly reduces hedger margin proportionally
-     * @dev In liquidation mode, the hedger loses margin proportionally to QEURO redeemed
-     * @dev Formula: hedgerLoss = (qeuroAmount / totalSupply) * hedgerMargin
-     * @param qeuroAmount Amount of QEURO being redeemed (18 decimals)
-     * @param totalQeuroSupply Total QEURO supply before redemption (18 decimals)
-     * @custom:security Vault-only access, validates inputs
-     * @custom:validation Validates positive amounts
-     * @custom:state-changes Reduces hedger margin, records realized P&L
-     * @custom:events Emits margin reduction and realized P&L events
-     * @custom:errors Reverts if no hedger or invalid amounts
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Vault-only
-     * @custom:oracle Not applicable - uses proportional calculation
-     */
     function recordLiquidationRedeem(uint256 qeuroAmount, uint256 totalQeuroSupply) external;
-    
-    /**
-     * @notice Claims accrued hedging rewards for the caller
-     * @dev Combines interest differential and YieldShift rewards
-     * @return interestDifferential Rewards from interest spread
-     * @return yieldShiftRewards Rewards distributed by YieldShift
-     * @return totalRewards Sum of all rewards transferred
-     * @custom:security Validates caller has accrued rewards, transfers USDC tokens
-     * @custom:validation Checks reward amounts are positive and don't exceed accrued balances
-     * @custom:state-changes Resets hedger reward accumulators, transfers USDC to caller
-     * @custom:events Emits HedgingRewardsClaimed with reward details
-     * @custom:errors Reverts if no rewards available or transfer fails
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Public - any hedger can claim their rewards
-     * @custom:oracle Not applicable
-     */
+
     function claimHedgingRewards() external returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards);
-    
-    // Rewards
-    
-    /**
-     * @notice Claims accumulated hedging rewards for the caller
-     * @dev Combines interest rate differential rewards and yield shift rewards
-     * @return interestDifferential USDC rewards from interest rate differential (6 decimals)
-     * @return yieldShiftRewards USDC rewards from yield shift mechanism (6 decimals)
-     * @return totalRewards Total USDC rewards claimed (6 decimals)
-     * @custom:security Validates hedger has active positions, updates reward calculations
-     * @custom:validation Validates hedger exists and has pending rewards
-     * @custom:state-changes Resets pending rewards, updates last claim timestamp
-     * @custom:events Emits HedgingRewardsClaimed with reward breakdown
-     * @custom:errors Throws YieldClaimFailed if yield shift claim fails
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Public - any hedger can claim their rewards
-     * @custom:oracle No oracle dependencies for reward claiming
-     */
-    // View functions
-    
-    /**
-     * @notice Calculates total effective hedger collateral (deposits + P&L) across all active positions
-     * @dev Used by vault to determine protocol collateralization ratio
-     * @param currentPrice Current EUR/USD oracle price (18 decimals)
-     * @return totalEffectiveCollateral Total effective collateral in USDC (6 decimals)
-     * @custom:security Read-only helper - no state changes
-     * @custom:validation Requires valid oracle price
-     * @custom:state-changes None - read-only function (not view due to oracle call)
-     * @custom:events None
-     * @custom:errors Reverts if oracle price is invalid
-     * @custom:reentrancy Not applicable - read-only function
-     * @custom:access Public - anyone can query effective collateral
-     * @custom:oracle Requires fresh oracle price data
-     */
+    function withdrawPendingRewards(address recipient) external;
+
     function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external view returns (uint256 totalEffectiveCollateral);
-    
-    
-    // Governance functions
-    
-    /**
-     * @notice Updates core hedging parameters for risk management
-     * @dev Allows governance to adjust risk parameters based on market conditions
-     * @param newMinMarginRatio New minimum margin ratio in basis points (e.g., 500 = 5%)
-     * @param newMaxLeverage New maximum leverage multiplier (e.g., 20 = 20x)
-     * @custom:security Validates governance role and parameter constraints
-     * @custom:validation Validates minMarginRatio >= 500, maxLeverage <= 20
-     * @custom:state-changes Updates minMarginRatio and maxLeverage state variables
-     * @custom:events No events emitted for parameter updates
-     * @custom:errors Throws ConfigValueTooLow, ConfigValueTooHigh
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies for parameter updates
-     */
-    function updateHedgingParameters(
-        uint256 newMinMarginRatio,
-        uint256 newMaxLeverage
-    ) external;
-    
-    /**
-     * @notice Updates interest rates for EUR and USD
-     * @dev Allows governance to adjust interest rates for reward calculations
-     * @param newEurRate New EUR interest rate in basis points (e.g., 350 = 3.5%)
-     * @param newUsdRate New USD interest rate in basis points (e.g., 450 = 4.5%)
-     * @custom:security Validates governance role and rate constraints
-     * @custom:validation Validates rates are within reasonable bounds (0-10000 basis points)
-     * @custom:state-changes Updates eurInterestRate and usdInterestRate
-     * @custom:events No events emitted for rate updates
-     * @custom:errors Throws ConfigValueTooHigh if rates exceed maximum limits
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies for rate updates
-     */
-    function updateInterestRates(uint256 newEurRate, uint256 newUsdRate) external;
-    
-    /**
-     * @notice Updates hedging fee parameters for protocol revenue
-     * @dev Allows governance to adjust fees based on market conditions and protocol needs
-     * @param _entryFee New entry fee in basis points (e.g., 20 = 0.2%, max 100 = 1%)
-     * @param _exitFee New exit fee in basis points (e.g., 20 = 0.2%, max 100 = 1%)
-     * @param _marginFee New margin fee in basis points (e.g., 10 = 0.1%, max 50 = 0.5%)
-     * @custom:security Validates governance role and fee constraints
-     * @custom:validation Validates entryFee <= 100, exitFee <= 100, marginFee <= 50
-     * @custom:state-changes Updates entryFee, exitFee, and marginFee state variables
-     * @custom:events No events emitted for fee updates
-     * @custom:errors Throws ConfigValueTooHigh if fees exceed maximum limits
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies for fee updates
-     */
-    function setHedgingFees(uint256 _entryFee, uint256 _exitFee, uint256 _marginFee) external;
-    // Emergency functions
-    
-    /**
-     * @notice Emergency close position function
-     * @dev Allows emergency role to force close a position in emergency situations
-     * @param hedger Address of the hedger whose position to close
-     * @param positionId ID of the position to close
-     * @custom:security Validates emergency role authorization
-     * @custom:validation Validates position exists and is active
-     * @custom:state-changes Closes position, transfers remaining margin to hedger
-     * @custom:events Emits HedgePositionClosed event
-     * @custom:errors Throws InvalidPosition if position doesn't exist
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to EMERGENCY_ROLE
-     * @custom:oracle Requires fresh EUR/USD price for PnL calculation
-     */
-    function emergencyClosePosition(address hedger, uint256 positionId) external;
-    
-    /**
-     * @notice Pauses all hedging operations
-     * @dev Emergency function to pause the hedger pool in case of critical issues
-     * @custom:security Validates emergency role authorization
-     * @custom:validation No input validation required
-     * @custom:state-changes Sets pause state, stops all hedging operations
-     * @custom:events Emits Paused event from OpenZeppelin
-     * @custom:errors No errors thrown - safe pause operation
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to EMERGENCY_ROLE
-     * @custom:oracle No oracle dependencies for pause
-     */
-    function pause() external;
-    
-    /**
-     * @notice Unpauses hedging operations
-     * @dev Allows emergency role to unpause the hedger pool after resolving issues
-     * @custom:security Validates emergency role authorization
-     * @custom:validation No input validation required
-     * @custom:state-changes Removes pause state, resumes hedging operations
-     * @custom:events Emits Unpaused event from OpenZeppelin
-     * @custom:errors No errors thrown - safe unpause operation
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to EMERGENCY_ROLE
-     * @custom:oracle No oracle dependencies for unpause
-     */
-    function unpause() external;
-    
-    // Recovery functions
-    
-    /**
-     * @notice Recovers tokens accidentally sent to the contract
-     * @dev Emergency function to recover ERC20 tokens that are not part of normal operations
-     * @param token Address of the token to recover
-     * @param amount Amount of tokens to recover
-     * @custom:security Validates admin role and uses secure recovery library
-     * @custom:validation No input validation required - library handles validation
-     * @custom:state-changes Transfers tokens from contract to treasury
-     * @custom:events Emits TokenRecovered or ETHRecovered event
-     * @custom:errors No errors thrown - library handles error cases
-     * @custom:reentrancy Not protected - library handles reentrancy
-     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
-     * @custom:oracle No oracle dependencies for token recovery
-     */
-    function recover(address token, uint256 amount) external;
-    
-    // State variables
-    
-    /**
-     * @notice Returns the USDC token contract interface
-     * @dev USDC token used for margin deposits and withdrawals (6 decimals)
-     * @return IERC20 USDC token contract interface
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query USDC contract
-     * @custom:oracle No oracle dependencies
-     */
-    function usdc() external view returns (IERC20);
-    
-    /**
-     * @notice Returns the oracle contract address
-     * @dev Chainlink oracle for EUR/USD price feeds
-     * @return address Oracle contract address
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query oracle address
-     * @custom:oracle No oracle dependencies
-     */
-    function oracle() external view returns (address);
-    
-    /**
-     * @notice Returns the yield shift contract address
-     * @dev YieldShift contract for reward distribution
-     * @return address YieldShift contract address
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query yield shift address
-     * @custom:oracle No oracle dependencies
-     */
-    function yieldShift() external view returns (address);
-    
-    /**
-     * @notice Returns the minimum margin ratio in basis points
-     * @dev Minimum margin ratio required for positions (e.g., 1000 = 10%)
-     * @return uint256 Minimum margin ratio in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query minimum margin ratio
-     * @custom:oracle No oracle dependencies
-     */
-    function minMarginRatio() external view returns (uint256);
-    
-    /**
-     * @notice Returns the maximum leverage multiplier
-     * @dev Maximum leverage allowed for hedge positions (e.g., 10 = 10x)
-     * @return uint256 Maximum leverage multiplier
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query maximum leverage
-     * @custom:oracle No oracle dependencies
-     */
-    function maxLeverage() external view returns (uint256);
-    
-    /**
-     * @notice Returns the entry fee in basis points
-     * @dev Fee charged when opening hedge positions (e.g., 20 = 0.2%)
-     * @return uint256 Entry fee in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query entry fee
-     * @custom:oracle No oracle dependencies
-     */
-    function entryFee() external view returns (uint256);
-    
-    /**
-     * @notice Returns the exit fee in basis points
-     * @dev Fee charged when closing hedge positions (e.g., 20 = 0.2%)
-     * @return uint256 Exit fee in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query exit fee
-     * @custom:oracle No oracle dependencies
-     */
-    function exitFee() external view returns (uint256);
-    
-    /**
-     * @notice Returns the total margin for the hedger position
-     * @dev Total USDC margin held by the hedger position (6 decimals)
-     * @return uint256 Total margin in USDC
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query total margin
-     * @custom:oracle No oracle dependencies
-     */
-    function totalMargin() external view returns (uint256);
-    
-    /**
-     * @notice Returns the total exposure for the hedger position
-     * @dev Total USD exposure of the hedger position
-     * @return uint256 Total exposure in USD
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query total exposure
-     * @custom:oracle No oracle dependencies
-     */
-    function totalExposure() external view returns (uint256);
-    
-    /**
-     * @notice Returns whether there is an active hedger with open positions
-     * @dev Returns true if the single hedger has active positions
-     * @return bool True if there is an active hedger
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query active hedger status
-     * @custom:oracle No oracle dependencies
-     */
     function hasActiveHedger() external view returns (bool);
-    
-    /**
-     * @notice Returns the EUR interest rate in basis points
-     * @dev Interest rate for EUR-denominated positions (e.g., 350 = 3.5%)
-     * @return uint256 EUR interest rate in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query EUR interest rate
-     * @custom:oracle No oracle dependencies
-     */
-    function eurInterestRate() external view returns (uint256);
-    
-    /**
-     * @notice Returns the USD interest rate in basis points
-     * @dev Interest rate for USD-denominated positions (e.g., 450 = 4.5%)
-     * @return uint256 USD interest rate in basis points
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query USD interest rate
-     * @custom:oracle No oracle dependencies
-     */
-    function usdInterestRate() external view returns (uint256);
-    
-    /**
-     * @notice Returns the total yield earned across all positions
-     * @dev Total yield earned from interest rate differentials (6 decimals)
-     * @return uint256 Total yield earned in USDC
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query total yield earned
-     * @custom:oracle No oracle dependencies
-     */
-    function totalYieldEarned() external view returns (uint256);
-    
-    /**
-     * @notice Returns the interest differential pool balance
-     * @dev Pool of funds available for interest rate differential rewards (6 decimals)
-     * @return uint256 Interest differential pool balance in USDC
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query interest differential pool
-     * @custom:oracle No oracle dependencies
-     */
-    function interestDifferentialPool() external view returns (uint256);
-    
-    /**
-     * @notice Returns position details by position ID
-     * @dev Returns comprehensive position information for a specific position ID
-     * @param positionId The ID of the position to query
-     * @return hedger Address of the hedger who owns the position
-     * @return positionSize Total position size in USD equivalent
-     * @return filledVolume Currently matched volume in USDC
-     * @return margin Current margin amount in USDC (6 decimals)
-     * @return entryPrice EUR/USD price when position was opened
-     * @return leverage Leverage multiplier used for the position
-     * @return entryTime Timestamp when position was opened
-     * @return lastUpdateTime Timestamp of last position update
-     * @return unrealizedPnL Current unrealized profit or loss
-     * @return isActive Whether the position is currently active
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query position details
-     * @custom:oracle No oracle dependencies for position data
-     */
-    function positions(uint256 positionId) external view returns (
-        address hedger,
-        uint256 positionSize,
-        uint256 filledVolume,
-        uint256 margin,
-        uint256 entryPrice,
-        uint256 leverage,
-        uint256 entryTime,
-        uint256 lastUpdateTime,
-        int256 unrealizedPnL,
-        bool isActive
-    );
-    /**
-     * @notice Returns pending yield for a user
-     * @dev Returns pending yield rewards for a specific user address
-     * @param user Address of the user to query
-     * @return uint256 Pending yield amount in USDC (6 decimals)
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query user pending yield
-     * @custom:oracle No oracle dependencies
-     */
-    function userPendingYield(address user) external view returns (uint256);
-    
-    /**
-     * @notice Returns pending yield for a hedger
-     * @dev Returns pending yield rewards for a specific hedger address
-     * @param hedger Address of the hedger to query
-     * @return uint256 Pending yield amount in USDC (6 decimals)
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query hedger pending yield
-     * @custom:oracle No oracle dependencies
-     */
-    function hedgerPendingYield(address hedger) external view returns (uint256);
-    
-    /**
-     * @notice Returns last claim time for a user
-     * @dev Returns timestamp of last yield claim for a specific user
-     * @param user Address of the user to query
-     * @return uint256 Timestamp of last yield claim
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query user last claim time
-     * @custom:oracle No oracle dependencies
-     */
-    function userLastClaim(address user) external view returns (uint256);
-    
-    /**
-     * @notice Returns last claim time for a hedger
-     * @dev Returns timestamp of last yield claim for a specific hedger
-     * @param hedger Address of the hedger to query
-     * @return uint256 Timestamp of last yield claim
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query hedger last claim time
-     * @custom:oracle No oracle dependencies
-     */
-    function hedgerLastClaim(address hedger) external view returns (uint256);
-    
-    /**
-     * @notice Returns last reward block for a hedger
-     * @dev Returns block number of last reward calculation for a specific hedger
-     * @param hedger Address of the hedger to query
-     * @return uint256 Block number of last reward calculation
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query hedger last reward block
-     * @custom:oracle No oracle dependencies
-     */
-    function hedgerLastRewardBlock(address hedger) external view returns (uint256);
-    
-    // Constants
-    
-    /**
-     * @notice Returns the number of blocks per day
-     * @dev Used for time-based calculations and reward periods
-     * @return uint256 Number of blocks per day
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query blocks per day
-     * @custom:oracle No oracle dependencies
-     */
-    function BLOCKS_PER_DAY() external view returns (uint256);
-    
-    /**
-     * @notice Returns the maximum reward period
-     * @dev Maximum time period for reward calculations in blocks
-     * @return uint256 Maximum reward period in blocks
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query maximum reward period
-     * @custom:oracle No oracle dependencies
-     */
-    function MAX_REWARD_PERIOD() external view returns (uint256);
-    
-    // Events
-    event HedgePositionOpened(
-        address indexed hedger,
-        uint256 indexed positionId,
-        uint256 positionSize,
-        uint256 margin,
-        uint256 leverage,
-        uint256 entryPrice
-    );
-    
-    event HedgePositionClosed(
-        address indexed hedger,
-        uint256 indexed positionId,
-        uint256 exitPrice,
-        int256 pnl,
-        uint256 timestamp
-    );
-    
-    event MarginAdded(
-        address indexed hedger,
-        uint256 indexed positionId,
-        uint256 marginAdded,
-        uint256 newMarginRatio
-    );
-    
-    event MarginRemoved(
-        address indexed hedger,
-        uint256 indexed positionId,
-        uint256 marginRemoved,
-        uint256 newMarginRatio
-    );
-    
-    event HedgingRewardsClaimed(
-        address indexed hedger,
-        uint256 interestDifferential,
-        uint256 yieldShiftRewards,
-        uint256 totalRewards
-    );
-    
-    // Single Hedger Management
-    
-    /**
-     * @notice Returns the address of the single hedger
-     * @dev Returns the address that is authorized to open hedge positions
-     * @return address The address of the single hedger
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query the single hedger address
-     * @custom:oracle No oracle dependencies
-     */
-    function singleHedger() external view returns (address);
-    
-    /**
-     * @notice Sets the single hedger address
-     * @dev Only governance can set the single hedger address
-     * @param hedger Address of the single hedger
-     * @custom:security Validates governance role and hedger address
-     * @custom:validation Validates hedger is not address(0)
-     * @custom:state-changes Updates singleHedger state variable
-     * @custom:events Emits SingleHedgerUpdated with hedger and caller addresses
-     * @custom:errors Throws ZeroAddress if hedger is address(0)
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
+
+    function configureRiskAndFees(HedgerRiskConfig calldata cfg) external;
+    function configureDependencies(HedgerDependencyConfig calldata cfg) external;
+
+    function emergencyClosePosition(address hedger, uint256 positionId) external;
+    function pause() external;
+    function unpause() external;
+    function recover(address token, uint256 amount) external;
+
     function setSingleHedger(address hedger) external;
-
-    /**
-     * @notice Proposes a delayed single-hedger rotation.
-     * @param hedger Address proposed as the next single hedger.
-     */
-    function proposeSingleHedger(address hedger) external;
-
-    /**
-     * @notice Applies a previously proposed single-hedger rotation once delay elapsed.
-     */
     function applySingleHedgerRotation() external;
-
-    /**
-     * @notice Returns the currently pending single-hedger candidate.
-     */
-    function pendingSingleHedger() external view returns (address);
-
-    /**
-     * @notice Returns the timestamp when pendingSingleHedger can be applied.
-     */
-    function singleHedgerPendingAt() external view returns (uint256);
-
-    /**
-     * @notice Sets the FeeCollector used for margin-fee routing.
-     * @param _feeCollector Address of the FeeCollector contract.
-     */
-    function setFeeCollector(address _feeCollector) external;
-
-    /**
-     * @notice Funds HedgerPool reward reserve with USDC.
-     * @param amount Amount of USDC (6 decimals).
-     */
     function fundRewardReserve(uint256 amount) external;
 
-    /**
-     * @notice Returns fee split routed to reward reserve (1e18 = 100%).
-     */
-    function rewardFeeSplit() external view returns (uint256);
+    function usdc() external view returns (IERC20);
+    function oracle() external view returns (address);
+    function yieldShift() external view returns (address);
+    function vault() external view returns (address);
+    function treasury() external view returns (address);
 
-    /**
-     * @notice Updates fee split routed to reward reserve (1e18 = 100%).
-     * @param newSplit New split value.
-     */
-    function updateRewardFeeSplit(uint256 newSplit) external;
-} 
+    function coreParams()
+        external
+        view
+        returns (
+            uint64 minMarginRatio,
+            uint16 maxLeverage,
+            uint16 entryFee,
+            uint16 exitFee,
+            uint16 marginFee,
+            uint16 eurInterestRate,
+            uint16 usdInterestRate,
+            uint8 reserved
+        );
+
+    function totalMargin() external view returns (uint256);
+    function totalExposure() external view returns (uint256);
+    function totalFilledExposure() external view returns (uint256);
+
+    function singleHedger() external view returns (address);
+    function minPositionHoldBlocks() external view returns (uint256);
+    function minMarginAmount() external view returns (uint256);
+    function pendingRewardWithdrawals(address hedger) external view returns (uint256);
+
+    function feeCollector() external view returns (address);
+    function rewardFeeSplit() external view returns (uint256);
+    function MAX_REWARD_FEE_SPLIT() external view returns (uint256);
+
+    function pendingSingleHedger() external view returns (address);
+    function singleHedgerPendingAt() external view returns (uint256);
+
+    function hedgerLastRewardBlock(address hedger) external view returns (uint256);
+
+    function positions(uint256 positionId)
+        external
+        view
+        returns (
+            address hedger,
+            uint96 positionSize,
+            uint96 filledVolume,
+            uint96 margin,
+            uint96 entryPrice,
+            uint32 entryTime,
+            uint32 lastUpdateTime,
+            int128 unrealizedPnL,
+            int128 realizedPnL,
+            uint16 leverage,
+            bool isActive,
+            uint128 qeuroBacked,
+            uint64 openBlock
+        );
+
+    event HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
+    event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
+    event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
+    event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
+    event RewardReserveFunded(address indexed funder, uint256 amount);
+    event SingleHedgerRotationProposed(address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt);
+    event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
+}

@@ -216,7 +216,7 @@ contract stQEUROTokenTestSuite is Test {
         // Setup mock YieldShift calls
         vm.mockCall(
             mockYieldShift,
-            abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector, address(stQEURO)),
+            abi.encodeWithSelector(IYieldShift.userPendingYield.selector, address(stQEURO)),
             abi.encode(0)
         );
     }
@@ -1171,7 +1171,7 @@ contract stQEUROTokenTestSuite is Test {
     
     /**
      * @notice Test exchange rate calculation without YieldShift dependency
-     * @dev Verifies that getExchangeRate() works without calling YieldShift.getUserPendingYield()
+     * @dev Verifies that getExchangeRate() works without calling YieldShift.userPendingYield()
      * @dev This test ensures the fix for the YieldShift integration bug works correctly
       * @custom:security No security implications - test function
       * @custom:validation No input validation required - test function
@@ -1184,7 +1184,7 @@ contract stQEUROTokenTestSuite is Test {
      */
     function test_ExchangeRate_GetExchangeRateWithoutYieldShiftDependency() public {
         // Test that getExchangeRate() works even when YieldShift is not properly configured
-        // This covers the fix where we removed the YieldShift.getUserPendingYield() call
+        // This covers the fix where we removed the YieldShift.userPendingYield() call
         
         // Initial exchange rate should be 1:1
         uint256 rate = stQEURO.getExchangeRate();
@@ -1889,7 +1889,7 @@ contract MockYieldShift {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function getUserPendingYield(address /* user */) external view returns (uint256) {
+    function userPendingYield(address /* user */) external view returns (uint256) {
         return mockPendingYield;
     }
     

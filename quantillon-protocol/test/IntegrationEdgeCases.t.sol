@@ -132,7 +132,7 @@ contract IntegrationEdgeCases is Test {
         vm.mockCall(address(0x2), abi.encodeWithSelector(IOracle.getEurUsdPrice.selector), abi.encode(11 * 1e17, true));
         
         // Setup mock calls for YieldShift (address 0x3)
-        vm.mockCall(address(0x3), abi.encodeWithSelector(IYieldShift.getUserPendingYield.selector), abi.encode(0));
+        vm.mockCall(address(0x3), abi.encodeWithSelector(IYieldShift.userPendingYield.selector), abi.encode(0));
         
         // Mock HedgerPool's own USDC balance
         // NOTE: This mock always returns 0, which means flash loan protection never triggers

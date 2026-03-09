@@ -503,16 +503,30 @@ Withdraws reward amounts escrowed after failed push-transfer in `claimHedgingRew
 Returns whether a configured single hedger currently has an active position.
 
 ##### `setSingleHedger(address hedger)`
-Bootstrap/rotation entrypoint for single hedger configuration (governance-only).
+Bootstrap/rotation entrypoint for single hedger configuration (governance-only).  
+If no hedger is configured yet, assignment is immediate. Otherwise it creates a delayed pending rotation.
 
-##### `proposeSingleHedger(address hedger)` / `applySingleHedgerRotation()`
-Delayed single-hedger rotation flow (governance-only).
+##### `applySingleHedgerRotation()`
+Applies a previously proposed single-hedger rotation after delay (governance-only).
 
 ##### `fundRewardReserve(uint256 amount)`
 Permissionless reserve top-up path for hedger rewards.
 
-##### `updateRewardFeeSplit(uint256 newSplit)`
-Governance setter for margin-fee split routed to local reward reserve (`1e18 = 100%`).
+##### `configureRiskAndFees((...))`
+Batch governance update for:
+- margin ratio / leverage limits
+- hold blocks / minimum margin
+- EUR/USD interest rates
+- entry / exit / margin fees
+- `rewardFeeSplit` (`1e18 = 100%`)
+
+##### `configureDependencies((...))`
+Batch governance update for:
+- `treasury`
+- `vault`
+- `oracle`
+- `yieldShift`
+- `feeCollector`
 
 #### Events
 
@@ -739,34 +753,62 @@ Manages yield distribution between user and hedger pools.
 
 #### Functions
 
-##### `addYield(uint256 qeuroAmount)`
+##### `addYield(uint256 yieldAmount, bytes32 source)`
 Adds yield to the distribution system.
 
 **Parameters:**
-- `qeuroAmount` (uint256): Amount of QEURO yield to add (18 decimals)
+- `yieldAmount` (uint256): Amount of USDC yield to add (6 decimals)
+- `source` (bytes32): Source key (`"aave"`, `"fees"`, `"interest_differential"`, etc.)
 
 **Access:** Authorized yield sources only
 
-##### `distributeYield()`
-Distributes accumulated yield between pools.
+##### `updateYieldDistribution()`
+Refreshes and applies current distribution between user and hedger pools.
 
-**Access:** Yield manager role only
+**Access:** Public (`whenNotPaused`)
 
-##### `claimUserYield() → (uint256)`
+##### `claimUserYield(address user) → (uint256)`
 Claims yield for user pool.
 
 **Returns:**
 - `uint256`: Amount of yield claimed
 
-**Access:** User pool contract only
+**Access:** `YIELD_MANAGER_ROLE`
 
-##### `claimHedgerYield() → (uint256)`
+##### `claimHedgerYield(address hedger) → (uint256)`
 Claims yield for hedger pool.
 
 **Returns:**
 - `uint256`: Amount of yield claimed
 
-**Access:** Hedger pool contract only
+**Access:** `YIELD_MANAGER_ROLE`
+
+##### `configureYieldModel((...))`
+Batch governance update for:
+- `baseYieldShift`
+- `maxYieldShift`
+- `adjustmentSpeed`
+- `targetPoolRatio`
+
+##### `configureDependencies((...))`
+Batch governance update for:
+- `userPool`
+- `hedgerPool`
+- `aaveVault`
+- `stQEURO`
+- `treasury`
+
+##### `setYieldSourceAuthorization(address source, bytes32 yieldType, bool authorized)`
+Adds/removes an authorized yield source with explicit yield type mapping.
+
+##### `currentYieldShift() → (uint256)`
+Direct state getter for current shift (`1e4` precision).
+
+##### `userPendingYield(address user) → (uint256)` / `hedgerPendingYield(address hedger) → (uint256)`
+Direct state getters for pending yield balances.
+
+##### `paused() → (bool)`
+Pausable state getter. Yield distribution is active when `paused() == false`.
 
 ##### `getPoolMetrics() → (uint256, uint256, uint256, uint256)`
 Gets pool metrics for yield calculation.
@@ -779,23 +821,22 @@ Gets pool metrics for yield calculation.
 
 **Access:** Public view
 
-##### `calculateOptimalYieldShift() → (uint256, uint256, uint256)`
+##### `calculateOptimalYieldShift() → (uint256, uint256)`
 Calculates optimal yield distribution.
 
 **Returns:**
-- `uint256`: User pool allocation
-- `uint256`: Hedger pool allocation
-- `uint256`: Shift amount
+- `uint256`: Optimal shift
+- `uint256`: Current deviation from optimal
 
 **Access:** Public view
 
 #### Events
 
 ```solidity
-event YieldAdded(address indexed source, uint256 amount);
-event YieldDistributed(uint256 userPoolAmount, uint256 hedgerPoolAmount);
-event UserYieldClaimed(uint256 amount);
-event HedgerYieldClaimed(uint256 amount);
+event YieldDistributionUpdated(uint256 userPoolYield, uint256 hedgerPoolYield, uint256 currentShift);
+event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp);
+event UserYieldClaimed(address indexed user, uint256 yieldAmount, uint256 timestamp);
+event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 timestamp);
 ```
 
 ---

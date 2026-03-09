@@ -250,10 +250,16 @@ contract DeploymentSmokeTest is Test {
         vault.updateHedgerPool(address(hedgerPool));
         vault.updateUserPool(address(userPool));
 
-        // Wire pools + aave into YieldShift
-        yieldShift.updateUserPool(address(userPool));
-        yieldShift.updateHedgerPool(address(hedgerPool));
-        // Note: aaveVault integration can be extended here when mocks are richer
+        // Wire YieldShift dependencies with deployed addresses.
+        yieldShift.configureDependencies(
+            YieldShift.YieldDependencyConfig({
+                userPool: address(userPool),
+                hedgerPool: address(hedgerPool),
+                aaveVault: address(vault),
+                stQEURO: address(stQEURO),
+                treasury: treasury
+            })
+        );
 
         // Test-friendly settings: skip price deviation, allow minting at 101% collateralization
         vault.proposeDevMode(true);
@@ -463,4 +469,3 @@ contract DeploymentSmokeTest is Test {
         assertEq(totalSupply, user1Balance + user2Balance, "Total supply should equal sum of user balances");
     }
 }
-

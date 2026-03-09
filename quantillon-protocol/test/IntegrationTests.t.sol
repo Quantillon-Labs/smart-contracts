@@ -248,10 +248,16 @@ contract IntegrationTests is Test {
         vault.updateHedgerPool(address(hedgerPool));
         vault.updateUserPool(address(userPool));
         
-        // Update YieldShift with pool addresses
-        yieldShift.updateUserPool(address(userPool));
-        yieldShift.updateHedgerPool(address(hedgerPool));
-        // Note: AaveVault integration would require additional setup
+        // Update YieldShift dependencies with current deployment addresses.
+        yieldShift.configureDependencies(
+            YieldShift.YieldDependencyConfig({
+                userPool: address(userPool),
+                hedgerPool: address(hedgerPool),
+                aaveVault: address(vault),
+                stQEURO: address(stQEURO),
+                treasury: treasury
+            })
+        );
         
         // Grant necessary roles
         vault.grantRole(vault.GOVERNANCE_ROLE(), governance);

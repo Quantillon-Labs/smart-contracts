@@ -484,16 +484,35 @@ function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external view r
 - `currentPrice > 0`
 
 #### `setSingleHedger(address hedger)`
-Governance entrypoint for bootstrap/rotation proposal.
+Governance entrypoint for bootstrap/rotation proposal.  
+If no hedger is currently configured, assignment is immediate. Otherwise it creates a delayed pending rotation.
 
-#### `proposeSingleHedger(address hedger)` / `applySingleHedgerRotation()`
-Delayed single-hedger rotation flow.
+#### `applySingleHedgerRotation()`
+Executes a pending single-hedger rotation after delay.
 
 #### `fundRewardReserve(uint256 amount)`
 Permissionless reserve top-up path for hedger rewards.
 
-#### `updateRewardFeeSplit(uint256 newSplit)`
-Governance setter for margin-fee share routed to local reward reserve (`1e18 = 100%`).
+#### `configureRiskAndFees(HedgerRiskConfig cfg)`
+Batch governance setter for risk + fee parameters:
+- `minMarginRatio`
+- `maxLeverage`
+- `minPositionHoldBlocks`
+- `minMarginAmount`
+- `eurInterestRate`
+- `usdInterestRate`
+- `entryFee`
+- `exitFee`
+- `marginFee`
+- `rewardFeeSplit` (`1e18 = 100%`)
+
+#### `configureDependencies(HedgerDependencyConfig cfg)`
+Batch governance setter for:
+- `treasury`
+- `vault`
+- `oracle`
+- `yieldShift`
+- `feeCollector`
 
 ---
 
@@ -627,40 +646,40 @@ function autoRebalance() external returns (
 
 ### Function Signatures
 
-#### `addYield(uint256 qeuroAmount)`
+#### `addYield(uint256 yieldAmount, bytes32 source)`
 ```solidity
-function addYield(uint256 qeuroAmount) external
+function addYield(uint256 yieldAmount, bytes32 source) external
 ```
 
 **Modifiers**: `onlyAuthorizedYieldSource`, `whenNotPaused`, `nonReentrant`  
-**Events**: `YieldAdded(address indexed source, uint256 amount)`  
+**Events**: `YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp)`  
 **Requirements**:
-- `qeuroAmount > 0`
-- Sufficient QEURO balance and allowance
+- `yieldAmount > 0`
+- Sufficient USDC balance and allowance
 
-#### `distributeYield()`
+#### `updateYieldDistribution()`
 ```solidity
-function distributeYield() external
+function updateYieldDistribution() external
 ```
 
-**Modifiers**: `onlyRole(YIELD_MANAGER_ROLE)`, `whenNotPaused`, `nonReentrant`  
-**Events**: `YieldDistributed(uint256 userPoolAmount, uint256 hedgerPoolAmount)`
+**Modifiers**: `whenNotPaused`, `nonReentrant`  
+**Events**: `YieldDistributionUpdated(uint256 userPoolYield, uint256 hedgerPoolYield, uint256 currentShift)`
 
-#### `claimUserYield() → (uint256)`
+#### `claimUserYield(address user) → (uint256)`
 ```solidity
-function claimUserYield() external returns (uint256 yieldAmount)
+function claimUserYield(address user) external returns (uint256 yieldAmount)
 ```
 
-**Modifiers**: `onlyUserPool`, `whenNotPaused`, `nonReentrant`  
-**Events**: `UserYieldClaimed(uint256 amount)`
+**Modifiers**: `whenNotPaused`, `nonReentrant`  
+**Events**: `UserYieldClaimed(address indexed user, uint256 yieldAmount, uint256 timestamp)`
 
-#### `claimHedgerYield() → (uint256)`
+#### `claimHedgerYield(address hedger) → (uint256)`
 ```solidity
-function claimHedgerYield() external returns (uint256 yieldAmount)
+function claimHedgerYield(address hedger) external returns (uint256 yieldAmount)
 ```
 
-**Modifiers**: `onlyHedgerPool`, `whenNotPaused`, `nonReentrant`  
-**Events**: `HedgerYieldClaimed(uint256 amount)`
+**Modifiers**: `whenNotPaused`, `nonReentrant`  
+**Events**: `HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 timestamp)`
 
 #### `getPoolMetrics() → (uint256, uint256, uint256, uint256)`
 ```solidity
@@ -672,14 +691,34 @@ function getPoolMetrics() external view returns (
 )
 ```
 
-#### `calculateOptimalYieldShift() → (uint256, uint256, uint256)`
+#### `calculateOptimalYieldShift() → (uint256, uint256)`
 ```solidity
 function calculateOptimalYieldShift() external view returns (
-    uint256 userPoolAllocation,
-    uint256 hedgerPoolAllocation,
-    uint256 shiftAmount
+    uint256 optimalShift,
+    uint256 currentDeviation
 )
 ```
+
+#### `configureYieldModel(YieldModelConfig cfg)`
+Batch governance setter for:
+- `baseYieldShift`
+- `maxYieldShift`
+- `adjustmentSpeed`
+- `targetPoolRatio`
+
+#### `configureDependencies(YieldDependencyConfig cfg)`
+Batch governance setter for:
+- `userPool`
+- `hedgerPool`
+- `aaveVault`
+- `stQEURO`
+- `treasury`
+
+#### `setYieldSourceAuthorization(address source, bytes32 yieldType, bool authorized)`
+Governance setter to authorize/revoke a yield source and bind source type.
+
+#### `currentYieldShift()`, `userPendingYield(address)`, `hedgerPendingYield(address)`, `paused()`
+Direct state getters used by integrations and indexers.
 
 ---
 

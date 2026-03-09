@@ -200,8 +200,15 @@ contract LiquidationScenarios is IntegrationTests {
         vm.startPrank(admin);
         vault.updateHedgerPool(address(hedgerPool));
         vault.updateUserPool(address(userPool));
-        yieldShift.updateUserPool(address(userPool));
-        yieldShift.updateHedgerPool(address(hedgerPool));
+        yieldShift.configureDependencies(
+            YieldShift.YieldDependencyConfig({
+                userPool: address(userPool),
+                hedgerPool: address(hedgerPool),
+                aaveVault: address(vault),
+                stQEURO: address(stQEURO),
+                treasury: treasury
+            })
+        );
         vault.grantRole(vault.GOVERNANCE_ROLE(), governance);
         vault.grantRole(vault.EMERGENCY_ROLE(), emergency);
         userPool.grantRole(userPool.GOVERNANCE_ROLE(), governance);

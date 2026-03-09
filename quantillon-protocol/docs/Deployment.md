@@ -80,7 +80,10 @@ After deployment, addresses are written to `deployments/{chainId}/addresses.json
 Required post-deploy wiring now enforced in-script (deployment reverts if any check fails):
 - `quantillonVault.initializePriceCache()`
 - `stQEUROToken.setOracle(oracleRouter)`
-- `hedgerPool.setFeeCollector(feeCollector)`
+- `yieldShift.configureDependencies(...)`
+- `yieldShift.setYieldSourceAuthorization(aaveVault, "aave", true)`
+- `yieldShift.bootstrapDefaults()`
+- `hedgerPool.configureDependencies(...)` (includes `feeCollector`)
 - `feeCollector.authorizeFeeSource(quantillonVault)`
 - `feeCollector.authorizeFeeSource(hedgerPool)`
 

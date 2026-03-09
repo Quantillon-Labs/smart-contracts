@@ -313,8 +313,15 @@ contract QuantillonInvariants is Test {
         vm.startPrank(admin);
         vault.updateHedgerPool(address(hedgerPool));
         vault.updateUserPool(address(userPool));
-        yieldShift.updateUserPool(address(userPool));
-        yieldShift.updateHedgerPool(address(hedgerPool));
+        yieldShift.configureDependencies(
+            YieldShift.YieldDependencyConfig({
+                userPool: address(userPool),
+                hedgerPool: address(hedgerPool),
+                aaveVault: address(vault),
+                stQEURO: address(stQEURO),
+                treasury: treasury
+            })
+        );
         vm.stopPrank();
     }
     
@@ -1168,5 +1175,3 @@ contract InvariantActionHandler is Test {
         vm.stopPrank();
     }
 }
-
-

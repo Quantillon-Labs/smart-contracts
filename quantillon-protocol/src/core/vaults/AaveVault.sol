@@ -729,7 +729,7 @@ contract AaveVault is
         protocolYield = availableYield.mulDiv(yieldFee, 10000);
         uint256 netYield = availableYield - protocolYield;
         
-        uint256 yieldShiftPct = yieldShift.getCurrentYieldShift();
+        uint256 yieldShiftPct = yieldShift.currentYieldShift();
         userYield = netYield.mulDiv(yieldShiftPct, 10000);
         hedgerYield = netYield - userYield;
     }

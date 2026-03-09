@@ -15,6 +15,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
+import {IOracle} from "../interfaces/IOracle.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
@@ -137,6 +138,10 @@ contract stQEUROToken is
     /// @dev Receives yield fees for protocol sustainability
     /// @dev Should be a secure multisig or DAO treasury
     address public treasury;
+
+    /// @notice Oracle for EUR/USD price — used to convert USDC yield to QEURO denomination
+    /// @dev HIGH-3: required so distributeYield() scales 6-dec USDC yield to 18-dec QEURO exchange rate
+    IOracle public oracle;
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
@@ -649,8 +654,16 @@ contract stQEUROToken is
         }
 
         // Update exchange rate based on yield
+        // HIGH-3: Convert USDC yield (6 dec) to QEURO (18 dec) via EUR/USD oracle price before
+        // updating the exchange rate. Without this conversion the rate increment is ~1e12x too small.
+        if (address(oracle) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        // netYield (6 dec USDC) * 1e30 / eurUsdPrice (18 dec) = QEURO in 18 dec
+        // e.g. 500 USDC @ 1.08 EUR/USD → 500e6 * 1e30 / 1.08e18 ≈ 462.96e18 QEURO
+        uint256 yieldInQEURO = netYield.mulDiv(1e30, eurUsdPrice);
         uint256 oldRate = exchangeRate;
-        exchangeRate = exchangeRate + (netYield.mulDiv(1e18, totalSupply()));
+        exchangeRate = exchangeRate + yieldInQEURO.mulDiv(1e18, totalSupply());
         lastUpdateTime = TIME_PROVIDER.currentTime();
 
         // Update totals - Use checked arithmetic for critical state
@@ -900,6 +913,18 @@ contract stQEUROToken is
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
+    }
+
+    /**
+     * @notice Sets the oracle used to price USDC yield in QEURO terms
+     * @dev HIGH-3: Required so distributeYield() can convert USDC (6 dec) to QEURO (18 dec)
+     * @param _oracle Address of the IOracle implementation (OracleRouter)
+     * @custom:security Validates non-zero address
+     * @custom:access Restricted to GOVERNANCE_ROLE
+     */
+    function setOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE) {
+        if (_oracle == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        oracle = IOracle(_oracle);
     }
 
     // =============================================================================

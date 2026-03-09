@@ -43,12 +43,9 @@ library VaultMath {
      */
     function mulDiv(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result) {
         if (c == 0) revert CommonErrorLibrary.DivisionByZero();
-
-        // Handle overflow protection
-        uint256 prod = a * b;
-        if (a != 0 && prod / a != b) revert CommonErrorLibrary.MultiplicationOverflow();
-
-        result = prod / c;
+        // INFO-6: Solidity 0.8.x checked arithmetic reverts on overflow automatically;
+        // the manual overflow guard below was unreachable dead code.
+        result = (a * b) / c;
     }
 
     /**

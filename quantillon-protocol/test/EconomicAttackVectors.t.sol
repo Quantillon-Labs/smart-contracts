@@ -535,7 +535,10 @@ contract EconomicAttackVectorsIntegration is IntegrationTests {
      */
     function test_Economic_Integration_OracleManipulationLiquidation_Blocked() public {
         vm.prank(admin);
-        vault.setDevMode(false);
+        vault.proposeDevMode(false);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
 
         vm.startPrank(user1);
         mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
@@ -564,7 +567,10 @@ contract EconomicAttackVectorsIntegration is IntegrationTests {
      */
     function test_Economic_Integration_SandwichSlippage_Blocked() public {
         vm.prank(admin);
-        vault.setDevMode(false);
+        vault.proposeDevMode(false);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
 
         vm.startPrank(user1);
         mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);

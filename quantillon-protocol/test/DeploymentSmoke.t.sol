@@ -256,7 +256,10 @@ contract DeploymentSmokeTest is Test {
         // Note: aaveVault integration can be extended here when mocks are richer
 
         // Test-friendly settings: skip price deviation, allow minting at 101% collateralization
-        vault.setDevMode(true);
+        vault.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vault.applyDevMode();
+        vault.initializePriceCache();
         vm.stopPrank();
 
         vm.startPrank(governance);

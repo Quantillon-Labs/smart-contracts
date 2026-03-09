@@ -30,8 +30,10 @@ interface ITimelockUpgradeable {
     
     struct PendingUpgrade {
         address implementation;
+        address proposingProxy;  // HIGH-1: proxy that initiated this upgrade
         uint256 proposedAt;
         uint256 executableAt;
+        uint256 expiryAt;        // LOW-6: proposal expires after MAX_PROPOSAL_AGE
         string description;
         bool isEmergency;
         address proposer;
@@ -293,8 +295,10 @@ interface ITimelockUpgradeable {
      * @dev Maps implementation address to pending upgrade information
      * @param implementation Address of the implementation
      * @return implementation Address of the new implementation
+     * @return proposingProxy Proxy contract that initiated the upgrade
      * @return proposedAt Timestamp when upgrade was proposed
      * @return executableAt Timestamp when upgrade can be executed
+     * @return expiryAt Timestamp when upgrade proposal expires
      * @return description Description of the upgrade
      * @return isEmergency Whether this is an emergency upgrade
      * @return proposer Address of the proposer
@@ -309,8 +313,10 @@ interface ITimelockUpgradeable {
      */
     function pendingUpgrades(address) external view returns (
         address implementation,
+        address proposingProxy,
         uint256 proposedAt,
         uint256 executableAt,
+        uint256 expiryAt,
         string memory description,
         bool isEmergency,
         address proposer

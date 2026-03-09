@@ -181,7 +181,9 @@ contract UpgradeTests is Test {
 
         // Disable secure upgrades for testing and grant upgrader role
         vm.startPrank(admin);
-        qeuroToken.emergencyDisableSecureUpgrades();
+        qeuroToken.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        qeuroToken.applyEmergencyDisableSecureUpgrades();
         bytes32 upgraderRole = qeuroToken.UPGRADER_ROLE();
         qeuroToken.grantRole(upgraderRole, admin);
 
@@ -202,7 +204,9 @@ contract UpgradeTests is Test {
     function test_QEURO_V2_NewFunctionality() public {
         // Disable secure upgrades and perform upgrade
         vm.startPrank(admin);
-        qeuroToken.emergencyDisableSecureUpgrades();
+        qeuroToken.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        qeuroToken.applyEmergencyDisableSecureUpgrades();
         qeuroToken.grantRole(qeuroToken.UPGRADER_ROLE(), admin);
         qeuroToken.upgradeToAndCall(address(qeuroV2Impl), "");
         vm.stopPrank();
@@ -247,7 +251,9 @@ contract UpgradeTests is Test {
         // Disable secure upgrades for testing and grant upgrader role
         // Use startPrank to avoid prank being consumed by view calls
         vm.startPrank(admin);
-        qtiToken.emergencyDisableSecureUpgrades();
+        qtiToken.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        qtiToken.applyEmergencyDisableSecureUpgrades();
         bytes32 upgraderRole = qtiToken.UPGRADER_ROLE();
         qtiToken.grantRole(upgraderRole, admin);
 
@@ -266,7 +272,9 @@ contract UpgradeTests is Test {
     function test_QTI_V2_NewFunctionality() public {
         // Disable secure upgrades and perform upgrade
         vm.startPrank(admin);
-        qtiToken.emergencyDisableSecureUpgrades();
+        qtiToken.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        qtiToken.applyEmergencyDisableSecureUpgrades();
         qtiToken.grantRole(qtiToken.UPGRADER_ROLE(), admin);
         qtiToken.upgradeToAndCall(address(qtiV2Impl), "");
         vm.stopPrank();
@@ -371,7 +379,9 @@ contract UpgradeTests is Test {
 
         // Perform upgrade
         vm.startPrank(admin);
-        qeuroToken.emergencyDisableSecureUpgrades();
+        qeuroToken.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        qeuroToken.applyEmergencyDisableSecureUpgrades();
         qeuroToken.grantRole(qeuroToken.UPGRADER_ROLE(), admin);
         qeuroToken.upgradeToAndCall(address(qeuroV2Impl), "");
         vm.stopPrank();
@@ -411,7 +421,9 @@ contract UpgradeTests is Test {
      */
     function test_Security_UpgradeToZeroAddress_Fails() public {
         vm.startPrank(admin);
-        qeuroToken.emergencyDisableSecureUpgrades();
+        qeuroToken.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        qeuroToken.applyEmergencyDisableSecureUpgrades();
         qeuroToken.grantRole(qeuroToken.UPGRADER_ROLE(), admin);
 
         vm.expectRevert();
@@ -457,7 +469,9 @@ contract UpgradeTests is Test {
 
         // Perform upgrade
         vm.startPrank(admin);
-        qeuroToken.emergencyDisableSecureUpgrades();
+        qeuroToken.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        qeuroToken.applyEmergencyDisableSecureUpgrades();
         qeuroToken.grantRole(qeuroToken.UPGRADER_ROLE(), admin);
         qeuroToken.upgradeToAndCall(address(qeuroV2Impl), "");
         vm.stopPrank();
@@ -476,7 +490,9 @@ contract UpgradeTests is Test {
     function test_ProxyDelegatecall_Works() public {
         // Perform upgrade
         vm.startPrank(admin);
-        qeuroToken.emergencyDisableSecureUpgrades();
+        qeuroToken.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        qeuroToken.applyEmergencyDisableSecureUpgrades();
         qeuroToken.grantRole(qeuroToken.UPGRADER_ROLE(), admin);
         qeuroToken.upgradeToAndCall(address(qeuroV2Impl), "");
         vm.stopPrank();

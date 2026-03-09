@@ -184,6 +184,9 @@ contract QuantillonVault is
     /// @notice USDC balance before flash loan check (used by flashLoanProtection modifier)
     uint256 private _flashLoanBalanceBefore;
 
+    /// @notice MED-7: Dedicated reentrancy guard for _executeAaveDeployment (separate from OZ lock)
+    bool private _aaveDeploymentInProgress;
+
     /// @notice AaveVault contract for USDC yield generation
     /// @dev Used to deploy idle USDC to Aave lending pool
     IAaveVault public aaveVault;
@@ -194,25 +197,24 @@ contract QuantillonVault is
 
     // Protocol parameters (configurable by governance)
     
-    /// @notice Protocol fee charged on minting QEURO (in basis points)
-    /// @dev Example: 10 = 0.1% minting fee
+    /// @notice Protocol fee charged on minting QEURO
+    /// @dev INFO-7: Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
     /// @dev Revenue source for the protocol
     uint256 public mintFee;
-    
-    /// @notice Protocol fee charged on redeeming QEURO (in basis points)
-    /// @dev Example: 10 = 0.1% redemption fee
+
+    /// @notice Protocol fee charged on redeeming QEURO
+    /// @dev INFO-7: Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
     /// @dev Revenue source for the protocol
     uint256 public redemptionFee;
 
-    /// @notice Whether fees are taken during liquidation mode redemption
-    /// @dev Set to true by default - fees are charged even in liquidation mode
-    /// @dev Can be changed by governance if needed
-    bool public constant TAKES_FEES_DURING_LIQUIDATION = true;
+    // INFO-3: TAKES_FEES_DURING_LIQUIDATION was a named constant for the immutable value `true`.
+    //         Replaced with inline logic throughout to remove the misleading implication
+    //         that this value is configurable by governance.
 
     // Collateralization parameters (configurable by governance)
     
-    /// @notice Minimum collateralization ratio required for minting QEURO (in basis points)
-    /// @dev Example: 10500 = 105% collateralization ratio required for minting
+    /// @notice Minimum collateralization ratio required for minting QEURO (in 1e18 precision, NOT basis points)
+    /// @dev INFO-7: Example: 105000000000000000000 = 105% collateralization ratio required for minting
     /// @dev When protocol collateralization >= this threshold, minting is allowed
     /// @dev When protocol collateralization < this threshold, minting is halted
     /// @dev Can be updated by governance to adjust protocol risk parameters
@@ -250,6 +252,15 @@ contract QuantillonVault is
     /// @dev When enabled, price deviation checks and caching requirements are skipped (dev/testing only)
     bool public devModeEnabled;
 
+    /// @notice MED-1: Minimum delay before a proposed dev-mode change takes effect
+    uint256 public constant DEV_MODE_DELAY = 48 hours;
+
+    /// @notice MED-1: Pending dev-mode value awaiting the timelock delay
+    bool public pendingDevMode;
+
+    /// @notice MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+    uint256 public devModePendingAt;
+
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
     // =============================================================================
@@ -282,6 +293,10 @@ contract QuantillonVault is
         bool isPremium
     );
     
+    /// @notice LOW-3: Emitted when notifying HedgerPool of a liquidation redemption fails
+    /// @param qeuroAmount Amount of QEURO that was being redeemed
+    event HedgerPoolNotificationFailed(uint256 qeuroAmount);
+
     /// @notice Emitted when hedger deposits USDC to vault for unified liquidity
     /// @param hedgerPool Address of the HedgerPool contract that made the deposit
     /// @param usdcAmount Amount of USDC deposited (6 decimals)
@@ -353,6 +368,11 @@ contract QuantillonVault is
     /// @param enabled Whether dev mode is enabled or disabled
     /// @param caller Address that triggered the toggle
     event DevModeToggled(bool enabled, address indexed caller);
+
+    /// @notice MED-1: Emitted when a dev-mode change is proposed
+    /// @param pending The proposed dev-mode value
+    /// @param activatesAt Timestamp at which the change can be applied
+    event DevModeProposed(bool pending, uint256 activatesAt);
 
     /// @notice Emitted when AaveVault address is updated
     /// @param oldAaveVault Previous AaveVault address
@@ -578,7 +598,10 @@ contract QuantillonVault is
         // This preserves startup behavior while preventing one-shot dilution attacks once collateral exists.
         uint256 currentSupply = qeuro.totalSupply();
         uint256 collateralBeforeMint = totalUsdcHeld + totalUsdcInAave;
-        bool isBootstrapMint = currentSupply == 0 && collateralBeforeMint == 0;
+        // LOW-5: Bootstrap exception is only granted when the oracle has already produced a valid
+        // price baseline; otherwise an attacker could set a manipulated rate on the very first mint.
+        bool isBootstrapMint = currentSupply == 0 && collateralBeforeMint == 0
+            && lastValidEurUsdPrice > 0;
         if (!isBootstrapMint) {
             uint256 projectedSupply = currentSupply + qeuroToMint;
             uint256 projectedCollateral = collateralBeforeMint + netAmount;
@@ -671,17 +694,22 @@ contract QuantillonVault is
     function _executeAaveDeployment(uint256 usdcAmount) external {
         // Only callable from within this contract
         if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
-        
+        // MED-7: Dedicated reentrancy lock (separate from OZ lock which is already held by caller)
+        if (_aaveDeploymentInProgress) revert CommonErrorLibrary.NotAuthorized();
+        _aaveDeploymentInProgress = true;
+
         // Update state before external calls
         totalUsdcHeld -= usdcAmount;
         totalUsdcInAave += usdcAmount;
-        
+
         emit UsdcDeployedToAave(usdcAmount, totalUsdcInAave);
-        
+
         // Transfer and deploy to Aave
         usdc.safeIncreaseAllowance(address(aaveVault), usdcAmount);
         uint256 aTokensReceived = aaveVault.deployToAave(usdcAmount);
-        
+
+        _aaveDeploymentInProgress = false;
+
         // Validate that deployment was successful (aTokensReceived should be > 0)
         if (aTokensReceived == 0) revert CommonErrorLibrary.InvalidAmount();
     }
@@ -799,8 +827,8 @@ contract QuantillonVault is
         qeuro.burn(msg.sender, qeuroAmount);
         usdc.safeTransfer(msg.sender, netUsdcToReturn);
         
-        // Transfer fee to fee collector (if fees are enabled and fee > 0)
-        if (TAKES_FEES_DURING_LIQUIDATION && fee > 0) {
+        // Transfer fee to fee collector (if fee > 0)
+        if (fee > 0) {
             // Approve FeeCollector to pull the fee
             usdc.safeIncreaseAllowance(feeCollector, fee);
             // Call FeeCollector to collect the fee with proper tracking
@@ -869,14 +897,14 @@ contract QuantillonVault is
         uint256 totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
         uint256 usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
 
-        // Slippage check
-        if (usdcPayout < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
-
         // Ensure sufficient USDC (withdraw from Aave if needed)
         _ensureSufficientUsdcForPayout(usdcPayout);
 
         // Calculate fees and net payout
         (uint256 fee, uint256 netUsdcPayout) = _calculateLiquidationFees(usdcPayout);
+
+        // LOW-7: validate slippage against net (post-fee) amount so minUsdcOut applies to what user actually receives
+        if (netUsdcPayout < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
 
         // Determine if premium or haircut
         uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
@@ -945,13 +973,9 @@ contract QuantillonVault is
      * @custom:oracle None
      */
     function _calculateLiquidationFees(uint256 usdcPayout) internal view returns (uint256 fee, uint256 netPayout) {
-        if (TAKES_FEES_DURING_LIQUIDATION) {
-            fee = usdcPayout.mulDiv(redemptionFee, 1e18);
-            netPayout = usdcPayout - fee;
-        } else {
-            fee = 0;
-            netPayout = usdcPayout;
-        }
+        // INFO-3: fees are always taken during liquidation (TAKES_FEES_DURING_LIQUIDATION was always true)
+        fee = usdcPayout.mulDiv(redemptionFee, 1e18);
+        netPayout = usdcPayout - fee;
     }
 
     /**
@@ -972,7 +996,10 @@ contract QuantillonVault is
         if (address(hedgerPool) == address(0)) return;
         uint256 hedgerCollateral = hedgerPool.totalMargin();
         if (hedgerCollateral == 0) return;
-        try hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply) {} catch {}
+        // LOW-3: emit event on failure rather than swallowing the error silently
+        try hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply) {} catch {
+            emit HedgerPoolNotificationFailed(qeuroAmount);
+        }
     }
 
     /**
@@ -989,9 +1016,9 @@ contract QuantillonVault is
      * @custom:oracle None
      */
     function _transferLiquidationFees(uint256 fee) internal {
-        if (!TAKES_FEES_DURING_LIQUIDATION || fee == 0) return;
-        bool success = usdc.approve(feeCollector, fee);
-        if (!success) revert CommonErrorLibrary.TokenTransferFailed();
+        if (fee == 0) return;
+        // LOW-1: use safeIncreaseAllowance instead of raw approve() to handle non-standard ERC20s
+        usdc.safeIncreaseAllowance(feeCollector, fee);
         FeeCollector(feeCollector).collectFees(address(usdc), fee, "redemption");
     }
     // slither-disable-end reentrancy-no-eth
@@ -1025,6 +1052,13 @@ contract QuantillonVault is
     ) external nonReentrant whenNotPaused {
         // CHECKS
         CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
+
+        // MED-5: Reject call when core pool contracts are not yet initialized;
+        // getProtocolCollateralizationRatio() returns 0 in that state, which would
+        // falsely indicate liquidation mode and allow protocol-draining redemptions.
+        if (address(hedgerPool) == address(0) || address(userPool) == address(0)) {
+            revert CommonErrorLibrary.InvalidVault();
+        }
 
         // Check protocol is in liquidation mode using the configurable critical threshold
         uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
@@ -1404,10 +1438,10 @@ contract QuantillonVault is
         usdcWithdrawn = aaveVault.withdrawFromAave(amountToWithdraw);
         
         // Update state after successful withdrawal
-        unchecked {
-            totalUsdcInAave -= usdcWithdrawn;
-            totalUsdcHeld += usdcWithdrawn;
-        }
+        // HIGH-2: removed unchecked block — 0.8.x checked arithmetic catches any
+        // underflow if usdcWithdrawn somehow exceeds totalUsdcInAave.
+        totalUsdcInAave -= usdcWithdrawn;
+        totalUsdcHeld += usdcWithdrawn;
         
         emit UsdcWithdrawnFromAave(usdcWithdrawn, totalUsdcInAave);
     }
@@ -1680,6 +1714,38 @@ contract QuantillonVault is
         return currentRatio >= minCollateralizationRatioForMinting;
     }
     
+    /// @notice LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price
+    /// @dev Uses lastValidEurUsdPrice so it can be called from view contexts and off-chain with zero gas
+    function getProtocolCollateralizationRatioView() public view returns (uint256 ratio) {
+        if (address(hedgerPool) == address(0) || address(userPool) == address(0)) return 0;
+        uint256 currentQeuroSupply = qeuro.totalSupply();
+        if (currentQeuroSupply == 0) return 0;
+        if (lastValidEurUsdPrice == 0) return 0;
+        uint256 backingRequirement = currentQeuroSupply.mulDiv(lastValidEurUsdPrice, 1e18) / 1e12;
+        if (backingRequirement == 0) return 0;
+        uint256 totalCollateral = totalUsdcHeld + totalUsdcInAave;
+        ratio = (totalCollateral * 1e20) / backingRequirement;
+    }
+
+    /// @notice LOW-4: Pure view variant of canMint using cached oracle price
+    /// @dev Uses lastValidEurUsdPrice so it can be called from view contexts and off-chain with zero gas
+    function canMintView() public view returns (bool) {
+        if (qeuro.totalSupply() == 0) return true;
+        return getProtocolCollateralizationRatioView() >= minCollateralizationRatioForMinting;
+    }
+
+    /// @notice LOW-5: Seeds the oracle price cache so the bootstrap-mint protection has a baseline.
+    /// @dev Governance MUST call this once immediately after deployment, before any user mints.
+    ///      Until this is called, lastValidEurUsdPrice == 0 which makes the bootstrap exception
+    ///      unavailable and the first-ever mint will revert with InsufficientCollateralization.
+    function initializePriceCache() external onlyRole(GOVERNANCE_ROLE) {
+        if (address(oracle) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        lastValidEurUsdPrice = eurUsdPrice;
+        lastPriceUpdateBlock = block.number;
+    }
+
     /**
      * @notice Checks if liquidation should be triggered based on current collateralization ratio
      * @dev Returns true if collateralization ratio < criticalCollateralizationRatio
@@ -1780,14 +1846,10 @@ contract QuantillonVault is
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
         
-        // Calculate total collateral (same as in getLiquidationStatus)
-        uint256 userCollateral = totalSupply.mulDiv(eurUsdPrice, 1e18) / 1e12;
-        uint256 hedgerCollateral = 0;
-        if (address(hedgerPool) != address(0)) {
-            hedgerCollateral = hedgerPool.getTotalEffectiveHedgerCollateral(eurUsdPrice);
-        }
-        uint256 totalCollateralUsdc = userCollateral + hedgerCollateral;
-        
+        // INFO-5: Use actual vault USDC balance (same formula as _redeemLiquidationMode) so this
+        // view function matches the real liquidation payout in stress scenarios.
+        uint256 totalCollateralUsdc = totalUsdcHeld + totalUsdcInAave;
+
         // Calculate pro-rata payout: (qeuroAmount / totalSupply) * totalCollateral
         // qeuroAmount (18 dec) * totalCollateral (6 dec) / totalSupply (18 dec) = 6 dec
         usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
@@ -2015,9 +2077,21 @@ contract QuantillonVault is
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
-    function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        devModeEnabled = enabled;
-        emit DevModeToggled(enabled, msg.sender);
+    /// @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
+    /// @param enabled The desired dev-mode value
+    function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        pendingDevMode = enabled;
+        devModePendingAt = block.timestamp + DEV_MODE_DELAY;
+        emit DevModeProposed(enabled, devModePendingAt);
+    }
+
+    /// @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+    function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (devModePendingAt == 0) revert CommonErrorLibrary.InvalidAmount();
+        if (block.timestamp < devModePendingAt) revert CommonErrorLibrary.NotActive();
+        devModeEnabled = pendingDevMode;
+        devModePendingAt = 0;
+        emit DevModeToggled(devModeEnabled, msg.sender);
     }
 }
 

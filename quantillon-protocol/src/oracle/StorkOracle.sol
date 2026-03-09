@@ -90,6 +90,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 
 /**
  * @title StorkOracle
@@ -216,6 +217,15 @@ contract StorkOracle is
     /// @dev When enabled, price deviation checks are skipped (dev/testing only)
     bool public devModeEnabled;
 
+    /// @notice MED-1: Minimum delay before a proposed dev-mode change takes effect
+    uint256 public constant DEV_MODE_DELAY = 48 hours;
+
+    /// @notice MED-1: Pending dev-mode value awaiting the timelock delay
+    bool public pendingDevMode;
+
+    /// @notice MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+    uint256 public devModePendingAt;
+
     // =============================================================================
     // EVENTS - Events for monitoring and alerts
     // =============================================================================
@@ -257,6 +267,11 @@ contract StorkOracle is
     /// @param enabled Whether dev mode is enabled or disabled
     /// @param caller Address that triggered the toggle
     event DevModeToggled(bool enabled, address indexed caller);
+
+    /// @notice MED-1: Emitted when a dev-mode change is proposed
+    /// @param pending The proposed dev-mode value
+    /// @param activatesAt Timestamp at which the change can be applied
+    event DevModeProposed(bool pending, uint256 activatesAt);
 
     // =============================================================================
     // INITIALIZER - Initial contract configuration
@@ -1132,9 +1147,21 @@ contract StorkOracle is
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependency - configuration update only
      */
-    function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        devModeEnabled = enabled;
-        emit DevModeToggled(enabled, msg.sender);
+    /// @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
+    /// @param enabled The desired dev-mode value
+    function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        pendingDevMode = enabled;
+        devModePendingAt = block.timestamp + DEV_MODE_DELAY;
+        emit DevModeProposed(enabled, devModePendingAt);
+    }
+
+    /// @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+    function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (devModePendingAt == 0) revert CommonErrorLibrary.InvalidAmount();
+        if (block.timestamp < devModePendingAt) revert CommonErrorLibrary.NotActive();
+        devModeEnabled = pendingDevMode;
+        devModePendingAt = 0;
+        emit DevModeToggled(devModeEnabled, msg.sender);
     }
 }
 

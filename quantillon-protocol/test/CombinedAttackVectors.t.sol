@@ -24,7 +24,10 @@ contract CombinedAttackVectors is IntegrationTests {
      */
     function test_Combined_FlashLoanOracleManipulation_Blocked() public {
         vm.prank(admin);
-        vault.setDevMode(false);
+        vault.proposeDevMode(false);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
 
         vm.startPrank(user1);
         mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
@@ -110,7 +113,10 @@ contract CombinedAttackVectors is IntegrationTests {
      */
     function test_Combined_RedeemWithExtremePrice_RevertsOrBounded() public {
         vm.prank(admin);
-        vault.setDevMode(false);
+        vault.proposeDevMode(false);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
 
         vm.startPrank(user1);
         mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);

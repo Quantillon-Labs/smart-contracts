@@ -8,6 +8,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IYieldShift} from "../src/interfaces/IYieldShift.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
+import {IOracle} from "../src/interfaces/IOracle.sol";
 
 /**
  * @title stQEUROTokenTestSuite
@@ -52,6 +53,9 @@ contract stQEUROTokenTestSuite is Test {
     address public mockYieldShift = address(0x2);
     address public mockUSDC = address(0x3);
     address public mockTimelock = address(0x123);
+    address public mockOracle = address(0xABC);  // HIGH-3: mock oracle for distributeYield
+
+    uint256 public constant EUR_USD_PRICE = 1_087_000_000_000_000_000; // 1.087 (18 dec)
     
     // Test addresses
     address public admin = address(0x4);
@@ -127,7 +131,16 @@ contract stQEUROTokenTestSuite is Test {
         );
         
         stQEURO = stQEUROToken(address(proxy));
-        
+
+        // HIGH-3: set the oracle so distributeYield can convert USDC→QEURO
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            abi.encode(EUR_USD_PRICE, true)
+        );
+        vm.prank(admin);
+        stQEURO.setOracle(mockOracle);
+
         // Grant additional roles for testing
         vm.prank(admin);
         stQEURO.grantRole(keccak256("YIELD_MANAGER_ROLE"), yieldManager);

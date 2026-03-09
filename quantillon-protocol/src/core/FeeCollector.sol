@@ -48,9 +48,13 @@ contract FeeCollector is
     /// @notice Governance role for fee distribution and configuration
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     
-    /// @notice Treasury role for fee withdrawal
+    /// @notice Treasury role for fee withdrawal and distribution
     bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
-    
+
+    /// @notice MED-3: Separate role for authorized fee depositors (vault, hedger pool, etc.)
+    /// @dev Distinct from TREASURY_ROLE so depositors cannot also withdraw/distribute fees
+    bytes32 public constant FEE_SOURCE_ROLE = keccak256("FEE_SOURCE_ROLE");
+
     /// @notice Emergency role for pausing and emergency operations
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
@@ -143,8 +147,10 @@ contract FeeCollector is
      * @custom:oracle None
      */
     function _onlyFeeSource() internal view {
+        // MED-3: check FEE_SOURCE_ROLE instead of TREASURY_ROLE so fee depositors
+        // cannot also call distributeFees() (which requires TREASURY_ROLE separately)
         if (!hasRole(GOVERNANCE_ROLE, msg.sender) &&
-            !hasRole(TREASURY_ROLE, msg.sender) &&
+            !hasRole(FEE_SOURCE_ROLE, msg.sender) &&
             !_isAuthorizedFeeSource(msg.sender)) {
             revert CommonErrorLibrary.NotAuthorized();
         }
@@ -183,11 +189,7 @@ contract FeeCollector is
         CommonValidationLibrary.validateNonZeroAddress(_devFund, "devFund");
         CommonValidationLibrary.validateNonZeroAddress(_communityFund, "communityFund");
         
-        // Validate addresses are not contracts (security measure)
-        CommonValidationLibrary.validateNotContract(_treasury, "treasury");
-        CommonValidationLibrary.validateNotContract(_devFund, "devFund");
-        CommonValidationLibrary.validateNotContract(_communityFund, "communityFund");
-        
+        // MED-4: Removed validateNotContract — smart contract treasuries (Gnosis Safe, DAOs) must be allowed
         __AccessControl_init();
         __ReentrancyGuard_init();
         __Pausable_init();
@@ -535,11 +537,8 @@ contract FeeCollector is
         CommonValidationLibrary.validateNonZeroAddress(_devFund, "devFund");
         CommonValidationLibrary.validateNonZeroAddress(_communityFund, "communityFund");
         
-        // Validate addresses are not contracts (security measure)
-        CommonValidationLibrary.validateNotContract(_treasury, "treasury");
-        CommonValidationLibrary.validateNotContract(_devFund, "devFund");
-        CommonValidationLibrary.validateNotContract(_communityFund, "communityFund");
-        
+        // MED-4: Removed validateNotContract — smart contract treasuries (Gnosis Safe, DAOs) must be allowed
+
         // Remove old addresses from whitelist
         authorizedETHRecipients[treasury] = false;
         authorizedETHRecipients[devFund] = false;
@@ -576,7 +575,8 @@ contract FeeCollector is
      */
     function authorizeFeeSource(address feeSource) external onlyRole(GOVERNANCE_ROLE) {
         if (feeSource == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        _grantRole(TREASURY_ROLE, feeSource);
+        // MED-3: grant FEE_SOURCE_ROLE (depositor right) not TREASURY_ROLE (distributor right)
+        _grantRole(FEE_SOURCE_ROLE, feeSource);
     }
     
     /**
@@ -594,7 +594,8 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies
      */
     function revokeFeeSource(address feeSource) external onlyRole(GOVERNANCE_ROLE) {
-        _revokeRole(TREASURY_ROLE, feeSource);
+        // MED-3: revoke FEE_SOURCE_ROLE, not TREASURY_ROLE
+        _revokeRole(FEE_SOURCE_ROLE, feeSource);
     }
 
     // =============================================================================
@@ -753,7 +754,8 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies
      */
     function _isAuthorizedFeeSource(address feeSource) internal view returns (bool) {
-        return hasRole(TREASURY_ROLE, feeSource);
+        // MED-3: use FEE_SOURCE_ROLE (depositor right), not TREASURY_ROLE (distributor right)
+        return hasRole(FEE_SOURCE_ROLE, feeSource);
     }
     
     /**

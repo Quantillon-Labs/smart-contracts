@@ -583,15 +583,22 @@ contract ChainlinkOracleTestSuite is Test {
         
         // Admin enables dev mode
         vm.prank(admin);
-        oracle.setDevMode(true);
+        oracle.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        oracle.applyDevMode();
         assertTrue(oracle.devModeEnabled());
         
         // Admin disables dev mode
         vm.prank(admin);
-        oracle.setDevMode(false);
+        oracle.proposeDevMode(false);
+        // Use absolute timestamp: 172802 (current) + 48h + 1 = 345603
+        vm.warp(400000);
+        vm.prank(admin);
+        oracle.applyDevMode();
         assertFalse(oracle.devModeEnabled());
     }
-    
+
     /**
      * @notice Test dev mode toggle unauthorized access
      * @dev Verifies non-admin cannot toggle dev mode
@@ -608,12 +615,12 @@ contract ChainlinkOracleTestSuite is Test {
         // User tries to enable dev mode - should revert
         vm.prank(user);
         vm.expectRevert();
-        oracle.setDevMode(true);
-        
+        oracle.proposeDevMode(true);
+
         // Oracle manager tries to enable dev mode - should revert
         vm.prank(oracleManager);
         vm.expectRevert();
-        oracle.setDevMode(true);
+        oracle.proposeDevMode(true);
     }
     
     /**
@@ -634,7 +641,10 @@ contract ChainlinkOracleTestSuite is Test {
         
         // Enable dev mode
         vm.prank(admin);
-        oracle.setDevMode(true);
+        oracle.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        oracle.applyDevMode();
         assertTrue(oracle.devModeEnabled());
         
         // Set a price that deviates more than MAX_PRICE_DEVIATION (6% deviation)
@@ -669,7 +679,10 @@ contract ChainlinkOracleTestSuite is Test {
     function test_DevMode_PriceDeviationCheckWorksWhenDisabled() public {
         // Ensure dev mode is disabled
         vm.prank(admin);
-        oracle.setDevMode(false);
+        oracle.proposeDevMode(false);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        oracle.applyDevMode();
         assertFalse(oracle.devModeEnabled());
 
         // Set a price that deviates more than MAX_PRICE_DEVIATION
@@ -699,7 +712,10 @@ contract ChainlinkOracleTestSuite is Test {
     function test_DevMode_GetEurUsdDetailsSkipsDeviationCheck() public {
         // Enable dev mode first
         vm.prank(admin);
-        oracle.setDevMode(true);
+        oracle.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        oracle.applyDevMode();
 
         // Set a deviated price
         uint256 deviatedPrice = EUR_USD_PRICE * (BASIS_POINTS + 600) / BASIS_POINTS;

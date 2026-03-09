@@ -436,9 +436,12 @@ contract SecureUpgradeableTest is Test {
 
     function test_EmergencyDisableSecureUpgrades_Success() public {
         vm.prank(admin);
+        secureContract.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        vm.prank(admin);
         vm.expectEmit(false, false, false, true);
         emit SecureUpgradesToggled(false);
-        secureContract.emergencyDisableSecureUpgrades();
+        secureContract.applyEmergencyDisableSecureUpgrades();
 
         assertFalse(secureContract.secureUpgradesEnabled(), "Secure upgrades should be disabled");
     }
@@ -446,13 +449,16 @@ contract SecureUpgradeableTest is Test {
     function test_EmergencyDisableSecureUpgrades_RevertNotAdmin() public {
         vm.prank(attacker);
         vm.expectRevert();
-        secureContract.emergencyDisableSecureUpgrades();
+        secureContract.proposeEmergencyDisableSecureUpgrades();
     }
 
     function test_EnableSecureUpgrades_Success() public {
-        // First disable
+        // First disable using 2-step pattern
         vm.prank(admin);
-        secureContract.emergencyDisableSecureUpgrades();
+        secureContract.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        vm.prank(admin);
+        secureContract.applyEmergencyDisableSecureUpgrades();
 
         // Then enable
         vm.prank(admin);
@@ -480,7 +486,10 @@ contract SecureUpgradeableTest is Test {
 
     function test_EnableSecureUpgrades_RevertNotAdmin() public {
         vm.prank(admin);
-        secureContract.emergencyDisableSecureUpgrades();
+        secureContract.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        vm.prank(admin);
+        secureContract.applyEmergencyDisableSecureUpgrades();
 
         vm.prank(attacker);
         vm.expectRevert();
@@ -686,9 +695,12 @@ contract SecureUpgradeableTest is Test {
         // Verify initial version
         assertEq(secureContract.getVersion(), 1, "Should start at version 1");
 
-        // Step 1: Disable secure upgrades (emergency)
+        // Step 1: Disable secure upgrades (emergency) using 2-step pattern
         vm.prank(admin);
-        secureContract.emergencyDisableSecureUpgrades();
+        secureContract.proposeEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        vm.prank(admin);
+        secureContract.applyEmergencyDisableSecureUpgrades();
 
         // Step 2: Perform emergency upgrade
         vm.prank(upgrader);

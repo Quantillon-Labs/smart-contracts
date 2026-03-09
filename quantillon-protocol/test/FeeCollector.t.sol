@@ -625,7 +625,8 @@ contract FeeCollectorTest is Test {
         feeCollector.authorizeFeeSource(newFeeSource);
         vm.stopPrank();
         
-        assertTrue(feeCollector.hasRole(feeCollector.TREASURY_ROLE(), newFeeSource));
+        // MED-3: authorizeFeeSource now grants FEE_SOURCE_ROLE, not TREASURY_ROLE
+        assertTrue(feeCollector.hasRole(feeCollector.FEE_SOURCE_ROLE(), newFeeSource));
         assertTrue(feeCollector.isAuthorizedFeeSource(newFeeSource));
     }
     
@@ -647,7 +648,8 @@ contract FeeCollectorTest is Test {
         feeCollector.revokeFeeSource(feeSource);
         vm.stopPrank();
         
-        assertFalse(feeCollector.hasRole(feeCollector.TREASURY_ROLE(), feeSource));
+        // MED-3: revokeFeeSource now revokes FEE_SOURCE_ROLE, not TREASURY_ROLE
+        assertFalse(feeCollector.hasRole(feeCollector.FEE_SOURCE_ROLE(), feeSource));
         assertFalse(feeCollector.isAuthorizedFeeSource(feeSource));
     }
     
@@ -852,7 +854,8 @@ contract FeeCollectorTest is Test {
      */
     function test_IsAuthorizedFeeSource_Success() public view {
         assertTrue(feeCollector.isAuthorizedFeeSource(feeSource));
-        assertTrue(feeCollector.isAuthorizedFeeSource(treasury));
+        // MED-3: treasury has TREASURY_ROLE (distributor) but not FEE_SOURCE_ROLE (depositor)
+        assertFalse(feeCollector.isAuthorizedFeeSource(treasury));
         assertTrue(feeCollector.isAuthorizedFeeSource(admin));
         assertFalse(feeCollector.isAuthorizedFeeSource(unauthorizedUser));
     }

@@ -22,6 +22,7 @@ import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {HedgerPoolLogicLibrary} from "../libraries/HedgerPoolLogicLibrary.sol";
 import {HedgerPoolOptimizationLibrary} from "../libraries/HedgerPoolOptimizationLibrary.sol";
+import {FeeCollector} from "./FeeCollector.sol";
 
 /**
  * @title HedgerPool
@@ -95,6 +96,9 @@ contract HedgerPool is
 
     /// @notice Address of the single hedger allowed to open positions
     /// @dev This replaces the previous multi-hedger whitelist model
+    /// @dev INFO-2: ARCHITECTURAL CONSTRAINT — Only one hedger can exist at a time.
+    ///      If the single hedger exits or becomes unavailable, the protocol's hedging
+    ///      guarantee collapses. Multi-hedger support requires a protocol redesign.
     address public singleHedger;
 
     /// @notice Minimum blocks a position must be held before closing (~60s on mainnet)
@@ -105,6 +109,9 @@ contract HedgerPool is
 
     /// @notice Pending reward withdrawals for hedgers whose direct transfer failed (e.g. USDC blacklist)
     mapping(address => uint256) public pendingRewardWithdrawals;
+
+    /// @notice MED-6: Address of the FeeCollector that receives margin fees
+    address public feeCollector;
 
     struct HedgePosition {
         address hedger;
@@ -160,6 +167,10 @@ contract HedgerPool is
     event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
     event RealizedPnLRecorded(uint256 indexed positionId, int256 pnlDelta, int256 totalRealizedPnL);
     event QeuroShareCalculated(uint256 indexed positionId, uint256 qeuroShare, uint256 qeuroBacked, uint256 totalQeuroBacked);
+    /// @notice MED-2: Emitted when USDC is deposited into the reward reserve
+    event RewardReserveFunded(address indexed funder, uint256 amount);
+    /// @notice MED-6: Emitted when the FeeCollector address is updated
+    event FeeCollectorUpdated(address indexed feeCollector);
     event RealizedPnLCalculation(uint256 indexed positionId, uint256 qeuroAmount, uint256 qeuroBacked, uint256 filledBefore, uint256 price, int256 totalUnrealizedPnL, int256 realizedDelta);
 
     modifier onlyVault() {
@@ -559,11 +570,20 @@ contract HedgerPool is
             HedgerPoolOptimizationLibrary.packMarginData(netAmount, newMarginRatio, true)
         );
 
-        // Transfer USDC directly to vault for unified liquidity management
-        usdc.safeTransferFrom(msg.sender, address(vault), amount);
-        
-        // Notify vault of additional hedger deposit
-        vault.addHedgerDeposit(amount);
+        // MED-6: Pull full amount (including fee) from hedger into this contract first,
+        //        then route netAmount to vault and fee to FeeCollector to prevent CR inflation.
+        usdc.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Forward net collateral to vault
+        usdc.safeTransfer(address(vault), netAmount);
+        vault.addHedgerDeposit(netAmount);
+
+        // Route fee through FeeCollector (if fee > 0 and feeCollector is set)
+        // `fee` is already computed above as `amount.percentageOf(coreParams.marginFee)`
+        if (fee > 0 && feeCollector != address(0)) {
+            usdc.safeIncreaseAllowance(feeCollector, fee);
+            FeeCollector(feeCollector).collectFees(address(usdc), fee, "margin");
+        }
     }
 
     /**
@@ -806,11 +826,13 @@ contract HedgerPool is
      * @custom:access Restricted to hedgers with active positions
      * @custom:oracle No oracle dependencies
      */
-    function claimHedgingRewards() 
-        external 
-        nonReentrant 
-        returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards) 
+    function claimHedgingRewards()
+        external
+        nonReentrant
+        returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards)
     {
+        // CRIT-1: Only the authorized single hedger may claim rewards
+        if (msg.sender != singleHedger) revert CommonErrorLibrary.NotAuthorized();
         address hedger = msg.sender;
         HedgerRewardState storage rewardState = hedgerRewards[hedger];
 
@@ -1239,6 +1261,24 @@ contract HedgerPool is
         // Explicit zero address check to satisfy static analysis
         if (hedger == address(0)) revert CommonErrorLibrary.InvalidAddress();
         singleHedger = hedger;
+    }
+
+    /// @notice MED-6: Set the FeeCollector address that receives margin fees
+    /// @param _feeCollector Address of the FeeCollector contract
+    function setFeeCollector(address _feeCollector) external {
+        _validateRole(DEFAULT_ADMIN_ROLE);
+        if (_feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        feeCollector = _feeCollector;
+        emit FeeCollectorUpdated(_feeCollector);
+    }
+
+    /// @notice MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out
+    /// @dev Callable by any address authorized to fund the reserve (vault, fee collector, governance)
+    /// @param amount Amount of USDC to deposit (6 decimals)
+    function fundRewardReserve(uint256 amount) external nonReentrant {
+        if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
+        usdc.safeTransferFrom(msg.sender, address(this), amount);
+        emit RewardReserveFunded(msg.sender, amount);
     }
 
     /**

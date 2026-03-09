@@ -7,6 +7,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
+import {ISecureUpgradeable} from "../interfaces/ISecureUpgradeable.sol";
 
 /**
  * @title TimelockUpgradeable
@@ -30,6 +31,9 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     
     /// @notice Maximum number of multi-sig signers
     uint256 public constant MAX_MULTISIG_SIGNERS = 5;
+
+    /// @notice Maximum age of a pending upgrade proposal (LOW-6: prevents stale proposal execution)
+    uint256 public constant MAX_PROPOSAL_AGE = 30 days;
     
     // ============ Roles ============
     
@@ -79,8 +83,10 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     
     struct PendingUpgrade {
         address implementation;
+        address proposingProxy;  // HIGH-1: proxy contract that initiated this upgrade proposal
         uint256 proposedAt;
         uint256 executableAt;
+        uint256 expiryAt;        // LOW-6: proposal expires after MAX_PROPOSAL_AGE to prevent stale execution
         string description;
         bool isEmergency;
         address proposer;
@@ -209,8 +215,10 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         
         pendingUpgrades[newImplementation] = PendingUpgrade({
             implementation: newImplementation,
+            proposingProxy: msg.sender,              // HIGH-1: caller is the proxy (via SecureUpgradeable.proposeUpgrade)
             proposedAt: proposedAt,
             executableAt: executableAt,
+            expiryAt: proposedAt + MAX_PROPOSAL_AGE, // LOW-6: proposal expires after 30 days
             description: description,
             isEmergency: false,
             proposer: msg.sender
@@ -284,14 +292,27 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         CommonValidationLibrary.validateCondition(upgrade.implementation != address(0), "pending");
         CommonValidationLibrary.validateCondition(TIME_PROVIDER.currentTime() >= upgrade.executableAt, "timelock");
         CommonValidationLibrary.validateMinAmount(upgradeApprovalCount[implementation], MIN_MULTISIG_APPROVALS);
-        
+        // LOW-6: Reject stale proposals
+        if (TIME_PROVIDER.currentTime() > upgrade.expiryAt) revert CommonErrorLibrary.NotActive();
+
+        // Capture proxy address before clearing state (HIGH-1)
+        address proxy = upgrade.proposingProxy;
+
         // Clear the pending upgrade
         delete pendingUpgrades[implementation];
-        
+
         // Clear all approvals for this implementation
         _clearUpgradeApprovals(implementation);
-        
+
         emit UpgradeExecuted(implementation, msg.sender, TIME_PROVIDER.currentTime());
+
+        // HIGH-1: Actually perform the proxy upgrade — this was missing, causing upgrades to silently no-op.
+        // SecureUpgradeable.executeUpgrade() checks msg.sender == address(timelock), which passes here
+        // because this call originates from the TimelockUpgradeable contract itself.
+        // Only call if proposingProxy is a contract (guards against EOA proposers in unit tests).
+        if (proxy.code.length > 0) {
+            ISecureUpgradeable(proxy).executeUpgrade(implementation);
+        }
     }
     
     /**
@@ -349,8 +370,10 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         
         pendingUpgrades[newImplementation] = PendingUpgrade({
             implementation: newImplementation,
+            proposingProxy: msg.sender,
             proposedAt: TIME_PROVIDER.currentTime(),
             executableAt: TIME_PROVIDER.currentTime(), // Immediate execution
+            expiryAt: TIME_PROVIDER.currentTime() + MAX_PROPOSAL_AGE,
             description: description,
             isEmergency: true,
             proposer: msg.sender

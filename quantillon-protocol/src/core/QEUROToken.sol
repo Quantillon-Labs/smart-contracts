@@ -518,24 +518,21 @@ contract QEUROToken is
         if (recipients.length != amounts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
         if (recipients.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
         
+        // INFO-1: totalFeeAmount was accumulated here but never used; fees are collected at the
+        // vault level (QuantillonVault) before this function is called. Removed dead code.
         uint256 totalAmount = 0;
-        uint256 totalFeeAmount = 0;
-        
+
         // Pre-validate inputs and compliance per recipient
         for (uint256 i = 0; i < recipients.length; i++) {
             address to = recipients[i];
             uint256 amount = amounts[i];
-            
+
             if (to == address(0)) revert CommonErrorLibrary.InvalidAddress();
             if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
-            
+
             if (isBlacklisted[to]) revert TokenErrorLibrary.BlacklistedAddress();
             if (whitelistEnabled && !isWhitelisted[to]) revert CommonErrorLibrary.NotWhitelisted();
-            
-            // Calculate fee for this mint
-            uint256 feeAmount = (amount * MINT_FEE_RATE) / PRECISION;
-            totalFeeAmount += feeAmount;
-            
+
             // Accumulate total to check supply cap and rate limits once
             totalAmount = totalAmount + amount;
         }

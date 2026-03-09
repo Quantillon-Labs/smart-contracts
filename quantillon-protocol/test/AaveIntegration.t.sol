@@ -432,8 +432,11 @@ contract AaveIntegrationTest is Test {
         feeCollector.grantRole(feeCollector.TREASURY_ROLE(), address(vault));
         
         // Enable dev mode to bypass price cache requirements
-        vault.setDevMode(true);
-        
+        vault.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vault.applyDevMode();
+        vault.initializePriceCache();
+
         // Mint USDC to user for testing
         usdc.mint(user, INITIAL_USDC);
         
@@ -717,8 +720,11 @@ contract AaveIntegrationTest is Test {
         qeuro.grantRole(qeuro.MINTER_ROLE(), address(vaultNoAave));
         // Grant TREASURY_ROLE on FeeCollector to allow fee collection
         feeCollector.grantRole(feeCollector.TREASURY_ROLE(), address(vaultNoAave));
-        vaultNoAave.setDevMode(true);
-        
+        vaultNoAave.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vaultNoAave.applyDevMode();
+        vaultNoAave.initializePriceCache();
+
         vm.stopPrank();
         
         // Act: Deposit should still work (Aave deployment silently skipped)

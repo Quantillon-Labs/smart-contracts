@@ -27,12 +27,20 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     
     /// @notice Whether the contract is using secure upgrades
     bool public secureUpgradesEnabled;
-    
+
+    /// @notice INFO-4: Minimum delay before a proposed emergency-disable takes effect (24h)
+    uint256 public constant EMERGENCY_DISABLE_DELAY = 24 hours;
+
+    /// @notice INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
+    uint256 public emergencyDisablePendingAt;
+
     // ============ Events ============
-    
+
     event TimelockSet(address indexed timelock);
     event SecureUpgradesToggled(bool enabled);
     event SecureUpgradeAuthorized(address indexed newImplementation, address indexed authorizedBy, string description);
+    /// @notice INFO-4: Emitted when an emergency-disable proposal is created
+    event EmergencyDisableProposed(uint256 activatesAt);
     
     // ============ Modifiers ============
     
@@ -256,8 +264,10 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         if (address(timelock) == address(0)) {
             return ITimelockUpgradeable.PendingUpgrade({
                 implementation: address(0),
+                proposingProxy: address(0),
                 proposedAt: 0,
                 executableAt: 0,
+                expiryAt: 0,
                 description: "",
                 isEmergency: false,
                 proposer: address(0)
@@ -327,7 +337,17 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function emergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /// @notice INFO-4: Propose disabling secure upgrades; enforces a 24-hour timelock
+    function proposeEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        emergencyDisablePendingAt = block.timestamp + EMERGENCY_DISABLE_DELAY;
+        emit EmergencyDisableProposed(emergencyDisablePendingAt);
+    }
+
+    /// @notice INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed
+    function applyEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (emergencyDisablePendingAt == 0) revert CommonErrorLibrary.NotActive();
+        if (block.timestamp < emergencyDisablePendingAt) revert CommonErrorLibrary.NotActive();
+        emergencyDisablePendingAt = 0;
         secureUpgradesEnabled = false;
         emit SecureUpgradesToggled(false);
     }

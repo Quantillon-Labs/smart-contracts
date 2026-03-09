@@ -360,7 +360,12 @@ contract QuantillonInvariants is Test {
 
         // Test-friendly: skip price deviation, allow minting at 101% collateralization, seed hedger margin
         vm.prank(admin);
-        vault.setDevMode(true);
+        vault.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
+        vm.prank(admin);
+        vault.initializePriceCache();
         vm.startPrank(governance);
         vault.updateCollateralizationThresholds(101e18, 101e18);
         hedgerPool.setSingleHedger(hedger1);

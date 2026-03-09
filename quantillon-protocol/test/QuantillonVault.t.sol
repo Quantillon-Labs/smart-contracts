@@ -217,7 +217,11 @@ contract QuantillonVaultTestSuite is Test {
         vault.grantRole(keccak256("EMERGENCY_ROLE"), emergency);
         // Setup mocks
         _setupMocks();
-        
+
+        // LOW-5: seed the oracle price cache so the bootstrap-mint exception is available
+        vm.prank(admin);
+        vault.initializePriceCache();
+
         // Fund test users
         vm.deal(user1, 100 ether);
         vm.deal(user2, 100 ether);
@@ -846,12 +850,18 @@ contract QuantillonVaultTestSuite is Test {
         
         // Admin enables dev mode
         vm.prank(admin);
-        vault.setDevMode(true);
+        vault.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
         assertTrue(vault.devModeEnabled());
         
         // Admin disables dev mode
         vm.prank(admin);
-        vault.setDevMode(false);
+        vault.proposeDevMode(false);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
         assertFalse(vault.devModeEnabled());
     }
     
@@ -868,15 +878,15 @@ contract QuantillonVaultTestSuite is Test {
      * @custom:oracle Tests access control on QuantillonVault dev mode
      */
     function test_DevMode_ToggleUnauthorized_Revert() public {
-        // User tries to enable dev mode - should revert
+        // User tries to enable dev mode - should revert (proposeDevMode only)
         vm.prank(user1);
         vm.expectRevert();
-        vault.setDevMode(true);
-        
-        // Governance tries to enable dev mode - should revert
+        vault.proposeDevMode(true);
+
+        // Governance tries to enable dev mode - should revert (proposeDevMode only)
         vm.prank(governance);
         vm.expectRevert();
-        vault.setDevMode(true);
+        vault.proposeDevMode(true);
     }
     
     /**
@@ -894,7 +904,10 @@ contract QuantillonVaultTestSuite is Test {
     function test_DevMode_MintWithPriceDeviation_Success() public {
         // Enable dev mode
         vm.prank(admin);
-        vault.setDevMode(true);
+        vault.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
         assertTrue(vault.devModeEnabled());
         
         // First mint to establish a price cache
@@ -936,7 +949,10 @@ contract QuantillonVaultTestSuite is Test {
         
         // Enable dev mode
         vm.prank(admin);
-        vault.setDevMode(true);
+        vault.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
         
         // Change oracle price significantly
         uint256 deviatedPrice = EUR_USD_PRICE * 9000 / 10000; // 10% lower
@@ -975,7 +991,10 @@ contract QuantillonVaultTestSuite is Test {
     function test_DevMode_MintWithPriceDeviationWhenDisabled_Revert() public {
         // Ensure dev mode is disabled
         vm.prank(admin);
-        vault.setDevMode(false);
+        vault.proposeDevMode(false);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode();
         assertFalse(vault.devModeEnabled());
         
         // First mint to establish a price cache
@@ -2290,19 +2309,18 @@ contract QuantillonVaultTestSuite is Test {
         // Total collateral = 1M USDC, Total QEURO = 909,090.91 QEURO (1M USDC worth at 1.10 rate)
         uint256 totalCollateralUsdc = 1_000_000e6;
         uint256 totalQeuroSupply = 909090909090909090909090;
-        
-        // Set vault USDC balance via mock
-        vm.mockCall(
-            mockUSDC,
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(vault)),
-            abi.encode(totalCollateralUsdc)
-        );
+
+        // INFO-5: calculateLiquidationPayout now uses totalUsdcHeld+totalUsdcInAave (not balanceOf)
+        // Mint USDC into vault to set totalUsdcHeld = totalCollateralUsdc
+        vm.prank(user1);
+        vault.mintQEURO(totalCollateralUsdc, 0);
+
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
             abi.encode(totalQeuroSupply)
         );
-        
+
         // Calculate payout for 100 QEURO
         uint256 qeuroAmount = 100e18;
         (uint256 usdcPayout, , uint256 premiumOrDiscountBps) = vault.calculateLiquidationPayout(qeuroAmount);
@@ -2338,27 +2356,26 @@ contract QuantillonVaultTestSuite is Test {
         // CR = 1,050,000 / 1,000,000 = 105%
         uint256 totalCollateralUsdc = 1_050_000e6;
         uint256 totalQeuroSupply = 909090909090909090909090;
-        
+
         testHedgerPool.setTotalMargin(50_000e6);
         testHedgerPool.setTotalEffectiveCollateral(50_000e6);
-        
+
         vm.prank(governance);
         vault.updateUserPool(address(testUserPool));
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
-        
-        // Set vault USDC balance via mock
-        vm.mockCall(
-            mockUSDC,
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(vault)),
-            abi.encode(totalCollateralUsdc)
-        );
+
+        // INFO-5: calculateLiquidationPayout now uses totalUsdcHeld+totalUsdcInAave (not balanceOf)
+        // Mint USDC into vault to set totalUsdcHeld = totalCollateralUsdc
+        vm.prank(user1);
+        vault.mintQEURO(totalCollateralUsdc, 0);
+
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
             abi.encode(totalQeuroSupply)
         );
-        
+
         uint256 qeuroAmount = 100e18;
         (uint256 usdcPayout, bool isPremium, uint256 premiumOrDiscountBps) = vault.calculateLiquidationPayout(qeuroAmount);
         

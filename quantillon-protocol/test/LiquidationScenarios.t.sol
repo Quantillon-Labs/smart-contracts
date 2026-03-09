@@ -199,7 +199,10 @@ contract LiquidationScenarios is IntegrationTests {
         userPool.grantRole(userPool.EMERGENCY_ROLE(), emergency);
         hedgerPool.grantRole(hedgerPool.GOVERNANCE_ROLE(), governance);
         hedgerPool.grantRole(hedgerPool.EMERGENCY_ROLE(), emergency);
-        vault.setDevMode(true);
+        vault.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vault.applyDevMode();
+        vault.initializePriceCache();
         vm.stopPrank();
 
         vm.startPrank(governance);

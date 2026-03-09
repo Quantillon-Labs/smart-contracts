@@ -263,7 +263,10 @@ contract IntegrationTests is Test {
         hedgerPool.grantRole(hedgerPool.GOVERNANCE_ROLE(), governance);
         hedgerPool.grantRole(hedgerPool.EMERGENCY_ROLE(), emergency);
 
-        vault.setDevMode(true);
+        vault.proposeDevMode(true);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vault.applyDevMode();
+        vault.initializePriceCache();
         vm.stopPrank();
 
         vm.startPrank(governance);
@@ -503,7 +506,10 @@ contract IntegrationTests is Test {
      */
     function test_Integration_OracleExtremePrice_RevertsMint() public virtual {
         vm.prank(admin);
-        vault.setDevMode(false); // enable price deviation check
+        vault.proposeDevMode(false);
+        vm.warp(block.timestamp + 48 hours + 1);
+        vm.prank(admin);
+        vault.applyDevMode(); // enable price deviation check
 
         // One mint at normal price to set lastValidEurUsdPrice
         vm.startPrank(user1);

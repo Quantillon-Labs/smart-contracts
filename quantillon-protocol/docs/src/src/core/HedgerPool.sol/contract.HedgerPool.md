@@ -47,13 +47,6 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 ```
 
 
-### HEDGER_ROLE
-
-```solidity
-bytes32 public constant HEDGER_ROLE = keccak256("HEDGER_ROLE")
-```
-
-
 ### usdc
 
 ```solidity
@@ -129,6 +122,10 @@ Address of the single hedger allowed to open positions
 
 This replaces the previous multi-hedger whitelist model
 
+INFO-2: ARCHITECTURAL CONSTRAINT — Only one hedger can exist at a time.
+If the single hedger exits or becomes unavailable, the protocol's hedging
+guarantee collapses. Multi-hedger support requires a protocol redesign.
+
 
 ```solidity
 address public singleHedger
@@ -159,6 +156,60 @@ Pending reward withdrawals for hedgers whose direct transfer failed (e.g. USDC b
 
 ```solidity
 mapping(address => uint256) public pendingRewardWithdrawals
+```
+
+
+### feeCollector
+MED-6: Address of the FeeCollector that receives margin fees
+
+
+```solidity
+address public feeCollector
+```
+
+
+### rewardFeeSplit
+Share of protocol fees routed to the local reward reserve (1e18 = 100%)
+
+
+```solidity
+uint256 public rewardFeeSplit
+```
+
+
+### MAX_REWARD_FEE_SPLIT
+Maximum allowed value for rewardFeeSplit
+
+
+```solidity
+uint256 public constant MAX_REWARD_FEE_SPLIT = 1e18
+```
+
+
+### SINGLE_HEDGER_ROTATION_DELAY
+Delay before rotating the single hedger after proposal
+
+
+```solidity
+uint256 public constant SINGLE_HEDGER_ROTATION_DELAY = 24 hours
+```
+
+
+### pendingSingleHedger
+Pending single-hedger address awaiting delayed activation
+
+
+```solidity
+address public pendingSingleHedger
+```
+
+
+### singleHedgerPendingAt
+Earliest timestamp at which pendingSingleHedger can be applied (0 = none pending)
+
+
+```solidity
+uint256 public singleHedgerPendingAt
 ```
 
 
@@ -398,7 +449,7 @@ function initialize(
 Opens a new hedge position for a hedger
 
 Position opening process:
-1. Validates hedger whitelist status
+1. Enforces single hedger access
 2. Fetches current EUR/USD price from oracle
 3. Calculates position size and validates parameters
 4. Transfers USDC to vault for unified liquidity
@@ -406,14 +457,14 @@ Position opening process:
 
 Security features:
 1. Flash loan protection via secureNonReentrant
-2. Whitelist validation if enabled
+2. Single-hedger gate
 3. Parameter validation (leverage, amounts)
 4. Oracle price validation
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
 
-- validation: Validates amount > 0, leverage within limits, hedger whitelist
+- validation: Validates amount > 0, leverage within limits, and active single hedger
 
 - state-changes: Creates new position, updates hedger stats, transfers USDC to vault
 
@@ -423,7 +474,7 @@ Security features:
 
 - reentrancy: Protected by secureNonReentrant modifier and proper CEI pattern
 
-- access: Restricted to whitelisted hedgers (if whitelist enabled)
+- access: Restricted to configured single hedger
 
 - oracle: Requires fresh oracle price data
 
@@ -603,7 +654,7 @@ Callable only by QuantillonVault to sync hedger exposure with user activity
 
 - state-changes: Updates total filled exposure and per-position fills
 
-- events: Emits `HedgerFillUpdated` for every position receiving fill
+- events: None
 
 - errors: Reverts with `InvalidAmount`, `InvalidOraclePrice`, `NoActiveHedgerLiquidity`, or `InsufficientHedgerCapacity`
 
@@ -642,7 +693,7 @@ Callable only by QuantillonVault to sync hedger exposure with user activity
 
 - state-changes: Reduces total filled exposure and per-position fills
 
-- events: Emits `HedgerFillUpdated` for every position releasing fill
+- events: None
 
 - errors: Reverts with `InvalidAmount`, `InvalidOraclePrice`, or `InsufficientHedgerCapacity`
 
@@ -686,7 +737,7 @@ The qeuroBacked and filledVolume are also reduced proportionally.
 
 - state-changes: Reduces hedger margin, records realized P&L, reduces qeuroBacked and filledVolume
 
-- events: Emits RealizedPnLRecorded
+- events: Emits `MarginUpdated` when realized losses/profits modify margin
 
 - errors: None (early returns for invalid states)
 
@@ -714,20 +765,21 @@ Claims hedging rewards for a hedger
 
 Reward claiming process:
 1. Calculates interest differential based on exposure and rates
-2. Calculates yield shift rewards from YieldShift contract
+2. Settles YieldShift rewards directly via `yieldShift.claimHedgerYield`
 3. Updates hedger's last reward block
-4. Transfers total rewards to hedger
+4. Pays interest-differential rewards from HedgerPool reserve
+(or escrows into `pendingRewardWithdrawals` if transfer cannot complete)
 
 Security features:
 1. Reentrancy protection
-2. Reward calculation validation
+2. Single-source settlement for YieldShift rewards (no double counting)
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
 
-- validation: Validates hedger has active positions and rewards available
+- validation: Caller must be configured `singleHedger`
 
-- state-changes: Updates hedger reward tracking, transfers rewards
+- state-changes: Updates hedger reward tracking and reward escrow state
 
 - events: Emits HedgingRewardsClaimed with reward details
 
@@ -735,7 +787,7 @@ Security features:
 
 - reentrancy: Protected by nonReentrant modifier
 
-- access: Restricted to hedgers with active positions
+- access: Restricted to configured single hedger
 
 - oracle: No oracle dependencies
 
@@ -1078,7 +1130,7 @@ Security features:
 
 - access: Restricted to EMERGENCY_ROLE
 
-- oracle: Requires oracle price for _unwindFilledVolume
+- oracle: Not applicable
 
 
 ```solidity
@@ -1252,6 +1304,77 @@ function setSingleHedger(address hedger) external;
 |`hedger`|`address`|Address of the single hedger|
 
 
+### proposeSingleHedger
+
+INFO-2: Explicit delayed single-hedger rotation proposal.
+
+
+```solidity
+function proposeSingleHedger(address hedger) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address proposed to become the next single hedger.|
+
+
+### applySingleHedgerRotation
+
+INFO-2: Applies a previously proposed single-hedger rotation after delay.
+
+
+```solidity
+function applySingleHedgerRotation() external;
+```
+
+### setFeeCollector
+
+MED-6: Set the FeeCollector address that receives margin fees
+
+
+```solidity
+function setFeeCollector(address _feeCollector) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_feeCollector`|`address`|Address of the FeeCollector contract|
+
+
+### updateRewardFeeSplit
+
+Updates the share of protocol fees routed to the local reward reserve.
+
+
+```solidity
+function updateRewardFeeSplit(uint256 newSplit) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newSplit`|`uint256`|Fee split in 1e18 precision (1e18 = 100%).|
+
+
+### fundRewardReserve
+
+MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.
+
+Permissionless funding path; caller must approve USDC before calling.
+
+
+```solidity
+function fundRewardReserve(uint256 amount) external nonReentrant;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Amount of USDC to deposit (6 decimals)|
+
+
 ### _getValidOraclePrice
 
 Gets a valid EUR/USD price from the oracle
@@ -1397,35 +1520,23 @@ Clears position's filled volume (no redistribution needed with single position)
 
 - state-changes: Clears position filledVolume, decrements totalFilledExposure
 
-- events: Emits HedgerFillUpdated with positionId, old filled volume, and 0
-
 - errors: Reverts with InsufficientHedgerCapacity if totalFilledExposure < cachedFilledVolume
 
 - reentrancy: Protected by nonReentrant on all public entry points
 
 - access: Internal - only callable within contract
 
-- oracle: Requires fresh oracle price data
+- oracle: Not applicable
 
 
 ```solidity
-function _unwindFilledVolume(uint256 positionId, HedgePosition storage position, uint256 cachedPrice)
-    internal
-    returns (uint256 freedVolume);
+function _unwindFilledVolume(HedgePosition storage position) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`positionId`|`uint256`|Unique identifier of the position being unwound|
 |`position`|`HedgePosition`|Storage reference to the position being unwound|
-|`cachedPrice`|`uint256`|Cached EUR/USD price to avoid reentrancy (18 decimals)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`freedVolume`|`uint256`|Amount of filled volume that was freed and redistributed|
 
 
 ### _isPositionHealthyForFill
@@ -1482,7 +1593,7 @@ Allocates `usdcAmount` to the single hedger position if healthy
 
 - state-changes: Updates `filledVolume` and `totalFilledExposure`
 
-- events: Emits `HedgerFillUpdated` for the position
+- events: None
 
 - errors: Reverts if capacity is insufficient or liquidity is absent
 
@@ -1518,7 +1629,7 @@ Decreases fills from the single hedger position
 
 - state-changes: Decreases filledVolume, updates totalFilledExposure, calculates realized P&L
 
-- events: Emits HedgerFillUpdated and RealizedPnLRecorded
+- events: Emits `MarginUpdated` when realized P&L changes margin
 
 - errors: Reverts with InvalidOraclePrice, NoActiveHedgerLiquidity, or InsufficientHedgerCapacity
 
@@ -1543,7 +1654,7 @@ function _decreaseFilledVolume(uint256 usdcAmount, uint256 redeemPrice, uint256 
 
 ### _applyFillChange
 
-Applies a fill delta to a single position and emits an event
+Applies a fill delta to a single position
 
 Handles both increases and decreases while enforcing capacity constraints
 
@@ -1554,7 +1665,7 @@ Handles both increases and decreases while enforcing capacity constraints
 
 - state-changes: Updates the position’s `filledVolume`
 
-- events: Emits `HedgerFillUpdated`
+- events: None
 
 - errors: Reverts with `InsufficientHedgerCapacity` on invalid operations
 
@@ -1566,14 +1677,12 @@ Handles both increases and decreases while enforcing capacity constraints
 
 
 ```solidity
-function _applyFillChange(uint256 positionId, HedgePosition storage position, uint256 delta, bool increase)
-    internal;
+function _applyFillChange(HedgePosition storage position, uint256 delta, bool increase) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`positionId`|`uint256`|ID of the position being updated|
 |`position`|`HedgePosition`|Storage pointer to the position struct|
 |`delta`|`uint256`|Amount of fill change to apply|
 |`increase`|`bool`|True to increase fill, false to decrease|
@@ -1644,7 +1753,7 @@ After calculation:
 
 - state-changes: Updates pos.realizedPnL and decreases filled volume
 
-- events: Emits RealizedPnLRecorded and HedgerFillUpdated
+- events: Emits `MarginUpdated` when realized P&L changes margin
 
 - errors: None
 
@@ -1660,7 +1769,7 @@ After calculation:
 
 - state-changes: Updates pos.realizedPnL, pos.margin, totalMargin, pos.positionSize
 
-- events: Emits RealizedPnLRecorded, RealizedPnLCalculation, MarginUpdated, HedgerFillUpdated
+- events: Emits `MarginUpdated` when realized P&L changes margin
 
 - errors: None - early returns for invalid states
 
@@ -1724,7 +1833,7 @@ function _calculateRedeemPnL(
     uint256 price,
     uint256 qeuroAmount,
     int128 previousRealizedPnL
-) internal pure returns (int256 totalUnrealizedPnL, int256 realizedDelta);
+) internal pure returns (int256 realizedDelta);
 ```
 **Parameters**
 
@@ -1740,32 +1849,14 @@ function _calculateRedeemPnL(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`totalUnrealizedPnL`|`int256`|Total unrealized P&L (mark-to-market)|
 |`realizedDelta`|`int256`|Realized P&L delta for this redemption|
 
 
 ### _applyRealizedPnLToMargin
 
-Applies realized P&L to position margin
+Applies realized P&L to position margin and emits MarginUpdated
 
-Delegates to _applyProfitToMargin or _applyLossToMargin based on sign of realizedDelta
-
-**Notes:**
-- security: Internal; updates margin and totalMargin
-
-- validation: Sign of realizedDelta determines path
-
-- state-changes: pos.margin, totalMargin, positionSize; may emit MarginUpdated
-
-- events: MarginUpdated via _applyProfitToMargin/_applyLossToMargin
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal
-
-- oracle: None
+Handles both profit and loss branches in a single path to keep bytecode compact.
 
 
 ```solidity
@@ -1778,152 +1869,6 @@ function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int
 |`posId`|`uint256`|Position ID|
 |`pos`|`HedgePosition`|Position storage reference|
 |`realizedDelta`|`int256`|Realized P&L amount (positive = profit, negative = loss)|
-
-
-### _applyProfitToMargin
-
-Applies profit to hedger margin
-
-Increases pos.margin and totalMargin; caps at uint96.max; updates positionSize and emits MarginUpdated
-
-**Notes:**
-- security: Margin capped at type(uint96).max
-
-- validation: realizedDelta > 0 assumed by caller
-
-- state-changes: pos.margin, totalMargin, pos.positionSize
-
-- events: MarginUpdated
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal
-
-- oracle: None
-
-
-```solidity
-function _applyProfitToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`posId`|`uint256`|Position ID|
-|`pos`|`HedgePosition`|Position storage reference|
-|`realizedDelta`|`int256`|Positive realized P&L amount|
-
-
-### _applyLossToMargin
-
-Applies loss to hedger margin
-
-Decreases pos.margin and totalMargin; margin never goes below zero; may zero positionSize
-
-**Notes:**
-- security: Margin floor at zero
-
-- validation: realizedDelta < 0 assumed by caller
-
-- state-changes: pos.margin, totalMargin, pos.positionSize
-
-- events: MarginUpdated
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal
-
-- oracle: None
-
-
-```solidity
-function _applyLossToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`posId`|`uint256`|Position ID|
-|`pos`|`HedgePosition`|Position storage reference|
-|`realizedDelta`|`int256`|Negative realized P&L amount|
-
-
-### _updatePositionSize
-
-Updates position size based on current margin and leverage
-
-positionSize = margin * leverage; capped at type(uint96).max
-
-**Notes:**
-- security: Caps positionSize at uint96.max
-
-- validation: Uses current pos.margin and pos.leverage
-
-- state-changes: pos.positionSize
-
-- events: None
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal
-
-- oracle: None
-
-
-```solidity
-function _updatePositionSize(HedgePosition storage pos) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`pos`|`HedgePosition`|Position storage reference|
-
-
-### _calculateMarginRatio
-
-Calculates margin ratio for a position
-
-(margin * 10000) / positionSize in basis points; 0 if margin or positionSize is 0
-
-**Notes:**
-- security: View only
-
-- validation: Division by zero avoided by early return
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal
-
-- oracle: None
-
-
-```solidity
-function _calculateMarginRatio(HedgePosition storage pos) internal view returns (uint256);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`pos`|`HedgePosition`|Position storage reference|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Margin ratio in basis points (0 if position has no size)|
 
 
 ### _validatePositionClosureSafety
@@ -1985,24 +1930,6 @@ event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 
 event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
 ```
 
-### HedgerWhitelisted
-
-```solidity
-event HedgerWhitelisted(address indexed hedger, address indexed caller);
-```
-
-### HedgerRemoved
-
-```solidity
-event HedgerRemoved(address indexed hedger, address indexed caller);
-```
-
-### HedgerWhitelistModeToggled
-
-```solidity
-event HedgerWhitelistModeToggled(bool enabled, address indexed caller);
-```
-
 ### ETHRecovered
 
 ```solidity
@@ -2021,38 +1948,40 @@ event TreasuryUpdated(address indexed treasury);
 event VaultUpdated(address indexed vault);
 ```
 
-### HedgerFillUpdated
+### RewardReserveFunded
+MED-2: Emitted when USDC is deposited into the reward reserve
+
 
 ```solidity
-event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
+event RewardReserveFunded(address indexed funder, uint256 amount);
 ```
 
-### RealizedPnLRecorded
+### FeeCollectorUpdated
+MED-6: Emitted when the FeeCollector address is updated
+
 
 ```solidity
-event RealizedPnLRecorded(uint256 indexed positionId, int256 pnlDelta, int256 totalRealizedPnL);
+event FeeCollectorUpdated(address indexed feeCollector);
 ```
 
-### QeuroShareCalculated
+### RewardFeeSplitUpdated
 
 ```solidity
-event QeuroShareCalculated(
-    uint256 indexed positionId, uint256 qeuroShare, uint256 qeuroBacked, uint256 totalQeuroBacked
+event RewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
+```
+
+### SingleHedgerRotationProposed
+
+```solidity
+event SingleHedgerRotationProposed(
+    address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt
 );
 ```
 
-### RealizedPnLCalculation
+### SingleHedgerRotationApplied
 
 ```solidity
-event RealizedPnLCalculation(
-    uint256 indexed positionId,
-    uint256 qeuroAmount,
-    uint256 qeuroBacked,
-    uint256 filledBefore,
-    uint256 price,
-    int256 totalUnrealizedPnL,
-    int256 realizedDelta
-);
+event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
 ```
 
 ## Structs

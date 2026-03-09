@@ -53,6 +53,15 @@ uint256 public constant MAX_MULTISIG_SIGNERS = 5
 ```
 
 
+### MAX_PROPOSAL_AGE
+Maximum age of a pending upgrade proposal (LOW-6: prevents stale proposal execution)
+
+
+```solidity
+uint256 public constant MAX_PROPOSAL_AGE = 30 days
+```
+
+
 ### UPGRADE_PROPOSER_ROLE
 Role for proposing upgrades
 
@@ -1017,8 +1026,10 @@ event EmergencyModeToggled(bool enabled, string reason);
 ```solidity
 struct PendingUpgrade {
     address implementation;
+    address proposingProxy; // HIGH-1: proxy contract that initiated this upgrade proposal
     uint256 proposedAt;
     uint256 executableAt;
+    uint256 expiryAt; // LOW-6: proposal expires after MAX_PROPOSAL_AGE to prevent stale execution
     string description;
     bool isEmergency;
     address proposer;

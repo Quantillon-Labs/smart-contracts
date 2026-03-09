@@ -153,6 +153,7 @@ contract SecureUpgradeableTest is Test {
         // Setup roles
         vm.startPrank(admin);
         secureContract.grantRole(secureContract.UPGRADER_ROLE(), upgrader);
+        secureContract.grantRole(secureContract.DEFAULT_ADMIN_ROLE(), signer1);
 
         // Add multi-sig signers to timelock
         timelock.addMultisigSigner(signer1);
@@ -162,6 +163,17 @@ contract SecureUpgradeableTest is Test {
         timelock.grantRole(timelock.UPGRADE_PROPOSER_ROLE(), address(secureContract));
         timelock.grantRole(timelock.UPGRADE_EXECUTOR_ROLE(), admin);
         vm.stopPrank();
+    }
+
+    function _disableSecureUpgradesWithQuorum() internal returns (uint256 proposalId) {
+        vm.prank(admin);
+        secureContract.proposeEmergencyDisableSecureUpgrades();
+        proposalId = secureContract.emergencyDisableProposalId();
+        vm.prank(signer1);
+        secureContract.approveEmergencyDisableSecureUpgrades();
+        vm.warp(block.timestamp + 24 hours + 1);
+        vm.prank(admin);
+        secureContract.applyEmergencyDisableSecureUpgrades(proposalId);
     }
 
     // =============================================================================
@@ -437,11 +449,14 @@ contract SecureUpgradeableTest is Test {
     function test_EmergencyDisableSecureUpgrades_Success() public {
         vm.prank(admin);
         secureContract.proposeEmergencyDisableSecureUpgrades();
+        uint256 proposalId = secureContract.emergencyDisableProposalId();
+        vm.prank(signer1);
+        secureContract.approveEmergencyDisableSecureUpgrades();
         vm.warp(block.timestamp + 24 hours + 1);
         vm.prank(admin);
         vm.expectEmit(false, false, false, true);
         emit SecureUpgradesToggled(false);
-        secureContract.applyEmergencyDisableSecureUpgrades();
+        secureContract.applyEmergencyDisableSecureUpgrades(proposalId);
 
         assertFalse(secureContract.secureUpgradesEnabled(), "Secure upgrades should be disabled");
     }
@@ -452,13 +467,41 @@ contract SecureUpgradeableTest is Test {
         secureContract.proposeEmergencyDisableSecureUpgrades();
     }
 
-    function test_EnableSecureUpgrades_Success() public {
-        // First disable using 2-step pattern
+    function test_EmergencyDisableSecureUpgrades_RevertWithoutQuorum() public {
         vm.prank(admin);
         secureContract.proposeEmergencyDisableSecureUpgrades();
+        uint256 proposalId = secureContract.emergencyDisableProposalId();
+
         vm.warp(block.timestamp + 24 hours + 1);
         vm.prank(admin);
-        secureContract.applyEmergencyDisableSecureUpgrades();
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
+        secureContract.applyEmergencyDisableSecureUpgrades(proposalId);
+    }
+
+    function test_EmergencyDisableSecureUpgrades_RevertBeforeDelay() public {
+        vm.prank(admin);
+        secureContract.proposeEmergencyDisableSecureUpgrades();
+        uint256 proposalId = secureContract.emergencyDisableProposalId();
+        vm.prank(signer1);
+        secureContract.approveEmergencyDisableSecureUpgrades();
+
+        vm.warp(block.timestamp + 24 hours - 1);
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.NotActive.selector);
+        secureContract.applyEmergencyDisableSecureUpgrades(proposalId);
+    }
+
+    function test_EmergencyDisableSecureUpgrades_RevertReplayApply() public {
+        uint256 proposalId = _disableSecureUpgradesWithQuorum();
+
+        vm.prank(admin);
+        vm.expectRevert(CommonErrorLibrary.NotActive.selector);
+        secureContract.applyEmergencyDisableSecureUpgrades(proposalId);
+    }
+
+    function test_EnableSecureUpgrades_Success() public {
+        // First disable using 2-step pattern
+        _disableSecureUpgradesWithQuorum();
 
         // Then enable
         vm.prank(admin);
@@ -485,11 +528,7 @@ contract SecureUpgradeableTest is Test {
     }
 
     function test_EnableSecureUpgrades_RevertNotAdmin() public {
-        vm.prank(admin);
-        secureContract.proposeEmergencyDisableSecureUpgrades();
-        vm.warp(block.timestamp + 24 hours + 1);
-        vm.prank(admin);
-        secureContract.applyEmergencyDisableSecureUpgrades();
+        _disableSecureUpgradesWithQuorum();
 
         vm.prank(attacker);
         vm.expectRevert();
@@ -696,11 +735,7 @@ contract SecureUpgradeableTest is Test {
         assertEq(secureContract.getVersion(), 1, "Should start at version 1");
 
         // Step 1: Disable secure upgrades (emergency) using 2-step pattern
-        vm.prank(admin);
-        secureContract.proposeEmergencyDisableSecureUpgrades();
-        vm.warp(block.timestamp + 24 hours + 1);
-        vm.prank(admin);
-        secureContract.applyEmergencyDisableSecureUpgrades();
+        _disableSecureUpgradesWithQuorum();
 
         // Step 2: Perform emergency upgrade
         vm.prank(upgrader);

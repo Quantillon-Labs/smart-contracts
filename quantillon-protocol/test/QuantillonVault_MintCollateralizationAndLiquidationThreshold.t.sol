@@ -58,6 +58,12 @@ contract HedgerPoolHarness {
     function getTotalEffectiveHedgerCollateral(uint256) external view returns (uint256) {
         return totalMargin;
     }
+
+    function hasActiveHedger() external view returns (bool) {
+        return totalMargin > 0;
+    }
+
+    function fundRewardReserve(uint256) external {}
 }
 
 contract QuantillonVaultMintCollateralizationAndLiquidationThresholdTest is Test {
@@ -107,6 +113,7 @@ contract QuantillonVaultMintCollateralizationAndLiquidationThresholdTest is Test
         qeuro.grantRole(qeuro.MINTER_ROLE(), address(vault));
         qeuro.grantRole(qeuro.BURNER_ROLE(), address(vault));
         vault.updateHedgerPool(address(hedgerPool));
+        vault.initializePriceCache();
         vm.stopPrank();
 
         usdc.mint(hedger, 1_000_000e6);

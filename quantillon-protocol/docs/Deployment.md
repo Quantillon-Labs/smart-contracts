@@ -72,10 +72,17 @@ TimeProvider
             ├── UserPool + ERC1967Proxy
             ├── HedgerPool + ERC1967Proxy
             └── YieldShift + ERC1967Proxy
-                    └── _wireContracts() — connects all pools/vault/roles
+                    └── _wireContracts() — connects all pools/vault/roles and enforces required post-deploy wiring
 ```
 
 After deployment, addresses are written to `deployments/{chainId}/addresses.json`.
+
+Required post-deploy wiring now enforced in-script (deployment reverts if any check fails):
+- `quantillonVault.initializePriceCache()`
+- `stQEUROToken.setOracle(oracleRouter)`
+- `hedgerPool.setFeeCollector(feeCollector)`
+- `feeCollector.authorizeFeeSource(quantillonVault)`
+- `feeCollector.authorizeFeeSource(hedgerPool)`
 
 ### Network Configuration
 

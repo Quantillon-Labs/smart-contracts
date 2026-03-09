@@ -11,8 +11,10 @@ evm_version = "paris"
 
 # Optimization
 optimizer = true
-optimizer_runs = 200  # Optimized for deployment size (bytecode reduction)
+optimizer_runs = 0  # Minimize runtime bytecode size on large contracts
 via_ir = true  # Enable IR compilation 
+bytecode_hash = "none"
+cbor_metadata = false
 
 # Gas settings
 gas_price = 0
@@ -52,8 +54,10 @@ fail_on_revert = false
 # Production profile for deployment
 [profile.production]
 optimizer = true
-optimizer_runs = 1000000  # Higher optimization for mainnet
+optimizer_runs = 0  # Minimize runtime bytecode size to satisfy EIP-170 on large contracts
 via_ir = true
+bytecode_hash = "none"
+cbor_metadata = false
 
 # Bytecode size optimization profile
 [profile.size_optimized]
@@ -84,5 +88,7 @@ via_ir = true
 # Documentation profile - must match default to reuse build cache
 [profile.docs]
 optimizer = true
-optimizer_runs = 200
+optimizer_runs = 0
 via_ir = true
+bytecode_hash = "none"
+cbor_metadata = false

@@ -31,8 +31,21 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     /// @notice INFO-4: Minimum delay before a proposed emergency-disable takes effect (24h)
     uint256 public constant EMERGENCY_DISABLE_DELAY = 24 hours;
 
+    /// @notice Emergency-disable approvals required before apply can succeed
+    uint256 public constant EMERGENCY_DISABLE_QUORUM = 2;
+
     /// @notice INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
     uint256 public emergencyDisablePendingAt;
+
+    /// @dev Unstructured storage slot to avoid shifting child storage layouts.
+    bytes32 private constant EMERGENCY_DISABLE_STORAGE_SLOT =
+        keccak256("quantillon.secure-upgradeable.emergency-disable.storage.v1");
+
+    struct EmergencyDisableStorage {
+        uint256 proposalId;
+        uint256 approvalCount;
+        mapping(uint256 => mapping(address => bool)) hasApproved;
+    }
 
     // ============ Events ============
 
@@ -40,7 +53,15 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     event SecureUpgradesToggled(bool enabled);
     event SecureUpgradeAuthorized(address indexed newImplementation, address indexed authorizedBy, string description);
     /// @notice INFO-4: Emitted when an emergency-disable proposal is created
-    event EmergencyDisableProposed(uint256 activatesAt);
+    event EmergencyDisableProposed(uint256 indexed proposalId, uint256 activatesAt);
+    event EmergencyDisableApproved(uint256 indexed proposalId, address indexed approver, uint256 approvalCount);
+
+    function _emergencyDisableStorage() private pure returns (EmergencyDisableStorage storage ds) {
+        bytes32 slot = EMERGENCY_DISABLE_STORAGE_SLOT;
+        assembly {
+            ds.slot := slot
+        }
+    }
     
     // ============ Modifiers ============
     
@@ -339,17 +360,67 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      */
     /// @notice INFO-4: Propose disabling secure upgrades; enforces a 24-hour timelock
     function proposeEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!secureUpgradesEnabled) revert CommonErrorLibrary.NotActive();
+        EmergencyDisableStorage storage ds = _emergencyDisableStorage();
+        ds.proposalId += 1;
+        ds.approvalCount = 0;
+
         emergencyDisablePendingAt = block.timestamp + EMERGENCY_DISABLE_DELAY;
-        emit EmergencyDisableProposed(emergencyDisablePendingAt);
+        emit EmergencyDisableProposed(ds.proposalId, emergencyDisablePendingAt);
+
+        // Proposer counts as first approval for the new proposal.
+        ds.hasApproved[ds.proposalId][msg.sender] = true;
+        ds.approvalCount = 1;
+        emit EmergencyDisableApproved(ds.proposalId, msg.sender, ds.approvalCount);
+    }
+
+    /// @notice INFO-4/NEW-3: Register an admin approval for the active emergency-disable proposal.
+    function approveEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (emergencyDisablePendingAt == 0) revert CommonErrorLibrary.NotActive();
+        EmergencyDisableStorage storage ds = _emergencyDisableStorage();
+        uint256 proposalId = ds.proposalId;
+        if (proposalId == 0) revert CommonErrorLibrary.NotActive();
+        if (ds.hasApproved[proposalId][msg.sender]) revert CommonErrorLibrary.NoChangeDetected();
+
+        ds.hasApproved[proposalId][msg.sender] = true;
+        ds.approvalCount += 1;
+        emit EmergencyDisableApproved(proposalId, msg.sender, ds.approvalCount);
     }
 
     /// @notice INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed
-    function applyEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /// @param expectedProposalId Proposal id the caller expects to apply (replay/mismatch protection)
+    function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (emergencyDisablePendingAt == 0) revert CommonErrorLibrary.NotActive();
         if (block.timestamp < emergencyDisablePendingAt) revert CommonErrorLibrary.NotActive();
+        EmergencyDisableStorage storage ds = _emergencyDisableStorage();
+        if (expectedProposalId == 0 || expectedProposalId != ds.proposalId) revert CommonErrorLibrary.NotAuthorized();
+        if (ds.approvalCount < EMERGENCY_DISABLE_QUORUM) revert CommonErrorLibrary.NotAuthorized();
+
         emergencyDisablePendingAt = 0;
+        ds.approvalCount = 0;
         secureUpgradesEnabled = false;
         emit SecureUpgradesToggled(false);
+    }
+
+    /// @notice Current emergency-disable proposal id (0 when no proposal has ever been created).
+    function emergencyDisableProposalId() public view returns (uint256) {
+        return _emergencyDisableStorage().proposalId;
+    }
+
+    /// @notice Current approval count for the active proposal.
+    function emergencyDisableApprovalCount() public view returns (uint256) {
+        return _emergencyDisableStorage().approvalCount;
+    }
+
+    /// @notice Quorum required to apply the emergency disable.
+    function emergencyDisableQuorum() public pure returns (uint256) {
+        return EMERGENCY_DISABLE_QUORUM;
+    }
+
+    /// @notice Returns whether `approver` approved a given emergency-disable proposal.
+    function hasEmergencyDisableApproval(uint256 proposalId, address approver) public view returns (bool) {
+        if (approver == address(0) || proposalId == 0) return false;
+        return _emergencyDisableStorage().hasApproved[proposalId][approver];
     }
     
     /**

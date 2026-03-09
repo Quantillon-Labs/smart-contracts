@@ -38,7 +38,7 @@ The main vault contract that manages QEURO minting and redemption against USDC.
 
 #### Functions
 
-##### `initialize(address admin, address _qeuro, address _usdc, address _oracle)`
+##### `initialize(address admin, address _qeuro, address _usdc, address _oracle, address _hedgerPool, address _userPool, address _timelock, address _feeCollector)`
 Initializes the vault with initial configuration.
 
 **Parameters:**
@@ -46,6 +46,10 @@ Initializes the vault with initial configuration.
 - `_qeuro` (address): QEURO token address
 - `_usdc` (address): USDC token address
 - `_oracle` (address): Oracle contract address
+- `_hedgerPool` (address): HedgerPool address (can be set later)
+- `_userPool` (address): UserPool address (can be set later)
+- `_timelock` (address): Timelock/treasury address
+- `_feeCollector` (address): FeeCollector address
 
 **Access:** Public (only callable once)
 
@@ -60,7 +64,8 @@ Mints QEURO by swapping USDC.
 
 **Requirements:**
 - Contract not paused
-- Valid oracle price
+- Valid oracle price and initialized price cache (`initializePriceCache`)
+- Active hedger (`hedgerPool.hasActiveHedger()`)
 - Sufficient USDC balance and allowance
 
 ##### `redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut)`
@@ -74,51 +79,72 @@ Redeems QEURO for USDC.
 
 **Requirements:**
 - Contract not paused
-- Valid oracle price
+- Valid oracle price (normal mode)
 - Sufficient QEURO balance and allowance
+- Automatically routes to liquidation redemption when protocol CR is at or below critical threshold
 
-##### `calculateMintAmount(uint256 usdcAmount) → (uint256)`
-Calculates the amount of QEURO that would be minted for a given USDC amount.
+##### `calculateMintAmount(uint256 usdcAmount) → (uint256, uint256)`
+Calculates quoted mint output using cached price.
 
 **Parameters:**
 - `usdcAmount` (uint256): Amount of USDC (6 decimals)
 
 **Returns:**
 - `uint256`: Amount of QEURO that would be minted (18 decimals)
+- `uint256`: Mint fee (USDC, 6 decimals)
 
 **Access:** Public view
 
-##### `calculateRedeemAmount(uint256 qeuroAmount) → (uint256)`
-Calculates the amount of USDC that would be received for a given QEURO amount.
+##### `calculateRedeemAmount(uint256 qeuroAmount) → (uint256, uint256)`
+Calculates quoted redeem output using cached price.
 
 **Parameters:**
 - `qeuroAmount` (uint256): Amount of QEURO (18 decimals)
 
 **Returns:**
 - `uint256`: Amount of USDC that would be received (6 decimals)
+- `uint256`: Redemption fee (USDC, 6 decimals)
 
 **Access:** Public view
 
-##### `getVaultMetrics() → (uint256, uint256, uint256, uint256, uint256, uint256)`
+##### `getVaultMetrics() → (uint256, uint256, uint256, uint256, uint256)`
 Retrieves comprehensive vault metrics.
 
 **Returns:**
-- `uint256`: Total USDC reserves
-- `uint256`: Total QEURO supply
-- `uint256`: Collateralization ratio (basis points)
-- `uint256`: Protocol fees collected
-- `uint256`: Last update timestamp
-- `uint256`: Vault utilization rate
+- `uint256`: `totalUsdcHeld` (USDC in vault, 6 decimals)
+- `uint256`: `totalMinted` (QEURO tracked by vault, 18 decimals)
+- `uint256`: `totalDebtValue` (USD value from live supply and cached EUR/USD)
+- `uint256`: `totalUsdcInAave` (tracked principal)
+- `uint256`: `totalUsdcAvailable` (vault + Aave balance including accrued yield)
 
 **Access:** Public view
+
+##### `getProtocolCollateralizationRatio() → (uint256)`
+Returns collateralization ratio in 18-decimal percentage format (`100% = 1e20`).
+
+##### `canMint() → (bool)`
+Returns whether minting is currently allowed.
+
+##### `getProtocolCollateralizationRatioView() → (uint256)` / `canMintView() → (bool)`
+View-safe aliases that use cached price path (no state refresh side effects).
+
+##### `initializePriceCache()`
+Seeds the cached EUR/USD price after deployment (required before first mint).
+
+##### `updateHedgerRewardFeeSplit(uint256 newSplit)`
+Updates the fee share routed to HedgerPool reserve (`1e18 = 100%`).
+
+##### `harvestAaveInterest() → (uint256)`
+Triggers Aave yield harvest through AaveVault and returns harvested amount.
 
 #### Events
 
 ```solidity
-event QEUROMinted(address indexed user, uint256 usdcAmount, uint256 qeuroAmount, uint256 price);
-event QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmount, uint256 price);
-event VaultPaused(address indexed admin);
-event VaultUnpaused(address indexed admin);
+event QEUROminted(address indexed user, uint256 usdcAmount, uint256 qeuroAmount);
+event QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmount);
+event LiquidationRedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcPayout, uint256 collateralizationRatioBps, bool isPremium);
+event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReserveShare, uint256 collectorShare);
+event AaveInterestHarvested(uint256 harvestedYield);
 ```
 
 ---
@@ -396,7 +422,7 @@ event RewardsClaimed(address indexed user, uint256 amount);
 
 ### HedgerPool
 
-Manages leveraged hedging positions for risk management.
+Manages the protocol’s single-hedger leveraged position and hedger reward settlement.
 
 #### Functions
 
@@ -413,12 +439,13 @@ Opens a new hedge position.
 **Access:** Public
 
 **Requirements:**
+- Caller must be the configured `singleHedger`
 - Valid leverage amount
 - Sufficient USDC balance and allowance
 - Fresh oracle price
 
-##### `closeHedgePosition(uint256 positionId) → (int256)`
-Closes a hedge position.
+##### `exitHedgePosition(uint256 positionId) → (int256)`
+Closes the active hedge position.
 
 **Parameters:**
 - `positionId` (uint256): Position ID to close
@@ -459,62 +486,45 @@ Removes margin from a position.
 - Caller owns the position
 - Maintains minimum margin ratio
 
-##### `getPositionInfo(uint256 positionId) → (address, uint256, uint256, uint256, uint256, uint256, int256, bool)`
-Gets position information.
-
-**Parameters:**
-- `positionId` (uint256): Position ID
+##### `claimHedgingRewards() → (uint256, uint256, uint256)`
+Claims hedger rewards.
 
 **Returns:**
-- `address`: Position owner
-- `uint256`: Position size
-- `uint256`: Margin amount
-- `uint256`: Entry price
-- `uint256`: Entry time
-- `uint256`: Leverage
-- `int256`: Unrealized PnL
-- `bool`: Is active
+- `uint256`: Interest differential paid/escrowed by HedgerPool reserve
+- `uint256`: YieldShift rewards claimed via YieldShift
+- `uint256`: Total rewards for reporting (`interest + yieldShift`)
 
-**Access:** Public view
+**Access:** Restricted to configured `singleHedger`
 
-##### `getActivePositionIds() → (uint256[])`
-Returns the list of all currently active hedger positions.
+##### `withdrawPendingRewards(address recipient)`
+Withdraws reward amounts escrowed after failed push-transfer in `claimHedgingRewards`.
 
-**Returns:**
-- `uint256[]`: Array of active position IDs
+##### `hasActiveHedger() → (bool)`
+Returns whether a configured single hedger currently has an active position.
 
-**Access:** Public view
+##### `setSingleHedger(address hedger)`
+Bootstrap/rotation entrypoint for single hedger configuration (governance-only).
 
-##### `getFillMetrics() → (uint256, uint256)`
-Provides aggregate hedger fill information.
+##### `proposeSingleHedger(address hedger)` / `applySingleHedgerRotation()`
+Delayed single-hedger rotation flow (governance-only).
 
-**Returns:**
-- `uint256`: Total hedge exposure requested by active positions
-- `uint256`: Total matched exposure currently filled by user activity
+##### `fundRewardReserve(uint256 amount)`
+Permissionless reserve top-up path for hedger rewards.
 
-**Access:** Public view
-
-##### `liquidatePosition(uint256 positionId)`
-Liquidates an undercollateralized position.
-
-**Parameters:**
-- `positionId` (uint256): Position ID to liquidate
-
-**Access:** Liquidator role only
-
-**Requirements:**
-- Position is undercollateralized
-- Fresh oracle price
+##### `updateRewardFeeSplit(uint256 newSplit)`
+Governance setter for margin-fee split routed to local reward reserve (`1e18 = 100%`).
 
 #### Events
 
 ```solidity
 event HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 positionData);
-event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, int256 pnl);
-event MarginAdded(address indexed hedger, uint256 indexed positionId, uint256 amount);
-event MarginRemoved(address indexed hedger, uint256 indexed positionId, uint256 amount);
-event PositionLiquidated(address indexed liquidator, uint256 indexed positionId, int256 pnl);
+event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
+event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
+event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
 event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
+event RewardReserveFunded(address indexed funder, uint256 amount);
+event SingleHedgerRotationProposed(address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt);
+event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
 ```
 
 ---
@@ -1059,8 +1069,9 @@ usdc.approve(hedgerPoolAddress, marginAmount);
 // 2. Open position with 5x leverage
 uint256 positionId = hedgerPool.enterHedgePosition(marginAmount, 5);
 
-// 3. Monitor position
-(bool isActive, int256 pnl) = hedgerPool.getPositionInfo(positionId);
+// 3. Monitor hedger activity / claim rewards
+bool hedgerActive = hedgerPool.hasActiveHedger();
+(uint256 interestDiff, uint256 ysRewards, uint256 total) = hedgerPool.claimHedgingRewards();
 ```
 
 ### Governance Participation
@@ -1103,4 +1114,4 @@ For technical support and questions:
 
 ---
 
-*This documentation is maintained by Quantillon Labs and updated regularly. Last updated: January 2025*
+*This documentation is maintained by Quantillon Labs and updated regularly. Last updated: March 2026*

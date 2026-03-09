@@ -12,6 +12,7 @@ import {IOracle} from "../src/interfaces/IOracle.sol";
 import {IUserPool} from "../src/interfaces/IUserPool.sol";
 import {VaultErrorLibrary} from "../src/libraries/VaultErrorLibrary.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
+import {HedgerPoolErrorLibrary} from "../src/libraries/HedgerPoolErrorLibrary.sol";
 
 /**
  * @title MockToken
@@ -221,6 +222,10 @@ contract QuantillonVaultTestSuite is Test {
         // LOW-5: seed the oracle price cache so the bootstrap-mint exception is available
         vm.prank(admin);
         vault.initializePriceCache();
+
+        // Seed initial hedger collateral in vault so first mint satisfies projected CR checks.
+        vm.prank(mockHedgerPool);
+        vault.addHedgerDeposit(2_000 * 1e6);
 
         // Fund test users
         vm.deal(user1, 100 ether);
@@ -503,6 +508,7 @@ contract QuantillonVaultTestSuite is Test {
     function test_Mint_MintQEUROSuccess() public {
         uint256 usdcAmount = MINT_AMOUNT;
         uint256 minQeuroOut = 0; // 0 QEURO minimum (very lenient)
+        uint256 initialUsdcHeld = vault.totalUsdcHeld();
         
         vm.prank(user1);
         vault.mintQEURO(usdcAmount, minQeuroOut);
@@ -511,7 +517,7 @@ contract QuantillonVaultTestSuite is Test {
         // Calculate expected net amount after fee (0.1% fee)
         uint256 fee = Math.mulDiv(usdcAmount, vault.mintFee(), 1e18);
         uint256 expectedNetAmount = usdcAmount - fee;
-        assertEq(vault.totalUsdcHeld(), expectedNetAmount);
+        assertEq(vault.totalUsdcHeld(), initialUsdcHeld + expectedNetAmount);
         assertGt(vault.totalMinted(), 0);
         
         // Verify QEURO minting was called (check that totalMinted increased)
@@ -618,27 +624,10 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Mint_WhenNotCollateralized_Revert() public {
-        // First mint some QEURO to establish a supply
-        vm.prank(user1);
-        vault.mintQEURO(MINT_AMOUNT, 0);
-        
-        // Mock QEURO totalSupply to return the amount that was minted
-        // At 1.10 EUR/USD rate: 999 USDC (after fee) = 999 / 1.10 = 908.18 EUR
-        // Convert to 18 decimals: 908.18 * 1e18 = 908181818181818181818
-        uint256 qeuroSupply = 908181818181818181818;
-        vm.mockCall(
-            address(qeuroToken),
-            abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(qeuroSupply)
-        );
-        
-        // Force HedgerPool totalMargin to zero (no active positions)
-        hedgerPoolStub.setTotalMargin(0);
-        hedgerPoolStub.setTotalEffectiveCollateral(0);
-        
-        // Try to mint more - should revert due to lack of collateralization
+        // INFO-2 incremental hardening: mint path now requires an active hedger.
+        hedgerPoolStub.setActiveHedger(false);
         vm.prank(user2);
-        vm.expectRevert(CommonErrorLibrary.InsufficientCollateralization.selector);
+        vm.expectRevert(HedgerPoolErrorLibrary.NoActiveHedgerLiquidity.selector);
         vault.mintQEURO(MINT_AMOUNT, 0);
     }
 
@@ -658,6 +647,7 @@ contract QuantillonVaultTestSuite is Test {
         // Configure HedgerPool with active margin
         hedgerPoolStub.setTotalMargin(1000 * 1e6); // 1000 USDC margin
         hedgerPoolStub.setTotalEffectiveCollateral(1000 * 1e6); // Effective collateral = margin (no P&L)
+        uint256 initialUsdcHeld = vault.totalUsdcHeld();
         
         // Mint should succeed
         vm.prank(user1);
@@ -665,7 +655,7 @@ contract QuantillonVaultTestSuite is Test {
         
         // Check vault state (accounting for fees)
         uint256 expectedNetAmount = MINT_AMOUNT - Math.mulDiv(MINT_AMOUNT, vault.mintFee(), 1e18);
-        assertEq(vault.totalUsdcHeld(), expectedNetAmount);
+        assertEq(vault.totalUsdcHeld(), initialUsdcHeld + expectedNetAmount);
         assertGt(vault.totalMinted(), 0);
     }
 
@@ -793,12 +783,16 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Redeem_InsufficientReserves_Revert() public {
-        // Mock low USDC balance
-        vm.mockCall(
-            mockUSDC,
-            abi.encodeWithSelector(IERC20.balanceOf.selector),
-            abi.encode(400 * 1e6) // Only 400 USDC (less than the ~500 USDC needed)
-        );
+        // New model checks protocol-accounted collateral, not raw ERC20.balanceOf.
+        // Prepare state with outstanding debt but insufficient accounted collateral.
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(400 * 1e6);
+        stdstore
+            .target(address(vault))
+            .sig("totalMinted()")
+            .checked_write(REDEEM_AMOUNT);
         
         vm.prank(user1);
         vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
@@ -1035,6 +1029,8 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_View_GetVaultMetrics() public {
+        uint256 initialUsdcHeld = vault.totalUsdcHeld();
+
         // First mint some QEURO
         vm.prank(user1);
         vault.mintQEURO(MINT_AMOUNT, 0);
@@ -1054,7 +1050,7 @@ contract QuantillonVaultTestSuite is Test {
         
         // Calculate expected net amount after fee (0.1% fee)
         uint256 expectedNetAmount = MINT_AMOUNT - Math.mulDiv(MINT_AMOUNT, vault.mintFee(), 1e18);
-        assertEq(totalUsdcHeld_, expectedNetAmount);
+        assertEq(totalUsdcHeld_, initialUsdcHeld + expectedNetAmount);
         assertGt(totalMinted_, 0);
         assertGt(totalDebtValue, 0);
     }
@@ -1105,8 +1101,8 @@ contract QuantillonVaultTestSuite is Test {
     }
     
     /**
-     * @notice Test calculating amounts with invalid oracle should return zero
-     * @dev Verifies that invalid oracle responses are handled correctly
+     * @notice Test calculating amounts uses cached price path even if oracle becomes invalid
+     * @dev LOW-4: quote APIs are view-safe and rely on initialized cache, not live oracle reads
       * @custom:security No security implications - test function
       * @custom:validation No input validation required - test function
       * @custom:state-changes No state changes - test function
@@ -1125,12 +1121,12 @@ contract QuantillonVaultTestSuite is Test {
         );
         
         (uint256 qeuroAmount, uint256 fee) = vault.calculateMintAmount(MINT_AMOUNT);
-        assertEq(qeuroAmount, 0);
-        assertEq(fee, 0);
+        assertGt(qeuroAmount, 0);
+        assertGe(fee, 0);
         
         (uint256 usdcAmount, uint256 redeemFee) = vault.calculateRedeemAmount(REDEEM_AMOUNT);
-        assertEq(usdcAmount, 0);
-        assertEq(redeemFee, 0);
+        assertGt(usdcAmount, 0);
+        assertGe(redeemFee, 0);
     }
     
     // =============================================================================
@@ -1341,10 +1337,11 @@ contract QuantillonVaultTestSuite is Test {
         vault.mintQEURO(MINT_AMOUNT, 0);
         
         // Mock higher contract balance (fees accumulated)
+        uint256 simulatedFees = 1000 * 1e6;
         vm.mockCall(
             mockUSDC,
             abi.encodeWithSelector(IERC20.balanceOf.selector),
-            abi.encode(MINT_AMOUNT + 1000 * 1e6) // Extra 1000 USDC as fees
+            abi.encode(vault.totalUsdcHeld() + simulatedFees)
         );
         
         vm.prank(governance);
@@ -1769,6 +1766,8 @@ contract QuantillonVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Integration_MultipleUsers() public {
+        uint256 initialUsdcHeld = vault.totalUsdcHeld();
+
         // User 1 mints
         vm.prank(user1);
         vault.mintQEURO(MINT_AMOUNT, 0);
@@ -1778,7 +1777,7 @@ contract QuantillonVaultTestSuite is Test {
         vault.mintQEURO(MINT_AMOUNT, 0);
         
         // Check total amounts (accounting for fees)
-        uint256 expectedTotal = 2 * MINT_AMOUNT - 2 * Math.mulDiv(MINT_AMOUNT, vault.mintFee(), 1e18);
+        uint256 expectedTotal = initialUsdcHeld + 2 * MINT_AMOUNT - 2 * Math.mulDiv(MINT_AMOUNT, vault.mintFee(), 1e18);
         assertEq(vault.totalUsdcHeld(), expectedTotal);
         uint256 initialTotalMinted = vault.totalMinted();
         assertGt(initialTotalMinted, 0);
@@ -1788,7 +1787,7 @@ contract QuantillonVaultTestSuite is Test {
         vault.redeemQEURO(REDEEM_AMOUNT, 100 * 1e6);
         
         // Check that totals were reduced
-        assertLt(vault.totalUsdcHeld(), 2 * MINT_AMOUNT);
+        assertLt(vault.totalUsdcHeld(), expectedTotal);
         assertLt(vault.totalMinted(), initialTotalMinted);
     }
     
@@ -2209,38 +2208,26 @@ contract QuantillonVaultTestSuite is Test {
         vault.updateUserPool(address(testUserPool));
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
-        
-        // Mint QEURO to set up real state
-        uint256 qeuroToMint = 909090909090909090909090; // 1M USDC worth at 1.10 rate
-        vm.prank(user1);
-        vault.mintQEURO(qeuroToMint, 0);
-        
-        // Mock totalSupply to return totalMinted (since mint is mocked)
-        // This MUST be done before getLiquidationStatus() is called
+
+        // Set collateral and supply directly to deterministic CR=101%:
+        // 1,010,000 USDC collateral vs 1,000,000 USDC debt.
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(1_010_000e6);
+
+        uint256 qeuroSupply = 909090909090909090909090; // 1M USDC worth at 1.10
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(vault.totalMinted())
-        );
-        
-        // Now set hedger collateral to achieve CR = 101%
-        // CR = (userDeposits + hedgerCollateral) / userDeposits = 1.01
-        // userDeposits = 1M USDC, so hedgerCollateral = 10k USDC
-        testHedgerPool.setTotalMargin(10_000e6);
-        testHedgerPool.setTotalEffectiveCollateral(10_000e6);
-        
-        // Update mock after setting hedger collateral (in case getLiquidationStatus uses cached values)
-        vm.mockCall(
-            address(qeuroToken),
-            abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(vault.totalMinted())
+            abi.encode(qeuroSupply)
         );
         
         (bool isInLiquidation, uint256 crBps, , ) = vault.getLiquidationStatus();
         
         // CR should be exactly 10100 bps (101%)
         assertTrue(isInLiquidation, "Should be in liquidation when CR = 101%");
-        assertLe(crBps, 10100, "CR should be <= 10100 bps");
+        assertEq(crBps, 10100, "CR should equal 10100 bps");
     }
     
     /**
@@ -2309,11 +2296,10 @@ contract QuantillonVaultTestSuite is Test {
         // Total collateral = 1M USDC, Total QEURO = 909,090.91 QEURO (1M USDC worth at 1.10 rate)
         uint256 totalCollateralUsdc = 1_000_000e6;
         uint256 totalQeuroSupply = 909090909090909090909090;
-
-        // INFO-5: calculateLiquidationPayout now uses totalUsdcHeld+totalUsdcInAave (not balanceOf)
-        // Mint USDC into vault to set totalUsdcHeld = totalCollateralUsdc
-        vm.prank(user1);
-        vault.mintQEURO(totalCollateralUsdc, 0);
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(totalCollateralUsdc);
 
         vm.mockCall(
             address(qeuroToken),
@@ -2365,10 +2351,10 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
 
-        // INFO-5: calculateLiquidationPayout now uses totalUsdcHeld+totalUsdcInAave (not balanceOf)
-        // Mint USDC into vault to set totalUsdcHeld = totalCollateralUsdc
-        vm.prank(user1);
-        vault.mintQEURO(totalCollateralUsdc, 0);
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(totalCollateralUsdc);
 
         vm.mockCall(
             address(qeuroToken),
@@ -2410,51 +2396,29 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
         
-        // Mint QEURO to set up real state
-        // For CR = 95%, we need: (userDeposits + hedgerCollateral) / userDeposits = 0.95
-        // If userDeposits = 1M USDC, then totalCollateral = 950k USDC, so hedgerCollateral = -50k (impossible)
-        // Instead, let's set userDeposits = 1M USDC and hedgerCollateral = -50k (negative P&L)
-        // But we can't have negative collateral, so let's use a different approach:
-        // Set userDeposits = 1M USDC, hedgerCollateral = 0, but reduce totalUsdcHeld to 950k
-        uint256 qeuroToMint = 909090909090909090909090; // 1M USDC worth at 1.10 rate
-        vm.prank(user1);
-        vault.mintQEURO(qeuroToMint, 0);
-        
-        // Now manually reduce totalUsdcHeld to simulate 95% CR
-        // We need to reduce it from 1M to 950k, but we can't directly modify it
-        // Instead, let's set hedger collateral to -50k (negative P&L scenario)
-        // But MockHedgerPool doesn't support negative, so we'll use a workaround:
-        // Set hedger collateral to 0 and manually adjust vault balance via mock
+        // 95% CR setup: 950k collateral against 1M USDC-equivalent debt.
         testHedgerPool.setTotalMargin(0);
         testHedgerPool.setTotalEffectiveCollateral(0);
-        
-        // Mock totalSupply to return totalMinted (since mint is mocked)
+        uint256 totalCollateralUsdc = 950_000e6;
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(totalCollateralUsdc);
+
+        uint256 totalQeuroSupply = 909090909090909090909090;
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(vault.totalMinted())
+            abi.encode(totalQeuroSupply)
         );
-        
-        // Mock vault USDC balance to be 950k (simulating 95% CR)
-        // This simulates a scenario where total collateral is less than QEURO value
-        uint256 totalCollateralUsdc = 950_000e6;
-        vm.mockCall(
-            mockUSDC,
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(vault)),
-            abi.encode(totalCollateralUsdc)
-        );
-        
-        // With hedgerCollateral = 0, CR = 100%, so payout should equal fair value
-        // We can't easily simulate CR < 100% without negative hedger collateral
-        // So let's just verify the function works correctly at CR = 100%
+
         uint256 qeuroAmount = 100e18;
-        (uint256 usdcPayout, , uint256 premiumOrDiscountBps) = vault.calculateLiquidationPayout(qeuroAmount);
-        
-        // At CR = 100%, payout should approximately equal fair value
+        (uint256 usdcPayout, bool isPremium, uint256 premiumOrDiscountBps) = vault.calculateLiquidationPayout(qeuroAmount);
+
         uint256 fairValue = (qeuroAmount * EUR_USD_PRICE) / 1e18 / 1e12;
-        assertApproxEqRel(usdcPayout, fairValue, 1e15, "At CR = 100%, payout should equal fair value");
-        // At exactly 100%, isPremium can be true (>= check) but discount should be small
-        assertLe(premiumOrDiscountBps, 10, "At CR = 100%, discount/premium should be very small");
+        assertFalse(isPremium, "Should be haircut when CR < 100%");
+        assertLt(usdcPayout, fairValue, "Haircut payout should be below fair value");
+        assertGt(premiumOrDiscountBps, 0, "Discount should be positive");
     }
     
     /**
@@ -2500,29 +2464,32 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
         
-        // Mint QEURO for user1 - this will set up totalMinted and totalUsdcHeld
-        uint256 mintAmount = 1000e18;
-        vm.prank(user1);
-        vault.mintQEURO(mintAmount, 0);
-        
-        // Mock totalSupply to return totalMinted (since mint is mocked)
-        // This must be done BEFORE any function that uses totalSupply
+        uint256 totalSupply = 1000e18;
+        stdstore
+            .target(address(vault))
+            .sig("totalMinted()")
+            .checked_write(totalSupply);
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(1000 * 1e6);
+
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(vault.totalMinted())
+            abi.encode(totalSupply)
         );
         
         uint256 initialTotalMinted = vault.totalMinted();
         uint256 initialTotalUsdcHeld = vault.totalUsdcHeld();
         
-        // Mock balanceOf to return mintAmount (since mint is mocked)
+        // Mock balanceOf to represent user holding the debt supply.
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.balanceOf.selector, user1),
-            abi.encode(mintAmount)
+            abi.encode(totalSupply)
         );
-        uint256 initialUserQeuroBalance = mintAmount;
+        uint256 initialUserQeuroBalance = totalSupply;
         
         // Redeem in liquidation mode - redeemQEURO will route automatically
         uint256 redeemAmount = 100e18;
@@ -2661,20 +2628,23 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
         
-        // Mint QEURO - this will set up totalMinted and totalUsdcHeld
-        vm.prank(user1);
-        vault.mintQEURO(1000e18, 0);
-        
-        // Mock totalSupply to return totalMinted (since mint is mocked)
-        // This MUST be done before any function that uses totalSupply
+        uint256 totalSupply = 1000e18;
+        stdstore
+            .target(address(vault))
+            .sig("totalMinted()")
+            .checked_write(totalSupply);
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(1000 * 1e6);
+
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(vault.totalMinted())
+            abi.encode(totalSupply)
         );
         
         // Calculate expected payout (pro-rata)
-        uint256 totalSupply = vault.totalMinted();
         uint256 totalCollateral = vault.totalUsdcHeld();
         uint256 redeemAmount = 100e18;
         uint256 expectedPayout = (redeemAmount * totalCollateral) / totalSupply;
@@ -2717,10 +2687,23 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
         
-        // Mint QEURO
-        vm.prank(user1);
-        vault.mintQEURO(1000e18, 0);
+        uint256 totalSupply = 1000e18;
+        stdstore
+            .target(address(vault))
+            .sig("totalMinted()")
+            .checked_write(totalSupply);
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(1000 * 1e6);
+        vm.mockCall(
+            address(qeuroToken),
+            abi.encodeWithSelector(IERC20.totalSupply.selector),
+            abi.encode(totalSupply)
+        );
         
+        uint256 totalMintedBefore = vault.totalMinted();
+        uint256 usdcBefore = vault.totalUsdcHeld();
         uint256 redeemAmount = 100e18;
         vm.prank(user1);
         qeuroToken.approve(address(vault), redeemAmount);
@@ -2729,9 +2712,9 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(user1);
         vault.redeemQEURO(redeemAmount, 0);
         
-        // Verify redemption happened (QEURO burned, USDC transferred)
-        assertLt(qeuroToken.balanceOf(user1), 1000e18, "QEURO should be burned");
-        assertLt(vault.totalUsdcHeld(), vault.totalMinted() * EUR_USD_PRICE / 1e18, "USDC should be transferred");
+        // Verify redemption happened on liquidation path.
+        assertEq(vault.totalMinted(), totalMintedBefore - redeemAmount, "Minted supply should decrease");
+        assertLt(vault.totalUsdcHeld(), usdcBefore, "USDC collateral should decrease");
     }
     
     /**
@@ -2760,10 +2743,23 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
         
-        // Mint QEURO
-        vm.prank(user1);
-        vault.mintQEURO(1000e18, 0);
+        uint256 totalSupply = 1000e18;
+        stdstore
+            .target(address(vault))
+            .sig("totalMinted()")
+            .checked_write(totalSupply);
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(1200 * 1e6); // > 101% CR for 1000 QEURO at 1.10
+        vm.mockCall(
+            address(qeuroToken),
+            abi.encodeWithSelector(IERC20.totalSupply.selector),
+            abi.encode(totalSupply)
+        );
         
+        uint256 totalMintedBefore = vault.totalMinted();
+        uint256 usdcBefore = vault.totalUsdcHeld();
         uint256 redeemAmount = 100e18;
         uint256 minUsdcOut = 100e6; // 100 USDC minimum (at 1.10 rate, 100 QEURO = 110 USDC)
         
@@ -2775,8 +2771,8 @@ contract QuantillonVaultTestSuite is Test {
         vault.redeemQEURO(redeemAmount, minUsdcOut);
         
         // Verify redemption happened (normal mode)
-        assertLt(qeuroToken.balanceOf(user1), 1000e18, "QEURO should be burned");
-        assertLt(vault.totalUsdcHeld(), vault.totalMinted() * EUR_USD_PRICE / 1e18, "USDC should be transferred");
+        assertEq(vault.totalMinted(), totalMintedBefore - redeemAmount, "Minted supply should decrease");
+        assertLt(vault.totalUsdcHeld(), usdcBefore, "USDC should be transferred");
     }
     
     /**
@@ -2803,18 +2799,22 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
         
-        // User1 mints 600 QEURO, User2 mints 400 QEURO (total 1000 QEURO)
-        vm.prank(user1);
-        vault.mintQEURO(600e18, 0);
-        vm.prank(user2);
-        vault.mintQEURO(400e18, 0);
+        uint256 totalSupply = 1000e18;
+        stdstore
+            .target(address(vault))
+            .sig("totalMinted()")
+            .checked_write(totalSupply);
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(1000 * 1e6);
         
         // Mock totalSupply to return totalMinted (since mint is mocked)
         // This MUST be done before getLiquidationStatus() is called
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(vault.totalMinted())
+            abi.encode(totalSupply)
         );
         
         // Verify we're in liquidation mode (CR should be 100% with hedgerCollateral = 0)
@@ -2830,10 +2830,11 @@ contract QuantillonVaultTestSuite is Test {
         vault.redeemQEURO(user1Redeem, 0);
         
         // Update mock for user2's redemption (totalSupply decreased after user1's redemption)
+        uint256 updatedSupply = vault.totalMinted();
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(vault.totalMinted())
+            abi.encode(updatedSupply)
         );
         
         // User2 redeems 200 QEURO (after user1's redemption, total supply decreased)
@@ -2878,21 +2879,24 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(governance);
         vault.updateHedgerPool(address(testHedgerPool));
         
-        // Mint a reasonable amount first to ensure totalSupply > 0
-        vm.prank(user1);
-        vault.mintQEURO(1000e18, 0);
-        
-        // Then mint small amount
+        uint256 baseSupply = 1000e18;
         uint256 smallAmount = 1e15; // 0.001 QEURO (18 decimals)
-        vm.prank(user1);
-        vault.mintQEURO(smallAmount, 0);
+        uint256 totalSupply = baseSupply + smallAmount;
+        stdstore
+            .target(address(vault))
+            .sig("totalMinted()")
+            .checked_write(totalSupply);
+        stdstore
+            .target(address(vault))
+            .sig("totalUsdcHeld()")
+            .checked_write(1000 * 1e6);
         
         // Mock totalSupply to return totalMinted (since mint is mocked)
         // This MUST be done before any function that uses totalSupply
         vm.mockCall(
             address(qeuroToken),
             abi.encodeWithSelector(IERC20.totalSupply.selector),
-            abi.encode(vault.totalMinted())
+            abi.encode(totalSupply)
         );
         
         uint256 totalQeuro = vault.totalMinted();
@@ -3059,6 +3063,7 @@ contract MockUserPool {
 contract MockHedgerPool {
     uint256 public totalMargin;
     uint256 public totalEffectiveCollateral; // For testing P&L scenarios
+    bool public activeHedger = true;
     
     /**
      * @notice Sets the total margin for testing purposes
@@ -3157,5 +3162,22 @@ contract MockHedgerPool {
         amount;
         redeemPrice;
         qeuroAmount;
+    }
+
+    function hasActiveHedger() external view returns (bool) {
+        return activeHedger;
+    }
+
+    function setActiveHedger(bool isActive) external {
+        activeHedger = isActive;
+    }
+
+    function fundRewardReserve(uint256 amount) external pure {
+        amount;
+    }
+
+    function recordLiquidationRedeem(uint256 qeuroAmount, uint256 totalQeuroSupply) external pure {
+        qeuroAmount;
+        totalQeuroSupply;
     }
 }

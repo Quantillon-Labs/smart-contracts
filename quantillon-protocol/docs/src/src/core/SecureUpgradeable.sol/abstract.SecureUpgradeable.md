@@ -44,7 +44,51 @@ bool public secureUpgradesEnabled
 ```
 
 
+### EMERGENCY_DISABLE_DELAY
+INFO-4: Minimum delay before a proposed emergency-disable takes effect (24h)
+
+
+```solidity
+uint256 public constant EMERGENCY_DISABLE_DELAY = 24 hours
+```
+
+
+### EMERGENCY_DISABLE_QUORUM
+Emergency-disable approvals required before apply can succeed
+
+
+```solidity
+uint256 public constant EMERGENCY_DISABLE_QUORUM = 2
+```
+
+
+### emergencyDisablePendingAt
+INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
+
+
+```solidity
+uint256 public emergencyDisablePendingAt
+```
+
+
+### EMERGENCY_DISABLE_STORAGE_SLOT
+Unstructured storage slot to avoid shifting child storage layouts.
+
+
+```solidity
+bytes32 private constant EMERGENCY_DISABLE_STORAGE_SLOT =
+    keccak256("quantillon.secure-upgradeable.emergency-disable.storage.v1")
+```
+
+
 ## Functions
+### _emergencyDisableStorage
+
+
+```solidity
+function _emergencyDisableStorage() private pure returns (EmergencyDisableStorage storage ds);
+```
+
 ### onlyTimelock
 
 
@@ -468,9 +512,11 @@ function getUpgradeSecurityStatus()
 |`hasTimelock`|`bool`|Whether timelock is set|
 
 
-### emergencyDisableSecureUpgrades
+### proposeEmergencyDisableSecureUpgrades
 
 Disable secure upgrades in emergency
+
+INFO-4: Propose disabling secure upgrades; enforces a 24-hour timelock
 
 Disables secure upgrades for emergency situations
 
@@ -493,7 +539,67 @@ Disables secure upgrades for emergency situations
 
 
 ```solidity
-function emergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE);
+function proposeEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+
+### approveEmergencyDisableSecureUpgrades
+
+INFO-4/NEW-3: Register an admin approval for the active emergency-disable proposal.
+
+
+```solidity
+function approveEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+
+### applyEmergencyDisableSecureUpgrades
+
+INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed
+
+
+```solidity
+function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`expectedProposalId`|`uint256`|Proposal id the caller expects to apply (replay/mismatch protection)|
+
+
+### emergencyDisableProposalId
+
+Current emergency-disable proposal id (0 when no proposal has ever been created).
+
+
+```solidity
+function emergencyDisableProposalId() public view returns (uint256);
+```
+
+### emergencyDisableApprovalCount
+
+Current approval count for the active proposal.
+
+
+```solidity
+function emergencyDisableApprovalCount() public view returns (uint256);
+```
+
+### emergencyDisableQuorum
+
+Quorum required to apply the emergency disable.
+
+
+```solidity
+function emergencyDisableQuorum() public pure returns (uint256);
+```
+
+### hasEmergencyDisableApproval
+
+Returns whether `approver` approved a given emergency-disable proposal.
+
+
+```solidity
+function hasEmergencyDisableApproval(uint256 proposalId, address approver) public view returns (bool);
 ```
 
 ### enableSecureUpgrades
@@ -541,5 +647,30 @@ event SecureUpgradesToggled(bool enabled);
 
 ```solidity
 event SecureUpgradeAuthorized(address indexed newImplementation, address indexed authorizedBy, string description);
+```
+
+### EmergencyDisableProposed
+INFO-4: Emitted when an emergency-disable proposal is created
+
+
+```solidity
+event EmergencyDisableProposed(uint256 indexed proposalId, uint256 activatesAt);
+```
+
+### EmergencyDisableApproved
+
+```solidity
+event EmergencyDisableApproved(uint256 indexed proposalId, address indexed approver, uint256 approvalCount);
+```
+
+## Structs
+### EmergencyDisableStorage
+
+```solidity
+struct EmergencyDisableStorage {
+    uint256 proposalId;
+    uint256 approvalCount;
+    mapping(uint256 => mapping(address => bool)) hasApproved;
+}
 ```
 

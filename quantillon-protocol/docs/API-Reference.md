@@ -32,18 +32,24 @@ This document provides detailed technical specifications for all Quantillon Prot
 
 ### Function Signatures
 
-#### `initialize(address admin, address _qeuro, address _usdc, address _oracle)`
+#### `initialize(address admin, address _qeuro, address _usdc, address _oracle, address _hedgerPool, address _userPool, address _timelock, address _feeCollector)`
 ```solidity
 function initialize(
     address admin,
     address _qeuro,
     address _usdc,
-    address _oracle
+    address _oracle,
+    address _hedgerPool,
+    address _userPool,
+    address _timelock,
+    address _feeCollector
 ) external
 ```
 
 **Modifiers**: `initializer`  
-**Events**: `VaultInitialized(address admin, address qeuro, address usdc, address oracle)`
+**Notes**:
+- `_hedgerPool` and `_userPool` can be wired later through governance setters.
+- `_timelock` is also used as treasury destination for recovery flows.
 
 #### `mintQEURO(uint256 usdcAmount, uint256 minQeuroOut)`
 ```solidity
@@ -54,12 +60,13 @@ function mintQEURO(
 ```
 
 **Modifiers**: `whenNotPaused`, `nonReentrant`  
-**Events**: `QEUROMinted(address indexed user, uint256 usdcAmount, uint256 qeuroAmount, uint256 price)`  
+**Events**: `QEUROminted(address indexed user, uint256 usdcAmount, uint256 qeuroAmount)`  
 **Requirements**:
 - `usdcAmount > 0`
-- `minQeuroOut > 0`
-- Oracle price is fresh
+- Price cache initialized (`initializePriceCache`)
+- Active hedger configured (`hedgerPool.hasActiveHedger()`)
 - Sufficient USDC balance and allowance
+- Projected post-mint collateralization ratio must remain above threshold
 
 #### `redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut)`
 ```solidity
@@ -70,67 +77,96 @@ function redeemQEURO(
 ```
 
 **Modifiers**: `whenNotPaused`, `nonReentrant`  
-**Events**: `QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmount, uint256 price)`  
+**Events**: `QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmount)`  
 **Requirements**:
 - `qeuroAmount > 0`
-- `minUsdcOut > 0`
-- Oracle price is fresh
 - Sufficient QEURO balance and allowance
+- Automatically routes to liquidation mode when protocol CR is at or below critical threshold
+- Pulls liquidity from Aave when needed (including accrued yield)
 
-#### `calculateMintAmount(uint256 usdcAmount) → (uint256)`
+#### `calculateMintAmount(uint256 usdcAmount) → (uint256, uint256)`
 ```solidity
-function calculateMintAmount(uint256 usdcAmount) external view returns (uint256)
+function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee)
 ```
 
-**Returns**: Amount of QEURO that would be minted (18 decimals)
+**Returns**:
+- `qeuroAmount`: Amount of QEURO that would be minted (18 decimals)
+- `fee`: Mint fee amount (USDC, 6 decimals)
 
-#### `calculateRedeemAmount(uint256 qeuroAmount) → (uint256)`
+**Notes**:
+- Uses cached EUR/USD price path (`lastValidEurUsdPrice`).
+
+#### `calculateRedeemAmount(uint256 qeuroAmount) → (uint256, uint256)`
 ```solidity
-function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256)
+function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee)
 ```
 
-**Returns**: Amount of USDC that would be received (6 decimals)
+**Returns**:
+- `usdcAmount`: Amount of USDC that would be received (6 decimals)
+- `fee`: Redemption fee amount (USDC, 6 decimals)
 
-#### `getVaultMetrics() → (uint256, uint256, uint256, uint256, uint256, uint256)`
+**Notes**:
+- Uses cached EUR/USD price path (`lastValidEurUsdPrice`).
+
+#### `getVaultMetrics() → (uint256, uint256, uint256, uint256, uint256)`
 ```solidity
 function getVaultMetrics() external view returns (
-    uint256 totalUsdcReserves,
-    uint256 totalQeuroSupply,
-    uint256 collateralizationRatio,
-    uint256 protocolFees,
-    uint256 lastUpdateTime,
-    uint256 utilizationRate
+    uint256 totalUsdcHeld_,
+    uint256 totalMinted_,
+    uint256 totalDebtValue,
+    uint256 totalUsdcInAave_,
+    uint256 totalUsdcAvailable_
 )
 ```
 
-**Returns**: Vault metrics including collateralization ratio (basis points)
+**Returns**:
+- `totalUsdcHeld_`: USDC held directly by vault
+- `totalMinted_`: QEURO minted by vault tracker
+- `totalDebtValue`: USD debt value using live token supply and cached EUR/USD
+- `totalUsdcInAave_`: Principal tracker for Aave allocation
+- `totalUsdcAvailable_`: Total collateral available including accrued Aave yield
 
 #### `getProtocolCollateralizationRatio() → (uint256)`
 ```solidity
-function getProtocolCollateralizationRatio() public returns (uint256 ratio)
+function getProtocolCollateralizationRatio() public view returns (uint256 ratio)
 ```
 
-**Returns**: Current protocol collateralization ratio in basis points (e.g., 10500 = 105%)
+**Returns**: Current protocol collateralization ratio in 18-decimal percentage format (`100% = 1e20`)
 
-**Description**: Calculates the protocol collateralization ratio using the formula: `((A + B) / A) * 10000` where:
-- `A` = Current QEURO supply converted to USDC equivalent (user deposits)
-- `B` = Total effective hedger collateral (deposits + unrealized P&L)
+**Description**: Calculates `CR = (TotalCollateral / BackingRequirement) * 1e20` where:
+- `TotalCollateral` = `totalUsdcHeld + currentAaveCollateral` (includes accrued Aave yield when queryable)
+- `BackingRequirement` = `QEUROSupply * cachedEurUsdPrice / 1e30`
 
-**Note**: Uses hedger effective collateral (via `HedgerPool.getTotalEffectiveHedgerCollateral()`) instead of raw deposits to accurately account for P&L in the collateralization calculation.
+**Note**: This function uses cached price and returns `0` when required wiring/cache prerequisites are not met.
 
 **Requirements**:
 - Both HedgerPool and UserPool must be set
-- Valid oracle price
+- Initialized cached price
 - QEURO supply > 0
 
 #### `canMint() → (bool)`
 ```solidity
-function canMint() external view returns (bool)
+function canMint() public view returns (bool)
 ```
 
 **Returns**: `true` if minting is allowed, `false` otherwise
 
-**Description**: Checks if minting is allowed based on current protocol collateralization ratio. Returns `true` if the ratio is >= `minCollateralizationRatioForMinting` (default 105%).
+**Description**: Checks if minting is allowed under current safeguards:
+- Cached price must be initialized.
+- Active hedger must exist.
+- Collateralization ratio must be >= `minCollateralizationRatioForMinting`.
+
+#### `getProtocolCollateralizationRatioView() / canMintView()`
+View-safe aliases exposing the same logic for off-chain tooling.
+
+#### `initializePriceCache()`
+Governance-only bootstrap step required after deployment and before first user mint.
+
+#### `updateHedgerRewardFeeSplit(uint256 newSplit)`
+Governance setter for fee routing share to HedgerPool reserve (`1e18 = 100%`).
+
+#### `harvestAaveInterest() → (uint256 harvestedYield)`
+Governance entrypoint that triggers Aave harvest through AaveVault.
 
 ---
 
@@ -368,21 +404,22 @@ function enterHedgePosition(
 ) external returns (uint256 positionId)
 ```
 
-**Modifiers**: `secureNonReentrant`  
+**Modifiers**: `whenNotPaused`, `nonReentrant`  
 **Events**: `HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 positionData)`  
 **Requirements**:
 - `usdcAmount > 0`
 - `leverage >= 1 && leverage <= maxLeverage`
+- Caller must be configured `singleHedger`
 - Fresh oracle price
 - Sufficient USDC balance and allowance
 
-#### `closeHedgePosition(uint256 positionId) → (int256)`
+#### `exitHedgePosition(uint256 positionId) → (int256)`
 ```solidity
-function closeHedgePosition(uint256 positionId) external returns (int256 pnl)
+function exitHedgePosition(uint256 positionId) external returns (int256 pnl)
 ```
 
-**Modifiers**: `secureNonReentrant`  
-**Events**: `HedgePositionClosed(address indexed hedger, uint256 indexed positionId, int256 pnl)`  
+**Modifiers**: `whenNotPaused`, `nonReentrant`  
+**Events**: `HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData)`  
 **Requirements**:
 - Position exists and is active
 - Caller owns the position
@@ -392,62 +429,71 @@ function closeHedgePosition(uint256 positionId) external returns (int256 pnl)
 function addMargin(uint256 positionId, uint256 usdcAmount) external
 ```
 
-**Modifiers**: `secureNonReentrant`  
-**Events**: `MarginAdded(address indexed hedger, uint256 indexed positionId, uint256 amount)`  
+**Modifiers**: `whenNotPaused`, `nonReentrant`  
+**Events**: `MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData)`  
 **Requirements**:
 - Position exists and is active
 - Caller owns the position
 - `usdcAmount > 0`
+- Margin fee is split between local reward reserve and FeeCollector
 
 #### `removeMargin(uint256 positionId, uint256 usdcAmount)`
 ```solidity
 function removeMargin(uint256 positionId, uint256 usdcAmount) external
 ```
 
-**Modifiers**: `secureNonReentrant`  
-**Events**: `MarginRemoved(address indexed hedger, uint256 indexed positionId, uint256 amount)`  
+**Modifiers**: `whenNotPaused`, `nonReentrant`  
+**Events**: `MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData)`  
 **Requirements**:
 - Position exists and is active
 - Caller owns the position
 - Maintains minimum margin ratio
 
-#### `getPositionInfo(uint256 positionId) → (address, uint256, uint256, uint256, uint256, uint256, int256, bool)`
+#### `claimHedgingRewards() → (uint256, uint256, uint256)`
 ```solidity
-function getPositionInfo(uint256 positionId) external view returns (
-    address hedger,
-    uint256 positionSize,
-    uint256 margin,
-    uint256 entryPrice,
-    uint256 entryTime,
-    uint256 leverage,
-    int256 unrealizedPnL,
-    bool isActive
-)
+function claimHedgingRewards() external returns (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards)
 ```
 
-#### `getTotalEffectiveHedgerCollateral() → (uint256)`
-```solidity
-function getTotalEffectiveHedgerCollateral() external view returns (uint256 totalEffectiveCollateral)
-```
-
-**Returns**: Total effective hedger collateral in USDC (6 decimals), calculated as sum of (margin + unrealized P&L) for all active positions
-
-**Description**: Calculates the total effective collateral across all active hedger positions, accounting for unrealized P&L. This is used by the vault to determine protocol collateralization ratio. Only positions with positive effective collateral (margin + P&L > 0) are included. Positions with negative effective collateral (underwater positions) are excluded from the total.
-
+**Modifiers**: `nonReentrant`  
+**Events**: `HedgingRewardsClaimed(address indexed hedger, bytes32 packedData)`  
 **Requirements**:
-- Valid oracle price
-- Fresh price data
+- Caller must be configured `singleHedger`
+- YieldShift reward component is settled once through YieldShift
 
-#### `liquidatePosition(uint256 positionId)`
+#### `withdrawPendingRewards(address recipient)`
 ```solidity
-function liquidatePosition(uint256 positionId) external
+function withdrawPendingRewards(address recipient) external
 ```
 
-**Modifiers**: `onlyRole(LIQUIDATOR_ROLE)`  
-**Events**: `PositionLiquidated(address indexed liquidator, uint256 indexed positionId, int256 pnl)`  
+Pull-based fallback for pending reward escrow after failed push-transfer.
+
+#### `hasActiveHedger() → (bool)`
+```solidity
+function hasActiveHedger() external view returns (bool)
+```
+
+Returns true when the configured single hedger has an active position.
+
+#### `getTotalEffectiveHedgerCollateral(uint256 currentPrice) → (uint256)`
+```solidity
+function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external view returns (uint256 totalEffectiveCollateral)
+```
+
+**Returns**: Total effective hedger collateral in USDC (6 decimals)  
 **Requirements**:
-- Position is undercollateralized
-- Fresh oracle price
+- `currentPrice > 0`
+
+#### `setSingleHedger(address hedger)`
+Governance entrypoint for bootstrap/rotation proposal.
+
+#### `proposeSingleHedger(address hedger)` / `applySingleHedgerRotation()`
+Delayed single-hedger rotation flow.
+
+#### `fundRewardReserve(uint256 amount)`
+Permissionless reserve top-up path for hedger rewards.
+
+#### `updateRewardFeeSplit(uint256 newSplit)`
+Governance setter for margin-fee share routed to local reward reserve (`1e18 = 100%`).
 
 ---
 
@@ -816,7 +862,7 @@ revert CustomError();
 | `redeemQEURO` | 140,000 |
 | `stake` | 120,000 |
 | `enterHedgePosition` | 200,000 |
-| `closeHedgePosition` | 180,000 |
+| `exitHedgePosition` | 180,000 |
 | `lock` | 160,000 |
 | `vote` | 100,000 |
 

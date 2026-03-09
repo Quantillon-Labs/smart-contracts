@@ -78,16 +78,16 @@ interface IQuantillonVault {
      * @return totalDebtValue Total debt value in USD
      * @return totalUsdcInAave_ Total USDC deployed to Aave for yield
      * @return totalUsdcAvailable_ Total USDC available (vault + Aave)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:security Read-only helper
+      * @custom:validation None
+      * @custom:state-changes None
+      * @custom:events None
+      * @custom:errors None
+      * @custom:reentrancy Not applicable
+      * @custom:access Public
+      * @custom:oracle Uses cached oracle price for debt-value conversion
      */
-    function getVaultMetrics() external returns (
+    function getVaultMetrics() external view returns (
         uint256 totalUsdcHeld_,
         uint256 totalMinted_,
         uint256 totalDebtValue,
@@ -97,43 +97,43 @@ interface IQuantillonVault {
 
     /**
      * @notice Computes QEURO mint amount for a USDC swap
-     * @dev Uses current oracle price to calculate QEURO equivalent without executing swap
+     * @dev Uses cached oracle price to calculate QEURO equivalent without executing swap
      * @param usdcAmount USDC to swap
      * @return qeuroAmount Expected QEURO to mint (after fees)
      * @return fee Protocol fee
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:security Read-only helper
+      * @custom:validation Returns zeroes when price cache is uninitialized
+      * @custom:state-changes None
+      * @custom:events None
+      * @custom:errors None
+      * @custom:reentrancy Not applicable
+      * @custom:access Public
+      * @custom:oracle Uses cached oracle price only
      */
     function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee);
 
     /**
      * @notice Computes USDC redemption amount for a QEURO swap
-     * @dev Uses current oracle price to calculate USDC equivalent without executing swap
+     * @dev Uses cached oracle price to calculate USDC equivalent without executing swap
      * @param qeuroAmount QEURO to swap
      * @return usdcAmount USDC returned after fees
      * @return fee Protocol fee
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:security Read-only helper
+      * @custom:validation Returns zeroes when price cache is uninitialized
+      * @custom:state-changes None
+      * @custom:events None
+      * @custom:errors None
+      * @custom:reentrancy Not applicable
+      * @custom:access Public
+      * @custom:oracle Uses cached oracle price only
      */
     function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee);
 
     /**
      * @notice Updates vault parameters
      * @dev Allows governance to update fee parameters for minting and redemption
-     * @param _mintFee New minting fee
-     * @param _redemptionFee New redemption fee
+     * @param _mintFee New minting fee (1e18-scaled, where 1e18 = 100%)
+     * @param _redemptionFee New redemption fee (1e18-scaled, where 1e18 = 100%)
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -457,8 +457,8 @@ interface IQuantillonVault {
     
     /**
      * @notice Returns the current minting fee
-     * @dev Fee charged when minting QEURO with USDC (in basis points)
-     * @return The minting fee in basis points
+     * @dev Fee charged when minting QEURO with USDC (1e18-scaled, where 1e16 = 1%)
+     * @return The minting fee as a 1e18-scaled percentage
      * @custom:security No security validations required - view function
      * @custom:validation No input validation required - view function
      * @custom:state-changes No state changes - view function only
@@ -472,8 +472,8 @@ interface IQuantillonVault {
     
     /**
      * @notice Returns the current redemption fee
-     * @dev Fee charged when redeeming QEURO for USDC (in basis points)
-     * @return The redemption fee in basis points
+     * @dev Fee charged when redeeming QEURO for USDC (1e18-scaled, where 1e16 = 1%)
+     * @return The redemption fee as a 1e18-scaled percentage
      * @custom:security No security validations required - view function
      * @custom:validation No input validation required - view function
      * @custom:state-changes No state changes - view function only
@@ -533,8 +533,8 @@ interface IQuantillonVault {
 
     /**
      * @notice Returns the minimum collateralization ratio for minting
-     * @dev Minimum ratio required for QEURO minting (in basis points)
-     * @return The minimum collateralization ratio in basis points
+     * @dev Minimum ratio required for QEURO minting (1e18-scaled percentage format)
+     * @return The minimum collateralization ratio in 1e18-scaled percentage format
      * @custom:security No security validations required - view function
      * @custom:validation No input validation required - view function
      * @custom:state-changes No state changes - view function only
@@ -685,8 +685,8 @@ interface IQuantillonVault {
     /**
      * @notice Updates the collateralization thresholds
      * @dev Updates minimum and critical collateralization ratios
-     * @param _minCollateralizationRatioForMinting New minimum collateralization ratio for minting (in basis points)
-     * @param _criticalCollateralizationRatio New critical collateralization ratio for liquidation (in basis points)
+     * @param _minCollateralizationRatioForMinting New minimum collateralization ratio for minting (1e18-scaled percentage)
+     * @param _criticalCollateralizationRatio New critical collateralization ratio for liquidation (1e18-scaled percentage)
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables
@@ -714,7 +714,7 @@ interface IQuantillonVault {
      * @custom:access Public - anyone can check minting status
      * @custom:oracle No oracle dependencies
      */
-    function canMint() external returns (bool);
+    function canMint() external view returns (bool);
 
     /**
      * @notice Checks if liquidation should be triggered based on current collateralization ratio
@@ -729,7 +729,7 @@ interface IQuantillonVault {
      * @custom:access Public - anyone can check liquidation status
      * @custom:oracle No oracle dependencies
      */
-    function shouldTriggerLiquidation() external returns (bool);
+    function shouldTriggerLiquidation() external view returns (bool);
 
     /**
      * @notice Returns liquidation status and key metrics for pro-rata redemption
@@ -747,7 +747,7 @@ interface IQuantillonVault {
      * @custom:access Public - anyone can check liquidation status
      * @custom:oracle Requires oracle price for collateral calculation
      */
-    function getLiquidationStatus() external returns (
+    function getLiquidationStatus() external view returns (
         bool isInLiquidation,
         uint256 collateralizationRatioBps,
         uint256 totalCollateralUsdc,
@@ -770,7 +770,7 @@ interface IQuantillonVault {
      * @custom:access Public - anyone can calculate payout
      * @custom:oracle Requires oracle price for fair value calculation
      */
-    function calculateLiquidationPayout(uint256 qeuroAmount) external returns (
+    function calculateLiquidationPayout(uint256 qeuroAmount) external view returns (
         uint256 usdcPayout,
         bool isPremium,
         uint256 premiumOrDiscountBps
@@ -794,8 +794,8 @@ interface IQuantillonVault {
 
     /**
      * @notice Calculates the current protocol collateralization ratio
-     * @dev Returns ratio in basis points (e.g., 10500 = 105%)
-     * @return ratio Current collateralization ratio in basis points
+     * @dev Returns ratio in 1e18-scaled percentage format (100% = 1e20)
+     * @return ratio Current collateralization ratio in 1e18-scaled percentage format
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes No state changes - view function
@@ -805,7 +805,13 @@ interface IQuantillonVault {
      * @custom:access Public - anyone can check collateralization ratio
      * @custom:oracle Requires fresh oracle price data (via HedgerPool)
      */
-    function getProtocolCollateralizationRatio() external returns (uint256);
+    function getProtocolCollateralizationRatio() external view returns (uint256);
+
+    /// @notice View-only collateralization ratio using cached price (same units as getProtocolCollateralizationRatio).
+    function getProtocolCollateralizationRatioView() external view returns (uint256);
+
+    /// @notice View-only mintability check using cached price and current hedger status.
+    function canMintView() external view returns (bool);
 
     /**
      * @notice Updates the price cache with the current oracle price
@@ -820,6 +826,9 @@ interface IQuantillonVault {
      * @custom:oracle Requires valid oracle price
      */
     function updatePriceCache() external;
+
+    /// @notice Initializes the cached EUR/USD price used by view-safe query paths.
+    function initializePriceCache() external;
 
     // =============================================================================
     // AAVE INTEGRATION - Functions for USDC yield generation via Aave
@@ -854,6 +863,12 @@ interface IQuantillonVault {
      * @custom:oracle No oracle dependencies
      */
     function updateAaveVault(address _aaveVault) external;
+
+    /// @notice Updates the protocol-fee share routed to HedgerPool reward reserve (1e18 = 100%).
+    function updateHedgerRewardFeeSplit(uint256 newSplit) external;
+
+    /// @notice Harvests accrued Aave interest through the configured AaveVault.
+    function harvestAaveInterest() external returns (uint256 harvestedYield);
 
     /**
      * @notice Returns the AaveVault contract address

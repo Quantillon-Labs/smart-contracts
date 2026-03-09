@@ -541,8 +541,10 @@ function pendingUpgrades(address)
     view
     returns (
         address implementation,
+        address proposingProxy,
         uint256 proposedAt,
         uint256 executableAt,
+        uint256 expiryAt,
         string memory description,
         bool isEmergency,
         address proposer
@@ -559,8 +561,10 @@ function pendingUpgrades(address)
 |Name|Type|Description|
 |----|----|-----------|
 |`implementation`|`address`|Address of the new implementation|
+|`proposingProxy`|`address`|Proxy contract that initiated the upgrade|
 |`proposedAt`|`uint256`|Timestamp when upgrade was proposed|
 |`executableAt`|`uint256`|Timestamp when upgrade can be executed|
+|`expiryAt`|`uint256`|Timestamp when upgrade proposal expires|
 |`description`|`string`|Description of the upgrade|
 |`isEmergency`|`bool`|Whether this is an emergency upgrade|
 |`proposer`|`address`|Address of the proposer|
@@ -1082,8 +1086,10 @@ event EmergencyModeToggled(bool enabled, string reason);
 ```solidity
 struct PendingUpgrade {
     address implementation;
+    address proposingProxy; // HIGH-1: proxy that initiated this upgrade
     uint256 proposedAt;
     uint256 executableAt;
+    uint256 expiryAt; // LOW-6: proposal expires after MAX_PROPOSAL_AGE
     string description;
     bool isEmergency;
     address proposer;

@@ -252,6 +252,33 @@ bool public devModeEnabled
 ```
 
 
+### DEV_MODE_DELAY
+MED-1: Minimum delay before a proposed dev-mode change takes effect
+
+
+```solidity
+uint256 public constant DEV_MODE_DELAY = 48 hours
+```
+
+
+### pendingDevMode
+MED-1: Pending dev-mode value awaiting the timelock delay
+
+
+```solidity
+bool public pendingDevMode
+```
+
+
+### devModePendingAt
+MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+
+
+```solidity
+uint256 public devModePendingAt
+```
+
+
 ### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
@@ -1116,11 +1143,13 @@ function updatePriceFeeds(address _storkFeedAddress, bytes32 _eurUsdFeedId, byte
 |`_usdcUsdFeedId`|`bytes32`|New USDC/USD feed ID|
 
 
-### setDevMode
+### proposeDevMode
 
 Toggles dev mode to disable spread deviation checks
 
 Toggles dev mode to disable price deviation checks
+
+MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
 
 DEV ONLY: When enabled, price deviation checks are skipped for testing
 
@@ -1145,7 +1174,7 @@ Dev mode allows testing with price deviations that would normally trigger circui
 
 
 ```solidity
-function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
+function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 **Parameters**
 
@@ -1153,6 +1182,15 @@ function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 |----|----|-----------|
 |`enabled`|`bool`|True to enable dev mode, false to disable|
 
+
+### applyDevMode
+
+MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+
+
+```solidity
+function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE);
+```
 
 ## Events
 ### PriceUpdated
@@ -1239,4 +1277,19 @@ event DevModeToggled(bool enabled, address indexed caller);
 |----|----|-----------|
 |`enabled`|`bool`|Whether dev mode is enabled or disabled|
 |`caller`|`address`|Address that triggered the toggle|
+
+### DevModeProposed
+MED-1: Emitted when a dev-mode change is proposed
+
+
+```solidity
+event DevModeProposed(bool pending, uint256 activatesAt);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pending`|`bool`|The proposed dev-mode value|
+|`activatesAt`|`uint256`|Timestamp at which the change can be applied|
 

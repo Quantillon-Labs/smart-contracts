@@ -141,26 +141,27 @@ Retrieves the vault's global metrics
 Provides comprehensive vault statistics for monitoring and analysis
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- security: Read-only helper
 
-- validation: Validates input parameters and business logic constraints
+- validation: None
 
-- state-changes: Updates contract state variables
+- state-changes: None
 
-- events: Emits relevant events for state changes
+- events: None
 
-- errors: Throws custom errors for invalid conditions
+- errors: None
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not applicable
 
-- access: Restricted to authorized roles
+- access: Public
 
-- oracle: Requires fresh oracle price data
+- oracle: Uses cached oracle price for debt-value conversion
 
 
 ```solidity
 function getVaultMetrics()
     external
+    view
     returns (
         uint256 totalUsdcHeld_,
         uint256 totalMinted_,
@@ -184,24 +185,24 @@ function getVaultMetrics()
 
 Computes QEURO mint amount for a USDC swap
 
-Uses current oracle price to calculate QEURO equivalent without executing swap
+Uses cached oracle price to calculate QEURO equivalent without executing swap
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- security: Read-only helper
 
-- validation: Validates input parameters and business logic constraints
+- validation: Returns zeroes when price cache is uninitialized
 
-- state-changes: Updates contract state variables
+- state-changes: None
 
-- events: Emits relevant events for state changes
+- events: None
 
-- errors: Throws custom errors for invalid conditions
+- errors: None
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not applicable
 
-- access: Restricted to authorized roles
+- access: Public
 
-- oracle: Requires fresh oracle price data
+- oracle: Uses cached oracle price only
 
 
 ```solidity
@@ -225,24 +226,24 @@ function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 
 
 Computes USDC redemption amount for a QEURO swap
 
-Uses current oracle price to calculate USDC equivalent without executing swap
+Uses cached oracle price to calculate USDC equivalent without executing swap
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- security: Read-only helper
 
-- validation: Validates input parameters and business logic constraints
+- validation: Returns zeroes when price cache is uninitialized
 
-- state-changes: Updates contract state variables
+- state-changes: None
 
-- events: Emits relevant events for state changes
+- events: None
 
-- errors: Throws custom errors for invalid conditions
+- errors: None
 
-- reentrancy: Protected by reentrancy guard
+- reentrancy: Not applicable
 
-- access: Restricted to authorized roles
+- access: Public
 
-- oracle: Requires fresh oracle price data
+- oracle: Uses cached oracle price only
 
 
 ```solidity
@@ -293,8 +294,8 @@ function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_mintFee`|`uint256`|New minting fee|
-|`_redemptionFee`|`uint256`|New redemption fee|
+|`_mintFee`|`uint256`|New minting fee (1e18-scaled, where 1e18 = 100%)|
+|`_redemptionFee`|`uint256`|New redemption fee (1e18-scaled, where 1e18 = 100%)|
 
 
 ### updateOracle
@@ -981,7 +982,7 @@ function oracle() external view returns (address);
 
 Returns the current minting fee
 
-Fee charged when minting QEURO with USDC (in basis points)
+Fee charged when minting QEURO with USDC (1e18-scaled, where 1e16 = 1%)
 
 **Notes:**
 - security: No security validations required - view function
@@ -1008,14 +1009,14 @@ function mintFee() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|The minting fee in basis points|
+|`<none>`|`uint256`|The minting fee as a 1e18-scaled percentage|
 
 
 ### redemptionFee
 
 Returns the current redemption fee
 
-Fee charged when redeeming QEURO for USDC (in basis points)
+Fee charged when redeeming QEURO for USDC (1e18-scaled, where 1e16 = 1%)
 
 **Notes:**
 - security: No security validations required - view function
@@ -1042,7 +1043,7 @@ function redemptionFee() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|The redemption fee in basis points|
+|`<none>`|`uint256`|The redemption fee as a 1e18-scaled percentage|
 
 
 ### totalUsdcHeld
@@ -1152,7 +1153,7 @@ function isProtocolCollateralized() external view returns (bool isCollateralized
 
 Returns the minimum collateralization ratio for minting
 
-Minimum ratio required for QEURO minting (in basis points)
+Minimum ratio required for QEURO minting (1e18-scaled percentage format)
 
 **Notes:**
 - security: No security validations required - view function
@@ -1179,7 +1180,7 @@ function minCollateralizationRatioForMinting() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|The minimum collateralization ratio in basis points|
+|`<none>`|`uint256`|The minimum collateralization ratio in 1e18-scaled percentage format|
 
 
 ### userPool
@@ -1501,8 +1502,8 @@ function updateCollateralizationThresholds(
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_minCollateralizationRatioForMinting`|`uint256`|New minimum collateralization ratio for minting (in basis points)|
-|`_criticalCollateralizationRatio`|`uint256`|New critical collateralization ratio for liquidation (in basis points)|
+|`_minCollateralizationRatioForMinting`|`uint256`|New minimum collateralization ratio for minting (1e18-scaled percentage)|
+|`_criticalCollateralizationRatio`|`uint256`|New critical collateralization ratio for liquidation (1e18-scaled percentage)|
 
 
 ### canMint
@@ -1530,7 +1531,7 @@ Returns true if collateralization ratio >= minCollateralizationRatioForMinting
 
 
 ```solidity
-function canMint() external returns (bool);
+function canMint() external view returns (bool);
 ```
 **Returns**
 
@@ -1564,7 +1565,7 @@ Returns true if collateralization ratio < criticalCollateralizationRatio
 
 
 ```solidity
-function shouldTriggerLiquidation() external returns (bool);
+function shouldTriggerLiquidation() external view returns (bool);
 ```
 **Returns**
 
@@ -1600,6 +1601,7 @@ Protocol enters liquidation mode when CR <= 101%
 ```solidity
 function getLiquidationStatus()
     external
+    view
     returns (
         bool isInLiquidation,
         uint256 collateralizationRatioBps,
@@ -1644,6 +1646,7 @@ Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
 ```solidity
 function calculateLiquidationPayout(uint256 qeuroAmount)
     external
+    view
     returns (uint256 usdcPayout, bool isPremium, uint256 premiumOrDiscountBps);
 ```
 **Parameters**
@@ -1700,7 +1703,7 @@ function redeemQEUROLiquidation(uint256 qeuroAmount, uint256 minUsdcOut) externa
 
 Calculates the current protocol collateralization ratio
 
-Returns ratio in basis points (e.g., 10500 = 105%)
+Returns ratio in 1e18-scaled percentage format (100% = 1e20)
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -1721,14 +1724,32 @@ Returns ratio in basis points (e.g., 10500 = 105%)
 
 
 ```solidity
-function getProtocolCollateralizationRatio() external returns (uint256);
+function getProtocolCollateralizationRatio() external view returns (uint256);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|ratio Current collateralization ratio in basis points|
+|`<none>`|`uint256`|ratio Current collateralization ratio in 1e18-scaled percentage format|
 
+
+### getProtocolCollateralizationRatioView
+
+View-only collateralization ratio using cached price (same units as getProtocolCollateralizationRatio).
+
+
+```solidity
+function getProtocolCollateralizationRatioView() external view returns (uint256);
+```
+
+### canMintView
+
+View-only mintability check using cached price and current hedger status.
+
+
+```solidity
+function canMintView() external view returns (bool);
+```
 
 ### updatePriceCache
 
@@ -1756,6 +1777,15 @@ Allows governance to manually refresh the price cache
 
 ```solidity
 function updatePriceCache() external;
+```
+
+### initializePriceCache
+
+Initializes the cached EUR/USD price used by view-safe query paths.
+
+
+```solidity
+function initializePriceCache() external;
 ```
 
 ### deployUsdcToAave
@@ -1825,6 +1855,24 @@ function updateAaveVault(address _aaveVault) external;
 |----|----|-----------|
 |`_aaveVault`|`address`|New AaveVault address|
 
+
+### updateHedgerRewardFeeSplit
+
+Updates the protocol-fee share routed to HedgerPool reward reserve (1e18 = 100%).
+
+
+```solidity
+function updateHedgerRewardFeeSplit(uint256 newSplit) external;
+```
+
+### harvestAaveInterest
+
+Harvests accrued Aave interest through the configured AaveVault.
+
+
+```solidity
+function harvestAaveInterest() external returns (uint256 harvestedYield);
+```
 
 ### aaveVault
 

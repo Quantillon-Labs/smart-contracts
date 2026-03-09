@@ -256,6 +256,15 @@ uint256 private _flashLoanBalanceBefore
 ```
 
 
+### _aaveDeploymentInProgress
+MED-7: Dedicated reentrancy guard for _executeAaveDeployment (separate from OZ lock)
+
+
+```solidity
+bool private _aaveDeploymentInProgress
+```
+
+
 ### aaveVault
 AaveVault contract for USDC yield generation
 
@@ -279,9 +288,9 @@ uint256 public totalUsdcInAave
 
 
 ### mintFee
-Protocol fee charged on minting QEURO (in basis points)
+Protocol fee charged on minting QEURO
 
-Example: 10 = 0.1% minting fee
+INFO-7: Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
 
 Revenue source for the protocol
 
@@ -292,9 +301,9 @@ uint256 public mintFee
 
 
 ### redemptionFee
-Protocol fee charged on redeeming QEURO (in basis points)
+Protocol fee charged on redeeming QEURO
 
-Example: 10 = 0.1% redemption fee
+INFO-7: Fee denominated in 1e18 precision — 1e16 = 1%, 1e18 = 100% (NOT basis points)
 
 Revenue source for the protocol
 
@@ -304,23 +313,28 @@ uint256 public redemptionFee
 ```
 
 
-### TAKES_FEES_DURING_LIQUIDATION
-Whether fees are taken during liquidation mode redemption
-
-Set to true by default - fees are charged even in liquidation mode
-
-Can be changed by governance if needed
+### hedgerRewardFeeSplit
+Share of protocol fees routed to HedgerPool reward reserve (1e18 = 100%)
 
 
 ```solidity
-bool public constant TAKES_FEES_DURING_LIQUIDATION = true
+uint256 public hedgerRewardFeeSplit
+```
+
+
+### MAX_HEDGER_REWARD_FEE_SPLIT
+Maximum value allowed for hedgerRewardFeeSplit
+
+
+```solidity
+uint256 public constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18
 ```
 
 
 ### minCollateralizationRatioForMinting
-Minimum collateralization ratio required for minting QEURO (in basis points)
+Minimum collateralization ratio required for minting QEURO (in 1e18 precision, NOT basis points)
 
-Example: 10500 = 105% collateralization ratio required for minting
+INFO-7: Example: 105000000000000000000 = 105% collateralization ratio required for minting
 
 When protocol collateralization >= this threshold, minting is allowed
 
@@ -405,6 +419,33 @@ When enabled, price deviation checks and caching requirements are skipped (dev/t
 
 ```solidity
 bool public devModeEnabled
+```
+
+
+### DEV_MODE_DELAY
+MED-1: Minimum delay before a proposed dev-mode change takes effect
+
+
+```solidity
+uint256 public constant DEV_MODE_DELAY = 48 hours
+```
+
+
+### pendingDevMode
+MED-1: Pending dev-mode value awaiting the timelock delay
+
+
+```solidity
+bool public pendingDevMode
+```
+
+
+### devModePendingAt
+MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+
+
+```solidity
+uint256 public devModePendingAt
 ```
 
 
@@ -651,7 +692,7 @@ Redeem process:
 2. If liquidation mode: use pro-rata distribution based on actual USDC in vault
 - Payout = (qeuroAmount / totalSupply) * totalVaultUsdc
 - Hedger loses margin proportionally: (qeuroAmount / totalSupply) * hedgerMargin
-- Fees are applied if TAKES_FEES_DURING_LIQUIDATION is true
+- Fees are always applied using `redemptionFee`
 3. If normal mode: use oracle price with standard fees
 4. Burn QEURO and transfer USDC
 
@@ -697,7 +738,7 @@ Called by redeemQEURO when protocol is in liquidation mode (CR <= 101%)
 Key formulas:
 - Payout = (qeuroAmount / totalSupply) * totalVaultUsdc (actual USDC, not market value)
 - Hedger loss = (qeuroAmount / totalSupply) * hedgerMargin (proportional margin reduction)
-- Fees applied if TAKES_FEES_DURING_LIQUIDATION is true
+- Fees applied using `redemptionFee`
 
 Called by redeemQEURO when protocol enters liquidation mode
 Liquidation Mode Formulas:
@@ -777,14 +818,14 @@ function _ensureSufficientUsdcForPayout(uint256 usdcAmount) internal;
 
 ### _calculateLiquidationFees
 
-Calculates liquidation fees if enabled
+Calculates liquidation fees from gross liquidation payout.
 
-fee = usdcPayout * redemptionFee / 1e18 when TAKES_FEES_DURING_LIQUIDATION; else 0
+Fees are always applied in liquidation mode: `fee = usdcPayout * redemptionFee / 1e18`.
 
 **Notes:**
 - security: View only
 
-- validation: Uses redemptionFee and TAKES_FEES_DURING_LIQUIDATION
+- validation: Uses current `redemptionFee` in 1e18 precision
 
 - state-changes: None
 
@@ -812,26 +853,27 @@ function _calculateLiquidationFees(uint256 usdcPayout) internal view returns (ui
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fee`|`uint256`|Fee amount (0 if fees disabled)|
+|`fee`|`uint256`|Fee amount|
 |`netPayout`|`uint256`|Net payout after fees|
 
 
 ### _notifyHedgerPoolLiquidation
 
-Notifies hedger pool of liquidation redemption for margin adjustment
+Notifies hedger pool of liquidation redemption for margin adjustment.
 
-Calls hedgerPool.recordLiquidationRedeem(qeuroAmount, totalSupply); no-op if hedgerPool zero or no margin
+LOW-3 hardening: when hedger collateral exists, this call is atomic and must succeed.
+It is skipped only when HedgerPool is unset or has zero collateral.
 
 **Notes:**
-- security: Try/catch; failure does not revert redemption
+- security: Reverts liquidation flow if HedgerPool call fails while collateral exists
 
-- validation: Skips if hedgerPool is zero or totalMargin is 0
+- validation: Skips only when HedgerPool is zero or totalMargin is 0
 
 - state-changes: HedgerPool state via recordLiquidationRedeem
 
 - events: Via HedgerPool
 
-- errors: Swallowed by try/catch
+- errors: Bubbles HedgerPool errors in atomic path
 
 - reentrancy: External call to HedgerPool
 
@@ -860,7 +902,7 @@ Approves USDC to FeeCollector and calls collectFees; no-op if fees disabled or f
 **Notes:**
 - security: Requires approve and collectFees to succeed
 
-- validation: TAKES_FEES_DURING_LIQUIDATION and fee > 0
+- validation: `fee > 0`
 
 - state-changes: USDC balance of feeCollector
 
@@ -894,7 +936,7 @@ Only callable when protocol is in liquidation mode (CR <= 101%)
 Key formulas:
 - Payout = (qeuroAmount / totalSupply) * totalVaultUsdc (actual USDC in vault)
 - Hedger loss = (qeuroAmount / totalSupply) * hedgerMargin (realized as negative P&L)
-- Fees applied if TAKES_FEES_DURING_LIQUIDATION is true
+- Fees always applied using `redemptionFee`
 
 Premium if CR > 100%, haircut if CR < 100%
 
@@ -954,6 +996,7 @@ Returns comprehensive vault metrics for monitoring and analytics
 ```solidity
 function getVaultMetrics()
     external
+    view
     returns (
         uint256 totalUsdcHeld_,
         uint256 totalMinted_,
@@ -977,7 +1020,7 @@ function getVaultMetrics()
 
 Calculates the amount of QEURO that can be minted for a given USDC amount
 
-Calculates mint amount based on current oracle price and protocol fees
+Calculates mint amount based on cached oracle price and protocol fees
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -994,11 +1037,11 @@ Calculates mint amount based on current oracle price and protocol fees
 
 - access: No access restrictions
 
-- oracle: Requires fresh oracle price data
+- oracle: Uses cached oracle price (`lastValidEurUsdPrice`)
 
 
 ```solidity
-function calculateMintAmount(uint256 usdcAmount) external returns (uint256 qeuroAmount, uint256 fee);
+function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee);
 ```
 **Parameters**
 
@@ -1018,7 +1061,7 @@ function calculateMintAmount(uint256 usdcAmount) external returns (uint256 qeuro
 
 Calculates the amount of USDC received for a QEURO redemption
 
-Calculates redeem amount based on current oracle price and protocol fees
+Calculates redeem amount based on cached oracle price and protocol fees
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -1035,11 +1078,11 @@ Calculates redeem amount based on current oracle price and protocol fees
 
 - access: No access restrictions
 
-- oracle: Requires fresh oracle price data
+- oracle: Uses cached oracle price (`lastValidEurUsdPrice`)
 
 
 ```solidity
-function calculateRedeemAmount(uint256 qeuroAmount) external returns (uint256 usdcAmount, uint256 fee);
+function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee);
 ```
 **Parameters**
 
@@ -1122,8 +1165,23 @@ function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external onl
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_mintFee`|`uint256`|New minting fee|
-|`_redemptionFee`|`uint256`|New redemption fee|
+|`_mintFee`|`uint256`|New minting fee (1e18 precision, 1e18 = 100%)|
+|`_redemptionFee`|`uint256`|New redemption fee (1e18 precision, 1e18 = 100%)|
+
+
+### updateHedgerRewardFeeSplit
+
+Updates the fee share routed to HedgerPool reward reserve.
+
+
+```solidity
+function updateHedgerRewardFeeSplit(uint256 newSplit) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newSplit`|`uint256`|Share in 1e18 precision (1e18 = 100%).|
 
 
 ### updateCollateralizationThresholds
@@ -1335,6 +1393,23 @@ function updateAaveVault(address _aaveVault) external onlyRole(GOVERNANCE_ROLE);
 |Name|Type|Description|
 |----|----|-----------|
 |`_aaveVault`|`address`|New AaveVault address|
+
+
+### harvestAaveInterest
+
+Harvests accrued Aave interest through AaveVault and routes yield via YieldShift.
+
+HIGH-2 / NEW-1 remediation entrypoint for explicit yield synchronization.
+
+
+```solidity
+function harvestAaveInterest() external onlyRole(GOVERNANCE_ROLE) nonReentrant returns (uint256 harvestedYield);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`harvestedYield`|`uint256`|Amount harvested by AaveVault (USDC 6 decimals).|
 
 
 ### deployUsdcToAave
@@ -1618,46 +1693,82 @@ function _updatePriceTimestamp(bool isValid) internal;
 |`isValid`|`bool`|Whether the current price fetch was valid|
 
 
-### getProtocolCollateralizationRatio
+### _getAaveCollateralBalance
 
-Calculates the current protocol collateralization ratio
+Returns current Aave collateral balance including accrued yield when available.
 
-Formula: CR = (TotalVaultUSDC / BackingRequirement) × 100
-Where:
-- TotalVaultUSDC = totalUsdcHeld + totalUsdcInAave (raw USDC, not effective margin)
-- BackingRequirement = QEUROSupply × OraclePrice / 1e30 (USDC value of all QEURO)
-Returns ratio in 18 decimals:
-- 100% = 1e20 (100000000000000000000)
-- 101% = 1.01e20 (101000000000000000000)
-Liquidation mode is triggered when CR <= 101% (10100 bps).
-In liquidation mode, redemptions use pro-rata USDC distribution instead of fair value.
-
-**Notes:**
-- security: View function that reads state and oracle - safe for external calls
-
-- validation: Validates hedgerPool and userPool are set, oracle price is valid
-
-- state-changes: Updates oracle timestamp (via getEurUsdPrice call)
-
-- events: None - view function
-
-- errors: Reverts with InvalidOraclePrice if oracle data is invalid
-
-- reentrancy: Not applicable - no state changes, only reads
-
-- access: Public - anyone can check collateralization ratio
-
-- oracle: Requires fresh oracle price data
+Falls back to tracked principal if the external balance query is unavailable.
 
 
 ```solidity
-function getProtocolCollateralizationRatio() public returns (uint256 ratio);
+function _getAaveCollateralBalance() internal view returns (uint256);
+```
+
+### _getTotalCollateralWithAccruedYield
+
+HIGH-2/NEW-1: total protocol collateral including accrued Aave interest.
+
+Uses on-chain Aave balance (principal + yield) with a principal fallback path.
+
+
+```solidity
+function _getTotalCollateralWithAccruedYield() internal view returns (uint256);
+```
+
+### _routeProtocolFees
+
+MED-2: routes protocol fees between HedgerPool reserve and FeeCollector at source.
+
+
+```solidity
+function _routeProtocolFees(uint256 fee, string memory sourceType) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`fee`|`uint256`|Total fee amount in USDC (6 decimals)|
+|`sourceType`|`string`|Source tag passed through to FeeCollector accounting|
+
+
+### getProtocolCollateralizationRatio
+
+Calculates the current protocol collateralization ratio.
+
+Formula: `CR = (TotalCollateral / BackingRequirement) * 1e20`
+Where:
+- `TotalCollateral = totalUsdcHeld + currentAaveCollateral` (includes accrued Aave yield when available)
+- `BackingRequirement = QEUROSupply * cachedEurUsdPrice / 1e30` (USDC value of outstanding debt)
+Returns ratio in 18-decimal percentage format:
+- `100% = 1e20`
+- `101% = 1.01e20`
+
+**Notes:**
+- security: View function using cached price and current collateral state
+
+- validation: Returns 0 if pools are unset, supply is 0, or price cache is uninitialized
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: Not applicable - view function
+
+- access: Public - anyone can check collateralization ratio
+
+- oracle: Uses cached oracle price (`lastValidEurUsdPrice`)
+
+
+```solidity
+function getProtocolCollateralizationRatio() public view returns (uint256 ratio);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`ratio`|`uint256`|Current collateralization ratio in 18 decimals|
+|`ratio`|`uint256`|Current collateralization ratio in 18-decimal percentage format|
 
 
 ### canMint
@@ -1685,7 +1796,7 @@ Returns true if collateralization ratio >= minCollateralizationRatioForMinting
 
 
 ```solidity
-function canMint() public returns (bool);
+function canMint() public view returns (bool);
 ```
 **Returns**
 
@@ -1693,6 +1804,40 @@ function canMint() public returns (bool);
 |----|----|-----------|
 |`<none>`|`bool`|canMint Whether minting is currently allowed|
 
+
+### getProtocolCollateralizationRatioView
+
+LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price
+
+Uses lastValidEurUsdPrice so it can be called from view contexts and off-chain with zero gas
+
+
+```solidity
+function getProtocolCollateralizationRatioView() public view returns (uint256 ratio);
+```
+
+### canMintView
+
+LOW-4: Pure view variant of canMint using cached oracle price
+
+Uses lastValidEurUsdPrice so it can be called from view contexts and off-chain with zero gas
+
+
+```solidity
+function canMintView() public view returns (bool);
+```
+
+### initializePriceCache
+
+LOW-5: Seeds the oracle price cache so minting checks have a baseline.
+
+Governance MUST call this once immediately after deployment, before any user mints.
+Until this is called, `lastValidEurUsdPrice == 0` and mint attempts revert with `NotInitialized`.
+
+
+```solidity
+function initializePriceCache() external onlyRole(GOVERNANCE_ROLE);
+```
 
 ### shouldTriggerLiquidation
 
@@ -1719,7 +1864,7 @@ Returns true if collateralization ratio < criticalCollateralizationRatio
 
 
 ```solidity
-function shouldTriggerLiquidation() public returns (bool shouldLiquidate);
+function shouldTriggerLiquidation() public view returns (bool shouldLiquidate);
 ```
 **Returns**
 
@@ -1755,6 +1900,7 @@ Protocol enters liquidation mode when CR <= 101%. In this mode, users can redeem
 ```solidity
 function getLiquidationStatus()
     external
+    view
     returns (
         bool isInLiquidation,
         uint256 collateralizationRatioBps,
@@ -1801,6 +1947,7 @@ Premium if CR > 100%, haircut if CR < 100%
 ```solidity
 function calculateLiquidationPayout(uint256 qeuroAmount)
     external
+    view
     returns (uint256 usdcPayout, bool isPremium, uint256 premiumOrDiscountBps);
 ```
 **Parameters**
@@ -1988,41 +2135,16 @@ Security considerations:
 function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 
-### _syncMintWithHedgers
+### _syncMintWithHedgersOrRevert
 
-Internal helper to notify HedgerPool about user mints
+Internal helper to notify HedgerPool about user mints.
 
-Attempts to update hedger fills but swallows failures to avoid blocking users
-
-**Notes:**
-- security: Internal helper; relies on HedgerPool access control
-
-- validation: No additional validation beyond non-zero guard
-
-- state-changes: None inside the vault; delegates to HedgerPool
-
-- events: None
-
-- errors: Silently ignores downstream errors
-
-- reentrancy: Not applicable
-
-- access: Internal helper
-
-- oracle: Not applicable
+LOW-5 / INFO-2: mint path must fail if hedger synchronization fails.
 
 
 ```solidity
-function _syncMintWithHedgers(uint256 amount, uint256 fillPrice, uint256 qeuroAmount) internal;
+function _syncMintWithHedgersOrRevert(uint256 amount, uint256 fillPrice, uint256 qeuroAmount) internal;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`amount`|`uint256`|Net USDC amount minted into QEURO (6 decimals)|
-|`fillPrice`|`uint256`|EUR/USD oracle price used for the mint (18 decimals)|
-|`qeuroAmount`|`uint256`|QEURO amount that was minted (18 decimals)|
-
 
 ### _syncRedeemWithHedgers
 
@@ -2060,9 +2182,11 @@ function _syncRedeemWithHedgers(uint256 amount, uint256 redeemPrice, uint256 qeu
 |`qeuroAmount`|`uint256`|QEURO amount that was redeemed (18 decimals)|
 
 
-### setDevMode
+### proposeDevMode
 
 Toggles dev mode to disable price caching requirements
+
+MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
 
 DEV ONLY: When enabled, price deviation checks are skipped for testing
 
@@ -2085,7 +2209,7 @@ DEV ONLY: When enabled, price deviation checks are skipped for testing
 
 
 ```solidity
-function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
+function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 **Parameters**
 
@@ -2093,6 +2217,15 @@ function setDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 |----|----|-----------|
 |`enabled`|`bool`|True to enable dev mode, false to disable|
 
+
+### applyDevMode
+
+MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+
+
+```solidity
+function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE);
+```
 
 ## Events
 ### QEUROminted
@@ -2130,6 +2263,20 @@ event LiquidationRedeemed(
 |`usdcPayout`|`uint256`|Amount of USDC received (6 decimals)|
 |`collateralizationRatioBps`|`uint256`|Protocol CR at redemption time (basis points)|
 |`isPremium`|`bool`|True if user received more than fair value (CR > 100%)|
+
+### HedgerPoolNotificationFailed
+LOW-3: Emitted when notifying HedgerPool of a liquidation redemption fails
+
+
+```solidity
+event HedgerPoolNotificationFailed(uint256 qeuroAmount);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroAmount`|`uint256`|Amount of QEURO that was being redeemed|
 
 ### HedgerDepositAdded
 Emitted when hedger deposits USDC to vault for unified liquidity
@@ -2254,6 +2401,21 @@ event DevModeToggled(bool enabled, address indexed caller);
 |`enabled`|`bool`|Whether dev mode is enabled or disabled|
 |`caller`|`address`|Address that triggered the toggle|
 
+### DevModeProposed
+MED-1: Emitted when a dev-mode change is proposed
+
+
+```solidity
+event DevModeProposed(bool pending, uint256 activatesAt);
+```
+
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`pending`|`bool`|The proposed dev-mode value|
+|`activatesAt`|`uint256`|Timestamp at which the change can be applied|
+
 ### AaveVaultUpdated
 Emitted when AaveVault address is updated
 
@@ -2310,4 +2472,22 @@ event UsdcWithdrawnFromAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave)
 |----|----|-----------|
 |`usdcAmount`|`uint256`|Amount of USDC withdrawn from Aave|
 |`totalUsdcInAave`|`uint256`|New total USDC in Aave after withdrawal|
+
+### HedgerRewardFeeSplitUpdated
+
+```solidity
+event HedgerRewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
+```
+
+### AaveInterestHarvested
+
+```solidity
+event AaveInterestHarvested(uint256 harvestedYield);
+```
+
+### ProtocolFeeRouted
+
+```solidity
+event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReserveShare, uint256 collectorShare);
+```
 

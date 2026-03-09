@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -1769,6 +1770,79 @@ contract HedgerPoolTestSuite is Test {
         console2.log("Total rewards:", totalRewards);
     }
 
+    function test_Rewards_ClaimHedgingRewards_DoesNotDoubleCountYieldShift() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        vm.warp(block.timestamp + 30 days);
+        vm.roll(block.number + 30 days / 12);
+
+        uint256 mockedYieldShiftReward = 2_500e6;
+        vm.mockCall(
+            mockYieldShift,
+            abi.encodeWithSelector(IYieldShift.getHedgerPendingYield.selector, hedger1),
+            abi.encode(mockedYieldShiftReward)
+        );
+        vm.mockCall(
+            mockYieldShift,
+            abi.encodeWithSelector(IYieldShift.claimHedgerYield.selector, hedger1),
+            abi.encode(mockedYieldShiftReward)
+        );
+
+        vm.prank(hedger1);
+        (uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards) = hedgerPool.claimHedgingRewards();
+
+        assertEq(yieldShiftRewards, mockedYieldShiftReward, "YieldShift rewards should come from YieldShift only");
+        assertEq(totalRewards, interestDifferential + yieldShiftRewards, "Total rewards should be additive");
+        assertEq(
+            hedgerPool.pendingRewardWithdrawals(hedger1),
+            interestDifferential,
+            "pendingRewardWithdrawals must only track interest differential shortfall"
+        );
+    }
+
+    function test_MarginFeeSplit_RoutesReserveShareOnAddMargin() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        address collector = address(0xFEE1);
+        vm.prank(admin);
+        hedgerPool.setFeeCollector(collector);
+        vm.prank(governance);
+        hedgerPool.updateRewardFeeSplit(5e17); // 50% to reserve
+
+        vm.mockCall(
+            collector,
+            abi.encodeWithSelector(bytes4(keccak256("collectFees(address,uint256,string)"))),
+            abi.encode()
+        );
+
+        uint256 additionalMargin = 2_000e6;
+        uint256 expectedFee = additionalMargin * 15 / 10_000; // setUp() uses marginFee = 15 bps
+        uint256 expectedReserveShare = expectedFee / 2;
+
+        vm.recordLogs();
+        vm.prank(hedger1);
+        hedgerPool.addMargin(1, additionalMargin);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 rewardReserveTopic = keccak256("RewardReserveFunded(address,uint256)");
+        bool found;
+        uint256 reserveAmount;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics.length > 0 && logs[i].topics[0] == rewardReserveTopic) {
+                found = true;
+                reserveAmount = abi.decode(logs[i].data, (uint256));
+                break;
+            }
+        }
+
+        assertTrue(found, "RewardReserveFunded event should be emitted");
+        assertEq(reserveAmount, expectedReserveShare, "Reserve share amount should match fee split");
+    }
+
     // =============================================================================
     // VIEW FUNCTION TESTS
     // =============================================================================
@@ -3112,4 +3186,3 @@ contract HedgerPoolPositionClosureTest is Test {
         assertTrue(expectedSelector != bytes4(0));
     }
 }
-

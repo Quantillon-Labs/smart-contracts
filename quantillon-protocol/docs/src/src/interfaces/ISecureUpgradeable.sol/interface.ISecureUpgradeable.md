@@ -381,33 +381,38 @@ function getUpgradeSecurityStatus()
 |`hasTimelock`|`bool`|Whether timelock is set|
 
 
-### emergencyDisableSecureUpgrades
+### proposeEmergencyDisableSecureUpgrades
 
-Disable secure upgrades in emergency
-
-Emergency function to disable secure upgrade mechanism
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
+Propose emergency disable of secure upgrades (starts 24h delay window).
 
 
 ```solidity
-function emergencyDisableSecureUpgrades() external;
+function proposeEmergencyDisableSecureUpgrades() external;
 ```
+
+### approveEmergencyDisableSecureUpgrades
+
+Register an admin approval for the currently pending emergency-disable proposal.
+
+
+```solidity
+function approveEmergencyDisableSecureUpgrades() external;
+```
+
+### applyEmergencyDisableSecureUpgrades
+
+Apply pending emergency-disable once quorum and delay are satisfied.
+
+
+```solidity
+function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`expectedProposalId`|`uint256`|Proposal id expected by caller (replay/mismatch protection).|
+
 
 ### enableSecureUpgrades
 
@@ -435,6 +440,51 @@ Re-enables secure upgrade mechanism after emergency
 
 ```solidity
 function enableSecureUpgrades() external;
+```
+
+### emergencyDisablePendingAt
+
+Timestamp when emergency disable can be applied (0 = no active proposal).
+
+
+```solidity
+function emergencyDisablePendingAt() external view returns (uint256);
+```
+
+### emergencyDisableProposalId
+
+Current emergency-disable proposal id.
+
+
+```solidity
+function emergencyDisableProposalId() external view returns (uint256);
+```
+
+### emergencyDisableApprovalCount
+
+Current number of admin approvals for the active proposal.
+
+
+```solidity
+function emergencyDisableApprovalCount() external view returns (uint256);
+```
+
+### emergencyDisableQuorum
+
+Number of approvals required to apply emergency disable.
+
+
+```solidity
+function emergencyDisableQuorum() external view returns (uint256);
+```
+
+### hasEmergencyDisableApproval
+
+Returns whether `approver` approved `proposalId`.
+
+
+```solidity
+function hasEmergencyDisableApproval(uint256 proposalId, address approver) external view returns (bool);
 ```
 
 ### timelock

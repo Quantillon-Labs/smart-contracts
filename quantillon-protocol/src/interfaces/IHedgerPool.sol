@@ -111,7 +111,7 @@ interface IHedgerPool {
      * @custom:security Restricted to the vault; validates amount > 0
      * @custom:validation Amount and price must be positive
      * @custom:state-changes Updates per-position fills and total exposure
-     * @custom:events Emits `HedgerFillUpdated`
+     * @custom:events None
      * @custom:errors Reverts with capacity-related errors when overfilled
      * @custom:reentrancy Implementations must guard state before external calls
      * @custom:access Vault-only
@@ -128,7 +128,7 @@ interface IHedgerPool {
      * @custom:security Restricted to the vault; validates amount > 0
      * @custom:validation Amount and price must be positive
      * @custom:state-changes Reduces per-position fills and total exposure
-     * @custom:events Emits `HedgerFillUpdated`
+     * @custom:events Emits `MarginUpdated` when realized P&L changes margin
      * @custom:errors Reverts if insufficient filled exposure remains
      * @custom:reentrancy Implementations must guard state before external calls
      * @custom:access Vault-only
@@ -203,7 +203,7 @@ interface IHedgerPool {
      * @custom:access Public - anyone can query effective collateral
      * @custom:oracle Requires fresh oracle price data
      */
-    function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external returns (uint256 totalEffectiveCollateral);
+    function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external view returns (uint256 totalEffectiveCollateral);
     
     
     // Governance functions
@@ -752,9 +752,48 @@ interface IHedgerPool {
      * @custom:oracle No oracle dependencies
      */
     function setSingleHedger(address hedger) external;
-    
-    // Single Hedger Events
-    
-    event SingleHedgerUpdated(address indexed hedger, address indexed caller);
-    event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
+
+    /**
+     * @notice Proposes a delayed single-hedger rotation.
+     * @param hedger Address proposed as the next single hedger.
+     */
+    function proposeSingleHedger(address hedger) external;
+
+    /**
+     * @notice Applies a previously proposed single-hedger rotation once delay elapsed.
+     */
+    function applySingleHedgerRotation() external;
+
+    /**
+     * @notice Returns the currently pending single-hedger candidate.
+     */
+    function pendingSingleHedger() external view returns (address);
+
+    /**
+     * @notice Returns the timestamp when pendingSingleHedger can be applied.
+     */
+    function singleHedgerPendingAt() external view returns (uint256);
+
+    /**
+     * @notice Sets the FeeCollector used for margin-fee routing.
+     * @param _feeCollector Address of the FeeCollector contract.
+     */
+    function setFeeCollector(address _feeCollector) external;
+
+    /**
+     * @notice Funds HedgerPool reward reserve with USDC.
+     * @param amount Amount of USDC (6 decimals).
+     */
+    function fundRewardReserve(uint256 amount) external;
+
+    /**
+     * @notice Returns fee split routed to reward reserve (1e18 = 100%).
+     */
+    function rewardFeeSplit() external view returns (uint256);
+
+    /**
+     * @notice Updates fee split routed to reward reserve (1e18 = 100%).
+     * @param newSplit New split value.
+     */
+    function updateRewardFeeSplit(uint256 newSplit) external;
 } 

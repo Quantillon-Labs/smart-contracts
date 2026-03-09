@@ -1162,51 +1162,11 @@ function getYieldSources()
 |`otherSources`|`uint256`|Other miscellaneous yield sources|
 
 
-### getHoldingPeriodProtectionStatus
-
-Returns the current holding period protection status
-
-Useful for monitoring and debugging holding period protection
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getHoldingPeriodProtectionStatus()
-    external
-    view
-    returns (uint256 minHoldingPeriod, uint256 baseDiscount, uint256 currentDiscount, uint256 timeSinceLastUpdate);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`minHoldingPeriod`|`uint256`|Current minimum holding period|
-|`baseDiscount`|`uint256`|Current base discount percentage|
-|`currentDiscount`|`uint256`|Current calculated discount percentage|
-|`timeSinceLastUpdate`|`uint256`|Time since last yield distribution update|
-
-
 ### getHistoricalYieldShift
 
-Returns historical yield shift data for a specified period
+Returns a lightweight historical yield-shift summary for a period
 
-Provides analytics about yield shift patterns over time
+Uses the latest in-period snapshot (or current shift) to avoid O(n) scans.
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -1242,17 +1202,17 @@ function getHistoricalYieldShift(uint256 period)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`averageShift`|`uint256`|Average yield shift during the period|
-|`maxShift`|`uint256`|Maximum yield shift during the period|
-|`minShift`|`uint256`|Minimum yield shift during the period|
-|`volatility`|`uint256`|Volatility measure of yield shifts|
+|`averageShift`|`uint256`|Representative shift for the period|
+|`maxShift`|`uint256`|Same as `averageShift` in compact summary mode|
+|`minShift`|`uint256`|Same as `averageShift` in compact summary mode|
+|`volatility`|`uint256`|Always 0 in compact summary mode|
 
 
 ### getYieldPerformanceMetrics
 
-Returns comprehensive performance metrics for yield operations
+Returns compact performance metrics for yield operations
 
-Provides detailed analytics about yield performance and efficiency
+Uses aggregate pools directly to avoid cross-contract reads.
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -1288,9 +1248,9 @@ function getYieldPerformanceMetrics()
 |Name|Type|Description|
 |----|----|-----------|
 |`totalYieldDistributed_`|`uint256`|Total yield distributed to date|
-|`averageUserYield`|`uint256`|Average yield for users|
-|`averageHedgerYield`|`uint256`|Average yield for hedgers|
-|`yieldEfficiency`|`uint256`|Yield efficiency ratio|
+|`averageUserYield`|`uint256`|Aggregate user yield pool|
+|`averageHedgerYield`|`uint256`|Aggregate hedger yield pool|
+|`yieldEfficiency`|`uint256`|Distributed / generated ratio (bps)|
 
 
 ### _calculateUserAllocation

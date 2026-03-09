@@ -69,7 +69,6 @@ contract HedgerPool is
 
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-    bytes32 public constant HEDGER_ROLE = keccak256("HEDGER_ROLE");
 
     IERC20 public usdc;
     IOracle public oracle;
@@ -112,6 +111,21 @@ contract HedgerPool is
 
     /// @notice MED-6: Address of the FeeCollector that receives margin fees
     address public feeCollector;
+
+    /// @notice Share of protocol fees routed to the local reward reserve (1e18 = 100%)
+    uint256 public rewardFeeSplit;
+
+    /// @notice Maximum allowed value for rewardFeeSplit
+    uint256 public constant MAX_REWARD_FEE_SPLIT = 1e18;
+
+    /// @notice Delay before rotating the single hedger after proposal
+    uint256 public constant SINGLE_HEDGER_ROTATION_DELAY = 24 hours;
+
+    /// @notice Pending single-hedger address awaiting delayed activation
+    address public pendingSingleHedger;
+
+    /// @notice Earliest timestamp at which pendingSingleHedger can be applied (0 = none pending)
+    uint256 public singleHedgerPendingAt;
 
     struct HedgePosition {
         address hedger;
@@ -158,20 +172,16 @@ contract HedgerPool is
     event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
-    event HedgerWhitelisted(address indexed hedger, address indexed caller);
-    event HedgerRemoved(address indexed hedger, address indexed caller);
-    event HedgerWhitelistModeToggled(bool enabled, address indexed caller);
     event ETHRecovered(address indexed to, uint256 indexed amount);
     event TreasuryUpdated(address indexed treasury);
     event VaultUpdated(address indexed vault);
-    event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
-    event RealizedPnLRecorded(uint256 indexed positionId, int256 pnlDelta, int256 totalRealizedPnL);
-    event QeuroShareCalculated(uint256 indexed positionId, uint256 qeuroShare, uint256 qeuroBacked, uint256 totalQeuroBacked);
     /// @notice MED-2: Emitted when USDC is deposited into the reward reserve
     event RewardReserveFunded(address indexed funder, uint256 amount);
     /// @notice MED-6: Emitted when the FeeCollector address is updated
     event FeeCollectorUpdated(address indexed feeCollector);
-    event RealizedPnLCalculation(uint256 indexed positionId, uint256 qeuroAmount, uint256 qeuroBacked, uint256 filledBefore, uint256 price, int256 totalUnrealizedPnL, int256 realizedDelta);
+    event RewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
+    event SingleHedgerRotationProposed(address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt);
+    event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
 
     modifier onlyVault() {
         _onlyVault();
@@ -281,6 +291,9 @@ contract HedgerPool is
         coreParams.marginFee = 0;
         coreParams.eurInterestRate = 350;
         coreParams.usdInterestRate = 450;
+
+        // MED-2 default: route 20% of protocol fees into the reward reserve.
+        rewardFeeSplit = 2e17;
     }
 
     /**
@@ -291,7 +304,7 @@ contract HedgerPool is
      * @return positionId Unique identifier for the new position
      * 
      * @dev Position opening process:
-     *      1. Validates hedger whitelist status
+     *      1. Enforces single hedger access
      *      2. Fetches current EUR/USD price from oracle
      *      3. Calculates position size and validates parameters
      *      4. Transfers USDC to vault for unified liquidity
@@ -299,16 +312,16 @@ contract HedgerPool is
      * 
      * @dev Security features:
      *      1. Flash loan protection via secureNonReentrant
-     *      2. Whitelist validation if enabled
+     *      2. Single-hedger gate
      *      3. Parameter validation (leverage, amounts)
      *      4. Oracle price validation
      * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates amount > 0, leverage within limits, hedger whitelist
+     * @custom:validation Validates amount > 0, leverage within limits, and active single hedger
      * @custom:state-changes Creates new position, updates hedger stats, transfers USDC to vault
      * @custom:events Emits HedgePositionOpened with position details
      * @custom:errors Throws custom errors for invalid conditions
      * @custom:reentrancy Protected by secureNonReentrant modifier and proper CEI pattern
-     * @custom:access Restricted to whitelisted hedgers (if whitelist enabled)
+     * @custom:access Restricted to configured single hedger
      * @custom:oracle Requires fresh oracle price data
      */
     // slither-disable-start reentrancy-no-eth
@@ -456,8 +469,8 @@ contract HedgerPool is
             currentPrice
         );
 
-        // Unwind filled volume (this will reset qeuroBacked to 0) - pass cached price to avoid double oracle call
-        _unwindFilledVolume(positionId, position, currentPrice);
+        // Unwind filled volume (this will reset qeuroBacked to 0)
+        _unwindFilledVolume(position);
         _validatePositionClosureSafety(cachedMargin);
 
         // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
@@ -578,11 +591,20 @@ contract HedgerPool is
         usdc.safeTransfer(address(vault), netAmount);
         vault.addHedgerDeposit(netAmount);
 
-        // Route fee through FeeCollector (if fee > 0 and feeCollector is set)
-        // `fee` is already computed above as `amount.percentageOf(coreParams.marginFee)`
-        if (fee > 0 && feeCollector != address(0)) {
-            usdc.safeIncreaseAllowance(feeCollector, fee);
-            FeeCollector(feeCollector).collectFees(address(usdc), fee, "margin");
+        // Route fee split: reserve share stays in HedgerPool reward reserve, remainder to FeeCollector.
+        // `fee` is already computed above as `amount.percentageOf(coreParams.marginFee)`.
+        if (fee > 0) {
+            uint256 reserveShare = fee.mulDiv(rewardFeeSplit, 1e18);
+            uint256 collectorShare = fee - reserveShare;
+
+            if (reserveShare > 0) {
+                emit RewardReserveFunded(msg.sender, reserveShare);
+            }
+
+            if (collectorShare > 0 && feeCollector != address(0)) {
+                usdc.safeIncreaseAllowance(feeCollector, collectorShare);
+                FeeCollector(feeCollector).collectFees(address(usdc), collectorShare, "margin");
+            }
         }
     }
 
@@ -696,7 +718,7 @@ contract HedgerPool is
      * @custom:security Only callable by the vault; amount must be positive
      * @custom:validation Validates the amount and price are greater than zero
      * @custom:state-changes Updates total filled exposure and per-position fills
-     * @custom:events Emits `HedgerFillUpdated` for every position receiving fill
+     * @custom:events None
      * @custom:errors Reverts with `InvalidAmount`, `InvalidOraclePrice`, `NoActiveHedgerLiquidity`, or `InsufficientHedgerCapacity`
      * @custom:reentrancy Not applicable (no external calls besides trusted helpers)
      * @custom:access Restricted to `QuantillonVault`
@@ -717,7 +739,7 @@ contract HedgerPool is
      * @custom:security Only callable by the vault; amount must be positive
      * @custom:validation Validates the amount and price are greater than zero
      * @custom:state-changes Reduces total filled exposure and per-position fills
-     * @custom:events Emits `HedgerFillUpdated` for every position releasing fill
+     * @custom:events None
      * @custom:errors Reverts with `InvalidAmount`, `InvalidOraclePrice`, or `InsufficientHedgerCapacity`
      * @custom:reentrancy Not applicable (no external calls besides trusted helpers)
      * @custom:access Restricted to `QuantillonVault`
@@ -746,7 +768,7 @@ contract HedgerPool is
      * @custom:security Vault-only access prevents unauthorized calls
      * @custom:validation Validates qeuroAmount > 0, totalQeuroSupply > 0, position exists and is active
      * @custom:state-changes Reduces hedger margin, records realized P&L, reduces qeuroBacked and filledVolume
-     * @custom:events Emits RealizedPnLRecorded
+     * @custom:events Emits `MarginUpdated` when realized losses/profits modify margin
      * @custom:errors None (early returns for invalid states)
      * @custom:reentrancy Protected by whenNotPaused modifier
      * @custom:access Restricted to QuantillonVault via onlyVault modifier
@@ -781,7 +803,6 @@ contract HedgerPool is
         if (realizedDelta < type(int128).min || realizedDelta > type(int128).max) revert CommonErrorLibrary.InvalidAmount();
         // forge-lint: disable-next-line(unsafe-typecast)
         pos.realizedPnL += int128(realizedDelta);
-        emit RealizedPnLRecorded(positionId, realizedDelta, int256(pos.realizedPnL));
 
         // Reduce qeuroBacked proportionally
         uint256 qeuroShare = qeuroAmount;
@@ -810,20 +831,21 @@ contract HedgerPool is
      * 
      * @dev Reward claiming process:
      *      1. Calculates interest differential based on exposure and rates
-     *      2. Calculates yield shift rewards from YieldShift contract
+     *      2. Settles YieldShift rewards directly via `yieldShift.claimHedgerYield`
      *      3. Updates hedger's last reward block
-     *      4. Transfers total rewards to hedger
+     *      4. Pays interest-differential rewards from HedgerPool reserve
+     *         (or escrows into `pendingRewardWithdrawals` if transfer cannot complete)
      * 
      * @dev Security features:
      *      1. Reentrancy protection
-     *      2. Reward calculation validation
+     *      2. Single-source settlement for YieldShift rewards (no double counting)
      * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates hedger has active positions and rewards available
-     * @custom:state-changes Updates hedger reward tracking, transfers rewards
+     * @custom:validation Caller must be configured `singleHedger`
+     * @custom:state-changes Updates hedger reward tracking and reward escrow state
      * @custom:events Emits HedgingRewardsClaimed with reward details
      * @custom:errors Throws custom errors for invalid conditions
      * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to hedgers with active positions
+     * @custom:access Restricted to configured single hedger
      * @custom:oracle No oracle dependencies
      */
     function claimHedgingRewards()
@@ -854,33 +876,39 @@ contract HedgerPool is
         hedgerLastRewardBlock[hedger] = newLastRewardTime;
 
         interestDifferential = rewardState.pendingRewards;
-        yieldShiftRewards = yieldShift.getHedgerPendingYield(hedger);
-        totalRewards = interestDifferential + yieldShiftRewards;
-
-        if (totalRewards > 0) {
+        if (interestDifferential > 0) {
             rewardState.pendingRewards = 0;
-            // forge-lint: disable-next-line(unsafe-typecast)
-            rewardState.lastRewardClaim = uint64(TIME_PROVIDER.currentTime());
+        }
 
-            if (yieldShiftRewards > 0) {
-                uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);
-                if (claimedAmount == 0) revert CommonErrorLibrary.YieldClaimFailed();
-            }
+        yieldShiftRewards = yieldShift.getHedgerPendingYield(hedger);
 
+        // NEW-1 fix: settle YieldShift rewards exactly once through YieldShift.
+        if (yieldShiftRewards > 0) {
+            uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);
+            if (claimedAmount == 0) revert CommonErrorLibrary.YieldClaimFailed();
+            yieldShiftRewards = claimedAmount;
+        }
+
+        // Interest-differential rewards are settled from HedgerPool reserve only.
+        if (interestDifferential > 0) {
             uint256 available = usdc.balanceOf(address(this));
-            if (available < totalRewards) {
-                // Not enough USDC in the pool – record as pending pull-based rewards
-                pendingRewardWithdrawals[hedger] += totalRewards;
+            if (available < interestDifferential) {
+                pendingRewardWithdrawals[hedger] += interestDifferential;
             } else {
-                // Attempt push transfer; on failure (e.g. USDC blacklist) store for later pull
-                try usdc.transfer(hedger, totalRewards) returns (bool success) {
+                try usdc.transfer(hedger, interestDifferential) returns (bool success) {
                     if (!success) {
-                        pendingRewardWithdrawals[hedger] += totalRewards;
+                        pendingRewardWithdrawals[hedger] += interestDifferential;
                     }
                 } catch {
-                    pendingRewardWithdrawals[hedger] += totalRewards;
+                    pendingRewardWithdrawals[hedger] += interestDifferential;
                 }
             }
+        }
+
+        totalRewards = interestDifferential + yieldShiftRewards;
+        if (totalRewards > 0) {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            rewardState.lastRewardClaim = uint64(TIME_PROVIDER.currentTime());
 
             emit HedgingRewardsClaimed(
                 hedger,
@@ -1124,7 +1152,7 @@ contract HedgerPool is
      * @custom:errors Throws custom errors for invalid conditions
      * @custom:reentrancy Protected by nonReentrant modifier
      * @custom:access Restricted to EMERGENCY_ROLE
-     * @custom:oracle Requires oracle price for _unwindFilledVolume
+     * @custom:oracle Not applicable
      */
     // slither-disable-start reentrancy-no-eth
     // slither-disable-start reentrancy-benign
@@ -1136,15 +1164,12 @@ contract HedgerPool is
         if (position.hedger != hedger) revert HedgerPoolErrorLibrary.InvalidHedger();
         HedgerPoolValidationLibrary.validatePositionActive(position.isActive);
 
-        // Cache oracle price at start to avoid reentrancy issues
-        uint256 currentPrice = _getValidOraclePrice();
-
         // Cache position data before state changes
         uint256 cachedMargin = uint256(position.margin);
         uint256 cachedPositionSize = uint256(position.positionSize);
 
-        // Unwind filled volume (updates state) - pass cached price to avoid double oracle call
-        _unwindFilledVolume(positionId, position, currentPrice);
+        // Unwind filled volume (updates state)
+        _unwindFilledVolume(position);
 
         // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
         _finalizePosition(
@@ -1258,9 +1283,42 @@ contract HedgerPool is
      */
     function setSingleHedger(address hedger) external {
         _validateRole(GOVERNANCE_ROLE);
-        // Explicit zero address check to satisfy static analysis
         if (hedger == address(0)) revert CommonErrorLibrary.InvalidAddress();
-        singleHedger = hedger;
+
+        // Allow an immediate bootstrap assignment when no hedger exists yet.
+        if (singleHedger == address(0)) {
+            singleHedger = hedger;
+            emit SingleHedgerRotationApplied(address(0), hedger);
+            return;
+        }
+
+        // Subsequent changes are delayed and must be applied explicitly.
+        pendingSingleHedger = hedger;
+        singleHedgerPendingAt = block.timestamp + SINGLE_HEDGER_ROTATION_DELAY;
+        emit SingleHedgerRotationProposed(singleHedger, hedger, singleHedgerPendingAt);
+    }
+
+    /// @notice INFO-2: Explicit delayed single-hedger rotation proposal.
+    /// @param hedger Address proposed to become the next single hedger.
+    function proposeSingleHedger(address hedger) external {
+        _validateRole(GOVERNANCE_ROLE);
+        if (hedger == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        pendingSingleHedger = hedger;
+        singleHedgerPendingAt = block.timestamp + SINGLE_HEDGER_ROTATION_DELAY;
+        emit SingleHedgerRotationProposed(singleHedger, hedger, singleHedgerPendingAt);
+    }
+
+    /// @notice INFO-2: Applies a previously proposed single-hedger rotation after delay.
+    function applySingleHedgerRotation() external {
+        _validateRole(GOVERNANCE_ROLE);
+        if (pendingSingleHedger == address(0) || singleHedgerPendingAt == 0) revert CommonErrorLibrary.NotActive();
+        if (block.timestamp < singleHedgerPendingAt) revert CommonErrorLibrary.NotActive();
+
+        address previousHedger = singleHedger;
+        singleHedger = pendingSingleHedger;
+        pendingSingleHedger = address(0);
+        singleHedgerPendingAt = 0;
+        emit SingleHedgerRotationApplied(previousHedger, singleHedger);
     }
 
     /// @notice MED-6: Set the FeeCollector address that receives margin fees
@@ -1272,8 +1330,18 @@ contract HedgerPool is
         emit FeeCollectorUpdated(_feeCollector);
     }
 
-    /// @notice MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out
-    /// @dev Callable by any address authorized to fund the reserve (vault, fee collector, governance)
+    /// @notice Updates the share of protocol fees routed to the local reward reserve.
+    /// @param newSplit Fee split in 1e18 precision (1e18 = 100%).
+    function updateRewardFeeSplit(uint256 newSplit) external {
+        _validateRole(GOVERNANCE_ROLE);
+        if (newSplit > MAX_REWARD_FEE_SPLIT) revert CommonErrorLibrary.ConfigValueTooHigh();
+        uint256 oldSplit = rewardFeeSplit;
+        rewardFeeSplit = newSplit;
+        emit RewardFeeSplitUpdated(oldSplit, newSplit);
+    }
+
+    /// @notice MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.
+    /// @dev Permissionless funding path; caller must approve USDC before calling.
     /// @param amount Amount of USDC to deposit (6 decimals)
     function fundRewardReserve(uint256 amount) external nonReentrant {
         if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
@@ -1371,39 +1439,29 @@ contract HedgerPool is
     /**
      * @notice Unwinds filled volume from a position
      * @dev Clears position's filled volume (no redistribution needed with single position)
-     * @param positionId Unique identifier of the position being unwound
      * @param position Storage reference to the position being unwound
-     * @param cachedPrice Cached EUR/USD price to avoid reentrancy (18 decimals)
-     * @return freedVolume Amount of filled volume that was freed and redistributed
      * @custom:security Internal function - assumes position is valid and active
      * @custom:validation Validates totalFilledExposure >= cachedFilledVolume before decrementing
      * @custom:state-changes Clears position filledVolume, decrements totalFilledExposure
-     * @custom:events Emits HedgerFillUpdated with positionId, old filled volume, and 0
      * @custom:errors Reverts with InsufficientHedgerCapacity if totalFilledExposure < cachedFilledVolume
      * @custom:reentrancy Protected by nonReentrant on all public entry points
      * @custom:access Internal - only callable within contract
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable
      */
     // slither-disable-start reentrancy-no-eth
     // slither-disable-start reentrancy-benign
     // SECURITY: Internal function called from nonReentrant context; no untrusted external calls
-    function _unwindFilledVolume(uint256 positionId, HedgePosition storage position, uint256 cachedPrice) internal returns (uint256 freedVolume) {
+    function _unwindFilledVolume(HedgePosition storage position) internal {
         uint256 cachedFilledVolume = uint256(position.filledVolume);
         if (cachedFilledVolume == 0) {
-            return 0;
+            return;
         }
-
-        // Require valid cached price to avoid reentrancy issues (caller must provide valid price)
-        if (cachedPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
 
         // Update state - clear filled volume (no redistribution needed with single position)
         position.filledVolume = 0;
         position.qeuroBacked = 0;
-        emit HedgerFillUpdated(positionId, cachedFilledVolume, 0);
         if (totalFilledExposure < cachedFilledVolume) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
         totalFilledExposure -= cachedFilledVolume;
-        
-        return cachedFilledVolume;
     }
     // slither-disable-end reentrancy-no-eth
     // slither-disable-end reentrancy-benign
@@ -1441,7 +1499,7 @@ contract HedgerPool is
      * @custom:security Caller must ensure hedger position exists
      * @custom:validation Validates liquidity availability and capacity before allocation
      * @custom:state-changes Updates `filledVolume` and `totalFilledExposure`
-     * @custom:events Emits `HedgerFillUpdated` for the position
+     * @custom:events None
      * @custom:errors Reverts if capacity is insufficient or liquidity is absent
      * @custom:reentrancy Not applicable - internal function
      * @custom:access Internal helper
@@ -1470,7 +1528,7 @@ contract HedgerPool is
 
         // Allocate to single position (100% of usdcAmount)
         uint256 prevFilled = uint256(position.filledVolume);
-        _applyFillChange(positionId, position, usdcAmount, true);
+        _applyFillChange(position, usdcAmount, true);
         _updateEntryPriceAfterFill(position, prevFilled, usdcAmount, currentPrice);
         // forge-lint: disable-next-line(unsafe-typecast)
         position.qeuroBacked += uint128(qeuroAmount);
@@ -1486,7 +1544,7 @@ contract HedgerPool is
      * @custom:security Internal function - validates price and amounts
      * @custom:validation Validates usdcAmount > 0, redeemPrice > 0, and sufficient filled exposure
      * @custom:state-changes Decreases filledVolume, updates totalFilledExposure, calculates realized P&L
-     * @custom:events Emits HedgerFillUpdated and RealizedPnLRecorded
+     * @custom:events Emits `MarginUpdated` when realized P&L changes margin
      * @custom:errors Reverts with InvalidOraclePrice, NoActiveHedgerLiquidity, or InsufficientHedgerCapacity
      * @custom:reentrancy Not applicable - internal function
      * @custom:access Internal helper only
@@ -1519,9 +1577,6 @@ contract HedgerPool is
         if (share > filled) share = filled;
         if (share == 0) return;
         
-        // Emit event for debugging qeuroShare calculation
-        emit QeuroShareCalculated(positionId, qeuroShare, uint256(pos.qeuroBacked), uint256(pos.qeuroBacked));
-        
         // Process redemption with new realized P&L formula
         // Use qeuroShare (full amount) for P&L calculation to realize all remaining unrealized P&L
         // This ensures we realize P&L for ALL QEURO being redeemed, regardless of filledVolume
@@ -1534,22 +1589,21 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Applies a fill delta to a single position and emits an event
+     * @notice Applies a fill delta to a single position
      * @dev Handles both increases and decreases while enforcing capacity constraints
-     * @param positionId ID of the position being updated
      * @param position Storage pointer to the position struct
      * @param delta Amount of fill change to apply
      * @param increase True to increase fill, false to decrease
      * @custom:security Caller must ensure the storage reference is valid
      * @custom:validation Validates capacity or availability before applying the delta
      * @custom:state-changes Updates the position’s `filledVolume`
-     * @custom:events Emits `HedgerFillUpdated`
+     * @custom:events None
      * @custom:errors Reverts with `InsufficientHedgerCapacity` on invalid operations
      * @custom:reentrancy Not applicable - internal function
      * @custom:access Internal helper
      * @custom:oracle Not applicable
      */
-    function _applyFillChange(uint256 positionId, HedgePosition storage position, uint256 delta, bool increase) internal {
+    function _applyFillChange(HedgePosition storage position, uint256 delta, bool increase) internal {
         if (delta == 0) return;
         uint256 previous = position.filledVolume;
         uint256 updated = increase ? previous + delta : previous - delta;
@@ -1558,7 +1612,6 @@ contract HedgerPool is
         if (!increase && previous < delta) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
         // forge-lint: disable-next-line(unsafe-typecast)
         position.filledVolume = uint96(updated);
-        emit HedgerFillUpdated(positionId, previous, updated);
     }
 
     /**
@@ -1601,7 +1654,7 @@ contract HedgerPool is
      * @custom:security Internal function - calculates and records realized P&L
      * @custom:validation Validates entry price > 0 and qeuroAmount > 0
      * @custom:state-changes Updates pos.realizedPnL and decreases filled volume
-     * @custom:events Emits RealizedPnLRecorded and HedgerFillUpdated
+     * @custom:events Emits `MarginUpdated` when realized P&L changes margin
      * @custom:errors None
      * @custom:reentrancy Not applicable - internal function
      * @custom:access Internal helper only
@@ -1631,7 +1684,7 @@ contract HedgerPool is
      * @custom:security Internal function - updates position state and margin
      * @custom:validation Validates share > 0, qeuroAmount > 0, price > 0, qeuroBacked > 0
      * @custom:state-changes Updates pos.realizedPnL, pos.margin, totalMargin, pos.positionSize
-     * @custom:events Emits RealizedPnLRecorded, RealizedPnLCalculation, MarginUpdated, HedgerFillUpdated
+     * @custom:events Emits `MarginUpdated` when realized P&L changes margin
      * @custom:errors None - early returns for invalid states
      * @custom:reentrancy Not applicable - internal function, no external calls
      * @custom:access Internal helper only - called by _decreaseFilledVolume
@@ -1642,8 +1695,8 @@ contract HedgerPool is
             uint256 currentQeuroBacked = uint256(pos.qeuroBacked);
 
             if (currentQeuroBacked > 0 && filledBefore > 0) {
-                // Calculate P&L values
-                (int256 totalUnrealizedPnL, int256 realizedDelta) = _calculateRedeemPnL(
+                // Calculate realized P&L delta for this redemption
+                int256 realizedDelta = _calculateRedeemPnL(
                     currentQeuroBacked, filledBefore, price, qeuroAmount, pos.realizedPnL
                 );
 
@@ -1651,14 +1704,12 @@ contract HedgerPool is
                 if (realizedDelta < type(int128).min || realizedDelta > type(int128).max) revert CommonErrorLibrary.InvalidAmount();
                 // forge-lint: disable-next-line(unsafe-typecast)
                 pos.realizedPnL += int128(realizedDelta);
-                emit RealizedPnLRecorded(posId, realizedDelta, int256(pos.realizedPnL));
-                emit RealizedPnLCalculation(posId, qeuroAmount, currentQeuroBacked, filledBefore, price, totalUnrealizedPnL, realizedDelta);
 
                 // Apply P&L to margin
                 _applyRealizedPnLToMargin(posId, pos, realizedDelta);
             }
         }
-        _applyFillChange(posId, pos, share, false);
+        _applyFillChange(pos, share, false);
         // Note: unrealized P&L will be updated in _decreaseFilledVolume after qeuroBacked is updated
     }
 
@@ -1670,7 +1721,6 @@ contract HedgerPool is
      * @param price Current EUR/USD price
      * @param qeuroAmount Amount of QEURO being redeemed
      * @param previousRealizedPnL Previously realized P&L
-     * @return totalUnrealizedPnL Total unrealized P&L (mark-to-market)
      * @return realizedDelta Realized P&L delta for this redemption
      * @custom:security Pure math; no external calls
      * @custom:validation Caller must pass consistent position data
@@ -1687,10 +1737,10 @@ contract HedgerPool is
         uint256 price,
         uint256 qeuroAmount,
         int128 previousRealizedPnL
-    ) internal pure returns (int256 totalUnrealizedPnL, int256 realizedDelta) {
+    ) internal pure returns (int256 realizedDelta) {
         // Step 1: Calculate total unrealized P&L (mark-to-market)
         uint256 qeuroValueInUSDC = currentQeuroBacked.mulDiv(price, 1e30);
-        totalUnrealizedPnL = filledBefore >= qeuroValueInUSDC
+        int256 totalUnrealizedPnL = filledBefore >= qeuroValueInUSDC
             // casting to int256 is safe: difference of two uint256s fits int256 in this branch
             // forge-lint: disable-next-line(unsafe-typecast)
             ? int256(filledBefore - qeuroValueInUSDC)
@@ -1710,158 +1760,60 @@ contract HedgerPool is
     }
 
     /**
-     * @notice Applies realized P&L to position margin
-     * @dev Delegates to _applyProfitToMargin or _applyLossToMargin based on sign of realizedDelta
+     * @notice Applies realized P&L to position margin and emits MarginUpdated
+     * @dev Handles both profit and loss branches in a single path to keep bytecode compact.
      * @param posId Position ID
      * @param pos Position storage reference
      * @param realizedDelta Realized P&L amount (positive = profit, negative = loss)
-     * @custom:security Internal; updates margin and totalMargin
-     * @custom:validation Sign of realizedDelta determines path
-     * @custom:state-changes pos.margin, totalMargin, positionSize; may emit MarginUpdated
-     * @custom:events MarginUpdated via _applyProfitToMargin/_applyLossToMargin
-     * @custom:errors None
-     * @custom:reentrancy No external calls
-     * @custom:access Internal
-     * @custom:oracle None
      */
     function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
-        if (realizedDelta > 0) {
-            _applyProfitToMargin(posId, pos, realizedDelta);
-        } else if (realizedDelta < 0) {
-            _applyLossToMargin(posId, pos, realizedDelta);
-        }
-    }
+        if (realizedDelta == 0) return;
 
-    /**
-     * @notice Applies profit to hedger margin
-     * @dev Increases pos.margin and totalMargin; caps at uint96.max; updates positionSize and emits MarginUpdated
-     * @param posId Position ID
-     * @param pos Position storage reference
-     * @param realizedDelta Positive realized P&L amount
-     * @custom:security Margin capped at type(uint96).max
-     * @custom:validation realizedDelta > 0 assumed by caller
-     * @custom:state-changes pos.margin, totalMargin, pos.positionSize
-     * @custom:events MarginUpdated
-     * @custom:errors None
-     * @custom:reentrancy No external calls
-     * @custom:access Internal
-     * @custom:oracle None
-     */
-    function _applyProfitToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
-        // forge-lint: disable-next-line(unsafe-typecast)
-        uint256 profitAmount = uint256(realizedDelta);
+        bool isProfit = realizedDelta > 0;
+        uint256 deltaAmount;
         uint256 currentMargin = uint256(pos.margin);
-        uint256 newMargin = currentMargin + profitAmount;
+        uint256 nextMargin;
 
-        // Update margin (cap at max uint96)
-        if (newMargin > type(uint96).max) {
-            pos.margin = type(uint96).max;
-            totalMargin = totalMargin - currentMargin + type(uint96).max;
+        if (isProfit) {
+            // forge-lint: disable-next-line(unsafe-typecast)
+            deltaAmount = uint256(realizedDelta);
+            nextMargin = currentMargin + deltaAmount;
+            if (nextMargin > type(uint96).max) nextMargin = type(uint96).max;
+            totalMargin = totalMargin - currentMargin + nextMargin;
         } else {
             // forge-lint: disable-next-line(unsafe-typecast)
-            pos.margin = uint96(newMargin);
-            totalMargin += profitAmount;
+            deltaAmount = uint256(-realizedDelta);
+            if (deltaAmount >= currentMargin) {
+                totalMargin -= currentMargin;
+                pos.margin = 0;
+                pos.positionSize = 0;
+                emit MarginUpdated(
+                    pos.hedger,
+                    posId,
+                    HedgerPoolOptimizationLibrary.packMarginData(deltaAmount, 0, false)
+                );
+                return;
+            }
+
+            nextMargin = currentMargin - deltaAmount;
+            totalMargin -= deltaAmount;
         }
 
-        // Recalculate positionSize to maintain leverage ratio
-        _updatePositionSize(pos);
+        // nextMargin is bounded to uint96.max in both branches
+        // forge-lint: disable-next-line(unsafe-typecast)
+        pos.margin = uint96(nextMargin);
 
-        // Emit margin update event
-        uint256 newMarginRatio = _calculateMarginRatio(pos);
+        uint256 newPositionSize = nextMargin * uint256(pos.leverage);
+        if (newPositionSize > type(uint96).max) newPositionSize = type(uint96).max;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        pos.positionSize = uint96(newPositionSize);
+
+        uint256 newMarginRatio = newPositionSize == 0 ? 0 : (nextMargin * 10000) / newPositionSize;
         emit MarginUpdated(
             pos.hedger,
             posId,
-            HedgerPoolOptimizationLibrary.packMarginData(profitAmount, newMarginRatio, true)
+            HedgerPoolOptimizationLibrary.packMarginData(deltaAmount, newMarginRatio, isProfit)
         );
-    }
-
-    /**
-     * @notice Applies loss to hedger margin
-     * @dev Decreases pos.margin and totalMargin; margin never goes below zero; may zero positionSize
-     * @param posId Position ID
-     * @param pos Position storage reference
-     * @param realizedDelta Negative realized P&L amount
-     * @custom:security Margin floor at zero
-     * @custom:validation realizedDelta < 0 assumed by caller
-     * @custom:state-changes pos.margin, totalMargin, pos.positionSize
-     * @custom:events MarginUpdated
-     * @custom:errors None
-     * @custom:reentrancy No external calls
-     * @custom:access Internal
-     * @custom:oracle None
-     */
-    function _applyLossToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
-        // forge-lint: disable-next-line(unsafe-typecast)
-        uint256 lossAmount = uint256(-realizedDelta);
-        uint256 currentMargin = uint256(pos.margin);
-
-        // Reduce margin by loss amount, but don't go below zero
-        if (lossAmount > currentMargin) {
-            // If loss exceeds margin, reduce margin to zero
-            totalMargin -= currentMargin;
-            pos.margin = 0;
-            pos.positionSize = 0;
-        } else {
-            // Normal case: reduce margin by loss amount
-            uint256 newMargin = currentMargin - lossAmount;
-            // forge-lint: disable-next-line(unsafe-typecast)
-            pos.margin = uint96(newMargin);
-            totalMargin -= lossAmount;
-
-            // Recalculate positionSize to maintain leverage ratio
-            _updatePositionSize(pos);
-        }
-
-        // Emit margin update event
-        uint256 newMarginRatio = _calculateMarginRatio(pos);
-        emit MarginUpdated(
-            pos.hedger,
-            posId,
-            HedgerPoolOptimizationLibrary.packMarginData(lossAmount, newMarginRatio, false)
-        );
-    }
-
-    /**
-     * @notice Updates position size based on current margin and leverage
-     * @dev positionSize = margin * leverage; capped at type(uint96).max
-     * @param pos Position storage reference
-     * @custom:security Caps positionSize at uint96.max
-     * @custom:validation Uses current pos.margin and pos.leverage
-     * @custom:state-changes pos.positionSize
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy No external calls
-     * @custom:access Internal
-     * @custom:oracle None
-     */
-    function _updatePositionSize(HedgePosition storage pos) internal {
-        uint256 leverageValue = uint256(pos.leverage);
-        uint256 newPositionSize = uint256(pos.margin) * leverageValue;
-        if (newPositionSize > type(uint96).max) {
-            pos.positionSize = type(uint96).max;
-        } else {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            pos.positionSize = uint96(newPositionSize);
-        }
-    }
-
-    /**
-     * @notice Calculates margin ratio for a position
-     * @dev (margin * 10000) / positionSize in basis points; 0 if margin or positionSize is 0
-     * @param pos Position storage reference
-     * @return Margin ratio in basis points (0 if position has no size)
-     * @custom:security View only
-     * @custom:validation Division by zero avoided by early return
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy No external calls
-     * @custom:access Internal
-     * @custom:oracle None
-     */
-    function _calculateMarginRatio(HedgePosition storage pos) internal view returns (uint256) {
-        if (pos.margin == 0 || pos.positionSize == 0) return 0;
-        return (uint256(pos.margin) * 10000) / uint256(pos.positionSize);
     }
 
     /**

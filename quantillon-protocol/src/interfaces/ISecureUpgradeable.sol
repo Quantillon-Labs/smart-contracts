@@ -179,19 +179,15 @@ interface ISecureUpgradeable {
         bool hasTimelock
     );
 
-    /**
-     * @notice Disable secure upgrades in emergency
-     * @dev Emergency function to disable secure upgrade mechanism
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function emergencyDisableSecureUpgrades() external;
+    /// @notice Propose emergency disable of secure upgrades (starts 24h delay window).
+    function proposeEmergencyDisableSecureUpgrades() external;
+
+    /// @notice Register an admin approval for the currently pending emergency-disable proposal.
+    function approveEmergencyDisableSecureUpgrades() external;
+
+    /// @notice Apply pending emergency-disable once quorum and delay are satisfied.
+    /// @param expectedProposalId Proposal id expected by caller (replay/mismatch protection).
+    function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) external;
 
     /**
      * @notice Enable secure upgrades after emergency
@@ -206,6 +202,21 @@ interface ISecureUpgradeable {
       * @custom:oracle Requires fresh oracle price data
      */
     function enableSecureUpgrades() external;
+
+    /// @notice Timestamp when emergency disable can be applied (0 = no active proposal).
+    function emergencyDisablePendingAt() external view returns (uint256);
+
+    /// @notice Current emergency-disable proposal id.
+    function emergencyDisableProposalId() external view returns (uint256);
+
+    /// @notice Current number of admin approvals for the active proposal.
+    function emergencyDisableApprovalCount() external view returns (uint256);
+
+    /// @notice Number of approvals required to apply emergency disable.
+    function emergencyDisableQuorum() external view returns (uint256);
+
+    /// @notice Returns whether `approver` approved `proposalId`.
+    function hasEmergencyDisableApproval(uint256 proposalId, address approver) external view returns (bool);
 
     // View functions
     /**

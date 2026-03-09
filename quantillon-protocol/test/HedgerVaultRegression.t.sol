@@ -174,6 +174,10 @@ contract HedgerVaultRegressionTest is Test {
         // Update vault with UserPool
         vm.prank(admin);
         vault.updateUserPool(address(mockUserPool));
+
+        // Seed the cached EUR/USD price before any mint path interactions
+        vm.prank(admin);
+        vault.initializePriceCache();
         
         // Setup test environment
         _setupTestEnvironment();
@@ -635,7 +639,22 @@ contract HedgerVaultRegressionTest is Test {
         // Set as single hedger
         vm.prank(admin);
         hedgerPool.setSingleHedger(newHedger);
-        
+
+        // Existing hedger rotations are delayed and must be applied after cooldown
+        vm.warp(block.timestamp + hedgerPool.SINGLE_HEDGER_ROTATION_DELAY() + 1);
+        vm.mockCall(
+            address(0x123), // Mock EUR/USD price feed
+            abi.encodeWithSelector(0xfeaf968c), // latestRoundData() selector
+            abi.encode(uint80(1), int256(1.1e8), uint256(block.timestamp), uint256(block.timestamp), uint80(1))
+        );
+        vm.mockCall(
+            address(0x456), // Mock USDC/USD price feed
+            abi.encodeWithSelector(0xfeaf968c), // latestRoundData() selector
+            abi.encode(uint80(1), int256(1e8), uint256(block.timestamp), uint256(block.timestamp), uint80(1))
+        );
+        vm.prank(admin);
+        hedgerPool.applySingleHedgerRotation();
+
         // Authorized hedger should succeed
         vm.prank(newHedger);
         uint256 positionId = hedgerPool.enterHedgePosition(1000e6, 5);

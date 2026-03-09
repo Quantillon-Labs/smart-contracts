@@ -159,6 +159,17 @@ address public treasury
 ```
 
 
+### oracle
+Oracle for EUR/USD price — used to convert USDC yield to QEURO denomination
+
+HIGH-3: required so distributeYield() scales 6-dec USDC yield to 18-dec QEURO exchange rate
+
+
+```solidity
+IOracle public oracle
+```
+
+
 ### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
@@ -1025,6 +1036,28 @@ function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE);
 |Name|Type|Description|
 |----|----|-----------|
 |`_treasury`|`address`|New treasury address|
+
+
+### setOracle
+
+Sets the oracle used to price USDC yield in QEURO terms
+
+HIGH-3: Required so distributeYield() can convert USDC (6 dec) to QEURO (18 dec)
+
+**Notes:**
+- security: Validates non-zero address
+
+- access: Restricted to GOVERNANCE_ROLE
+
+
+```solidity
+function setOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_oracle`|`address`|Address of the IOracle implementation (OracleRouter)|
 
 
 ### decimals

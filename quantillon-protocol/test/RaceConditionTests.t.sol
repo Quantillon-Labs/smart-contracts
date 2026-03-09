@@ -258,8 +258,12 @@ contract RaceConditionTests is Test {
         vm.prank(user1);
         hedgerPool.exitHedgePosition(pos1);
 
+        // Subsequent single-hedger changes are delayed and require explicit apply
         vm.prank(admin);
-        hedgerPool.setSingleHedger(user2);
+        hedgerPool.proposeSingleHedger(user2);
+        vm.warp(block.timestamp + hedgerPool.SINGLE_HEDGER_ROTATION_DELAY() + 1);
+        vm.prank(admin);
+        hedgerPool.applySingleHedgerRotation();
         vm.prank(user2);
         uint256 pos2 = hedgerPool.enterHedgePosition(amount2, 5);
         vm.roll(block.number + 600);

@@ -223,7 +223,7 @@ Callable only by QuantillonVault to allocate fills proportionally
 
 - state-changes: Updates per-position fills and total exposure
 
-- events: Emits `HedgerFillUpdated`
+- events: None
 
 - errors: Reverts with capacity-related errors when overfilled
 
@@ -259,7 +259,7 @@ Callable only by QuantillonVault to release fills proportionally
 
 - state-changes: Reduces per-position fills and total exposure
 
-- events: Emits `HedgerFillUpdated`
+- events: Emits `MarginUpdated` when realized P&L changes margin
 
 - errors: Reverts if insufficient filled exposure remains
 
@@ -402,7 +402,10 @@ Used by vault to determine protocol collateralization ratio
 
 
 ```solidity
-function getTotalEffectiveHedgerCollateral(uint256 currentPrice) external returns (uint256 totalEffectiveCollateral);
+function getTotalEffectiveHedgerCollateral(uint256 currentPrice)
+    external
+    view
+    returns (uint256 totalEffectiveCollateral);
 ```
 **Parameters**
 
@@ -1524,6 +1527,102 @@ function setSingleHedger(address hedger) external;
 |`hedger`|`address`|Address of the single hedger|
 
 
+### proposeSingleHedger
+
+Proposes a delayed single-hedger rotation.
+
+
+```solidity
+function proposeSingleHedger(address hedger) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Address proposed as the next single hedger.|
+
+
+### applySingleHedgerRotation
+
+Applies a previously proposed single-hedger rotation once delay elapsed.
+
+
+```solidity
+function applySingleHedgerRotation() external;
+```
+
+### pendingSingleHedger
+
+Returns the currently pending single-hedger candidate.
+
+
+```solidity
+function pendingSingleHedger() external view returns (address);
+```
+
+### singleHedgerPendingAt
+
+Returns the timestamp when pendingSingleHedger can be applied.
+
+
+```solidity
+function singleHedgerPendingAt() external view returns (uint256);
+```
+
+### setFeeCollector
+
+Sets the FeeCollector used for margin-fee routing.
+
+
+```solidity
+function setFeeCollector(address _feeCollector) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_feeCollector`|`address`|Address of the FeeCollector contract.|
+
+
+### fundRewardReserve
+
+Funds HedgerPool reward reserve with USDC.
+
+
+```solidity
+function fundRewardReserve(uint256 amount) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Amount of USDC (6 decimals).|
+
+
+### rewardFeeSplit
+
+Returns fee split routed to reward reserve (1e18 = 100%).
+
+
+```solidity
+function rewardFeeSplit() external view returns (uint256);
+```
+
+### updateRewardFeeSplit
+
+Updates fee split routed to reward reserve (1e18 = 100%).
+
+
+```solidity
+function updateRewardFeeSplit(uint256 newSplit) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newSplit`|`uint256`|New split value.|
+
+
 ## Events
 ### HedgePositionOpened
 
@@ -1566,17 +1665,5 @@ event MarginRemoved(
 event HedgingRewardsClaimed(
     address indexed hedger, uint256 interestDifferential, uint256 yieldShiftRewards, uint256 totalRewards
 );
-```
-
-### SingleHedgerUpdated
-
-```solidity
-event SingleHedgerUpdated(address indexed hedger, address indexed caller);
-```
-
-### HedgerFillUpdated
-
-```solidity
-event HedgerFillUpdated(uint256 indexed positionId, uint256 previousFilled, uint256 newFilled);
 ```
 

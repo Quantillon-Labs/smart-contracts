@@ -40,11 +40,22 @@ bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE")
 
 
 ### TREASURY_ROLE
-Treasury role for fee withdrawal
+Treasury role for fee withdrawal and distribution
 
 
 ```solidity
 bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE")
+```
+
+
+### FEE_SOURCE_ROLE
+MED-3: Separate role for authorized fee depositors (vault, hedger pool, etc.)
+
+Distinct from TREASURY_ROLE so depositors cannot also withdraw/distribute fees
+
+
+```solidity
+bytes32 public constant FEE_SOURCE_ROLE = keccak256("FEE_SOURCE_ROLE")
 ```
 
 

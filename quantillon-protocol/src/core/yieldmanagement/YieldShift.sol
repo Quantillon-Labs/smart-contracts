@@ -843,43 +843,13 @@ contract YieldShift is
     }
     
     /**
-     * @notice Returns the current holding period protection status
-     * @return minHoldingPeriod Current minimum holding period
-     * @return baseDiscount Current base discount percentage
-     * @return currentDiscount Current calculated discount percentage
-     * @return timeSinceLastUpdate Time since last yield distribution update
-     * @dev Useful for monitoring and debugging holding period protection
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function getHoldingPeriodProtectionStatus() external view returns (
-        uint256 minHoldingPeriod,
-        uint256 baseDiscount,
-        uint256 currentDiscount,
-        uint256 timeSinceLastUpdate
-    ) {
-        minHoldingPeriod = MIN_HOLDING_PERIOD;
-        baseDiscount = 8000; // Current hardcoded base discount
-        currentDiscount = _calculateHoldingPeriodDiscount();
-        timeSinceLastUpdate = TIME_PROVIDER.currentTime() - lastUpdateTime;
-        
-        return (minHoldingPeriod, baseDiscount, currentDiscount, timeSinceLastUpdate);
-    }
-
-    /**
-     * @notice Returns historical yield shift data for a specified period
-     * @dev Provides analytics about yield shift patterns over time
+     * @notice Returns a lightweight historical yield-shift summary for a period
+     * @dev Uses the latest in-period snapshot (or current shift) to avoid O(n) scans.
      * @param period The time period to analyze (in seconds)
-     * @return averageShift Average yield shift during the period
-     * @return maxShift Maximum yield shift during the period
-     * @return minShift Minimum yield shift during the period
-     * @return volatility Volatility measure of yield shifts
+     * @return averageShift Representative shift for the period
+     * @return maxShift Same as `averageShift` in compact summary mode
+     * @return minShift Same as `averageShift` in compact summary mode
+     * @return volatility Always 0 in compact summary mode
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -895,65 +865,30 @@ contract YieldShift is
         uint256 minShift,
         uint256 volatility
     ) {
+        uint256 representativeShift = currentYieldShift;
         uint256 length = yieldShiftHistory.length;
-        if (length < 1) {
-            return (currentYieldShift, currentYieldShift, currentYieldShift, 0);
-        }
-        
-        uint256 cutoffTime = TIME_PROVIDER.currentTime() > period ? 
-            TIME_PROVIDER.currentTime() - period : 0;
-        
-        uint256[] memory validShifts = new uint256[](length);
-        uint256 validCount = 0;
-        
-        // Cache storage reference to avoid multiple SLOAD operations
-        YieldShiftSnapshot memory snapshot;
-        
-        for (uint256 i = 0; i < length;) {
-            snapshot = yieldShiftHistory[i];
-            if (snapshot.timestamp >= cutoffTime) {
-                validShifts[validCount] = snapshot.yieldShift;
-                validCount++;
+        if (length > 0) {
+            YieldShiftSnapshot memory lastSnapshot = yieldShiftHistory[length - 1];
+            uint256 cutoffTime = TIME_PROVIDER.currentTime() > period
+                ? TIME_PROVIDER.currentTime() - period
+                : 0;
+            if (lastSnapshot.timestamp >= cutoffTime) {
+                representativeShift = lastSnapshot.yieldShift;
             }
-            unchecked { ++i; }
         }
-        
-        if (validCount == 0) {
-            return (currentYieldShift, currentYieldShift, currentYieldShift, 0);
-        }
-        
-        uint256 sumShifts = 0;
-        maxShift = 0;
-        minShift = type(uint256).max;
-        
-        for (uint256 i = 0; i < validCount; i++) {
-            uint256 shift = validShifts[i];
-            sumShifts += shift;
-            if (shift > maxShift) maxShift = shift;
-            if (shift < minShift) minShift = shift;
-        }
-        
-        averageShift = sumShifts / validCount;
-        
-        uint256 sumSquaredDeviations = 0;
-        for (uint256 i = 0; i < validCount; i++) {
-            uint256 shift = validShifts[i];
-            uint256 deviation = shift > averageShift ? 
-                shift - averageShift : averageShift - shift;
-            sumSquaredDeviations += deviation * deviation;
-        }
-        
-        volatility = validCount > 1 ? 
-            VaultMath.scaleDecimals(sumSquaredDeviations / (validCount - 1), 0, 9) : 0;
+        averageShift = representativeShift;
+        maxShift = representativeShift;
+        minShift = representativeShift;
+        volatility = 0;
     }
 
     /**
-     * @notice Returns comprehensive performance metrics for yield operations
-     * @dev Provides detailed analytics about yield performance and efficiency
+     * @notice Returns compact performance metrics for yield operations
+     * @dev Uses aggregate pools directly to avoid cross-contract reads.
      * @return totalYieldDistributed_ Total yield distributed to date
-     * @return averageUserYield Average yield for users
-     * @return averageHedgerYield Average yield for hedgers
-     * @return yieldEfficiency Yield efficiency ratio
+     * @return averageUserYield Aggregate user yield pool
+     * @return averageHedgerYield Aggregate hedger yield pool
+     * @return yieldEfficiency Distributed / generated ratio (bps)
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -970,17 +905,11 @@ contract YieldShift is
         uint256 yieldEfficiency
     ) {
         totalYieldDistributed_ = totalYieldDistributed;
-
-        (uint256 totalUsers, , , ) = userPool.getPoolMetrics();
-        bool hasActiveHedger = hedgerPool.hasActiveHedger();
-        
-        averageUserYield = totalUsers > 0 ? 
-            userYieldPool / totalUsers : 0;
-        averageHedgerYield = hasActiveHedger ? 
-            hedgerYieldPool : 0;
-        
-        yieldEfficiency = totalYieldGenerated > 0 ? 
-            totalYieldDistributed_.mulDiv(10000, totalYieldGenerated) : 0;
+        averageUserYield = userYieldPool;
+        averageHedgerYield = hedgerYieldPool;
+        yieldEfficiency = totalYieldGenerated > 0
+            ? totalYieldDistributed_.mulDiv(10000, totalYieldGenerated)
+            : 0;
     }
 
     /**

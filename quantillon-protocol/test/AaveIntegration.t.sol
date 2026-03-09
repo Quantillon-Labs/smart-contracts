@@ -171,6 +171,7 @@ contract MockOracle {
  */
 contract MockHedgerPool {
     uint256 public totalMargin = 1000000e6; // 1M USDC margin
+    bool public activeHedger = true;
     
     /**
      * @notice Mock function to record user mint (no-op)
@@ -199,6 +200,18 @@ contract MockHedgerPool {
      * @custom:oracle No oracle dependency
      */
     function recordUserRedeem(uint256, uint256, uint256) external {}
+
+    function recordLiquidationRedeem(uint256, uint256) external {}
+
+    function fundRewardReserve(uint256) external {}
+
+    function hasActiveHedger() external view returns (bool) {
+        return activeHedger;
+    }
+
+    function setActiveHedger(bool isActive) external {
+        activeHedger = isActive;
+    }
     
     /**
      * @notice Returns total effective hedger collateral
@@ -227,6 +240,9 @@ contract MockAaveVault {
     uint256 public principalDeposited;
     uint256 public totalDeployed;
     uint256 public totalWithdrawn;
+    uint256 public accruedYield;
+    uint256 public harvestAmount;
+    uint256 public harvestCalls;
     
     /**
      * @notice Constructor for mock Aave vault
@@ -283,9 +299,14 @@ contract MockAaveVault {
      * @custom:oracle No oracle dependency
      */
     function withdrawFromAave(uint256 amount) external returns (uint256) {
-        uint256 withdrawAmount = amount > principalDeposited ? principalDeposited : amount;
+        uint256 totalBalance = principalDeposited + accruedYield;
+        uint256 withdrawAmount = amount > totalBalance ? totalBalance : amount;
         if (withdrawAmount > 0) {
-            principalDeposited -= withdrawAmount;
+            uint256 principalReduction = withdrawAmount > principalDeposited ? principalDeposited : withdrawAmount;
+            principalDeposited -= principalReduction;
+            if (withdrawAmount > principalReduction) {
+                accruedYield -= (withdrawAmount - principalReduction);
+            }
             totalWithdrawn += withdrawAmount;
             // Transfer USDC back to caller
             // forge-lint: disable-next-line(erc20-unchecked-transfer)
@@ -308,7 +329,23 @@ contract MockAaveVault {
      * @custom:oracle No oracle dependency
      */
     function getAaveBalance() external view returns (uint256) {
-        return principalDeposited;
+        return principalDeposited + accruedYield;
+    }
+
+    function setAccruedYield(uint256 amount) external {
+        if (amount > accruedYield) {
+            MockUSDC(address(usdc)).mint(address(this), amount - accruedYield);
+        }
+        accruedYield = amount;
+    }
+
+    function setHarvestAmount(uint256 amount) external {
+        harvestAmount = amount;
+    }
+
+    function harvestAaveYield() external returns (uint256) {
+        harvestCalls += 1;
+        return harvestAmount;
     }
 }
 
@@ -437,6 +474,14 @@ contract AaveIntegrationTest is Test {
         vault.applyDevMode();
         vault.initializePriceCache();
 
+        // Seed initial hedger collateral so projected CR checks pass on first user mint.
+        uint256 initialHedgerCollateral = 2_000e6;
+        usdc.mint(address(vault), initialHedgerCollateral);
+        vm.stopPrank();
+        vm.prank(address(hedgerPool));
+        vault.addHedgerDeposit(initialHedgerCollateral);
+        vm.startPrank(admin);
+
         // Mint USDC to user for testing
         usdc.mint(user, INITIAL_USDC);
         
@@ -555,6 +600,35 @@ contract AaveIntegrationTest is Test {
         // Assert: getTotalUsdcAvailable should include Aave balance
         uint256 totalAvailable = vault.getTotalUsdcAvailable();
         assertGt(totalAvailable, 0, "Total available should include Aave balance");
+    }
+
+    function test_getTotalUsdcAvailable_includesAccruedAaveYield() public {
+        uint256 depositAmount = 10_000e6;
+
+        vm.startPrank(user);
+        usdc.approve(address(userPool), depositAmount);
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = depositAmount;
+        uint256[] memory minOuts = new uint256[](1);
+        minOuts[0] = 0;
+        userPool.deposit(amounts, minOuts);
+        vm.stopPrank();
+
+        uint256 baseline = vault.totalUsdcHeld() + vault.totalUsdcInAave();
+        aaveVault.setAccruedYield(500e6);
+
+        uint256 totalAvailable = vault.getTotalUsdcAvailable();
+        assertEq(totalAvailable, baseline + 500e6, "Accrued yield should be included in total availability");
+    }
+
+    function test_harvestAaveInterest_callsAaveVault() public {
+        aaveVault.setHarvestAmount(777e6);
+
+        vm.prank(admin);
+        uint256 harvested = vault.harvestAaveInterest();
+
+        assertEq(harvested, 777e6, "Harvested amount should match AaveVault return");
+        assertEq(aaveVault.harvestCalls(), 1, "Harvest should call into AaveVault once");
     }
     
     // =============================================================================
@@ -724,6 +798,14 @@ contract AaveIntegrationTest is Test {
         vm.warp(block.timestamp + 48 hours + 1);
         vaultNoAave.applyDevMode();
         vaultNoAave.initializePriceCache();
+
+        // Seed hedger collateral for first mint projected-CR checks.
+        uint256 bootstrapCollateral = 2_000e6;
+        usdc.mint(address(vaultNoAave), bootstrapCollateral);
+        vm.stopPrank();
+        vm.prank(address(hedgerPool));
+        vaultNoAave.addHedgerDeposit(bootstrapCollateral);
+        vm.startPrank(admin);
 
         vm.stopPrank();
         

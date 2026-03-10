@@ -221,7 +221,7 @@ contract QuantillonVaultTestSuite is Test {
 
         // LOW-5: seed the oracle price cache so the bootstrap-mint exception is available
         vm.prank(admin);
-        vault.initializePriceCache();
+        vault.initializePriceCache(EUR_USD_PRICE);
 
         // Seed initial hedger collateral in vault so first mint satisfies projected CR checks.
         vm.prank(mockHedgerPool);
@@ -846,6 +846,7 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(admin);
         vault.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode();
         assertTrue(vault.devModeEnabled());
@@ -854,6 +855,7 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(admin);
         vault.proposeDevMode(false);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode();
         assertFalse(vault.devModeEnabled());
@@ -900,6 +902,7 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(admin);
         vault.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode();
         assertTrue(vault.devModeEnabled());
@@ -945,6 +948,7 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(admin);
         vault.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode();
         
@@ -987,6 +991,7 @@ contract QuantillonVaultTestSuite is Test {
         vm.prank(admin);
         vault.proposeDevMode(false);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode();
         assertFalse(vault.devModeEnabled());

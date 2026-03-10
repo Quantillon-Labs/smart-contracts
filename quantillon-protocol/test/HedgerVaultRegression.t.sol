@@ -177,7 +177,7 @@ contract HedgerVaultRegressionTest is Test {
 
         // Seed the cached EUR/USD price before any mint path interactions
         vm.prank(admin);
-        vault.initializePriceCache();
+        vault.initializePriceCache(1.10e18);
         
         // Setup test environment
         _setupTestEnvironment();

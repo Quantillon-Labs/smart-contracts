@@ -7,6 +7,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IUserPool} from "../../interfaces/IUserPool.sol";
 import {IHedgerPool} from "../../interfaces/IHedgerPool.sol";
@@ -20,7 +21,6 @@ import {TreasuryRecoveryLibrary} from "../../libraries/TreasuryRecoveryLibrary.s
 import {TimeProvider} from "../../libraries/TimeProviderLibrary.sol";
 import {YieldShiftCalculationLibrary} from "../../libraries/YieldShiftCalculationLibrary.sol";
 import {YieldShiftOptimizationLibrary} from "../../libraries/YieldShiftOptimizationLibrary.sol";
-import {AdminFunctionsLibrary} from "../../libraries/AdminFunctionsLibrary.sol";
 import {CommonValidationLibrary} from "../../libraries/CommonValidationLibrary.sol";
 import {SecureUpgradeable} from "../SecureUpgradeable.sol";
 
@@ -104,6 +104,7 @@ contract YieldShift is
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
     using VaultMath for uint256;
     using AccessControlLibrary for AccessControlUpgradeable;
     using YieldValidationLibrary for uint256;
@@ -1319,7 +1320,11 @@ contract YieldShift is
       * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external {
-        AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
+        AccessControlLibrary.onlyAdmin(this);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        payable(treasury).sendValue(balance);
     }
     
 }

@@ -2,6 +2,9 @@
 pragma solidity 0.8.24;
 
 import {VaultMath} from "./VaultMath.sol";
+import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
+import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
+import {IUserPool} from "../interfaces/IUserPool.sol";
 
 /**
  * @title YieldShiftOptimizationLibrary
@@ -65,18 +68,20 @@ library YieldShiftOptimizationLibrary {
         uint256 hedgerPoolSize,
         uint256 poolRatio
     ) {
-        (bool success1, bytes memory data1) = userPoolAddress.staticcall(
-            abi.encodeWithSelector(0x168a4822) // getTotalDeposits()
-        );
-        if (success1 && data1.length >= 32) {
-            userPoolSize = abi.decode(data1, (uint256));
+        if (userPoolAddress == address(0) || hedgerPoolAddress == address(0)) {
+            revert CommonErrorLibrary.ZeroAddress();
+        }
+
+        try IUserPool(userPoolAddress).getTotalDeposits() returns (uint256 deposits) {
+            userPoolSize = deposits;
+        } catch {
+            userPoolSize = 0;
         }
         
-        (bool success2, bytes memory data2) = hedgerPoolAddress.staticcall(
-            abi.encodeWithSelector(0x79f883da) // totalExposure()
-        );
-        if (success2 && data2.length >= 32) {
-            hedgerPoolSize = abi.decode(data2, (uint256));
+        try IHedgerPool(hedgerPoolAddress).totalExposure() returns (uint256 exposure) {
+            hedgerPoolSize = exposure;
+        } catch {
+            hedgerPoolSize = 0;
         }
         
         if (hedgerPoolSize == 0) {
@@ -115,21 +120,23 @@ library YieldShiftOptimizationLibrary {
         uint256 hedgerPoolSize,
         uint256 poolRatio
     ) {
+        if (userPoolAddress == address(0) || hedgerPoolAddress == address(0)) {
+            revert CommonErrorLibrary.ZeroAddress();
+        }
+
         // Get current pool sizes
-        (bool success1, bytes memory data1) = userPoolAddress.staticcall(
-            abi.encodeWithSelector(0x168a4822) // getTotalDeposits()
-        );
         uint256 currentUserPoolSize = 0;
-        if (success1 && data1.length >= 32) {
-            currentUserPoolSize = abi.decode(data1, (uint256));
+        try IUserPool(userPoolAddress).getTotalDeposits() returns (uint256 deposits) {
+            currentUserPoolSize = deposits;
+        } catch {
+            currentUserPoolSize = 0;
         }
         
-        (bool success2, bytes memory data2) = hedgerPoolAddress.staticcall(
-            abi.encodeWithSelector(0x79f883da) // totalExposure()
-        );
         uint256 currentHedgerPoolSize = 0;
-        if (success2 && data2.length >= 32) {
-            currentHedgerPoolSize = abi.decode(data2, (uint256));
+        try IHedgerPool(hedgerPoolAddress).totalExposure() returns (uint256 exposure) {
+            currentHedgerPoolSize = exposure;
+        } catch {
+            currentHedgerPoolSize = 0;
         }
         
         // Calculate eligible pool sizes based on holding period

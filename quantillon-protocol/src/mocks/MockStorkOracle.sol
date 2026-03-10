@@ -6,6 +6,7 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 
 /**
  * @title MockStorkOracle
@@ -71,24 +72,23 @@ contract MockStorkOracle is IStorkOracle, Initializable, AccessControlUpgradeabl
         bytes32 _usdcUsdFeedId,
         address _treasury
     ) external initializer {
-        // Validate admin address before any assignments (fixes Slither ID-6)
-        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
+        address validatedAdmin = admin;
+        if (validatedAdmin == address(0)) revert CommonErrorLibrary.ZeroAddress();
         
         __AccessControl_init();
         __Pausable_init();
         
         // Set up roles
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(EMERGENCY_ROLE, admin);
-        _grantRole(ORACLE_MANAGER_ROLE, admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, validatedAdmin);
+        _grantRole(EMERGENCY_ROLE, validatedAdmin);
+        _grantRole(ORACLE_MANAGER_ROLE, validatedAdmin);
         
         // Store original admin address for security
-        // Explicit validation right before assignment to satisfy static analysis
-        // (admin is already validated above, but this makes the check explicit for Slither)
-        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
-        originalAdmin = admin;
-        // Treasury defaults to admin if not provided (admin is already validated)
-        treasury = _treasury != address(0) ? _treasury : admin;
+        originalAdmin = validatedAdmin;
+        // Treasury defaults to admin if not provided; explicitly validated before assignment.
+        address effectiveTreasury = _treasury == address(0) ? validatedAdmin : _treasury;
+        if (effectiveTreasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        treasury = effectiveTreasury;
         
         // Parameters are unused in mock, but kept for interface compatibility
         // Suppress unused parameter warnings by referencing them
@@ -369,4 +369,3 @@ contract MockStorkOracle is IStorkOracle, Initializable, AccessControlUpgradeabl
         emit DevModeToggled(enabled, msg.sender);
     }
 }
-

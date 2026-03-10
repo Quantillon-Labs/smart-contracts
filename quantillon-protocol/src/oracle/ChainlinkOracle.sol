@@ -26,6 +26,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 // ERC20 interface and SafeERC20 for safe transfers
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 // Treasury recovery library for secure ETH recovery
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
@@ -55,6 +56,7 @@ contract ChainlinkOracle is
     UUPSUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
 
     // =============================================================================
     // CONSTANTS AND ROLES
@@ -848,10 +850,11 @@ contract ChainlinkOracle is
       * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-
-        emit ETHRecovered(treasury, address(this).balance);
-        // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        emit ETHRecovered(treasury, balance);
+        payable(treasury).sendValue(balance);
     }
 
     // =============================================================================
@@ -943,9 +946,18 @@ contract ChainlinkOracle is
 
         // L2 sequencer uptime check (skipped on L1 when feed is address(0))
         if (address(sequencerUptimeFeed) != address(0)) {
-            (, int256 seqAnswer, uint256 seqStartedAt,,) = sequencerUptimeFeed.latestRoundData();
+            (
+                uint80 seqRoundId,
+                int256 seqAnswer,
+                uint256 seqStartedAt,
+                uint256 seqUpdatedAt,
+                uint80 seqAnsweredInRound
+            ) = sequencerUptimeFeed.latestRoundData();
+            if (seqRoundId == 0 || seqAnsweredInRound < seqRoundId || seqUpdatedAt < seqStartedAt) {
+                return (lastValidEurUsdPrice, false);
+            }
             // seqAnswer == 0 means sequencer is up; non-zero means down
-            if (seqAnswer != 0 || block.timestamp - seqStartedAt < sequencerGracePeriod) {
+            if (seqAnswer != 0 || TIME_PROVIDER.currentTime() - seqStartedAt < sequencerGracePeriod) {
                 return (lastValidEurUsdPrice, false);
             }
         }
@@ -1139,7 +1151,7 @@ contract ChainlinkOracle is
      */
     function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         pendingDevMode = enabled;
-        devModePendingAt = block.timestamp + DEV_MODE_DELAY;
+        devModePendingAt = TIME_PROVIDER.currentTime() + DEV_MODE_DELAY;
         emit DevModeProposed(enabled, devModePendingAt);
     }
 
@@ -1160,7 +1172,7 @@ contract ChainlinkOracle is
      */
     function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (devModePendingAt == 0) revert CommonErrorLibrary.InvalidAmount();
-        if (block.timestamp < devModePendingAt) revert CommonErrorLibrary.NotActive();
+        if (TIME_PROVIDER.currentTime() < devModePendingAt) revert CommonErrorLibrary.NotActive();
         devModeEnabled = pendingDevMode;
         devModePendingAt = 0;
         emit DevModeToggled(devModeEnabled, msg.sender);

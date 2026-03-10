@@ -161,6 +161,15 @@ address[] internal _multisigSignersList
 ```
 
 
+### _multisigSignerIndexPlusOne
+1-based index mapping for O(1) signer removal from `_multisigSignersList`
+
+
+```solidity
+mapping(address => uint256) internal _multisigSignerIndexPlusOne
+```
+
+
 ### _pendingUpgradesList
 Ordered list of pending upgrade addresses for signer clearing
 
@@ -724,6 +733,34 @@ function getMultisigSigners() external view returns (address[] memory signers);
 |----|----|-----------|
 |`signers`|`address[]`|Array of signer addresses|
 
+
+### currentTime
+
+Returns protocol time from the shared TimeProvider
+
+Exposes the canonical time source to dependent contracts (e.g. SecureUpgradeable)
+
+**Notes:**
+- security: Returns canonical protocol time managed by immutable shared provider
+
+- validation: No input validation required
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: No external state mutation
+
+- access: Public view utility
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function currentTime() external view returns (uint256);
+```
 
 ### _clearUpgradeApprovals
 

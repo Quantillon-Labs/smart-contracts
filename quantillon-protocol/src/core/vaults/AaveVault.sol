@@ -7,6 +7,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IYieldShift} from "../../interfaces/IYieldShift.sol";
 import {VaultMath} from "../../libraries/VaultMath.sol";
@@ -217,6 +218,7 @@ contract AaveVault is
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
     using VaultMath for uint256;
     using AccessControlLibrary for AccessControlUpgradeable;
     using CommonValidationLibrary for uint256;
@@ -1071,7 +1073,12 @@ contract AaveVault is
         exposureRatio = totalAssets > 0 ? aaveBalance.mulDiv(10000, totalAssets) : 0;
         concentrationRisk = exposureRatio > 8000 ? 3 : exposureRatio > 6000 ? 2 : 1;
 
-        (, uint256 utilizationRate, , ) = this.getAaveMarketData();
+        uint256 marketTotalSupply = usdc.totalSupply();
+        uint256 availableLiquidity = usdc.balanceOf(address(aavePool));
+        uint256 utilizationRate = 0;
+        if (marketTotalSupply > availableLiquidity && marketTotalSupply > 0) {
+            utilizationRate = (marketTotalSupply - availableLiquidity).mulDiv(10000, marketTotalSupply);
+        }
         liquidityRisk = utilizationRate > 9500 ? 3 : utilizationRate > 9000 ? 2 : 1;
     }
 
@@ -1225,7 +1232,9 @@ contract AaveVault is
      */
     function recoverETH() external {
         AccessControlLibrary.onlyAdmin(this);
-        // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        payable(treasury).sendValue(balance);
     }
 }

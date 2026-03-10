@@ -170,6 +170,17 @@ IOracle public oracle
 ```
 
 
+### yieldConversionPrice
+Cached EUR/USD conversion price (18 decimals) used by distributeYield
+
+Updated by governance to avoid external oracle callbacks during yield distribution
+
+
+```solidity
+uint256 public yieldConversionPrice
+```
+
+
 ### TIME_PROVIDER
 TimeProvider contract for centralized time management
 
@@ -666,7 +677,7 @@ Distributes USDC yield to stQEURO holders by increasing the exchange rate
 
 
 ```solidity
-function distributeYield(uint256 yieldAmount) external onlyRole(YIELD_MANAGER_ROLE);
+function distributeYield(uint256 yieldAmount) external nonReentrant onlyRole(YIELD_MANAGER_ROLE);
 ```
 **Parameters**
 
@@ -1073,6 +1084,40 @@ function setOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE);
 |`_oracle`|`address`|Address of the `IOracle` implementation (typically `OracleRouter`).|
 
 
+### updateYieldConversionPrice
+
+Updates the cached EUR/USD conversion price used in yield distribution.
+
+Governance maintenance hook for manually refreshing conversion cache used by yield accounting.
+
+**Notes:**
+- security: Restricted to `GOVERNANCE_ROLE`
+
+- validation: Reverts when `eurUsdPrice == 0`
+
+- state-changes: Updates `yieldConversionPrice`
+
+- events: Emits `YieldConversionPriceUpdated`
+
+- errors: Reverts with `InvalidOraclePrice` when input is zero
+
+- reentrancy: No external calls
+
+- access: Governance-only external function
+
+- oracle: Uses governance-supplied oracle-derived price input
+
+
+```solidity
+function updateYieldConversionPrice(uint256 eurUsdPrice) external onlyRole(GOVERNANCE_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurUsdPrice`|`uint256`|New EUR/USD price in 18 decimals.|
+
+
 ### decimals
 
 Returns the number of decimals used by the token
@@ -1413,6 +1458,14 @@ event YieldParametersUpdated(
 |`yieldFee`|`uint256`|New yield fee in basis points|
 |`minYieldThreshold`|`uint256`|New minimum yield threshold|
 |`maxUpdateFrequency`|`uint256`|New maximum update frequency|
+
+### YieldConversionPriceUpdated
+Emitted when the cached yield conversion price is updated
+
+
+```solidity
+event YieldConversionPriceUpdated(uint256 oldPrice, uint256 newPrice, address indexed caller);
+```
 
 ### ETHRecovered
 Emitted when ETH is recovered to the treasury

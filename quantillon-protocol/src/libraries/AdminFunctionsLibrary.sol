@@ -10,7 +10,7 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
  * @notice Library for rarely used admin functions to reduce contract size
  * 
  * @dev Main characteristics:
- *      - Consolidates admin functions like recoverETH and recoverToken
+ *      - Consolidates admin functions like recoverToken
  *      - Reduces contract size by moving rarely used functions to library
  *      - Maintains same API and behavior
  *      - Uses custom errors for gas efficiency
@@ -19,36 +19,6 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
  * @custom:security-contact team@quantillon.money
  */
 library AdminFunctionsLibrary {
-    /**
-     * @notice Recover ETH to treasury address
-     * @dev Emergency function to recover ETH sent to the contract
-     * @param contractInstance The contract instance calling this function
-     * @param treasury The treasury address to send ETH to
-     * @param adminRole The admin role required for this operation
-     * @custom:security Requires admin role
-     * @custom:validation None required
-     * @custom:state-changes Transfers ETH from contract to treasury
-     * @custom:events Emits ETHRecovered event
-     * @custom:errors Throws NotAuthorized if caller lacks admin role
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to admin role
-     * @custom:oracle Not applicable
-     */
-    function recoverETH(
-        address contractInstance,
-        address treasury,
-        bytes32 adminRole
-    ) external {
-        AccessControlUpgradeable accessControl = AccessControlUpgradeable(contractInstance);
-        
-        if (!accessControl.hasRole(adminRole, msg.sender)) {
-            revert CommonErrorLibrary.NotAuthorized();
-        }
-        
-        emit ETHRecovered(treasury, contractInstance.balance);
-        TreasuryRecoveryLibrary.recoverETH(treasury);
-    }
-
     /**
      * @notice Recover tokens to treasury address
      * @dev Emergency function to recover ERC20 tokens sent to the contract
@@ -82,10 +52,4 @@ library AdminFunctionsLibrary {
         TreasuryRecoveryLibrary.recoverToken(token, amount, contractInstance, treasury);
     }
 
-    /**
-     * @notice Event emitted when ETH is recovered
-     * @param treasury The treasury address that received the ETH
-     * @param amount The amount of ETH recovered
-     */
-    event ETHRecovered(address indexed treasury, uint256 amount);
 }

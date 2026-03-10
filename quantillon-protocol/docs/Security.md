@@ -498,23 +498,19 @@ async function healthCheck() {
 
 ### Security Analysis Results
 
-**Mythril Symbolic Execution Analysis**:
-- **Total Contracts Analyzed**: 10
-- **Contracts with Issues**: 0
-- **Total Issues Found**: 0
-- **Security Status**: ✅ **CLEAN** - No vulnerabilities detected
+Use generated artifacts from each run instead of hardcoded snapshots:
 
-**Analyzed Contracts**:
-- QEUROToken ✅ No issues found
-- QTIToken ✅ No issues found
-- QuantillonVault ✅ No issues found
-- UserPool ✅ No issues found
-- HedgerPool ✅ No issues found
-- stQEUROToken ✅ No issues found
-- AaveVault ✅ No issues found
-- YieldShift ✅ No issues found
-- ChainlinkOracle ✅ No issues found
-- TimeProviderLibrary ✅ No issues found
+- `scripts/results/slither/slither-report.txt`
+- `scripts/results/slither/slither-report.json`
+- `scripts/results/mythril-reports/`
+- `scripts/results/natspec-validation-report.txt`
+- `scripts/results/contract-sizes/contract-sizes-summary.txt`
+
+As of **March 10, 2026**, the latest local validation included:
+
+- NatSpec coverage: **1218/1218 functions documented (100.00%)**
+- Targeted Slither `missing-zero-check` pass: **0 findings**
+- Mock oracle initialization hardening with explicit zero-address validation for admin-derived state
 
 **Running Mythril Analysis**:
 ```bash
@@ -523,6 +519,15 @@ make mythril
 
 # Or run directly
 ./scripts/run-mythril.sh
+
+# Run Slither static analysis
+make slither
+
+# Validate NatSpec coverage
+make validate-natspec
+
+# Run EIP-170 contract size checks
+make analyze-contract-sizes
 
 # Run comprehensive security analysis (Slither + Mythril)
 make security

@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {FlashLoanProtectionLibrary} from "../src/libraries/FlashLoanProtectionLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../src/libraries/TreasuryRecoveryLibrary.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -57,6 +58,8 @@ contract MockToken is IERC20 {
  * @notice Wrapper contract to test TreasuryRecoveryLibrary
  */
 contract TreasuryRecoveryWrapper {
+    using Address for address payable;
+
     mapping(address => bool) public authorizedRecipients;
 
     receive() external payable {}
@@ -74,11 +77,24 @@ contract TreasuryRecoveryWrapper {
     }
 
     function recoverETH(address treasury) external {
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance == 0) revert CommonErrorLibrary.NoETHToRecover();
+        payable(treasury).sendValue(balance);
     }
 
     function secureETHTransfer(address recipient, uint256 amount) external {
-        TreasuryRecoveryLibrary.secureETHTransfer(recipient, amount, authorizedRecipients);
+        if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
+        if (!authorizedRecipients[recipient]) revert CommonErrorLibrary.InvalidAddress();
+        if (recipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
+
+        uint256 codeSize;
+        assembly {
+            codeSize := extcodesize(recipient)
+        }
+        if (codeSize > 0) revert CommonErrorLibrary.InvalidAddress();
+
+        payable(recipient).sendValue(amount);
     }
 }
 

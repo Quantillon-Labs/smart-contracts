@@ -112,6 +112,15 @@ address public treasury
 ```
 
 
+### TIME_PROVIDER
+Shared time provider for deterministic timestamp reads
+
+
+```solidity
+TimeProvider public immutable TIME_PROVIDER
+```
+
+
 ## Functions
 ### constructor
 
@@ -141,8 +150,14 @@ contract from being initialized directly (only proxy is initializable).
 
 
 ```solidity
-constructor() ;
+constructor(TimeProvider _TIME_PROVIDER) ;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`_TIME_PROVIDER`|`TimeProvider`|Shared protocol time provider used for deterministic timestamps|
+
 
 ### initialize
 

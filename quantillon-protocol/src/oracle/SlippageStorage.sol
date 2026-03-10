@@ -12,9 +12,11 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
+import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 
 // =============================================================================
 // CONTRACT
@@ -42,6 +44,7 @@ contract SlippageStorage is
     UUPSUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
 
     // ============ Constants & Roles ============
 
@@ -77,12 +80,16 @@ contract SlippageStorage is
     /// @notice Treasury address for recovery functions
     address public treasury;
 
+    /// @notice Shared time provider for deterministic timestamp reads
+    TimeProvider public immutable TIME_PROVIDER;
+
     // ============ Constructor ============
 
     /**
      * @notice Disables initializers to prevent direct implementation contract use
      * @dev Called once at deployment time by the EVM. Prevents the implementation
      *      contract from being initialized directly (only proxy is initializable).
+     * @param _TIME_PROVIDER Shared protocol time provider used for deterministic timestamps
      * @custom:security Calls _disableInitializers() to prevent re-initialization attacks
      * @custom:validation No input validation required
      * @custom:state-changes Disables all initializer functions permanently
@@ -93,7 +100,9 @@ contract SlippageStorage is
      * @custom:oracle No oracle dependencies
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor(TimeProvider _TIME_PROVIDER) {
+        if (address(_TIME_PROVIDER) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        TIME_PROVIDER = _TIME_PROVIDER;
         _disableInitializers();
     }
 
@@ -127,6 +136,9 @@ contract SlippageStorage is
         uint16  deviationThreshold,
         address _treasury
     ) external override initializer {
+        if (admin == address(0) || writer == address(0) || _treasury == address(0)) {
+            revert CommonErrorLibrary.ZeroAddress();
+        }
         CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
         CommonValidationLibrary.validateNonZeroAddress(writer, "admin");
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
@@ -179,13 +191,12 @@ contract SlippageStorage is
         uint16  spreadBps,
         uint16[5] calldata bucketBps
     ) external override onlyRole(WRITER_ROLE) whenNotPaused {
+        uint48 nowTs = uint48(TIME_PROVIDER.currentTime());
         uint48 lastTs = _snapshot.timestamp;
 
         // Rate limit check (skip for first-ever update when lastTs < 1)
         if (lastTs >= 1) {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            uint48 now_ = uint48(block.timestamp);
-            if (now_ - lastTs < minUpdateInterval) {
+            if (nowTs <= lastTs || nowTs - lastTs < minUpdateInterval) {
                 uint16 lastBps = _snapshot.worstCaseBps;
                 uint16 diff = worstCaseBps > lastBps
                     ? worstCaseBps - lastBps
@@ -196,8 +207,7 @@ contract SlippageStorage is
             }
         }
 
-        // forge-lint: disable-next-line(unsafe-typecast)
-        uint48 ts = uint48(block.timestamp);
+        uint48 ts = nowTs;
         // forge-lint: disable-next-line(unsafe-typecast)
         uint48 bn = uint48(block.number);
 
@@ -358,7 +368,10 @@ contract SlippageStorage is
      */
     function getSlippageAge() external view override returns (uint256 age) {
         if (_snapshot.timestamp < 1) return 0;
-        return block.timestamp - uint256(_snapshot.timestamp);
+        uint256 nowTs = TIME_PROVIDER.currentTime();
+        uint256 snapshotTs = uint256(_snapshot.timestamp);
+        if (nowTs <= snapshotTs) return 0;
+        return nowTs - snapshotTs;
     }
 
     // ============ Recovery Functions ============
@@ -396,8 +409,11 @@ contract SlippageStorage is
      * @custom:oracle No oracle dependencies
      */
     function recoverETH() external override onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit ETHRecovered(treasury, address(this).balance);
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        emit ETHRecovered(treasury, balance);
+        payable(treasury).sendValue(balance);
     }
 
     // ============ Admin Functions ============
@@ -417,6 +433,7 @@ contract SlippageStorage is
      * @custom:oracle No oracle dependencies
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);

@@ -26,6 +26,7 @@ contract CombinedAttackVectors is IntegrationTests {
         vm.prank(admin);
         vault.proposeDevMode(false);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode();
 
@@ -115,6 +116,7 @@ contract CombinedAttackVectors is IntegrationTests {
         vm.prank(admin);
         vault.proposeDevMode(false);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode();
 

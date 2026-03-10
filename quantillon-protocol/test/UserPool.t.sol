@@ -1221,22 +1221,6 @@ contract UserPoolTestSuite is Test {
     }
     
     /**
-     * @notice Test projected rewards calculation with valid parameters
-     * @dev Verifies projected rewards calculation functionality
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testView_WithValidParameters_ShouldCalculateProjectedRewards() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by UserPool / YieldStakingEdgeCases");
-    }
-    
-    /**
      * @notice Test staking APY calculation with valid parameters
      * @dev Verifies staking APY calculation functionality
       * @custom:security No security implications - test function
@@ -1270,22 +1254,6 @@ contract UserPoolTestSuite is Test {
         assertGe(depositAPY, 0);
     }
     
-    /**
-     * @notice Test pool configuration retrieval with valid parameters
-     * @dev Verifies pool configuration data retrieval
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testView_WithValidParameters_ShouldGetPoolConfig() public {
-        vm.skip(true, "Placeholder; interface mismatch; getPoolConfiguration covered above");
-    }
-
     // =============================================================================
     // GOVERNANCE TESTS
     // =============================================================================
@@ -3114,4 +3082,3 @@ contract MockChainlinkOracle {
 contract MockYieldShift {
     // Mock implementation for testing
 }
-

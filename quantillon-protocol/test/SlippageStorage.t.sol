@@ -6,6 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {SlippageStorage} from "../src/oracle/SlippageStorage.sol";
 import {ISlippageStorage} from "../src/interfaces/ISlippageStorage.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
+import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
@@ -38,6 +39,7 @@ contract SlippageStorageTest is Test {
 
     SlippageStorage public impl;
     SlippageStorage public store;
+    TimeProvider public timeProvider;
 
     // ============ Default Config ============
 
@@ -59,7 +61,8 @@ contract SlippageStorageTest is Test {
     // ============ Setup ============
 
     function setUp() public {
-        impl = new SlippageStorage();
+        timeProvider = new TimeProvider();
+        impl = new SlippageStorage(timeProvider);
         bytes memory initData = abi.encodeCall(
             SlippageStorage.initialize,
             (admin, writer, MIN_INTERVAL, DEVIATION_THRESHOLD, treasury)
@@ -83,8 +86,8 @@ contract SlippageStorageTest is Test {
     }
 
     function test_initialize_revertsIfAdminZero() public {
-        SlippageStorage newImpl = new SlippageStorage();
-        vm.expectRevert(CommonErrorLibrary.InvalidAdmin.selector);
+        SlippageStorage newImpl = new SlippageStorage(timeProvider);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         new ERC1967Proxy(
             address(newImpl),
             abi.encodeCall(SlippageStorage.initialize, (address(0), writer, MIN_INTERVAL, DEVIATION_THRESHOLD, treasury))
@@ -92,8 +95,8 @@ contract SlippageStorageTest is Test {
     }
 
     function test_initialize_revertsIfWriterZero() public {
-        SlippageStorage newImpl = new SlippageStorage();
-        vm.expectRevert(CommonErrorLibrary.InvalidAdmin.selector);
+        SlippageStorage newImpl = new SlippageStorage(timeProvider);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         new ERC1967Proxy(
             address(newImpl),
             abi.encodeCall(SlippageStorage.initialize, (admin, address(0), MIN_INTERVAL, DEVIATION_THRESHOLD, treasury))
@@ -101,8 +104,8 @@ contract SlippageStorageTest is Test {
     }
 
     function test_initialize_revertsIfTreasuryZero() public {
-        SlippageStorage newImpl = new SlippageStorage();
-        vm.expectRevert(CommonErrorLibrary.InvalidTreasury.selector);
+        SlippageStorage newImpl = new SlippageStorage(timeProvider);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         new ERC1967Proxy(
             address(newImpl),
             abi.encodeCall(SlippageStorage.initialize, (admin, writer, MIN_INTERVAL, DEVIATION_THRESHOLD, address(0)))
@@ -115,7 +118,7 @@ contract SlippageStorageTest is Test {
     }
 
     function test_initialize_revertsIfIntervalTooHigh() public {
-        SlippageStorage newImpl = new SlippageStorage();
+        SlippageStorage newImpl = new SlippageStorage(timeProvider);
         vm.expectRevert(CommonErrorLibrary.ConfigValueTooHigh.selector);
         new ERC1967Proxy(
             address(newImpl),
@@ -124,7 +127,7 @@ contract SlippageStorageTest is Test {
     }
 
     function test_initialize_revertsIfDeviationTooHigh() public {
-        SlippageStorage newImpl = new SlippageStorage();
+        SlippageStorage newImpl = new SlippageStorage(timeProvider);
         vm.expectRevert(CommonErrorLibrary.ConfigValueTooHigh.selector);
         new ERC1967Proxy(
             address(newImpl),
@@ -390,7 +393,7 @@ contract SlippageStorageTest is Test {
 
     function test_updateTreasury_revertsIfZero() public {
         vm.prank(admin);
-        vm.expectRevert(CommonErrorLibrary.InvalidTreasury.selector);
+        vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         store.updateTreasury(address(0));
     }
 
@@ -404,7 +407,7 @@ contract SlippageStorageTest is Test {
         store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, _defaultBuckets());
 
         // Deploy a new implementation
-        SlippageStorage newImpl = new SlippageStorage();
+        SlippageStorage newImpl = new SlippageStorage(timeProvider);
 
         vm.prank(admin);
         store.upgradeToAndCall(address(newImpl), "");
@@ -418,7 +421,7 @@ contract SlippageStorageTest is Test {
     }
 
     function test_upgrade_revertsIfNotUpgrader() public {
-        SlippageStorage newImpl = new SlippageStorage();
+        SlippageStorage newImpl = new SlippageStorage(timeProvider);
 
         vm.prank(outsider);
         vm.expectRevert();

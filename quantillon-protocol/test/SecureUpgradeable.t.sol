@@ -172,6 +172,7 @@ contract SecureUpgradeableTest is Test {
         vm.prank(signer1);
         secureContract.approveEmergencyDisableSecureUpgrades();
         vm.warp(block.timestamp + 24 hours + 1);
+        vm.roll(block.number + 7_201);
         vm.prank(admin);
         secureContract.applyEmergencyDisableSecureUpgrades(proposalId);
     }
@@ -369,6 +370,7 @@ contract SecureUpgradeableTest is Test {
 
         // Wait for timelock
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         // Execute upgrade - this should work through timelock
         vm.prank(admin);
@@ -453,6 +455,7 @@ contract SecureUpgradeableTest is Test {
         vm.prank(signer1);
         secureContract.approveEmergencyDisableSecureUpgrades();
         vm.warp(block.timestamp + 24 hours + 1);
+        vm.roll(block.number + 7_201);
         vm.prank(admin);
         vm.expectEmit(false, false, false, true);
         emit SecureUpgradesToggled(false);
@@ -473,6 +476,7 @@ contract SecureUpgradeableTest is Test {
         uint256 proposalId = secureContract.emergencyDisableProposalId();
 
         vm.warp(block.timestamp + 24 hours + 1);
+        vm.roll(block.number + 7_201);
         vm.prank(admin);
         vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         secureContract.applyEmergencyDisableSecureUpgrades(proposalId);
@@ -486,6 +490,7 @@ contract SecureUpgradeableTest is Test {
         secureContract.approveEmergencyDisableSecureUpgrades();
 
         vm.warp(block.timestamp + 24 hours - 1);
+        vm.roll(block.number + 7_199);
         vm.prank(admin);
         vm.expectRevert(CommonErrorLibrary.NotActive.selector);
         secureContract.applyEmergencyDisableSecureUpgrades(proposalId);
@@ -601,6 +606,7 @@ contract SecureUpgradeableTest is Test {
 
         // Wait for timelock
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         assertTrue(secureContract.canExecuteUpgrade(address(implementationV2)), "Should be executable");
     }
@@ -721,6 +727,7 @@ contract SecureUpgradeableTest is Test {
 
         // Step 3: Wait for timelock
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         // Verify can execute
         assertTrue(secureContract.canExecuteUpgrade(address(implementationV2)), "Should be executable");

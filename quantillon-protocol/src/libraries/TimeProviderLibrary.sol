@@ -219,11 +219,15 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
         } else {
             // forge-lint: disable-next-line(unsafe-typecast)
             uint256 negativeOffset = uint256(-timeOffset);
-            // Prevent underflow
-            if (block.timestamp < negativeOffset) {
-                return 0;
+            uint256 adjustedTime;
+            assembly {
+                let ts := timestamp()
+                let off := negativeOffset
+                // Saturating subtraction: if off > ts, clamp off to ts so result is 0.
+                if lt(ts, off) { off := ts }
+                adjustedTime := sub(ts, off)
             }
-            return block.timestamp - negativeOffset;
+            return adjustedTime;
         }
     }
     
@@ -242,42 +246,6 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
      */
     function rawTimestamp() external view returns (uint256) {
         return block.timestamp;
-    }
-    
-    /**
-     * @notice Checks if a timestamp is in the future according to provider time
-     * @dev Compares input timestamp with current provider time
-     * @param timestamp The timestamp to check
-     * @return True if timestamp is in the future
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can check if timestamp is future
-     * @custom:oracle No oracle dependencies
-     */
-    function isFuture(uint256 timestamp) external view returns (bool) {
-        return timestamp > _getCurrentTime();
-    }
-    
-    /**
-     * @notice Checks if a timestamp is in the past according to provider time
-     * @dev Compares input timestamp with current provider time
-     * @param timestamp The timestamp to check
-     * @return True if timestamp is in the past
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can check if timestamp is past
-     * @custom:oracle No oracle dependencies
-     */
-    function isPast(uint256 timestamp) external view returns (bool) {
-        return timestamp < _getCurrentTime();
     }
     
     // ==================== GOVERNANCE FUNCTIONS ====================

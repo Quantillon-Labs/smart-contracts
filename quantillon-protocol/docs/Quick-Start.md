@@ -236,8 +236,10 @@ make slither    # Static analysis
 make mythril    # Symbolic execution analysis
 
 # Check security reports
-ls mythril-reports/  # Mythril reports
-ls slither-report.*  # Slither reports
+ls scripts/results/mythril-reports/   # Mythril reports
+ls scripts/results/slither/           # Slither reports
+cat scripts/results/natspec-validation-report.txt
+cat scripts/results/contract-sizes/contract-sizes-summary.txt
 ```
 
 ---

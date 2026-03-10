@@ -11,6 +11,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
@@ -96,6 +97,7 @@ contract UserPool is
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
     using VaultMath for uint256;
 
     // =============================================================================
@@ -410,6 +412,27 @@ contract UserPool is
         _flashLoanProtectionBefore();
         _;
         _flashLoanProtectionAfter();
+    }
+
+    modifier onlySelf() {
+        _onlySelf();
+        _;
+    }
+
+    /**
+     * @notice Reverts unless caller is this contract
+     * @dev Used by `onlySelf` to protect commit-phase helpers invoked via explicit self-calls.
+     * @custom:security Prevents direct external invocation of commit helpers
+     * @custom:validation Reverts when `msg.sender != address(this)`
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors Reverts with `NotAuthorized` if caller is not self
+     * @custom:reentrancy No external calls
+     * @custom:access Internal helper
+     * @custom:oracle No oracle dependencies
+     */
+    function _onlySelf() internal view {
+        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }
 
     function _flashLoanProtectionBefore() private {
@@ -794,8 +817,6 @@ contract UserPool is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Internal function called from nonReentrant context; external call to trusted Oracle
     function _transferQeuroAndEmitEvents(
         uint256[] calldata usdcAmounts,
@@ -805,14 +826,48 @@ contract UserPool is
         // Cache oracle ratio and block number at start to avoid reentrancy issues
         uint32 oracleRatio = _getOracleRatioScaled();
         uint32 currentBlock = uint32(block.number);
-        
-        // EFFECTS - Update all state before external calls
+        this._transferQeuroAndEmitEventsCommit(
+            msg.sender,
+            usdcAmounts,
+            qeuroMintedAmounts,
+            currentTime,
+            oracleRatio,
+            currentBlock
+        );
+    }
+
+    /**
+     * @notice Commits batched user deposit tracking and QEURO transfers
+     * @dev Called via explicit self-call from `_transferQeuroAndEmitEvents` after read/validation phase.
+     * @param user Depositor receiving QEURO and tracked deposit entries
+     * @param usdcAmounts USDC amounts that backed each mint operation
+     * @param qeuroMintedAmounts QEURO amounts minted per entry
+     * @param currentTime Timestamp persisted for each tracked deposit
+     * @param oracleRatio Cached oracle ratio associated with this batch
+     * @param currentBlock Block number snapshot associated with this batch
+     * @custom:security Restricted by `onlySelf`; executes from guarded parent flow
+     * @custom:validation Assumes upstream length and amount validation
+     * @custom:state-changes Appends to `userDeposits[user]`
+     * @custom:events Emits `UserDeposit` and `UserDepositTracked`
+     * @custom:errors Token transfer failures may revert
+     * @custom:reentrancy Structured CEI split with state updates before transfers
+     * @custom:access External self-call entrypoint only
+     * @custom:oracle Uses pre-cached oracle ratio input
+     */
+    function _transferQeuroAndEmitEventsCommit(
+        address user,
+        uint256[] calldata usdcAmounts,
+        uint256[] calldata qeuroMintedAmounts,
+        uint256 currentTime,
+        uint32 oracleRatio,
+        uint32 currentBlock
+    ) external onlySelf {
+        // EFFECTS
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             uint256 usdcAmount = usdcAmounts[i];
             uint256 qeuroMinted = qeuroMintedAmounts[i];
             
-            // Track detailed deposit information with oracle ratio
-            userDeposits[msg.sender].push(UserDepositInfo({
+            userDeposits[user].push(UserDepositInfo({
                 // forge-lint: disable-next-line(unsafe-typecast)
                 usdcAmount: uint128(usdcAmount),
                 // forge-lint: disable-next-line(unsafe-typecast)
@@ -823,19 +878,15 @@ contract UserPool is
                 blockNumber: currentBlock
             }));
 
-            // Emit events after state updates
-            emit UserDeposit(msg.sender, usdcAmount, qeuroMinted, currentTime);
-            emit UserDepositTracked(msg.sender, usdcAmount, qeuroMinted, oracleRatio, currentTime, currentBlock);
+            emit UserDeposit(user, usdcAmount, qeuroMinted, currentTime);
+            emit UserDepositTracked(user, usdcAmount, qeuroMinted, oracleRatio, currentTime, currentBlock);
         }
-        
-        // INTERACTIONS - All external calls after state updates
+
+        // INTERACTIONS
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
-            // Transfer QEURO to user
-            IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroMintedAmounts[i]);
+            IERC20(address(qeuro)).safeTransfer(user, qeuroMintedAmounts[i]);
         }
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Withdraw USDC by burning QEURO (unified single/batch function)
@@ -982,8 +1033,6 @@ contract UserPool is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Internal function called from nonReentrant context; external call to trusted Oracle
     function _executeBatchTransfers(
         uint256[] calldata qeuroAmounts,
@@ -1003,12 +1052,54 @@ contract UserPool is
             unchecked { ++i; }
         }
         
-        // EFFECTS - Update all state before external calls
+        this._executeBatchTransfersCommit(
+            msg.sender,
+            qeuroAmounts,
+            usdcReceivedAmounts,
+            currentTime,
+            oracleRatio,
+            currentBlock,
+            totalWithdrawn
+        );
+    }
+
+    /**
+     * @notice Commits batched withdrawal tracking and settlement
+     * @dev Called via explicit self-call from `_executeBatchTransfers` after calculation/read phase.
+     * @param user Withdrawer receiving USDC or pending fallback credits
+     * @param qeuroAmounts Burned QEURO amounts per withdrawal leg
+     * @param usdcReceivedAmounts USDC amounts computed per withdrawal leg
+     * @param currentTime Timestamp persisted for withdrawal tracking
+     * @param oracleRatio Cached oracle ratio associated with this batch
+     * @param currentBlock Block number snapshot associated with this batch
+     * @param totalWithdrawn Total USDC amount to attempt transferring to `user`
+     * @custom:security Restricted by `onlySelf`; executes from guarded parent flow
+     * @custom:validation Assumes upstream amount validation and redemption processing
+     * @custom:state-changes Appends to `userWithdrawals[user]` and increments `totalUserWithdrawals`
+     * @custom:events Emits withdrawal tracking events and `WithdrawalPending` on fallback path
+     * @custom:errors Transfer attempt may revert and route to pending withdrawal fallback
+     * @custom:reentrancy Structured CEI split with accounting before settlement interactions
+     * @custom:access External self-call entrypoint only
+     * @custom:oracle Uses pre-cached oracle ratio input
+     */
+    function _executeBatchTransfersCommit(
+        address user,
+        uint256[] calldata qeuroAmounts,
+        uint256[] calldata usdcReceivedAmounts,
+        uint256 currentTime,
+        uint32 oracleRatio,
+        uint32 currentBlock,
+        uint256 totalWithdrawn
+    ) external onlySelf {
+        uint256 length = qeuroAmounts.length;
+        uint256 totalQeuroWithdrawn = 0;
+
+        // EFFECTS
         for (uint256 i = 0; i < length;) {
-            // Track detailed withdrawal information with oracle ratio
-            userWithdrawals[msg.sender].push(UserWithdrawalInfo({
+            uint256 qeuroAmount = qeuroAmounts[i];
+            userWithdrawals[user].push(UserWithdrawalInfo({
                 // forge-lint: disable-next-line(unsafe-typecast)
-                qeuroAmount: uint128(qeuroAmounts[i]),
+                qeuroAmount: uint128(qeuroAmount),
                 // forge-lint: disable-next-line(unsafe-typecast)
                 usdcReceived: uint128(usdcReceivedAmounts[i]),
                 // forge-lint: disable-next-line(unsafe-typecast)
@@ -1016,29 +1107,62 @@ contract UserPool is
                 oracleRatio: oracleRatio,
                 blockNumber: currentBlock
             }));
-            
-            totalUserWithdrawals += qeuroAmounts[i];
-            
-            // Emit events after state updates
-            emit UserWithdrawal(msg.sender, qeuroAmounts[i], usdcReceivedAmounts[i], currentTime);
-            emit UserWithdrawalTracked(msg.sender, qeuroAmounts[i], usdcReceivedAmounts[i], oracleRatio, currentTime, currentBlock);
+
+            totalQeuroWithdrawn += qeuroAmount;
+
+            emit UserWithdrawal(user, qeuroAmount, usdcReceivedAmounts[i], currentTime);
+            emit UserWithdrawalTracked(user, qeuroAmount, usdcReceivedAmounts[i], oracleRatio, currentTime, currentBlock);
             unchecked { ++i; }
         }
+
+        totalUserWithdrawals += totalQeuroWithdrawn;
         
-        // INTERACTIONS - Single transfer to avoid external calls in loop (Slither calls-loop)
-        // Use low-level call to handle USDC blacklist gracefully; failed transfer goes to pending map
+        // INTERACTIONS
         if (totalWithdrawn > 0) {
-            (bool ok,) = address(usdc).call(
-                abi.encodeCall(IERC20.transfer, (msg.sender, totalWithdrawn))
-            );
-            if (!ok) {
-                pendingUsdcWithdrawals[msg.sender] += totalWithdrawn;
-                emit WithdrawalPending(msg.sender, totalWithdrawn);
+            try this._attemptDirectWithdrawalTransfer(user, totalWithdrawn) {
+            } catch {
+                this._markPendingWithdrawal(user, totalWithdrawn);
             }
         }
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
+
+    /**
+     * @notice Attempts direct USDC transfer to withdrawal recipient
+     * @dev Self-call helper used by `_executeBatchTransfersCommit` with try/catch fallback.
+     * @param user Recipient address
+     * @param amount USDC amount to transfer
+     * @custom:security Restricted by `onlySelf`
+     * @custom:validation Reverts on token transfer failure
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors Reverts with `TokenTransferFailed` when USDC transfer returns false
+     * @custom:reentrancy External token call; executed from guarded parent flow
+     * @custom:access External self-call entrypoint only
+     * @custom:oracle No oracle dependencies
+     */
+    function _attemptDirectWithdrawalTransfer(address user, uint256 amount) external onlySelf {
+        bool success = usdc.transfer(user, amount);
+        if (!success) revert CommonErrorLibrary.TokenTransferFailed();
+    }
+
+    /**
+     * @notice Records pending withdrawal when direct transfer fails
+     * @dev Used as fallback path to support blocked/blacklisted transfer scenarios.
+     * @param user User whose withdrawal is being queued
+     * @param amount USDC amount queued for later claim
+     * @custom:security Restricted by `onlySelf`
+     * @custom:validation Assumes `amount > 0` from caller context
+     * @custom:state-changes Increments `pendingUsdcWithdrawals[user]`
+     * @custom:events Emits `WithdrawalPending`
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access External self-call entrypoint only
+     * @custom:oracle No oracle dependencies
+     */
+    function _markPendingWithdrawal(address user, uint256 amount) external onlySelf {
+        pendingUsdcWithdrawals[user] += amount;
+        emit WithdrawalPending(user, amount);
+    }
 
     /**
      * @notice Claim USDC that could not be transferred during withdrawal (e.g. USDC blacklist)
@@ -1866,6 +1990,10 @@ contract UserPool is
      * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        emit ETHRecovered(treasury, balance);
+        payable(treasury).sendValue(balance);
     }
 }

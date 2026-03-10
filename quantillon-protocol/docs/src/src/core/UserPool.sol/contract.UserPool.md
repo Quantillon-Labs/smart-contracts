@@ -462,6 +462,41 @@ Uses the FlashLoanProtectionLibrary to check USDC balance consistency
 modifier flashLoanProtection() ;
 ```
 
+### onlySelf
+
+
+```solidity
+modifier onlySelf() ;
+```
+
+### _onlySelf
+
+Reverts unless caller is this contract
+
+Used by `onlySelf` to protect commit-phase helpers invoked via explicit self-calls.
+
+**Notes:**
+- security: Prevents direct external invocation of commit helpers
+
+- validation: Reverts when `msg.sender != address(this)`
+
+- state-changes: None
+
+- events: None
+
+- errors: Reverts with `NotAuthorized` if caller is not self
+
+- reentrancy: No external calls
+
+- access: Internal helper
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _onlySelf() internal view;
+```
+
 ### _flashLoanProtectionBefore
 
 
@@ -889,6 +924,52 @@ function _transferQeuroAndEmitEvents(
 |`currentTime`|`uint256`|Current timestamp|
 
 
+### _transferQeuroAndEmitEventsCommit
+
+Commits batched user deposit tracking and QEURO transfers
+
+Called via explicit self-call from `_transferQeuroAndEmitEvents` after read/validation phase.
+
+**Notes:**
+- security: Restricted by `onlySelf`; executes from guarded parent flow
+
+- validation: Assumes upstream length and amount validation
+
+- state-changes: Appends to `userDeposits[user]`
+
+- events: Emits `UserDeposit` and `UserDepositTracked`
+
+- errors: Token transfer failures may revert
+
+- reentrancy: Structured CEI split with state updates before transfers
+
+- access: External self-call entrypoint only
+
+- oracle: Uses pre-cached oracle ratio input
+
+
+```solidity
+function _transferQeuroAndEmitEventsCommit(
+    address user,
+    uint256[] calldata usdcAmounts,
+    uint256[] calldata qeuroMintedAmounts,
+    uint256 currentTime,
+    uint32 oracleRatio,
+    uint32 currentBlock
+) external onlySelf;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Depositor receiving QEURO and tracked deposit entries|
+|`usdcAmounts`|`uint256[]`|USDC amounts that backed each mint operation|
+|`qeuroMintedAmounts`|`uint256[]`|QEURO amounts minted per entry|
+|`currentTime`|`uint256`|Timestamp persisted for each tracked deposit|
+|`oracleRatio`|`uint32`|Cached oracle ratio associated with this batch|
+|`currentBlock`|`uint32`|Block number snapshot associated with this batch|
+
+
 ### withdraw
 
 Withdraw USDC by burning QEURO (unified single/batch function)
@@ -1056,6 +1137,124 @@ function _executeBatchTransfers(
 |`qeuroAmounts`|`uint256[]`|Array of QEURO amounts withdrawn|
 |`usdcReceivedAmounts`|`uint256[]`|Array of USDC amounts received|
 |`currentTime`|`uint256`|Current timestamp for events|
+
+
+### _executeBatchTransfersCommit
+
+Commits batched withdrawal tracking and settlement
+
+Called via explicit self-call from `_executeBatchTransfers` after calculation/read phase.
+
+**Notes:**
+- security: Restricted by `onlySelf`; executes from guarded parent flow
+
+- validation: Assumes upstream amount validation and redemption processing
+
+- state-changes: Appends to `userWithdrawals[user]` and increments `totalUserWithdrawals`
+
+- events: Emits withdrawal tracking events and `WithdrawalPending` on fallback path
+
+- errors: Transfer attempt may revert and route to pending withdrawal fallback
+
+- reentrancy: Structured CEI split with accounting before settlement interactions
+
+- access: External self-call entrypoint only
+
+- oracle: Uses pre-cached oracle ratio input
+
+
+```solidity
+function _executeBatchTransfersCommit(
+    address user,
+    uint256[] calldata qeuroAmounts,
+    uint256[] calldata usdcReceivedAmounts,
+    uint256 currentTime,
+    uint32 oracleRatio,
+    uint32 currentBlock,
+    uint256 totalWithdrawn
+) external onlySelf;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Withdrawer receiving USDC or pending fallback credits|
+|`qeuroAmounts`|`uint256[]`|Burned QEURO amounts per withdrawal leg|
+|`usdcReceivedAmounts`|`uint256[]`|USDC amounts computed per withdrawal leg|
+|`currentTime`|`uint256`|Timestamp persisted for withdrawal tracking|
+|`oracleRatio`|`uint32`|Cached oracle ratio associated with this batch|
+|`currentBlock`|`uint32`|Block number snapshot associated with this batch|
+|`totalWithdrawn`|`uint256`|Total USDC amount to attempt transferring to `user`|
+
+
+### _attemptDirectWithdrawalTransfer
+
+Attempts direct USDC transfer to withdrawal recipient
+
+Self-call helper used by `_executeBatchTransfersCommit` with try/catch fallback.
+
+**Notes:**
+- security: Restricted by `onlySelf`
+
+- validation: Reverts on token transfer failure
+
+- state-changes: None
+
+- events: None
+
+- errors: Reverts with `TokenTransferFailed` when USDC transfer returns false
+
+- reentrancy: External token call; executed from guarded parent flow
+
+- access: External self-call entrypoint only
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _attemptDirectWithdrawalTransfer(address user, uint256 amount) external onlySelf;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|Recipient address|
+|`amount`|`uint256`|USDC amount to transfer|
+
+
+### _markPendingWithdrawal
+
+Records pending withdrawal when direct transfer fails
+
+Used as fallback path to support blocked/blacklisted transfer scenarios.
+
+**Notes:**
+- security: Restricted by `onlySelf`
+
+- validation: Assumes `amount > 0` from caller context
+
+- state-changes: Increments `pendingUsdcWithdrawals[user]`
+
+- events: Emits `WithdrawalPending`
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: External self-call entrypoint only
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _markPendingWithdrawal(address user, uint256 amount) external onlySelf;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`user`|`address`|User whose withdrawal is being queued|
+|`amount`|`uint256`|USDC amount queued for later claim|
 
 
 ### claimPendingWithdrawal

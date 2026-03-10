@@ -114,7 +114,7 @@ contract QuantillonVaultMintCollateralizationAndLiquidationThresholdTest is Test
         qeuro.grantRole(qeuro.MINTER_ROLE(), address(vault));
         qeuro.grantRole(qeuro.BURNER_ROLE(), address(vault));
         vault.updateHedgerPool(address(hedgerPool));
-        vault.initializePriceCache();
+        vault.initializePriceCache(oracle.eurUsdPrice());
         vm.stopPrank();
 
         usdc.mint(hedger, 1_000_000e6);

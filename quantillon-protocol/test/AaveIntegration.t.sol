@@ -471,8 +471,9 @@ contract AaveIntegrationTest is Test {
         // Enable dev mode to bypass price cache requirements
         vault.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vault.applyDevMode();
-        vault.initializePriceCache();
+        vault.initializePriceCache(108e16);
 
         // Seed initial hedger collateral so projected CR checks pass on first user mint.
         uint256 initialHedgerCollateral = 2_000e6;
@@ -796,8 +797,9 @@ contract AaveIntegrationTest is Test {
         feeCollector.grantRole(feeCollector.TREASURY_ROLE(), address(vaultNoAave));
         vaultNoAave.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vaultNoAave.applyDevMode();
-        vaultNoAave.initializePriceCache();
+        vaultNoAave.initializePriceCache(108e16);
 
         // Seed hedger collateral for first mint projected-CR checks.
         uint256 bootstrapCollateral = 2_000e6;

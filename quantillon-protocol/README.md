@@ -180,7 +180,20 @@ make mythril
 
 # Validate NatSpec documentation
 make validate-natspec
+
+# Check contract bytecode size limits (EIP-170)
+make analyze-contract-sizes
 ```
+
+### Security And Quality Reports
+
+Analysis outputs are written under `scripts/results/`:
+
+- `scripts/results/slither/slither-report.txt` - Slither executive summary and unresolved/suppressed/excluded sections
+- `scripts/results/mythril-reports/` - Mythril per-contract JSON and timestamped text summaries
+- `scripts/results/natspec-validation-report.txt` - NatSpec validation coverage report
+- `scripts/results/contract-sizes/contract-sizes-summary.txt` - EIP-170 size compliance summary
+- `scripts/results/gas-analysis/` - Gas analysis outputs
 
 ### Security Features
 

@@ -53,6 +53,15 @@ uint256 public constant EMERGENCY_DISABLE_DELAY = 24 hours
 ```
 
 
+### EMERGENCY_DISABLE_DELAY_BLOCKS
+INFO-4: Canonical block delay for emergency-disable proposals (12s block target)
+
+
+```solidity
+uint256 public constant EMERGENCY_DISABLE_DELAY_BLOCKS = EMERGENCY_DISABLE_DELAY / 12
+```
+
+
 ### EMERGENCY_DISABLE_QUORUM
 Emergency-disable approvals required before apply can succeed
 
@@ -63,7 +72,7 @@ uint256 public constant EMERGENCY_DISABLE_QUORUM = 2
 
 
 ### emergencyDisablePendingAt
-INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
+INFO-4: Block at which emergencyDisable can be applied (0 = no pending proposal)
 
 
 ```solidity
@@ -122,6 +131,34 @@ Used by onlyTimelock modifier; ensures upgrade execution comes from timelock onl
 
 ```solidity
 function _onlyTimelock() internal view;
+```
+
+### _protocolTime
+
+Returns canonical protocol time from timelock's shared TimeProvider
+
+Falls back to block timestamp only before timelock is configured.
+
+**Notes:**
+- security: Uses timelock-backed canonical time when available; fallback preserves liveness during bootstrap
+
+- validation: Validates timelock address and code presence before external call
+
+- state-changes: None
+
+- events: None
+
+- errors: None - failures fall back to `block.timestamp`
+
+- reentrancy: Read-only helper; no state mutation
+
+- access: Internal helper
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _protocolTime() internal view returns (uint256);
 ```
 
 ### __SecureUpgradeable_init

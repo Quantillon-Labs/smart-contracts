@@ -255,6 +255,21 @@ interface ITimelockUpgradeable {
       * @custom:oracle Requires fresh oracle price data
      */
     function canExecuteUpgrade(address implementation) external view returns (bool canExecute);
+
+    /**
+     * @notice Get canonical protocol time from the shared time provider
+     * @dev Exposes the time source used for governance delays and upgrade scheduling.
+     * @return nowTs Current protocol timestamp
+      * @custom:security Read-only view into canonical protocol time source
+      * @custom:validation No input validation required
+      * @custom:state-changes None
+      * @custom:events None
+      * @custom:errors None
+      * @custom:reentrancy Not applicable - view function
+      * @custom:access Public interface method
+      * @custom:oracle No oracle dependencies
+     */
+    function currentTime() external view returns (uint256 nowTs);
     
     /**
      * @notice Get upgrade approval status for a signer

@@ -7,9 +7,9 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
-import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
  * @title FeeCollector
@@ -40,6 +40,7 @@ contract FeeCollector is
     UUPSUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
 
     // =============================================================================
     // ROLES
@@ -432,10 +433,17 @@ contract FeeCollector is
      * @custom:oracle No oracle dependencies
      */
     function _secureETHTransfer(address recipient, uint256 amount) internal {
-        // Use library function for secure ETH transfer with whitelist validation
-        // This fixes the Slither arbitrary-send-eth warning by using a centralized,
-        // well-tested library function that enforces whitelist validation
-        TreasuryRecoveryLibrary.secureETHTransfer(recipient, amount, authorizedETHRecipients);
+        if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
+        if (!authorizedETHRecipients[recipient]) revert CommonErrorLibrary.InvalidAddress();
+        if (recipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
+
+        uint256 codeSize;
+        assembly {
+            codeSize := extcodesize(recipient)
+        }
+        if (codeSize > 0) revert CommonErrorLibrary.InvalidAddress();
+
+        payable(recipient).sendValue(amount);
     }
 
     /**

@@ -43,6 +43,7 @@
     - [GovernanceErrorLibrary](src/libraries/GovernanceErrorLibrary.sol/library.GovernanceErrorLibrary.md)
     - [HedgerPoolErrorLibrary](src/libraries/HedgerPoolErrorLibrary.sol/library.HedgerPoolErrorLibrary.md)
     - [HedgerPoolLogicLibrary](src/libraries/HedgerPoolLogicLibrary.sol/library.HedgerPoolLogicLibrary.md)
+    - [IViewOracle](src/libraries/HedgerPoolOptimizationLibrary.sol/interface.IViewOracle.md)
     - [HedgerPoolOptimizationLibrary](src/libraries/HedgerPoolOptimizationLibrary.sol/library.HedgerPoolOptimizationLibrary.md)
     - [HedgerPoolRedeemMathLibrary](src/libraries/HedgerPoolRedeemMathLibrary.sol/library.HedgerPoolRedeemMathLibrary.md)
     - [HedgerPoolValidationLibrary](src/libraries/HedgerPoolValidationLibrary.sol/library.HedgerPoolValidationLibrary.md)

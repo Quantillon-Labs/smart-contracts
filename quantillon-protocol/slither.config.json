@@ -1,28 +1,13 @@
 {
-  "filter_paths": "lib,test,out,cache,node_modules,src/mocks",
+  "filter_paths": "^lib/|^test/|^out/|^cache/|^node_modules/|^src/mocks/",
   "exclude_informational": false,
   "exclude_low": false,
   "exclude_medium": false,
   "exclude_high": false,
-
-  "detectors_to_exclude": [
-    "naming-convention",
-    "external-function",
-    "reentrancy-no-eth",
-    "reentrancy-benign",
-    "unused-return",
-    "missing-zero-check",
-    "timestamp",
-    "low-level-calls"
-  ],
-
   "solc_args": "--optimize --via-ir",
   "solc_remaps": [
     "forge-std/=lib/forge-std/src/",
     "openzeppelin/=lib/openzeppelin-contracts/",
     "ozu/=lib/openzeppelin-contracts-upgradeable/"
-  ],
-
-  "json": "slither-report.json",
-  "sarif": "slither-report.sarif"
+  ]
 }

@@ -10,6 +10,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 // Replace missing upgradeable IERC20/SafeERC20 with non-upgradeable interface and library
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 // Role system to control who can do what
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -72,6 +73,7 @@ contract QEUROToken is
     SecureUpgradeable        // Secure upgrade pattern
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
     using AccessControlLibrary for AccessControlUpgradeable;
     using TokenValidationLibrary for uint256;
     using TokenLibrary for address;
@@ -1465,10 +1467,11 @@ contract QEUROToken is
      * @custom:oracle No oracle dependencies
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-
-        emit ETHRecovered(treasury, address(this).balance);
-        // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        emit ETHRecovered(treasury, balance);
+        payable(treasury).sendValue(balance);
     }
 
     // =============================================================================

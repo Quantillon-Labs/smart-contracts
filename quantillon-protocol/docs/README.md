@@ -95,6 +95,12 @@ make mythril
 
 # Run comprehensive security analysis
 make security
+
+# Validate NatSpec coverage
+make validate-natspec
+
+# Verify EIP-170 contract size limits
+make analyze-contract-sizes
 ```
 
 ### Documentation Generation
@@ -112,17 +118,16 @@ make validate-natspec
 
 ### Current Status
 - **Test Suite**: 1,300+ tests passing (unit, fuzz, integration, invariants)
-- **Security**: 0 critical/medium Slither findings; Mythril analysis on key contracts
-- **Build**: Zero compilation warnings; gas-optimized (custom errors, consolidated validation)
-- **Documentation**: Comprehensive NatSpec coverage; extensive edge case and boundary tests
+- **Security**: Slither/Mythril runs are tracked in versioned artifacts under `scripts/results/`
+- **Build**: Compile, warning analysis, gas analysis, and contract-size checks are part of the Makefile workflow
+- **Documentation**: NatSpec coverage is validated with `make validate-natspec`
 
-### Contract Sizes
-- **QuantillonVault**: ~45KB
-- **QEUROToken**: ~35KB
-- **QTIToken**: ~55KB
-- **UserPool**: ~40KB
-- **HedgerPool**: ~60KB
-- **stQEUROToken**: ~30KB
+### Analysis Artifacts
+- `scripts/results/slither/slither-report.txt` - unresolved/suppressed/excluded Slither findings
+- `scripts/results/mythril-reports/` - Mythril JSON outputs and text summaries
+- `scripts/results/natspec-validation-report.txt` - NatSpec coverage details
+- `scripts/results/contract-sizes/contract-sizes-summary.txt` - EIP-170 status per contract
+- `scripts/results/gas-analysis/` - gas report history
 
 ---
 

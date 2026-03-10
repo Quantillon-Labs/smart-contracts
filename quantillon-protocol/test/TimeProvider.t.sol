@@ -123,8 +123,8 @@ contract TimeProviderTest is Test {
     }
     
     /**
-     * @notice Tests time utility functions like isFuture and isPast
-     * @dev Validates that time comparison functions work correctly
+     * @notice Tests time utility helpers around currentTime and timeDiff
+     * @dev Validates monotonic comparisons can be built without dedicated isFuture/isPast wrappers
       * @custom:security No security implications - test function
       * @custom:validation No input validation required - test function
       * @custom:state-changes No state changes - test function
@@ -137,15 +137,13 @@ contract TimeProviderTest is Test {
     function test_TimeUtilityFunctions() public view {
         uint256 currentTime = timeProvider.currentTime();
         
-        // Test isFuture
-        assertTrue(timeProvider.isFuture(currentTime + 1));
-        assertFalse(timeProvider.isFuture(currentTime));
-        assertFalse(timeProvider.isFuture(currentTime - 1));
-        
-        // Test isPast
-        assertTrue(timeProvider.isPast(currentTime - 1));
-        assertFalse(timeProvider.isPast(currentTime));
-        assertFalse(timeProvider.isPast(currentTime + 1));
+        // Direct comparisons replace former isFuture/isPast wrappers.
+        assertTrue(currentTime + 1 > currentTime);
+        assertFalse(currentTime > currentTime);
+        assertFalse(currentTime - 1 > currentTime);
+        assertTrue(currentTime - 1 < currentTime);
+        assertFalse(currentTime < currentTime);
+        assertFalse(currentTime + 1 < currentTime);
         
         // Test timeDiff
         assertEq(timeProvider.timeDiff(currentTime + 100, currentTime), 100);

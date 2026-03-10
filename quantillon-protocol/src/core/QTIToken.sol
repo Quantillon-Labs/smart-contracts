@@ -12,6 +12,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // Custom libraries for bytecode reduction
@@ -25,7 +26,6 @@ import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol"
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {QTITokenGovernanceLibrary} from "../libraries/QTITokenGovernanceLibrary.sol";
-import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 
@@ -81,6 +81,7 @@ contract QTIToken is
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
     using AccessControlLibrary for AccessControlUpgradeable;
     using CommonValidationLibrary for uint256;
     using TokenLibrary for address;
@@ -1168,24 +1169,14 @@ contract QTIToken is
 
         // Execute the proposal data
         if (proposal.data.length > 0) {
-            (bool success, ) = address(this).call(proposal.data);
-            if (!success) {
-                // Use Address.verifyCallResult to bubble up revert reason without assembly
-                _verifyCallResult(success);
+            bytes memory executionResult = Address.functionCall(address(this), proposal.data);
+            // ABI-encoded return values are 32-byte aligned; reject malformed responses.
+            if (executionResult.length > 0 && executionResult.length % 32 != 0) {
+                revert CommonErrorLibrary.InvalidCondition();
             }
         }
 
         emit ProposalExecuted(proposalId);
-    }
-
-    /**
-     * @dev Verifies call result and reverts with appropriate error
-     * @param success Whether the call was successful
-     */
-    function _verifyCallResult(bool success) private pure {
-        if (!success) {
-            revert CommonErrorLibrary.ProposalFailed();
-        }
     }
 
     /**
@@ -1574,7 +1565,11 @@ contract QTIToken is
       * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        emit ETHRecovered(treasury, balance);
+        payable(treasury).sendValue(balance);
     }
 
     // =============================================================================

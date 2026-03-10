@@ -256,15 +256,6 @@ uint256 private _flashLoanBalanceBefore
 ```
 
 
-### _aaveDeploymentInProgress
-MED-7: Dedicated reentrancy guard for _executeAaveDeployment (separate from OZ lock)
-
-
-```solidity
-bool private _aaveDeploymentInProgress
-```
-
-
 ### aaveVault
 AaveVault contract for USDC yield generation
 
@@ -431,6 +422,15 @@ uint256 public constant DEV_MODE_DELAY = 48 hours
 ```
 
 
+### DEV_MODE_DELAY_BLOCKS
+MED-1: Canonical block delay for dev-mode proposals (12s block target)
+
+
+```solidity
+uint256 public constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12
+```
+
+
 ### pendingDevMode
 MED-1: Pending dev-mode value awaiting the timelock delay
 
@@ -441,7 +441,7 @@ bool public pendingDevMode
 
 
 ### devModePendingAt
-MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+MED-1: Block at which pendingDevMode may be applied (0 = no pending proposal)
 
 
 ```solidity
@@ -470,6 +470,13 @@ Uses the FlashLoanProtectionLibrary to check USDC balance consistency
 modifier flashLoanProtection() ;
 ```
 
+### onlySelf
+
+
+```solidity
+modifier onlySelf() ;
+```
+
 ### _flashLoanProtectionBefore
 
 
@@ -482,6 +489,34 @@ function _flashLoanProtectionBefore() private;
 
 ```solidity
 function _flashLoanProtectionAfter() private view;
+```
+
+### _onlySelf
+
+Reverts unless caller is this contract
+
+Used to gate commit-phase functions invoked through explicit self-calls.
+
+**Notes:**
+- security: Prevents external callers from invoking internal commit entrypoints directly
+
+- validation: Reverts when `msg.sender != address(this)`
+
+- state-changes: None
+
+- events: None
+
+- errors: Reverts with `NotAuthorized` if caller is not self
+
+- reentrancy: No external calls
+
+- access: Internal helper
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _onlySelf() internal view;
 ```
 
 ### constructor
@@ -615,22 +650,70 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut)
 |`minQeuroOut`|`uint256`|Minimum amount of QEURO expected (slippage protection)|
 
 
+### _mintQEUROCommit
+
+Commits mint flow effects/interactions after validation phase
+
+Called via explicit self-call from `mintQEURO` to separate validation and commit phases.
+
+**Notes:**
+- security: Restricted by `onlySelf`; executed from `nonReentrant` parent flow
+
+- validation: Assumes caller already validated collateralization and oracle constraints
+
+- state-changes: Updates vault accounting, oracle cache timestamps, and optional Aave principal tracker
+
+- events: Emits `QEUROminted` and potentially downstream fee/yield events
+
+- errors: Token, hedger sync, fee routing, and Aave operations may revert
+
+- reentrancy: Structured CEI commit path called from guarded parent
+
+- access: External self-call entrypoint only
+
+- oracle: Uses pre-validated oracle price input
+
+
+```solidity
+function _mintQEUROCommit(
+    address minter,
+    uint256 usdcAmount,
+    uint256 fee,
+    uint256 netAmount,
+    uint256 qeuroToMint,
+    uint256 eurUsdPrice,
+    bool isValidPrice
+) external onlySelf;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`minter`|`address`|User receiving freshly minted QEURO|
+|`usdcAmount`|`uint256`|Gross USDC transferred in|
+|`fee`|`uint256`|Protocol fee portion from `usdcAmount`|
+|`netAmount`|`uint256`|Net USDC credited to collateral after fees|
+|`qeuroToMint`|`uint256`|QEURO amount to mint for `minter`|
+|`eurUsdPrice`|`uint256`|Validated EUR/USD price used for accounting cache|
+|`isValidPrice`|`bool`|Whether oracle read used for cache timestamp was valid|
+
+
 ### _autoDeployToAave
 
 Internal function to auto-deploy USDC to Aave after minting
 
-Silently catches errors to ensure minting always succeeds even if Aave has issues
+Uses strict CEI ordering and lets failures revert to preserve accounting integrity
 
 **Notes:**
-- security: Uses try-catch to prevent Aave issues from blocking user mints
+- security: Updates accounting before external interaction to remove reentrancy windows
 
 - validation: Validates AaveVault is set and amount > 0
 
-- state-changes: Updates totalUsdcHeld and totalUsdcInAave on success
+- state-changes: Updates totalUsdcHeld and totalUsdcInAave before calling AaveVault
 
 - events: Emits UsdcDeployedToAave on success
 
-- errors: Silently swallows errors to ensure mints always succeed
+- errors: Reverts on failed deployment or invalid Aave return value
 
 - reentrancy: Not protected - internal function only
 
@@ -641,40 +724,6 @@ Silently catches errors to ensure minting always succeeds even if Aave has issue
 
 ```solidity
 function _autoDeployToAave(uint256 usdcAmount) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC to deploy (6 decimals)|
-
-
-### _executeAaveDeployment
-
-External function to execute Aave deployment (called by _autoDeployToAave via try/catch)
-
-This is external so it can be called via try/catch for error handling
-
-**Notes:**
-- security: Only callable from this contract
-
-- validation: Validates sufficient balance
-
-- state-changes: Updates totalUsdcHeld and totalUsdcInAave
-
-- events: Emits UsdcDeployedToAave
-
-- errors: Throws if insufficient balance or Aave deployment fails
-
-- reentrancy: Not protected - internal helper
-
-- access: Internal use only (via try/catch)
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _executeAaveDeployment(uint256 usdcAmount) external;
 ```
 **Parameters**
 
@@ -725,6 +774,56 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 |----|----|-----------|
 |`qeuroAmount`|`uint256`|Amount of QEURO to swap for USDC|
 |`minUsdcOut`|`uint256`|Minimum amount of USDC expected|
+
+
+### _redeemQEUROCommit
+
+Commits normal-mode redemption effects/interactions after validation
+
+Called via explicit self-call from `redeemQEURO`.
+
+**Notes:**
+- security: Restricted by `onlySelf`; called from `nonReentrant` parent flow
+
+- validation: Reverts if held liquidity is insufficient or mint tracker underflows
+
+- state-changes: Updates collateral/mint trackers and price cache
+
+- events: Emits `QEURORedeemed` and downstream fee routing events
+
+- errors: Reverts on insufficient balances, token failures, or downstream integration failures
+
+- reentrancy: CEI commit path invoked from guarded parent
+
+- access: External self-call entrypoint only
+
+- oracle: Uses pre-validated oracle price input
+
+
+```solidity
+function _redeemQEUROCommit(
+    address redeemer,
+    uint256 qeuroAmount,
+    uint256 usdcToReturn,
+    uint256 netUsdcToReturn,
+    uint256 fee,
+    uint256 eurUsdPrice,
+    bool isValidPrice,
+    uint256 aaveWithdrawalAmount
+) external onlySelf;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`redeemer`|`address`|User redeeming QEURO|
+|`qeuroAmount`|`uint256`|QEURO amount burned from `redeemer`|
+|`usdcToReturn`|`uint256`|Gross USDC redemption amount before fee transfer split|
+|`netUsdcToReturn`|`uint256`|Net USDC transferred to the redeemer|
+|`fee`|`uint256`|Protocol fee amount from redemption|
+|`eurUsdPrice`|`uint256`|Validated EUR/USD price used for cache update|
+|`isValidPrice`|`bool`|Whether oracle read used for cache timestamp was valid|
+|`aaveWithdrawalAmount`|`uint256`|Planned USDC amount to source from Aave (if needed)|
 
 
 ### _redeemLiquidationMode
@@ -782,38 +881,96 @@ function _redeemLiquidationMode(uint256 qeuroAmount, uint256 minUsdcOut, uint256
 |`collateralizationRatioBps`|`uint256`|Current CR in basis points (for event emission)|
 
 
-### _ensureSufficientUsdcForPayout
+### _redeemLiquidationCommit
 
-Ensures vault has sufficient USDC for payout, withdrawing from Aave if needed
+Commits liquidation-mode redemption effects/interactions
 
-Withdraws from Aave to cover deficit; reverts if totalAvailable < usdcAmount
+Called via explicit self-call from `_redeemLiquidationMode`.
 
 **Notes:**
-- security: Internal; may call Aave withdrawal
+- security: Restricted by `onlySelf`; called from guarded liquidation flow
 
-- validation: totalAvailable >= usdcAmount after withdrawal
+- validation: Reverts on insufficient balances or mint tracker underflow
 
-- state-changes: totalUsdcHeld, totalUsdcInAave via _withdrawUsdcFromAave
+- state-changes: Updates collateral/mint trackers and notifies hedger pool liquidation accounting
 
-- events: Via _withdrawUsdcFromAave
+- events: Emits `LiquidationRedeemed` and downstream fee routing events
 
-- errors: InsufficientBalance if cannot meet usdcAmount
+- errors: Reverts on balance/transfer/integration failures
 
-- reentrancy: External call to Aave; caller in CEI context
+- reentrancy: CEI commit path invoked from `nonReentrant` parent
 
-- access: Internal
+- access: External self-call entrypoint only
 
-- oracle: None
+- oracle: No direct oracle reads (uses precomputed inputs)
 
 
 ```solidity
-function _ensureSufficientUsdcForPayout(uint256 usdcAmount) internal;
+function _redeemLiquidationCommit(
+    address redeemer,
+    uint256 qeuroAmount,
+    uint256 totalSupply,
+    uint256 usdcPayout,
+    uint256 netUsdcPayout,
+    uint256 fee,
+    uint256 collateralizationRatioBps,
+    bool isPremium,
+    uint256 aaveWithdrawalAmount
+) external onlySelf;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC needed|
+|`redeemer`|`address`|User redeeming in liquidation mode|
+|`qeuroAmount`|`uint256`|QEURO amount burned|
+|`totalSupply`|`uint256`|Total QEURO supply used for proportional hedger adjustment|
+|`usdcPayout`|`uint256`|Gross pro-rata USDC payout|
+|`netUsdcPayout`|`uint256`|Net payout transferred to user after fees|
+|`fee`|`uint256`|Protocol fee amount|
+|`collateralizationRatioBps`|`uint256`|Protocol collateralization ratio (bps) for event metadata|
+|`isPremium`|`bool`|Whether gross payout is at/above fair value|
+|`aaveWithdrawalAmount`|`uint256`|Planned Aave withdrawal amount needed for payout|
+
+
+### _planAaveWithdrawal
+
+Calculates required Aave withdrawal to satisfy a USDC payout
+
+Returns zero when vault-held USDC already covers `requiredUsdc`.
+
+**Notes:**
+- security: Enforces that Aave vault is configured before planning an Aave-backed withdrawal
+
+- validation: Reverts with `InsufficientBalance` when deficit exists and Aave is not configured
+
+- state-changes: None
+
+- events: None
+
+- errors: Reverts with `InsufficientBalance` when no Aave source exists for deficit
+
+- reentrancy: No external calls
+
+- access: Internal helper
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _planAaveWithdrawal(uint256 requiredUsdc) internal view returns (uint256 aaveWithdrawalAmount);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`requiredUsdc`|`uint256`|Target USDC amount that must be available in vault balance|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`aaveWithdrawalAmount`|`uint256`|Additional USDC that should be sourced from Aave|
 
 
 ### _calculateLiquidationFees
@@ -1695,6 +1852,41 @@ Useful when price has moved significantly and cache needs to be updated
 function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) nonReentrant;
 ```
 
+### _applyPriceCacheUpdate
+
+Applies a validated price cache update
+
+Commit-phase helper called via explicit self-call from `updatePriceCache`.
+
+**Notes:**
+- security: Restricted by `onlySelf`
+
+- validation: Assumes caller already validated oracle output
+
+- state-changes: Updates `lastValidEurUsdPrice`, `lastPriceUpdateBlock`, and `lastPriceUpdateTime`
+
+- events: Emits `PriceCacheUpdated`
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: External self-call entrypoint only
+
+- oracle: No direct oracle reads (uses pre-validated input)
+
+
+```solidity
+function _applyPriceCacheUpdate(uint256 oldPrice, uint256 eurUsdPrice) external onlySelf;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`oldPrice`|`uint256`|Previous cached EUR/USD price|
+|`eurUsdPrice`|`uint256`|New validated EUR/USD price|
+
+
 ### _updatePriceTimestamp
 
 Updates the last valid price timestamp when a valid price is fetched
@@ -1979,28 +2171,35 @@ function canMintView() public view returns (bool);
 LOW-5: Seeds the oracle price cache so minting checks have a baseline.
 
 Governance MUST call this once immediately after deployment, before any user mints.
+Uses an explicit bootstrap price to avoid external oracle interaction in this state-changing call.
 
 **Notes:**
 - security: Restricted to governance.
 
-- validation: Requires configured oracle and a valid fetched price.
+- validation: Requires `initialEurUsdPrice > 0`.
 
 - state-changes: Sets `lastValidEurUsdPrice`, `lastPriceUpdateBlock`, and `lastPriceUpdateTime`.
 
 - events: Emits `PriceCacheUpdated`.
 
-- errors: Reverts when oracle is unset or returns an invalid price.
+- errors: Reverts when price is zero or cache is already initialized.
 
 - reentrancy: Not applicable - no external callbacks.
 
 - access: Restricted to `GOVERNANCE_ROLE`.
 
-- oracle: Pulls current EUR/USD price from configured oracle.
+- oracle: Bootstrap input should come from governance/oracle process.
 
 
 ```solidity
-function initializePriceCache() external onlyRole(GOVERNANCE_ROLE);
+function initializePriceCache(uint256 initialEurUsdPrice) external onlyRole(GOVERNANCE_ROLE);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`initialEurUsdPrice`|`uint256`|Initial EUR/USD price in 18 decimals.|
+
 
 ### shouldTriggerLiquidation
 

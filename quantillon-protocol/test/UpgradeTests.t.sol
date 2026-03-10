@@ -160,6 +160,7 @@ contract UpgradeTests is Test {
         vm.prank(signer1);
         qeuroToken.approveEmergencyDisableSecureUpgrades();
         vm.warp(block.timestamp + 24 hours + 1);
+        vm.roll(block.number + 7_201);
         vm.prank(admin);
         qeuroToken.applyEmergencyDisableSecureUpgrades(proposalId);
     }
@@ -171,6 +172,7 @@ contract UpgradeTests is Test {
         vm.prank(signer1);
         qtiToken.approveEmergencyDisableSecureUpgrades();
         vm.warp(block.timestamp + 24 hours + 1);
+        vm.roll(block.number + 7_201);
         vm.prank(admin);
         qtiToken.applyEmergencyDisableSecureUpgrades(proposalId);
     }
@@ -334,6 +336,7 @@ contract UpgradeTests is Test {
 
         // Wait for timelock
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         // Execute upgrade
         vm.prank(admin);

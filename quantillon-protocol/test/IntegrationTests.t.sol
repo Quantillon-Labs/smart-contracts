@@ -271,8 +271,9 @@ contract IntegrationTests is Test {
 
         vault.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vault.applyDevMode();
-        vault.initializePriceCache();
+        vault.initializePriceCache(1.10e18);
         vm.stopPrank();
 
         vm.startPrank(governance);
@@ -514,6 +515,7 @@ contract IntegrationTests is Test {
         vm.prank(admin);
         vault.proposeDevMode(false);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode(); // enable price deviation check
 

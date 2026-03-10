@@ -72,6 +72,9 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
     /// @notice Ordered list of multisig signers for approval clearing
     address[] internal _multisigSignersList;
 
+    /// @notice 1-based index mapping for O(1) signer removal from `_multisigSignersList`
+    mapping(address => uint256) internal _multisigSignerIndexPlusOne;
+
     /// @notice Ordered list of pending upgrade addresses for signer clearing
     address[] internal _pendingUpgradesList;
 
@@ -428,15 +431,19 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         multisigSigners[signer] = false;
         multisigSignerCount--;
 
-        // Remove from ordered list (swap-and-pop)
-        uint256 len = _multisigSignersList.length;
-        for (uint256 i = 0; i < len; i++) {
-            if (_multisigSignersList[i] == signer) {
-                _multisigSignersList[i] = _multisigSignersList[len - 1];
-                _multisigSignersList.pop();
-                break;
-            }
+        // O(1) removal from ordered list (swap-and-pop using maintained index mapping)
+        uint256 signerIndexPlusOne = _multisigSignerIndexPlusOne[signer];
+        if (signerIndexPlusOne == 0) revert CommonErrorLibrary.NotAuthorized();
+        uint256 signerIndex = signerIndexPlusOne - 1;
+        uint256 lastIndex = _multisigSignersList.length - 1;
+
+        if (signerIndex != lastIndex) {
+            address lastSigner = _multisigSignersList[lastIndex];
+            _multisigSignersList[signerIndex] = lastSigner;
+            _multisigSignerIndexPlusOne[lastSigner] = signerIndex + 1;
         }
+        _multisigSignersList.pop();
+        delete _multisigSignerIndexPlusOne[signer];
 
         // Clear any approvals from this signer
         _clearSignerApprovals(signer);
@@ -548,6 +555,22 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
             signers[i] = _multisigSignersList[i];
         }
     }
+
+    /**
+     * @notice Returns protocol time from the shared TimeProvider
+     * @dev Exposes the canonical time source to dependent contracts (e.g. SecureUpgradeable)
+     * @custom:security Returns canonical protocol time managed by immutable shared provider
+     * @custom:validation No input validation required
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external state mutation
+     * @custom:access Public view utility
+     * @custom:oracle No oracle dependencies
+     */
+    function currentTime() external view returns (uint256) {
+        return TIME_PROVIDER.currentTime();
+    }
     
     // ============ Internal Functions ============
     
@@ -579,7 +602,8 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      */
     function _clearUpgradeApprovals(address implementation) internal {
         upgradeApprovalCount[implementation] = 0;
-        for (uint256 i = 0; i < _multisigSignersList.length; i++) {
+        uint256 signerLen = _multisigSignersList.length;
+        for (uint256 i = 0; i < signerLen; i++) {
             upgradeApprovals[_multisigSignersList[i]][implementation] = false;
         }
         _removePendingUpgrade(implementation);
@@ -623,7 +647,8 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
      * @custom:oracle No oracle dependencies
      */
     function _clearSignerApprovals(address signer) internal {
-        for (uint256 i = 0; i < _pendingUpgradesList.length; i++) {
+        uint256 pendingLen = _pendingUpgradesList.length;
+        for (uint256 i = 0; i < pendingLen; i++) {
             address impl = _pendingUpgradesList[i];
             if (upgradeApprovals[signer][impl]) {
                 upgradeApprovals[signer][impl] = false;
@@ -649,6 +674,7 @@ contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, Pausabl
         multisigSigners[signer] = true;
         multisigSignerCount++;
         _multisigSignersList.push(signer);
+        _multisigSignerIndexPlusOne[signer] = _multisigSignersList.length;
     }
     
     // ============ Override Functions ============

@@ -339,6 +339,7 @@ contract TimelockUpgradeableTest is Test {
 
         // Wait for timelock
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         // Execute
         vm.prank(executor);
@@ -382,6 +383,7 @@ contract TimelockUpgradeableTest is Test {
         timelock.approveUpgrade(newImpl1);
 
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         vm.prank(executor);
         vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);
@@ -399,6 +401,7 @@ contract TimelockUpgradeableTest is Test {
         timelock.approveUpgrade(newImpl1);
 
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         vm.prank(attacker);
         vm.expectRevert();
@@ -705,6 +708,7 @@ contract TimelockUpgradeableTest is Test {
         timelock.approveUpgrade(newImpl1);
 
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         assertTrue(timelock.canExecuteUpgrade(newImpl1), "Should be executable");
     }
@@ -734,6 +738,7 @@ contract TimelockUpgradeableTest is Test {
         timelock.approveUpgrade(newImpl1);
 
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         assertFalse(timelock.canExecuteUpgrade(newImpl1), "Should not be executable");
     }
@@ -793,6 +798,7 @@ contract TimelockUpgradeableTest is Test {
 
         // Step 4: Wait for timelock
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         // Verify can execute
         assertTrue(timelock.canExecuteUpgrade(newImpl1), "Should be executable");
@@ -821,6 +827,7 @@ contract TimelockUpgradeableTest is Test {
         timelock.revokeUpgradeApproval(newImpl1);
 
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         // Should not be executable with only 1 approval
         assertFalse(timelock.canExecuteUpgrade(newImpl1), "Should not be executable");
@@ -873,6 +880,7 @@ contract TimelockUpgradeableTest is Test {
         timelock.proposeUpgrade(newImpl1, "Test upgrade", 0);
 
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         vm.prank(executor);
         vm.expectRevert(CommonErrorLibrary.InsufficientBalance.selector);

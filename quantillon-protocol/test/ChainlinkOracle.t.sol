@@ -585,6 +585,7 @@ contract ChainlinkOracleTestSuite is Test {
         vm.prank(admin);
         oracle.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         oracle.applyDevMode();
         assertTrue(oracle.devModeEnabled());
@@ -643,6 +644,7 @@ contract ChainlinkOracleTestSuite is Test {
         vm.prank(admin);
         oracle.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         oracle.applyDevMode();
         assertTrue(oracle.devModeEnabled());
@@ -681,6 +683,7 @@ contract ChainlinkOracleTestSuite is Test {
         vm.prank(admin);
         oracle.proposeDevMode(false);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         oracle.applyDevMode();
         assertFalse(oracle.devModeEnabled());
@@ -714,6 +717,7 @@ contract ChainlinkOracleTestSuite is Test {
         vm.prank(admin);
         oracle.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         oracle.applyDevMode();
 
@@ -1229,22 +1233,6 @@ contract ChainlinkOracleTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test health monitoring with healthy oracle
-     * @dev Verifies health monitoring functionality
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testHealthMonitoring_WithHealthyOracle_ShouldReturnHealthyStatus() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by OracleEdgeCases");
-    }
-    
-    /**
      * @notice Test oracle health with stale EUR/USD data
      * @dev Verifies health monitoring with stale data
       * @custom:security No security implications - test function
@@ -1382,22 +1370,6 @@ contract ChainlinkOracleTestSuite is Test {
         assertEq(usdcUsdDecimals, 8);
     }
     
-    /**
-     * @notice Test price feed connectivity
-     * @dev Verifies connectivity checking
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testHealthMonitoring_WithValidParameters_ShouldCheckPriceFeedConnectivity() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by OracleEdgeCases");
-    }
-
     // =============================================================================
     // EDGE CASES AND ERROR CONDITIONS TESTS
     // =============================================================================

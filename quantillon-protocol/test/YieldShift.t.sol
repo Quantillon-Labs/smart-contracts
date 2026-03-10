@@ -702,22 +702,6 @@ contract YieldShiftTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test yield distribution update with valid parameters
-     * @dev Verifies yield distribution update functionality
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testYieldDistribution_WithValidParameters_ShouldUpdateYieldDistribution() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by YieldValidationLibrary / IntegrationTests");
-    }
-    
-    /**
      * @notice Test yield addition by yield manager
      * @dev Verifies yield addition functionality
       * @custom:security No security implications - test function
@@ -1097,22 +1081,6 @@ contract YieldShiftTestSuite is Test {
         assertGe(poolRatio, 0);
     }
     
-    /**
-     * @notice Test optimal yield shift calculation with valid parameters
-     * @dev Verifies optimal yield shift calculation functionality
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testPoolMetrics_WithValidParameters_ShouldCalculateOptimalYieldShift() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by YieldValidationLibrary / IntegrationTests");
-    }
-
     // =============================================================================
     // YIELD SOURCES TESTS
     // =============================================================================
@@ -1642,22 +1610,6 @@ contract YieldShiftTestSuite is Test {
         // Performance metrics are calculated successfully
     }
     
-    /**
-     * @notice Test historical yield shift retrieval with valid parameters
-     * @dev Verifies historical data retrieval
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testViewFunctions_WithValidParameters_ShouldGetHistoricalYieldShift() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by YieldValidationLibrary / IntegrationTests");
-    }
-
     // =============================================================================
     // EDGE CASES AND ERROR CONDITIONS TESTS
     // =============================================================================

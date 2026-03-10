@@ -401,6 +401,7 @@ contract RaceConditionTests is Test {
         vm.prank(signer1);
         timelock.approveUpgrade(implB);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         timelock.executeUpgrade(implA);
         vm.prank(admin);
@@ -420,7 +421,8 @@ contract RaceConditionTests is Test {
         timelock.approveUpgrade(newImpl);
         vm.prank(signer1);
         timelock.approveUpgrade(newImpl);
-        vm.warp(block.timestamp + 48 hours - 1); // before deadline
+        vm.warp(block.timestamp + 48 hours - 1);
+        vm.roll(block.number + 14_399); // before deadline
         vm.prank(admin);
         vm.expectRevert();
         timelock.executeUpgrade(newImpl);
@@ -442,6 +444,7 @@ contract RaceConditionTests is Test {
         vm.prank(signer1);
         timelock.approveUpgrade(newImpl);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         timelock.executeUpgrade(newImpl);
         vm.prank(admin);
@@ -467,6 +470,7 @@ contract RaceConditionTests is Test {
 
         // Wait for timelock
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         // First execution succeeds
         vm.prank(admin);
@@ -514,6 +518,7 @@ contract RaceConditionTests is Test {
         vm.prank(signer1);
         timelock.approveUpgrade(newImpl);
         vm.warp(block.timestamp + 48 hours - 1);
+        vm.roll(block.number + 14_399);
         vm.prank(admin);
         vm.expectRevert();
         timelock.executeUpgrade(newImpl);

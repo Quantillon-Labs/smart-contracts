@@ -369,10 +369,11 @@ contract QuantillonInvariants is Test {
         vm.prank(admin);
         vault.proposeDevMode(true);
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
         vm.prank(admin);
         vault.applyDevMode();
         vm.prank(admin);
-        vault.initializePriceCache();
+        vault.initializePriceCache(1.10e18);
         vm.startPrank(governance);
         vault.updateCollateralizationThresholds(101e18, 101e18);
         hedgerPool.setSingleHedger(hedger1);

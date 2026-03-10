@@ -9,6 +9,7 @@
 - [GovernanceErrorLibrary](GovernanceErrorLibrary.sol/library.GovernanceErrorLibrary.md)
 - [HedgerPoolErrorLibrary](HedgerPoolErrorLibrary.sol/library.HedgerPoolErrorLibrary.md)
 - [HedgerPoolLogicLibrary](HedgerPoolLogicLibrary.sol/library.HedgerPoolLogicLibrary.md)
+- [IViewOracle](HedgerPoolOptimizationLibrary.sol/interface.IViewOracle.md)
 - [HedgerPoolOptimizationLibrary](HedgerPoolOptimizationLibrary.sol/library.HedgerPoolOptimizationLibrary.md)
 - [HedgerPoolRedeemMathLibrary](HedgerPoolRedeemMathLibrary.sol/library.HedgerPoolRedeemMathLibrary.md)
 - [HedgerPoolValidationLibrary](HedgerPoolValidationLibrary.sol/library.HedgerPoolValidationLibrary.md)

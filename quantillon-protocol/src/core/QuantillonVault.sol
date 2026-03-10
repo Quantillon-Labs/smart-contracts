@@ -12,6 +12,7 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {VaultErrorLibrary} from "../libraries/VaultErrorLibrary.sol";
@@ -98,6 +99,7 @@ contract QuantillonVault is
     SecureUpgradeable             // Secure upgrade pattern
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
     using VaultMath for uint256;   // Precise math operations
 
     // =============================================================================
@@ -184,9 +186,6 @@ contract QuantillonVault is
     /// @notice USDC balance before flash loan check (used by flashLoanProtection modifier)
     uint256 private _flashLoanBalanceBefore;
 
-    /// @notice MED-7: Dedicated reentrancy guard for _executeAaveDeployment (separate from OZ lock)
-    bool private _aaveDeploymentInProgress;
-
     /// @notice AaveVault contract for USDC yield generation
     /// @dev Used to deploy idle USDC to Aave lending pool
     IAaveVault public aaveVault;
@@ -260,11 +259,13 @@ contract QuantillonVault is
 
     /// @notice MED-1: Minimum delay before a proposed dev-mode change takes effect
     uint256 public constant DEV_MODE_DELAY = 48 hours;
+    /// @notice MED-1: Canonical block delay for dev-mode proposals (12s block target)
+    uint256 public constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12;
 
     /// @notice MED-1: Pending dev-mode value awaiting the timelock delay
     bool public pendingDevMode;
 
-    /// @notice MED-1: Timestamp at which pendingDevMode may be applied (0 = no pending proposal)
+    /// @notice MED-1: Block at which pendingDevMode may be applied (0 = no pending proposal)
     uint256 public devModePendingAt;
 
     // =============================================================================
@@ -414,6 +415,11 @@ contract QuantillonVault is
         _flashLoanProtectionAfter();
     }
 
+    modifier onlySelf() {
+        _onlySelf();
+        _;
+    }
+
     function _flashLoanProtectionBefore() private {
         _flashLoanBalanceBefore = usdc.balanceOf(address(this));
     }
@@ -423,6 +429,22 @@ contract QuantillonVault is
         if (!FlashLoanProtectionLibrary.validateBalanceChange(_flashLoanBalanceBefore, balanceAfter, 0)) {
             revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
         }
+    }
+
+    /**
+     * @notice Reverts unless caller is this contract
+     * @dev Used to gate commit-phase functions invoked through explicit self-calls.
+     * @custom:security Prevents external callers from invoking internal commit entrypoints directly
+     * @custom:validation Reverts when `msg.sender != address(this)`
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors Reverts with `NotAuthorized` if caller is not self
+     * @custom:reentrancy No external calls
+     * @custom:access Internal helper
+     * @custom:oracle No oracle dependencies
+     */
+    function _onlySelf() internal view {
+        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }
 
     // =============================================================================
@@ -561,8 +583,6 @@ contract QuantillonVault is
      * @custom:access No access restrictions
      * @custom:oracle Requires fresh oracle price data
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external calls to trusted Oracle contract
     function mintQEURO(
         uint256 usdcAmount,
@@ -571,13 +591,13 @@ contract QuantillonVault is
         // CHECKS
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         
-        // Cache all oracle calls at start to avoid reentrancy issues
+        // Cache all oracle calls in the read phase.
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
 
-        // Reject minting if USDC is depegged to prevent undercollateralization
-        (, bool usdcIsValid) = oracle.getUsdcUsdPrice();
-        if (!usdcIsValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        // Reject minting if USDC is depegged to prevent undercollateralization.
+        (uint256 usdcUsdPrice, bool usdcIsValid) = oracle.getUsdcUsdPrice();
+        if (!usdcIsValid || usdcUsdPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
 
         // LOW-5 / INFO-2: minting requires initialized cache and an active single hedger.
         if (lastValidEurUsdPrice == 0) revert CommonErrorLibrary.NotInitialized();
@@ -585,10 +605,10 @@ contract QuantillonVault is
             revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
         }
 
-        // Check if we can mint based on current state
+        // Check if we can mint based on current state.
         if (!canMint()) revert CommonErrorLibrary.InsufficientCollateralization();
         
-        // Price deviation check using cached price (skip if dev mode is enabled)
+        // Price deviation check using cached price (skip if dev mode is enabled).
         if (!devModeEnabled) {
             (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
                 eurUsdPrice,
@@ -603,7 +623,7 @@ contract QuantillonVault is
             }
         }
 
-        // Calculate mint fee and QEURO amount using validated oracle price
+        // Calculate mint fee and QEURO amount using validated oracle price.
         uint256 fee = usdcAmount.mulDiv(mintFee, 1e18);
         uint256 netAmount = usdcAmount - fee;
         uint256 qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
@@ -621,96 +641,89 @@ contract QuantillonVault is
             revert CommonErrorLibrary.InsufficientCollateralization();
         }
 
-        // EFFECTS - Update all state before external calls
-        // Update price cache
+        this._mintQEUROCommit(msg.sender, usdcAmount, fee, netAmount, qeuroToMint, eurUsdPrice, isValid);
+    }
+
+    /**
+     * @notice Commits mint flow effects/interactions after validation phase
+     * @dev Called via explicit self-call from `mintQEURO` to separate validation and commit phases.
+     * @param minter User receiving freshly minted QEURO
+     * @param usdcAmount Gross USDC transferred in
+     * @param fee Protocol fee portion from `usdcAmount`
+     * @param netAmount Net USDC credited to collateral after fees
+     * @param qeuroToMint QEURO amount to mint for `minter`
+     * @param eurUsdPrice Validated EUR/USD price used for accounting cache
+     * @param isValidPrice Whether oracle read used for cache timestamp was valid
+     * @custom:security Restricted by `onlySelf`; executed from `nonReentrant` parent flow
+     * @custom:validation Assumes caller already validated collateralization and oracle constraints
+     * @custom:state-changes Updates vault accounting, oracle cache timestamps, and optional Aave principal tracker
+     * @custom:events Emits `QEUROminted` and potentially downstream fee/yield events
+     * @custom:errors Token, hedger sync, fee routing, and Aave operations may revert
+     * @custom:reentrancy Structured CEI commit path called from guarded parent
+     * @custom:access External self-call entrypoint only
+     * @custom:oracle Uses pre-validated oracle price input
+     */
+    function _mintQEUROCommit(
+        address minter,
+        uint256 usdcAmount,
+        uint256 fee,
+        uint256 netAmount,
+        uint256 qeuroToMint,
+        uint256 eurUsdPrice,
+        bool isValidPrice
+    ) external onlySelf {
+        uint256 autoDeployAmount = address(aaveVault) != address(0) ? netAmount : 0;
+
+        // EFFECTS
         lastPriceUpdateBlock = block.number;
         lastValidEurUsdPrice = eurUsdPrice;
-        _updatePriceTimestamp(isValid);
+        _updatePriceTimestamp(isValidPrice);
 
-        // Update vault accounting
         totalUsdcHeld += netAmount;
         totalMinted += qeuroToMint;
 
-        // Inform HedgerPool after vault accounting is updated.
-        // LOW-5 / INFO-2: mint finalization is atomic with hedger synchronization.
+        if (autoDeployAmount > 0) {
+            unchecked {
+                totalUsdcHeld -= autoDeployAmount;
+                totalUsdcInAave += autoDeployAmount;
+            }
+        }
+
         _syncMintWithHedgersOrRevert(netAmount, eurUsdPrice, qeuroToMint);
+        emit QEUROminted(minter, usdcAmount, qeuroToMint);
 
-        // Emit event after state changes but before external calls
-        emit QEUROminted(msg.sender, usdcAmount, qeuroToMint);
-
-        // INTERACTIONS - All external calls after state updates
-        // Transfer full amount to vault
-        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
-        
+        // INTERACTIONS
+        usdc.safeTransferFrom(minter, address(this), usdcAmount);
         _routeProtocolFees(fee, "minting");
-        
-        qeuro.mint(msg.sender, qeuroToMint);
-        
-        // Auto-deploy USDC to Aave for yield generation (if AaveVault is configured)
-        // This happens atomically with minting to ensure USDC is put to work immediately
-        _autoDeployToAave(netAmount);
+        qeuro.mint(minter, qeuroToMint);
+
+        if (autoDeployAmount > 0) {
+            _autoDeployToAave(autoDeployAmount);
+        }
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
     
     /**
      * @notice Internal function to auto-deploy USDC to Aave after minting
-     * @dev Silently catches errors to ensure minting always succeeds even if Aave has issues
+     * @dev Uses strict CEI ordering and lets failures revert to preserve accounting integrity
      * @param usdcAmount Amount of USDC to deploy (6 decimals)
-     * @custom:security Uses try-catch to prevent Aave issues from blocking user mints
+     * @custom:security Updates accounting before external interaction to remove reentrancy windows
      * @custom:validation Validates AaveVault is set and amount > 0
-     * @custom:state-changes Updates totalUsdcHeld and totalUsdcInAave on success
+     * @custom:state-changes Updates totalUsdcHeld and totalUsdcInAave before calling AaveVault
      * @custom:events Emits UsdcDeployedToAave on success
-     * @custom:errors Silently swallows errors to ensure mints always succeed
+     * @custom:errors Reverts on failed deployment or invalid Aave return value
      * @custom:reentrancy Not protected - internal function only
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
     function _autoDeployToAave(uint256 usdcAmount) internal {
-        // Skip if AaveVault not configured or amount is zero
+        // Skip if AaveVault not configured or amount is zero.
         if (address(aaveVault) == address(0) || usdcAmount == 0) return;
-        if (totalUsdcHeld < usdcAmount) return;
-        
-        // Try to deploy to Aave, but don't block minting if it fails
-        try this._executeAaveDeployment(usdcAmount) {} catch (bytes memory reason) {
-            emit AaveDeploymentFailed(usdcAmount, reason);
-        }
-    }
-    
-    /**
-     * @notice External function to execute Aave deployment (called by _autoDeployToAave via try/catch)
-     * @dev This is external so it can be called via try/catch for error handling
-     * @param usdcAmount Amount of USDC to deploy (6 decimals)
-     * @custom:security Only callable from this contract
-     * @custom:validation Validates sufficient balance
-     * @custom:state-changes Updates totalUsdcHeld and totalUsdcInAave
-     * @custom:events Emits UsdcDeployedToAave
-     * @custom:errors Throws if insufficient balance or Aave deployment fails
-     * @custom:reentrancy Not protected - internal helper
-     * @custom:access Internal use only (via try/catch)
-     * @custom:oracle No oracle dependencies
-     */
-    function _executeAaveDeployment(uint256 usdcAmount) external {
-        // Only callable from within this contract
-        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
-        // MED-7: Dedicated reentrancy lock (separate from OZ lock which is already held by caller)
-        if (_aaveDeploymentInProgress) revert CommonErrorLibrary.NotAuthorized();
-        _aaveDeploymentInProgress = true;
 
-        // Update state before external calls
-        totalUsdcHeld -= usdcAmount;
-        totalUsdcInAave += usdcAmount;
-
-        emit UsdcDeployedToAave(usdcAmount, totalUsdcInAave);
-
-        // Transfer and deploy to Aave
+        // INTERACTIONS only - accounting is updated by the caller before this call.
         usdc.safeIncreaseAllowance(address(aaveVault), usdcAmount);
         uint256 aTokensReceived = aaveVault.deployToAave(usdcAmount);
-
-        _aaveDeploymentInProgress = false;
-
-        // Validate that deployment was successful (aTokensReceived should be > 0)
         if (aTokensReceived == 0) revert CommonErrorLibrary.InvalidAmount();
+        emit UsdcDeployedToAave(usdcAmount, totalUsdcInAave);
     }
 
     /**
@@ -737,8 +750,6 @@ contract QuantillonVault is
      * @custom:oracle Requires fresh oracle price data
      * @custom:security No flash loan protection needed - legitimate redemption operation
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external calls to trusted Oracle and AaveVault
     function redeemQEURO(
         uint256 qeuroAmount,
@@ -789,47 +800,83 @@ contract QuantillonVault is
 
         if (netUsdcToReturn < minUsdcOut) revert CommonErrorLibrary.ExcessiveSlippage();
 
-        // Check if total available USDC (vault + Aave principal + accrued Aave yield) is sufficient
+        // Check if total available USDC (vault + Aave principal + accrued Aave yield) is sufficient.
         uint256 totalAvailable = _getTotalCollateralWithAccruedYield();
         if (totalAvailable < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
 
-        // If vault doesn't have enough USDC, withdraw from Aave
-        if (totalUsdcHeld < usdcToReturn && address(aaveVault) != address(0)) {
-            uint256 deficit = usdcToReturn - totalUsdcHeld;
-            _withdrawUsdcFromAave(deficit);
-        }
-
-        // Re-check after potential Aave withdrawal
-        if (totalUsdcHeld < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
-
         if (address(hedgerPool) == address(0)) revert CommonErrorLibrary.InvalidVault();
 
-        // EFFECTS - Update all state before external calls
-        // Update price cache
+        uint256 aaveWithdrawalAmount = _planAaveWithdrawal(usdcToReturn);
+        this._redeemQEUROCommit(
+            msg.sender,
+            qeuroAmount,
+            usdcToReturn,
+            netUsdcToReturn,
+            fee,
+            eurUsdPrice,
+            isValid,
+            aaveWithdrawalAmount
+        );
+    }
+
+    /**
+     * @notice Commits normal-mode redemption effects/interactions after validation
+     * @dev Called via explicit self-call from `redeemQEURO`.
+     * @param redeemer User redeeming QEURO
+     * @param qeuroAmount QEURO amount burned from `redeemer`
+     * @param usdcToReturn Gross USDC redemption amount before fee transfer split
+     * @param netUsdcToReturn Net USDC transferred to the redeemer
+     * @param fee Protocol fee amount from redemption
+     * @param eurUsdPrice Validated EUR/USD price used for cache update
+     * @param isValidPrice Whether oracle read used for cache timestamp was valid
+     * @param aaveWithdrawalAmount Planned USDC amount to source from Aave (if needed)
+     * @custom:security Restricted by `onlySelf`; called from `nonReentrant` parent flow
+     * @custom:validation Reverts if held liquidity is insufficient or mint tracker underflows
+     * @custom:state-changes Updates collateral/mint trackers and price cache
+     * @custom:events Emits `QEURORedeemed` and downstream fee routing events
+     * @custom:errors Reverts on insufficient balances, token failures, or downstream integration failures
+     * @custom:reentrancy CEI commit path invoked from guarded parent
+     * @custom:access External self-call entrypoint only
+     * @custom:oracle Uses pre-validated oracle price input
+     */
+    function _redeemQEUROCommit(
+        address redeemer,
+        uint256 qeuroAmount,
+        uint256 usdcToReturn,
+        uint256 netUsdcToReturn,
+        uint256 fee,
+        uint256 eurUsdPrice,
+        bool isValidPrice,
+        uint256 aaveWithdrawalAmount
+    ) external onlySelf {
+        if (aaveWithdrawalAmount > 0) {
+            uint256 principalReduction = aaveWithdrawalAmount > totalUsdcInAave ? totalUsdcInAave : aaveWithdrawalAmount;
+            totalUsdcInAave -= principalReduction;
+            totalUsdcHeld += aaveWithdrawalAmount;
+        }
+
+        if (totalUsdcHeld < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
+
+        // EFFECTS
         lastPriceUpdateBlock = block.number;
         lastValidEurUsdPrice = eurUsdPrice;
-        _updatePriceTimestamp(isValid);
+        _updatePriceTimestamp(isValidPrice);
 
-        // Update vault balances
         totalUsdcHeld -= usdcToReturn;
-        // Reduce tracked minted supply by the redeemed amount; revert if inconsistent
         if (totalMinted < qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
         totalMinted -= qeuroAmount;
         
-        // Inform HedgerPool after internal state is updated
         _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice, qeuroAmount);
+        emit QEURORedeemed(redeemer, qeuroAmount, netUsdcToReturn);
 
-        // Emit event after state changes but before external calls
-        emit QEURORedeemed(msg.sender, qeuroAmount, netUsdcToReturn);
-
-        // INTERACTIONS - All external calls after state updates
-        qeuro.burn(msg.sender, qeuroAmount);
-        usdc.safeTransfer(msg.sender, netUsdcToReturn);
-        
+        // INTERACTIONS
+        if (aaveWithdrawalAmount > 0) {
+            _withdrawUsdcFromAave(aaveWithdrawalAmount);
+        }
+        qeuro.burn(redeemer, qeuroAmount);
+        usdc.safeTransfer(redeemer, netUsdcToReturn);
         _routeProtocolFees(fee, "redemption");
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Internal function for liquidation mode redemption (pro-rata based on actual USDC)
@@ -870,8 +917,6 @@ contract QuantillonVault is
      * @custom:access Internal function - called by redeemQEURO
      * @custom:oracle Requires valid EUR/USD price from oracle
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Internal function called from nonReentrant redeemQEURO; trusted Oracle and AaveVault
     function _redeemLiquidationMode(
         uint256 qeuroAmount,
@@ -886,12 +931,9 @@ contract QuantillonVault is
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
 
-        // Calculate pro-rata payout based on actual USDC available
+        // Calculate pro-rata payout based on actual USDC available.
         uint256 totalCollateralUsdc = _getTotalCollateralWithAccruedYield();
         uint256 usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
-
-        // Ensure sufficient USDC (withdraw from Aave if needed)
-        _ensureSufficientUsdcForPayout(usdcPayout);
 
         // Calculate fees and net payout
         (uint256 fee, uint256 netUsdcPayout) = _calculateLiquidationFees(usdcPayout);
@@ -903,51 +945,94 @@ contract QuantillonVault is
         uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
         bool isPremium = usdcPayout >= fairValueUsdc;
 
-        // EFFECTS - Update state
+        uint256 aaveWithdrawalAmount = _planAaveWithdrawal(usdcPayout);
+        this._redeemLiquidationCommit(
+            msg.sender,
+            qeuroAmount,
+            totalSupply,
+            usdcPayout,
+            netUsdcPayout,
+            fee,
+            collateralizationRatioBps,
+            isPremium,
+            aaveWithdrawalAmount
+        );
+    }
+
+    /**
+     * @notice Commits liquidation-mode redemption effects/interactions
+     * @dev Called via explicit self-call from `_redeemLiquidationMode`.
+     * @param redeemer User redeeming in liquidation mode
+     * @param qeuroAmount QEURO amount burned
+     * @param totalSupply Total QEURO supply used for proportional hedger adjustment
+     * @param usdcPayout Gross pro-rata USDC payout
+     * @param netUsdcPayout Net payout transferred to user after fees
+     * @param fee Protocol fee amount
+     * @param collateralizationRatioBps Protocol collateralization ratio (bps) for event metadata
+     * @param isPremium Whether gross payout is at/above fair value
+     * @param aaveWithdrawalAmount Planned Aave withdrawal amount needed for payout
+     * @custom:security Restricted by `onlySelf`; called from guarded liquidation flow
+     * @custom:validation Reverts on insufficient balances or mint tracker underflow
+     * @custom:state-changes Updates collateral/mint trackers and notifies hedger pool liquidation accounting
+     * @custom:events Emits `LiquidationRedeemed` and downstream fee routing events
+     * @custom:errors Reverts on balance/transfer/integration failures
+     * @custom:reentrancy CEI commit path invoked from `nonReentrant` parent
+     * @custom:access External self-call entrypoint only
+     * @custom:oracle No direct oracle reads (uses precomputed inputs)
+     */
+    function _redeemLiquidationCommit(
+        address redeemer,
+        uint256 qeuroAmount,
+        uint256 totalSupply,
+        uint256 usdcPayout,
+        uint256 netUsdcPayout,
+        uint256 fee,
+        uint256 collateralizationRatioBps,
+        bool isPremium,
+        uint256 aaveWithdrawalAmount
+    ) external onlySelf {
+        if (aaveWithdrawalAmount > 0) {
+            uint256 principalReduction = aaveWithdrawalAmount > totalUsdcInAave ? totalUsdcInAave : aaveWithdrawalAmount;
+            totalUsdcInAave -= principalReduction;
+            totalUsdcHeld += aaveWithdrawalAmount;
+        }
+
         if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
         totalUsdcHeld -= usdcPayout;
         if (totalMinted < qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
         totalMinted -= qeuroAmount;
 
-        // Notify hedger pool of liquidation redemption
         _notifyHedgerPoolLiquidation(qeuroAmount, totalSupply);
+        emit LiquidationRedeemed(redeemer, qeuroAmount, netUsdcPayout, collateralizationRatioBps, isPremium);
 
-        // Emit liquidation event (emit net payout after fees)
-        emit LiquidationRedeemed(msg.sender, qeuroAmount, netUsdcPayout, collateralizationRatioBps, isPremium);
-
-        // INTERACTIONS - All external calls after state updates
-        qeuro.burn(msg.sender, qeuroAmount);
-        usdc.safeTransfer(msg.sender, netUsdcPayout);
-
-        // Transfer fee to fee collector
+        if (aaveWithdrawalAmount > 0) {
+            _withdrawUsdcFromAave(aaveWithdrawalAmount);
+        }
+        qeuro.burn(redeemer, qeuroAmount);
+        usdc.safeTransfer(redeemer, netUsdcPayout);
         _transferLiquidationFees(fee);
     }
 
     /**
-     * @notice Ensures vault has sufficient USDC for payout, withdrawing from Aave if needed
-     * @dev Withdraws from Aave to cover deficit; reverts if totalAvailable < usdcAmount
-     * @param usdcAmount Amount of USDC needed
-     * @custom:security Internal; may call Aave withdrawal
-     * @custom:validation totalAvailable >= usdcAmount after withdrawal
-     * @custom:state-changes totalUsdcHeld, totalUsdcInAave via _withdrawUsdcFromAave
-     * @custom:events Via _withdrawUsdcFromAave
-     * @custom:errors InsufficientBalance if cannot meet usdcAmount
-     * @custom:reentrancy External call to Aave; caller in CEI context
-     * @custom:access Internal
-     * @custom:oracle None
+     * @notice Calculates required Aave withdrawal to satisfy a USDC payout
+     * @dev Returns zero when vault-held USDC already covers `requiredUsdc`.
+     * @param requiredUsdc Target USDC amount that must be available in vault balance
+     * @return aaveWithdrawalAmount Additional USDC that should be sourced from Aave
+     * @custom:security Enforces that Aave vault is configured before planning an Aave-backed withdrawal
+     * @custom:validation Reverts with `InsufficientBalance` when deficit exists and Aave is not configured
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors Reverts with `InsufficientBalance` when no Aave source exists for deficit
+     * @custom:reentrancy No external calls
+     * @custom:access Internal helper
+     * @custom:oracle No oracle dependencies
      */
-    function _ensureSufficientUsdcForPayout(uint256 usdcAmount) internal {
-        uint256 totalAvailable = _getTotalCollateralWithAccruedYield();
-        if (totalAvailable < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
-
-        // If vault doesn't have enough USDC, withdraw from Aave
-        if (totalUsdcHeld < usdcAmount && address(aaveVault) != address(0)) {
-            uint256 deficit = usdcAmount - totalUsdcHeld;
-            _withdrawUsdcFromAave(deficit);
+    function _planAaveWithdrawal(uint256 requiredUsdc) internal view returns (uint256 aaveWithdrawalAmount) {
+        if (requiredUsdc == 0 || totalUsdcHeld >= requiredUsdc) {
+            return 0;
         }
-
-        // Re-check after potential Aave withdrawal
-        if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
+        if (address(aaveVault) == address(0)) revert CommonErrorLibrary.InsufficientBalance();
+        aaveWithdrawalAmount = requiredUsdc - totalUsdcHeld;
     }
 
     /**
@@ -1011,8 +1096,6 @@ contract QuantillonVault is
         if (fee == 0) return;
         _routeProtocolFees(fee, "liquidation");
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Redeems QEURO for USDC using pro-rata distribution in liquidation mode
@@ -1033,8 +1116,6 @@ contract QuantillonVault is
      * @custom:access Public - anyone with QEURO can redeem
      * @custom:oracle Requires oracle price for fair value calculation
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external calls to trusted Oracle and AaveVault
     function redeemQEUROLiquidation(
         uint256 qeuroAmount,
@@ -1059,8 +1140,6 @@ contract QuantillonVault is
         // Delegate to shared liquidation logic
         _redeemLiquidationMode(qeuroAmount, minUsdcOut, collateralizationRatioBps);
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
 
 
@@ -1453,40 +1532,16 @@ contract QuantillonVault is
      * @custom:access Internal function - called by redeemQEURO
      * @custom:oracle No oracle dependencies
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Internal function called from nonReentrant context; external call to trusted AaveVault
     function _withdrawUsdcFromAave(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn) {
         if (address(aaveVault) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (usdcAmount == 0) return 0;
 
-        // Include accrued yield in withdraw capacity; cap to current aToken balance when available.
-        uint256 amountToWithdraw = usdcAmount;
-        try aaveVault.getAaveBalance() returns (uint256 currentAaveBalance) {
-            if (currentAaveBalance == 0) return 0;
-            if (amountToWithdraw > currentAaveBalance) {
-                amountToWithdraw = currentAaveBalance;
-            }
-        } catch {
-            if (totalUsdcInAave == 0) return 0;
-            if (amountToWithdraw > totalUsdcInAave) {
-                amountToWithdraw = totalUsdcInAave;
-            }
-        }
-        if (amountToWithdraw == 0) return 0;
-
-        // Withdraw from AaveVault
-        usdcWithdrawn = aaveVault.withdrawFromAave(amountToWithdraw);
-
-        // HIGH-2 fix: principal tracker is decremented only by principal portion.
-        uint256 principalReduction = usdcWithdrawn > totalUsdcInAave ? totalUsdcInAave : usdcWithdrawn;
-        totalUsdcInAave -= principalReduction;
-        totalUsdcHeld += usdcWithdrawn;
-        
+        // INTERACTIONS only - accounting is updated by the caller before this call.
+        usdcWithdrawn = aaveVault.withdrawFromAave(usdcAmount);
+        if (usdcWithdrawn != usdcAmount) revert CommonErrorLibrary.ExcessiveSlippage();
         emit UsdcWithdrawnFromAave(usdcWithdrawn, totalUsdcInAave);
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
     
 
     /**
@@ -1561,8 +1616,6 @@ contract QuantillonVault is
      * @custom:access Restricted to HedgerPool contract only
      * @custom:oracle No oracle dependencies
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external call to trusted AaveVault
     function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external nonReentrant {
         if (msg.sender != address(hedgerPool)) revert CommonErrorLibrary.NotAuthorized();
@@ -1572,28 +1625,29 @@ contract QuantillonVault is
         // Check if total available USDC (vault + Aave) is sufficient
         uint256 totalAvailable = _getTotalCollateralWithAccruedYield();
         if (totalAvailable < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
-        
-        // If vault doesn't have enough USDC, withdraw from Aave
-        if (totalUsdcHeld < usdcAmount && address(aaveVault) != address(0)) {
-            uint256 deficit = usdcAmount - totalUsdcHeld;
-            _withdrawUsdcFromAave(deficit);
+
+        uint256 aaveWithdrawalAmount = _planAaveWithdrawal(usdcAmount);
+        if (aaveWithdrawalAmount > 0) {
+            uint256 principalReduction = aaveWithdrawalAmount > totalUsdcInAave ? totalUsdcInAave : aaveWithdrawalAmount;
+            totalUsdcInAave -= principalReduction;
+            totalUsdcHeld += aaveWithdrawalAmount;
         }
-        
-        // Re-check after potential Aave withdrawal
+
         if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
-        
-        // Update vault's total USDC reserves
+
+        // Update vault's total USDC reserves.
         unchecked {
             totalUsdcHeld -= usdcAmount;
         }
-        
-        // Transfer USDC to hedger
+
+        // INTERACTIONS
+        if (aaveWithdrawalAmount > 0) {
+            _withdrawUsdcFromAave(aaveWithdrawalAmount);
+        }
         usdc.safeTransfer(hedger, usdcAmount);
         
         emit HedgerDepositWithdrawn(hedger, usdcAmount, totalUsdcHeld);
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Gets the total USDC available (vault + Aave)
@@ -1629,8 +1683,6 @@ contract QuantillonVault is
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle Requires valid oracle price
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) nonReentrant {
         // Cache old price before external call
@@ -1639,17 +1691,31 @@ contract QuantillonVault is
         // Get new oracle price
         (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-        
-        // EFFECTS - Update all state before emitting event
+
+        this._applyPriceCacheUpdate(oldPrice, eurUsdPrice);
+    }
+
+    /**
+     * @notice Applies a validated price cache update
+     * @dev Commit-phase helper called via explicit self-call from `updatePriceCache`.
+     * @param oldPrice Previous cached EUR/USD price
+     * @param eurUsdPrice New validated EUR/USD price
+     * @custom:security Restricted by `onlySelf`
+     * @custom:validation Assumes caller already validated oracle output
+     * @custom:state-changes Updates `lastValidEurUsdPrice`, `lastPriceUpdateBlock`, and `lastPriceUpdateTime`
+     * @custom:events Emits `PriceCacheUpdated`
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access External self-call entrypoint only
+     * @custom:oracle No direct oracle reads (uses pre-validated input)
+     */
+    function _applyPriceCacheUpdate(uint256 oldPrice, uint256 eurUsdPrice) external onlySelf {
+        // EFFECTS - Update all state before emitting event.
         lastValidEurUsdPrice = eurUsdPrice;
         lastPriceUpdateBlock = block.number;
-        lastPriceUpdateTime = block.timestamp;
-        
-        // Emit event after state changes
+        lastPriceUpdateTime = _protocolTime();
         emit PriceCacheUpdated(oldPrice, eurUsdPrice, block.number);
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Updates the last valid price timestamp when a valid price is fetched
@@ -1666,7 +1732,7 @@ contract QuantillonVault is
      */
     function _updatePriceTimestamp(bool isValid) internal {
         if (isValid) {
-            lastPriceUpdateTime = block.timestamp;
+            lastPriceUpdateTime = _protocolTime();
         }
     }
 
@@ -1854,21 +1920,25 @@ contract QuantillonVault is
     /**
      * @notice LOW-5: Seeds the oracle price cache so minting checks have a baseline.
      * @dev Governance MUST call this once immediately after deployment, before any user mints.
+     *      Uses an explicit bootstrap price to avoid external oracle interaction in this state-changing call.
+     * @param initialEurUsdPrice Initial EUR/USD price in 18 decimals.
      * @custom:security Restricted to governance.
-     * @custom:validation Requires configured oracle and a valid fetched price.
+     * @custom:validation Requires `initialEurUsdPrice > 0`.
      * @custom:state-changes Sets `lastValidEurUsdPrice`, `lastPriceUpdateBlock`, and `lastPriceUpdateTime`.
      * @custom:events Emits `PriceCacheUpdated`.
-     * @custom:errors Reverts when oracle is unset or returns an invalid price.
+     * @custom:errors Reverts when price is zero or cache is already initialized.
      * @custom:reentrancy Not applicable - no external callbacks.
      * @custom:access Restricted to `GOVERNANCE_ROLE`.
-     * @custom:oracle Pulls current EUR/USD price from configured oracle.
+     * @custom:oracle Bootstrap input should come from governance/oracle process.
      */
-    function initializePriceCache() external onlyRole(GOVERNANCE_ROLE) {
-        if (address(oracle) == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
-        lastValidEurUsdPrice = eurUsdPrice;
+    function initializePriceCache(uint256 initialEurUsdPrice) external onlyRole(GOVERNANCE_ROLE) {
+        if (initialEurUsdPrice == 0) revert CommonErrorLibrary.InvalidAmount();
+        if (lastValidEurUsdPrice != 0) revert CommonErrorLibrary.NoChangeDetected();
+
+        lastValidEurUsdPrice = initialEurUsdPrice;
         lastPriceUpdateBlock = block.number;
+        lastPriceUpdateTime = _protocolTime();
+        emit PriceCacheUpdated(0, initialEurUsdPrice, block.number);
     }
 
     /**
@@ -2128,8 +2198,10 @@ contract QuantillonVault is
       * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        payable(treasury).sendValue(balance);
     }
 
     /**
@@ -2204,7 +2276,7 @@ contract QuantillonVault is
     /// @param enabled The desired dev-mode value
     function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         pendingDevMode = enabled;
-        devModePendingAt = block.timestamp + DEV_MODE_DELAY;
+        devModePendingAt = block.number + DEV_MODE_DELAY_BLOCKS;
         emit DevModeProposed(enabled, devModePendingAt);
     }
 
@@ -2222,7 +2294,7 @@ contract QuantillonVault is
      */
     function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (devModePendingAt == 0) revert CommonErrorLibrary.InvalidAmount();
-        if (block.timestamp < devModePendingAt) revert CommonErrorLibrary.NotActive();
+        if (block.number < devModePendingAt) revert CommonErrorLibrary.NotActive();
         devModeEnabled = pendingDevMode;
         devModePendingAt = 0;
         emit DevModeToggled(devModeEnabled, msg.sender);

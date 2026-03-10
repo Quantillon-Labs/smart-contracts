@@ -7,6 +7,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IOracle} from "../interfaces/IOracle.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
@@ -64,6 +65,7 @@ contract HedgerPool is
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
     using VaultMath for uint256;
     using AccessControlLibrary for AccessControlUpgradeable;
     using HedgerPoolValidationLibrary for uint256;
@@ -205,6 +207,11 @@ contract HedgerPool is
         _;
     }
 
+    modifier onlySelf() {
+        _onlySelf();
+        _;
+    }
+
     /**
      * @notice Reverts if caller is not the vault contract
      * @dev Used by onlyVault modifier; restricts vault-only callbacks (e.g. realized P&L)
@@ -219,6 +226,22 @@ contract HedgerPool is
      */
     function _onlyVault() internal view {
         if (msg.sender != address(vault)) revert HedgerPoolErrorLibrary.OnlyVault();
+    }
+
+    /**
+     * @notice Reverts if caller is not this contract
+     * @dev Used by onlySelf modifier for self-call only entry points
+     * @custom:security Ensures commit-style entry points can only be reached via explicit self-calls
+     * @custom:validation Reverts when `msg.sender != address(this)`
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors Reverts with `NotAuthorized` if caller is not this contract
+     * @custom:reentrancy No external calls
+     * @custom:access Internal helper for `onlySelf` modifier
+     * @custom:oracle No oracle dependencies
+     */
+    function _onlySelf() internal view {
+        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }
 
     /**
@@ -341,8 +364,6 @@ contract HedgerPool is
      * @custom:access Restricted to configured single hedger
      * @custom:oracle Requires fresh oracle price data
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function enterHedgePosition(uint256 usdcAmount, uint256 leverage) 
         external 
@@ -389,10 +410,50 @@ contract HedgerPool is
         // fee and marginRatio are validated by the library function, no additional checks needed
         if (fee > usdcAmount || marginRatio == 0) revert HedgerPoolErrorLibrary.InvalidPosition();
         
-        // Use fixed position ID 1 for single position model
+        return this._enterHedgePositionCommit(
+            msg.sender,
+            usdcAmount,
+            leverage,
+            currentTime,
+            eurUsdPrice,
+            netMargin,
+            positionSize
+        );
+    }
+
+    /**
+     * @notice Commits single-hedger position opening state and interactions
+     * @dev Called via `this._enterHedgePositionCommit(...)` from `enterHedgePosition` after checks/calculation phase.
+     * @param hedger Hedger address opening the position
+     * @param usdcAmount USDC principal transferred from hedger to vault
+     * @param leverage Leverage selected for the position
+     * @param currentTime Current protocol timestamp used for position timing fields
+     * @param eurUsdPrice Validated EUR/USD price used as entry price
+     * @param netMargin Net margin after entry fee deduction
+     * @param positionSize Position notional derived from margin and leverage
+     * @return positionId Created position identifier (single-position model => `1`)
+     * @custom:security Self-call gate (`onlySelf`) ensures this function cannot be invoked directly by external callers
+     * @custom:validation Assumes upstream validation already enforced bounds and authorization
+     * @custom:state-changes Writes position storage, hedger active position pointer, and aggregate margin/exposure totals
+     * @custom:events Emits `HedgePositionOpened`
+     * @custom:errors Token/vault calls may revert and bubble up errors
+     * @custom:reentrancy Executed from `nonReentrant` parent; follows checks/effects/interactions split
+     * @custom:access External function restricted to self-call path
+     * @custom:oracle No direct oracle dependency (uses pre-validated input price)
+     */
+    function _enterHedgePositionCommit(
+        address hedger,
+        uint256 usdcAmount,
+        uint256 leverage,
+        uint256 currentTime,
+        uint256 eurUsdPrice,
+        uint256 netMargin,
+        uint256 positionSize
+    ) external onlySelf returns (uint256 positionId) {
+        // Use fixed position ID 1 for single position model.
         positionId = 1;
         HedgePosition storage position = positions[positionId];
-        position.hedger = msg.sender;
+        position.hedger = hedger;
         // forge-lint: disable-next-line(unsafe-typecast)
         position.positionSize = uint96(positionSize);
         position.filledVolume = 0;
@@ -410,20 +471,19 @@ contract HedgerPool is
         position.isActive = true;
         // forge-lint: disable-next-line(unsafe-typecast)
         position.openBlock = uint64(block.number);
-        hedgerActivePositionId[msg.sender] = positionId;
+        hedgerActivePositionId[hedger] = positionId;
 
         totalMargin += netMargin;
         totalExposure += positionSize;
-        usdc.safeTransferFrom(msg.sender, address(vault), usdcAmount);
+
+        usdc.safeTransferFrom(hedger, address(vault), usdcAmount);
         vault.addHedgerDeposit(usdcAmount);
         emit HedgePositionOpened(
-            msg.sender,
+            hedger,
             positionId,
             HedgerPoolOptimizationLibrary.packPositionOpenData(positionSize, netMargin, leverage, eurUsdPrice)
         );
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Closes an existing hedge position
@@ -452,8 +512,6 @@ contract HedgerPool is
      * @custom:access Restricted to position owner
      * @custom:oracle Requires fresh oracle price data
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function exitHedgePosition(uint256 positionId) 
         external 
@@ -470,56 +528,41 @@ contract HedgerPool is
             revert HedgerPoolErrorLibrary.MinHoldPeriodNotElapsed();
         }
 
-        // Cache oracle price at start to avoid reentrancy issues
-        uint256 currentPrice = _getValidOraclePrice();
+        return _exitHedgePositionCommit(msg.sender, positionId);
+    }
 
-        // Cache position data before state changes
+    function _exitHedgePositionCommit(address hedger, uint256 positionId) private returns (int256 pnl) {
+        HedgePosition storage position = positions[positionId];
+
         uint256 cachedFilledVolume = uint256(position.filledVolume);
         uint256 cachedQeuroBacked = uint256(position.qeuroBacked);
         uint256 cachedPositionSize = uint256(position.positionSize);
         uint256 cachedMargin = uint256(position.margin);
-        
-        // Calculate PnL before state changes
-        pnl = HedgerPoolLogicLibrary.calculatePnL(
-            cachedFilledVolume,
-            cachedQeuroBacked,
-            currentPrice
-        );
 
-        // Unwind filled volume (this will reset qeuroBacked to 0)
+        // EFFECTS
         _unwindFilledVolume(position);
+        _finalizePosition(hedger, positionId, position, cachedMargin, cachedPositionSize);
+
+        // VALIDATIONS / INTERACTIONS
         _validatePositionClosureSafety(cachedMargin);
+        uint256 currentPrice = _getValidOraclePrice();
+        pnl = HedgerPoolLogicLibrary.calculatePnL(cachedFilledVolume, cachedQeuroBacked, currentPrice);
 
-        // Update ALL state variables before external calls (Checks-Effects-Interactions pattern)
-        _finalizePosition(
-            msg.sender,
-            positionId,
-            position,
-            cachedMargin,
-            cachedPositionSize
-        );
-
-        // Emit event after state changes but before external calls
         emit HedgePositionClosed(
-            msg.sender,
+            hedger,
             positionId,
             HedgerPoolOptimizationLibrary.packPositionCloseData(0, 0, TIME_PROVIDER.currentTime())
         );
 
-        // Calculate payout amounts
         int256 rawPayout = int256(cachedMargin) + pnl;
         uint256 grossPayout = rawPayout > 0 ? uint256(rawPayout) : 0;
         uint256 exitFeeAmount = grossPayout.percentageOf(coreParams.exitFee);
         uint256 netPayout = grossPayout - exitFeeAmount;
 
-        // INTERACTIONS - All external calls after state updates
         if (netPayout > 0) {
-            // Withdraw USDC from vault for hedger payout
-            vault.withdrawHedgerDeposit(msg.sender, netPayout);
+            vault.withdrawHedgerDeposit(hedger, netPayout);
         }
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Adds additional margin to an existing hedge position
@@ -651,8 +694,6 @@ contract HedgerPool is
      * @custom:access Restricted to position owner
      * @custom:oracle No oracle dependencies
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function removeMargin(uint256 positionId, uint256 amount) external whenNotPaused nonReentrant {
         HedgePosition storage position = positions[positionId];
@@ -671,29 +712,6 @@ contract HedgerPool is
         uint256 currentPositionSize = uint256(position.positionSize);
         uint256 deltaPositionSize = currentPositionSize - newPositionSize;
 
-        // Validate that position won't become liquidatable after margin removal
-        // Get current price for liquidation check
-        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
-        if (!isValid || currentPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
-        
-        // Check if position would become unhealthy after margin removal
-        // Uses minMarginRatio as threshold to ensure position maintains minimum collateralization
-        // This is the primary safety check - it ensures the position has sufficient collateral
-        // to cover its exposure even after margin removal
-        bool wouldBeUnhealthy = HedgerPoolLogicLibrary.isPositionLiquidatable(
-            newMargin,
-            uint256(position.filledVolume),
-            uint256(position.entryPrice),
-            currentPrice,
-            coreParams.minMarginRatio,
-            position.qeuroBacked,
-            position.realizedPnL
-        );
-        
-        if (wouldBeUnhealthy) {
-            revert HedgerPoolErrorLibrary.InsufficientMargin();
-        }
-
         // Validate margin ratio after removal (based on new position size)
         // Skip when position has no active exposure (all QEURO redeemed) — ratio is meaningless.
         // Initialize to zero so events have a well-defined value even when we skip validation.
@@ -706,6 +724,45 @@ contract HedgerPool is
             HedgerPoolValidationLibrary.validateMaxMarginRatio(newMarginRatio, MAX_MARGIN_RATIO);
         }
 
+        _removeMarginCommit(
+            msg.sender,
+            positionId,
+            newMargin,
+            newPositionSize,
+            deltaPositionSize,
+            amount,
+            newMarginRatio
+        );
+
+        // Validate that position remains healthy after margin removal using fresh oracle data.
+        (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid || currentPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+
+        bool wouldBeUnhealthy = HedgerPoolLogicLibrary.isPositionLiquidatable(
+            newMargin,
+            uint256(position.filledVolume),
+            uint256(position.entryPrice),
+            currentPrice,
+            coreParams.minMarginRatio,
+            position.qeuroBacked,
+            position.realizedPnL
+        );
+        if (wouldBeUnhealthy) revert HedgerPoolErrorLibrary.InsufficientMargin();
+
+        vault.withdrawHedgerDeposit(msg.sender, amount);
+    }
+
+    function _removeMarginCommit(
+        address hedger,
+        uint256 positionId,
+        uint256 newMargin,
+        uint256 newPositionSize,
+        uint256 deltaPositionSize,
+        uint256 amount,
+        uint256 newMarginRatio
+    ) private {
+        HedgePosition storage position = positions[positionId];
+
         // forge-lint: disable-next-line(unsafe-typecast)
         position.margin = uint96(newMargin);
         // forge-lint: disable-next-line(unsafe-typecast)
@@ -715,16 +772,11 @@ contract HedgerPool is
         totalExposure -= deltaPositionSize;
 
         emit MarginUpdated(
-            msg.sender,
+            hedger,
             positionId,
             HedgerPoolOptimizationLibrary.packMarginData(amount, newMarginRatio, false)
         );
-
-        // Withdraw USDC from vault for hedger margin removal
-        vault.withdrawHedgerDeposit(msg.sender, amount);
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Records a user mint and allocates hedger fills proportionally
@@ -874,64 +926,132 @@ contract HedgerPool is
         if (msg.sender != singleHedger) revert CommonErrorLibrary.NotAuthorized();
         address hedger = msg.sender;
         HedgerRewardState storage rewardState = hedgerRewards[hedger];
+        interestDifferential = _accrueAndExtractInterestRewards(hedger, rewardState);
+        _settleInterestRewards(hedger, interestDifferential);
+        yieldShiftRewards = _claimYieldShiftRewards(hedger);
+        totalRewards = interestDifferential + yieldShiftRewards;
+        _emitRewardClaimIfAny(hedger, interestDifferential, yieldShiftRewards, totalRewards);
+    }
 
-        // In single-hedger mode we use the protocol-wide exposure as reward base
+    /**
+     * @notice Accrues interest-differential rewards and extracts claimable amount
+     * @dev Updates pending rewards and reward timestamp using protocol-wide exposure and configured rate differential.
+     * @param hedger Hedger whose reward accounting is being updated
+     * @param rewardState Storage pointer for the hedger reward state
+     * @return interestDifferential Amount claimable from accrued interest differential for this claim cycle
+     * @custom:security Internal accounting helper; callable only through contract execution flow
+     * @custom:validation Handles legacy block-based timestamps by migrating to protocol time
+     * @custom:state-changes Updates `rewardState.pendingRewards`, `rewardState.lastRewardClaim`, and `hedgerLastRewardBlock`
+     * @custom:events None
+     * @custom:errors Arithmetic/validation errors from underlying helpers may revert
+     * @custom:reentrancy No external calls
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
+     */
+    function _accrueAndExtractInterestRewards(
+        address hedger,
+        HedgerRewardState storage rewardState
+    ) internal returns (uint256 interestDifferential) {
         uint256 currentTime = TIME_PROVIDER.currentTime();
-        // Migration guard: if stored value looks like a block number (< 1e9) reset to now with no reward
         uint256 lastRewardTime = hedgerLastRewardBlock[hedger];
+
+        // Migration guard for legacy block-number based values.
         if (lastRewardTime > 0 && lastRewardTime < 1_000_000_000) {
             lastRewardTime = currentTime;
         }
+
         (uint256 newPendingRewards, uint256 newLastRewardTime) = HedgerPoolLogicLibrary.calculateRewardUpdate(
-            totalExposure, coreParams.eurInterestRate, coreParams.usdInterestRate,
-            lastRewardTime, currentTime, MAX_REWARD_PERIOD,
+            totalExposure,
+            coreParams.eurInterestRate,
+            coreParams.usdInterestRate,
+            lastRewardTime,
+            currentTime,
+            MAX_REWARD_PERIOD,
             uint256(rewardState.pendingRewards)
         );
 
         // forge-lint: disable-next-line(unsafe-typecast)
         rewardState.pendingRewards = uint128(newPendingRewards);
         hedgerLastRewardBlock[hedger] = newLastRewardTime;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        rewardState.lastRewardClaim = uint64(currentTime);
 
         interestDifferential = rewardState.pendingRewards;
         if (interestDifferential > 0) {
             rewardState.pendingRewards = 0;
         }
+    }
 
+    /**
+     * @notice Claims YieldShift-distributed rewards for a hedger
+     * @dev Reads pending amount and claims once through `yieldShift` when non-zero.
+     * @param hedger Hedger address claiming rewards
+     * @return yieldShiftRewards Claimed YieldShift reward amount
+     * @custom:security Relies on trusted `yieldShift` integration and validates non-zero claimed amount
+     * @custom:validation Reverts when claim reports success with zero claimed amount
+     * @custom:state-changes May update external YieldShift accounting/state
+     * @custom:events No direct events emitted here (caller emits aggregate reward event)
+     * @custom:errors Reverts with `YieldClaimFailed` if claim returns zero amount
+     * @custom:reentrancy Performs external calls; used from `nonReentrant` parent flow
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
+     */
+    function _claimYieldShiftRewards(address hedger) internal returns (uint256 yieldShiftRewards) {
         yieldShiftRewards = yieldShift.hedgerPendingYield(hedger);
-
-        // NEW-1 fix: settle YieldShift rewards exactly once through YieldShift.
         if (yieldShiftRewards > 0) {
             uint256 claimedAmount = yieldShift.claimHedgerYield(hedger);
             if (claimedAmount == 0) revert CommonErrorLibrary.YieldClaimFailed();
             yieldShiftRewards = claimedAmount;
         }
+    }
 
-        // Interest-differential rewards are settled from HedgerPool reserve only.
-        if (interestDifferential > 0) {
-            uint256 available = usdc.balanceOf(address(this));
-            if (available < interestDifferential) {
-                pendingRewardWithdrawals[hedger] += interestDifferential;
-            } else {
-                try usdc.transfer(hedger, interestDifferential) returns (bool success) {
-                    if (!success) {
-                        pendingRewardWithdrawals[hedger] += interestDifferential;
-                    }
-                } catch {
-                    pendingRewardWithdrawals[hedger] += interestDifferential;
-                }
-            }
-        }
+    /**
+     * @notice Queues interest-differential rewards for pull-based withdrawal
+     * @dev Uses pending withdrawal accounting instead of push transfers.
+     * @param hedger Hedger receiving queued rewards
+     * @param interestDifferential Interest-differential amount to queue
+     * @custom:security Avoids push-transfer reentrancy surface by queuing funds
+     * @custom:validation No action when `interestDifferential == 0`
+     * @custom:state-changes Increments `pendingRewardWithdrawals[hedger]`
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
+     */
+    function _settleInterestRewards(address hedger, uint256 interestDifferential) internal {
+        if (interestDifferential == 0) return;
+        // Queue rewards for pull-based withdrawal to avoid push-transfer reentrancy surface.
+        pendingRewardWithdrawals[hedger] += interestDifferential;
+    }
 
-        totalRewards = interestDifferential + yieldShiftRewards;
-        if (totalRewards > 0) {
-            // forge-lint: disable-next-line(unsafe-typecast)
-            rewardState.lastRewardClaim = uint64(TIME_PROVIDER.currentTime());
-
-            emit HedgingRewardsClaimed(
-                hedger,
-                HedgerPoolOptimizationLibrary.packRewardData(interestDifferential, yieldShiftRewards, totalRewards)
-            );
-        }
+    /**
+     * @notice Emits reward-claim event when total claimed rewards are non-zero
+     * @dev Packs reward components for gas-efficient indexed monitoring.
+     * @param hedger Hedger for whom rewards were claimed
+     * @param interestDifferential Interest-differential component
+     * @param yieldShiftRewards YieldShift component
+     * @param totalRewards Aggregate reward amount
+     * @custom:security Emits event only when there is meaningful reward activity
+     * @custom:validation Returns early when `totalRewards == 0`
+     * @custom:state-changes None
+     * @custom:events Emits `HedgingRewardsClaimed`
+     * @custom:errors None
+     * @custom:reentrancy No external calls
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
+     */
+    function _emitRewardClaimIfAny(
+        address hedger,
+        uint256 interestDifferential,
+        uint256 yieldShiftRewards,
+        uint256 totalRewards
+    ) internal {
+        if (totalRewards == 0) return;
+        emit HedgingRewardsClaimed(
+            hedger,
+            HedgerPoolOptimizationLibrary.packRewardData(interestDifferential, yieldShiftRewards, totalRewards)
+        );
     }
 
     /**
@@ -1136,8 +1256,6 @@ contract HedgerPool is
      * @custom:access Restricted to EMERGENCY_ROLE
      * @custom:oracle Not applicable
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
     function emergencyClosePosition(address hedger, uint256 positionId) external nonReentrant {
         _validateRole(EMERGENCY_ROLE);
@@ -1166,8 +1284,6 @@ contract HedgerPool is
         // Withdraw USDC from vault for emergency position closure
         vault.withdrawHedgerDeposit(hedger, cachedMargin);
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Pauses all contract operations in case of emergency
@@ -1212,7 +1328,12 @@ contract HedgerPool is
      */
     function recover(address token, uint256 amount) external {
         if (token == address(0)) {
-            AdminFunctionsLibrary.recoverETH(address(this), treasury, DEFAULT_ADMIN_ROLE);
+            if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert CommonErrorLibrary.NotAuthorized();
+            if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+            uint256 balance = address(this).balance;
+            if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+            emit ETHRecovered(treasury, balance);
+            payable(treasury).sendValue(balance);
         } else {
             AdminFunctionsLibrary.recoverToken(address(this), token, amount, treasury, DEFAULT_ADMIN_ROLE);
         }
@@ -1244,7 +1365,7 @@ contract HedgerPool is
 
         // Subsequent changes are delayed and must be applied explicitly.
         pendingSingleHedger = hedger;
-        singleHedgerPendingAt = block.timestamp + SINGLE_HEDGER_ROTATION_DELAY;
+        singleHedgerPendingAt = TIME_PROVIDER.currentTime() + SINGLE_HEDGER_ROTATION_DELAY;
         emit SingleHedgerRotationProposed(singleHedger, hedger, singleHedgerPendingAt);
     }
 
@@ -1263,7 +1384,7 @@ contract HedgerPool is
     function applySingleHedgerRotation() external {
         _validateRole(GOVERNANCE_ROLE);
         if (pendingSingleHedger == address(0) || singleHedgerPendingAt == 0) revert CommonErrorLibrary.NotActive();
-        if (block.timestamp < singleHedgerPendingAt) revert CommonErrorLibrary.NotActive();
+        if (TIME_PROVIDER.currentTime() < singleHedgerPendingAt) revert CommonErrorLibrary.NotActive();
 
         address previousHedger = singleHedger;
         singleHedger = pendingSingleHedger;
@@ -1391,8 +1512,6 @@ contract HedgerPool is
      * @custom:access Internal - only callable within contract
      * @custom:oracle Not applicable
      */
-    // slither-disable-start reentrancy-no-eth
-    // slither-disable-start reentrancy-benign
     // SECURITY: Internal function called from nonReentrant context; no untrusted external calls
     function _unwindFilledVolume(HedgePosition storage position) internal {
         uint256 cachedFilledVolume = uint256(position.filledVolume);
@@ -1406,8 +1525,6 @@ contract HedgerPool is
         if (totalFilledExposure < cachedFilledVolume) revert HedgerPoolErrorLibrary.InsufficientHedgerCapacity();
         totalFilledExposure -= cachedFilledVolume;
     }
-    // slither-disable-end reentrancy-no-eth
-    // slither-disable-end reentrancy-benign
 
     /**
      * @notice Checks if position is healthy enough for new fills

@@ -330,6 +330,13 @@ uint256 public constant MAX_REWARD_PERIOD = 365 days
 modifier onlyVault() ;
 ```
 
+### onlySelf
+
+
+```solidity
+modifier onlySelf() ;
+```
+
 ### _onlyVault
 
 Reverts if caller is not the vault contract
@@ -356,6 +363,34 @@ Used by onlyVault modifier; restricts vault-only callbacks (e.g. realized P&L)
 
 ```solidity
 function _onlyVault() internal view;
+```
+
+### _onlySelf
+
+Reverts if caller is not this contract
+
+Used by onlySelf modifier for self-call only entry points
+
+**Notes:**
+- security: Ensures commit-style entry points can only be reached via explicit self-calls
+
+- validation: Reverts when `msg.sender != address(this)`
+
+- state-changes: None
+
+- events: None
+
+- errors: Reverts with `NotAuthorized` if caller is not this contract
+
+- reentrancy: No external calls
+
+- access: Internal helper for `onlySelf` modifier
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _onlySelf() internal view;
 ```
 
 ### constructor
@@ -500,6 +535,60 @@ function enterHedgePosition(uint256 usdcAmount, uint256 leverage)
 |`positionId`|`uint256`|Unique identifier for the new position|
 
 
+### _enterHedgePositionCommit
+
+Commits single-hedger position opening state and interactions
+
+Called via `this._enterHedgePositionCommit(...)` from `enterHedgePosition` after checks/calculation phase.
+
+**Notes:**
+- security: Self-call gate (`onlySelf`) ensures this function cannot be invoked directly by external callers
+
+- validation: Assumes upstream validation already enforced bounds and authorization
+
+- state-changes: Writes position storage, hedger active position pointer, and aggregate margin/exposure totals
+
+- events: Emits `HedgePositionOpened`
+
+- errors: Token/vault calls may revert and bubble up errors
+
+- reentrancy: Executed from `nonReentrant` parent; follows checks/effects/interactions split
+
+- access: External function restricted to self-call path
+
+- oracle: No direct oracle dependency (uses pre-validated input price)
+
+
+```solidity
+function _enterHedgePositionCommit(
+    address hedger,
+    uint256 usdcAmount,
+    uint256 leverage,
+    uint256 currentTime,
+    uint256 eurUsdPrice,
+    uint256 netMargin,
+    uint256 positionSize
+) external onlySelf returns (uint256 positionId);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Hedger address opening the position|
+|`usdcAmount`|`uint256`|USDC principal transferred from hedger to vault|
+|`leverage`|`uint256`|Leverage selected for the position|
+|`currentTime`|`uint256`|Current protocol timestamp used for position timing fields|
+|`eurUsdPrice`|`uint256`|Validated EUR/USD price used as entry price|
+|`netMargin`|`uint256`|Net margin after entry fee deduction|
+|`positionSize`|`uint256`|Position notional derived from margin and leverage|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|Created position identifier (single-position model => `1`)|
+
+
 ### exitHedgePosition
 
 Closes an existing hedge position
@@ -550,6 +639,13 @@ function exitHedgePosition(uint256 positionId) external whenNotPaused nonReentra
 |----|----|-----------|
 |`pnl`|`int256`|Profit or loss from the position (positive = profit, negative = loss)|
 
+
+### _exitHedgePositionCommit
+
+
+```solidity
+function _exitHedgePositionCommit(address hedger, uint256 positionId) private returns (int256 pnl);
+```
 
 ### addMargin
 
@@ -640,6 +736,21 @@ function removeMargin(uint256 positionId, uint256 amount) external whenNotPaused
 |`positionId`|`uint256`|Unique identifier of the position|
 |`amount`|`uint256`|Amount of USDC to remove from margin (6 decimals)|
 
+
+### _removeMarginCommit
+
+
+```solidity
+function _removeMarginCommit(
+    address hedger,
+    uint256 positionId,
+    uint256 newMargin,
+    uint256 newPositionSize,
+    uint256 deltaPositionSize,
+    uint256 amount,
+    uint256 newMarginRatio
+) private;
+```
 
 ### recordUserMint
 
@@ -805,6 +916,166 @@ function claimHedgingRewards()
 |`interestDifferential`|`uint256`|Interest differential rewards earned|
 |`yieldShiftRewards`|`uint256`|Yield shift rewards earned|
 |`totalRewards`|`uint256`|Total rewards claimed|
+
+
+### _accrueAndExtractInterestRewards
+
+Accrues interest-differential rewards and extracts claimable amount
+
+Updates pending rewards and reward timestamp using protocol-wide exposure and configured rate differential.
+
+**Notes:**
+- security: Internal accounting helper; callable only through contract execution flow
+
+- validation: Handles legacy block-based timestamps by migrating to protocol time
+
+- state-changes: Updates `rewardState.pendingRewards`, `rewardState.lastRewardClaim`, and `hedgerLastRewardBlock`
+
+- events: None
+
+- errors: Arithmetic/validation errors from underlying helpers may revert
+
+- reentrancy: No external calls
+
+- access: Internal function
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _accrueAndExtractInterestRewards(address hedger, HedgerRewardState storage rewardState)
+    internal
+    returns (uint256 interestDifferential);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Hedger whose reward accounting is being updated|
+|`rewardState`|`HedgerRewardState`|Storage pointer for the hedger reward state|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`interestDifferential`|`uint256`|Amount claimable from accrued interest differential for this claim cycle|
+
+
+### _claimYieldShiftRewards
+
+Claims YieldShift-distributed rewards for a hedger
+
+Reads pending amount and claims once through `yieldShift` when non-zero.
+
+**Notes:**
+- security: Relies on trusted `yieldShift` integration and validates non-zero claimed amount
+
+- validation: Reverts when claim reports success with zero claimed amount
+
+- state-changes: May update external YieldShift accounting/state
+
+- events: No direct events emitted here (caller emits aggregate reward event)
+
+- errors: Reverts with `YieldClaimFailed` if claim returns zero amount
+
+- reentrancy: Performs external calls; used from `nonReentrant` parent flow
+
+- access: Internal function
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _claimYieldShiftRewards(address hedger) internal returns (uint256 yieldShiftRewards);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Hedger address claiming rewards|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`yieldShiftRewards`|`uint256`|Claimed YieldShift reward amount|
+
+
+### _settleInterestRewards
+
+Queues interest-differential rewards for pull-based withdrawal
+
+Uses pending withdrawal accounting instead of push transfers.
+
+**Notes:**
+- security: Avoids push-transfer reentrancy surface by queuing funds
+
+- validation: No action when `interestDifferential == 0`
+
+- state-changes: Increments `pendingRewardWithdrawals[hedger]`
+
+- events: None
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: Internal function
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _settleInterestRewards(address hedger, uint256 interestDifferential) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Hedger receiving queued rewards|
+|`interestDifferential`|`uint256`|Interest-differential amount to queue|
+
+
+### _emitRewardClaimIfAny
+
+Emits reward-claim event when total claimed rewards are non-zero
+
+Packs reward components for gas-efficient indexed monitoring.
+
+**Notes:**
+- security: Emits event only when there is meaningful reward activity
+
+- validation: Returns early when `totalRewards == 0`
+
+- state-changes: None
+
+- events: Emits `HedgingRewardsClaimed`
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: Internal function
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function _emitRewardClaimIfAny(
+    address hedger,
+    uint256 interestDifferential,
+    uint256 yieldShiftRewards,
+    uint256 totalRewards
+) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hedger`|`address`|Hedger for whom rewards were claimed|
+|`interestDifferential`|`uint256`|Interest-differential component|
+|`yieldShiftRewards`|`uint256`|YieldShift component|
+|`totalRewards`|`uint256`|Aggregate reward amount|
 
 
 ### withdrawPendingRewards

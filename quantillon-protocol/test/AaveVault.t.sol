@@ -1283,38 +1283,6 @@ contract AaveVaultTestSuite is Test {
     // AAVE MARKET TESTS
     // =============================================================================
     
-    /**
-     * @notice Test getting Aave market data
-     * @dev Verifies market data retrieval
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testAaveMarket_WithValidParameters_ShouldGetAaveMarketData() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by AaveIntegration");
-    }
-    
-    /**
-     * @notice Test checking Aave health
-     * @dev Verifies health monitoring
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testAaveMarket_WithValidParameters_ShouldCheckAaveHealth() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by AaveIntegration");
-    }
-
     // =============================================================================
     // AUTOMATIC STRATEGIES TESTS
     // =============================================================================
@@ -1348,22 +1316,6 @@ contract AaveVaultTestSuite is Test {
         assertLe(newAllocation, 10000);
     }
     
-    /**
-     * @notice Test calculating optimal allocation
-     * @dev Verifies allocation optimization
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function testAutomaticStrategies_WithValidParameters_ShouldCalculateOptimalAllocation() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by AaveIntegration");
-    }
-
     // =============================================================================
     // RISK MANAGEMENT TESTS
     // =============================================================================
@@ -1766,22 +1718,6 @@ contract AaveVaultTestSuite is Test {
     // =============================================================================
     // MISSING FUNCTION TESTS - Ensuring 100% coverage
     // =============================================================================
-
-    /**
-     * @notice Test get Aave configuration
-     * @dev Verifies that Aave configuration can be retrieved
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_View_WithValidParameters_ShouldGetAaveConfig() public {
-        vm.skip(true, "Placeholder; interface mismatch; covered by AaveIntegration");
-    }
 
     // =============================================================================
     // RECOVERY FUNCTION TESTS

@@ -854,19 +854,20 @@ interface IQuantillonVault {
     function updatePriceCache() external;
 
     /**
-     * @notice Initializes the cached EUR/USD price used by view‑safe query paths.
-     * @dev Fetches a fresh oracle price and seeds the internal cache so that
-     *      `getProtocolCollateralizationRatioView()` and `canMintView()` have a baseline.
-     * @custom:security Restricted to governance; must be called when oracle is healthy.
-     * @custom:validation Reverts if the underlying oracle price is invalid.
+     * @notice Initializes the cached EUR/USD price used by view-safe query paths.
+     * @dev Seeds the internal cache with an explicit bootstrap price so view paths
+     *      have a baseline without performing external oracle reads in this mutating call.
+     * @param initialEurUsdPrice Initial EUR/USD price in 18 decimals.
+     * @custom:security Restricted to governance.
+     * @custom:validation Reverts if `initialEurUsdPrice` is zero.
      * @custom:state-changes Writes the initial cached price and associated timestamp/blocks.
-     * @custom:events Emits a price‑cache initialization event in the implementation.
-     * @custom:errors Implementation‑specific oracle validation errors on bad data.
-     * @custom:reentrancy Not applicable – implementation should avoid external calls after state writes.
+     * @custom:events Emits a price-cache initialization event in the implementation.
+     * @custom:errors Reverts when cache is already initialized or input is invalid.
+     * @custom:reentrancy Not applicable.
      * @custom:access Restricted to `GOVERNANCE_ROLE`.
-     * @custom:oracle Performs at least one live oracle read to populate cache.
+     * @custom:oracle Bootstrap input should come from governance/oracle operations.
      */
-    function initializePriceCache() external;
+    function initializePriceCache(uint256 initialEurUsdPrice) external;
 
     // =============================================================================
     // AAVE INTEGRATION - Functions for USDC yield generation via Aave

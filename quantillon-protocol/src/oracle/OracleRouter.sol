@@ -12,6 +12,7 @@ import {IStorkOracle} from "../interfaces/IStorkOracle.sol";
 
 // OpenZeppelin role system
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 // Emergency pause mechanism
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
@@ -24,6 +25,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 
 // Validation library
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
+import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 
 /**
@@ -47,6 +49,8 @@ contract OracleRouter is
     PausableUpgradeable,
     UUPSUpgradeable
 {
+    using Address for address payable;
+
     // =============================================================================
     // CONSTANTS AND ROLES
     // =============================================================================
@@ -135,6 +139,10 @@ contract OracleRouter is
         OracleType _defaultOracle
     ) public initializer {
         // Input parameter validation
+        if (admin == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_chainlinkOracle == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_storkOracle == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
         CommonValidationLibrary.validateNonZeroAddress(_chainlinkOracle, "oracle");
         CommonValidationLibrary.validateNonZeroAddress(_storkOracle, "oracle");
@@ -180,6 +188,7 @@ contract OracleRouter is
      * @custom:oracle None
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
@@ -318,8 +327,11 @@ contract OracleRouter is
      * @custom:oracle None
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        emit ETHRecovered(treasury, address(this).balance);
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        emit ETHRecovered(treasury, balance);
+        payable(treasury).sendValue(balance);
     }
 
     // =============================================================================
@@ -419,7 +431,8 @@ contract OracleRouter is
      * @custom:oracle Delegates to active oracle
      */
     function getEurUsdPrice() external override returns (uint256 price, bool isValid) {
-        return _getActiveOracle().getEurUsdPrice();
+        IOracle activeOracleRef = _getActiveOracle();
+        (price, isValid) = activeOracleRef.getEurUsdPrice();
     }
 
     /**
@@ -437,7 +450,8 @@ contract OracleRouter is
      * @custom:oracle Delegates to active oracle
      */
     function getUsdcUsdPrice() external view override returns (uint256 price, bool isValid) {
-        return _getActiveOracle().getUsdcUsdPrice();
+        IOracle activeOracleRef = _getActiveOracle();
+        (price, isValid) = activeOracleRef.getUsdcUsdPrice();
     }
 
     /**
@@ -456,7 +470,8 @@ contract OracleRouter is
      * @custom:oracle Delegates to active oracle
      */
     function getOracleHealth() external override returns (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) {
-        return _getActiveOracle().getOracleHealth();
+        IOracle activeOracleRef = _getActiveOracle();
+        (isHealthy, eurUsdFresh, usdcUsdFresh) = activeOracleRef.getOracleHealth();
     }
 
     /**
@@ -483,7 +498,8 @@ contract OracleRouter is
         bool isStale,
         bool withinBounds
     ) {
-        return _getActiveOracle().getEurUsdDetails();
+        IOracle activeOracleRef = _getActiveOracle();
+        (currentPrice, lastValidPrice, lastUpdate, isStale, withinBounds) = activeOracleRef.getEurUsdDetails();
     }
 
     /**
@@ -510,7 +526,8 @@ contract OracleRouter is
         uint256 usdcTolerance,
         bool circuitBreakerActive
     ) {
-        return _getActiveOracle().getOracleConfig();
+        IOracle activeOracleRef = _getActiveOracle();
+        (minPrice, maxPrice, maxStaleness, usdcTolerance, circuitBreakerActive) = activeOracleRef.getOracleConfig();
     }
 
     /**
@@ -535,7 +552,9 @@ contract OracleRouter is
         uint8 eurUsdDecimals,
         uint8 usdcUsdDecimals
     ) {
-        return _getActiveOracle().getPriceFeedAddresses();
+        IOracle activeOracleRef = _getActiveOracle();
+        (eurUsdFeedAddress, usdcUsdFeedAddress, eurUsdDecimals, usdcUsdDecimals) =
+            activeOracleRef.getPriceFeedAddresses();
     }
 
     /**
@@ -560,7 +579,9 @@ contract OracleRouter is
         uint80 eurUsdLatestRound,
         uint80 usdcUsdLatestRound
     ) {
-        return _getActiveOracle().checkPriceFeedConnectivity();
+        IOracle activeOracleRef = _getActiveOracle();
+        (eurUsdConnected, usdcUsdConnected, eurUsdLatestRound, usdcUsdLatestRound) =
+            activeOracleRef.checkPriceFeedConnectivity();
     }
 
     /**
@@ -669,4 +690,3 @@ contract OracleRouter is
     }
 
 }
-

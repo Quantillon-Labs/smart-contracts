@@ -2,7 +2,28 @@
 pragma solidity 0.8.24;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
+import {IUserPool} from "../interfaces/IUserPool.sol";
+import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
+
+interface IViewOracle {
+    /**
+     * @notice Returns EUR/USD oracle price and validity flag
+     * @dev Minimal read-only oracle view interface used by optimization helpers.
+     * @return price EUR/USD price in 18 decimals
+     * @return isValid Whether the reported price is valid
+     * @custom:security Read-only oracle accessor
+     * @custom:validation Implementer should guarantee returned values follow protocol expectations
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors Implementation-defined
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access External view interface method
+     * @custom:oracle Primary oracle read dependency
+     */
+    function getEurUsdPrice() external view returns (uint256 price, bool isValid);
+}
 
 /**
  * @title HedgerPoolOptimizationLibrary
@@ -243,20 +264,21 @@ library HedgerPoolOptimizationLibrary {
      * @custom:oracle No oracle dependencies
      */
     function _getProtocolData(address vaultAddress) internal view returns (bool isCollateralized, uint256 currentTotalMargin, uint256 minCollateralizationRatio) {
-        // Get current protocol collateralization status
-        (bool success1, bytes memory data1) = vaultAddress.staticcall(
-            abi.encodeWithSelector(0xad953caa) // isProtocolCollateralized()
-        );
-        if (!success1 || data1.length < 64) return (false, 0, 0);
-        
-        (isCollateralized, currentTotalMargin) = abi.decode(data1, (bool, uint256));
-        
-        // Get minimum collateralization ratio for minting
-        (bool success2, bytes memory data2) = vaultAddress.staticcall(
-            abi.encodeWithSelector(0x9aeb7e07) // minCollateralizationRatioForMinting()
-        );
-        if (!success2 || data2.length < 32) return (false, 0, 0);
-        minCollateralizationRatio = abi.decode(data2, (uint256));
+        if (vaultAddress == address(0)) return (false, 0, 0);
+        IQuantillonVault vault = IQuantillonVault(vaultAddress);
+
+        try vault.isProtocolCollateralized() returns (bool _isCollateralized, uint256 _currentTotalMargin) {
+            isCollateralized = _isCollateralized;
+            currentTotalMargin = _currentTotalMargin;
+        } catch {
+            return (false, 0, 0);
+        }
+
+        try vault.minCollateralizationRatioForMinting() returns (uint256 _minCollateralizationRatio) {
+            minCollateralizationRatio = _minCollateralizationRatio;
+        } catch {
+            return (false, 0, 0);
+        }
     }
 
     /**
@@ -274,23 +296,21 @@ library HedgerPoolOptimizationLibrary {
      * @custom:oracle No oracle dependencies
      */
     function _hasQEUROMinted(address vaultAddress) internal view returns (bool hasMinted) {
-        // Get QEURO address
-        (bool success, bytes memory data) = vaultAddress.staticcall(
-            abi.encodeWithSelector(0xc74ab303) // qeuro()
-        );
-        if (!success || data.length < 32) return false;
-        address qeuroAddress = abi.decode(data, (address));
-        
+        if (vaultAddress == address(0)) return false;
+        address qeuroAddress = address(0);
+        try IQuantillonVault(vaultAddress).qeuro() returns (address _qeuroAddress) {
+            qeuroAddress = _qeuroAddress;
+        } catch {
+            return false;
+        }
+
         if (qeuroAddress == address(0)) return false;
-        
-        // Call totalSupply on the QEURO contract
-        (bool success2, bytes memory data2) = qeuroAddress.staticcall(
-            abi.encodeWithSelector(0x18160ddd) // totalSupply()
-        );
-        if (!success2 || data2.length < 32) return false;
-        uint256 totalQEURO = abi.decode(data2, (uint256));
-        
-        return totalQEURO > 0;
+
+        try IERC20(qeuroAddress).totalSupply() returns (uint256 totalQEURO) {
+            return totalQEURO > 0;
+        } catch {
+            return false;
+        }
     }
 
     /**
@@ -316,21 +336,21 @@ library HedgerPoolOptimizationLibrary {
         uint256 currentTotalMargin,
         uint256 minCollateralizationRatio
     ) internal view returns (bool isValid) {
-        // Get UserPool address
-        (bool success, bytes memory data) = vaultAddress.staticcall(
-            abi.encodeWithSelector(0x1adc6930) // userPool()
-        );
-        if (!success || data.length < 32) return false;
-        address userPoolAddress = abi.decode(data, (address));
+        if (vaultAddress == address(0)) return false;
+        address userPoolAddress = address(0);
+        try IQuantillonVault(vaultAddress).userPool() returns (address _userPoolAddress) {
+            userPoolAddress = _userPoolAddress;
+        } catch {
+            return false;
+        }
         
         // Get user deposits
         uint256 userDeposits = 0;
         if (userPoolAddress != address(0)) {
-            (bool success2, bytes memory data2) = userPoolAddress.staticcall(
-                abi.encodeWithSelector(0x7d882097) // totalDeposits()
-            );
-            if (success2 && data2.length >= 32) {
-                userDeposits = abi.decode(data2, (uint256));
+            try IUserPool(userPoolAddress).getTotalDeposits() returns (uint256 totalDeposits) {
+                userDeposits = totalDeposits;
+            } catch {
+                userDeposits = 0;
             }
         }
         
@@ -371,15 +391,14 @@ library HedgerPoolOptimizationLibrary {
      * @custom:oracle Depends on oracle contract for price data
      */
     function getValidOraclePrice(address oracleAddress) external view returns (uint256 price, bool isValid) {
-        (bool success, bytes memory data) = oracleAddress.staticcall(
-            abi.encodeWithSelector(0x7feb1d8a) // getEurUsdPrice()
-        );
-        
-        if (!success || data.length < 64) {
+        if (oracleAddress == address(0)) {
             return (0, false);
         }
-        
-        (price, isValid) = abi.decode(data, (uint256, bool));
-        return (price, isValid);
+
+        try IViewOracle(oracleAddress).getEurUsdPrice() returns (uint256 oraclePrice, bool oracleIsValid) {
+            return (oraclePrice, oracleIsValid);
+        } catch {
+            return (0, false);
+        }
     }
 }

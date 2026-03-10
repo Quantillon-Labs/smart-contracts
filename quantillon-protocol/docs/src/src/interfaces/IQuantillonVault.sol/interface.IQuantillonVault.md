@@ -1833,32 +1833,38 @@ function updatePriceCache() external;
 
 ### initializePriceCache
 
-Initializes the cached EUR/USD price used by view‑safe query paths.
+Initializes the cached EUR/USD price used by view-safe query paths.
 
-Fetches a fresh oracle price and seeds the internal cache so that
-`getProtocolCollateralizationRatioView()` and `canMintView()` have a baseline.
+Seeds the internal cache with an explicit bootstrap price so view paths
+have a baseline without performing external oracle reads in this mutating call.
 
 **Notes:**
-- security: Restricted to governance; must be called when oracle is healthy.
+- security: Restricted to governance.
 
-- validation: Reverts if the underlying oracle price is invalid.
+- validation: Reverts if `initialEurUsdPrice` is zero.
 
 - state-changes: Writes the initial cached price and associated timestamp/blocks.
 
-- events: Emits a price‑cache initialization event in the implementation.
+- events: Emits a price-cache initialization event in the implementation.
 
-- errors: Implementation‑specific oracle validation errors on bad data.
+- errors: Reverts when cache is already initialized or input is invalid.
 
-- reentrancy: Not applicable – implementation should avoid external calls after state writes.
+- reentrancy: Not applicable.
 
 - access: Restricted to `GOVERNANCE_ROLE`.
 
-- oracle: Performs at least one live oracle read to populate cache.
+- oracle: Bootstrap input should come from governance/oracle operations.
 
 
 ```solidity
-function initializePriceCache() external;
+function initializePriceCache(uint256 initialEurUsdPrice) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`initialEurUsdPrice`|`uint256`|Initial EUR/USD price in 18 decimals.|
+
 
 ### deployUsdcToAave
 

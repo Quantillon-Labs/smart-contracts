@@ -8,7 +8,7 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 Library for rarely used admin functions to reduce contract size
 
 Main characteristics:
-- Consolidates admin functions like recoverETH and recoverToken
+- Consolidates admin functions like recoverToken
 - Reduces contract size by moving rarely used functions to library
 - Maintains same API and behavior
 - Uses custom errors for gas efficiency
@@ -18,42 +18,6 @@ security-contact: team@quantillon.money
 
 
 ## Functions
-### recoverETH
-
-Recover ETH to treasury address
-
-Emergency function to recover ETH sent to the contract
-
-**Notes:**
-- security: Requires admin role
-
-- validation: None required
-
-- state-changes: Transfers ETH from contract to treasury
-
-- events: Emits ETHRecovered event
-
-- errors: Throws NotAuthorized if caller lacks admin role
-
-- reentrancy: Not protected - no external calls
-
-- access: Restricted to admin role
-
-- oracle: Not applicable
-
-
-```solidity
-function recoverETH(address contractInstance, address treasury, bytes32 adminRole) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`contractInstance`|`address`|The contract instance calling this function|
-|`treasury`|`address`|The treasury address to send ETH to|
-|`adminRole`|`bytes32`|The admin role required for this operation|
-
-
 ### recoverToken
 
 Recover tokens to treasury address
@@ -92,20 +56,4 @@ function recoverToken(address contractInstance, address token, uint256 amount, a
 |`treasury`|`address`|The treasury address to send tokens to|
 |`adminRole`|`bytes32`|The admin role required for this operation|
 
-
-## Events
-### ETHRecovered
-Event emitted when ETH is recovered
-
-
-```solidity
-event ETHRecovered(address indexed treasury, uint256 amount);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`treasury`|`address`|The treasury address that received the ETH|
-|`amount`|`uint256`|The amount of ETH recovered|
 

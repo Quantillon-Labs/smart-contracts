@@ -12,6 +12,7 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IYieldShift} from "../interfaces/IYieldShift.sol";
@@ -91,6 +92,7 @@ contract stQEUROToken is
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
     using VaultMath for uint256;
 
     // =============================================================================
@@ -142,6 +144,10 @@ contract stQEUROToken is
     /// @notice Oracle for EUR/USD price — used to convert USDC yield to QEURO denomination
     /// @dev HIGH-3: required so distributeYield() scales 6-dec USDC yield to 18-dec QEURO exchange rate
     IOracle public oracle;
+
+    /// @notice Cached EUR/USD conversion price (18 decimals) used by distributeYield
+    /// @dev Updated by governance to avoid external oracle callbacks during yield distribution
+    uint256 public yieldConversionPrice;
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
@@ -244,6 +250,8 @@ contract stQEUROToken is
     /// @dev Used to track parameter changes by governance
     /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
     event YieldParametersUpdated(string indexed parameterType, uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency);
+    /// @notice Emitted when the cached yield conversion price is updated
+    event YieldConversionPriceUpdated(uint256 oldPrice, uint256 newPrice, address indexed caller);
 
     /// @notice Emitted when ETH is recovered to the treasury
     /// @param to Address to which ETH was recovered
@@ -360,6 +368,7 @@ contract stQEUROToken is
         yieldFee = 0; // No fee on yield by default, set via admin panel
         minYieldThreshold = 1000e6; // 1000 USDC minimum to update
         maxUpdateFrequency = 1 hours; // Max 1 hour between updates
+        yieldConversionPrice = 1e18; // 1.00 EUR/USD bootstrap value
     }
 
     // =============================================================================
@@ -637,40 +646,35 @@ contract stQEUROToken is
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
-    function distributeYield(uint256 yieldAmount) external onlyRole(YIELD_MANAGER_ROLE) {
+    function distributeYield(uint256 yieldAmount) external nonReentrant onlyRole(YIELD_MANAGER_ROLE) {
         CommonValidationLibrary.validatePositiveAmount(yieldAmount);
         CommonValidationLibrary.validatePositiveAmount(totalSupply());
-
-        // Transfer USDC yield from sender
-        usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
 
         // Calculate fee
         uint256 fee = yieldAmount.percentageOf(yieldFee);
         uint256 netYield = yieldAmount - fee;
-
-        // Send fee to treasury
-        if (fee > 0) {
-            usdc.safeTransfer(treasury, fee);
-        }
-
-        // Update exchange rate based on yield
-        // HIGH-3: Convert USDC yield (6 dec) to QEURO (18 dec) via EUR/USD oracle price before
-        // updating the exchange rate. Without this conversion the rate increment is ~1e12x too small.
-        if (address(oracle) == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
+        uint256 eurUsdPrice = yieldConversionPrice;
+        if (eurUsdPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
         // netYield (6 dec USDC) * 1e30 / eurUsdPrice (18 dec) = QEURO in 18 dec
         // e.g. 500 USDC @ 1.08 EUR/USD → 500e6 * 1e30 / 1.08e18 ≈ 462.96e18 QEURO
         uint256 yieldInQEURO = netYield.mulDiv(1e30, eurUsdPrice);
         uint256 oldRate = exchangeRate;
-        exchangeRate = exchangeRate + yieldInQEURO.mulDiv(1e18, totalSupply());
-        lastUpdateTime = TIME_PROVIDER.currentTime();
+        uint256 newRate = exchangeRate + yieldInQEURO.mulDiv(1e18, totalSupply());
+        uint256 nowTs = block.timestamp;
 
-        // Update totals - Use checked arithmetic for critical state
+        // EFFECTS first (CEI): update accounting before token interactions.
+        exchangeRate = newRate;
+        lastUpdateTime = nowTs;
         totalYieldEarned = totalYieldEarned + netYield;
 
-        emit ExchangeRateUpdated(oldRate, exchangeRate, TIME_PROVIDER.currentTime());
-        emit YieldDistributed(netYield, exchangeRate);
+        // INTERACTIONS last.
+        usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
+        if (fee > 0) {
+            usdc.safeTransfer(treasury, fee);
+        }
+
+        emit ExchangeRateUpdated(oldRate, newRate, nowTs);
+        emit YieldDistributed(netYield, newRate);
     }
 
     /**
@@ -934,6 +938,26 @@ contract stQEUROToken is
         oracle = IOracle(_oracle);
     }
 
+    /**
+     * @notice Updates the cached EUR/USD conversion price used in yield distribution.
+     * @dev Governance maintenance hook for manually refreshing conversion cache used by yield accounting.
+     * @param eurUsdPrice New EUR/USD price in 18 decimals.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`
+     * @custom:validation Reverts when `eurUsdPrice == 0`
+     * @custom:state-changes Updates `yieldConversionPrice`
+     * @custom:events Emits `YieldConversionPriceUpdated`
+     * @custom:errors Reverts with `InvalidOraclePrice` when input is zero
+     * @custom:reentrancy No external calls
+     * @custom:access Governance-only external function
+     * @custom:oracle Uses governance-supplied oracle-derived price input
+     */
+    function updateYieldConversionPrice(uint256 eurUsdPrice) external onlyRole(GOVERNANCE_ROLE) {
+        if (eurUsdPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+        uint256 oldPrice = yieldConversionPrice;
+        yieldConversionPrice = eurUsdPrice;
+        emit YieldConversionPriceUpdated(oldPrice, eurUsdPrice, msg.sender);
+    }
+
     // =============================================================================
     // OVERRIDE FUNCTIONS
     // =============================================================================
@@ -1056,10 +1080,11 @@ contract stQEUROToken is
       * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
-
-        emit ETHRecovered(treasury, address(this).balance);
-        // Use the shared library for secure ETH recovery
-        TreasuryRecoveryLibrary.recoverETH(treasury);
+        if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        uint256 balance = address(this).balance;
+        if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
+        emit ETHRecovered(treasury, balance);
+        payable(treasury).sendValue(balance);
     }
     
     /**

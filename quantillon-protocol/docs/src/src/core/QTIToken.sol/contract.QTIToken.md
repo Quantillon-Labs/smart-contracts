@@ -1315,21 +1315,6 @@ function executeProposal(uint256 proposalId) external nonReentrant;
 |`proposalId`|`uint256`|Proposal ID|
 
 
-### _verifyCallResult
-
-Verifies call result and reverts with appropriate error
-
-
-```solidity
-function _verifyCallResult(bool success) private pure;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`success`|`bool`|Whether the call was successful|
-
-
 ### getProposalExecutionInfo
 
 Get execution information for a scheduled proposal

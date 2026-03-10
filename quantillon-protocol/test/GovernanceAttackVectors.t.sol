@@ -615,6 +615,7 @@ contract GovernanceAttackVectors is Test {
 
         // Fast forward past timelock - now should work
         vm.warp(block.timestamp + 48 hours + 1);
+        vm.roll(block.number + 14_401);
 
         // This should succeed after full timelock period
         assertTrue(timelock.canExecuteUpgrade(address(0x999)), "Should be executable after timelock");

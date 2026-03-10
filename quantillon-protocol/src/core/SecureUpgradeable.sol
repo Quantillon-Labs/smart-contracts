@@ -30,11 +30,13 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
 
     /// @notice INFO-4: Minimum delay before a proposed emergency-disable takes effect (24h)
     uint256 public constant EMERGENCY_DISABLE_DELAY = 24 hours;
+    /// @notice INFO-4: Canonical block delay for emergency-disable proposals (12s block target)
+    uint256 public constant EMERGENCY_DISABLE_DELAY_BLOCKS = EMERGENCY_DISABLE_DELAY / 12;
 
     /// @notice Emergency-disable approvals required before apply can succeed
     uint256 public constant EMERGENCY_DISABLE_QUORUM = 2;
 
-    /// @notice INFO-4: Timestamp at which emergencyDisable can be applied (0 = no pending proposal)
+    /// @notice INFO-4: Block at which emergencyDisable can be applied (0 = no pending proposal)
     uint256 public emergencyDisablePendingAt;
 
     /// @dev Unstructured storage slot to avoid shifting child storage layouts.
@@ -85,6 +87,30 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     function _onlyTimelock() internal view {
         if (address(timelock) == address(0) || msg.sender != address(timelock)) {
             revert CommonErrorLibrary.NotAuthorized();
+        }
+    }
+
+    /**
+     * @notice Returns canonical protocol time from timelock's shared TimeProvider
+     * @dev Falls back to block timestamp only before timelock is configured.
+     * @custom:security Uses timelock-backed canonical time when available; fallback preserves liveness during bootstrap
+     * @custom:validation Validates timelock address and code presence before external call
+     * @custom:state-changes None
+     * @custom:events None
+     * @custom:errors None - failures fall back to `block.timestamp`
+     * @custom:reentrancy Read-only helper; no state mutation
+     * @custom:access Internal helper
+     * @custom:oracle No oracle dependencies
+     */
+    function _protocolTime() internal view returns (uint256) {
+        address timelockAddress = address(timelock);
+        if (timelockAddress == address(0) || timelockAddress.code.length == 0) {
+            return block.timestamp;
+        }
+        try timelock.currentTime() returns (uint256 nowTs) {
+            return nowTs;
+        } catch {
+            return block.timestamp;
         }
     }
     
@@ -365,7 +391,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         ds.proposalId += 1;
         ds.approvalCount = 0;
 
-        emergencyDisablePendingAt = block.timestamp + EMERGENCY_DISABLE_DELAY;
+        emergencyDisablePendingAt = block.number + EMERGENCY_DISABLE_DELAY_BLOCKS;
         emit EmergencyDisableProposed(ds.proposalId, emergencyDisablePendingAt);
 
         // Proposer counts as first approval for the new proposal.
@@ -415,7 +441,7 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      */
     function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (emergencyDisablePendingAt == 0) revert CommonErrorLibrary.NotActive();
-        if (block.timestamp < emergencyDisablePendingAt) revert CommonErrorLibrary.NotActive();
+        if (block.number < emergencyDisablePendingAt) revert CommonErrorLibrary.NotActive();
         EmergencyDisableStorage storage ds = _emergencyDisableStorage();
         if (expectedProposalId == 0 || expectedProposalId != ds.proposalId) revert CommonErrorLibrary.NotAuthorized();
         if (ds.approvalCount < EMERGENCY_DISABLE_QUORUM) revert CommonErrorLibrary.NotAuthorized();

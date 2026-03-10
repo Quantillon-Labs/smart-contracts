@@ -436,6 +436,40 @@ function canExecuteUpgrade(address implementation) external view returns (bool c
 |`canExecute`|`bool`|Whether the upgrade can be executed|
 
 
+### currentTime
+
+Get canonical protocol time from the shared time provider
+
+Exposes the time source used for governance delays and upgrade scheduling.
+
+**Notes:**
+- security: Read-only view into canonical protocol time source
+
+- validation: No input validation required
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: Not applicable - view function
+
+- access: Public interface method
+
+- oracle: No oracle dependencies
+
+
+```solidity
+function currentTime() external view returns (uint256 nowTs);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`nowTs`|`uint256`|Current protocol timestamp|
+
+
 ### hasUpgradeApproval
 
 Get upgrade approval status for a signer

@@ -1,206 +1,196 @@
 # Quantillon Protocol - Development Makefile
-# Integrates Foundry commands with Slither security analysis
 
-.PHONY: help build test coverage slither clean validate-natspec docs gas-analysis analyze-warnings analyze-contract-sizes deploy-localhost deploy-base-sepolia deploy-base setup-env encrypt-env benchmark-gas
+.PHONY: help build test coverage slither mythril security clean validate-natspec \
+        docs gas-analysis benchmark-gas analyze-warnings analyze-contract-sizes \
+        setup-env check-env install all ci \
+        deploy-localhost deploy-base-sepolia deploy-base deploy-dry-run \
+        deploy-check deploy-secure-localhost deploy-secure-base-sepolia deploy-secure-base
 
-# Configuration variables
+# ─── Configuration ────────────────────────────────────────────────────────────
+
 RESULTS_DIR ?= scripts/results
 BUILD_OUTPUT := $(RESULTS_DIR)/build-output.log
+DEPLOY       := ./scripts/deployment/deploy.sh
 
-# Default target
+# ─── Help ─────────────────────────────────────────────────────────────────────
+
 help:
 	@echo "🔧 Quantillon Protocol Development Commands:"
 	@echo ""
-	@echo "🔐 Environment Management:"
-	@echo "  make setup-env     - Set up environment from template"
+	@echo "🔐 Environment:"
+	@echo "  make setup-env              - Set up .env from template"
 	@echo ""
-	@echo "📦 Build & Compile:"
-	@echo "  make build      - Compile all contracts"
-	@echo "  make clean      - Clean build artifacts"
-	@echo "  RESULTS_DIR=custom make build - Use custom output directory (default: scripts/results)"
+	@echo "📦 Build:"
+	@echo "  make build                  - Compile all contracts"
+	@echo "  make clean                  - Clean build artifacts and results"
+	@echo "  RESULTS_DIR=path make build - Use custom output directory"
 	@echo ""
-	@echo "🧪 Testing:"
-	@echo "  make test       - Run all tests"
-	@echo "  make coverage   - Generate test coverage report"
+	@echo "🧪 Test:"
+	@echo "  make test                   - Run all tests"
+	@echo "  make coverage               - Generate lcov coverage report"
 	@echo ""
 	@echo "🔍 Security:"
-	@echo "  make slither    - Run Slither security analysis"
-	@echo "  make mythril    - Run Mythril symbolic execution analysis"
-	@echo "  make security   - Run comprehensive security checks"
+	@echo "  make slither                - Slither static analysis"
+	@echo "  make mythril                - Mythril symbolic execution"
+	@echo "  make security               - build + slither + mythril"
+	@echo "  make validate-natspec       - NatSpec coverage check"
 	@echo ""
-	@echo "⛽ Gas Analysis:"
-	@echo "  make gas-analysis - Run comprehensive gas optimization analysis"
-	@echo "  make benchmark-gas - Run gas benchmarking for specific functions"
+	@echo "⛽ Gas & Size:"
+	@echo "  make gas-analysis           - Gas optimization analysis"
+	@echo "  make benchmark-gas          - Gas benchmarking"
+	@echo "  make analyze-warnings       - Build warning analysis"
+	@echo "  make analyze-contract-sizes - EIP-170 size check"
 	@echo ""
-	@echo "⚠️  Warning Analysis:"
-	@echo "  make analyze-warnings - Analyze and isolate build warnings"
+	@echo "📚 Docs & Install:"
+	@echo "  make docs                   - Generate HTML documentation"
+	@echo "  make install                - Install Forge, Python and npm dependencies"
 	@echo ""
-	@echo "📏 Contract Size Analysis:"
-	@echo "  make analyze-contract-sizes - Analyze contract sizes against EIP-170 limit"
-	@echo ""
-	@echo "📝 Documentation:"
-	@echo "  make docs            - Generate HTML documentation"
-	@echo "  make validate-natspec - Validate NatSpec documentation coverage"
-	@echo ""
-	@echo "🚀 Development:"
-	@echo "  make all        - Build, test, and analyze security"
-	@echo "  make ci         - Run CI/CD pipeline checks"
+	@echo "🚀 Pipelines:"
+	@echo "  make ci                     - CI pipeline (build+test+lint+analysis)"
+	@echo "  make all                    - Full local pipeline (ci+coverage+docs+mythril)"
 	@echo ""
 	@echo "🌐 Deployment:"
-	@echo "  make deploy-localhost     - Deploy to localhost with mock contracts"
-	@echo "  make deploy-base-sepolia  - Deploy to Base Sepolia testnet with verification"
-	@echo "  make deploy-base          - Deploy to Base mainnet with production settings"
-	@echo "  make deploy-dry-run       - Test deployment without broadcasting"
+	@echo "  make deploy-localhost       - Localhost with mock contracts (requires Anvil: anvil --port 8545)"
+	@echo "  make deploy-base-sepolia    - Base Sepolia testnet with verification"
+	@echo "  make deploy-base            - Base mainnet with production settings"
+	@echo "  make deploy-dry-run         - Dry run (no broadcast)"
 	@echo ""
-	@echo "🛡️  Secure Deployment (with pre-deployment checks):"
-	@echo "  make deploy-secure-localhost    - Deploy to localhost with security checks"
-	@echo "  make deploy-secure-base-sepolia - Deploy to Base Sepolia with security checks"
-	@echo "  make deploy-secure-base         - Deploy to Base mainnet with security checks"
-	@echo ""
-	@echo "📝 Note: All deployments use standard environment variables"
+	@echo "🛡️  Secure Deployment (pre-deployment checks included):"
+	@echo "  make deploy-secure-localhost"
+	@echo "  make deploy-secure-base-sepolia"
+	@echo "  make deploy-secure-base"
 
-# Environment setup (uses .env.localhost if .env.example is not present)
+# ─── Environment ──────────────────────────────────────────────────────────────
+
+check-env:
+	@test -f .env || (echo "❌ Missing .env — run 'make setup-env' first" && exit 1)
+
 setup-env:
-	@echo "🔐 Setting up environment from template..."
-	@if [ ! -f .env ]; then \
-		if [ -f .env.example ]; then \
-			cp .env.example .env; \
-		else \
-			cp .env.localhost .env 2>/dev/null || true; \
-		fi; \
-		if [ -f .env ]; then \
-			echo "✅ Created .env from template"; \
-			echo "📝 Please edit .env with your actual values"; \
-		else \
-			echo "⚠️  No template found. Copy .env.localhost (or .env.base-sepolia) to .env"; \
-		fi; \
+	@if [ -f .env ]; then \
+		echo "⚠️  .env already exists, skipping"; \
+	elif [ -f .env.example ]; then \
+		cp .env.example .env && echo "✅ Created .env from .env.example — edit with your values"; \
+	elif [ -f .env.localhost ]; then \
+		cp .env.localhost .env && echo "✅ Created .env from .env.localhost — edit with your values"; \
 	else \
-		echo "⚠️  .env already exists, skipping template copy"; \
+		echo "❌ No template found (.env.example or .env.localhost)" && exit 1; \
 	fi
 
+# ─── Build ────────────────────────────────────────────────────────────────────
 
-# Build contracts
 build:
 	@echo "🔨 Building contracts..."
 	@mkdir -p $(RESULTS_DIR)
 	forge build --force 2>&1 | tee $(BUILD_OUTPUT)
 
-# Clean build artifacts
 clean:
-	@echo "🧹 Cleaning build artifacts..."
+	@echo "🧹 Cleaning build artifacts and results..."
 	forge clean
-	@echo "🧹 Cleaning results directory..."
 	@rm -rf $(RESULTS_DIR)
 
-# Run tests
+# ─── Test & Coverage ──────────────────────────────────────────────────────────
+
 test:
 	@echo "🧪 Running tests..."
 	forge test
 
-# Generate coverage report
 coverage:
 	@echo "📊 Generating coverage report..."
+	@mkdir -p $(RESULTS_DIR)
 	FOUNDRY_PROFILE=coverage forge coverage --report lcov --ir-minimum
-	@echo "🧹 Cleaning up coverage file..."
-	@rm -f lcov.info
+	@mv lcov.info $(RESULTS_DIR)/lcov.info
+	@echo "📊 Coverage report saved to $(RESULTS_DIR)/lcov.info"
 
-# Run Slither security analysis
+# ─── Security ─────────────────────────────────────────────────────────────────
+
 slither:
-	@echo "🔍 Running Slither security analysis..."
-	@cd "$(CURDIR)" && ./scripts/run-slither.sh
+	@echo "🔍 Running Slither..."
+	@./scripts/run-slither.sh
 
-# Run Mythril symbolic execution analysis
 mythril:
-	@echo "🔍 Running Mythril symbolic execution analysis..."
-	@cd "$(CURDIR)" && ./scripts/run-mythril.sh
+	@echo "🔍 Running Mythril..."
+	@./scripts/run-mythril.sh
 
-# Run comprehensive security checks
 security: build slither mythril
 	@echo "🛡️  Security analysis complete!"
 
-# Run comprehensive gas analysis
-gas-analysis:
-	@echo "⛽ Running comprehensive gas analysis..."
-	@cd "$(CURDIR)" && ./scripts/analyze-gas.sh
-	@echo "⛽ Gas analysis complete!"
+# ─── Documentation & Validation ───────────────────────────────────────────────
 
-# Run gas benchmarking
+docs:
+	@echo "📚 Generating HTML documentation..."
+	@./scripts/build-docs.sh
+
+# Sentinel: re-runs npm install only when scripts/package.json changes
+scripts/node_modules/.install-sentinel: scripts/package.json
+	cd scripts && npm install --silent
+	@touch $@
+
+validate-natspec: scripts/node_modules/.install-sentinel
+	@echo "📝 Validating NatSpec documentation..."
+	@cd scripts && node validate-natspec.js
+
+# ─── Analysis ─────────────────────────────────────────────────────────────────
+
+gas-analysis:
+	@echo "⛽ Running gas analysis..."
+	@./scripts/analyze-gas.sh
+
 benchmark-gas:
 	@echo "⛽ Running gas benchmarking..."
-	@cd "$(CURDIR)" && ./scripts/benchmark-gas.sh
-	@echo "⛽ Gas benchmarking complete!"
+	@./scripts/benchmark-gas.sh
 
-# Analyze build warnings
 analyze-warnings:
 	@echo "⚠️  Analyzing build warnings..."
-	@cd "$(CURDIR)" && ./scripts/analyze-warnings.sh
-	@echo "⚠️  Warning analysis complete!"
+	@./scripts/analyze-warnings.sh
 
-# Analyze contract sizes against EIP-170 limit
 analyze-contract-sizes:
-	@echo "📏 Analyzing contract sizes against EIP-170 limit..."
-	@cd "$(CURDIR)" && ./scripts/analyze-contract-sizes.sh
-	@echo "📏 Contract size analysis complete!"
+	@echo "📏 Analyzing contract sizes against EIP-170..."
+	@./scripts/analyze-contract-sizes.sh
 
-# Run all checks
-all: build test coverage slither docs gas-analysis analyze-warnings analyze-contract-sizes
-	@echo "🎯 All checks completed successfully!"
+# ─── Pipelines ────────────────────────────────────────────────────────────────
 
-# Install dependencies
+# CI: fast pipeline for automated environments (no mythril, no coverage — run as separate jobs)
+ci: build test slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes
+	@echo "🚀 CI pipeline completed!"
+
+# all: full local pipeline, builds on ci and adds slow targets
+all: ci coverage docs mythril
+	@echo "🎯 Full pipeline completed!"
+
+# ─── Install ──────────────────────────────────────────────────────────────────
+
 install:
 	@echo "📥 Installing dependencies..."
 	forge install
-	@echo "📦 Installing Slither dependencies..."
 	python3 -m venv venv
 	./venv/bin/pip install -r requirements.txt
 	npm install
 
-# Generate HTML documentation
-docs:
-	@echo "📚 Generating HTML documentation..."
-	@cd "$(CURDIR)" && ./scripts/build-docs.sh
+# ─── Deployment ───────────────────────────────────────────────────────────────
+# deploy.sh handles ABIs and frontend address updates in post-deployment.
 
-# Validate NatSpec documentation
-validate-natspec:
-	@echo "📝 Validating NatSpec documentation..."
-	@cd scripts && npm install --silent
-	@cd scripts && node validate-natspec.js
-
-# CI/CD pipeline command (scripts encrypted via git-crypt, only build/test available in public CI)
-ci: build test
-	@echo "🚀 CI/CD pipeline completed!"
-
-# Deployment commands using the unified deploy.sh script
-# deploy.sh handles ABIs and frontend address updates automatically in post-deployment.
-
-# Deploy to localhost
 deploy-localhost:
-	@echo "🌐 Deploying to localhost with mock contracts..."
-	@./scripts/deployment/deploy.sh localhost --with-mocks
+	@echo "🌐 Deploying to localhost..."
+	@$(DEPLOY) localhost --with-mocks
 
-# Deploy to Base Sepolia
-deploy-base-sepolia:
-	@echo "🌐 Deploying to Base Sepolia with verification..."
-	@./scripts/deployment/deploy.sh base-sepolia --verify
+deploy-base-sepolia: check-env
+	@echo "🌐 Deploying to Base Sepolia..."
+	@$(DEPLOY) base-sepolia --verify
 
-# Deploy to Base mainnet
-deploy-base:
-	@echo "🌐 Deploying to Base mainnet with production settings..."
-	@./scripts/deployment/deploy.sh base --verify --production
+deploy-base: check-env
+	@echo "🌐 Deploying to Base mainnet..."
+	@$(DEPLOY) base --verify --production
 
-# Dry run deployment (test without broadcasting)
 deploy-dry-run:
-	@echo "🧪 Testing deployment with dry run..."
-	@./scripts/deployment/deploy.sh localhost --dry-run
+	@echo "🧪 Dry-run deployment (no broadcast)..."
+	@$(DEPLOY) localhost --dry-run
 
-# Security check before deployment
 deploy-check:
-	@echo "🔍 Running security checks before deployment..."
-	@make slither
-	@make validate-natspec
-	@echo "✅ Security checks passed"
+	@echo "🔍 Running pre-deployment security checks..."
+	@$(MAKE) slither
+	@$(MAKE) validate-natspec
+	@echo "✅ Pre-deployment checks passed"
 
-# Secure deployment targets (with pre-deployment security checks)
 deploy-secure-localhost: deploy-check deploy-localhost
 	@echo "🛡️  Secure localhost deployment completed"
 

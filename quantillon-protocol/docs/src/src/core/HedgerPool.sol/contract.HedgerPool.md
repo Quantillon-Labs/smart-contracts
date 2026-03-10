@@ -931,10 +931,35 @@ function hasActiveHedger() external view returns (bool);
 
 Configures risk and fee parameters in a single governance transaction.
 
+Applies a full snapshot update for risk bounds, fee rates, and reserve split configuration.
+
+**Notes:**
+- security: Restricted to governance; validates all bounds before state updates.
+
+- validation: Enforces leverage/fee/rate limits and reward split cap.
+
+- state-changes: Updates `coreParams`, `minPositionHoldBlocks`, `minMarginAmount`, and `rewardFeeSplit`.
+
+- events: No dedicated event emitted.
+
+- errors: Reverts on invalid role or any out-of-range config value.
+
+- reentrancy: Not applicable - no external calls.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: No oracle interaction.
+
 
 ```solidity
 function configureRiskAndFees(HedgerRiskConfig calldata cfg) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`cfg`|`HedgerRiskConfig`|Struct containing risk and fee values to apply.|
+
 
 ### configureDependencies
 
@@ -942,10 +967,33 @@ Configures dependency addresses in a single governance transaction.
 
 Changing `feeCollector` requires both governance and default-admin authority.
 
+**Notes:**
+- security: Restricted to governance; extra admin gate for fee collector changes.
+
+- validation: Validates all dependency addresses are non-zero.
+
+- state-changes: Updates `treasury`, `vault`, `oracle`, `yieldShift`, and `feeCollector`.
+
+- events: No dedicated event emitted.
+
+- errors: Reverts on invalid role, unauthorized fee collector change, or zero addresses.
+
+- reentrancy: Not applicable - no external calls.
+
+- access: Restricted to `GOVERNANCE_ROLE` (plus `DEFAULT_ADMIN_ROLE` for fee collector change).
+
+- oracle: Updates the oracle dependency address.
+
 
 ```solidity
 function configureDependencies(HedgerDependencyConfig calldata cfg) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`cfg`|`HedgerDependencyConfig`|Struct containing dependency addresses to apply.|
+
 
 ### emergencyClosePosition
 
@@ -1119,6 +1167,25 @@ function setSingleHedger(address hedger) external;
 
 INFO-2: Applies a previously proposed single-hedger rotation after delay.
 
+Finalizes the delayed rotation configured via `setSingleHedger`.
+
+**Notes:**
+- security: Restricted to governance and guarded by pending-state + delay checks.
+
+- validation: Requires a pending hedger and elapsed `SINGLE_HEDGER_ROTATION_DELAY`.
+
+- state-changes: Updates `singleHedger` and clears pending rotation fields.
+
+- events: Emits `SingleHedgerRotationApplied`.
+
+- errors: Reverts when no pending rotation exists or delay has not elapsed.
+
+- reentrancy: Not applicable - no external calls.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: No oracle interaction.
+
 
 ```solidity
 function applySingleHedgerRotation() external;
@@ -1130,6 +1197,23 @@ MED-2: Deposit USDC into the reward reserve so hedging rewards can be paid out.
 
 Permissionless funding path; caller must approve USDC before calling.
 
+**Notes:**
+- security: Uses nonReentrant protection and pulls tokens from caller.
+
+- validation: Reverts when `amount` is zero.
+
+- state-changes: Transfers USDC into HedgerPool reward reserves.
+
+- events: Emits `RewardReserveFunded`.
+
+- errors: Reverts on zero amount or failed token transfer.
+
+- reentrancy: Protected by `nonReentrant`.
+
+- access: Public.
+
+- oracle: No oracle interaction.
+
 
 ```solidity
 function fundRewardReserve(uint256 amount) external nonReentrant;
@@ -1138,7 +1222,7 @@ function fundRewardReserve(uint256 amount) external nonReentrant;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`amount`|`uint256`|Amount of USDC to deposit (6 decimals)|
+|`amount`|`uint256`|Amount of USDC to deposit (6 decimals).|
 
 
 ### _getValidOraclePrice
@@ -1285,6 +1369,8 @@ Clears position's filled volume (no redistribution needed with single position)
 - validation: Validates totalFilledExposure >= cachedFilledVolume before decrementing
 
 - state-changes: Clears position filledVolume, decrements totalFilledExposure
+
+- events: No events emitted
 
 - errors: Reverts with InsufficientHedgerCapacity if totalFilledExposure < cachedFilledVolume
 
@@ -1573,6 +1659,23 @@ function _processRedeem(
 Applies realized P&L to position margin and emits MarginUpdated
 
 Handles both profit and loss branches in a single path to keep bytecode compact.
+
+**Notes:**
+- security: Internal accounting helper called after redemption validations.
+
+- validation: Handles zero delta and relies on library-validated transition bounds.
+
+- state-changes: Updates `totalMargin`, `pos.margin`, and `pos.positionSize`.
+
+- events: Emits `MarginUpdated` when `realizedDelta != 0`.
+
+- errors: Reverts only through downstream arithmetic/library checks.
+
+- reentrancy: Not applicable - internal function with no external calls.
+
+- access: Internal helper only.
+
+- oracle: No oracle interaction.
 
 
 ```solidity

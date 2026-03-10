@@ -1135,27 +1135,41 @@ contract StorkOracle is
      * @param enabled True to enable dev mode, false to disable
      */
     /**
-     * @notice Toggles dev mode to disable price deviation checks
-     * @dev Dev mode allows testing with price deviations that would normally trigger circuit breaker
-     * @param enabled True to enable dev mode, false to disable
-     * @custom:security Disables price deviation checks - use only for testing
-     * @custom:validation No validation - admin function
-     * @custom:state-changes Updates devModeEnabled flag
-     * @custom:events Emits DevModeToggled event
-     * @custom:errors No errors thrown
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to DEFAULT_ADMIN_ROLE
-     * @custom:oracle No oracle dependency - configuration update only
+     * @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
+     * @dev Records a desired value for `devModeEnabled` in `pendingDevMode` and sets
+     *      `devModePendingAt` to `block.timestamp + DEV_MODE_DELAY`. This does not affect
+     *      current deviation checks until `applyDevMode` is executed after the delay.
+     * @param enabled The desired dev-mode value to activate once the timelock has passed.
+     * @custom:security Only callable by `DEFAULT_ADMIN_ROLE`; separates intent from effect
+     *                  to avoid rushed enabling/disabling of deviation checks.
+     * @custom:validation Accepts both `true` and `false`; applies a fixed delay in all cases.
+     * @custom:state-changes Updates `pendingDevMode` and `devModePendingAt`.
+     * @custom:events Emits `DevModeProposed(enabled, devModePendingAt)`.
+     * @custom:errors None – proposals are always recorded.
+     * @custom:reentrancy Not applicable – no external calls after state updates.
+     * @custom:access Restricted to `DEFAULT_ADMIN_ROLE`.
+     * @custom:oracle No direct oracle dependency; controls deviation checks in price paths.
      */
-    /// @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
-    /// @param enabled The desired dev-mode value
     function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         pendingDevMode = enabled;
         devModePendingAt = block.timestamp + DEV_MODE_DELAY;
         emit DevModeProposed(enabled, devModePendingAt);
     }
 
-    /// @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+    /**
+     * @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+     * @dev Checks that `devModePendingAt` is non-zero and that the current block timestamp
+     *      has reached or passed `devModePendingAt`. If so, copies `pendingDevMode` into
+     *      `devModeEnabled` and clears `devModePendingAt`.
+     * @custom:security Only callable by `DEFAULT_ADMIN_ROLE`; enforces the configured delay.
+     * @custom:validation Reverts when there is no pending proposal or the delay window is not met.
+     * @custom:state-changes Updates `devModeEnabled` and resets `devModePendingAt` to 0.
+     * @custom:events Emits `DevModeToggled(devModeEnabled, msg.sender)`.
+     * @custom:errors InvalidAmount if no pending proposal; NotActive if called before delay elapses.
+     * @custom:reentrancy Not applicable – no external calls after state updates.
+     * @custom:access Restricted to `DEFAULT_ADMIN_ROLE`.
+     * @custom:oracle No direct oracle dependency; influences later deviation checks.
+     */
     function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (devModePendingAt == 0) revert CommonErrorLibrary.InvalidAmount();
         if (block.timestamp < devModePendingAt) revert CommonErrorLibrary.NotActive();

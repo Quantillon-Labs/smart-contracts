@@ -179,14 +179,51 @@ interface ISecureUpgradeable {
         bool hasTimelock
     );
 
-    /// @notice Propose emergency disable of secure upgrades (starts 24h delay window).
+    /**
+     * @notice Propose emergency disable of secure upgrades (starts 24‑hour delay window).
+     * @dev Increments the emergency‑disable proposal id, resets approvals and sets
+     *      a future timestamp after which the proposal can be applied.
+     * @custom:security Only callable by an authorized admin role in implementations.
+     * @custom:validation Reverts if secure upgrades are already disabled.
+     * @custom:state-changes Bumps proposal id, clears approval count and sets `emergencyDisablePendingAt`.
+     * @custom:events Emits an event describing the newly created proposal and activation time.
+     * @custom:errors Reverts with a protocol‑specific error if secure upgrades are not active.
+     * @custom:reentrancy Not applicable – implementations should avoid external calls.
+     * @custom:access Restricted to governance/admin roles.
+     * @custom:oracle No oracle dependencies.
+     */
     function proposeEmergencyDisableSecureUpgrades() external;
 
-    /// @notice Register an admin approval for the currently pending emergency-disable proposal.
+    /**
+     * @notice Register an admin approval for the currently pending emergency‑disable proposal.
+     * @dev Records that the caller has approved the latest proposal and increases
+     *      the approval count, enforcing one‑approval‑per‑admin semantics.
+     * @custom:security Only callable by an authorized admin role in implementations.
+     * @custom:validation Reverts if there is no active proposal or caller already approved.
+     * @custom:state-changes Marks the caller as having approved and increments approval count.
+     * @custom:events Emits an event with updated approval count.
+     * @custom:errors Reverts with protocol‑specific errors on missing proposal or duplicate approval.
+     * @custom:reentrancy Not applicable – implementations should avoid external calls.
+     * @custom:access Restricted to governance/admin roles.
+     * @custom:oracle No oracle dependencies.
+     */
     function approveEmergencyDisableSecureUpgrades() external;
 
-    /// @notice Apply pending emergency-disable once quorum and delay are satisfied.
-    /// @param expectedProposalId Proposal id expected by caller (replay/mismatch protection).
+    /**
+     * @notice Apply pending emergency‑disable once quorum and delay are satisfied.
+     * @dev Disables secure upgrades permanently for the implementation once:
+     *        - the activation timestamp is reached, and
+     *        - the approval count is at least the quorum.
+     * @param expectedProposalId Proposal id expected by caller (replay/mismatch protection).
+     * @custom:security Only callable by an authorized admin role; enforces timelock and quorum.
+     * @custom:validation Reverts on mismatched `expectedProposalId`, missing quorum or no pending proposal.
+     * @custom:state-changes Clears pending state and sets `secureUpgradesEnabled` to false.
+     * @custom:events Emits an event indicating secure upgrades have been disabled.
+     * @custom:errors Reverts with protocol‑specific errors on invalid state or insufficient approvals.
+     * @custom:reentrancy Not applicable – implementations should avoid external calls after state changes.
+     * @custom:access Restricted to governance/admin roles.
+     * @custom:oracle No oracle dependencies.
+     */
     function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) external;
 
     /**
@@ -203,19 +240,81 @@ interface ISecureUpgradeable {
      */
     function enableSecureUpgrades() external;
 
-    /// @notice Timestamp when emergency disable can be applied (0 = no active proposal).
+    /**
+     * @notice Timestamp when emergency disable can be applied for the current proposal.
+     * @dev Returns 0 when there is no active proposal.
+     * @return pendingAt Unix timestamp after which `applyEmergencyDisableSecureUpgrades` is allowed.
+     * @custom:security View helper; no access restriction.
+     * @custom:validation None.
+     * @custom:state-changes None – view function only.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – view function.
+     * @custom:access Public.
+     * @custom:oracle No oracle dependencies.
+     */
     function emergencyDisablePendingAt() external view returns (uint256);
 
-    /// @notice Current emergency-disable proposal id.
+    /**
+     * @notice Returns the current emergency‑disable proposal id.
+     * @dev Value is 0 when no proposal has ever been created.
+     * @return proposalId Identifier of the latest emergency‑disable proposal.
+     * @custom:security View helper; no access restriction.
+     * @custom:validation None.
+     * @custom:state-changes None – view function only.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – view function.
+     * @custom:access Public.
+     * @custom:oracle No oracle dependencies.
+     */
     function emergencyDisableProposalId() external view returns (uint256);
 
-    /// @notice Current number of admin approvals for the active proposal.
+    /**
+     * @notice Returns the current number of admin approvals for the active proposal.
+     * @dev Counts how many distinct admin addresses have approved the latest proposal id.
+     * @return approvalCount Number of recorded approvals.
+     * @custom:security View helper; no access restriction.
+     * @custom:validation None.
+     * @custom:state-changes None – view function only.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – view function.
+     * @custom:access Public.
+     * @custom:oracle No oracle dependencies.
+     */
     function emergencyDisableApprovalCount() external view returns (uint256);
 
-    /// @notice Number of approvals required to apply emergency disable.
+    /**
+     * @notice Returns the number of approvals required to apply emergency disable.
+     * @dev Exposes the implementation’s quorum constant for off‑chain monitoring.
+     * @return quorum Number of admin approvals required to execute emergency disable.
+     * @custom:security View helper; no access restriction.
+     * @custom:validation None.
+     * @custom:state-changes None – view function only.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – view function.
+     * @custom:access Public.
+     * @custom:oracle No oracle dependencies.
+     */
     function emergencyDisableQuorum() external view returns (uint256);
 
-    /// @notice Returns whether `approver` approved `proposalId`.
+    /**
+     * @notice Returns whether a given approver address approved a specific proposal id.
+     * @dev MUST return false when `approver` is the zero address or `proposalId` is zero.
+     * @param proposalId Proposal identifier to check.
+     * @param approver Address of the admin whose approval status is queried.
+     * @return hasApproved True if `approver` has approved `proposalId`.
+     * @custom:security View helper; no access restriction.
+     * @custom:validation Treats invalid inputs as “not approved”.
+     * @custom:state-changes None – view function only.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – view function.
+     * @custom:access Public.
+     * @custom:oracle No oracle dependencies.
+     */
     function hasEmergencyDisableApproval(uint256 proposalId, address approver) external view returns (bool);
 
     // View functions

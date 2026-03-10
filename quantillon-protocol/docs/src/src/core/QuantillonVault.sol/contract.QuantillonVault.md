@@ -1173,6 +1173,25 @@ function updateParameters(uint256 _mintFee, uint256 _redemptionFee) external onl
 
 Updates the fee share routed to HedgerPool reward reserve.
 
+Governance-controlled split applied in `_routeProtocolFees`.
+
+**Notes:**
+- security: Restricted to governance and bounded by max split constant.
+
+- validation: Reverts when `newSplit` exceeds `MAX_HEDGER_REWARD_FEE_SPLIT`.
+
+- state-changes: Updates `hedgerRewardFeeSplit`.
+
+- events: Emits `HedgerRewardFeeSplitUpdated`.
+
+- errors: Reverts with `ConfigValueTooHigh` on invalid split.
+
+- reentrancy: Not applicable - simple state update.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: No oracle interaction.
+
 
 ```solidity
 function updateHedgerRewardFeeSplit(uint256 newSplit) external onlyRole(GOVERNANCE_ROLE);
@@ -1400,6 +1419,23 @@ function updateAaveVault(address _aaveVault) external onlyRole(GOVERNANCE_ROLE);
 Harvests accrued Aave interest through AaveVault and routes yield via YieldShift.
 
 HIGH-2 / NEW-1 remediation entrypoint for explicit yield synchronization.
+
+**Notes:**
+- security: Restricted to governance and guarded by `nonReentrant`.
+
+- validation: Requires configured AaveVault address.
+
+- state-changes: May update Aave-side accounting and emits local harvest event.
+
+- events: Emits `AaveInterestHarvested`.
+
+- errors: Reverts when AaveVault is unset or downstream harvest call fails.
+
+- reentrancy: Protected by `nonReentrant`.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: No direct oracle interaction.
 
 
 ```solidity
@@ -1699,10 +1735,33 @@ Returns current Aave collateral balance including accrued yield when available.
 
 Falls back to tracked principal if the external balance query is unavailable.
 
+**Notes:**
+- security: View helper with defensive fallback path.
+
+- validation: Returns tracked principal when Aave balance query reverts.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None - errors are caught via try/catch fallback.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal helper.
+
+- oracle: No oracle interaction.
+
 
 ```solidity
 function _getAaveCollateralBalance() internal view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|collateralBalance Aave-side collateral balance in USDC units (6 decimals).|
+
 
 ### _getTotalCollateralWithAccruedYield
 
@@ -1710,14 +1769,56 @@ HIGH-2/NEW-1: total protocol collateral including accrued Aave interest.
 
 Uses on-chain Aave balance (principal + yield) with a principal fallback path.
 
+**Notes:**
+- security: View helper used by CR calculations and withdrawal checks.
+
+- validation: Relies on `_getAaveCollateralBalance` fallback behavior.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal helper.
+
+- oracle: No oracle interaction.
+
 
 ```solidity
 function _getTotalCollateralWithAccruedYield() internal view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|totalCollateral Combined vault-held + Aave-held collateral in USDC units (6 decimals).|
+
 
 ### _routeProtocolFees
 
 MED-2: routes protocol fees between HedgerPool reserve and FeeCollector at source.
+
+Splits fee flow using `hedgerRewardFeeSplit` and transfers shares to each destination.
+
+**Notes:**
+- security: Validates required dependency addresses before routing each share.
+
+- validation: No-op when `fee == 0`; reverts on unset required destinations.
+
+- state-changes: Increases allowances and forwards fee shares to HedgerPool/FeeCollector.
+
+- events: Emits `ProtocolFeeRouted`.
+
+- errors: Reverts when HedgerPool/FeeCollector dependencies are unset for non-zero shares.
+
+- reentrancy: Internal function; external calls are to configured protocol dependencies.
+
+- access: Internal helper.
+
+- oracle: No oracle interaction.
 
 
 ```solidity
@@ -1727,8 +1828,8 @@ function _routeProtocolFees(uint256 fee, string memory sourceType) internal;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`fee`|`uint256`|Total fee amount in USDC (6 decimals)|
-|`sourceType`|`string`|Source tag passed through to FeeCollector accounting|
+|`fee`|`uint256`|Total fee amount in USDC (6 decimals).|
+|`sourceType`|`string`|Source tag passed through to FeeCollector accounting.|
 
 
 ### getProtocolCollateralizationRatio
@@ -1807,32 +1908,94 @@ function canMint() public view returns (bool);
 
 ### getProtocolCollateralizationRatioView
 
-LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price
+LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price.
 
-Uses lastValidEurUsdPrice so it can be called from view contexts and off-chain with zero gas
+Delegates to `getProtocolCollateralizationRatio()` and performs no state refresh.
+
+**Notes:**
+- security: View-only wrapper.
+
+- validation: Inherits validation/fallback behavior from delegated function.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - view function.
+
+- access: Public.
+
+- oracle: Uses cached oracle price.
 
 
 ```solidity
 function getProtocolCollateralizationRatioView() public view returns (uint256 ratio);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`ratio`|`uint256`|Current collateralization ratio in 1e18-scaled percentage format.|
+
 
 ### canMintView
 
-LOW-4: Pure view variant of canMint using cached oracle price
+LOW-4: Pure view variant of canMint using cached oracle price.
 
-Uses lastValidEurUsdPrice so it can be called from view contexts and off-chain with zero gas
+Delegates to `canMint()` and performs no state refresh.
+
+**Notes:**
+- security: View-only wrapper.
+
+- validation: Inherits price-cache and hedger-liveness checks from delegated function.
+
+- state-changes: None - view function.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - view function.
+
+- access: Public.
+
+- oracle: Uses cached oracle price.
 
 
 ```solidity
 function canMintView() public view returns (bool);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|mintAllowed True when mint preconditions currently pass.|
+
 
 ### initializePriceCache
 
 LOW-5: Seeds the oracle price cache so minting checks have a baseline.
 
 Governance MUST call this once immediately after deployment, before any user mints.
-Until this is called, `lastValidEurUsdPrice == 0` and mint attempts revert with `NotInitialized`.
+
+**Notes:**
+- security: Restricted to governance.
+
+- validation: Requires configured oracle and a valid fetched price.
+
+- state-changes: Sets `lastValidEurUsdPrice`, `lastPriceUpdateBlock`, and `lastPriceUpdateTime`.
+
+- events: Emits `PriceCacheUpdated`.
+
+- errors: Reverts when oracle is unset or returns an invalid price.
+
+- reentrancy: Not applicable - no external callbacks.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: Pulls current EUR/USD price from configured oracle.
 
 
 ```solidity
@@ -2141,10 +2304,35 @@ Internal helper to notify HedgerPool about user mints.
 
 LOW-5 / INFO-2: mint path must fail if hedger synchronization fails.
 
+**Notes:**
+- security: Internal hard-fail synchronization helper.
+
+- validation: No-op on zero amount; otherwise requires downstream HedgerPool success.
+
+- state-changes: No direct state changes in vault; delegates accounting updates to HedgerPool.
+
+- events: None in vault.
+
+- errors: Propagates HedgerPool reverts to preserve atomicity.
+
+- reentrancy: Not applicable - internal helper.
+
+- access: Internal helper.
+
+- oracle: Uses provided cached/fetched fill price from caller context.
+
 
 ```solidity
 function _syncMintWithHedgersOrRevert(uint256 amount, uint256 fillPrice, uint256 qeuroAmount) internal;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`amount`|`uint256`|Gross USDC amount allocated to hedger fills (6 decimals).|
+|`fillPrice`|`uint256`|EUR/USD price used for fill accounting (18 decimals).|
+|`qeuroAmount`|`uint256`|QEURO minted amount to track against hedger exposure (18 decimals).|
+
 
 ### _syncRedeemWithHedgers
 
@@ -2220,7 +2408,26 @@ function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 ### applyDevMode
 
-MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+
+Finalizes the pending proposal created by `proposeDevMode`.
+
+**Notes:**
+- security: Restricted to default admin and time-locked via `DEV_MODE_DELAY`.
+
+- validation: Requires active pending proposal and elapsed delay.
+
+- state-changes: Updates `devModeEnabled` and clears `devModePendingAt`.
+
+- events: Emits `DevModeToggled`.
+
+- errors: Reverts when no proposal is pending or delay is not satisfied.
+
+- reentrancy: Not applicable - simple state transition.
+
+- access: Restricted to `DEFAULT_ADMIN_ROLE`.
+
+- oracle: No oracle interaction.
 
 
 ```solidity

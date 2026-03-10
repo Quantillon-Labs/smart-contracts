@@ -1177,28 +1177,110 @@ function _calculateHedgerAllocation() internal view returns (uint256);
 
 Batch-updates all yield model parameters.
 
+Applies a new configuration for `baseYieldShift`, `maxYieldShift`, `adjustmentSpeed`
+and `targetPoolRatio` in a single governance transaction.
+Uses `YieldValidationLibrary` to enforce sane bounds and invariants.
+
+**Notes:**
+- security: Only governance may call; validates that `maxYieldShift >= baseYieldShift`
+and that all parameters stay within library-defined limits.
+
+- validation: Reverts if yield shifts, adjustment speed or target ratio are out of bounds.
+
+- state-changes: Updates `baseYieldShift`, `maxYieldShift`, `adjustmentSpeed`, `targetPoolRatio`.
+
+- events: None – consumers should read the updated state via view functions.
+
+- errors: InvalidShiftRange if `maxYieldShift < baseYieldShift`; library errors otherwise.
+
+- reentrancy: Not applicable – no external calls after state updates.
+
+- access: Restricted to governance via `AccessControlLibrary.onlyGovernance`.
+
+- oracle: No direct oracle access – operates purely on configuration values.
+
 
 ```solidity
 function configureYieldModel(YieldModelConfig calldata cfg) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`cfg`|`YieldModelConfig`|Struct containing the new yield model configuration: - `baseYieldShift`: baseline user share (bps) when pools are balanced. - `maxYieldShift`: maximum deviation from baseline (bps). - `adjustmentSpeed`: how fast the shift moves toward the optimal value. - `targetPoolRatio`: desired user/hedger pool ratio (bps).|
+
 
 ### configureDependencies
 
-Batch-updates external dependencies.
+Batch-updates external dependency addresses used for yield distribution.
+
+Wires or re-wires the `userPool`, `hedgerPool`, `aaveVault`, `stQEURO` and `treasury`
+references in a single governance transaction.
+
+**Notes:**
+- security: Only governance may call; validates all addresses are non-zero and sane.
+
+- validation: Uses `AccessControlLibrary` / `YieldValidationLibrary` to check addresses.
+
+- state-changes: Updates `userPool`, `hedgerPool`, `aaveVault`, `stQEURO`, `treasury`.
+
+- events: None – downstream contracts emit their own events on meaningful actions.
+
+- errors: Library validation errors on zero/invalid addresses.
+
+- reentrancy: Not applicable – no external calls after state updates.
+
+- access: Restricted to governance via `AccessControlLibrary.onlyGovernance`.
+
+- oracle: No direct oracle access – configuration only.
 
 
 ```solidity
 function configureDependencies(YieldDependencyConfig calldata cfg) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`cfg`|`YieldDependencyConfig`|Struct containing the new dependency configuration: - `userPool`: UserPool contract address. - `hedgerPool`: HedgerPool contract address. - `aaveVault`: AaveVault contract address. - `stQEURO`: stQEURO token contract address. - `treasury`: treasury address receiving recovered funds.|
+
 
 ### setYieldSourceAuthorization
 
 Sets authorization status and yield type for a yield source.
 
+Governance function mapping a source address to a logical yield type (e.g. "aave", "fees")
+and toggling whether that source is allowed to push yield via `addYield`.
+
+**Notes:**
+- security: Only governance may call; prevents untrusted contracts from minting yield.
+
+- validation: Reverts on zero `source` address; clears mapping when `authorized` is false.
+
+- state-changes: Updates `authorizedYieldSources[source]` and `sourceToYieldType[source]`.
+
+- events: None – yield events are emitted when yield is actually added.
+
+- errors: Library validation errors for invalid addresses.
+
+- reentrancy: Not applicable – no external calls after state updates.
+
+- access: Restricted to governance via `AccessControlLibrary.onlyGovernance`.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function setYieldSourceAuthorization(address source, bytes32 yieldType, bool authorized) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Address of the yield source whose authorization is being updated.|
+|`yieldType`|`bytes32`|Logical yield category identifier (e.g., `keccak256("aave")`).|
+|`authorized`|`bool`|True to authorize the source, false to revoke authorization.|
+
 
 ### updateYieldAllocation
 

@@ -374,7 +374,19 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         emit EmergencyDisableApproved(ds.proposalId, msg.sender, ds.approvalCount);
     }
 
-    /// @notice INFO-4/NEW-3: Register an admin approval for the active emergency-disable proposal.
+    /**
+     * @notice INFO-4/NEW-3: Register an admin approval for the active emergency-disable proposal.
+     * @dev Records an approval from a DEFAULT_ADMIN_ROLE address for the current proposal.
+     *      Uses per-proposal bitmap to prevent duplicate approvals from the same address.
+     * @custom:security Only callable by DEFAULT_ADMIN_ROLE; prevents double-approval per admin.
+     * @custom:validation Reverts if no active proposal or caller already approved.
+     * @custom:state-changes Marks caller as approved and increments approvalCount in storage.
+     * @custom:events Emits EmergencyDisableApproved with updated approval count.
+     * @custom:errors NotActive if no pending proposal; NoChangeDetected if already approved.
+     * @custom:reentrancy Not applicable – function is external but has no external calls after state changes.
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE.
+     * @custom:oracle No oracle dependencies.
+     */
     function approveEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (emergencyDisablePendingAt == 0) revert CommonErrorLibrary.NotActive();
         EmergencyDisableStorage storage ds = _emergencyDisableStorage();
@@ -387,8 +399,20 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         emit EmergencyDisableApproved(proposalId, msg.sender, ds.approvalCount);
     }
 
-    /// @notice INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed
-    /// @param expectedProposalId Proposal id the caller expects to apply (replay/mismatch protection)
+    /**
+     * @notice INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed.
+     * @dev Disables secure upgrades permanently for this deployment once quorum and delay are satisfied.
+     *      Resets pending state so a fresh proposal is required for any future changes.
+     * @param expectedProposalId Proposal id the caller expects to apply (replay/mismatch protection).
+     * @custom:security Requires DEFAULT_ADMIN_ROLE, quorum approvals and elapsed delay.
+     * @custom:validation Reverts on mismatched proposal id, missing quorum or no pending proposal.
+     * @custom:state-changes Clears emergencyDisablePendingAt and approvalCount, sets secureUpgradesEnabled=false.
+     * @custom:events Emits SecureUpgradesToggled(false) on successful application.
+     * @custom:errors NotActive if no pending or delay not elapsed; NotAuthorized on id mismatch or quorum not met.
+     * @custom:reentrancy Not applicable – no external calls after critical state changes.
+     * @custom:access Restricted to DEFAULT_ADMIN_ROLE.
+     * @custom:oracle No oracle dependencies.
+     */
     function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (emergencyDisablePendingAt == 0) revert CommonErrorLibrary.NotActive();
         if (block.timestamp < emergencyDisablePendingAt) revert CommonErrorLibrary.NotActive();
@@ -402,23 +426,73 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
         emit SecureUpgradesToggled(false);
     }
 
-    /// @notice Current emergency-disable proposal id (0 when no proposal has ever been created).
+    /**
+     * @notice Returns the current emergency-disable proposal id.
+     * @dev Value is 0 when no proposal has ever been created.
+     * @return proposalId The active or last-used emergency-disable proposal id.
+     * @custom:security View-only helper; no access restriction.
+     * @custom:validation No input validation required.
+     * @custom:state-changes None – pure read from dedicated emergency-disable storage.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – view function.
+     * @custom:access Public – any caller may inspect current proposal id.
+     * @custom:oracle No oracle dependencies.
+     */
     function emergencyDisableProposalId() public view returns (uint256) {
         return _emergencyDisableStorage().proposalId;
     }
 
-    /// @notice Current approval count for the active proposal.
+    /**
+     * @notice Returns the current approval count for the active emergency-disable proposal.
+     * @dev Reads the aggregate number of admin approvals recorded for the latest proposal.
+     * @return approvalCount Number of approvals for the current proposal.
+     * @custom:security View-only helper; no access restriction.
+     * @custom:validation No input validation required.
+     * @custom:state-changes None – pure read from dedicated emergency-disable storage.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – view function.
+     * @custom:access Public – any caller may inspect approval count.
+     * @custom:oracle No oracle dependencies.
+     */
     function emergencyDisableApprovalCount() public view returns (uint256) {
         return _emergencyDisableStorage().approvalCount;
     }
 
-    /// @notice Quorum required to apply the emergency disable.
+    /**
+     * @notice Returns the quorum required to apply the emergency disable.
+     * @dev Exposes the EMERGENCY_DISABLE_QUORUM compile-time constant.
+     * @return quorum Number of approvals required to apply emergency-disable.
+     * @custom:security View-only helper; no access restriction.
+     * @custom:validation No input validation required.
+     * @custom:state-changes None – pure return of constant.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – pure function.
+     * @custom:access Public – any caller may inspect required quorum.
+     * @custom:oracle No oracle dependencies.
+     */
     function emergencyDisableQuorum() public pure returns (uint256) {
         return EMERGENCY_DISABLE_QUORUM;
     }
 
-    /// @notice Returns whether `approver` approved a given emergency-disable proposal.
-    function hasEmergencyDisableApproval(uint256 proposalId, address approver) public view returns (bool) {
+    /**
+     * @notice Returns whether a given approver address approved a specific emergency-disable proposal.
+     * @dev Returns false when approver is zero or proposalId is zero for safety.
+     * @param proposalId The proposal identifier to inspect.
+     * @param approver The admin address whose approval status is queried.
+     * @return hasApproved_ True if the approver has recorded an approval for proposalId.
+     * @custom:security View-only helper; no access restriction.
+     * @custom:validation Treats zero proposalId or zero approver as “not approved”.
+     * @custom:state-changes None – pure read from dedicated emergency-disable storage.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable – view function.
+     * @custom:access Public – any caller may inspect approval status.
+     * @custom:oracle No oracle dependencies.
+     */
+    function hasEmergencyDisableApproval(uint256 proposalId, address approver) public view returns (bool hasApproved_) {
         if (approver == address(0) || proposalId == 0) return false;
         return _emergencyDisableStorage().hasApproved[proposalId][approver];
     }

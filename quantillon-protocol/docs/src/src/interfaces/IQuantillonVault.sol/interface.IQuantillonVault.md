@@ -1735,21 +1735,73 @@ function getProtocolCollateralizationRatio() external view returns (uint256);
 
 ### getProtocolCollateralizationRatioView
 
-View-only collateralization ratio using cached price (same units as getProtocolCollateralizationRatio).
+View-only collateralization ratio using cached price.
+
+Returns the same units as `getProtocolCollateralizationRatio()` but relies solely
+on the cached EUR/USD price to remain view-safe (no external oracle calls).
+
+**Notes:**
+- security: View helper; does not mutate state or touch external oracles.
+
+- validation: Returns a stale or sentinel value if the cache is uninitialized.
+
+- state-changes: None – pure view over cached pricing and vault balances.
+
+- events: None.
+
+- errors: None – callers must handle edge cases (e.g. 0 collateral).
+
+- reentrancy: Not applicable – view function only.
+
+- access: Public – intended for dashboards and off‑chain monitoring.
+
+- oracle: Uses only the last cached price maintained on-chain.
 
 
 ```solidity
 function getProtocolCollateralizationRatioView() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|ratio Cached collateralization ratio in 1e18‑scaled percentage format.|
+
 
 ### canMintView
 
 View-only mintability check using cached price and current hedger status.
 
+Equivalent to `canMint()` but guaranteed not to perform fresh oracle reads,
+making it safe for off‑chain calls that must not revert due to oracle issues.
+
+**Notes:**
+- security: Read‑only helper; never mutates state or external dependencies.
+
+- validation: Returns false on uninitialized cache or missing hedger configuration.
+
+- state-changes: None – pure read of cached price and protocol state.
+
+- events: None.
+
+- errors: None – callers interpret the boolean.
+
+- reentrancy: Not applicable – view function only.
+
+- access: Public – anyone can pre‑check mint conditions.
+
+- oracle: Uses cached price only; no live oracle reads.
+
 
 ```solidity
 function canMintView() external view returns (bool);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|canMintCached True if, based on cached price and current hedger state, minting would be allowed.|
+
 
 ### updatePriceCache
 
@@ -1781,7 +1833,27 @@ function updatePriceCache() external;
 
 ### initializePriceCache
 
-Initializes the cached EUR/USD price used by view-safe query paths.
+Initializes the cached EUR/USD price used by view‑safe query paths.
+
+Fetches a fresh oracle price and seeds the internal cache so that
+`getProtocolCollateralizationRatioView()` and `canMintView()` have a baseline.
+
+**Notes:**
+- security: Restricted to governance; must be called when oracle is healthy.
+
+- validation: Reverts if the underlying oracle price is invalid.
+
+- state-changes: Writes the initial cached price and associated timestamp/blocks.
+
+- events: Emits a price‑cache initialization event in the implementation.
+
+- errors: Implementation‑specific oracle validation errors on bad data.
+
+- reentrancy: Not applicable – implementation should avoid external calls after state writes.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: Performs at least one live oracle read to populate cache.
 
 
 ```solidity
@@ -1858,21 +1930,73 @@ function updateAaveVault(address _aaveVault) external;
 
 ### updateHedgerRewardFeeSplit
 
-Updates the protocol-fee share routed to HedgerPool reward reserve (1e18 = 100%).
+Updates the protocol‑fee share routed to HedgerPool reward reserve.
+
+Sets the fraction of protocol fees (scaled by 1e18 where 1e18 = 100%)
+that is forwarded to HedgerPool’s reward reserve instead of remaining in the vault.
+
+**Notes:**
+- security: Only callable by governance; misconfiguration can starve protocol or hedgers.
+
+- validation: Implementation validates that `newSplit` is within acceptable bounds.
+
+- state-changes: Updates internal accounting for how fees are split on collection.
+
+- events: Emits an event in the implementation describing the new split.
+
+- errors: Reverts on invalid split values as defined by implementation.
+
+- reentrancy: Not applicable – configuration only, no external transfers.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: No direct oracle dependency.
 
 
 ```solidity
 function updateHedgerRewardFeeSplit(uint256 newSplit) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newSplit`|`uint256`|New fee‑share value (1e18‑scaled, 0–1e18 allowed by implementation).|
+
 
 ### harvestAaveInterest
 
 Harvests accrued Aave interest through the configured AaveVault.
 
+Pulls pending yield from `AaveVault` back into the vault and routes it
+according to the protocol’s fee and reward‑sharing rules.
+
+**Notes:**
+- security: Only callable by governance or a dedicated operator role (per implementation).
+
+- validation: Requires a configured AaveVault and sufficient accrued interest.
+
+- state-changes: Updates vault balances and internal yield‑accounting fields.
+
+- events: Emits a harvest event with the realized yield amount.
+
+- errors: Reverts if AaveVault is unset or harvest conditions are not met.
+
+- reentrancy: Protected by nonReentrant modifier in implementation.
+
+- access: Access control enforced by implementation (typically GOVERNANCE_ROLE).
+
+- oracle: No direct oracle dependency; operates on Aave position balances.
+
 
 ```solidity
 function harvestAaveInterest() external returns (uint256 harvestedYield);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`harvestedYield`|`uint256`|Net USDC yield amount harvested from Aave (6 decimals).|
+
 
 ### aaveVault
 

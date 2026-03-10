@@ -383,7 +383,27 @@ function getUpgradeSecurityStatus()
 
 ### proposeEmergencyDisableSecureUpgrades
 
-Propose emergency disable of secure upgrades (starts 24h delay window).
+Propose emergency disable of secure upgrades (starts 24‑hour delay window).
+
+Increments the emergency‑disable proposal id, resets approvals and sets
+a future timestamp after which the proposal can be applied.
+
+**Notes:**
+- security: Only callable by an authorized admin role in implementations.
+
+- validation: Reverts if secure upgrades are already disabled.
+
+- state-changes: Bumps proposal id, clears approval count and sets `emergencyDisablePendingAt`.
+
+- events: Emits an event describing the newly created proposal and activation time.
+
+- errors: Reverts with a protocol‑specific error if secure upgrades are not active.
+
+- reentrancy: Not applicable – implementations should avoid external calls.
+
+- access: Restricted to governance/admin roles.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
@@ -392,7 +412,27 @@ function proposeEmergencyDisableSecureUpgrades() external;
 
 ### approveEmergencyDisableSecureUpgrades
 
-Register an admin approval for the currently pending emergency-disable proposal.
+Register an admin approval for the currently pending emergency‑disable proposal.
+
+Records that the caller has approved the latest proposal and increases
+the approval count, enforcing one‑approval‑per‑admin semantics.
+
+**Notes:**
+- security: Only callable by an authorized admin role in implementations.
+
+- validation: Reverts if there is no active proposal or caller already approved.
+
+- state-changes: Marks the caller as having approved and increments approval count.
+
+- events: Emits an event with updated approval count.
+
+- errors: Reverts with protocol‑specific errors on missing proposal or duplicate approval.
+
+- reentrancy: Not applicable – implementations should avoid external calls.
+
+- access: Restricted to governance/admin roles.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
@@ -401,7 +441,28 @@ function approveEmergencyDisableSecureUpgrades() external;
 
 ### applyEmergencyDisableSecureUpgrades
 
-Apply pending emergency-disable once quorum and delay are satisfied.
+Apply pending emergency‑disable once quorum and delay are satisfied.
+
+Disables secure upgrades permanently for the implementation once:
+- the activation timestamp is reached, and
+- the approval count is at least the quorum.
+
+**Notes:**
+- security: Only callable by an authorized admin role; enforces timelock and quorum.
+
+- validation: Reverts on mismatched `expectedProposalId`, missing quorum or no pending proposal.
+
+- state-changes: Clears pending state and sets `secureUpgradesEnabled` to false.
+
+- events: Emits an event indicating secure upgrades have been disabled.
+
+- errors: Reverts with protocol‑specific errors on invalid state or insufficient approvals.
+
+- reentrancy: Not applicable – implementations should avoid external calls after state changes.
+
+- access: Restricted to governance/admin roles.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
@@ -444,48 +505,180 @@ function enableSecureUpgrades() external;
 
 ### emergencyDisablePendingAt
 
-Timestamp when emergency disable can be applied (0 = no active proposal).
+Timestamp when emergency disable can be applied for the current proposal.
+
+Returns 0 when there is no active proposal.
+
+**Notes:**
+- security: View helper; no access restriction.
+
+- validation: None.
+
+- state-changes: None – view function only.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – view function.
+
+- access: Public.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function emergencyDisablePendingAt() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|pendingAt Unix timestamp after which `applyEmergencyDisableSecureUpgrades` is allowed.|
+
 
 ### emergencyDisableProposalId
 
-Current emergency-disable proposal id.
+Returns the current emergency‑disable proposal id.
+
+Value is 0 when no proposal has ever been created.
+
+**Notes:**
+- security: View helper; no access restriction.
+
+- validation: None.
+
+- state-changes: None – view function only.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – view function.
+
+- access: Public.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function emergencyDisableProposalId() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|proposalId Identifier of the latest emergency‑disable proposal.|
+
 
 ### emergencyDisableApprovalCount
 
-Current number of admin approvals for the active proposal.
+Returns the current number of admin approvals for the active proposal.
+
+Counts how many distinct admin addresses have approved the latest proposal id.
+
+**Notes:**
+- security: View helper; no access restriction.
+
+- validation: None.
+
+- state-changes: None – view function only.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – view function.
+
+- access: Public.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function emergencyDisableApprovalCount() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|approvalCount Number of recorded approvals.|
+
 
 ### emergencyDisableQuorum
 
-Number of approvals required to apply emergency disable.
+Returns the number of approvals required to apply emergency disable.
+
+Exposes the implementation’s quorum constant for off‑chain monitoring.
+
+**Notes:**
+- security: View helper; no access restriction.
+
+- validation: None.
+
+- state-changes: None – view function only.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – view function.
+
+- access: Public.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function emergencyDisableQuorum() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|quorum Number of admin approvals required to execute emergency disable.|
+
 
 ### hasEmergencyDisableApproval
 
-Returns whether `approver` approved `proposalId`.
+Returns whether a given approver address approved a specific proposal id.
+
+MUST return false when `approver` is the zero address or `proposalId` is zero.
+
+**Notes:**
+- security: View helper; no access restriction.
+
+- validation: Treats invalid inputs as “not approved”.
+
+- state-changes: None – view function only.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – view function.
+
+- access: Public.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function hasEmergencyDisableApproval(uint256 proposalId, address approver) external view returns (bool);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposalId`|`uint256`|Proposal identifier to check.|
+|`approver`|`address`|Address of the admin whose approval status is queried.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|hasApproved True if `approver` has approved `proposalId`.|
+
 
 ### timelock
 

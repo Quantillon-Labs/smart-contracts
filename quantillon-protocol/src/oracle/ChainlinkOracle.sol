@@ -1121,15 +1121,43 @@ contract ChainlinkOracle is
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
-    /// @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
-    /// @param enabled The desired dev-mode value
+    /**
+     * @notice MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
+     * @dev Stores the desired `devModeEnabled` value in `pendingDevMode` and sets
+     *      `devModePendingAt` to `block.timestamp + DEV_MODE_DELAY`. No immediate effect
+     *      on live price checks until `applyDevMode` is called after the delay.
+     * @param enabled The desired dev-mode value to be applied after the delay.
+     * @custom:security Only callable by `DEFAULT_ADMIN_ROLE`; separates intent (propose)
+     *                  from effect (apply) to protect against rushed changes.
+     * @custom:validation Accepts both `true` and `false`; uses a fixed delay for all changes.
+     * @custom:state-changes Updates `pendingDevMode` and `devModePendingAt`.
+     * @custom:events Emits `DevModeProposed(enabled, devModePendingAt)`.
+     * @custom:errors None – proposal is always recorded.
+     * @custom:reentrancy Not applicable – no external calls after state updates.
+     * @custom:access Restricted to `DEFAULT_ADMIN_ROLE`.
+     * @custom:oracle No direct oracle dependency; controls deviation checks in price paths.
+     */
     function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         pendingDevMode = enabled;
         devModePendingAt = block.timestamp + DEV_MODE_DELAY;
         emit DevModeProposed(enabled, devModePendingAt);
     }
 
-    /// @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+    /**
+     * @notice MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+     * @dev Reads `pendingDevMode` and sets `devModeEnabled` once `block.timestamp`
+     *      is greater than or equal to `devModePendingAt`. Resets `devModePendingAt`
+     *      back to 0 to clear the proposal.
+     * @custom:security Only callable by `DEFAULT_ADMIN_ROLE`; enforces a mandatory delay
+     *                  between proposal and activation of dev mode.
+     * @custom:validation Reverts if there is no pending proposal or the delay has not yet elapsed.
+     * @custom:state-changes Updates `devModeEnabled` and clears `devModePendingAt`.
+     * @custom:events Emits `DevModeToggled(devModeEnabled, msg.sender)`.
+     * @custom:errors InvalidAmount if no pending proposal; NotActive if delay window not yet reached.
+     * @custom:reentrancy Not applicable – no external calls after state updates.
+     * @custom:access Restricted to `DEFAULT_ADMIN_ROLE`.
+     * @custom:oracle No direct oracle dependency; influences later deviation checks.
+     */
     function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (devModePendingAt == 0) revert CommonErrorLibrary.InvalidAmount();
         if (block.timestamp < devModePendingAt) revert CommonErrorLibrary.NotActive();

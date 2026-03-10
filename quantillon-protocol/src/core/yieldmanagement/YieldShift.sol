@@ -884,6 +884,23 @@ contract YieldShift is
 
     /**
      * @notice Batch-updates all yield model parameters.
+     * @dev Applies a new configuration for `baseYieldShift`, `maxYieldShift`, `adjustmentSpeed`
+     *      and `targetPoolRatio` in a single governance transaction.
+     *      Uses `YieldValidationLibrary` to enforce sane bounds and invariants.
+     * @param cfg Struct containing the new yield model configuration:
+     *        - `baseYieldShift`: baseline user share (bps) when pools are balanced.
+     *        - `maxYieldShift`: maximum deviation from baseline (bps).
+     *        - `adjustmentSpeed`: how fast the shift moves toward the optimal value.
+     *        - `targetPoolRatio`: desired user/hedger pool ratio (bps).
+     * @custom:security Only governance may call; validates that `maxYieldShift >= baseYieldShift`
+     *                  and that all parameters stay within library-defined limits.
+     * @custom:validation Reverts if yield shifts, adjustment speed or target ratio are out of bounds.
+     * @custom:state-changes Updates `baseYieldShift`, `maxYieldShift`, `adjustmentSpeed`, `targetPoolRatio`.
+     * @custom:events None – consumers should read the updated state via view functions.
+     * @custom:errors InvalidShiftRange if `maxYieldShift < baseYieldShift`; library errors otherwise.
+     * @custom:reentrancy Not applicable – no external calls after state updates.
+     * @custom:access Restricted to governance via `AccessControlLibrary.onlyGovernance`.
+     * @custom:oracle No direct oracle access – operates purely on configuration values.
      */
     function configureYieldModel(YieldModelConfig calldata cfg) external {
         AccessControlLibrary.onlyGovernance(this);
@@ -900,7 +917,23 @@ contract YieldShift is
     }
 
     /**
-     * @notice Batch-updates external dependencies.
+     * @notice Batch-updates external dependency addresses used for yield distribution.
+     * @dev Wires or re-wires the `userPool`, `hedgerPool`, `aaveVault`, `stQEURO` and `treasury`
+     *      references in a single governance transaction.
+     * @param cfg Struct containing the new dependency configuration:
+     *        - `userPool`: UserPool contract address.
+     *        - `hedgerPool`: HedgerPool contract address.
+     *        - `aaveVault`: AaveVault contract address.
+     *        - `stQEURO`: stQEURO token contract address.
+     *        - `treasury`: treasury address receiving recovered funds.
+     * @custom:security Only governance may call; validates all addresses are non-zero and sane.
+     * @custom:validation Uses `AccessControlLibrary` / `YieldValidationLibrary` to check addresses.
+     * @custom:state-changes Updates `userPool`, `hedgerPool`, `aaveVault`, `stQEURO`, `treasury`.
+     * @custom:events None – downstream contracts emit their own events on meaningful actions.
+     * @custom:errors Library validation errors on zero/invalid addresses.
+     * @custom:reentrancy Not applicable – no external calls after state updates.
+     * @custom:access Restricted to governance via `AccessControlLibrary.onlyGovernance`.
+     * @custom:oracle No direct oracle access – configuration only.
      */
     function configureDependencies(YieldDependencyConfig calldata cfg) external {
         AccessControlLibrary.onlyGovernance(this);
@@ -920,6 +953,19 @@ contract YieldShift is
 
     /**
      * @notice Sets authorization status and yield type for a yield source.
+     * @dev Governance function mapping a source address to a logical yield type (e.g. "aave", "fees")
+     *      and toggling whether that source is allowed to push yield via `addYield`.
+     * @param source Address of the yield source whose authorization is being updated.
+     * @param yieldType Logical yield category identifier (e.g., `keccak256("aave")`).
+     * @param authorized True to authorize the source, false to revoke authorization.
+     * @custom:security Only governance may call; prevents untrusted contracts from minting yield.
+     * @custom:validation Reverts on zero `source` address; clears mapping when `authorized` is false.
+     * @custom:state-changes Updates `authorizedYieldSources[source]` and `sourceToYieldType[source]`.
+     * @custom:events None – yield events are emitted when yield is actually added.
+     * @custom:errors Library validation errors for invalid addresses.
+     * @custom:reentrancy Not applicable – no external calls after state updates.
+     * @custom:access Restricted to governance via `AccessControlLibrary.onlyGovernance`.
+     * @custom:oracle No oracle dependencies.
      */
     function setYieldSourceAuthorization(address source, bytes32 yieldType, bool authorized) external {
         AccessControlLibrary.onlyGovernance(this);

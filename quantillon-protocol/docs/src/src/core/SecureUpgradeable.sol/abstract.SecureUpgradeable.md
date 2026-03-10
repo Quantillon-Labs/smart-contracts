@@ -546,6 +546,26 @@ function proposeEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN
 
 INFO-4/NEW-3: Register an admin approval for the active emergency-disable proposal.
 
+Records an approval from a DEFAULT_ADMIN_ROLE address for the current proposal.
+Uses per-proposal bitmap to prevent duplicate approvals from the same address.
+
+**Notes:**
+- security: Only callable by DEFAULT_ADMIN_ROLE; prevents double-approval per admin.
+
+- validation: Reverts if no active proposal or caller already approved.
+
+- state-changes: Marks caller as approved and increments approvalCount in storage.
+
+- events: Emits EmergencyDisableApproved with updated approval count.
+
+- errors: NotActive if no pending proposal; NoChangeDetected if already approved.
+
+- reentrancy: Not applicable – function is external but has no external calls after state changes.
+
+- access: Restricted to DEFAULT_ADMIN_ROLE.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function approveEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -553,7 +573,27 @@ function approveEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN
 
 ### applyEmergencyDisableSecureUpgrades
 
-INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed
+INFO-4: Apply a previously proposed emergency-disable after the timelock has elapsed.
+
+Disables secure upgrades permanently for this deployment once quorum and delay are satisfied.
+Resets pending state so a fresh proposal is required for any future changes.
+
+**Notes:**
+- security: Requires DEFAULT_ADMIN_ROLE, quorum approvals and elapsed delay.
+
+- validation: Reverts on mismatched proposal id, missing quorum or no pending proposal.
+
+- state-changes: Clears emergencyDisablePendingAt and approvalCount, sets secureUpgradesEnabled=false.
+
+- events: Emits SecureUpgradesToggled(false) on successful application.
+
+- errors: NotActive if no pending or delay not elapsed; NotAuthorized on id mismatch or quorum not met.
+
+- reentrancy: Not applicable – no external calls after critical state changes.
+
+- access: Restricted to DEFAULT_ADMIN_ROLE.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
@@ -563,44 +603,151 @@ function applyEmergencyDisableSecureUpgrades(uint256 expectedProposalId) externa
 
 |Name|Type|Description|
 |----|----|-----------|
-|`expectedProposalId`|`uint256`|Proposal id the caller expects to apply (replay/mismatch protection)|
+|`expectedProposalId`|`uint256`|Proposal id the caller expects to apply (replay/mismatch protection).|
 
 
 ### emergencyDisableProposalId
 
-Current emergency-disable proposal id (0 when no proposal has ever been created).
+Returns the current emergency-disable proposal id.
+
+Value is 0 when no proposal has ever been created.
+
+**Notes:**
+- security: View-only helper; no access restriction.
+
+- validation: No input validation required.
+
+- state-changes: None – pure read from dedicated emergency-disable storage.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – view function.
+
+- access: Public – any caller may inspect current proposal id.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function emergencyDisableProposalId() public view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|proposalId The active or last-used emergency-disable proposal id.|
+
 
 ### emergencyDisableApprovalCount
 
-Current approval count for the active proposal.
+Returns the current approval count for the active emergency-disable proposal.
+
+Reads the aggregate number of admin approvals recorded for the latest proposal.
+
+**Notes:**
+- security: View-only helper; no access restriction.
+
+- validation: No input validation required.
+
+- state-changes: None – pure read from dedicated emergency-disable storage.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – view function.
+
+- access: Public – any caller may inspect approval count.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function emergencyDisableApprovalCount() public view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|approvalCount Number of approvals for the current proposal.|
+
 
 ### emergencyDisableQuorum
 
-Quorum required to apply the emergency disable.
+Returns the quorum required to apply the emergency disable.
+
+Exposes the EMERGENCY_DISABLE_QUORUM compile-time constant.
+
+**Notes:**
+- security: View-only helper; no access restriction.
+
+- validation: No input validation required.
+
+- state-changes: None – pure return of constant.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – pure function.
+
+- access: Public – any caller may inspect required quorum.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function emergencyDisableQuorum() public pure returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|quorum Number of approvals required to apply emergency-disable.|
+
 
 ### hasEmergencyDisableApproval
 
-Returns whether `approver` approved a given emergency-disable proposal.
+Returns whether a given approver address approved a specific emergency-disable proposal.
+
+Returns false when approver is zero or proposalId is zero for safety.
+
+**Notes:**
+- security: View-only helper; no access restriction.
+
+- validation: Treats zero proposalId or zero approver as “not approved”.
+
+- state-changes: None – pure read from dedicated emergency-disable storage.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable – view function.
+
+- access: Public – any caller may inspect approval status.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
-function hasEmergencyDisableApproval(uint256 proposalId, address approver) public view returns (bool);
+function hasEmergencyDisableApproval(uint256 proposalId, address approver) public view returns (bool hasApproved_);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`proposalId`|`uint256`|The proposal identifier to inspect.|
+|`approver`|`address`|The admin address whose approval status is queried.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`hasApproved_`|`bool`|True if the approver has recorded an approval for proposalId.|
+
 
 ### enableSecureUpgrades
 

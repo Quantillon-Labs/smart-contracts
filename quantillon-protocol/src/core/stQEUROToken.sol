@@ -916,11 +916,18 @@ contract stQEUROToken is
     }
 
     /**
-     * @notice Sets the oracle used to price USDC yield in QEURO terms
-     * @dev HIGH-3: Required so distributeYield() can convert USDC (6 dec) to QEURO (18 dec)
-     * @param _oracle Address of the IOracle implementation (OracleRouter)
-     * @custom:security Validates non-zero address
-     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @notice Sets the oracle used to price USDC yield in QEURO terms.
+     * @dev HIGH-3: Required so `distributeYield()` can convert USDC (6 decimals) to QEURO (18 decimals)
+     *      using a EUR/USD price feed. Without a valid oracle, yield distribution reverts.
+     * @param _oracle Address of the `IOracle` implementation (typically `OracleRouter`).
+     * @custom:security Ensures `_oracle` is a non-zero address to avoid bricking yield distribution.
+     * @custom:validation Reverts with `ZeroAddress` if `_oracle` equals `address(0)`.
+     * @custom:state-changes Updates the `oracle` contract reference used by `distributeYield()`.
+     * @custom:events None.
+     * @custom:errors ZeroAddress if `_oracle` is the zero address.
+     * @custom:reentrancy Not applicable – no external calls after state change.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle Configures the external EUR/USD oracle used for USDC→QEURO conversion.
      */
     function setOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE) {
         if (_oracle == address(0)) revert CommonErrorLibrary.ZeroAddress();

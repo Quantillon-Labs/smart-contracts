@@ -1040,14 +1040,27 @@ function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE);
 
 ### setOracle
 
-Sets the oracle used to price USDC yield in QEURO terms
+Sets the oracle used to price USDC yield in QEURO terms.
 
-HIGH-3: Required so distributeYield() can convert USDC (6 dec) to QEURO (18 dec)
+HIGH-3: Required so `distributeYield()` can convert USDC (6 decimals) to QEURO (18 decimals)
+using a EUR/USD price feed. Without a valid oracle, yield distribution reverts.
 
 **Notes:**
-- security: Validates non-zero address
+- security: Ensures `_oracle` is a non-zero address to avoid bricking yield distribution.
 
-- access: Restricted to GOVERNANCE_ROLE
+- validation: Reverts with `ZeroAddress` if `_oracle` equals `address(0)`.
+
+- state-changes: Updates the `oracle` contract reference used by `distributeYield()`.
+
+- events: None.
+
+- errors: ZeroAddress if `_oracle` is the zero address.
+
+- reentrancy: Not applicable – no external calls after state change.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: Configures the external EUR/USD oracle used for USDC→QEURO conversion.
 
 
 ```solidity
@@ -1057,7 +1070,7 @@ function setOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`_oracle`|`address`|Address of the IOracle implementation (OracleRouter)|
+|`_oracle`|`address`|Address of the `IOracle` implementation (typically `OracleRouter`).|
 
 
 ### decimals

@@ -807,10 +807,36 @@ interface IQuantillonVault {
      */
     function getProtocolCollateralizationRatio() external view returns (uint256);
 
-    /// @notice View-only collateralization ratio using cached price (same units as getProtocolCollateralizationRatio).
+    /**
+     * @notice View-only collateralization ratio using cached price.
+     * @dev Returns the same units as `getProtocolCollateralizationRatio()` but relies solely
+     *      on the cached EUR/USD price to remain view-safe (no external oracle calls).
+     * @return ratio Cached collateralization ratio in 1e18‑scaled percentage format.
+     * @custom:security View helper; does not mutate state or touch external oracles.
+     * @custom:validation Returns a stale or sentinel value if the cache is uninitialized.
+     * @custom:state-changes None – pure view over cached pricing and vault balances.
+     * @custom:events None.
+     * @custom:errors None – callers must handle edge cases (e.g. 0 collateral).
+     * @custom:reentrancy Not applicable – view function only.
+     * @custom:access Public – intended for dashboards and off‑chain monitoring.
+     * @custom:oracle Uses only the last cached price maintained on-chain.
+     */
     function getProtocolCollateralizationRatioView() external view returns (uint256);
 
-    /// @notice View-only mintability check using cached price and current hedger status.
+    /**
+     * @notice View-only mintability check using cached price and current hedger status.
+     * @dev Equivalent to `canMint()` but guaranteed not to perform fresh oracle reads,
+     *      making it safe for off‑chain calls that must not revert due to oracle issues.
+     * @return canMintCached True if, based on cached price and current hedger state, minting would be allowed.
+     * @custom:security Read‑only helper; never mutates state or external dependencies.
+     * @custom:validation Returns false on uninitialized cache or missing hedger configuration.
+     * @custom:state-changes None – pure read of cached price and protocol state.
+     * @custom:events None.
+     * @custom:errors None – callers interpret the boolean.
+     * @custom:reentrancy Not applicable – view function only.
+     * @custom:access Public – anyone can pre‑check mint conditions.
+     * @custom:oracle Uses cached price only; no live oracle reads.
+     */
     function canMintView() external view returns (bool);
 
     /**
@@ -827,7 +853,19 @@ interface IQuantillonVault {
      */
     function updatePriceCache() external;
 
-    /// @notice Initializes the cached EUR/USD price used by view-safe query paths.
+    /**
+     * @notice Initializes the cached EUR/USD price used by view‑safe query paths.
+     * @dev Fetches a fresh oracle price and seeds the internal cache so that
+     *      `getProtocolCollateralizationRatioView()` and `canMintView()` have a baseline.
+     * @custom:security Restricted to governance; must be called when oracle is healthy.
+     * @custom:validation Reverts if the underlying oracle price is invalid.
+     * @custom:state-changes Writes the initial cached price and associated timestamp/blocks.
+     * @custom:events Emits a price‑cache initialization event in the implementation.
+     * @custom:errors Implementation‑specific oracle validation errors on bad data.
+     * @custom:reentrancy Not applicable – implementation should avoid external calls after state writes.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle Performs at least one live oracle read to populate cache.
+     */
     function initializePriceCache() external;
 
     // =============================================================================
@@ -864,10 +902,36 @@ interface IQuantillonVault {
      */
     function updateAaveVault(address _aaveVault) external;
 
-    /// @notice Updates the protocol-fee share routed to HedgerPool reward reserve (1e18 = 100%).
+    /**
+     * @notice Updates the protocol‑fee share routed to HedgerPool reward reserve.
+     * @dev Sets the fraction of protocol fees (scaled by 1e18 where 1e18 = 100%)
+     *      that is forwarded to HedgerPool’s reward reserve instead of remaining in the vault.
+     * @param newSplit New fee‑share value (1e18‑scaled, 0–1e18 allowed by implementation).
+     * @custom:security Only callable by governance; misconfiguration can starve protocol or hedgers.
+     * @custom:validation Implementation validates that `newSplit` is within acceptable bounds.
+     * @custom:state-changes Updates internal accounting for how fees are split on collection.
+     * @custom:events Emits an event in the implementation describing the new split.
+     * @custom:errors Reverts on invalid split values as defined by implementation.
+     * @custom:reentrancy Not applicable – configuration only, no external transfers.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle No direct oracle dependency.
+     */
     function updateHedgerRewardFeeSplit(uint256 newSplit) external;
 
-    /// @notice Harvests accrued Aave interest through the configured AaveVault.
+    /**
+     * @notice Harvests accrued Aave interest through the configured AaveVault.
+     * @dev Pulls pending yield from `AaveVault` back into the vault and routes it
+     *      according to the protocol’s fee and reward‑sharing rules.
+     * @return harvestedYield Net USDC yield amount harvested from Aave (6 decimals).
+     * @custom:security Only callable by governance or a dedicated operator role (per implementation).
+     * @custom:validation Requires a configured AaveVault and sufficient accrued interest.
+     * @custom:state-changes Updates vault balances and internal yield‑accounting fields.
+     * @custom:events Emits a harvest event with the realized yield amount.
+     * @custom:errors Reverts if AaveVault is unset or harvest conditions are not met.
+     * @custom:reentrancy Protected by nonReentrant modifier in implementation.
+     * @custom:access Access control enforced by implementation (typically GOVERNANCE_ROLE).
+     * @custom:oracle No direct oracle dependency; operates on Aave position balances.
+     */
     function harvestAaveInterest() external returns (uint256 harvestedYield);
 
     /**

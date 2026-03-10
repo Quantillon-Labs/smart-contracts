@@ -1126,9 +1126,13 @@ function updatePriceFeeds(address _eurUsdFeed, address _usdcUsdFeed) external on
 
 Toggles dev mode to disable spread deviation checks
 
-MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied
+MED-1: Propose a dev-mode change; enforces a 48-hour timelock before it can be applied.
 
 DEV ONLY: When enabled, price deviation checks are skipped for testing
+
+Stores the desired `devModeEnabled` value in `pendingDevMode` and sets
+`devModePendingAt` to `block.timestamp + DEV_MODE_DELAY`. No immediate effect
+on live price checks until `applyDevMode` is called after the delay.
 
 **Notes:**
 - security: Only callable by DEFAULT_ADMIN_ROLE
@@ -1147,6 +1151,23 @@ DEV ONLY: When enabled, price deviation checks are skipped for testing
 
 - oracle: No oracle dependencies
 
+- security: Only callable by `DEFAULT_ADMIN_ROLE`; separates intent (propose)
+from effect (apply) to protect against rushed changes.
+
+- validation: Accepts both `true` and `false`; uses a fixed delay for all changes.
+
+- state-changes: Updates `pendingDevMode` and `devModePendingAt`.
+
+- events: Emits `DevModeProposed(enabled, devModePendingAt)`.
+
+- errors: None – proposal is always recorded.
+
+- reentrancy: Not applicable – no external calls after state updates.
+
+- access: Restricted to `DEFAULT_ADMIN_ROLE`.
+
+- oracle: No direct oracle dependency; controls deviation checks in price paths.
+
 
 ```solidity
 function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
@@ -1160,7 +1181,29 @@ function proposeDevMode(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE);
 
 ### applyDevMode
 
-MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed
+MED-1: Apply a previously proposed dev-mode change after the timelock has elapsed.
+
+Reads `pendingDevMode` and sets `devModeEnabled` once `block.timestamp`
+is greater than or equal to `devModePendingAt`. Resets `devModePendingAt`
+back to 0 to clear the proposal.
+
+**Notes:**
+- security: Only callable by `DEFAULT_ADMIN_ROLE`; enforces a mandatory delay
+between proposal and activation of dev mode.
+
+- validation: Reverts if there is no pending proposal or the delay has not yet elapsed.
+
+- state-changes: Updates `devModeEnabled` and clears `devModePendingAt`.
+
+- events: Emits `DevModeToggled(devModeEnabled, msg.sender)`.
+
+- errors: InvalidAmount if no pending proposal; NotActive if delay window not yet reached.
+
+- reentrancy: Not applicable – no external calls after state updates.
+
+- access: Restricted to `DEFAULT_ADMIN_ROLE`.
+
+- oracle: No direct oracle dependency; influences later deviation checks.
 
 
 ```solidity

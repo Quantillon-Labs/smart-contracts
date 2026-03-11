@@ -6,9 +6,18 @@
 # WHY: Keep sensitive deployment scripts and configurations encrypted in public repo
 # =============================================================================
 
-# Encrypt entire scripts/ folder
+# Encrypt scripts/ by default, then carve out the CI-safe tooling files below.
 scripts/** filter=git-crypt diff=git-crypt
 
+# CI/tooling helpers must stay readable in GitHub Actions.
+scripts/analyze-contract-sizes.sh -filter -diff
+scripts/analyze-gas.sh -filter -diff
+scripts/analyze-warnings.sh -filter -diff
+scripts/package-lock.json -filter -diff
+scripts/package.json -filter -diff
+scripts/run-slither.sh -filter -diff
+scripts/utils/load-env.sh -filter -diff
+scripts/validate-natspec.js -filter -diff
 
 
 

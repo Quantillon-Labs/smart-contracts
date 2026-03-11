@@ -11,6 +11,7 @@
 RESULTS_DIR ?= scripts/results
 BUILD_OUTPUT := $(RESULTS_DIR)/build-output.log
 DEPLOY       := ./scripts/deployment/deploy.sh
+BASH         ?= bash
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@ coverage:
 
 slither:
 	@echo "🔍 Running Slither..."
-	@./scripts/run-slither.sh
+	@$(BASH) ./scripts/run-slither.sh
 
 mythril:
 	@echo "🔍 Running Mythril..."
@@ -133,7 +134,7 @@ validate-natspec: scripts/node_modules/.install-sentinel
 
 gas-analysis:
 	@echo "⛽ Running gas analysis..."
-	@./scripts/analyze-gas.sh
+	@$(BASH) ./scripts/analyze-gas.sh
 
 benchmark-gas:
 	@echo "⛽ Running gas benchmarking..."
@@ -141,11 +142,11 @@ benchmark-gas:
 
 analyze-warnings:
 	@echo "⚠️  Analyzing build warnings..."
-	@./scripts/analyze-warnings.sh
+	@$(BASH) ./scripts/analyze-warnings.sh
 
 analyze-contract-sizes:
 	@echo "📏 Analyzing contract sizes against EIP-170..."
-	@./scripts/analyze-contract-sizes.sh
+	@$(BASH) ./scripts/analyze-contract-sizes.sh
 
 # ─── Pipelines ────────────────────────────────────────────────────────────────
 

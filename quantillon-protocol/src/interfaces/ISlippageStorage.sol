@@ -13,6 +13,16 @@ interface ISlippageStorage {
 
     // ============ Structs ============
 
+    /// @notice Input for one source in a batch update
+    struct SourceUpdate {
+        uint8     sourceId;     // SOURCE_LIGHTER=0, SOURCE_HYPERLIQUID=1
+        uint128   midPrice;     // EUR/USD mid price (18 decimals)
+        uint128   depthEur;     // Total ask depth in EUR (18 decimals)
+        uint16    worstCaseBps;
+        uint16    spreadBps;
+        uint16[5] bucketBps;   // [10k, 50k, 100k, 250k, 1M]
+    }
+
     /// @notice Packed on-chain slippage snapshot (2 storage slots)
     /// @dev Storage layout (must not be reordered — UUPS upgrade-safe):
     ///      Slot 0 (32 bytes): midPrice (uint128) + depthEur (uint128)
@@ -36,7 +46,7 @@ interface ISlippageStorage {
 
     // ============ Events ============
 
-    /// @notice Emitted when slippage data is updated on-chain
+    /// @notice Emitted when slippage data is updated on-chain (Lighter legacy single-source path)
     event SlippageUpdated(
         uint128 midPrice,
         uint16  worstCaseBps,
@@ -44,6 +54,19 @@ interface ISlippageStorage {
         uint128 depthEur,
         uint48  timestamp
     );
+
+    /// @notice Emitted once per source written in updateSlippageBatch
+    event SlippageSourceUpdated(
+        uint8   indexed sourceId,
+        uint128 midPrice,
+        uint16  worstCaseBps,
+        uint16  spreadBps,
+        uint128 depthEur,
+        uint48  timestamp
+    );
+
+    /// @notice Emitted when the enabledSources bitmask is changed by MANAGER_ROLE
+    event EnabledSourcesUpdated(uint8 oldMask, uint8 newMask);
 
     /// @notice Emitted when a config parameter is changed
     event ConfigUpdated(string indexed param, uint256 oldValue, uint256 newValue);
@@ -66,6 +89,7 @@ interface ISlippageStorage {
      * @param minInterval Minimum seconds between successive writes (0..MAX_UPDATE_INTERVAL)
      * @param deviationThreshold Deviation in bps that bypasses rate limit (0..MAX_DEVIATION_THRESHOLD)
      * @param treasury Treasury address for token/ETH recovery
+     * @param initialEnabledSources Bitmask of initially enabled sources (0x01=Lighter, 0x02=Hyperliquid, 0x03=both)
      * @custom:security Validates admin, writer, and treasury are non-zero; enforces config bounds
      * @custom:validation Validates admin/writer/treasury != address(0); interval and threshold within max
      * @custom:state-changes Grants roles, sets minUpdateInterval, deviationThresholdBps, treasury
@@ -81,7 +105,8 @@ interface ISlippageStorage {
         address writer,
         uint48  minInterval,
         uint16  deviationThreshold,
-        address treasury
+        address treasury,
+        uint8   initialEnabledSources
     ) external;
 
     /**
@@ -110,6 +135,23 @@ interface ISlippageStorage {
         uint16  spreadBps,
         uint16[5] calldata bucketBps
     ) external;
+
+    /**
+     * @notice Publish slippage snapshots for multiple sources in a single transaction
+     * @dev Sources disabled in enabledSources bitmask are silently skipped (not reverted).
+     *      Rate-limited per source: within-interval updates are skipped unless deviation > threshold.
+     *      Lighter source (sourceId=0) writes to the legacy _snapshot slot for backward compat.
+     * @param updates Array of per-source snapshot inputs
+     * @custom:security Requires WRITER_ROLE; blocked when paused
+     * @custom:validation Per-source rate limit: skips (does not revert) if within interval and deviation <= threshold
+     * @custom:state-changes Writes each enabled source's snapshot; Lighter updates _snapshot for backward compat
+     * @custom:events Emits SlippageSourceUpdated for each source actually written
+     * @custom:errors No explicit reverts for rate-limited sources (silently skipped)
+     * @custom:reentrancy Not protected - no external calls made during execution
+     * @custom:oracle No on-chain oracle dependency; data is pushed by the off-chain Slippage Monitor
+     * @custom:access Restricted to WRITER_ROLE; blocked when contract is paused
+     */
+    function updateSlippageBatch(SourceUpdate[] calldata updates) external;
 
     // ============ Config Functions ============
 
@@ -220,6 +262,71 @@ interface ISlippageStorage {
      * @custom:oracle No oracle dependencies - reads stored timestamp only
      */
     function getSlippageAge() external view returns (uint256 age);
+
+    /**
+     * @notice Get the full slippage snapshot for a specific source
+     * @dev sourceId=0 (SOURCE_LIGHTER) reads from the legacy _snapshot slot.
+     *      Other sourceIds read from _sourceSnapshots mapping.
+     *      Returns a zero-valued struct if no data has been published for that source.
+     * @param sourceId Source identifier (SOURCE_LIGHTER=0, SOURCE_HYPERLIQUID=1)
+     * @return snapshot The latest SlippageSnapshot for the given source
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:oracle No oracle dependencies - reads stored state only
+     * @custom:access Public - no restrictions
+     */
+    function getSlippageBySource(uint8 sourceId) external view returns (SlippageSnapshot memory snapshot);
+
+    /**
+     * @notice Get seconds elapsed since the last on-chain update for a specific source
+     * @dev Returns 0 if no update has ever been published for the source (timestamp == 0).
+     * @param sourceId Source identifier (SOURCE_LIGHTER=0, SOURCE_HYPERLIQUID=1)
+     * @return age Seconds since last update for that source, or 0 if never updated
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:oracle No oracle dependencies - reads stored timestamp only
+     * @custom:access Public - no restrictions
+     */
+    function getSlippageAgeBySource(uint8 sourceId) external view returns (uint256 age);
+
+    /**
+     * @notice Get the bitmask of enabled sources (bit N = source N enabled)
+     * @dev Bit 0 = SOURCE_LIGHTER, Bit 1 = SOURCE_HYPERLIQUID. 0x03 = both enabled.
+     * @return mask Current enabled sources bitmask
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:oracle No oracle dependencies
+     * @custom:access Public - no restrictions
+     */
+    function enabledSources() external view returns (uint8 mask);
+
+    /**
+     * @notice Update which sources are enabled for storage in updateSlippageBatch
+     * @dev Bit 0 = SOURCE_LIGHTER, Bit 1 = SOURCE_HYPERLIQUID. 0x03 = both enabled.
+     *      Disabled sources are silently skipped in batch writes without reverting.
+     * @param mask New bitmask (0x01=Lighter only, 0x02=Hyperliquid only, 0x03=both)
+     * @custom:security Requires MANAGER_ROLE
+     * @custom:validation No additional validation; all uint8 values accepted
+     * @custom:state-changes Updates enabledSources state variable
+     * @custom:events Emits EnabledSourcesUpdated(oldMask, newMask)
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - no external calls made
+     * @custom:oracle No oracle dependencies
+     * @custom:access Restricted to MANAGER_ROLE
+     */
+    function setEnabledSources(uint8 mask) external;
 
     /**
      * @notice Get the current minimum update interval

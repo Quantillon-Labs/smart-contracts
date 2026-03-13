@@ -22,6 +22,24 @@ security-contact: team@quantillon.money
 
 
 ## State Variables
+### SOURCE_LIGHTER
+Source ID for Lighter DEX (maps to legacy _snapshot slot for backward compat)
+
+
+```solidity
+uint8 public constant SOURCE_LIGHTER = 0
+```
+
+
+### SOURCE_HYPERLIQUID
+Source ID for Hyperliquid DEX
+
+
+```solidity
+uint8 public constant SOURCE_HYPERLIQUID = 1
+```
+
+
 ### WRITER_ROLE
 Role for the off-chain publisher service wallet
 
@@ -112,6 +130,24 @@ address public treasury
 ```
 
 
+### _sourceSnapshots
+Snapshots for sources other than SOURCE_LIGHTER (which uses _snapshot for compat)
+
+
+```solidity
+mapping(uint8 sourceId => SlippageSnapshot) private _sourceSnapshots
+```
+
+
+### enabledSources
+Bitmask of enabled sources: bit N = source N enabled. 0x03 = both Lighter + Hyperliquid.
+
+
+```solidity
+uint8 public override enabledSources
+```
+
+
 ### TIME_PROVIDER
 Shared time provider for deterministic timestamp reads
 
@@ -193,7 +229,8 @@ function initialize(
     address writer,
     uint48 minInterval,
     uint16 deviationThreshold,
-    address _treasury
+    address _treasury,
+    uint8 initialEnabledSources
 ) external override initializer;
 ```
 **Parameters**
@@ -205,6 +242,7 @@ function initialize(
 |`minInterval`|`uint48`|Minimum seconds between successive writes (0..MAX_UPDATE_INTERVAL)|
 |`deviationThreshold`|`uint16`|Deviation in bps that bypasses rate limit (0..MAX_DEVIATION_THRESHOLD)|
 |`_treasury`|`address`|Treasury address for token/ETH recovery|
+|`initialEnabledSources`|`uint8`|Bitmask of initially enabled sources (0x01=Lighter, 0x02=Hyperliquid, 0x03=both)|
 
 
 ### updateSlippage
@@ -255,6 +293,103 @@ function updateSlippage(
 |`bucketBps`|`uint16[5]`|Per-size slippage in bps, fixed order: [10k, 50k, 100k, 250k, 1M]|
 
 
+### updateSlippageBatch
+
+Publish slippage snapshots for multiple sources in a single transaction
+
+Sources disabled in enabledSources bitmask are silently skipped (no revert).
+Rate-limited per source independently: within-interval updates are skipped
+unless |diff| > deviationThresholdBps. Lighter source (sourceId=0) writes to
+the legacy _snapshot slot for backward compatibility with getSlippage().
+
+**Notes:**
+- security: Requires WRITER_ROLE; blocked when paused
+
+- validation: Per-source rate limit: skips (does not revert) if within interval and deviation <= threshold
+
+- state-changes: Writes each enabled source's snapshot; Lighter updates _snapshot for backward compat
+
+- events: Emits SlippageSourceUpdated for each source actually written
+
+- errors: No explicit reverts for rate-limited or disabled sources (silently skipped)
+
+- reentrancy: Not protected - no external calls made during execution
+
+- oracle: No on-chain oracle dependency; data is pushed by the off-chain Slippage Monitor
+
+- access: Restricted to WRITER_ROLE; blocked when contract is paused
+
+
+```solidity
+function updateSlippageBatch(SourceUpdate[] calldata updates)
+    external
+    override
+    onlyRole(WRITER_ROLE)
+    whenNotPaused;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`updates`|`SourceUpdate[]`|Array of per-source snapshot inputs|
+
+
+### setEnabledSources
+
+Update the minimum interval between successive slippage writes
+
+Update the bitmask of sources enabled for storage in updateSlippageBatch
+
+Allows the manager to tighten or relax the rate limit. Setting to 0
+effectively disables the rate limit; MAX_UPDATE_INTERVAL caps it at 1 hour.
+
+Bit 0 = SOURCE_LIGHTER, Bit 1 = SOURCE_HYPERLIQUID.
+0x03 enables both. Disabled sources are silently skipped in batch writes without reverting.
+
+**Notes:**
+- security: Requires MANAGER_ROLE; enforces upper bound MAX_UPDATE_INTERVAL
+
+- validation: Validates newInterval <= MAX_UPDATE_INTERVAL
+
+- state-changes: Updates minUpdateInterval state variable
+
+- events: Emits ConfigUpdated("minUpdateInterval", oldValue, newValue)
+
+- errors: Reverts with ConfigValueTooHigh if newInterval > MAX_UPDATE_INTERVAL
+
+- reentrancy: Not protected - no external calls made
+
+- access: Restricted to MANAGER_ROLE
+
+- oracle: No oracle dependencies
+
+- security: Requires MANAGER_ROLE
+
+- validation: No additional validation; all uint8 values accepted
+
+- state-changes: Updates enabledSources state variable
+
+- events: Emits EnabledSourcesUpdated(oldMask, newMask)
+
+- errors: No errors thrown
+
+- reentrancy: Not protected - no external calls made
+
+- oracle: No oracle dependencies
+
+- access: Restricted to MANAGER_ROLE
+
+
+```solidity
+function setEnabledSources(uint8 mask) external override onlyRole(MANAGER_ROLE);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`mask`|`uint8`|New bitmask (0x01=Lighter only, 0x02=Hyperliquid only, 0x03=both)|
+
+
 ### setMinUpdateInterval
 
 Update the minimum interval between successive slippage writes
@@ -275,9 +410,9 @@ effectively disables the rate limit; MAX_UPDATE_INTERVAL caps it at 1 hour.
 
 - reentrancy: Not protected - no external calls made
 
-- access: Restricted to MANAGER_ROLE
-
 - oracle: No oracle dependencies
+
+- access: Restricted to MANAGER_ROLE
 
 
 ```solidity
@@ -488,6 +623,88 @@ function getSlippageAge() external view override returns (uint256 age);
 |Name|Type|Description|
 |----|----|-----------|
 |`age`|`uint256`|Seconds since last updateSlippage call, or 0 if never updated|
+
+
+### getSlippageBySource
+
+Get the full slippage snapshot for a specific source
+
+sourceId=0 (SOURCE_LIGHTER) reads from the legacy _snapshot slot.
+Other sourceIds read from _sourceSnapshots mapping.
+Returns a zero-valued struct if no data has been published for that source.
+
+**Notes:**
+- security: No security concerns - read-only view function
+
+- validation: No input validation required
+
+- state-changes: No state changes - view function
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - view function
+
+- oracle: No oracle dependencies - reads stored state only
+
+- access: Public - no restrictions
+
+
+```solidity
+function getSlippageBySource(uint8 sourceId) external view override returns (SlippageSnapshot memory snapshot);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`sourceId`|`uint8`|Source identifier (SOURCE_LIGHTER=0, SOURCE_HYPERLIQUID=1)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`snapshot`|`SlippageSnapshot`|The latest SlippageSnapshot for the given source|
+
+
+### getSlippageAgeBySource
+
+Get seconds elapsed since the last on-chain update for a specific source
+
+Returns 0 if no update has ever been published for the source (timestamp == 0).
+
+**Notes:**
+- security: No security concerns - read-only view function
+
+- validation: No input validation required
+
+- state-changes: No state changes - view function
+
+- events: No events emitted
+
+- errors: No errors thrown
+
+- reentrancy: Not applicable - view function
+
+- oracle: No oracle dependencies - reads stored timestamp only
+
+- access: Public - no restrictions
+
+
+```solidity
+function getSlippageAgeBySource(uint8 sourceId) external view override returns (uint256 age);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`sourceId`|`uint8`|Source identifier (SOURCE_LIGHTER=0, SOURCE_HYPERLIQUID=1)|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`age`|`uint256`|Seconds since last update for that source, or 0 if never updated|
 
 
 ### recoverToken

@@ -48,6 +48,12 @@ contract SlippageStorage is
 
     // ============ Constants & Roles ============
 
+    /// @notice Source ID for Lighter DEX (maps to legacy _snapshot slot for backward compat)
+    uint8 public constant SOURCE_LIGHTER = 0;
+
+    /// @notice Source ID for Hyperliquid DEX
+    uint8 public constant SOURCE_HYPERLIQUID = 1;
+
     /// @notice Role for the off-chain publisher service wallet
     bytes32 public constant WRITER_ROLE = keccak256("WRITER_ROLE");
 
@@ -79,6 +85,12 @@ contract SlippageStorage is
 
     /// @notice Treasury address for recovery functions
     address public treasury;
+
+    /// @notice Snapshots for sources other than SOURCE_LIGHTER (which uses _snapshot for compat)
+    mapping(uint8 sourceId => SlippageSnapshot) private _sourceSnapshots;
+
+    /// @notice Bitmask of enabled sources: bit N = source N enabled. 0x03 = both Lighter + Hyperliquid.
+    uint8 public override enabledSources;
 
     /// @notice Shared time provider for deterministic timestamp reads
     TimeProvider public immutable TIME_PROVIDER;
@@ -118,6 +130,7 @@ contract SlippageStorage is
      * @param minInterval Minimum seconds between successive writes (0..MAX_UPDATE_INTERVAL)
      * @param deviationThreshold Deviation in bps that bypasses rate limit (0..MAX_DEVIATION_THRESHOLD)
      * @param _treasury Treasury address for token/ETH recovery
+     * @param initialEnabledSources Bitmask of initially enabled sources (0x01=Lighter, 0x02=Hyperliquid, 0x03=both)
      * @custom:security Validates admin, writer, and treasury are non-zero; enforces config bounds
      * @custom:validation Validates admin != address(0), writer != address(0), treasury != address(0),
      *                    minInterval <= MAX_UPDATE_INTERVAL, deviationThreshold <= MAX_DEVIATION_THRESHOLD
@@ -134,7 +147,8 @@ contract SlippageStorage is
         address writer,
         uint48  minInterval,
         uint16  deviationThreshold,
-        address _treasury
+        address _treasury,
+        uint8   initialEnabledSources
     ) external override initializer {
         if (admin == address(0) || writer == address(0) || _treasury == address(0)) {
             revert CommonErrorLibrary.ZeroAddress();
@@ -159,6 +173,7 @@ contract SlippageStorage is
         minUpdateInterval = minInterval;
         deviationThresholdBps = deviationThreshold;
         treasury = _treasury;
+        enabledSources = initialEnabledSources;
     }
 
     // ============ Write Functions ============
@@ -228,6 +243,68 @@ contract SlippageStorage is
         emit SlippageUpdated(midPrice, worstCaseBps, spreadBps, depthEur, ts);
     }
 
+    /**
+     * @notice Publish slippage snapshots for multiple sources in a single transaction
+     * @dev Sources disabled in enabledSources bitmask are silently skipped (no revert).
+     *      Rate-limited per source independently: within-interval updates are skipped
+     *      unless |diff| > deviationThresholdBps. Lighter source (sourceId=0) writes to
+     *      the legacy _snapshot slot for backward compatibility with getSlippage().
+     * @param updates Array of per-source snapshot inputs
+     * @custom:security Requires WRITER_ROLE; blocked when paused
+     * @custom:validation Per-source rate limit: skips (does not revert) if within interval and deviation <= threshold
+     * @custom:state-changes Writes each enabled source's snapshot; Lighter updates _snapshot for backward compat
+     * @custom:events Emits SlippageSourceUpdated for each source actually written
+     * @custom:errors No explicit reverts for rate-limited or disabled sources (silently skipped)
+     * @custom:reentrancy Not protected - no external calls made during execution
+     * @custom:oracle No on-chain oracle dependency; data is pushed by the off-chain Slippage Monitor
+     * @custom:access Restricted to WRITER_ROLE; blocked when contract is paused
+     */
+    function updateSlippageBatch(
+        SourceUpdate[] calldata updates
+    ) external override onlyRole(WRITER_ROLE) whenNotPaused {
+        uint48 nowTs = uint48(TIME_PROVIDER.currentTime());
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint48 bn = uint48(block.number);
+        uint8 sources = enabledSources;
+
+        for (uint256 i = 0; i < updates.length; i++) {
+            SourceUpdate calldata u = updates[i];
+
+            // Skip sources not enabled in the on-chain bitmask
+            if ((sources >> u.sourceId) & 1 == 0) continue;
+
+            // Lighter (sourceId=0) reuses the legacy _snapshot slot for backward compat
+            SlippageSnapshot storage snap = u.sourceId == SOURCE_LIGHTER
+                ? _snapshot
+                : _sourceSnapshots[u.sourceId];
+
+            // Rate limit check per source (first-ever update when timestamp == 0 always passes)
+            uint48 lastTs = snap.timestamp;
+            if (lastTs >= 1) {
+                if (nowTs <= lastTs || nowTs - lastTs < minUpdateInterval) {
+                    uint16 diff = u.worstCaseBps > snap.worstCaseBps
+                        ? u.worstCaseBps - snap.worstCaseBps
+                        : snap.worstCaseBps - u.worstCaseBps;
+                    if (diff <= deviationThresholdBps) continue; // skip this source, don't revert
+                }
+            }
+
+            snap.midPrice     = u.midPrice;
+            snap.depthEur     = u.depthEur;
+            snap.worstCaseBps = u.worstCaseBps;
+            snap.spreadBps    = u.spreadBps;
+            snap.timestamp    = nowTs;
+            snap.blockNumber  = bn;
+            snap.bps10k       = u.bucketBps[0];
+            snap.bps50k       = u.bucketBps[1];
+            snap.bps100k      = u.bucketBps[2];
+            snap.bps250k      = u.bucketBps[3];
+            snap.bps1M        = u.bucketBps[4];
+
+            emit SlippageSourceUpdated(u.sourceId, u.midPrice, u.worstCaseBps, u.spreadBps, u.depthEur, nowTs);
+        }
+    }
+
     // ============ Config Functions ============
 
     /**
@@ -243,6 +320,40 @@ contract SlippageStorage is
      * @custom:reentrancy Not protected - no external calls made
      * @custom:access Restricted to MANAGER_ROLE
      * @custom:oracle No oracle dependencies
+     */
+    /**
+     * @notice Update the bitmask of sources enabled for storage in updateSlippageBatch
+     * @dev Bit 0 = SOURCE_LIGHTER, Bit 1 = SOURCE_HYPERLIQUID.
+     *      0x03 enables both. Disabled sources are silently skipped in batch writes without reverting.
+     * @param mask New bitmask (0x01=Lighter only, 0x02=Hyperliquid only, 0x03=both)
+     * @custom:security Requires MANAGER_ROLE
+     * @custom:validation No additional validation; all uint8 values accepted
+     * @custom:state-changes Updates enabledSources state variable
+     * @custom:events Emits EnabledSourcesUpdated(oldMask, newMask)
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not protected - no external calls made
+     * @custom:oracle No oracle dependencies
+     * @custom:access Restricted to MANAGER_ROLE
+     */
+    function setEnabledSources(uint8 mask) external override onlyRole(MANAGER_ROLE) {
+        uint8 old = enabledSources;
+        enabledSources = mask;
+        emit EnabledSourcesUpdated(old, mask);
+    }
+
+    /**
+     * @notice Update the minimum interval between successive slippage writes
+     * @dev Allows the manager to tighten or relax the rate limit. Setting to 0
+     *      effectively disables the rate limit; MAX_UPDATE_INTERVAL caps it at 1 hour.
+     * @param newInterval New minimum interval in seconds (0..MAX_UPDATE_INTERVAL)
+     * @custom:security Requires MANAGER_ROLE; enforces upper bound MAX_UPDATE_INTERVAL
+     * @custom:validation Validates newInterval <= MAX_UPDATE_INTERVAL
+     * @custom:state-changes Updates minUpdateInterval state variable
+     * @custom:events Emits ConfigUpdated("minUpdateInterval", oldValue, newValue)
+     * @custom:errors Reverts with ConfigValueTooHigh if newInterval > MAX_UPDATE_INTERVAL
+     * @custom:reentrancy Not protected - no external calls made
+     * @custom:oracle No oracle dependencies
+     * @custom:access Restricted to MANAGER_ROLE
      */
     function setMinUpdateInterval(uint48 newInterval) external override onlyRole(MANAGER_ROLE) {
         if (newInterval > MAX_UPDATE_INTERVAL) revert CommonErrorLibrary.ConfigValueTooHigh();
@@ -370,6 +481,51 @@ contract SlippageStorage is
         if (_snapshot.timestamp < 1) return 0;
         uint256 nowTs = TIME_PROVIDER.currentTime();
         uint256 snapshotTs = uint256(_snapshot.timestamp);
+        if (nowTs <= snapshotTs) return 0;
+        return nowTs - snapshotTs;
+    }
+
+    /**
+     * @notice Get the full slippage snapshot for a specific source
+     * @dev sourceId=0 (SOURCE_LIGHTER) reads from the legacy _snapshot slot.
+     *      Other sourceIds read from _sourceSnapshots mapping.
+     *      Returns a zero-valued struct if no data has been published for that source.
+     * @param sourceId Source identifier (SOURCE_LIGHTER=0, SOURCE_HYPERLIQUID=1)
+     * @return snapshot The latest SlippageSnapshot for the given source
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:oracle No oracle dependencies - reads stored state only
+     * @custom:access Public - no restrictions
+     */
+    function getSlippageBySource(uint8 sourceId) external view override returns (SlippageSnapshot memory snapshot) {
+        return sourceId == SOURCE_LIGHTER ? _snapshot : _sourceSnapshots[sourceId];
+    }
+
+    /**
+     * @notice Get seconds elapsed since the last on-chain update for a specific source
+     * @dev Returns 0 if no update has ever been published for the source (timestamp == 0).
+     * @param sourceId Source identifier (SOURCE_LIGHTER=0, SOURCE_HYPERLIQUID=1)
+     * @return age Seconds since last update for that source, or 0 if never updated
+     * @custom:security No security concerns - read-only view function
+     * @custom:validation No input validation required
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - view function
+     * @custom:oracle No oracle dependencies - reads stored timestamp only
+     * @custom:access Public - no restrictions
+     */
+    function getSlippageAgeBySource(uint8 sourceId) external view override returns (uint256 age) {
+        SlippageSnapshot storage snap = sourceId == SOURCE_LIGHTER
+            ? _snapshot
+            : _sourceSnapshots[sourceId];
+        if (snap.timestamp < 1) return 0;
+        uint256 nowTs = TIME_PROVIDER.currentTime();
+        uint256 snapshotTs = uint256(snap.timestamp);
         if (nowTs <= snapshotTs) return 0;
         return nowTs - snapshotTs;
     }

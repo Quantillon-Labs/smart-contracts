@@ -22,6 +22,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  *      - View functions (getSlippage, getSlippageAge)
  *      - Recovery (recoverETH, recoverToken)
  *      - UUPS upgrade
+ *      - enabledSources bitmask (initialize, setEnabledSources)
+ *      - updateSlippageBatch (write, skip-disabled, rate-limit, deviation bypass, events)
+ *      - getSlippageBySource and getSlippageAgeBySource (per-source reads)
  *
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
@@ -65,7 +68,7 @@ contract SlippageStorageTest is Test {
         impl = new SlippageStorage(timeProvider);
         bytes memory initData = abi.encodeCall(
             SlippageStorage.initialize,
-            (admin, writer, MIN_INTERVAL, DEVIATION_THRESHOLD, treasury)
+            (admin, writer, MIN_INTERVAL, DEVIATION_THRESHOLD, treasury, 3)
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
         store = SlippageStorage(payable(address(proxy)));
@@ -90,7 +93,7 @@ contract SlippageStorageTest is Test {
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         new ERC1967Proxy(
             address(newImpl),
-            abi.encodeCall(SlippageStorage.initialize, (address(0), writer, MIN_INTERVAL, DEVIATION_THRESHOLD, treasury))
+            abi.encodeCall(SlippageStorage.initialize, (address(0), writer, MIN_INTERVAL, DEVIATION_THRESHOLD, treasury, 3))
         );
     }
 
@@ -99,7 +102,7 @@ contract SlippageStorageTest is Test {
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         new ERC1967Proxy(
             address(newImpl),
-            abi.encodeCall(SlippageStorage.initialize, (admin, address(0), MIN_INTERVAL, DEVIATION_THRESHOLD, treasury))
+            abi.encodeCall(SlippageStorage.initialize, (admin, address(0), MIN_INTERVAL, DEVIATION_THRESHOLD, treasury, 3))
         );
     }
 
@@ -108,13 +111,13 @@ contract SlippageStorageTest is Test {
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         new ERC1967Proxy(
             address(newImpl),
-            abi.encodeCall(SlippageStorage.initialize, (admin, writer, MIN_INTERVAL, DEVIATION_THRESHOLD, address(0)))
+            abi.encodeCall(SlippageStorage.initialize, (admin, writer, MIN_INTERVAL, DEVIATION_THRESHOLD, address(0), 3))
         );
     }
 
     function test_initialize_revertsIfCalledTwice() public {
         vm.expectRevert();
-        store.initialize(admin, writer, MIN_INTERVAL, DEVIATION_THRESHOLD, treasury);
+        store.initialize(admin, writer, MIN_INTERVAL, DEVIATION_THRESHOLD, treasury, 3);
     }
 
     function test_initialize_revertsIfIntervalTooHigh() public {
@@ -122,7 +125,7 @@ contract SlippageStorageTest is Test {
         vm.expectRevert(CommonErrorLibrary.ConfigValueTooHigh.selector);
         new ERC1967Proxy(
             address(newImpl),
-            abi.encodeCall(SlippageStorage.initialize, (admin, writer, 7200, DEVIATION_THRESHOLD, treasury))
+            abi.encodeCall(SlippageStorage.initialize, (admin, writer, 7200, DEVIATION_THRESHOLD, treasury, 3))
         );
     }
 
@@ -131,7 +134,7 @@ contract SlippageStorageTest is Test {
         vm.expectRevert(CommonErrorLibrary.ConfigValueTooHigh.selector);
         new ERC1967Proxy(
             address(newImpl),
-            abi.encodeCall(SlippageStorage.initialize, (admin, writer, MIN_INTERVAL, 600, treasury))
+            abi.encodeCall(SlippageStorage.initialize, (admin, writer, MIN_INTERVAL, 600, treasury, 3))
         );
     }
 
@@ -495,6 +498,209 @@ contract SlippageStorageTest is Test {
         vm.prank(writer);
         vm.expectRevert(CommonErrorLibrary.RateLimitTooHigh.selector);
         store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, high);
+    }
+
+    // =========================================================================
+    // enabledSources — initialize and setEnabledSources
+    // =========================================================================
+
+    function test_enabledSources_initialValue() public view {
+        assertEq(store.enabledSources(), 3, "default enabledSources should be 3 (both)");
+    }
+
+    function test_setEnabledSources_managerCanUpdate() public {
+        vm.prank(admin);
+        store.setEnabledSources(1);
+        assertEq(store.enabledSources(), 1);
+    }
+
+    function test_setEnabledSources_emitsEvent() public {
+        vm.expectEmit(false, false, false, true);
+        emit ISlippageStorage.EnabledSourcesUpdated(3, 2);
+        vm.prank(admin);
+        store.setEnabledSources(2);
+    }
+
+    function test_setEnabledSources_revertsIfNotManager() public {
+        vm.prank(outsider);
+        vm.expectRevert();
+        store.setEnabledSources(1);
+    }
+
+    // =========================================================================
+    // updateSlippageBatch — basic write for both sources
+    // =========================================================================
+
+    function _makeBatch(
+        uint8 sourceId,
+        uint16 worstBps
+    ) internal pure returns (ISlippageStorage.SourceUpdate[] memory updates) {
+        updates = new ISlippageStorage.SourceUpdate[](1);
+        updates[0] = ISlippageStorage.SourceUpdate({
+            sourceId:     sourceId,
+            midPrice:     MID_PRICE,
+            depthEur:     DEPTH_EUR,
+            worstCaseBps: worstBps,
+            spreadBps:    SPREAD_BPS,
+            bucketBps:    [uint16(1), uint16(2), uint16(3), uint16(4), uint16(5)]
+        });
+    }
+
+    function test_updateSlippageBatch_writesLighterToLegacySlot() public {
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS));
+
+        ISlippageStorage.SlippageSnapshot memory snap = store.getSlippage();
+        assertEq(snap.worstCaseBps, WORST_BPS);
+        assertEq(snap.midPrice, MID_PRICE);
+    }
+
+    function test_updateSlippageBatch_writesHyperliquidToSourceSlot() public {
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(1, 42));
+
+        ISlippageStorage.SlippageSnapshot memory snap = store.getSlippageBySource(1);
+        assertEq(snap.worstCaseBps, 42);
+        assertEq(snap.midPrice, MID_PRICE);
+    }
+
+    function test_updateSlippageBatch_lighterDoesNotOverwriteHyperliquid() public {
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(1, 99));
+
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS));
+
+        // Hyperliquid slot unchanged
+        assertEq(store.getSlippageBySource(1).worstCaseBps, 99);
+        // Lighter (legacy) slot updated
+        assertEq(store.getSlippage().worstCaseBps, WORST_BPS);
+    }
+
+    function test_updateSlippageBatch_twoBatchSourcesInOneTx() public {
+        ISlippageStorage.SourceUpdate[] memory updates = new ISlippageStorage.SourceUpdate[](2);
+        updates[0] = ISlippageStorage.SourceUpdate(0, MID_PRICE, DEPTH_EUR, 10, SPREAD_BPS, [uint16(1), 2, 3, 4, 5]);
+        updates[1] = ISlippageStorage.SourceUpdate(1, MID_PRICE, DEPTH_EUR, 20, SPREAD_BPS, [uint16(1), 2, 3, 4, 5]);
+
+        vm.prank(writer);
+        store.updateSlippageBatch(updates);
+
+        assertEq(store.getSlippage().worstCaseBps, 10);
+        assertEq(store.getSlippageBySource(1).worstCaseBps, 20);
+    }
+
+    function test_updateSlippageBatch_emitsSlippageSourceUpdated() public {
+        vm.expectEmit(true, false, false, false);
+        emit ISlippageStorage.SlippageSourceUpdated(0, MID_PRICE, WORST_BPS, SPREAD_BPS, DEPTH_EUR, 0);
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS));
+    }
+
+    function test_updateSlippageBatch_revertsIfNotWriter() public {
+        vm.prank(outsider);
+        vm.expectRevert();
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS));
+    }
+
+    function test_updateSlippageBatch_revertsWhenPaused() public {
+        vm.prank(admin);
+        store.pause();
+        vm.prank(writer);
+        vm.expectRevert();
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS));
+    }
+
+    function test_updateSlippageBatch_skipsDisabledSource() public {
+        // Disable Hyperliquid (bit 1 off, only Lighter = 0x01)
+        vm.prank(admin);
+        store.setEnabledSources(1);
+
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(1, 77));
+
+        // Hyperliquid slot must remain zero (skipped)
+        assertEq(store.getSlippageBySource(1).worstCaseBps, 0);
+    }
+
+    function test_updateSlippageBatch_skipsWhenEnabledSourcesIsZero() public {
+        vm.prank(admin);
+        store.setEnabledSources(0);
+
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS));
+
+        // Nothing written
+        assertEq(store.getSlippage().worstCaseBps, 0);
+    }
+
+    function test_updateSlippageBatch_rateLimitSkipsNotReverts() public {
+        // First write succeeds
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS));
+
+        // Within interval, below deviation threshold → skipped silently (no revert)
+        vm.warp(block.timestamp + 10);
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS)); // same bps
+
+        // worstCaseBps unchanged
+        assertEq(store.getSlippage().worstCaseBps, WORST_BPS);
+    }
+
+    function test_updateSlippageBatch_deviationBypassesRateLimit() public {
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(0, WORST_BPS));
+
+        uint16 newBps = uint16(WORST_BPS + DEVIATION_THRESHOLD + 1);
+        vm.warp(block.timestamp + 10);
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(0, newBps));
+
+        assertEq(store.getSlippage().worstCaseBps, newBps);
+    }
+
+    // =========================================================================
+    // getSlippageBySource — view queries
+    // =========================================================================
+
+    function test_getSlippageBySource_zeroForUninitializedSource() public view {
+        ISlippageStorage.SlippageSnapshot memory snap = store.getSlippageBySource(1);
+        assertEq(snap.worstCaseBps, 0);
+        assertEq(snap.timestamp, 0);
+    }
+
+    function test_getSlippageBySource_lighterEqualsGetSlippage() public {
+        vm.prank(writer);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, [uint16(1), 2, 3, 4, 5]);
+
+        ISlippageStorage.SlippageSnapshot memory bySource = store.getSlippageBySource(0);
+        ISlippageStorage.SlippageSnapshot memory legacy    = store.getSlippage();
+        assertEq(bySource.worstCaseBps, legacy.worstCaseBps);
+        assertEq(bySource.timestamp,    legacy.timestamp);
+    }
+
+    // =========================================================================
+    // getSlippageAgeBySource
+    // =========================================================================
+
+    function test_getSlippageAgeBySource_zeroForUninitializedSource() public view {
+        assertEq(store.getSlippageAgeBySource(1), 0);
+    }
+
+    function test_getSlippageAgeBySource_returnsElapsedTime() public {
+        vm.prank(writer);
+        store.updateSlippageBatch(_makeBatch(1, 33));
+
+        vm.warp(block.timestamp + 120);
+        assertEq(store.getSlippageAgeBySource(1), 120);
+    }
+
+    function test_getSlippageAgeBySource_lighterEqualsGetSlippageAge() public {
+        vm.prank(writer);
+        store.updateSlippage(MID_PRICE, DEPTH_EUR, WORST_BPS, SPREAD_BPS, [uint16(1), 2, 3, 4, 5]);
+
+        vm.warp(block.timestamp + 30);
+        assertEq(store.getSlippageAgeBySource(0), store.getSlippageAge());
     }
 }
 

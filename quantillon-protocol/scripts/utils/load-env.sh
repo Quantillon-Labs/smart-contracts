@@ -16,10 +16,6 @@ NC='\033[0m' # No Color
 is_sourceable_env_file() {
     local env_file="$1"
 
-    if LC_ALL=C grep -q '[^[:print:][:space:]]' "$env_file" 2>/dev/null; then
-        return 1
-    fi
-
     while IFS= read -r line || [ -n "$line" ]; do
         local trimmed_line="${line#"${line%%[![:space:]]*}"}"
 

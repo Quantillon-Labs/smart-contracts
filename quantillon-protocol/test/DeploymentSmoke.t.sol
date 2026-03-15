@@ -186,6 +186,10 @@ contract DeploymentSmokeTest is Test {
         stQEUROToken stImpl = new stQEUROToken(timeProvider);
         bytes memory stInit = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro",
+            "stQEURO",
+            uint256(1),
+            address(0x999), // mock vault address
             admin,
             address(qeuroToken),
             address(yieldShift),

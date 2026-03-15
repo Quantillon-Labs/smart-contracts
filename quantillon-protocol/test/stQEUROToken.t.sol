@@ -117,6 +117,10 @@ contract stQEUROTokenTestSuite is Test {
         // Deploy proxy with initialization
         bytes memory initData = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro",
+            "stQEURO",
+            uint256(1),
+            address(0x999), // mock vault address
             admin,
             mockQEURO,
             mockYieldShift,
@@ -281,9 +285,12 @@ contract stQEUROTokenTestSuite is Test {
         
         stQEUROToken testImplementation = new stQEUROToken(timeProvider2);
         
+        address mockVault = address(0x999);
+
         // Test with zero admin
         bytes memory initData1 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro", "stQEURO", uint256(1), mockVault,
             address(0),
             mockQEURO,
             mockYieldShift,
@@ -291,13 +298,14 @@ contract stQEUROTokenTestSuite is Test {
             treasury,
             mockTimelock
         );
-        
+
         vm.expectRevert(CommonErrorLibrary.InvalidAdmin.selector);
         new ERC1967Proxy(address(testImplementation), initData1);
-        
+
         // Test with zero QEURO
         bytes memory initData2 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro", "stQEURO", uint256(1), mockVault,
             admin,
             address(0),
             mockYieldShift,
@@ -305,13 +313,14 @@ contract stQEUROTokenTestSuite is Test {
             treasury,
             mockTimelock
         );
-        
+
         vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData2);
-        
+
         // Test with zero YieldShift
         bytes memory initData3 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro", "stQEURO", uint256(1), mockVault,
             admin,
             mockQEURO,
             address(0),
@@ -319,13 +328,14 @@ contract stQEUROTokenTestSuite is Test {
             treasury,
             mockTimelock
         );
-        
+
         vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData3);
-        
+
         // Test with zero USDC
         bytes memory initData4 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro", "stQEURO", uint256(1), mockVault,
             admin,
             mockQEURO,
             mockYieldShift,
@@ -333,13 +343,14 @@ contract stQEUROTokenTestSuite is Test {
             treasury,
             mockTimelock
         );
-        
+
         vm.expectRevert(CommonErrorLibrary.InvalidToken.selector);
         new ERC1967Proxy(address(testImplementation), initData4);
-        
+
         // Test with zero treasury
         bytes memory initData5 = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro", "stQEURO", uint256(1), mockVault,
             admin,
             mockQEURO,
             mockYieldShift,
@@ -347,9 +358,24 @@ contract stQEUROTokenTestSuite is Test {
             address(0),
             mockTimelock
         );
-        
+
         vm.expectRevert(CommonErrorLibrary.InvalidTreasury.selector);
         new ERC1967Proxy(address(testImplementation), initData5);
+
+        // Test with zero vault
+        bytes memory initData6 = abi.encodeWithSelector(
+            stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro", "stQEURO", uint256(1), address(0),
+            admin,
+            mockQEURO,
+            mockYieldShift,
+            mockUSDC,
+            treasury,
+            mockTimelock
+        );
+
+        vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
+        new ERC1967Proxy(address(testImplementation), initData6);
     }
     
     /**
@@ -367,7 +393,7 @@ contract stQEUROTokenTestSuite is Test {
     function test_Initialization_CalledTwice_Revert() public {
         // Try to call initialize again on the proxy
         vm.expectRevert();
-        stQEURO.initialize(admin, mockQEURO, mockYieldShift, mockUSDC, treasury, mockTimelock);
+        stQEURO.initialize("Staked Quantillon Euro", "stQEURO", 1, address(0x999), admin, mockQEURO, mockYieldShift, mockUSDC, treasury, mockTimelock);
     }
 
     // =============================================================================

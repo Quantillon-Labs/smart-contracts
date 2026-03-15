@@ -196,14 +196,26 @@ contract stQEUROToken is
     /// @notice Virtual shares to prevent exchange rate manipulation
     /// @dev Prevents donation attacks by maintaining minimum share value
     uint256 private constant VIRTUAL_SHARES = 1e8;
-    
+
     /// @notice Virtual assets to prevent exchange rate manipulation
     /// @dev Prevents donation attacks by maintaining minimum asset value
     uint256 private constant VIRTUAL_ASSETS = 1e8;
-    
+
     /// @notice Maximum batch size for staking operations to prevent DoS
     /// @dev Prevents out-of-gas attacks through large arrays
     uint256 public constant MAX_BATCH_SIZE = 100;
+
+    // =============================================================================
+    // VAULT IDENTITY - Per-vault token identification
+    // =============================================================================
+
+    /// @notice Numeric identifier of the staking vault this token belongs to
+    /// @dev Set at initialization; used to distinguish tokens across vaults (e.g., 1 for stQEURO1)
+    uint256 public vaultId;
+
+    /// @notice Address of the staking vault this token is associated with
+    /// @dev Set at initialization; reverse-lookup anchor for factory registry queries
+    address public associatedVault;
 
     // =============================================================================
     // EVENTS - Events for tracking and monitoring
@@ -311,7 +323,14 @@ contract stQEUROToken is
 
     /**
      * @notice Initialize the stQEURO token contract
-     * @dev Sets up the contract with all required addresses and roles
+     * @dev Sets up the contract with all required addresses and roles.
+     *      The ERC20 name and symbol are supplied at initialization time so
+     *      that each vault can have its own uniquely identified token
+     *      (e.g., "Staked QEURO Vault 1" / "stQEURO1").
+     * @param name ERC20 token name for this staking token (e.g., "Staked QEURO Vault 1")
+     * @param symbol ERC20 token symbol for this staking token (e.g., "stQEURO1")
+     * @param _vaultId Numeric identifier of the staking vault this token belongs to
+     * @param _vault Address of the staking vault this token is associated with
      * @param admin Address of the admin role
      * @param _qeuro Address of the QEURO token contract
      * @param _yieldShift Address of the YieldShift contract
@@ -320,7 +339,7 @@ contract stQEUROToken is
      * @param _timelock Address of the timelock contract
      * @custom:security Validates all addresses are not zero
      * @custom:validation Validates all input addresses
-     * @custom:state-changes Initializes ERC20, AccessControl, and Pausable
+     * @custom:state-changes Initializes ERC20, AccessControl, and Pausable; sets vaultId and associatedVault
      * @custom:events Emits initialization events
      * @custom:errors Throws if any address is zero
      * @custom:reentrancy Protected by initializer modifier
@@ -328,6 +347,10 @@ contract stQEUROToken is
      * @custom:oracle No oracle dependencies
      */
     function initialize(
+        string calldata name,
+        string calldata symbol,
+        uint256 _vaultId,
+        address _vault,
         address admin,
         address _qeuro,
         address _yieldShift,
@@ -340,8 +363,9 @@ contract stQEUROToken is
         CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
         CommonValidationLibrary.validateNonZeroAddress(_usdc, "token");
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        CommonValidationLibrary.validateNonZeroAddress(_vault, "vault");
 
-        __ERC20_init("Staked Quantillon Euro", "stQEURO");
+        __ERC20_init(name, symbol);
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
@@ -359,6 +383,9 @@ contract stQEUROToken is
         CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
+
+        vaultId = _vaultId;
+        associatedVault = _vault;
 
         // Initialize exchange rate at 1:1
         exchangeRate = 1e18;

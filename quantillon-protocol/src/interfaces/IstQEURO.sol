@@ -10,7 +10,13 @@ pragma solidity 0.8.24;
 interface IstQEURO {
     /**
      * @notice Initializes the stQEURO token
-     * @dev Sets up the stQEURO token with initial configuration and assigns roles to admin
+     * @dev Sets up the stQEURO token with initial configuration and assigns roles to admin.
+     *      The ERC20 name and symbol are supplied at initialization so that each staking vault
+     *      can have its own uniquely identified token (e.g., "Staked QEURO Vault 1" / "stQEURO1").
+     * @param name ERC20 token name for this staking token (e.g., "Staked QEURO Vault 1")
+     * @param symbol ERC20 token symbol for this staking token (e.g., "stQEURO1")
+     * @param _vaultId Numeric identifier of the staking vault this token belongs to
+     * @param _vault Address of the staking vault this token is associated with
      * @param admin Admin address
      * @param _qeuro QEURO token address
      * @param _yieldShift YieldShift contract address
@@ -19,7 +25,7 @@ interface IstQEURO {
      * @param timelock Timelock contract address
      * @custom:security Validates all addresses are not zero and initializes roles
      * @custom:validation Validates admin is not address(0), all contract addresses are valid
-     * @custom:state-changes Initializes roles, sets contract addresses, enables staking
+     * @custom:state-changes Initializes roles, sets contract addresses, sets vaultId and associatedVault
      * @custom:events Emits role assignment and initialization events
      * @custom:errors Throws InvalidAddress if any address is zero
      * @custom:reentrancy Protected by onlyInitializing modifier
@@ -27,6 +33,10 @@ interface IstQEURO {
      * @custom:oracle No oracle dependencies
      */
     function initialize(
+        string calldata name,
+        string calldata symbol,
+        uint256 _vaultId,
+        address _vault,
         address admin,
         address _qeuro,
         address _yieldShift,
@@ -34,6 +44,18 @@ interface IstQEURO {
         address _treasury,
         address timelock
     ) external;
+
+    /**
+     * @notice Returns the numeric vault ID this staking token is associated with
+     * @return The vault ID set at initialization
+     */
+    function vaultId() external view returns (uint256);
+
+    /**
+     * @notice Returns the staking vault address this token is associated with
+     * @return The vault address set at initialization
+     */
+    function associatedVault() external view returns (address);
 
     /**
      * @notice Stake QEURO to receive stQEURO

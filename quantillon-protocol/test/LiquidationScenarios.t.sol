@@ -155,6 +155,10 @@ contract LiquidationScenarios is IntegrationTests {
         stQEUROToken stQEUROImpl = new stQEUROToken(timeProvider);
         bytes memory stQEUROInitData = abi.encodeWithSelector(
             stQEUROToken.initialize.selector,
+            "Staked Quantillon Euro",
+            "stQEURO",
+            uint256(1),
+            address(0x999), // mock vault address
             admin,
             address(qeuroToken),
             address(yieldShift),

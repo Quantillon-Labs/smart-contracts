@@ -24,6 +24,7 @@ import {IOracle} from "../interfaces/IOracle.sol";
 import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
 import {IUserPool} from "../interfaces/IUserPool.sol";
 import {IAaveVault} from "../interfaces/IAaveVault.sol";
+import {IStQEUROFactory} from "../interfaces/IStQEUROFactory.sol";
 import {FeeCollector} from "./FeeCollector.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
@@ -193,6 +194,15 @@ contract QuantillonVault is
     /// @notice Total USDC deployed to Aave for yield generation
     /// @dev Tracks USDC that has been sent to AaveVault
     uint256 public totalUsdcInAave;
+
+    /// @notice stQEURO factory used to register this vault's staking token.
+    address public stQEUROFactory;
+
+    /// @notice stQEURO token address registered for this vault.
+    address public stQEUROToken;
+
+    /// @notice Registry id used when creating this vault's stQEURO token.
+    uint256 public stQEUROVaultId;
 
     // Protocol parameters (configurable by governance)
     
@@ -385,6 +395,12 @@ contract QuantillonVault is
     /// @param oldAaveVault Previous AaveVault address
     /// @param newAaveVault New AaveVault address
     event AaveVaultUpdated(address indexed oldAaveVault, address indexed newAaveVault);
+    event StQEURORegistered(
+        address indexed factory,
+        uint256 indexed vaultId,
+        address indexed stQEUROToken,
+        string vaultName
+    );
 
     /// @notice Emitted when USDC is deployed to Aave for yield generation
     /// @param usdcAmount Amount of USDC deployed to Aave
@@ -1458,6 +1474,32 @@ contract QuantillonVault is
         address oldAaveVault = address(aaveVault);
         aaveVault = IAaveVault(_aaveVault);
         emit AaveVaultUpdated(oldAaveVault, _aaveVault);
+    }
+
+    /**
+     * @notice Registers this vault in stQEUROFactory using strict self-call semantics.
+     * @param factory Address of stQEUROFactory.
+     * @param vaultId Desired vault id in the factory registry.
+     * @param vaultName Uppercase alphanumeric vault name.
+     * @return token Newly deployed stQEURO token address.
+     */
+    function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata vaultName)
+        external
+        onlyRole(GOVERNANCE_ROLE)
+        returns (address token)
+    {
+        CommonValidationLibrary.validateNonZeroAddress(factory, "token");
+        if (stQEUROToken != address(0)) revert CommonErrorLibrary.AlreadyInitialized();
+        if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
+
+        token = IStQEUROFactory(factory).registerVault(vaultId, vaultName);
+        if (token == address(0)) revert CommonErrorLibrary.InvalidAddress();
+
+        stQEUROFactory = factory;
+        stQEUROToken = token;
+        stQEUROVaultId = vaultId;
+
+        emit StQEURORegistered(factory, vaultId, token, vaultName);
     }
 
     /**

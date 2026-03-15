@@ -244,6 +244,7 @@ contract AaveVault is
     uint256 public totalFeesCollected;
     uint256 public utilizationLimit;
     uint256 public emergencyExitThreshold;
+    uint256 public yieldVaultId;
     bool public emergencyMode;
     address public treasury;
 
@@ -337,6 +338,7 @@ contract AaveVault is
         rebalanceThreshold = 500;
         utilizationLimit = 9500;
         emergencyExitThreshold = 110;
+        yieldVaultId = 0;
         
         lastHarvestTime = block.timestamp;
     }
@@ -674,9 +676,10 @@ contract AaveVault is
         // This provides reentrancy protection. Any slippage is handled by validation above.
         
         if (netYield > 0) {
+            if (yieldVaultId == 0) revert CommonErrorLibrary.InvalidVault();
             usdc.safeIncreaseAllowance(address(yieldShift), netYield);
             // forge-lint: disable-next-line(unsafe-typecast)
-            yieldShift.addYield(netYield, bytes32("aave"));
+            yieldShift.addYield(yieldVaultId, netYield, bytes32("aave"));
         }
         
         emit AaveYieldHarvested("harvest", actualYieldReceived, protocolFee, netYield);
@@ -1109,6 +1112,32 @@ contract AaveVault is
         harvestThreshold = newHarvestThreshold;
         yieldFee = newYieldFee;
         rebalanceThreshold = newRebalanceThreshold;
+    }
+
+    /**
+     * @notice Updates the YieldShift contract reference.
+     * @param newYieldShift New YieldShift contract address.
+     */
+    function updateYieldShift(address newYieldShift) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(newYieldShift);
+
+        address oldYieldShift = address(yieldShift);
+        yieldShift = IYieldShift(newYieldShift);
+        emit AaveParameterUpdated("yieldShift", uint256(uint160(oldYieldShift)), uint256(uint160(newYieldShift)));
+    }
+
+    /**
+     * @notice Sets the vault id used when routing harvested yield via YieldShift.
+     * @param newYieldVaultId Target vault id in stQEUROFactory.
+     */
+    function setYieldVaultId(uint256 newYieldVaultId) external {
+        AccessControlLibrary.onlyGovernance(this);
+        if (newYieldVaultId == 0) revert CommonErrorLibrary.InvalidVault();
+
+        uint256 oldYieldVaultId = yieldVaultId;
+        yieldVaultId = newYieldVaultId;
+        emit AaveParameterUpdated("yieldVaultId", oldYieldVaultId, newYieldVaultId);
     }
 
     /**

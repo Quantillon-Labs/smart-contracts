@@ -17,6 +17,7 @@ This document provides detailed technical specifications for all Quantillon Prot
 | QTIToken | `0x...` | Base Mainnet |
 | UserPool | `0x...` | Base Mainnet |
 | HedgerPool | `0x...` | Base Mainnet |
+| stQEUROFactory | `0x...` | Base Mainnet |
 | stQEUROToken | `0x...` | Base Mainnet |
 | AaveVault | `0x...` | Base Mainnet |
 | YieldShift | `0x...` | Base Mainnet |
@@ -516,6 +517,57 @@ Batch governance setter for:
 
 ---
 
+## stQEUROFactory
+
+**Contract**: `stQEUROFactory.sol`  
+**Interface**: `IStQEUROFactory.sol`  
+**Inherits**: `AccessControlUpgradeable`, `SecureUpgradeable`
+
+### Function Signatures
+
+#### `registerVault(uint256 vaultId, string vaultName) -> (address stQEUROToken_)`
+```solidity
+function registerVault(uint256 vaultId, string calldata vaultName) external returns (address stQEUROToken_);
+```
+
+**Modifiers**: `onlyRole(VAULT_FACTORY_ROLE)`  
+**Events**: `VaultRegistered(uint256 indexed vaultId, address indexed vault, address indexed stQEUROToken, string vaultName)`  
+**Requirements**:
+- `vaultId > 0`
+- `vaultName` uppercase alphanumeric with length `1..12`
+- unique `vaultId`, unique caller vault, unique `vaultName`
+- strict self-registration semantics: caller vault is inferred from `msg.sender`
+
+#### `getStQEUROByVaultId(uint256 vaultId) -> (address)`
+```solidity
+function getStQEUROByVaultId(uint256 vaultId) external view returns (address stQEUROToken_);
+```
+
+#### `getStQEUROByVault(address vault) -> (address)`
+```solidity
+function getStQEUROByVault(address vault) external view returns (address stQEUROToken_);
+```
+
+#### `getVaultById(uint256 vaultId) -> (address)`
+```solidity
+function getVaultById(uint256 vaultId) external view returns (address vault);
+```
+
+#### `getVaultIdByStQEURO(address stQEUROToken_) -> (uint256)`
+```solidity
+function getVaultIdByStQEURO(address stQEUROToken_) external view returns (uint256 vaultId);
+```
+
+#### `getVaultName(uint256 vaultId) -> (string)`
+```solidity
+function getVaultName(uint256 vaultId) external view returns (string memory vaultName);
+```
+
+#### `updateYieldShift(address)` / `updateTokenImplementation(address)` / `updateOracle(address)` / `updateTreasury(address)` / `updateTokenAdmin(address)`
+Governance configuration setters affecting future vault token deployments and defaults.
+
+---
+
 ## stQEUROToken
 
 **Contract**: `stQEUROToken.sol`  
@@ -577,6 +629,14 @@ function distributeYield(uint256 qeuroAmount) external
 - `qeuroAmount > 0`
 - Sufficient QEURO balance
 
+#### `initialize(...)` (metadata overload for factory)
+`stQEUROToken` now supports an overloaded initializer that accepts:
+- `tokenName`
+- `tokenSymbol`
+- `vaultName`
+
+This overload is used by `stQEUROFactory` when deploying a dedicated proxy per vault.
+
 ---
 
 ## AaveVault
@@ -614,6 +674,25 @@ function harvestAaveYield() external returns (uint256 yieldAmount)
 
 **Modifiers**: `onlyRole(YIELD_MANAGER_ROLE)`, `whenNotPaused`, `nonReentrant`  
 **Events**: `AaveYieldHarvested(uint256 amount)`
+**Notes**:
+- Reverts if `yieldVaultId == 0`
+- Routes harvested amount through `yieldShift.addYield(yieldVaultId, netYield, bytes32("aave"))`
+
+#### `setYieldVaultId(uint256 newYieldVaultId)`
+```solidity
+function setYieldVaultId(uint256 newYieldVaultId) external
+```
+
+**Modifiers**: `onlyRole(GOVERNANCE_ROLE)`  
+**Requirements**:
+- `newYieldVaultId > 0`
+
+#### `updateYieldShift(address newYieldShift)`
+```solidity
+function updateYieldShift(address newYieldShift) external
+```
+
+**Modifiers**: `onlyRole(GOVERNANCE_ROLE)`
 
 #### `getAaveBalance() → (uint256)`
 ```solidity
@@ -646,14 +725,15 @@ function autoRebalance() external returns (
 
 ### Function Signatures
 
-#### `addYield(uint256 yieldAmount, bytes32 source)`
+#### `addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source)`
 ```solidity
-function addYield(uint256 yieldAmount, bytes32 source) external
+function addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source) external
 ```
 
 **Modifiers**: `onlyAuthorizedYieldSource`, `whenNotPaused`, `nonReentrant`  
 **Events**: `YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp)`  
 **Requirements**:
+- `vaultId > 0` and vault must be registered in `stQEUROFactory`
 - `yieldAmount > 0`
 - Sufficient USDC balance and allowance
 
@@ -711,7 +791,7 @@ Batch governance setter for:
 - `userPool`
 - `hedgerPool`
 - `aaveVault`
-- `stQEURO`
+- `stQEUROFactory`
 - `treasury`
 
 #### `setYieldSourceAuthorization(address source, bytes32 yieldType, bool authorized)`

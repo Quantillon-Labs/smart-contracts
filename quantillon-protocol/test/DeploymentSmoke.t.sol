@@ -185,7 +185,7 @@ contract DeploymentSmokeTest is Test {
         // stQEURO
         stQEUROToken stImpl = new stQEUROToken(timeProvider);
         bytes memory stInit = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             address(qeuroToken),
             address(yieldShift),
@@ -256,7 +256,7 @@ contract DeploymentSmokeTest is Test {
                 userPool: address(userPool),
                 hedgerPool: address(hedgerPool),
                 aaveVault: address(vault),
-                stQEURO: address(stQEURO),
+                stQEUROFactory: address(stQEURO),
                 treasury: treasury
             })
         );

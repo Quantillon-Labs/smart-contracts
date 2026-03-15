@@ -267,7 +267,7 @@ contract QuantillonInvariants is Test {
         // Deploy stQEURO
         stQEUROToken stQEUROImpl = new stQEUROToken(timeProvider);
         bytes memory stQEUROInitData = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             address(qeuroToken),
             address(yieldShift),
@@ -318,7 +318,7 @@ contract QuantillonInvariants is Test {
                 userPool: address(userPool),
                 hedgerPool: address(hedgerPool),
                 aaveVault: address(vault),
-                stQEURO: address(stQEURO),
+                stQEUROFactory: address(stQEURO),
                 treasury: treasury
             })
         );

@@ -352,6 +352,18 @@ contract MockStQEURO {
     }
 }
 
+contract MockStQEUROFactory {
+    mapping(uint256 => address) public tokenByVaultId;
+
+    function setVaultToken(uint256 vaultId, address token) external {
+        tokenByVaultId[vaultId] = token;
+    }
+
+    function getStQEUROByVaultId(uint256 vaultId) external view returns (address) {
+        return tokenByVaultId[vaultId];
+    }
+}
+
 /**
  * @title YieldShiftTestSuite
  * @notice Comprehensive test suite for the YieldShift contract
@@ -414,6 +426,7 @@ contract YieldShiftTestSuite is Test {
     MockHedgerPool public hedgerPool;
     MockAaveVault public aaveVault;
     MockStQEURO public stQEURO;
+    MockStQEUROFactory public stQEUROFactory;
 
     // =============================================================================
     // SETUP AND TEARDOWN
@@ -443,6 +456,8 @@ contract YieldShiftTestSuite is Test {
         hedgerPool = new MockHedgerPool();
         aaveVault = new MockAaveVault();
         stQEURO = new MockStQEURO();
+        stQEUROFactory = new MockStQEUROFactory();
+        stQEUROFactory.setVaultToken(1, address(stQEURO));
         
         // Deploy TimeProvider through proxy
         TimeProvider timeProviderImpl = new TimeProvider();
@@ -466,7 +481,7 @@ contract YieldShiftTestSuite is Test {
             address(userPool),
             address(hedgerPool),
             address(aaveVault),
-            address(stQEURO),
+            address(stQEUROFactory),
             mockTimelock,
             admin // Use admin as treasury for testing
         );
@@ -647,7 +662,7 @@ contract YieldShiftTestSuite is Test {
             address(userPool),
             address(hedgerPool),
             address(aaveVault),
-            address(stQEURO),
+            address(stQEUROFactory),
             mockTimelock,
             admin
         );
@@ -688,7 +703,7 @@ contract YieldShiftTestSuite is Test {
             address(userPool),
             address(hedgerPool),
             address(aaveVault),
-            address(stQEURO),
+            address(stQEUROFactory),
             mockTimelock,
             admin
         );
@@ -733,7 +748,7 @@ contract YieldShiftTestSuite is Test {
         
         // Add yield
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         // Check that total yield was increased
         assertEq(yieldShift.totalYieldGenerated(), initialTotalYield + yieldAmount);
@@ -761,7 +776,7 @@ contract YieldShiftTestSuite is Test {
         
         vm.prank(user);
         vm.expectRevert();
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
     }
     
     /**
@@ -783,7 +798,7 @@ contract YieldShiftTestSuite is Test {
         
         vm.prank(yieldManager);
         vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
-        yieldShift.addYield(0, keccak256("test_source"));
+        yieldShift.addYield(1, 0, keccak256("test_source"));
     }
 
     /**
@@ -804,7 +819,7 @@ contract YieldShiftTestSuite is Test {
         // Try to add yield without being authorized
         vm.prank(user);
         vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
     }
 
     /**
@@ -832,7 +847,7 @@ contract YieldShiftTestSuite is Test {
         // Try to add yield without having USDC
         vm.prank(userWithoutUSDC);
         vm.expectRevert("Insufficient balance");
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
     }
 
     /**
@@ -867,7 +882,7 @@ contract YieldShiftTestSuite is Test {
         
         // Add yield successfully
         vm.prank(user);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         // Check that total yield was increased
         assertEq(yieldShift.totalYieldGenerated(), initialTotalYield + yieldAmount);
@@ -926,7 +941,7 @@ contract YieldShiftTestSuite is Test {
         uint256 yieldAmount = 2000 * 1e6; // 2K USDC (more than we'll allocate)
         
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         // Now allocate a portion to user
         uint256 userAllocation = 1000 * 1e6; // 1K USDC
@@ -968,7 +983,7 @@ contract YieldShiftTestSuite is Test {
         uint256 yieldAmount = 2000 * 1e6; // 2K USDC (more than we'll allocate)
         
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         // Now allocate a portion to hedger
         uint256 hedgerAllocation = 1000 * 1e6; // 1K USDC
@@ -1010,7 +1025,7 @@ contract YieldShiftTestSuite is Test {
         uint256 yieldAmount = 1000 * 1e6;
         
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         vm.prank(yieldManager);
         yieldShift.updateYieldAllocation(user, yieldAmount, true);
@@ -1042,7 +1057,7 @@ contract YieldShiftTestSuite is Test {
         uint256 yieldAmount = 1000 * 1e6;
         
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         vm.prank(yieldManager);
         yieldShift.updateYieldAllocation(user, yieldAmount, true);
@@ -1104,13 +1119,13 @@ contract YieldShiftTestSuite is Test {
         uint256 interestDifferential = 2000 * 1e6;
         
         vm.prank(address(aaveVault));
-        yieldShift.addYield(aaveYield, keccak256("aave"));
+        yieldShift.addYield(1, aaveYield, keccak256("aave"));
         
         vm.prank(user);
-        yieldShift.addYield(protocolFees, keccak256("fees"));
+        yieldShift.addYield(1, protocolFees, keccak256("fees"));
         
         vm.prank(hedger);
-        yieldShift.addYield(interestDifferential, keccak256("interest_differential"));
+        yieldShift.addYield(1, interestDifferential, keccak256("interest_differential"));
         
         // Get yield sources breakdown
         (uint256 aaveYield_, uint256 protocolFees_, uint256 interestDifferential_, uint256 otherSources) = yieldShift.getYieldSources();
@@ -1273,7 +1288,7 @@ contract YieldShiftTestSuite is Test {
             userPool: address(0),
             hedgerPool: address(hedgerPool),
             aaveVault: address(aaveVault),
-            stQEURO: address(stQEURO),
+            stQEUROFactory: address(stQEUROFactory),
             treasury: admin
         });
 
@@ -1317,7 +1332,7 @@ contract YieldShiftTestSuite is Test {
         uint256 yieldAmount = 10000 * 1e6;
         
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         uint256 userAmount = 3000 * 1e6;
         uint256 hedgerAmount = 2000 * 1e6;
@@ -1448,7 +1463,7 @@ contract YieldShiftTestSuite is Test {
         
         // 2. Test that we can add yield manually using the authorized aaveVault
         vm.prank(address(aaveVault));
-        yieldShift.addYield(aaveYield, keccak256("aave"));
+        yieldShift.addYield(1, aaveYield, keccak256("aave"));
         
         // Check that yield was added
         assertEq(yieldShift.totalYieldGenerated(), initialTotalYield + aaveYield);
@@ -1561,7 +1576,7 @@ contract YieldShiftTestSuite is Test {
         uint256 yieldAmount = 10000 * 1e6;
         
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         // Get breakdown
         (uint256 userYieldPool, uint256 hedgerYieldPool, uint256 distributionRatio) = yieldShift.getYieldDistributionBreakdown();
@@ -1593,7 +1608,7 @@ contract YieldShiftTestSuite is Test {
         uint256 yieldAmount = 10000 * 1e6;
         
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         // Allocate some yield to users
         vm.prank(yieldManager);
@@ -1745,10 +1760,10 @@ contract YieldShiftTestSuite is Test {
         uint256 protocolFees = 3000 * 1e6;
         
         vm.prank(address(aaveVault));
-        yieldShift.addYield(aaveYield, keccak256("aave"));
+        yieldShift.addYield(1, aaveYield, keccak256("aave"));
         
         vm.prank(user);
-        yieldShift.addYield(protocolFees, keccak256("fees"));
+        yieldShift.addYield(1, protocolFees, keccak256("fees"));
         
         // 2. Allocate yield to users and hedgers (skip updateYieldDistribution to avoid TWAP issues)
         vm.prank(yieldManager);
@@ -1796,7 +1811,7 @@ contract YieldShiftTestSuite is Test {
         
         // Add yield
         vm.prank(yieldManager);
-        yieldShift.addYield(10000 * 1e6, keccak256("test_source"));
+        yieldShift.addYield(1, 10000 * 1e6, keccak256("test_source"));
         
         // Create imbalance: user pool becomes larger
         userPool.setTotalDeposits(2000000 * 1e6); // 2M USDC
@@ -2209,7 +2224,7 @@ contract YieldShiftTestSuite is Test {
         // Test that addYield works
         uint256 yieldAmount = 10000 * 1e6;
         vm.prank(yieldManager);
-        yieldShift.addYield(yieldAmount, keccak256("test_source"));
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         // Verify yield was added
         assertEq(yieldShift.totalYieldGenerated(), yieldAmount);

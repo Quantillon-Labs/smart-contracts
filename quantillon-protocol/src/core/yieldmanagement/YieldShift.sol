@@ -13,6 +13,7 @@ import {IUserPool} from "../../interfaces/IUserPool.sol";
 import {IHedgerPool} from "../../interfaces/IHedgerPool.sol";
 import {IAaveVault} from "../../interfaces/IAaveVault.sol";
 import {IstQEURO} from "../../interfaces/IstQEURO.sol";
+import {IStQEUROFactory} from "../../interfaces/IStQEUROFactory.sol";
 import {VaultMath} from "../../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../../libraries/CommonErrorLibrary.sol";
 import {YieldValidationLibrary} from "../../libraries/YieldValidationLibrary.sol";
@@ -117,7 +118,7 @@ contract YieldShift is
     IUserPool public userPool;
     IHedgerPool public hedgerPool;
     IAaveVault public aaveVault;
-    IstQEURO public stQEURO;
+    IStQEUROFactory public stQEUROFactory;
 
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
@@ -184,7 +185,7 @@ contract YieldShift is
         address userPool;
         address hedgerPool;
         address aaveVault;
-        address stQEURO;
+        address stQEUROFactory;
         address treasury;
     }
 
@@ -228,7 +229,7 @@ contract YieldShift is
      * @param _userPool Address of the user pool contract
      * @param _hedgerPool Address of the hedger pool contract
      * @param _aaveVault Address of the Aave vault contract
-     * @param _stQEURO Address of the stQEURO token contract
+     * @param _stQEUROFactory Address of the stQEURO factory contract
      * @param _timelock Address of the timelock contract
      * @param _treasury Address of the treasury
      * @custom:security Validates all addresses are not zero
@@ -246,7 +247,7 @@ contract YieldShift is
         address _userPool,
         address _hedgerPool,
         address _aaveVault,
-        address _stQEURO,
+        address _stQEUROFactory,
         address _timelock,
         address _treasury
     ) public initializer {
@@ -279,9 +280,9 @@ contract YieldShift is
             AccessControlLibrary.validateAddress(_aaveVault);
             aaveVault = IAaveVault(_aaveVault);
         }
-        if (_stQEURO != address(0)) {
-            AccessControlLibrary.validateAddress(_stQEURO);
-            stQEURO = IstQEURO(_stQEURO);
+        if (_stQEUROFactory != address(0)) {
+            AccessControlLibrary.validateAddress(_stQEUROFactory);
+            stQEUROFactory = IStQEUROFactory(_stQEUROFactory);
         }
         if (_treasury != address(0)) {
             YieldValidationLibrary.validateTreasuryAddress(_treasury);
@@ -367,6 +368,7 @@ contract YieldShift is
     /**
      * @notice Add yield from authorized sources
      * @dev Adds yield from authorized sources and distributes it according to current yield shift
+     * @param vaultId Registered vault identifier used to resolve the target stQEURO token
      * @param yieldAmount Amount of yield to add (6 decimals)
      * @param source Source identifier for the yield
      * @custom:security Validates caller is authorized for the yield source
@@ -378,7 +380,7 @@ contract YieldShift is
      * @custom:access Restricted to authorized yield sources
      * @custom:oracle No oracle dependencies
      */
-    function addYield(uint256 yieldAmount, bytes32 source) 
+    function addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source) 
         external 
         nonReentrant 
     {
@@ -388,6 +390,7 @@ contract YieldShift is
         }
         
         CommonValidationLibrary.validatePositiveAmount(yieldAmount);
+        if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
         
         // Verify USDC was actually received
         uint256 balanceBefore = usdc.balanceOf(address(this));
@@ -408,8 +411,12 @@ contract YieldShift is
         hedgerYieldPool += hedgerAllocation;
         
         if (userAllocation > 0) {
-            usdc.safeTransfer(address(stQEURO), userAllocation);
-            stQEURO.distributeYield(userAllocation);
+            if (address(stQEUROFactory) == address(0)) revert CommonErrorLibrary.InvalidAddress();
+            address stQEUROAddress = stQEUROFactory.getStQEUROByVaultId(vaultId);
+            if (stQEUROAddress == address(0)) revert CommonErrorLibrary.InvalidVault();
+
+            usdc.safeIncreaseAllowance(stQEUROAddress, userAllocation);
+            IstQEURO(stQEUROAddress).distributeYield(userAllocation);
         }
         
         emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), TIME_PROVIDER.currentTime());
@@ -919,17 +926,17 @@ contract YieldShift is
 
     /**
      * @notice Batch-updates external dependency addresses used for yield distribution.
-     * @dev Wires or re-wires the `userPool`, `hedgerPool`, `aaveVault`, `stQEURO` and `treasury`
+     * @dev Wires or re-wires the `userPool`, `hedgerPool`, `aaveVault`, `stQEUROFactory` and `treasury`
      *      references in a single governance transaction.
      * @param cfg Struct containing the new dependency configuration:
      *        - `userPool`: UserPool contract address.
      *        - `hedgerPool`: HedgerPool contract address.
      *        - `aaveVault`: AaveVault contract address.
-     *        - `stQEURO`: stQEURO token contract address.
+     *        - `stQEUROFactory`: stQEURO factory contract address.
      *        - `treasury`: treasury address receiving recovered funds.
      * @custom:security Only governance may call; validates all addresses are non-zero and sane.
      * @custom:validation Uses `AccessControlLibrary` / `YieldValidationLibrary` to check addresses.
-     * @custom:state-changes Updates `userPool`, `hedgerPool`, `aaveVault`, `stQEURO`, `treasury`.
+     * @custom:state-changes Updates `userPool`, `hedgerPool`, `aaveVault`, `stQEUROFactory`, `treasury`.
      * @custom:events None – downstream contracts emit their own events on meaningful actions.
      * @custom:errors Library validation errors on zero/invalid addresses.
      * @custom:reentrancy Not applicable – no external calls after state updates.
@@ -941,14 +948,14 @@ contract YieldShift is
         AccessControlLibrary.validateAddress(cfg.userPool);
         AccessControlLibrary.validateAddress(cfg.hedgerPool);
         AccessControlLibrary.validateAddress(cfg.aaveVault);
-        AccessControlLibrary.validateAddress(cfg.stQEURO);
+        AccessControlLibrary.validateAddress(cfg.stQEUROFactory);
         YieldValidationLibrary.validateTreasuryAddress(cfg.treasury);
         CommonValidationLibrary.validateNonZeroAddress(cfg.treasury, "treasury");
 
         userPool = IUserPool(cfg.userPool);
         hedgerPool = IHedgerPool(cfg.hedgerPool);
         aaveVault = IAaveVault(cfg.aaveVault);
-        stQEURO = IstQEURO(cfg.stQEURO);
+        stQEUROFactory = IStQEUROFactory(cfg.stQEUROFactory);
         treasury = cfg.treasury;
     }
 

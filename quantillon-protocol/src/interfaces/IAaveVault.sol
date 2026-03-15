@@ -347,6 +347,18 @@ interface IAaveVault {
     function updateAaveParameters(uint256 newHarvestThreshold, uint256 newYieldFee, uint256 newRebalanceThreshold) external;
 
     /**
+     * @notice Updates the YieldShift dependency address.
+     * @param newYieldShift New YieldShift address.
+     */
+    function updateYieldShift(address newYieldShift) external;
+
+    /**
+     * @notice Sets the target vault id used for YieldShift routing.
+     * @param newYieldVaultId Vault id in stQEUROFactory.
+     */
+    function setYieldVaultId(uint256 newYieldVaultId) external;
+
+    /**
      * @notice Aave config snapshot
      * @dev Returns current Aave configuration including pool address, token address, and key parameters
      * @return aavePool_ Aave Pool address
@@ -756,6 +768,11 @@ interface IAaveVault {
      * @custom:oracle Requires fresh oracle price data
      */
     function yieldFee() external view returns (uint256);
+    /**
+     * @notice Returns the configured YieldShift vault id used by this Aave vault.
+     * @return uint256 The target vault id.
+     */
+    function yieldVaultId() external view returns (uint256);
     /**
      * @notice Get the rebalance threshold
      * @dev Returns the threshold for triggering rebalancing

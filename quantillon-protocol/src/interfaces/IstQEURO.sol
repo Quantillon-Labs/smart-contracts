@@ -36,6 +36,21 @@ interface IstQEURO {
     ) external;
 
     /**
+     * @notice Initializes the stQEURO token with dynamic metadata for a vault.
+     */
+    function initialize(
+        address admin,
+        address _qeuro,
+        address _yieldShift,
+        address _usdc,
+        address _treasury,
+        address timelock,
+        string calldata _tokenName,
+        string calldata _tokenSymbol,
+        string calldata _vaultName
+    ) external;
+
+    /**
      * @notice Stake QEURO to receive stQEURO
      * @dev Converts QEURO to stQEURO at current exchange rate with yield accrual
      * @param qeuroAmount Amount of QEURO to stake

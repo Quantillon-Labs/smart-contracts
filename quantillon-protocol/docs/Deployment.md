@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide covers deploying and configuring the Quantillon Protocol smart contracts using Foundry. All 13 contracts are deployed in a single `forge script` invocation via `DeployQuantillon.s.sol`, which writes the deployed addresses to `deployments/{chainId}/addresses.json`.
+This guide covers deploying and configuring the Quantillon Protocol smart contracts using Foundry. Core contracts are deployed in a single `forge script` invocation via `DeployQuantillon.s.sol`, which writes the deployed addresses to `deployments/{chainId}/addresses.json`.
 
 ---
 
@@ -46,6 +46,7 @@ cp .env.base .env
 | `SINGLE_HEDGER` | Initial single hedger address on HedgerPool |
 | `USDC` | USDC address override (auto-selected by network if not set) |
 | `STORK_CONTRACT_ADDRESS` | Stork oracle contract override |
+| `STQEURO_VAULT_NAME` | Initial staking vault suffix used for `stQEURO{vaultName}` (default: `CORE`) |
 
 ---
 
@@ -67,22 +68,27 @@ TimeProvider
             │
             ├── AaveVault + ERC1967Proxy (uses Aave V3 or mock)
             │
-            ├── stQEUROToken + ERC1967Proxy
-            │
             ├── UserPool + ERC1967Proxy
             ├── HedgerPool + ERC1967Proxy
-            └── YieldShift + ERC1967Proxy
-                    └── _wireContracts() — connects all pools/vault/roles and enforces required post-deploy wiring
+            ├── YieldShift + ERC1967Proxy
+            ├── stQEUROToken (implementation)
+            └── stQEUROFactory + ERC1967Proxy
+                    └── _wireContracts() — configures dependencies/roles, self-registers vault 1, and enforces required post-deploy wiring
 ```
 
 After deployment, addresses are written to `deployments/{chainId}/addresses.json`.
 
 Required post-deploy wiring now enforced in-script (deployment reverts if any check fails):
 - `quantillonVault.initializePriceCache()`
-- `stQEUROToken.setOracle(oracleRouter)`
 - `yieldShift.configureDependencies(...)`
 - `yieldShift.setYieldSourceAuthorization(aaveVault, "aave", true)`
 - `yieldShift.bootstrapDefaults()`
+- `aaveVault.updateYieldShift(yieldShift)`
+- `aaveVault.setYieldVaultId(1)`
+- `stQEUROFactory.grantRole(VAULT_FACTORY_ROLE, quantillonVault)`
+- `quantillonVault.selfRegisterStQEURO(stQEUROFactory, 1, STQEURO_VAULT_NAME)`
+- `stQEUROFactory.getStQEUROByVaultId(1)` for token resolution
+- `stQEUROToken(vaultId=1).setOracle(oracleRouter)`
 - `hedgerPool.configureDependencies(...)` (includes `feeCollector`)
 - `feeCollector.authorizeFeeSource(quantillonVault)`
 - `feeCollector.authorizeFeeSource(hedgerPool)`
@@ -244,6 +250,7 @@ jq '.qeuroToken' deployments/31337/addresses.json
       "quantillonVault": "0x...",
       "qtiToken": "0x...",
       "aaveVault": "0x...",
+      "stQEUROFactory": "0x...",
       "stQeuroToken": "0x...",
       "userPool": "0x...",
       "hedgerPool": "0x...",

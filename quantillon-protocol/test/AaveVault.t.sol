@@ -602,6 +602,7 @@ contract MockYieldShift {
     /**
      * @notice Adds yield to the system
      * @dev Mock function for testing purposes
+     * @param vaultId The target vault id
      * @param amount The amount of yield to add
      * @param source The source of the yield
      * @custom:security No security validations - test mock
@@ -613,7 +614,10 @@ contract MockYieldShift {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function addYield(uint256 amount, bytes32 source) external {
+    function addYield(uint256 vaultId, uint256 amount, bytes32 source) external {
+        vaultId;
+        amount;
+        source;
         // Mock implementation
     }
     
@@ -760,6 +764,9 @@ contract AaveVaultTestSuite is Test {
         aaveVault.grantRole(aaveVault.VAULT_MANAGER_ROLE(), vaultManager);
         aaveVault.grantRole(aaveVault.EMERGENCY_ROLE(), emergencyRole);
         vm.stopPrank();
+
+        vm.prank(governance);
+        aaveVault.setYieldVaultId(1);
         
         // Mint USDC to contracts for testing
         usdc.mint(address(aaveVault), 10000000 * 1e6); // 10M USDC
@@ -1082,6 +1089,38 @@ contract AaveVaultTestSuite is Test {
         } else {
             assertEq(aaveVault.totalFeesCollected(), initialFeesCollected);
         }
+    }
+
+    function test_YieldManagement_HarvestAaveYield_NoYieldVaultId_Revert() public {
+        AaveVault localImpl = new AaveVault();
+        bytes memory initData = abi.encodeWithSelector(
+            AaveVault.initialize.selector,
+            admin,
+            address(usdc),
+            address(aaveProvider),
+            address(rewardsController),
+            address(yieldShift),
+            mockTimelock,
+            admin
+        );
+        ERC1967Proxy proxy = new ERC1967Proxy(address(localImpl), initData);
+        AaveVault localVault = AaveVault(address(proxy));
+
+        vm.startPrank(admin);
+        localVault.grantRole(localVault.GOVERNANCE_ROLE(), governance);
+        localVault.grantRole(localVault.VAULT_MANAGER_ROLE(), vaultManager);
+        vm.stopPrank();
+
+        uint256 deployAmount = 1000000 * 1e6;
+        vm.prank(vaultManager);
+        usdc.approve(address(localVault), deployAmount);
+        vm.prank(vaultManager);
+        localVault.deployToAave(deployAmount);
+        aUSDC.mint(address(localVault), 5000 * 1e6);
+
+        vm.prank(vaultManager);
+        vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
+        localVault.harvestAaveYield();
     }
     
     /**

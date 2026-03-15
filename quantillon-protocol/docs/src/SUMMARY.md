@@ -1,5 +1,6 @@
 # Summary
 - [Home](README.md)
+- [stQEUROFactory Technical Upgrade](stQEUROFactory.md)
 # src
   - [❱ core](src/core/README.md)
     - [❱ vaults](src/core/vaults/README.md)

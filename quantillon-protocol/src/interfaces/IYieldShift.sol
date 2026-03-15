@@ -13,7 +13,7 @@ interface IYieldShift {
         address userPool;
         address hedgerPool;
         address aaveVault;
-        address stQEURO;
+        address stQEUROFactory;
         address treasury;
     }
 
@@ -25,7 +25,7 @@ interface IYieldShift {
      * @param _userPool UserPool contract address (optional at deploy time).
      * @param _hedgerPool HedgerPool contract address (optional at deploy time).
      * @param _aaveVault AaveVault contract address (optional at deploy time).
-     * @param _stQEURO stQEURO token contract address (optional at deploy time).
+     * @param _stQEUROFactory stQEURO factory contract address (optional at deploy time).
      * @param _timelock Timelock contract used for SecureUpgradeable.
      * @param _treasury Treasury address for recovery flows.
      * @custom:security Validates non‑zero admin and USDC address, sets up access control.
@@ -43,7 +43,7 @@ interface IYieldShift {
         address _userPool,
         address _hedgerPool,
         address _aaveVault,
-        address _stQEURO,
+        address _stQEUROFactory,
         address _timelock,
         address _treasury
     ) external;
@@ -79,6 +79,7 @@ interface IYieldShift {
     /**
      * @notice Adds yield from an authorized source and allocates it between users and hedgers.
      * @dev Transfers USDC from `msg.sender`, checks authorization and updates yield pools.
+     * @param vaultId Target vault id receiving user-yield routing.
      * @param yieldAmount Yield amount in USDC (6 decimals).
      * @param source Logical yield source identifier (e.g. `keccak256("aave")`).
      * @custom:security Only authorized yield sources may call; validates source mapping.
@@ -90,7 +91,7 @@ interface IYieldShift {
      * @custom:access Restricted to whitelisted yield source contracts.
      * @custom:oracle No direct oracle dependency.
      */
-    function addYield(uint256 yieldAmount, bytes32 source) external;
+    function addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source) external;
 
     /**
      * @notice Claims accumulated user yield for a specific address.

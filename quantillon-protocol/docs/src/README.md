@@ -21,6 +21,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **[Integration Examples](https://smartcontracts.quantillon.money/Integration-Examples.html)** - Comprehensive integration examples and patterns
 - **[Deployment Guide](https://smartcontracts.quantillon.money/Deployment.html)** - Complete deployment instructions and procedures
 - **[Security Guide](https://smartcontracts.quantillon.money/Security.html)** - Security practices and considerations
+- **[stQEUROFactory Technical Upgrade](https://smartcontracts.quantillon.money/stQEUROFactory.html)** - Multi-vault staking refactor details and runbook
 - **[Documentation Hub](https://smartcontracts.quantillon.money/)** - Comprehensive documentation overview
 
 ### 🎯 Key Features
@@ -47,6 +48,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 | **FeeCollector** | Fee distribution | 60/25/15 split to treasury/dev/community, per-token accounting |
 | **UserPool** | User deposits | USDC deposits, QEURO staking, unstaking cooldown, yield distribution |
 | **HedgerPool** | Hedging operations | EUR/USD short positions, margin management, liquidation at 101% CR |
+| **stQEUROFactory** | Multi-vault staking factory | Deploys one stQEURO proxy per vault, registry by `vaultId` |
 | **stQEUROToken** | Yield-bearing wrapper | Automatic yield accrual via exchange rate, no lock-up |
 | **AaveVault** | Aave v3 integration | Automated USDC yield farming, reward harvesting, emergency controls |
 | **YieldShift** | Yield management | Dynamic distribution between pools, 7-day holding period, TWAP-based allocation |

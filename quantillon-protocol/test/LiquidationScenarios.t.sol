@@ -154,7 +154,7 @@ contract LiquidationScenarios is IntegrationTests {
         // Deploy stQEUROToken
         stQEUROToken stQEUROImpl = new stQEUROToken(timeProvider);
         bytes memory stQEUROInitData = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             address(qeuroToken),
             address(yieldShift),
@@ -205,7 +205,7 @@ contract LiquidationScenarios is IntegrationTests {
                 userPool: address(userPool),
                 hedgerPool: address(hedgerPool),
                 aaveVault: address(vault),
-                stQEURO: address(stQEURO),
+                stQEUROFactory: address(stQEURO),
                 treasury: treasury
             })
         );

@@ -4,6 +4,8 @@
 
 The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pegged stablecoin (QEURO) with advanced yield management and risk mitigation systems. The architecture is designed for scalability, security, and efficient capital utilization.
 
+The staking layer now supports a multi-vault model through `stQEUROFactory`: each staking vault has its own non-fungible staking token instance (`stQEURO{vaultName}`).
+
 ---
 
 ## System Architecture
@@ -147,6 +149,25 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
 - **Yield Distribution**: Exchange rate increases as yield accrues
 - **Virtual Protection**: Attack prevention mechanisms
 
+### 6b. stQEUROFactory (Multi-Vault Extension)
+
+**Purpose**: Factory/orchestrator that deploys one `stQEUROToken` proxy per staking vault.
+
+**Key Features**:
+- Per-vault token deployment using `ERC1967Proxy` and shared `stQEUROToken` implementation
+- Deterministic registry and lookup mappings:
+  - `vaultId -> stQEURO token`
+  - `vault -> stQEURO token`
+  - `stQEURO token -> vaultId`
+- Strict vault self-registration model (`msg.sender` is the registered vault)
+- Validation and uniqueness guarantees for `vaultId` and `vaultName` (uppercase alphanumeric)
+- Governance-controlled factory config (implementation/yieldShift/treasury/token admin)
+
+**Architecture Patterns**:
+- **Factory Pattern**: Dynamic deployment of homogeneous staking-token proxies
+- **Registry Pattern**: Bi-directional mapping between vaults and staking tokens
+- **Role-Gated Self-Registration**: Vault onboarding constrained by governance-granted role + on-chain self-call
+
 ### 7. FeeCollector
 
 **Purpose**: Centralized fee collection and distribution across the protocol.
@@ -202,7 +223,7 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
 **Architecture Patterns**:
 - **Strategy Pattern**: Multiple yield source strategies
 - **Observer Pattern**: Performance monitoring
-- **Factory Pattern**: Dynamic strategy creation
+- **Factory-Routed Distribution**: Yield routed by `vaultId` through `stQEUROFactory` to the correct staking token
 
 ### AaveVault Integration
 
@@ -219,6 +240,7 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
 - **Adapter Pattern**: Aave protocol integration
 - **Risk Management**: Exposure limit enforcement
 - **Yield Optimization**: Dynamic allocation strategies
+- **Vault-Aware Routing**: Harvested yield is pushed to `YieldShift.addYield(yieldVaultId, ...)`
 
 ---
 

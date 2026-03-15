@@ -152,6 +152,21 @@ contract stQEUROToken is
     /// @notice TimeProvider contract for centralized time management
     /// @dev Used to replace direct block.timestamp usage for testability and consistency
     TimeProvider public immutable TIME_PROVIDER;
+
+    /// @notice Human-readable vault identifier used to derive token metadata
+    string public vaultName;
+
+    struct InitConfig {
+        address admin;
+        address qeuroAddress;
+        address yieldShiftAddress;
+        address usdcAddress;
+        address treasuryAddress;
+        address timelockAddress;
+        string tokenName;
+        string tokenSymbol;
+        string vaultName_;
+    }
     
     // Yield and exchange rate variables
     /// @notice Exchange rate between QEURO and stQEURO (18 decimals)
@@ -335,30 +350,86 @@ contract stQEUROToken is
         address _treasury,
         address _timelock
     ) public initializer {
-        CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
-        CommonValidationLibrary.validateNonZeroAddress(_qeuro, "token");
-        CommonValidationLibrary.validateNonZeroAddress(_yieldShift, "token");
-        CommonValidationLibrary.validateNonZeroAddress(_usdc, "token");
-        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
+        InitConfig memory cfg = InitConfig({
+            admin: admin,
+            qeuroAddress: _qeuro,
+            yieldShiftAddress: _yieldShift,
+            usdcAddress: _usdc,
+            treasuryAddress: _treasury,
+            timelockAddress: _timelock,
+            tokenName: "Staked Quantillon Euro",
+            tokenSymbol: "stQEURO",
+            vaultName_: ""
+        });
+        _initializeStQEURO(cfg);
+    }
 
-        __ERC20_init("Staked Quantillon Euro", "stQEURO");
+    /**
+     * @notice Initialize the stQEURO token contract with dynamic metadata for a vault.
+     * @param admin Address of the admin role
+     * @param _qeuro Address of the QEURO token contract
+     * @param _yieldShift Address of the YieldShift contract
+     * @param _usdc Address of the USDC token contract
+     * @param _treasury Address of the treasury
+     * @param _timelock Address of the timelock contract
+     * @param _tokenName ERC20 token name
+     * @param _tokenSymbol ERC20 token symbol
+     * @param _vaultName Human-readable vault name (e.g. CORE, ALPHA1)
+     */
+    function initialize(
+        address admin,
+        address _qeuro,
+        address _yieldShift,
+        address _usdc,
+        address _treasury,
+        address _timelock,
+        string calldata _tokenName,
+        string calldata _tokenSymbol,
+        string calldata _vaultName
+    ) public initializer {
+        InitConfig memory cfg = InitConfig({
+            admin: admin,
+            qeuroAddress: _qeuro,
+            yieldShiftAddress: _yieldShift,
+            usdcAddress: _usdc,
+            treasuryAddress: _treasury,
+            timelockAddress: _timelock,
+            tokenName: _tokenName,
+            tokenSymbol: _tokenSymbol,
+            vaultName_: _vaultName
+        });
+        _initializeStQEURO(cfg);
+    }
+
+    function _initializeStQEURO(InitConfig memory cfg) internal {
+        CommonValidationLibrary.validateNonZeroAddress(cfg.admin, "admin");
+        CommonValidationLibrary.validateNonZeroAddress(cfg.qeuroAddress, "token");
+        CommonValidationLibrary.validateNonZeroAddress(cfg.yieldShiftAddress, "token");
+        CommonValidationLibrary.validateNonZeroAddress(cfg.usdcAddress, "token");
+        CommonValidationLibrary.validateNonZeroAddress(cfg.treasuryAddress, "treasury");
+
+        __ERC20_init(cfg.tokenName, cfg.tokenSymbol);
         __AccessControl_init();
         __Pausable_init();
         __ReentrancyGuard_init();
-        __SecureUpgradeable_init(_timelock);
+        __SecureUpgradeable_init(cfg.timelockAddress);
 
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(GOVERNANCE_ROLE, admin);
-        _grantRole(YIELD_MANAGER_ROLE, admin);
-        _grantRole(EMERGENCY_ROLE, admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, cfg.admin);
+        _grantRole(GOVERNANCE_ROLE, cfg.admin);
+        _grantRole(YIELD_MANAGER_ROLE, cfg.admin);
+        _grantRole(EMERGENCY_ROLE, cfg.admin);
+        if (cfg.yieldShiftAddress != address(0)) {
+            _grantRole(YIELD_MANAGER_ROLE, cfg.yieldShiftAddress);
+        }
 
-        qeuro = IQEUROToken(_qeuro);
-        yieldShift = IYieldShift(_yieldShift);
-        usdc = IERC20(_usdc);
-        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        CommonValidationLibrary.validateTreasuryAddress(_treasury);
-        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        treasury = _treasury;
+        qeuro = IQEUROToken(cfg.qeuroAddress);
+        yieldShift = IYieldShift(cfg.yieldShiftAddress);
+        usdc = IERC20(cfg.usdcAddress);
+        if (cfg.treasuryAddress == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        CommonValidationLibrary.validateTreasuryAddress(cfg.treasuryAddress);
+        CommonValidationLibrary.validateNonZeroAddress(cfg.treasuryAddress, "treasury");
+        treasury = cfg.treasuryAddress;
+        vaultName = cfg.vaultName_;
 
         // Initialize exchange rate at 1:1
         exchangeRate = 1e18;

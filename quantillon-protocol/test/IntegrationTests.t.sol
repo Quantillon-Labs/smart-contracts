@@ -199,7 +199,7 @@ contract IntegrationTests is Test {
         // Deploy stQEUROToken
         stQEUROToken stQEUROImpl = new stQEUROToken(timeProvider);
         bytes memory stQEUROInitData = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             address(qeuroToken),
             address(yieldShift),
@@ -254,7 +254,7 @@ contract IntegrationTests is Test {
                 userPool: address(userPool),
                 hedgerPool: address(hedgerPool),
                 aaveVault: address(vault),
-                stQEURO: address(stQEURO),
+                stQEUROFactory: address(stQEURO),
                 treasury: treasury
             })
         );
@@ -376,7 +376,7 @@ contract IntegrationTests is Test {
         assertEq(totalQEUROSupply, qeuroInCirculation + qeuroInStQEURO, "Total QEURO supply should be consistent");
         
         console.log("Total QEURO supply:", totalQEUROSupply / 1e18);
-        console.log("QEURO in stQEURO:", qeuroInStQEURO / 1e18);
+        console.log("QEURO in stQEUROFactory:", qeuroInStQEURO / 1e18);
         console.log("QEURO in circulation:", qeuroInCirculation / 1e18);
         
         // =============================================================================

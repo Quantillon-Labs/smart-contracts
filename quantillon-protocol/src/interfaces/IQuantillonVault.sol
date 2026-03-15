@@ -904,6 +904,17 @@ interface IQuantillonVault {
     function updateAaveVault(address _aaveVault) external;
 
     /**
+     * @notice Registers this vault into stQEUROFactory and deploys its dedicated token.
+     * @param factory Address of stQEUROFactory.
+     * @param vaultId Target vault id.
+     * @param vaultName Uppercase alphanumeric vault name.
+     * @return token Newly deployed stQEURO token address.
+     */
+    function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata vaultName)
+        external
+        returns (address token);
+
+    /**
      * @notice Updates the protocol‑fee share routed to HedgerPool reward reserve.
      * @dev Sets the fraction of protocol fees (scaled by 1e18 where 1e18 = 100%)
      *      that is forwarded to HedgerPool’s reward reserve instead of remaining in the vault.
@@ -964,6 +975,21 @@ interface IQuantillonVault {
      * @custom:oracle No oracle dependencies
      */
     function totalUsdcInAave() external view returns (uint256);
+
+    /**
+     * @notice Returns configured stQEUROFactory address.
+     */
+    function stQEUROFactory() external view returns (address);
+
+    /**
+     * @notice Returns the stQEURO token address registered for this vault.
+     */
+    function stQEUROToken() external view returns (address);
+
+    /**
+     * @notice Returns the factory vault id bound to this vault.
+     */
+    function stQEUROVaultId() external view returns (uint256);
 
     /**
      * @notice Returns the vault operator role identifier

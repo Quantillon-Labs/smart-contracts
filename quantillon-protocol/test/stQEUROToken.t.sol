@@ -116,7 +116,7 @@ contract stQEUROTokenTestSuite is Test {
         
         // Deploy proxy with initialization
         bytes memory initData = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             mockQEURO,
             mockYieldShift,
@@ -283,7 +283,7 @@ contract stQEUROTokenTestSuite is Test {
         
         // Test with zero admin
         bytes memory initData1 = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             address(0),
             mockQEURO,
             mockYieldShift,
@@ -297,7 +297,7 @@ contract stQEUROTokenTestSuite is Test {
         
         // Test with zero QEURO
         bytes memory initData2 = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             address(0),
             mockYieldShift,
@@ -311,7 +311,7 @@ contract stQEUROTokenTestSuite is Test {
         
         // Test with zero YieldShift
         bytes memory initData3 = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             mockQEURO,
             address(0),
@@ -325,7 +325,7 @@ contract stQEUROTokenTestSuite is Test {
         
         // Test with zero USDC
         bytes memory initData4 = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             mockQEURO,
             mockYieldShift,
@@ -339,7 +339,7 @@ contract stQEUROTokenTestSuite is Test {
         
         // Test with zero treasury
         bytes memory initData5 = abi.encodeWithSelector(
-            stQEUROToken.initialize.selector,
+            bytes4(keccak256("initialize(address,address,address,address,address,address)")),
             admin,
             mockQEURO,
             mockYieldShift,

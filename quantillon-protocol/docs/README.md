@@ -25,6 +25,9 @@ Security best practices, audit reports, and risk management guidelines.
 ### [Deployment Guide](./Deployment.md)
 Step-by-step instructions for deploying and configuring the protocol.
 
+### [stQEUROFactory Technical Upgrade](./stQEUROFactory.md)
+Detailed technical note for the multi-vault staking refactor (`stQEUROFactory`, vault self-registration, YieldShift routing by `vaultId`).
+
 ---
 
 ## 🚀 Quick Links
@@ -38,11 +41,13 @@ Step-by-step instructions for deploying and configuring the protocol.
 - [**Integration Examples**](./API.md#integration-examples) - Code examples
 - [**Error Handling**](./API-Reference.md#error-handling) - Error codes and handling
 - [**Gas Optimization**](./API-Reference.md#gas-optimization) - Performance tips
+- [**stQEURO Multi-Vault Upgrade**](./stQEUROFactory.md) - Implementation and runbook
 
 ### For Auditors
 - [**Security Guide**](./Security.md) - Security considerations
 - [**Architecture**](./Architecture.md) - System design
 - [**Access Control**](./API-Reference.md#access-control-roles) - Role definitions
+- [**stQEUROFactory Upgrade Note**](./stQEUROFactory.md) - Breaking changes and verification map
 
 ---
 
@@ -55,7 +60,8 @@ Step-by-step instructions for deploying and configuring the protocol.
 - **FeeCollector** - Protocol fee aggregation and distribution (60% treasury / 25% dev / 15% community)
 - **UserPool** - User deposits (USDC), QEURO staking, yield distribution with 7-day holding period
 - **HedgerPool** - EUR/USD short positions for hedgers, margin management, liquidation at 101% CR
-- **stQEUROToken** - Yield-bearing QEURO wrapper: exchange rate accrues yield, no lock-up
+- **stQEUROFactory** - Multi-vault staking token factory: one stQEURO token proxy per staking vault
+- **stQEUROToken** - Vault-level yield-bearing QEURO wrapper implementation deployed by the factory
 
 ### Yield Management
 - **AaveVault** - USDC yield farming via Aave v3: supply, harvest rewards, emergency withdrawal

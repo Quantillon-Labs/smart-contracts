@@ -13,6 +13,7 @@ The Quantillon Protocol is a comprehensive DeFi ecosystem built on Base, featuri
    - [FeeCollector](#feecollector)
    - [UserPool](#userpool)
    - [HedgerPool](#hedgerpool)
+   - [stQEUROFactory](#stqeurofactory)
    - [stQEUROToken](#stqeurotoken)
 2. [Vault Contracts](#vault-contracts)
    - [AaveVault](#aavevault)
@@ -543,6 +544,57 @@ event SingleHedgerRotationApplied(address indexed previousHedger, address indexe
 
 ---
 
+### stQEUROFactory
+
+Factory contract for vault-scoped staking tokens.
+
+#### Functions
+
+##### `registerVault(uint256 vaultId, string vaultName) -> (address)`
+Registers the calling vault and deploys a dedicated stQEURO token proxy.
+
+**Parameters:**
+- `vaultId` (uint256): Non-zero vault id
+- `vaultName` (string): Uppercase alphanumeric vault suffix (length `1..12`)
+
+**Returns:**
+- `address`: Newly deployed stQEURO token for the vault
+
+**Access:** `VAULT_FACTORY_ROLE` only, strict self-registration semantics (`msg.sender` is the vault)
+
+##### `getStQEUROByVaultId(uint256 vaultId) -> (address)`
+Resolves stQEURO token address for a given vault id.
+
+##### `getStQEUROByVault(address vault) -> (address)`
+Resolves stQEURO token address for a given vault address.
+
+##### `getVaultById(uint256 vaultId) -> (address)`
+Returns vault address for a registered vault id.
+
+##### `getVaultIdByStQEURO(address stQEUROToken) -> (uint256)`
+Returns vault id mapped to an stQEURO token address.
+
+##### `getVaultName(uint256 vaultId) -> (string)`
+Returns vault name suffix stored at registration.
+
+##### `updateYieldShift(address newYieldShift)`
+Governance setter for YieldShift dependency used for newly deployed stQEURO tokens.
+
+##### `updateTokenImplementation(address newImplementation)`
+Governance setter for stQEURO token implementation address used by future proxies.
+
+##### `updateTreasury(address newTreasury)` / `updateTokenAdmin(address newAdmin)` / `updateOracle(address newOracle)`
+Governance setters for factory-level defaults used during vault token deployment.
+
+#### Events
+
+```solidity
+event VaultRegistered(uint256 indexed vaultId, address indexed vault, address indexed stQEUROToken, string vaultName);
+event FactoryConfigUpdated(string indexed key, address oldValue, address newValue);
+```
+
+---
+
 ### stQEUROToken
 
 Staked QEURO token with yield distribution.
@@ -605,6 +657,9 @@ Distributes yield to stakers.
 - `qeuroAmount` (uint256): Amount of QEURO to distribute (18 decimals)
 
 **Access:** Yield manager role only
+
+##### `initialize(...)` (dynamic metadata overload)
+Supports per-vault metadata (`tokenName`, `tokenSymbol`, `vaultName`) when deployed through `stQEUROFactory`.
 
 #### Events
 
@@ -708,6 +763,20 @@ Harvests accumulated yield from Aave.
 
 **Access:** Yield manager role only
 
+**Notes:**
+- Reverts if `yieldVaultId` is not configured (`yieldVaultId == 0`)
+- Routes harvested yield to `YieldShift.addYield(yieldVaultId, ...)`
+
+##### `setYieldVaultId(uint256 newYieldVaultId)`
+Sets the destination vault id used when routing harvested Aave yield to YieldShift.
+
+**Access:** Governance role only
+
+##### `updateYieldShift(address newYieldShift)`
+Updates the YieldShift dependency used by AaveVault for yield routing.
+
+**Access:** Governance role only
+
 ##### `getAaveBalance() → (uint256)`
 Gets current USDC balance in Aave.
 
@@ -753,10 +822,11 @@ Manages yield distribution between user and hedger pools.
 
 #### Functions
 
-##### `addYield(uint256 yieldAmount, bytes32 source)`
+##### `addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source)`
 Adds yield to the distribution system.
 
 **Parameters:**
+- `vaultId` (uint256): Registered staking vault id receiving user-allocation yield
 - `yieldAmount` (uint256): Amount of USDC yield to add (6 decimals)
 - `source` (bytes32): Source key (`"aave"`, `"fees"`, `"interest_differential"`, etc.)
 
@@ -795,7 +865,7 @@ Batch governance update for:
 - `userPool`
 - `hedgerPool`
 - `aaveVault`
-- `stQEURO`
+- `stQEUROFactory`
 - `treasury`
 
 ##### `setYieldSourceAuthorization(address source, bytes32 yieldType, bool authorized)`

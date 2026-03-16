@@ -1,49 +1,49 @@
-# Upgrade Technique: stQEURO Multi-Vault avec `stQEUROFactory`
+# Technical Upgrade: stQEURO Multi-Vault with `stQEUROFactory`
 
-## Contexte
+## Context
 
-Le protocole utilisait initialement un seul token de staking `stQEURO` pour un seul vault de staking.  
-L'architecture a ete etendue pour supporter plusieurs vaults (identifies par `vaultId`), avec un token dedie par vault:
+The protocol originally used a single `stQEURO` staking token for a single staking vault.  
+The architecture has been extended to support multiple vaults (identified by `vaultId`), with one dedicated token per vault:
 
 - `vaultId = 1` -> `stQEURO<VAULT_NAME_1>`
 - `vaultId = 2` -> `stQEURO<VAULT_NAME_2>`
 - ...
 
-Ces tokens ne sont pas fongibles entre eux (adresses ERC20 distinctes, metadata distinctes, comptabilite de rendement distincte).
+These tokens are not fungible with each other (distinct ERC20 addresses, distinct metadata, and distinct yield accounting).
 
 ---
 
-## Objectif de l'upgrade
+## Upgrade objective
 
-1. Remplacer le modele "single stQEURO token" par une factory upgradeable.
-2. Conserver `stQEUROToken` comme implementation de token de staking par vault.
-3. Router le rendement (`YieldShift`) via `vaultId`.
-4. Imposer un enregistrement strict du vault via self-call on-chain.
-5. Mettre a jour le deploiement, les interfaces et les tests.
+1. Replace the "single stQEURO token" model with an upgradeable factory.
+2. Keep `stQEUROToken` as the vault-level staking token implementation.
+3. Route yield (`YieldShift`) through `vaultId`.
+4. Enforce strict vault registration through an on-chain self-call.
+5. Update deployment flows, interfaces, and tests.
 
 ---
 
-## Composants modifies
+## Updated components
 
-## 1) Nouveau contrat `stQEUROFactory`
+## 1) New contract: `stQEUROFactory`
 
-Le contrat introduit une couche d'orchestration pour deployer et enregistrer dynamiquement un token `stQEURO` par vault.
+This contract introduces an orchestration layer to deploy and register one `stQEURO` token per vault dynamically.
 
 ### Responsibilities
 
-- Deployer un proxy `ERC1967Proxy` par vault vers l'implementation `stQEUROToken`.
-- Conserver les index de resolution `vaultId <-> vault <-> token`.
-- Conserver la metadata de vault (`vaultName`).
-- Fournir des getters de resolution pour `YieldShift`, scripts et indexers.
+- Deploy one `ERC1967Proxy` per vault pointing to the `stQEUROToken` implementation.
+- Keep resolution indexes `vaultId <-> vault <-> token`.
+- Store vault metadata (`vaultName`).
+- Provide resolution getters for `YieldShift`, scripts, and indexers.
 
-### Upgradeability et access control
+### Upgradeability and access control
 
 - Pattern: `Initializable + AccessControlUpgradeable + SecureUpgradeable` (UUPS via `SecureUpgradeable`).
 - Roles:
-  - `GOVERNANCE_ROLE`: reconfiguration factory (impl, yieldShift, treasury, etc.)
-  - `VAULT_FACTORY_ROLE`: permission d'enregistrement des vaults
+  - `GOVERNANCE_ROLE`: factory reconfiguration (implementation, yieldShift, treasury, etc.)
+  - `VAULT_FACTORY_ROLE`: permission to register vaults
 
-### Stockage principal
+### Main storage
 
 - `stQEUROByVaultId[vaultId] -> token`
 - `stQEUROByVault[vault] -> token`
@@ -52,34 +52,34 @@ Le contrat introduit une couche d'orchestration pour deployer et enregistrer dyn
 - `_vaultNamesById[vaultId] -> vaultName`
 - `_vaultNameHashUsed[keccak256(vaultName)] -> bool`
 
-### Enregistrement strict: `registerVault(uint256 vaultId, string vaultName)`
+### Strict registration: `registerVault(uint256 vaultId, string vaultName)`
 
-Contraintes appliquees:
+Applied constraints:
 
 - `onlyRole(VAULT_FACTORY_ROLE)`
-- vault appeleur derive de `msg.sender` (pas de parametre `vault`): self-register strict
+- caller vault derived from `msg.sender` (no `vault` parameter): strict self-register
 - `vaultId > 0`
-- unicite:
-  - `vaultId` non deja utilise
-  - `vault` non deja enregistre
-  - `vaultName` non deja utilise
-- format `vaultName`:
-  - longueur `1..12`
-  - caracteres autorises: `A-Z`, `0-9`
+- uniqueness:
+  - `vaultId` not already used
+  - `vault` not already registered
+  - `vaultName` not already used
+- `vaultName` format:
+  - length `1..12`
+  - allowed characters: `A-Z`, `0-9`
 
-Creation du token:
+Token creation:
 
 - Name: `Staked Quantillon Euro {vaultName}`
 - Symbol: `stQEURO{vaultName}`
-- Deploiement d'un `ERC1967Proxy` pointant vers `stQEUROToken` implementation
-- Initialisation du proxy avec metadata dynamique (`tokenName`, `tokenSymbol`, `vaultName`)
+- Deploy an `ERC1967Proxy` pointing to the `stQEUROToken` implementation
+- Initialize the proxy with dynamic metadata (`tokenName`, `tokenSymbol`, `vaultName`)
 
-### Evenements
+### Events
 
 - `VaultRegistered(vaultId, vault, stQEUROToken, vaultName)`
 - `FactoryConfigUpdated(key, oldValue, newValue)`
 
-### Reconfiguration gouvernance
+### Governance reconfiguration
 
 - `updateYieldShift(address)`
 - `updateTokenImplementation(address)`
@@ -89,105 +89,105 @@ Creation du token:
 
 ---
 
-## 2) Evolution de `stQEUROToken`
+## 2) `stQEUROToken` evolution
 
-`stQEUROToken` reste le token vault-level (logique stake/unstake/yield conservee), mais peut maintenant etre initialise avec metadata dynamique.
+`stQEUROToken` remains the vault-level token (stake/unstake/yield logic preserved), but can now be initialized with dynamic metadata.
 
-### Changements cles
+### Key changes
 
-- Ajout de `string public vaultName`.
-- Ajout d'un overload `initialize(...)` supportant:
+- Added `string public vaultName`.
+- Added an overloaded `initialize(...)` supporting:
   - `_tokenName`
   - `_tokenSymbol`
   - `_vaultName`
-- Conservation de l'initializer legacy (metadata par defaut).
-- Centralisation de l'init dans `_initializeStQEURO(InitConfig memory cfg)`.
+- Kept the legacy initializer (default metadata).
+- Centralized initialization in `_initializeStQEURO(InitConfig memory cfg)`.
 
 ### Roles
 
-Lors de l'initialisation:
+At initialization:
 
 - `DEFAULT_ADMIN_ROLE`, `GOVERNANCE_ROLE`, `EMERGENCY_ROLE` -> `admin`
 - `YIELD_MANAGER_ROLE` -> `admin`
-- `YIELD_MANAGER_ROLE` -> `yieldShift` (grant explicite)
+- `YIELD_MANAGER_ROLE` -> `yieldShift` (explicit grant)
 
 ---
 
-## 3) Evolution de `QuantillonVault` (self-registration)
+## 3) `QuantillonVault` evolution (self-registration)
 
-Ajouts:
+Additions:
 
-- `stQEUROFactory` (adresse factory associee)
-- `stQEUROToken` (token deploye pour ce vault)
-- `stQEUROVaultId` (vault id enregistre)
+- `stQEUROFactory` (linked factory address)
+- `stQEUROToken` (token deployed for this vault)
+- `stQEUROVaultId` (registered vault id)
 - event `StQEURORegistered(...)`
 
-Nouvelle fonction:
+New function:
 
 - `selfRegisterStQEURO(address factory, uint256 vaultId, string vaultName)`
   - `onlyRole(GOVERNANCE_ROLE)`
-  - anti double-enregistrement local (`stQEUROToken == address(0)`)
-  - appel factory depuis le vault lui-meme, ce qui force `msg.sender == vault` cote factory
-  - persistance des references locales factory/token/vaultId
+  - local anti double-registration (`stQEUROToken == address(0)`)
+  - factory call originates from the vault itself, enforcing `msg.sender == vault` on the factory side
+  - persists local references for factory/token/vaultId
 
 ---
 
-## 4) Evolution de `YieldShift` (routing multi-vault)
+## 4) `YieldShift` evolution (multi-vault routing)
 
-### Changement de dependance
+### Dependency change
 
-- Ancien modele: reference directe a un unique `stQEURO`.
-- Nouveau modele: reference a `stQEUROFactory`.
+- Old model: direct reference to a single `stQEURO`.
+- New model: reference to `stQEUROFactory`.
 
-`YieldDependencyConfig` remplace le champ:
+`YieldDependencyConfig` field replacement:
 
 - `stQEURO` -> `stQEUROFactory`
 
-### Nouvelle signature
+### New signature
 
 - `addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source)`
 
-### Flux de routage
+### Routing flow
 
-1. Verifier l'autorisation globale de la source (`authorizedYieldSources` + `sourceToYieldType`).
-2. Pull USDC depuis la source vers `YieldShift`.
-3. Calculer `userAllocation` / `hedgerAllocation`.
-4. Resoudre le token cible via `stQEUROFactory.getStQEUROByVaultId(vaultId)`.
-5. Revert si vault non enregistre (`address(0)`).
-6. Flux pull coherent vers token:
+1. Verify global source authorization (`authorizedYieldSources` + `sourceToYieldType`).
+2. Pull USDC from source to `YieldShift`.
+3. Compute `userAllocation` / `hedgerAllocation`.
+4. Resolve target token through `stQEUROFactory.getStQEUROByVaultId(vaultId)`.
+5. Revert if vault is not registered (`address(0)`).
+6. Keep coherent pull flow toward token:
    - `safeIncreaseAllowance(stQEURO, userAllocation)`
    - `IstQEURO(stQEURO).distributeYield(userAllocation)`
 
-Politique source:
+Source policy:
 
-- conservee globale (pas de binding strict `source -> vaultId`).
+- remains global (no strict `source -> vaultId` binding).
 
 ---
 
-## 5) Evolution de `AaveVault`
+## 5) `AaveVault` evolution
 
-Ajouts:
+Additions:
 
-- `uint256 public yieldVaultId` (config governance)
-- `setYieldVaultId(uint256)` (revert si `0`)
-- `updateYieldShift(address)` (rewiring explicite)
+- `uint256 public yieldVaultId` (governance config)
+- `setYieldVaultId(uint256)` (reverts if `0`)
+- `updateYieldShift(address)` (explicit rewiring)
 
-Changement dans `harvestAaveYield()`:
+Change in `harvestAaveYield()`:
 
-- Validation `yieldVaultId != 0`
-- Appel de routage:
+- validate `yieldVaultId != 0`
+- routing call:
   - `yieldShift.addYield(yieldVaultId, netYield, bytes32("aave"))`
 
 ---
 
-## 6) Interfaces impactees
+## 6) Impacted interfaces
 
-- Nouveau: `IStQEUROFactory`
+- New: `IStQEUROFactory`
   - `registerVault(vaultId, vaultName)`
-  - getters de resolution (`vaultId -> token`, `token -> vaultId`, etc.)
+  - resolution getters (`vaultId -> token`, `token -> vaultId`, etc.)
 - `IYieldShift`
-  - `addYield` devient `addYield(vaultId, yieldAmount, source)`
-  - config dependency: `stQEUROFactory`
+  - `addYield` becomes `addYield(vaultId, yieldAmount, source)`
+  - dependency config: `stQEUROFactory`
 - `IAaveVault`
   - `setYieldVaultId(uint256)`
   - `updateYieldShift(address)`
@@ -196,50 +196,50 @@ Changement dans `harvestAaveYield()`:
   - `selfRegisterStQEURO(...)`
   - getters `stQEUROFactory`, `stQEUROToken`, `stQEUROVaultId`
 - `IstQEURO`
-  - overload `initialize(...)` avec metadata dynamique
+  - overloaded `initialize(...)` with dynamic metadata
 
 ---
 
-## 7) Scripts de deploiement et wiring
+## 7) Deployment scripts and wiring
 
-`DeployQuantillon.s.sol` est mis a jour pour:
+`DeployQuantillon.s.sol` is updated to:
 
-1. Deployer `YieldShift`.
-2. Deployer l'implementation `stQEUROToken`.
-3. Deployer `stQEUROFactory` (proxy) en lui injectant l'implementation token.
-4. Configurer `YieldShift` avec `stQEUROFactory`.
-5. Rewirer `AaveVault` vers `YieldShift`.
-6. Configurer `AaveVault.setYieldVaultId(1)`.
-7. Accorder `VAULT_FACTORY_ROLE` au `QuantillonVault`.
-8. Enregistrer le vault 1 via `quantillonVault.selfRegisterStQEURO(...)`.
-9. Recuperer le token du vault 1 via factory et finaliser son wiring (oracle).
+1. Deploy `YieldShift`.
+2. Deploy `stQEUROToken` implementation.
+3. Deploy `stQEUROFactory` (proxy) while injecting token implementation.
+4. Configure `YieldShift` with `stQEUROFactory`.
+5. Rewire `AaveVault` to `YieldShift`.
+6. Configure `AaveVault.setYieldVaultId(1)`.
+7. Grant `VAULT_FACTORY_ROLE` to `QuantillonVault`.
+8. Register vault 1 through `quantillonVault.selfRegisterStQEURO(...)`.
+9. Retrieve vault 1 token from the factory and finalize its wiring (oracle).
 
-Variable d'environnement ajoutee:
+Added environment variable:
 
-- `STQEURO_VAULT_NAME` (defaut: `CORE`)
+- `STQEURO_VAULT_NAME` (default: `CORE`)
 
 Exports:
 
-- adresses et ABIs incluent maintenant `stQEUROFactory`.
+- addresses and ABIs now include `stQEUROFactory`.
 
 ---
 
 ## 8) Breaking changes
 
-Breaking changes assumes pour cette iteration:
+Breaking changes assumed for this iteration:
 
-1. `YieldShift.addYield(...)` requiert maintenant `vaultId`.
-2. La dependency `YieldShift` pointe vers la factory et non vers un token unique.
-3. Les flows de deploiement doivent enregistrer explicitement les vaults.
-4. Les integrations qui appelaient directement l'ancien API `addYield(yieldAmount, source)` doivent etre adaptees.
+1. `YieldShift.addYield(...)` now requires `vaultId`.
+2. `YieldShift` dependency points to the factory instead of a single token.
+3. Deployment flows must explicitly register vaults.
+4. Integrations calling the old API `addYield(yieldAmount, source)` must be updated.
 
-Pas de migration legacy on-chain incluse dans cette passe.
+No on-chain legacy migration is included in this pass.
 
 ---
 
-## 9) Validation et couverture de tests
+## 9) Validation and test coverage
 
-### Nouveau test
+### New test
 
 - `test/stQEUROFactory.t.sol`
   - registration OK
@@ -248,52 +248,52 @@ Pas de migration legacy on-chain incluse dans cette passe.
   - invalid/duplicate `vaultName`
   - unauthorized caller
 
-### Tests adaptes
+### Updated tests
 
-- `YieldShift.t.sol` (routing par `vaultId`, dependency factory)
-- `AaveVault.t.sol` (`yieldVaultId`, nouvelle signature `addYield`)
-- `DeploymentSmoke.t.sol`, `IntegrationTests.t.sol`, `QuantillonInvariants.t.sol`, `LiquidationScenarios.t.sol`, `stQEUROToken.t.sol` (alignement des initializers/signatures)
+- `YieldShift.t.sol` (`vaultId` routing, factory dependency)
+- `AaveVault.t.sol` (`yieldVaultId`, new `addYield` signature)
+- `DeploymentSmoke.t.sol`, `IntegrationTests.t.sol`, `QuantillonInvariants.t.sol`, `LiquidationScenarios.t.sol`, `stQEUROToken.t.sol` (initializer/signature alignment)
 
-### Resultat
+### Result
 
-- `forge build --skip test` passe
-- suites ciblees passees
-- `forge test -q` passe
+- `forge build --skip test` passes
+- targeted suites pass
+- `forge test -q` passes
 
 ---
 
-## 10) Runbook: ajout d'un nouveau vault de staking
+## 10) Runbook: adding a new staking vault
 
-Pour onboarder `vaultId = N`:
+To onboard `vaultId = N`:
 
-1. Deployer/configurer le nouveau vault (roles governance inclus).
-2. Depuis governance, accorder `VAULT_FACTORY_ROLE` a l'adresse du vault.
-3. Appeler `vault.selfRegisterStQEURO(factory, N, VAULT_NAME)`.
-4. Verifier:
+1. Deploy/configure the new vault (including governance roles).
+2. From governance, grant `VAULT_FACTORY_ROLE` to the vault address.
+3. Call `vault.selfRegisterStQEURO(factory, N, VAULT_NAME)`.
+4. Verify:
    - `factory.getStQEUROByVaultId(N) != 0`
    - `factory.getVaultById(N) == vault`
    - `factory.getVaultName(N) == VAULT_NAME`
-5. Si le vault recoit du yield via `YieldShift`, router les appels `addYield(N, ...)` depuis la source concernee.
-6. Mettre a jour les exports d'adresses/ABI et la couche d'integration off-chain.
+5. If the vault receives yield through `YieldShift`, route `addYield(N, ...)` calls from the relevant source.
+6. Update address/ABI exports and the off-chain integration layer.
 
 ---
 
-## 11) Points d'attention pour la suite
+## 11) Attention points for next steps
 
-1. Ajouter des tests d'integration multi-vault (2+ vaults actifs simultanement).
-2. Evaluer une politique optionnelle de binding `source -> vaultId` si besoin de durcissement futur.
-3. Documenter une procedure de rotation d'implementation `stQEUROToken` via `updateTokenImplementation`.
-4. Ajouter monitoring on-chain:
-   - events `VaultRegistered`
-   - coherence `vaultId/token` dans les indexers
+1. Add multi-vault integration tests (2+ active vaults simultaneously).
+2. Evaluate an optional `source -> vaultId` binding policy if stricter controls are needed later.
+3. Document a `stQEUROToken` implementation rotation procedure via `updateTokenImplementation`.
+4. Add on-chain monitoring for:
+   - `VaultRegistered` events
+   - `vaultId/token` consistency in indexers
 
 ---
 
-## 12) Resume executif
+## 12) Executive summary
 
-Cet upgrade introduit une couche factory robuste qui permet de scaler le staking QEURO a plusieurs vaults sans melanger les positions de staking.
+This upgrade introduces a robust factory layer that enables QEURO staking to scale across multiple vaults without mixing staking positions.
 
-- Un vault = un token stQEURO dedie.
-- Le routage de yield devient explicite par `vaultId`.
-- Le self-register garantit une semantique d'enregistrement stricte et auditable.
-- Le deploiement/wiring est automatise pour la premiere instance (`vaultId = 1`) et pret pour les vaults suivants.
+- One vault = one dedicated stQEURO token.
+- Yield routing becomes explicitly keyed by `vaultId`.
+- Self-registration guarantees strict and auditable registration semantics.
+- Deployment/wiring is automated for the first instance (`vaultId = 1`) and ready for the next vaults.

@@ -278,6 +278,33 @@ uint256 public totalUsdcInAave
 ```
 
 
+### stQEUROFactory
+stQEURO factory used to register this vault's staking token.
+
+
+```solidity
+address public stQEUROFactory
+```
+
+
+### stQEUROToken
+stQEURO token address registered for this vault.
+
+
+```solidity
+address public stQEUROToken
+```
+
+
+### stQEUROVaultId
+Registry id used when creating this vault's stQEURO token.
+
+
+```solidity
+uint256 public stQEUROVaultId
+```
+
+
 ### mintFee
 Protocol fee charged on minting QEURO
 
@@ -1571,6 +1598,52 @@ function updateAaveVault(address _aaveVault) external onlyRole(GOVERNANCE_ROLE);
 |`_aaveVault`|`address`|New AaveVault address|
 
 
+### selfRegisterStQEURO
+
+Registers this vault in stQEUROFactory using strict self-call semantics.
+
+Previews deterministic token address, binds local state, then executes factory registration and verifies match.
+
+**Notes:**
+- security: Restricted to governance and protected by `nonReentrant`.
+
+- validation: Requires non-zero factory address, non-zero vault id, and uninitialized local stQEURO state.
+
+- state-changes: Sets `stQEUROFactory`, `stQEUROToken`, and `stQEUROVaultId` for this vault.
+
+- events: Emits `StQEURORegistered` after successful factory registration.
+
+- errors: Reverts on invalid inputs, duplicate initialization, or mismatched preview/registered token address.
+
+- reentrancy: Guarded by `nonReentrant`; state binding follows CEI before external registration call.
+
+- access: Restricted to `GOVERNANCE_ROLE`.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata vaultName)
+    external
+    onlyRole(GOVERNANCE_ROLE)
+    nonReentrant
+    returns (address token);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`factory`|`address`|Address of stQEUROFactory.|
+|`vaultId`|`uint256`|Desired vault id in the factory registry.|
+|`vaultName`|`string`|Uppercase alphanumeric vault name.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`token`|`address`|Newly deployed stQEURO token address.|
+
+
 ### harvestAaveInterest
 
 Harvests accrued Aave interest through AaveVault and routes yield via YieldShift.
@@ -2836,6 +2909,14 @@ event AaveVaultUpdated(address indexed oldAaveVault, address indexed newAaveVaul
 |----|----|-----------|
 |`oldAaveVault`|`address`|Previous AaveVault address|
 |`newAaveVault`|`address`|New AaveVault address|
+
+### StQEURORegistered
+
+```solidity
+event StQEURORegistered(
+    address indexed factory, uint256 indexed vaultId, address indexed stQEUROToken, string vaultName
+);
+```
 
 ### UsdcDeployedToAave
 Emitted when USDC is deployed to Aave for yield generation

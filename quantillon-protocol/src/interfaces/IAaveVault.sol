@@ -348,13 +348,31 @@ interface IAaveVault {
 
     /**
      * @notice Updates the YieldShift dependency address.
+     * @dev Rotates the YieldShift contract reference used for harvested-yield routing.
      * @param newYieldShift New YieldShift address.
+     * @custom:security Intended for governance-only execution in implementation.
+     * @custom:validation Implementations must reject zero/invalid addresses.
+     * @custom:state-changes Updates stored YieldShift dependency.
+     * @custom:events Emits parameter-update event in implementation.
+     * @custom:errors Reverts on unauthorized access or invalid address.
+     * @custom:reentrancy Configuration setter; no user balance mutation expected.
+     * @custom:access Access controlled by implementation (governance role).
+     * @custom:oracle No oracle dependencies.
      */
     function updateYieldShift(address newYieldShift) external;
 
     /**
      * @notice Sets the target vault id used for YieldShift routing.
+     * @dev Updates the destination vault id for yield forwarding flows.
      * @param newYieldVaultId Vault id in stQEUROFactory.
+     * @custom:security Intended for governance-only execution in implementation.
+     * @custom:validation Implementations should reject zero/invalid vault ids.
+     * @custom:state-changes Updates stored `yieldVaultId`.
+     * @custom:events Emits parameter-update event in implementation.
+     * @custom:errors Reverts on unauthorized access or invalid vault id.
+     * @custom:reentrancy Configuration setter; no user balance mutation expected.
+     * @custom:access Access controlled by implementation (governance role).
+     * @custom:oracle No oracle dependencies.
      */
     function setYieldVaultId(uint256 newYieldVaultId) external;
 
@@ -770,7 +788,16 @@ interface IAaveVault {
     function yieldFee() external view returns (uint256);
     /**
      * @notice Returns the configured YieldShift vault id used by this Aave vault.
+     * @dev Exposes the cached vault id destination for YieldShift forwarding.
      * @return uint256 The target vault id.
+     * @custom:security Read-only accessor.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
      */
     function yieldVaultId() external view returns (uint256);
     /**

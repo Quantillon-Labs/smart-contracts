@@ -129,10 +129,10 @@ IAaveVault public aaveVault
 ```
 
 
-### stQEURO
+### stQEUROFactory
 
 ```solidity
-IstQEURO public stQEURO
+IStQEUROFactory public stQEUROFactory
 ```
 
 
@@ -402,7 +402,7 @@ function initialize(
     address _userPool,
     address _hedgerPool,
     address _aaveVault,
-    address _stQEURO,
+    address _stQEUROFactory,
     address _timelock,
     address _treasury
 ) public initializer;
@@ -416,7 +416,7 @@ function initialize(
 |`_userPool`|`address`|Address of the user pool contract|
 |`_hedgerPool`|`address`|Address of the hedger pool contract|
 |`_aaveVault`|`address`|Address of the Aave vault contract|
-|`_stQEURO`|`address`|Address of the stQEURO token contract|
+|`_stQEUROFactory`|`address`|Address of the stQEURO factory contract|
 |`_timelock`|`address`|Address of the timelock contract|
 |`_treasury`|`address`|Address of the treasury|
 
@@ -502,12 +502,13 @@ Adds yield from authorized sources and distributes it according to current yield
 
 
 ```solidity
-function addYield(uint256 yieldAmount, bytes32 source) external nonReentrant;
+function addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source) external nonReentrant;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
+|`vaultId`|`uint256`|Registered vault identifier used to resolve the target stQEURO token|
 |`yieldAmount`|`uint256`|Amount of yield to add (6 decimals)|
 |`source`|`bytes32`|Source identifier for the yield|
 
@@ -1214,7 +1215,7 @@ function configureYieldModel(YieldModelConfig calldata cfg) external;
 
 Batch-updates external dependency addresses used for yield distribution.
 
-Wires or re-wires the `userPool`, `hedgerPool`, `aaveVault`, `stQEURO` and `treasury`
+Wires or re-wires the `userPool`, `hedgerPool`, `aaveVault`, `stQEUROFactory` and `treasury`
 references in a single governance transaction.
 
 **Notes:**
@@ -1222,7 +1223,7 @@ references in a single governance transaction.
 
 - validation: Uses `AccessControlLibrary` / `YieldValidationLibrary` to check addresses.
 
-- state-changes: Updates `userPool`, `hedgerPool`, `aaveVault`, `stQEURO`, `treasury`.
+- state-changes: Updates `userPool`, `hedgerPool`, `aaveVault`, `stQEUROFactory`, `treasury`.
 
 - events: None – downstream contracts emit their own events on meaningful actions.
 
@@ -1242,7 +1243,7 @@ function configureDependencies(YieldDependencyConfig calldata cfg) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`cfg`|`YieldDependencyConfig`|Struct containing the new dependency configuration: - `userPool`: UserPool contract address. - `hedgerPool`: HedgerPool contract address. - `aaveVault`: AaveVault contract address. - `stQEURO`: stQEURO token contract address. - `treasury`: treasury address receiving recovered funds.|
+|`cfg`|`YieldDependencyConfig`|Struct containing the new dependency configuration: - `userPool`: UserPool contract address. - `hedgerPool`: HedgerPool contract address. - `aaveVault`: AaveVault contract address. - `stQEUROFactory`: stQEURO factory contract address. - `treasury`: treasury address receiving recovered funds.|
 
 
 ### setYieldSourceAuthorization
@@ -1805,7 +1806,7 @@ struct YieldDependencyConfig {
     address userPool;
     address hedgerPool;
     address aaveVault;
-    address stQEURO;
+    address stQEUROFactory;
     address treasury;
 }
 ```

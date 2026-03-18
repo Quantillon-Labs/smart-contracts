@@ -11,4 +11,5 @@
 - [SecureUpgradeable](SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 - [TimelockUpgradeable](TimelockUpgradeable.sol/contract.TimelockUpgradeable.md)
 - [UserPool](UserPool.sol/contract.UserPool.md)
+- [stQEUROFactory](stQEUROFactory.sol/contract.stQEUROFactory.md)
 - [stQEUROToken](stQEUROToken.sol/contract.stQEUROToken.md)

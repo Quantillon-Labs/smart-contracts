@@ -192,6 +192,15 @@ TimeProvider public immutable TIME_PROVIDER
 ```
 
 
+### vaultName
+Human-readable vault identifier used to derive token metadata
+
+
+```solidity
+string public vaultName
+```
+
+
 ### exchangeRate
 Exchange rate between QEURO and stQEURO (18 decimals)
 
@@ -433,6 +442,92 @@ function initialize(
 |`_usdc`|`address`|Address of the USDC token contract|
 |`_treasury`|`address`|Address of the treasury|
 |`_timelock`|`address`|Address of the timelock contract|
+
+
+### initialize
+
+Initialize the stQEURO token contract with dynamic metadata for a vault.
+
+Uses caller-supplied token name/symbol and vault label, then delegates setup to `_initializeStQEURO`.
+
+**Notes:**
+- security: Validates critical addresses and initializes access-controlled roles.
+
+- validation: Reverts if required addresses are invalid or zero.
+
+- state-changes: Initializes token metadata, roles, dependencies, and core staking parameters.
+
+- events: Emits role initialization events from inherited OpenZeppelin modules.
+
+- errors: Reverts with custom validation errors when initialization inputs are invalid.
+
+- reentrancy: Protected by `initializer`; callable once per proxy instance.
+
+- access: Public initializer for proxy deployment flow.
+
+- oracle: No direct oracle dependency during initialization.
+
+
+```solidity
+function initialize(
+    address admin,
+    address _qeuro,
+    address _yieldShift,
+    address _usdc,
+    address _treasury,
+    address _timelock,
+    string calldata _tokenName,
+    string calldata _tokenSymbol,
+    string calldata _vaultName
+) public initializer;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`admin`|`address`|Address of the admin role|
+|`_qeuro`|`address`|Address of the QEURO token contract|
+|`_yieldShift`|`address`|Address of the YieldShift contract|
+|`_usdc`|`address`|Address of the USDC token contract|
+|`_treasury`|`address`|Address of the treasury|
+|`_timelock`|`address`|Address of the timelock contract|
+|`_tokenName`|`string`|ERC20 token name|
+|`_tokenSymbol`|`string`|ERC20 token symbol|
+|`_vaultName`|`string`|Human-readable vault name (e.g. CORE, ALPHA1)|
+
+
+### _initializeStQEURO
+
+Internal initializer shared by both public initialization entrypoints.
+
+Performs full dependency validation, role setup, metadata initialization, and default parameter bootstrap.
+
+**Notes:**
+- security: Centralizes initialization checks to keep both entrypoints consistent and hardened.
+
+- validation: Reverts if required addresses are zero or invalid for configuration.
+
+- state-changes: Initializes inherited modules, role assignments, dependencies, and default rate parameters.
+
+- events: Emits inherited initialization/role events as modules are configured.
+
+- errors: Reverts with custom address/validation errors when config is invalid.
+
+- reentrancy: Internal initializer path; reached only through `initializer`-guarded functions.
+
+- access: Internal helper.
+
+- oracle: No direct oracle reads during initialization.
+
+
+```solidity
+function _initializeStQEURO(InitConfig memory cfg) internal;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`cfg`|`InitConfig`|Initialization configuration struct with addresses and metadata.|
 
 
 ### stake
@@ -1481,4 +1576,21 @@ event ETHRecovered(address indexed to, uint256 indexed amount);
 |----|----|-----------|
 |`to`|`address`|Address to which ETH was recovered|
 |`amount`|`uint256`|Amount of ETH recovered|
+
+## Structs
+### InitConfig
+
+```solidity
+struct InitConfig {
+    address admin;
+    address qeuroAddress;
+    address yieldShiftAddress;
+    address usdcAddress;
+    address treasuryAddress;
+    address timelockAddress;
+    string tokenName;
+    string tokenSymbol;
+    string vaultName_;
+}
+```
 

@@ -37,6 +37,24 @@ interface IstQEURO {
 
     /**
      * @notice Initializes the stQEURO token with dynamic metadata for a vault.
+     * @dev Configures dependencies and vault-specific token metadata for proxy deployment.
+     * @param admin Admin address
+     * @param _qeuro QEURO token address
+     * @param _yieldShift YieldShift contract address
+     * @param _usdc USDC token address
+     * @param _treasury Treasury address
+     * @param timelock Timelock contract address
+     * @param _tokenName ERC20 token name for this vault token instance
+     * @param _tokenSymbol ERC20 token symbol for this vault token instance
+     * @param _vaultName Human-readable vault name
+     * @custom:security Validates critical dependency addresses and initializes role-gated configuration.
+     * @custom:validation Implementations should reject zero/invalid addresses and malformed metadata inputs.
+     * @custom:state-changes Initializes metadata, core dependencies, and role assignments.
+     * @custom:events Emits initialization and role-grant related events in implementation.
+     * @custom:errors Reverts on invalid initialization parameters.
+     * @custom:reentrancy Protected by initializer semantics in implementation.
+     * @custom:access Public initializer for proxy deployment flow.
+     * @custom:oracle No direct oracle dependency during initialization.
      */
     function initialize(
         address admin,

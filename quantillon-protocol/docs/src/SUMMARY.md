@@ -1,6 +1,5 @@
 # Summary
 - [Home](README.md)
-- [stQEUROFactory Technical Upgrade](stQEUROFactory.md)
 # src
   - [❱ core](src/core/README.md)
     - [❱ vaults](src/core/vaults/README.md)
@@ -19,6 +18,7 @@
     - [SecureUpgradeable](src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
     - [TimelockUpgradeable](src/core/TimelockUpgradeable.sol/contract.TimelockUpgradeable.md)
     - [UserPool](src/core/UserPool.sol/contract.UserPool.md)
+    - [stQEUROFactory](src/core/stQEUROFactory.sol/contract.stQEUROFactory.md)
     - [stQEUROToken](src/core/stQEUROToken.sol/contract.stQEUROToken.md)
   - [❱ interfaces](src/interfaces/README.md)
     - [IAaveVault](src/interfaces/IAaveVault.sol/interface.IAaveVault.md)
@@ -30,6 +30,7 @@
     - [IQuantillonVault](src/interfaces/IQuantillonVault.sol/interface.IQuantillonVault.md)
     - [ISecureUpgradeable](src/interfaces/ISecureUpgradeable.sol/interface.ISecureUpgradeable.md)
     - [ISlippageStorage](src/interfaces/ISlippageStorage.sol/interface.ISlippageStorage.md)
+    - [IStQEUROFactory](src/interfaces/IStQEUROFactory.sol/interface.IStQEUROFactory.md)
     - [IStorkOracle](src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md)
     - [ITimelockUpgradeable](src/interfaces/ITimelockUpgradeable.sol/interface.ITimelockUpgradeable.md)
     - [IUserPool](src/interfaces/IUserPool.sol/interface.IUserPool.md)

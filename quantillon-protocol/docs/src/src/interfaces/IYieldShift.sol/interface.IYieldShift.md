@@ -32,7 +32,7 @@ function initialize(
     address _userPool,
     address _hedgerPool,
     address _aaveVault,
-    address _stQEURO,
+    address _stQEUROFactory,
     address _timelock,
     address _treasury
 ) external;
@@ -46,7 +46,7 @@ function initialize(
 |`_userPool`|`address`|UserPool contract address (optional at deploy time).|
 |`_hedgerPool`|`address`|HedgerPool contract address (optional at deploy time).|
 |`_aaveVault`|`address`|AaveVault contract address (optional at deploy time).|
-|`_stQEURO`|`address`|stQEURO token contract address (optional at deploy time).|
+|`_stQEUROFactory`|`address`|stQEURO factory contract address (optional at deploy time).|
 |`_timelock`|`address`|Timelock contract used for SecureUpgradeable.|
 |`_treasury`|`address`|Treasury address for recovery flows.|
 
@@ -132,12 +132,13 @@ Transfers USDC from `msg.sender`, checks authorization and updates yield pools.
 
 
 ```solidity
-function addYield(uint256 yieldAmount, bytes32 source) external;
+function addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source) external;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
+|`vaultId`|`uint256`|Target vault id receiving user-yield routing.|
 |`yieldAmount`|`uint256`|Yield amount in USDC (6 decimals).|
 |`source`|`bytes32`|Logical yield source identifier (e.g. `keccak256("aave")`).|
 
@@ -1382,7 +1383,7 @@ struct YieldDependencyConfig {
     address userPool;
     address hedgerPool;
     address aaveVault;
-    address stQEURO;
+    address stQEUROFactory;
     address treasury;
 }
 ```

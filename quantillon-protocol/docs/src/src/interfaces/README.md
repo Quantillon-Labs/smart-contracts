@@ -10,6 +10,7 @@
 - [IQuantillonVault](IQuantillonVault.sol/interface.IQuantillonVault.md)
 - [ISecureUpgradeable](ISecureUpgradeable.sol/interface.ISecureUpgradeable.md)
 - [ISlippageStorage](ISlippageStorage.sol/interface.ISlippageStorage.md)
+- [IStQEUROFactory](IStQEUROFactory.sol/interface.IStQEUROFactory.md)
 - [IStorkOracle](IStorkOracle.sol/interface.IStorkOracle.md)
 - [ITimelockUpgradeable](ITimelockUpgradeable.sol/interface.ITimelockUpgradeable.md)
 - [IUserPool](IUserPool.sol/interface.IUserPool.md)

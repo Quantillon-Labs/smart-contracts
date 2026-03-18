@@ -1116,7 +1116,16 @@ contract AaveVault is
 
     /**
      * @notice Updates the YieldShift contract reference.
+     * @dev Governance-only setter used to rotate the YieldShift dependency for harvested-yield routing.
      * @param newYieldShift New YieldShift contract address.
+     * @custom:security Restricted to governance and validates non-zero dependency address.
+     * @custom:validation Reverts if `newYieldShift` is zero address.
+     * @custom:state-changes Updates `yieldShift` reference.
+     * @custom:events Emits `AaveParameterUpdated` with old/new encoded addresses.
+     * @custom:errors Reverts on unauthorized access or invalid address.
+     * @custom:reentrancy No token transfer side effects; single storage write after validation.
+     * @custom:access Restricted to governance through `AccessControlLibrary.onlyGovernance`.
+     * @custom:oracle No oracle dependencies.
      */
     function updateYieldShift(address newYieldShift) external {
         AccessControlLibrary.onlyGovernance(this);
@@ -1129,7 +1138,16 @@ contract AaveVault is
 
     /**
      * @notice Sets the vault id used when routing harvested yield via YieldShift.
+     * @dev Governance-only setter for destination vault id used by downstream YieldShift calls.
      * @param newYieldVaultId Target vault id in stQEUROFactory.
+     * @custom:security Restricted to governance and prevents unset/invalid id value.
+     * @custom:validation Reverts if `newYieldVaultId` is zero.
+     * @custom:state-changes Updates `yieldVaultId`.
+     * @custom:events Emits `AaveParameterUpdated` with old/new vault id.
+     * @custom:errors Reverts on unauthorized access or invalid vault id.
+     * @custom:reentrancy No external calls after validation except event emission.
+     * @custom:access Restricted to governance through `AccessControlLibrary.onlyGovernance`.
+     * @custom:oracle No oracle dependencies.
      */
     function setYieldVaultId(uint256 newYieldVaultId) external {
         AccessControlLibrary.onlyGovernance(this);

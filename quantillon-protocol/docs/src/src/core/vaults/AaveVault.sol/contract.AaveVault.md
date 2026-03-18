@@ -205,6 +205,13 @@ uint256 public emergencyExitThreshold
 ```
 
 
+### yieldVaultId
+
+```solidity
+uint256 public yieldVaultId
+```
+
+
 ### emergencyMode
 
 ```solidity
@@ -1181,6 +1188,74 @@ function updateAaveParameters(uint256 newHarvestThreshold, uint256 newYieldFee, 
 |`newHarvestThreshold`|`uint256`|New harvest threshold in USDC|
 |`newYieldFee`|`uint256`|New yield fee in basis points|
 |`newRebalanceThreshold`|`uint256`|New rebalance threshold in basis points|
+
+
+### updateYieldShift
+
+Updates the YieldShift contract reference.
+
+Governance-only setter used to rotate the YieldShift dependency for harvested-yield routing.
+
+**Notes:**
+- security: Restricted to governance and validates non-zero dependency address.
+
+- validation: Reverts if `newYieldShift` is zero address.
+
+- state-changes: Updates `yieldShift` reference.
+
+- events: Emits `AaveParameterUpdated` with old/new encoded addresses.
+
+- errors: Reverts on unauthorized access or invalid address.
+
+- reentrancy: No token transfer side effects; single storage write after validation.
+
+- access: Restricted to governance through `AccessControlLibrary.onlyGovernance`.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function updateYieldShift(address newYieldShift) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newYieldShift`|`address`|New YieldShift contract address.|
+
+
+### setYieldVaultId
+
+Sets the vault id used when routing harvested yield via YieldShift.
+
+Governance-only setter for destination vault id used by downstream YieldShift calls.
+
+**Notes:**
+- security: Restricted to governance and prevents unset/invalid id value.
+
+- validation: Reverts if `newYieldVaultId` is zero.
+
+- state-changes: Updates `yieldVaultId`.
+
+- events: Emits `AaveParameterUpdated` with old/new vault id.
+
+- errors: Reverts on unauthorized access or invalid vault id.
+
+- reentrancy: No external calls after validation except event emission.
+
+- access: Restricted to governance through `AccessControlLibrary.onlyGovernance`.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function setYieldVaultId(uint256 newYieldVaultId) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newYieldVaultId`|`uint256`|Target vault id in stQEUROFactory.|
 
 
 ### getAaveConfig

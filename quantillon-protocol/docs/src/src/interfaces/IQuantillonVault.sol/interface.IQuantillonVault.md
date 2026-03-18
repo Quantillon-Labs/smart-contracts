@@ -1934,6 +1934,50 @@ function updateAaveVault(address _aaveVault) external;
 |`_aaveVault`|`address`|New AaveVault address|
 
 
+### selfRegisterStQEURO
+
+Registers this vault into stQEUROFactory and deploys its dedicated token.
+
+Binds the vault to a deterministic stQEURO token address and records factory linkage.
+
+**Notes:**
+- security: Intended for governance-only execution in implementation.
+
+- validation: Implementations must validate factory address, vault id, and registration uniqueness.
+
+- state-changes: Updates factory/token/vault-id bindings on successful registration.
+
+- events: Emits registration event in implementation.
+
+- errors: Reverts for invalid input, duplicate initialization, or registration mismatch.
+
+- reentrancy: Implementation protects external registration flow with reentrancy guard.
+
+- access: Access controlled by implementation (governance role).
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata vaultName)
+    external
+    returns (address token);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`factory`|`address`|Address of stQEUROFactory.|
+|`vaultId`|`uint256`|Target vault id.|
+|`vaultName`|`string`|Uppercase alphanumeric vault name.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`token`|`address`|Newly deployed stQEURO token address.|
+
+
 ### updateHedgerRewardFeeSplit
 
 Updates the protocol‑fee share routed to HedgerPool reward reserve.
@@ -2071,6 +2115,90 @@ function totalUsdcInAave() external view returns (uint256);
 |----|----|-----------|
 |`<none>`|`uint256`|Total USDC in Aave (6 decimals)|
 
+
+### stQEUROFactory
+
+Returns configured stQEUROFactory address.
+
+Read-only accessor for the factory bound to this vault instance.
+
+**Notes:**
+- security: Read-only accessor.
+
+- validation: No input validation required.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function stQEUROFactory() external view returns (address);
+```
+
+### stQEUROToken
+
+Returns the stQEURO token address registered for this vault.
+
+Read-only accessor for the vault-specific stQEURO token.
+
+**Notes:**
+- security: Read-only accessor.
+
+- validation: No input validation required.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function stQEUROToken() external view returns (address);
+```
+
+### stQEUROVaultId
+
+Returns the factory vault id bound to this vault.
+
+Read-only accessor for the registered stQEURO factory vault id.
+
+**Notes:**
+- security: Read-only accessor.
+
+- validation: No input validation required.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function stQEUROVaultId() external view returns (uint256);
+```
 
 ### VAULT_OPERATOR_ROLE
 

@@ -1478,26 +1478,39 @@ contract QuantillonVault is
 
     /**
      * @notice Registers this vault in stQEUROFactory using strict self-call semantics.
+     * @dev Previews deterministic token address, binds local state, then executes factory registration and verifies match.
      * @param factory Address of stQEUROFactory.
      * @param vaultId Desired vault id in the factory registry.
      * @param vaultName Uppercase alphanumeric vault name.
      * @return token Newly deployed stQEURO token address.
+     * @custom:security Restricted to governance and protected by `nonReentrant`.
+     * @custom:validation Requires non-zero factory address, non-zero vault id, and uninitialized local stQEURO state.
+     * @custom:state-changes Sets `stQEUROFactory`, `stQEUROToken`, and `stQEUROVaultId` for this vault.
+     * @custom:events Emits `StQEURORegistered` after successful factory registration.
+     * @custom:errors Reverts on invalid inputs, duplicate initialization, or mismatched preview/registered token address.
+     * @custom:reentrancy Guarded by `nonReentrant`; state binding follows CEI before external registration call.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle No oracle dependencies.
      */
     function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata vaultName)
         external
         onlyRole(GOVERNANCE_ROLE)
+        nonReentrant
         returns (address token)
     {
-        CommonValidationLibrary.validateNonZeroAddress(factory, "token");
+        if (factory == address(0)) revert CommonErrorLibrary.InvalidToken();
         if (stQEUROToken != address(0)) revert CommonErrorLibrary.AlreadyInitialized();
         if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
 
-        token = IStQEUROFactory(factory).registerVault(vaultId, vaultName);
+        token = IStQEUROFactory(factory).previewVaultToken(address(this), vaultId, vaultName);
         if (token == address(0)) revert CommonErrorLibrary.InvalidAddress();
 
         stQEUROFactory = factory;
         stQEUROToken = token;
         stQEUROVaultId = vaultId;
+
+        address registeredToken = IStQEUROFactory(factory).registerVault(vaultId, vaultName);
+        if (registeredToken != token) revert CommonErrorLibrary.InvalidAddress();
 
         emit StQEURORegistered(factory, vaultId, token, vaultName);
     }

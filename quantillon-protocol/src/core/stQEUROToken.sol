@@ -366,6 +366,7 @@ contract stQEUROToken is
 
     /**
      * @notice Initialize the stQEURO token contract with dynamic metadata for a vault.
+     * @dev Uses caller-supplied token name/symbol and vault label, then delegates setup to `_initializeStQEURO`.
      * @param admin Address of the admin role
      * @param _qeuro Address of the QEURO token contract
      * @param _yieldShift Address of the YieldShift contract
@@ -375,6 +376,14 @@ contract stQEUROToken is
      * @param _tokenName ERC20 token name
      * @param _tokenSymbol ERC20 token symbol
      * @param _vaultName Human-readable vault name (e.g. CORE, ALPHA1)
+     * @custom:security Validates critical addresses and initializes access-controlled roles.
+     * @custom:validation Reverts if required addresses are invalid or zero.
+     * @custom:state-changes Initializes token metadata, roles, dependencies, and core staking parameters.
+     * @custom:events Emits role initialization events from inherited OpenZeppelin modules.
+     * @custom:errors Reverts with custom validation errors when initialization inputs are invalid.
+     * @custom:reentrancy Protected by `initializer`; callable once per proxy instance.
+     * @custom:access Public initializer for proxy deployment flow.
+     * @custom:oracle No direct oracle dependency during initialization.
      */
     function initialize(
         address admin,
@@ -401,6 +410,19 @@ contract stQEUROToken is
         _initializeStQEURO(cfg);
     }
 
+    /**
+     * @notice Internal initializer shared by both public initialization entrypoints.
+     * @dev Performs full dependency validation, role setup, metadata initialization, and default parameter bootstrap.
+     * @param cfg Initialization configuration struct with addresses and metadata.
+     * @custom:security Centralizes initialization checks to keep both entrypoints consistent and hardened.
+     * @custom:validation Reverts if required addresses are zero or invalid for configuration.
+     * @custom:state-changes Initializes inherited modules, role assignments, dependencies, and default rate parameters.
+     * @custom:events Emits inherited initialization/role events as modules are configured.
+     * @custom:errors Reverts with custom address/validation errors when config is invalid.
+     * @custom:reentrancy Internal initializer path; reached only through `initializer`-guarded functions.
+     * @custom:access Internal helper.
+     * @custom:oracle No direct oracle reads during initialization.
+     */
     function _initializeStQEURO(InitConfig memory cfg) internal {
         CommonValidationLibrary.validateNonZeroAddress(cfg.admin, "admin");
         CommonValidationLibrary.validateNonZeroAddress(cfg.qeuroAddress, "token");

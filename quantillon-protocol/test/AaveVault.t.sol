@@ -614,7 +614,7 @@ contract MockYieldShift {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function addYield(uint256 vaultId, uint256 amount, bytes32 source) external {
+    function addYield(uint256 vaultId, uint256 amount, bytes32 source) external pure {
         vaultId;
         amount;
         source;

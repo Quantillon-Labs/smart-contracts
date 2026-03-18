@@ -715,6 +715,74 @@ function updateAaveParameters(uint256 newHarvestThreshold, uint256 newYieldFee, 
 |`newRebalanceThreshold`|`uint256`|Rebalance threshold (bps)|
 
 
+### updateYieldShift
+
+Updates the YieldShift dependency address.
+
+Rotates the YieldShift contract reference used for harvested-yield routing.
+
+**Notes:**
+- security: Intended for governance-only execution in implementation.
+
+- validation: Implementations must reject zero/invalid addresses.
+
+- state-changes: Updates stored YieldShift dependency.
+
+- events: Emits parameter-update event in implementation.
+
+- errors: Reverts on unauthorized access or invalid address.
+
+- reentrancy: Configuration setter; no user balance mutation expected.
+
+- access: Access controlled by implementation (governance role).
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function updateYieldShift(address newYieldShift) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newYieldShift`|`address`|New YieldShift address.|
+
+
+### setYieldVaultId
+
+Sets the target vault id used for YieldShift routing.
+
+Updates the destination vault id for yield forwarding flows.
+
+**Notes:**
+- security: Intended for governance-only execution in implementation.
+
+- validation: Implementations should reject zero/invalid vault ids.
+
+- state-changes: Updates stored `yieldVaultId`.
+
+- events: Emits parameter-update event in implementation.
+
+- errors: Reverts on unauthorized access or invalid vault id.
+
+- reentrancy: Configuration setter; no user balance mutation expected.
+
+- access: Access controlled by implementation (governance role).
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function setYieldVaultId(uint256 newYieldVaultId) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`newYieldVaultId`|`uint256`|Vault id in stQEUROFactory.|
+
+
 ### getAaveConfig
 
 Aave config snapshot
@@ -1639,6 +1707,40 @@ function yieldFee() external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|uint256 The yield fee in basis points|
+
+
+### yieldVaultId
+
+Returns the configured YieldShift vault id used by this Aave vault.
+
+Exposes the cached vault id destination for YieldShift forwarding.
+
+**Notes:**
+- security: Read-only accessor.
+
+- validation: No input validation required.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function yieldVaultId() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|uint256 The target vault id.|
 
 
 ### rebalanceThreshold

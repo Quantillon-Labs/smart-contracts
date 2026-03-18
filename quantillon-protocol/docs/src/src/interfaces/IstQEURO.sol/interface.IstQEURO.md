@@ -58,6 +58,58 @@ function initialize(
 |`timelock`|`address`|Timelock contract address|
 
 
+### initialize
+
+Initializes the stQEURO token with dynamic metadata for a vault.
+
+Configures dependencies and vault-specific token metadata for proxy deployment.
+
+**Notes:**
+- security: Validates critical dependency addresses and initializes role-gated configuration.
+
+- validation: Implementations should reject zero/invalid addresses and malformed metadata inputs.
+
+- state-changes: Initializes metadata, core dependencies, and role assignments.
+
+- events: Emits initialization and role-grant related events in implementation.
+
+- errors: Reverts on invalid initialization parameters.
+
+- reentrancy: Protected by initializer semantics in implementation.
+
+- access: Public initializer for proxy deployment flow.
+
+- oracle: No direct oracle dependency during initialization.
+
+
+```solidity
+function initialize(
+    address admin,
+    address _qeuro,
+    address _yieldShift,
+    address _usdc,
+    address _treasury,
+    address timelock,
+    string calldata _tokenName,
+    string calldata _tokenSymbol,
+    string calldata _vaultName
+) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`admin`|`address`|Admin address|
+|`_qeuro`|`address`|QEURO token address|
+|`_yieldShift`|`address`|YieldShift contract address|
+|`_usdc`|`address`|USDC token address|
+|`_treasury`|`address`|Treasury address|
+|`timelock`|`address`|Timelock contract address|
+|`_tokenName`|`string`|ERC20 token name for this vault token instance|
+|`_tokenSymbol`|`string`|ERC20 token symbol for this vault token instance|
+|`_vaultName`|`string`|Human-readable vault name|
+
+
 ### stake
 
 Stake QEURO to receive stQEURO

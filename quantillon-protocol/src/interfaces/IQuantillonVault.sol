@@ -905,10 +905,19 @@ interface IQuantillonVault {
 
     /**
      * @notice Registers this vault into stQEUROFactory and deploys its dedicated token.
+     * @dev Binds the vault to a deterministic stQEURO token address and records factory linkage.
      * @param factory Address of stQEUROFactory.
      * @param vaultId Target vault id.
      * @param vaultName Uppercase alphanumeric vault name.
      * @return token Newly deployed stQEURO token address.
+     * @custom:security Intended for governance-only execution in implementation.
+     * @custom:validation Implementations must validate factory address, vault id, and registration uniqueness.
+     * @custom:state-changes Updates factory/token/vault-id bindings on successful registration.
+     * @custom:events Emits registration event in implementation.
+     * @custom:errors Reverts for invalid input, duplicate initialization, or registration mismatch.
+     * @custom:reentrancy Implementation protects external registration flow with reentrancy guard.
+     * @custom:access Access controlled by implementation (governance role).
+     * @custom:oracle No oracle dependencies.
      */
     function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata vaultName)
         external
@@ -978,16 +987,43 @@ interface IQuantillonVault {
 
     /**
      * @notice Returns configured stQEUROFactory address.
+     * @dev Read-only accessor for the factory bound to this vault instance.
+     * @custom:security Read-only accessor.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
      */
     function stQEUROFactory() external view returns (address);
 
     /**
      * @notice Returns the stQEURO token address registered for this vault.
+     * @dev Read-only accessor for the vault-specific stQEURO token.
+     * @custom:security Read-only accessor.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
      */
     function stQEUROToken() external view returns (address);
 
     /**
      * @notice Returns the factory vault id bound to this vault.
+     * @dev Read-only accessor for the registered stQEURO factory vault id.
+     * @custom:security Read-only accessor.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
      */
     function stQEUROVaultId() external view returns (uint256);
 

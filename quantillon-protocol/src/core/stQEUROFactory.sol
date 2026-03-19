@@ -401,6 +401,10 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
             bool isDigit = ch >= 0x30 && ch <= 0x39;
             if (!isUpper && !isDigit) revert CommonErrorLibrary.InvalidParameter();
         }
+
+        if (len == 4 && raw[0] == 0x43 && raw[1] == 0x4F && raw[2] == 0x52 && raw[3] == 0x45) {
+            revert CommonErrorLibrary.InvalidParameter();
+        }
     }
 
     /**

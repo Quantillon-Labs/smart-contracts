@@ -209,14 +209,11 @@ Change in `harvestAaveYield()`:
 3. Deploy `stQEUROFactory` (proxy) while injecting token implementation.
 4. Configure `YieldShift` with `stQEUROFactory`.
 5. Rewire `AaveVault` to `YieldShift`.
-6. Configure `AaveVault.setYieldVaultId(1)`.
-7. Grant `VAULT_FACTORY_ROLE` to `QuantillonVault`.
-8. Register vault 1 through `quantillonVault.selfRegisterStQEURO(...)`.
-9. Retrieve vault 1 token from the factory and finalize its wiring (oracle).
+6. Leave `AaveVault.yieldVaultId` unset until governance/core-team vault decision.
+7. Do not register any stQEURO vault token during bootstrap deployment.
+8. Register vaults later via explicit core-team governance flow.
 
-Added environment variable:
-
-- `STQEURO_VAULT_NAME` (default: `CORE`)
+At bootstrap, no vault-name environment variable is consumed by `DeployQuantillon.s.sol`.
 
 Exports:
 

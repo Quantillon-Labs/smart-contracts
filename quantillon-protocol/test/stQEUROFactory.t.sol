@@ -55,31 +55,31 @@ contract stQEUROFactoryTest is Test {
     }
 
     function test_RegisterVault_Success() public {
-        address token = vault.selfRegister(address(factory), 1, "CORE");
+        address token = vault.selfRegister(address(factory), 1, "AAVE");
         assertTrue(token != address(0));
 
         assertEq(factory.getStQEUROByVaultId(1), token);
         assertEq(factory.getStQEUROByVault(address(vault)), token);
         assertEq(factory.getVaultById(1), address(vault));
         assertEq(factory.getVaultIdByStQEURO(token), 1);
-        assertEq(factory.getVaultName(1), "CORE");
+        assertEq(factory.getVaultName(1), "AAVE");
 
         stQEUROToken deployed = stQEUROToken(token);
-        assertEq(deployed.symbol(), "stQEUROCORE");
-        assertEq(deployed.name(), "Staked Quantillon Euro CORE");
-        assertEq(deployed.vaultName(), "CORE");
+        assertEq(deployed.symbol(), "stQEUROAAVE");
+        assertEq(deployed.name(), "Staked Quantillon Euro AAVE");
+        assertEq(deployed.vaultName(), "AAVE");
         assertTrue(deployed.hasRole(deployed.YIELD_MANAGER_ROLE(), yieldShift));
     }
 
     function test_RegisterVault_DuplicateVaultId_Revert() public {
-        vault.selfRegister(address(factory), 1, "CORE");
+        vault.selfRegister(address(factory), 1, "AAVE");
 
         vm.expectRevert(CommonErrorLibrary.AlreadyInitialized.selector);
         otherVault.selfRegister(address(factory), 1, "ALPHA");
     }
 
     function test_RegisterVault_DuplicateVaultAddress_Revert() public {
-        vault.selfRegister(address(factory), 1, "CORE");
+        vault.selfRegister(address(factory), 1, "AAVE");
 
         vm.expectRevert(CommonErrorLibrary.AlreadyInitialized.selector);
         vault.selfRegister(address(factory), 2, "ALPHA");
@@ -97,16 +97,23 @@ contract stQEUROFactoryTest is Test {
     }
 
     function test_RegisterVault_DuplicateVaultName_Revert() public {
-        vault.selfRegister(address(factory), 1, "CORE");
+        vault.selfRegister(address(factory), 1, "AAVE");
 
         vm.expectRevert(CommonErrorLibrary.AlreadyInitialized.selector);
-        otherVault.selfRegister(address(factory), 2, "CORE");
+        otherVault.selfRegister(address(factory), 2, "AAVE");
+    }
+
+    function test_RegisterVault_CoreName_Disabled_Revert() public {
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
+        vault.selfRegister(address(factory), 1, "CORE");
+
+        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
+        factory.previewVaultToken(address(vault), 2, "CORE");
     }
 
     function test_RegisterVault_Unauthorized_Revert() public {
         MockVaultSelfRegister unauthorizedVault = new MockVaultSelfRegister();
         vm.expectRevert();
-        unauthorizedVault.selfRegister(address(factory), 1, "CORE");
+        unauthorizedVault.selfRegister(address(factory), 1, "AAVE");
     }
 }
-

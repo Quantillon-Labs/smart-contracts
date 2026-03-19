@@ -46,7 +46,6 @@ cp .env.base .env
 | `SINGLE_HEDGER` | Initial single hedger address on HedgerPool |
 | `USDC` | USDC address override (auto-selected by network if not set) |
 | `STORK_CONTRACT_ADDRESS` | Stork oracle contract override |
-| `STQEURO_VAULT_NAME` | Initial staking vault suffix used for `stQEURO{vaultName}` (default: `CORE`) |
 
 ---
 
@@ -73,7 +72,7 @@ TimeProvider
             ├── YieldShift + ERC1967Proxy
             ├── stQEUROToken (implementation)
             └── stQEUROFactory + ERC1967Proxy
-                    └── _wireContracts() — configures dependencies/roles, self-registers vault 1, and enforces required post-deploy wiring
+                    └── _wireContracts() — configures dependencies/roles and enforces required post-deploy wiring (no vault registration)
 ```
 
 After deployment, addresses are written to `deployments/{chainId}/addresses.json`.
@@ -84,14 +83,11 @@ Required post-deploy wiring now enforced in-script (deployment reverts if any ch
 - `yieldShift.setYieldSourceAuthorization(aaveVault, "aave", true)`
 - `yieldShift.bootstrapDefaults()`
 - `aaveVault.updateYieldShift(yieldShift)`
-- `aaveVault.setYieldVaultId(1)`
-- `stQEUROFactory.grantRole(VAULT_FACTORY_ROLE, quantillonVault)`
-- `quantillonVault.selfRegisterStQEURO(stQEUROFactory, 1, STQEURO_VAULT_NAME)`
-- `stQEUROFactory.getStQEUROByVaultId(1)` for token resolution
-- `stQEUROToken(vaultId=1).setOracle(oracleRouter)`
 - `hedgerPool.configureDependencies(...)` (includes `feeCollector`)
 - `feeCollector.authorizeFeeSource(quantillonVault)`
 - `feeCollector.authorizeFeeSource(hedgerPool)`
+
+Vault registration is intentionally deferred: `DeployQuantillon.s.sol` does not register any stQEURO vault token on initialization.
 
 ### Network Configuration
 

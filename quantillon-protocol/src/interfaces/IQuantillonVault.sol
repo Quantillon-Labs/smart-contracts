@@ -50,12 +50,45 @@ interface IQuantillonVault {
       * @custom:errors Throws custom errors for invalid conditions
       * @custom:reentrancy Protected by reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Requires fresh oracle price data
      */
     function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external;
 
+    /**
+     * @notice Mints QEURO and routes resulting principal toward a specific vault id.
+     * @dev Variant of mint flow with explicit external-vault routing control.
+     * @param usdcAmount Amount of USDC to swap.
+     * @param minQeuroOut Minimum QEURO expected (slippage protection).
+     * @param vaultId Target vault id for principal routing (`0` disables explicit routing).
+     * @custom:security Protected by implementation pause/reentrancy controls.
+     * @custom:validation Implementations validate vault id state and slippage/oracle checks.
+     * @custom:state-changes Updates mint accounting and optional external-vault principal allocation.
+     * @custom:events Emits mint and potentially vault-deployment events in implementation.
+     * @custom:errors Reverts on invalid routing, slippage, oracle, or collateralization failures.
+     * @custom:reentrancy Implementation is expected to guard with `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle Requires fresh oracle price data.
+     */
     function mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId) external;
 
+    /**
+     * @notice Mints QEURO and stakes it into the stQEURO token for a selected vault id.
+     * @dev One-step user flow combining mint and stake operations.
+     * @param usdcAmount Amount of USDC to swap.
+     * @param minQeuroOut Minimum QEURO expected from mint.
+     * @param vaultId Target vault id for mint routing and stQEURO token selection.
+     * @param minStQEUROOut Minimum stQEURO expected from staking.
+     * @return qeuroMinted QEURO minted before staking.
+     * @return stQEUROMinted stQEURO minted and returned to user.
+     * @custom:security Protected by implementation pause/reentrancy controls.
+     * @custom:validation Implementations validate vault/token availability and slippage constraints.
+     * @custom:state-changes Updates mint and staking state across integrated contracts.
+     * @custom:events Emits mint/staking events in implementation and downstream contracts.
+     * @custom:errors Reverts on invalid vault, slippage, or integration failures.
+     * @custom:reentrancy Implementation is expected to guard with `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle Requires fresh oracle price data for mint.
+     */
     function mintAndStakeQEURO(
         uint256 usdcAmount,
         uint256 minQeuroOut,
@@ -878,12 +911,67 @@ interface IQuantillonVault {
      */
     function initializePriceCache(uint256 initialEurUsdPrice) external;
 
+    /**
+     * @notice Configures adapter binding and active status for a vault id.
+     * @dev Governance-managed registry update for external vault routing.
+     * @param vaultId Vault id to configure.
+     * @param adapter Adapter contract implementing `IExternalStakingVault`.
+     * @param active Whether the vault id should be active for routing.
+     * @custom:security Restricted to governance in implementation.
+     * @custom:validation Reverts on invalid vault id or adapter address per implementation rules.
+     * @custom:state-changes Updates vault-id adapter and active-status mappings.
+     * @custom:events Emits vault configuration event in implementation.
+     * @custom:errors Reverts on invalid configuration values.
+     * @custom:reentrancy Not typically reentrancy-sensitive.
+     * @custom:access Governance-only in implementation.
+     * @custom:oracle No oracle dependencies.
+     */
     function setStakingVault(uint256 vaultId, address adapter, bool active) external;
 
+    /**
+     * @notice Sets the default vault id used for routing/fallback behavior.
+     * @dev `vaultId == 0` may be used to clear default routing depending on implementation.
+     * @param vaultId New default vault id.
+     * @custom:security Restricted to governance in implementation.
+     * @custom:validation Non-zero ids are validated against active configured adapters.
+     * @custom:state-changes Updates default vault-id configuration.
+     * @custom:events Emits default-vault update event in implementation.
+     * @custom:errors Reverts on invalid/unconfigured ids.
+     * @custom:reentrancy Not reentrancy-sensitive.
+     * @custom:access Governance-only in implementation.
+     * @custom:oracle No oracle dependencies.
+     */
     function setDefaultStakingVaultId(uint256 vaultId) external;
 
+    /**
+     * @notice Sets ordered vault ids used for redemption liquidity sourcing.
+     * @dev Replaces current priority ordering with provided array.
+     * @param vaultIds Ordered vault ids.
+     * @custom:security Restricted to governance in implementation.
+     * @custom:validation Each id is validated as active/configured by implementation.
+     * @custom:state-changes Updates redemption-priority configuration.
+     * @custom:events Emits redemption-priority update event in implementation.
+     * @custom:errors Reverts on invalid ids.
+     * @custom:reentrancy Not reentrancy-sensitive.
+     * @custom:access Governance-only in implementation.
+     * @custom:oracle No oracle dependencies.
+     */
     function setRedemptionPriority(uint256[] calldata vaultIds) external;
 
+    /**
+     * @notice Deploys held USDC into a configured external vault id.
+     * @dev Operator flow for moving idle collateral into yield adapters.
+     * @param vaultId Target vault id.
+     * @param usdcAmount Amount of USDC to deploy.
+     * @custom:security Restricted to operator role in implementation.
+     * @custom:validation Reverts on invalid amount, vault config, or insufficient held balance.
+     * @custom:state-changes Updates held/external principal accounting and adapter position.
+     * @custom:events Emits deployment event in implementation.
+     * @custom:errors Reverts on adapter or accounting failures.
+     * @custom:reentrancy Implementation is expected to guard with `nonReentrant`.
+     * @custom:access Role-restricted in implementation.
+     * @custom:oracle No oracle dependencies.
+     */
     function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount) external;
 
     /**
@@ -922,15 +1010,72 @@ interface IQuantillonVault {
      */
     function updateHedgerRewardFeeSplit(uint256 newSplit) external;
 
+    /**
+     * @notice Harvests yield from a configured external vault id.
+     * @dev Governance-triggered adapter harvest operation.
+     * @param vaultId Vault id to harvest.
+     * @return harvestedYield Yield harvested in USDC units.
+     * @custom:security Restricted to governance in implementation.
+     * @custom:validation Reverts when vault id is invalid/inactive or adapter is unset.
+     * @custom:state-changes May update adapter and downstream yield accounting.
+     * @custom:events Emits vault-yield harvested event in implementation.
+     * @custom:errors Reverts on configuration or adapter failures.
+     * @custom:reentrancy Implementation is expected to guard with `nonReentrant`.
+     * @custom:access Governance-only in implementation.
+     * @custom:oracle No direct oracle dependency.
+     */
     function harvestVaultYield(uint256 vaultId) external returns (uint256 harvestedYield);
 
+    /**
+     * @notice Returns exposure snapshot for a vault id.
+     * @dev Includes adapter address, active status, tracked principal, and current underlying read.
+     * @param vaultId Vault id to query.
+     * @return adapter Adapter address bound to vault id.
+     * @return active Whether the vault id is active.
+     * @return principalTracked Principal tracked locally for vault id.
+     * @return currentUnderlying Current underlying balance from adapter (implementation may fallback).
+     * @custom:security Read-only helper.
+     * @custom:validation No additional validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No explicit errors expected by interface contract.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
+     */
     function getVaultExposure(uint256 vaultId)
         external
         view
         returns (address adapter, bool active, uint256 principalTracked, uint256 currentUnderlying);
 
+    /**
+     * @notice Returns configured default staking vault id.
+     * @dev Used by clients to infer default mint routing.
+     * @return Default vault id (`0` when unset).
+     * @custom:security Read-only accessor.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
+     */
     function defaultStakingVaultId() external view returns (uint256);
 
+    /**
+     * @notice Returns total principal tracked across external vault adapters.
+     * @dev Aggregated accounting metric for externally deployed USDC.
+     * @return Total USDC principal tracked in external vaults.
+     * @custom:security Read-only accessor.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
+     */
     function totalUsdcInExternalVaults() external view returns (uint256);
 
     /**
@@ -947,6 +1092,20 @@ interface IQuantillonVault {
      */
     function stQEUROFactory() external view returns (address);
 
+    /**
+     * @notice Returns stQEURO token address bound to a vault id.
+     * @dev Mapping accessor for vault-id-to-stQEURO token identity.
+     * @param vaultId Vault identifier.
+     * @return stQEURO token address bound to `vaultId` (or zero if unset).
+     * @custom:security Read-only accessor.
+     * @custom:validation No input validation required; unknown ids return zero address.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
+     */
     function stQEUROTokenByVaultId(uint256 vaultId) external view returns (address);
 
     /**

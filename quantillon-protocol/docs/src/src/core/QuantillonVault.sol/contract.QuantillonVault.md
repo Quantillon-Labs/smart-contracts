@@ -256,25 +256,57 @@ uint256 private _flashLoanBalanceBefore
 ```
 
 
-### aaveVault
-AaveVault contract for USDC yield generation
-
-Used to deploy idle USDC to Aave lending pool
+### defaultStakingVaultId
+Default vault id used for automatic deployment after minting.
 
 
 ```solidity
-IAaveVault public aaveVault
+uint256 public defaultStakingVaultId
 ```
 
 
-### totalUsdcInAave
-Total USDC deployed to Aave for yield generation
-
-Tracks USDC that has been sent to AaveVault
+### totalUsdcInExternalVaults
+Total principal deployed across all external staking vaults.
 
 
 ```solidity
-uint256 public totalUsdcInAave
+uint256 public totalUsdcInExternalVaults
+```
+
+
+### stakingVaultAdapterById
+External staking vault adapter by vault id.
+
+
+```solidity
+mapping(uint256 => IExternalStakingVault) private stakingVaultAdapterById
+```
+
+
+### principalUsdcByVaultId
+Tracked principal deployed to each external staking vault.
+
+
+```solidity
+mapping(uint256 => uint256) private principalUsdcByVaultId
+```
+
+
+### stakingVaultActiveById
+Active flag for configured external staking vault ids.
+
+
+```solidity
+mapping(uint256 => bool) private stakingVaultActiveById
+```
+
+
+### redemptionPriorityVaultIds
+Ordered list of active vault ids used for redemption liquidity sourcing.
+
+
+```solidity
+uint256[] private redemptionPriorityVaultIds
 ```
 
 
@@ -287,21 +319,12 @@ address public stQEUROFactory
 ```
 
 
-### stQEUROToken
-stQEURO token address registered for this vault.
+### stQEUROTokenByVaultId
+stQEURO token address registered per vault id.
 
 
 ```solidity
-address public stQEUROToken
-```
-
-
-### stQEUROVaultId
-Registry id used when creating this vault's stQEURO token.
-
-
-```solidity
-uint256 public stQEUROVaultId
+mapping(uint256 => address) public stQEUROTokenByVaultId
 ```
 
 
@@ -345,7 +368,7 @@ Maximum value allowed for hedgerRewardFeeSplit
 
 
 ```solidity
-uint256 public constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18
+uint256 private constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18
 ```
 
 
@@ -445,7 +468,7 @@ MED-1: Minimum delay before a proposed dev-mode change takes effect
 
 
 ```solidity
-uint256 public constant DEV_MODE_DELAY = 48 hours
+uint256 private constant DEV_MODE_DELAY = 48 hours
 ```
 
 
@@ -454,7 +477,7 @@ MED-1: Canonical block delay for dev-mode proposals (12s block target)
 
 
 ```solidity
-uint256 public constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12
+uint256 private constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12
 ```
 
 
@@ -504,6 +527,13 @@ modifier flashLoanProtection() ;
 modifier onlySelf() ;
 ```
 
+### _onlySelf
+
+
+```solidity
+function _onlySelf() internal view;
+```
+
 ### _flashLoanProtectionBefore
 
 
@@ -516,34 +546,6 @@ function _flashLoanProtectionBefore() private;
 
 ```solidity
 function _flashLoanProtectionAfter() private view;
-```
-
-### _onlySelf
-
-Reverts unless caller is this contract
-
-Used to gate commit-phase functions invoked through explicit self-calls.
-
-**Notes:**
-- security: Prevents external callers from invoking internal commit entrypoints directly
-
-- validation: Reverts when `msg.sender != address(this)`
-
-- state-changes: None
-
-- events: None
-
-- errors: Reverts with `NotAuthorized` if caller is not self
-
-- reentrancy: No external calls
-
-- access: Internal helper
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _onlySelf() internal view;
 ```
 
 ### constructor
@@ -677,6 +679,96 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut)
 |`minQeuroOut`|`uint256`|Minimum amount of QEURO expected (slippage protection)|
 
 
+### mintQEUROToVault
+
+
+```solidity
+function mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId)
+    external
+    nonReentrant
+    whenNotPaused
+    flashLoanProtection;
+```
+
+### mintAndStakeQEURO
+
+
+```solidity
+function mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId, uint256 minStQEUROOut)
+    external
+    nonReentrant
+    whenNotPaused
+    flashLoanProtection
+    returns (uint256 qeuroMinted, uint256 stQEUROMinted);
+```
+
+### _mintQEUROFlow
+
+
+```solidity
+function _mintQEUROFlow(
+    address payer,
+    address qeuroRecipient,
+    uint256 usdcAmount,
+    uint256 minQeuroOut,
+    uint256 targetVaultId
+) internal returns (uint256 qeuroToMint);
+```
+
+### _dispatchMintCommit
+
+
+```solidity
+function _dispatchMintCommit(MintCommitPayload memory payload) internal;
+```
+
+### _validateMintRouting
+
+
+```solidity
+function _validateMintRouting(uint256 targetVaultId) internal view;
+```
+
+### _getValidatedMintPrices
+
+
+```solidity
+function _getValidatedMintPrices() internal returns (uint256 eurUsdPrice, bool isValid);
+```
+
+### _enforceMintEligibility
+
+
+```solidity
+function _enforceMintEligibility() internal view;
+```
+
+### _enforceMintPriceDeviation
+
+
+```solidity
+function _enforceMintPriceDeviation(uint256 eurUsdPrice) internal;
+```
+
+### _computeMintAmounts
+
+
+```solidity
+function _computeMintAmounts(uint256 usdcAmount, uint256 eurUsdPrice, uint256 minQeuroOut)
+    internal
+    view
+    returns (uint256 fee, uint256 netAmount, uint256 qeuroToMint);
+```
+
+### _enforceProjectedMintCollateralization
+
+
+```solidity
+function _enforceProjectedMintCollateralization(uint256 netAmount, uint256 qeuroToMint, uint256 eurUsdPrice)
+    internal
+    view;
+```
+
 ### _mintQEUROCommit
 
 Commits mint flow effects/interactions after validation phase
@@ -703,29 +795,33 @@ Called via explicit self-call from `mintQEURO` to separate validation and commit
 
 ```solidity
 function _mintQEUROCommit(
-    address minter,
+    address payer,
+    address qeuroRecipient,
     uint256 usdcAmount,
     uint256 fee,
     uint256 netAmount,
     uint256 qeuroToMint,
     uint256 eurUsdPrice,
-    bool isValidPrice
+    bool isValidPrice,
+    uint256 targetVaultId
 ) external onlySelf;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`minter`|`address`|User receiving freshly minted QEURO|
+|`payer`|`address`|User receiving freshly minted QEURO|
+|`qeuroRecipient`|`address`||
 |`usdcAmount`|`uint256`|Gross USDC transferred in|
 |`fee`|`uint256`|Protocol fee portion from `usdcAmount`|
 |`netAmount`|`uint256`|Net USDC credited to collateral after fees|
 |`qeuroToMint`|`uint256`|QEURO amount to mint for `minter`|
 |`eurUsdPrice`|`uint256`|Validated EUR/USD price used for accounting cache|
 |`isValidPrice`|`bool`|Whether oracle read used for cache timestamp was valid|
+|`targetVaultId`|`uint256`||
 
 
-### _autoDeployToAave
+### _autoDeployToVault
 
 Internal function to auto-deploy USDC to Aave after minting
 
@@ -750,12 +846,13 @@ Uses strict CEI ordering and lets failures revert to preserve accounting integri
 
 
 ```solidity
-function _autoDeployToAave(uint256 usdcAmount) internal;
+function _autoDeployToVault(uint256 vaultId, uint256 usdcAmount) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
+|`vaultId`|`uint256`||
 |`usdcAmount`|`uint256`|Amount of USDC to deploy (6 decimals)|
 
 
@@ -803,6 +900,13 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 |`minUsdcOut`|`uint256`|Minimum amount of USDC expected|
 
 
+### _dispatchRedeemCommit
+
+
+```solidity
+function _dispatchRedeemCommit(RedeemCommitPayload memory payload) internal;
+```
+
 ### _redeemQEUROCommit
 
 Commits normal-mode redemption effects/interactions after validation
@@ -836,7 +940,7 @@ function _redeemQEUROCommit(
     uint256 fee,
     uint256 eurUsdPrice,
     bool isValidPrice,
-    uint256 aaveWithdrawalAmount
+    uint256 externalWithdrawalAmount
 ) external onlySelf;
 ```
 **Parameters**
@@ -850,7 +954,7 @@ function _redeemQEUROCommit(
 |`fee`|`uint256`|Protocol fee amount from redemption|
 |`eurUsdPrice`|`uint256`|Validated EUR/USD price used for cache update|
 |`isValidPrice`|`bool`|Whether oracle read used for cache timestamp was valid|
-|`aaveWithdrawalAmount`|`uint256`|Planned USDC amount to source from Aave (if needed)|
+|`externalWithdrawalAmount`|`uint256`|Planned USDC amount to source from Aave (if needed)|
 
 
 ### _redeemLiquidationMode
@@ -933,34 +1037,16 @@ Called via explicit self-call from `_redeemLiquidationMode`.
 
 
 ```solidity
-function _redeemLiquidationCommit(
-    address redeemer,
-    uint256 qeuroAmount,
-    uint256 totalSupply,
-    uint256 usdcPayout,
-    uint256 netUsdcPayout,
-    uint256 fee,
-    uint256 collateralizationRatioBps,
-    bool isPremium,
-    uint256 aaveWithdrawalAmount
-) external onlySelf;
+function _redeemLiquidationCommit(LiquidationCommitParams memory params) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`redeemer`|`address`|User redeeming in liquidation mode|
-|`qeuroAmount`|`uint256`|QEURO amount burned|
-|`totalSupply`|`uint256`|Total QEURO supply used for proportional hedger adjustment|
-|`usdcPayout`|`uint256`|Gross pro-rata USDC payout|
-|`netUsdcPayout`|`uint256`|Net payout transferred to user after fees|
-|`fee`|`uint256`|Protocol fee amount|
-|`collateralizationRatioBps`|`uint256`|Protocol collateralization ratio (bps) for event metadata|
-|`isPremium`|`bool`|Whether gross payout is at/above fair value|
-|`aaveWithdrawalAmount`|`uint256`|Planned Aave withdrawal amount needed for payout|
+|`params`|`LiquidationCommitParams`|Packed liquidation commit values|
 
 
-### _planAaveWithdrawal
+### _planExternalVaultWithdrawal
 
 Calculates required Aave withdrawal to satisfy a USDC payout
 
@@ -985,7 +1071,7 @@ Returns zero when vault-held USDC already covers `requiredUsdc`.
 
 
 ```solidity
-function _planAaveWithdrawal(uint256 requiredUsdc) internal view returns (uint256 aaveWithdrawalAmount);
+function _planExternalVaultWithdrawal(uint256 requiredUsdc) internal view returns (uint256 vaultWithdrawalAmount);
 ```
 **Parameters**
 
@@ -997,7 +1083,7 @@ function _planAaveWithdrawal(uint256 requiredUsdc) internal view returns (uint25
 
 |Name|Type|Description|
 |----|----|-----------|
-|`aaveWithdrawalAmount`|`uint256`|Additional USDC that should be sourced from Aave|
+|`vaultWithdrawalAmount`|`uint256`|Additional USDC that should be sourced from Aave|
 
 
 ### _calculateLiquidationFees
@@ -1111,53 +1197,15 @@ function _transferLiquidationFees(uint256 fee) internal;
 |`fee`|`uint256`|Fee amount to transfer|
 
 
-### redeemQEUROLiquidation
-
-Redeems QEURO for USDC using pro-rata distribution in liquidation mode
-
-Only callable when protocol is in liquidation mode (CR <= 101%)
-
-Key formulas:
-- Payout = (qeuroAmount / totalSupply) * totalVaultUsdc (actual USDC in vault)
-- Hedger loss = (qeuroAmount / totalSupply) * hedgerMargin (realized as negative P&L)
-- Fees always applied using `redemptionFee`
-
-Premium if CR > 100%, haircut if CR < 100%
-
-**Notes:**
-- security: Protected by nonReentrant, requires liquidation mode
-
-- validation: Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
-
-- state-changes: Burns QEURO, transfers USDC pro-rata, reduces hedger margin proportionally
-
-- events: Emits LiquidationRedeemed
-
-- errors: Reverts if not in liquidation mode or slippage exceeded
-
-- reentrancy: Protected by nonReentrant modifier
-
-- access: Public - anyone with QEURO can redeem
-
-- oracle: Requires oracle price for fair value calculation
-
-
-```solidity
-function redeemQEUROLiquidation(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentrant whenNotPaused;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
-|`minUsdcOut`|`uint256`|Minimum USDC expected (slippage protection)|
-
-
-### getVaultMetrics
+### isProtocolCollateralized
 
 Retrieves the vault's global metrics
 
+Checks if the protocol is properly collateralized by hedgers
+
 Returns comprehensive vault metrics for monitoring and analytics
+
+Public view function to check collateralization status
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -1176,119 +1224,6 @@ Returns comprehensive vault metrics for monitoring and analytics
 
 - oracle: No oracle dependencies
 
-
-```solidity
-function getVaultMetrics()
-    external
-    view
-    returns (
-        uint256 totalUsdcHeld_,
-        uint256 totalMinted_,
-        uint256 totalDebtValue,
-        uint256 totalUsdcInAave_,
-        uint256 totalUsdcAvailable_
-    );
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalUsdcHeld_`|`uint256`|Total USDC held directly in the vault|
-|`totalMinted_`|`uint256`|Total QEURO minted|
-|`totalDebtValue`|`uint256`|Total debt value in USD|
-|`totalUsdcInAave_`|`uint256`|Total USDC deployed to Aave for yield|
-|`totalUsdcAvailable_`|`uint256`|Total USDC available (vault + Aave)|
-
-
-### calculateMintAmount
-
-Calculates the amount of QEURO that can be minted for a given USDC amount
-
-Calculates mint amount based on cached oracle price and protocol fees
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: No state changes
-
-- events: No events emitted
-
-- errors: No errors thrown
-
-- reentrancy: No reentrancy protection needed
-
-- access: No access restrictions
-
-- oracle: Uses cached oracle price (`lastValidEurUsdPrice`)
-
-
-```solidity
-function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC to swap|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO that will be minted (after fees)|
-|`fee`|`uint256`|Protocol fee|
-
-
-### calculateRedeemAmount
-
-Calculates the amount of USDC received for a QEURO redemption
-
-Calculates redeem amount based on cached oracle price and protocol fees
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: No state changes
-
-- events: No events emitted
-
-- errors: No errors thrown
-
-- reentrancy: No reentrancy protection needed
-
-- access: No access restrictions
-
-- oracle: Uses cached oracle price (`lastValidEurUsdPrice`)
-
-
-```solidity
-function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to redeem|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|USDC received (after fees)|
-|`fee`|`uint256`|Protocol fee|
-
-
-### isProtocolCollateralized
-
-Checks if the protocol is properly collateralized by hedgers
-
-Public view function to check collateralization status
-
-**Notes:**
 - security: No security validations required - view function
 
 - validation: No input validation required - view function
@@ -1564,39 +1499,26 @@ function updateFeeCollector(address _feeCollector) external onlyRole(GOVERNANCE_
 |`_feeCollector`|`address`|New fee collector address|
 
 
-### updateAaveVault
-
-Updates the AaveVault address for USDC yield generation
-
-Only governance role can update the AaveVault address
-
-**Notes:**
-- security: Validates address is not zero before updating
-
-- validation: Ensures _aaveVault is not address(0)
-
-- state-changes: Updates aaveVault state variable
-
-- events: Emits AaveVaultUpdated event
-
-- errors: Reverts if _aaveVault is address(0)
-
-- reentrancy: No reentrancy risk, simple state update
-
-- access: Restricted to GOVERNANCE_ROLE
-
-- oracle: No oracle dependencies
+### setStakingVault
 
 
 ```solidity
-function updateAaveVault(address _aaveVault) external onlyRole(GOVERNANCE_ROLE);
+function setStakingVault(uint256 vaultId, address adapter, bool active) external onlyRole(GOVERNANCE_ROLE);
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`_aaveVault`|`address`|New AaveVault address|
+### setDefaultStakingVaultId
 
+
+```solidity
+function setDefaultStakingVaultId(uint256 vaultId) external onlyRole(GOVERNANCE_ROLE);
+```
+
+### setRedemptionPriority
+
+
+```solidity
+function setRedemptionPriority(uint256[] calldata vaultIds) external onlyRole(GOVERNANCE_ROLE);
+```
 
 ### selfRegisterStQEURO
 
@@ -1644,113 +1566,57 @@ function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata v
 |`token`|`address`|Newly deployed stQEURO token address.|
 
 
-### harvestAaveInterest
-
-Harvests accrued Aave interest through AaveVault and routes yield via YieldShift.
-
-HIGH-2 / NEW-1 remediation entrypoint for explicit yield synchronization.
-
-**Notes:**
-- security: Restricted to governance and guarded by `nonReentrant`.
-
-- validation: Requires configured AaveVault address.
-
-- state-changes: May update Aave-side accounting and emits local harvest event.
-
-- events: Emits `AaveInterestHarvested`.
-
-- errors: Reverts when AaveVault is unset or downstream harvest call fails.
-
-- reentrancy: Protected by `nonReentrant`.
-
-- access: Restricted to `GOVERNANCE_ROLE`.
-
-- oracle: No direct oracle interaction.
+### harvestVaultYield
 
 
 ```solidity
-function harvestAaveInterest() external onlyRole(GOVERNANCE_ROLE) nonReentrant returns (uint256 harvestedYield);
+function harvestVaultYield(uint256 vaultId)
+    external
+    onlyRole(GOVERNANCE_ROLE)
+    nonReentrant
+    returns (uint256 harvestedYield);
 ```
-**Returns**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`harvestedYield`|`uint256`|Amount harvested by AaveVault (USDC 6 decimals).|
-
-
-### deployUsdcToAave
-
-Deploys USDC from the vault to Aave for yield generation
-
-Called by UserPool after minting QEURO to automatically deploy USDC to Aave
-
-**Notes:**
-- security: Only callable by VAULT_OPERATOR_ROLE (UserPool)
-
-- validation: Validates amount > 0, AaveVault is set, and sufficient USDC balance
-
-- state-changes: Updates totalUsdcHeld (decreases) and totalUsdcInAave (increases)
-
-- events: Emits UsdcDeployedToAave event
-
-- errors: Reverts if amount is 0, AaveVault not set, or insufficient USDC
-
-- reentrancy: Protected by nonReentrant modifier
-
-- access: Restricted to VAULT_OPERATOR_ROLE
-
-- oracle: No oracle dependencies
+### deployUsdcToVault
 
 
 ```solidity
-function deployUsdcToAave(uint256 usdcAmount) external nonReentrant onlyRole(VAULT_OPERATOR_ROLE);
+function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount)
+    external
+    nonReentrant
+    onlyRole(VAULT_OPERATOR_ROLE);
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC to deploy to Aave (6 decimals)|
-
-
-### _withdrawUsdcFromAave
-
-Withdraws USDC from Aave back to the vault
-
-Called internally when redemptions require more USDC than available in vault
-
-**Notes:**
-- security: Internal function, called during redemption flow
-
-- validation: Validates amount > 0 and AaveVault is set
-
-- state-changes: Updates totalUsdcHeld (increases) and totalUsdcInAave (decreases)
-
-- events: Emits UsdcWithdrawnFromAave event
-
-- errors: Reverts if amount is 0 or AaveVault not set
-
-- reentrancy: Not protected - internal function only
-
-- access: Internal function - called by redeemQEURO
-
-- oracle: No oracle dependencies
+### getVaultExposure
 
 
 ```solidity
-function _withdrawUsdcFromAave(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn);
+function getVaultExposure(uint256 vaultId)
+    external
+    view
+    returns (address adapter, bool active, uint256 principalTracked, uint256 currentUnderlying);
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC to withdraw from Aave (6 decimals)|
+### _withdrawUsdcFromExternalVaults
 
-**Returns**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcWithdrawn`|`uint256`|Actual amount of USDC withdrawn|
+```solidity
+function _withdrawUsdcFromExternalVaults(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn);
+```
 
+### _resolveWithdrawalPriority
+
+
+```solidity
+function _resolveWithdrawalPriority() internal view returns (uint256[] memory priority);
+```
+
+### _withdrawFromExternalVault
+
+
+```solidity
+function _withdrawFromExternalVault(uint256 vaultId, uint256 remaining) internal returns (uint256 withdrawnAmount);
+```
 
 ### withdrawProtocolFees
 
@@ -1994,73 +1860,19 @@ function _updatePriceTimestamp(bool isValid) internal;
 |`isValid`|`bool`|Whether the current price fetch was valid|
 
 
-### _getAaveCollateralBalance
-
-Returns current Aave collateral balance including accrued yield when available.
-
-Falls back to tracked principal if the external balance query is unavailable.
-
-**Notes:**
-- security: View helper with defensive fallback path.
-
-- validation: Returns tracked principal when Aave balance query reverts.
-
-- state-changes: None - view function.
-
-- events: None.
-
-- errors: None - errors are caught via try/catch fallback.
-
-- reentrancy: Not applicable - view function.
-
-- access: Internal helper.
-
-- oracle: No oracle interaction.
+### _getExternalVaultCollateralBalance
 
 
 ```solidity
-function _getAaveCollateralBalance() internal view returns (uint256);
+function _getExternalVaultCollateralBalance() internal view returns (uint256 externalCollateral);
 ```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|collateralBalance Aave-side collateral balance in USDC units (6 decimals).|
-
 
 ### _getTotalCollateralWithAccruedYield
-
-HIGH-2/NEW-1: total protocol collateral including accrued Aave interest.
-
-Uses on-chain Aave balance (principal + yield) with a principal fallback path.
-
-**Notes:**
-- security: View helper used by CR calculations and withdrawal checks.
-
-- validation: Relies on `_getAaveCollateralBalance` fallback behavior.
-
-- state-changes: None - view function.
-
-- events: None.
-
-- errors: None.
-
-- reentrancy: Not applicable - view function.
-
-- access: Internal helper.
-
-- oracle: No oracle interaction.
 
 
 ```solidity
 function _getTotalCollateralWithAccruedYield() internal view returns (uint256);
 ```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|totalCollateral Combined vault-held + Aave-held collateral in USDC units (6 decimals).|
-
 
 ### _routeProtocolFees
 
@@ -2171,11 +1983,16 @@ function canMint() public view returns (bool);
 |`<none>`|`bool`|canMint Whether minting is currently allowed|
 
 
-### getProtocolCollateralizationRatioView
+### initializePriceCache
 
 LOW-4: Pure view variant of getProtocolCollateralizationRatio using cached oracle price.
 
+LOW-5: Seeds the oracle price cache so minting checks have a baseline.
+
 Delegates to `getProtocolCollateralizationRatio()` and performs no state refresh.
+
+Governance MUST call this once immediately after deployment, before any user mints.
+Uses an explicit bootstrap price to avoid external oracle interaction in this state-changing call.
 
 **Notes:**
 - security: View-only wrapper.
@@ -2194,59 +2011,6 @@ Delegates to `getProtocolCollateralizationRatio()` and performs no state refresh
 
 - oracle: Uses cached oracle price.
 
-
-```solidity
-function getProtocolCollateralizationRatioView() public view returns (uint256 ratio);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`ratio`|`uint256`|Current collateralization ratio in 1e18-scaled percentage format.|
-
-
-### canMintView
-
-LOW-4: Pure view variant of canMint using cached oracle price.
-
-Delegates to `canMint()` and performs no state refresh.
-
-**Notes:**
-- security: View-only wrapper.
-
-- validation: Inherits price-cache and hedger-liveness checks from delegated function.
-
-- state-changes: None - view function.
-
-- events: None.
-
-- errors: None.
-
-- reentrancy: Not applicable - view function.
-
-- access: Public.
-
-- oracle: Uses cached oracle price.
-
-
-```solidity
-function canMintView() public view returns (bool);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|mintAllowed True when mint preconditions currently pass.|
-
-
-### initializePriceCache
-
-LOW-5: Seeds the oracle price cache so minting checks have a baseline.
-
-Governance MUST call this once immediately after deployment, before any user mints.
-Uses an explicit bootstrap price to avoid external oracle interaction in this state-changing call.
-
-**Notes:**
 - security: Restricted to governance.
 
 - validation: Requires `initialEurUsdPrice > 0`.
@@ -2308,11 +2072,17 @@ function shouldTriggerLiquidation() public view returns (bool shouldLiquidate);
 |`shouldLiquidate`|`bool`|Whether liquidation should be triggered|
 
 
-### getLiquidationStatus
+### pause
 
 Returns liquidation status and key metrics for pro-rata redemption
 
+Pauses all vault operations
+
 Protocol enters liquidation mode when CR <= 101%. In this mode, users can redeem pro-rata.
+
+When paused:
+- No mint/redeem possible
+- Read functions still active
 
 **Notes:**
 - security: View function - no state changes
@@ -2331,124 +2101,6 @@ Protocol enters liquidation mode when CR <= 101%. In this mode, users can redeem
 
 - oracle: Requires oracle price for collateral calculation
 
-
-```solidity
-function getLiquidationStatus()
-    external
-    view
-    returns (
-        bool isInLiquidation,
-        uint256 collateralizationRatioBps,
-        uint256 totalCollateralUsdc,
-        uint256 totalQeuroSupply
-    );
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`isInLiquidation`|`bool`|True if protocol is in liquidation mode (CR <= 101%)|
-|`collateralizationRatioBps`|`uint256`|Current collateralization ratio in basis points (e.g., 10100 = 101%)|
-|`totalCollateralUsdc`|`uint256`|Total protocol collateral in USDC (6 decimals)|
-|`totalQeuroSupply`|`uint256`|Total QEURO supply (18 decimals)|
-
-
-### calculateLiquidationPayout
-
-Calculates pro-rata payout for liquidation mode redemption
-
-Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
-
-Premium if CR > 100%, haircut if CR < 100%
-
-**Notes:**
-- security: View function - no state changes
-
-- validation: Validates qeuroAmount > 0
-
-- state-changes: None - view function
-
-- events: None
-
-- errors: Throws InvalidAmount if qeuroAmount is 0
-
-- reentrancy: Not applicable - view function
-
-- access: Public - anyone can calculate payout
-
-- oracle: Requires oracle price for fair value calculation
-
-
-```solidity
-function calculateLiquidationPayout(uint256 qeuroAmount)
-    external
-    view
-    returns (uint256 usdcPayout, bool isPremium, uint256 premiumOrDiscountBps);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcPayout`|`uint256`|Amount of USDC the user would receive (6 decimals)|
-|`isPremium`|`bool`|True if payout > fair value (CR > 100%), false if haircut (CR < 100%)|
-|`premiumOrDiscountBps`|`uint256`|Premium or discount in basis points (e.g., 50 = 0.5%)|
-
-
-### getPriceProtectionStatus
-
-Returns the current price protection status
-
-Useful for monitoring and debugging price protection
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getPriceProtectionStatus()
-    external
-    view
-    returns (uint256 lastValidPrice, uint256 lastUpdateBlock, uint256 maxDeviation, uint256 minBlocks);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`lastValidPrice`|`uint256`|Last valid EUR/USD price used|
-|`lastUpdateBlock`|`uint256`|Block number of last price update|
-|`maxDeviation`|`uint256`|Maximum allowed price deviation in basis points|
-|`minBlocks`|`uint256`|Minimum blocks required between updates|
-
-
-### pause
-
-Pauses all vault operations
-
-When paused:
-- No mint/redeem possible
-- Read functions still active
-
-**Notes:**
 - security: Validates input parameters and enforces security checks
 
 - validation: Validates input parameters and business logic constraints
@@ -2895,20 +2547,25 @@ event DevModeProposed(bool pending, uint256 activatesAt);
 |`pending`|`bool`|The proposed dev-mode value|
 |`activatesAt`|`uint256`|Timestamp at which the change can be applied|
 
-### AaveVaultUpdated
-Emitted when AaveVault address is updated
+### StakingVaultConfigured
+Emitted when an external staking vault adapter is configured.
 
 
 ```solidity
-event AaveVaultUpdated(address indexed oldAaveVault, address indexed newAaveVault);
+event StakingVaultConfigured(uint256 indexed vaultId, address indexed adapter, bool active);
 ```
 
-**Parameters**
+### DefaultStakingVaultUpdated
 
-|Name|Type|Description|
-|----|----|-----------|
-|`oldAaveVault`|`address`|Previous AaveVault address|
-|`newAaveVault`|`address`|New AaveVault address|
+```solidity
+event DefaultStakingVaultUpdated(uint256 indexed previousVaultId, uint256 indexed newVaultId);
+```
+
+### RedemptionPriorityUpdated
+
+```solidity
+event RedemptionPriorityUpdated(uint256[] vaultIds);
+```
 
 ### StQEURORegistered
 
@@ -2918,25 +2575,22 @@ event StQEURORegistered(
 );
 ```
 
-### UsdcDeployedToAave
-Emitted when USDC is deployed to Aave for yield generation
-
+### UsdcDeployedToExternalVault
 
 ```solidity
-event UsdcDeployedToAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
+event UsdcDeployedToExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
 ```
 
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC deployed to Aave|
-|`totalUsdcInAave`|`uint256`|New total USDC in Aave after deployment|
-
-### AaveDeploymentFailed
+### ExternalVaultYieldHarvested
 
 ```solidity
-event AaveDeploymentFailed(uint256 amount, bytes reason);
+event ExternalVaultYieldHarvested(uint256 indexed vaultId, uint256 harvestedYield);
+```
+
+### ExternalVaultDeploymentFailed
+
+```solidity
+event ExternalVaultDeploymentFailed(uint256 indexed vaultId, uint256 amount, bytes reason);
 ```
 
 ### HedgerSyncFailed
@@ -2945,20 +2599,11 @@ event AaveDeploymentFailed(uint256 amount, bytes reason);
 event HedgerSyncFailed(string operation, uint256 amount, uint256 price, bytes reason);
 ```
 
-### UsdcWithdrawnFromAave
-Emitted when USDC is withdrawn from Aave
-
+### UsdcWithdrawnFromExternalVault
 
 ```solidity
-event UsdcWithdrawnFromAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
+event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
 ```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC withdrawn from Aave|
-|`totalUsdcInAave`|`uint256`|New total USDC in Aave after withdrawal|
 
 ### HedgerRewardFeeSplitUpdated
 
@@ -2966,15 +2611,57 @@ event UsdcWithdrawnFromAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave)
 event HedgerRewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
 ```
 
-### AaveInterestHarvested
-
-```solidity
-event AaveInterestHarvested(uint256 harvestedYield);
-```
-
 ### ProtocolFeeRouted
 
 ```solidity
 event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReserveShare, uint256 collectorShare);
+```
+
+## Structs
+### LiquidationCommitParams
+
+```solidity
+struct LiquidationCommitParams {
+    address redeemer;
+    uint256 qeuroAmount;
+    uint256 totalSupply;
+    uint256 usdcPayout;
+    uint256 netUsdcPayout;
+    uint256 fee;
+    uint256 collateralizationRatioBps;
+    bool isPremium;
+    uint256 externalWithdrawalAmount;
+}
+```
+
+### MintCommitPayload
+
+```solidity
+struct MintCommitPayload {
+    address payer;
+    address qeuroRecipient;
+    uint256 usdcAmount;
+    uint256 fee;
+    uint256 netAmount;
+    uint256 qeuroToMint;
+    uint256 eurUsdPrice;
+    bool isValidPrice;
+    uint256 targetVaultId;
+}
+```
+
+### RedeemCommitPayload
+
+```solidity
+struct RedeemCommitPayload {
+    address redeemer;
+    uint256 qeuroAmount;
+    uint256 usdcToReturn;
+    uint256 netUsdcToReturn;
+    uint256 fee;
+    uint256 eurUsdPrice;
+    bool isValidPrice;
+    uint256 externalWithdrawalAmount;
+}
 ```
 

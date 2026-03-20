@@ -6,3 +6,5 @@
 - [IRewardsController](AaveVault.sol/interface.IRewardsController.md)
 - [ReserveData](AaveVault.sol/struct.ReserveData.md)
 - [AaveVault](AaveVault.sol/contract.AaveVault.md)
+- [IMockMorphoVault](MorphoStakingVaultAdapter.sol/interface.IMockMorphoVault.md)
+- [MorphoStakingVaultAdapter](MorphoStakingVaultAdapter.sol/contract.MorphoStakingVaultAdapter.md)

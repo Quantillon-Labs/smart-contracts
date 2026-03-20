@@ -1,6 +1,6 @@
 # AaveVault
 **Inherits:**
-Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md), [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
 
 **Title:**
 AaveVault
@@ -328,7 +328,7 @@ Supplies USDC to Aave protocol and receives aUSDC tokens representing the deposi
 
 
 ```solidity
-function deployToAave(uint256 amount) external nonReentrant whenNotPaused returns (uint256 aTokensReceived);
+function deployToAave(uint256 amount) public nonReentrant whenNotPaused returns (uint256 aTokensReceived);
 ```
 **Parameters**
 
@@ -368,7 +368,7 @@ Withdraws USDC from Aave protocol, validates slippage and updates principal trac
 
 
 ```solidity
-function withdrawFromAave(uint256 amount) external nonReentrant returns (uint256 usdcWithdrawn);
+function withdrawFromAave(uint256 amount) public nonReentrant returns (uint256 usdcWithdrawn);
 ```
 **Parameters**
 
@@ -641,7 +641,7 @@ Harvests available yield from Aave lending, charges protocol fees, distributes n
 
 
 ```solidity
-function harvestAaveYield() external nonReentrant returns (uint256 yieldHarvested);
+function harvestAaveYield() public nonReentrant returns (uint256 yieldHarvested);
 ```
 **Returns**
 
@@ -748,13 +748,85 @@ Represents the total amount deposited in Aave plus accrued interest
 
 
 ```solidity
-function getAaveBalance() external view returns (uint256);
+function getAaveBalance() public view returns (uint256);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|The current aToken balance|
+
+
+### depositUnderlying
+
+Generic external vault adapter deposit entrypoint.
+
+
+```solidity
+function depositUnderlying(uint256 usdcAmount) external override returns (uint256 sharesReceived);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to deposit (6 decimals).|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`sharesReceived`|`uint256`|Amount of adapter shares/units received.|
+
+
+### withdrawUnderlying
+
+Generic external vault adapter withdraw entrypoint.
+
+
+```solidity
+function withdrawUnderlying(uint256 usdcAmount) external override returns (uint256 usdcWithdrawn);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to withdraw (6 decimals).|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcWithdrawn`|`uint256`|Actual USDC withdrawn.|
+
+
+### harvestYield
+
+Generic external vault adapter harvest entrypoint.
+
+
+```solidity
+function harvestYield() external override returns (uint256 harvestedYield);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`harvestedYield`|`uint256`|Net yield harvested in USDC (6 decimals).|
+
+
+### totalUnderlying
+
+Returns total underlying balance for adapter-generic reads.
+
+
+```solidity
+function totalUnderlying() external view override returns (uint256 underlyingBalance);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`underlyingBalance`|`uint256`|Aave-side USDC-equivalent balance (principal + accrued yield).|
 
 
 ### getAccruedInterest

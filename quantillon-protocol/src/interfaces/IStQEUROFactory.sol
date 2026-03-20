@@ -61,6 +61,14 @@ interface IStQEUROFactory {
      * @dev A single QuantillonVault can register multiple staking vault ids.
      * @param vault Vault contract address.
      * @return vaultIds Array of registered vault ids for that vault contract.
+     * @custom:security Read-only registry accessor.
+     * @custom:validation No additional validation; unknown vaults return an empty array.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
      */
     function getVaultIdsByVault(address vault) external view returns (uint256[] memory vaultIds);
 

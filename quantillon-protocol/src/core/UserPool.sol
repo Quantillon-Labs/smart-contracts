@@ -430,6 +430,18 @@ contract UserPool is
         _;
     }
 
+    /**
+     * @notice Reverts unless caller is this contract.
+     * @dev Internal guard used by `onlySelf` for commit-phase helpers reached via explicit self-calls.
+     * @custom:security Prevents direct external invocation of self-call commit paths.
+     * @custom:validation Requires `msg.sender == address(this)`.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Reverts with `NotAuthorized` when caller is not self.
+     * @custom:reentrancy No external calls.
+     * @custom:access Internal helper used by modifier.
+     * @custom:oracle No oracle dependencies.
+     */
     function _onlySelf() internal view {
         if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }
@@ -935,6 +947,8 @@ contract UserPool is
      * @param qeuroAmounts Array of QEURO amounts to withdraw
      * @param minUsdcOuts Array of minimum USDC amounts expected
      * @param usdcReceivedAmounts Array to store received USDC amounts
+     * @return oracleRatio Oracle ratio snapshot stored with withdrawal tracking entries.
+     * @return totalWithdrawn Total USDC withdrawn across the batch.
      * @dev Internal helper to reduce stack depth
      * @custom:security Validates amounts and user balances to prevent over-withdrawal
      * @custom:validation Validates all amounts are positive and user has sufficient balance
@@ -1039,6 +1053,8 @@ contract UserPool is
      * @param qeuroAmounts Array of QEURO amounts withdrawn
      * @param usdcReceivedAmounts Array of USDC amounts received
      * @param currentTime Current timestamp for events
+     * @param oracleRatio Oracle ratio snapshot associated with this batch.
+     * @param totalWithdrawn Total USDC withdrawn across the batch.
      * @dev Internal helper to reduce stack depth
      * @custom:security Executes final token transfers and emits withdrawal events
      * @custom:validation Validates all amounts are positive before transfer

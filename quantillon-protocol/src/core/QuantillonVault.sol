@@ -473,6 +473,18 @@ contract QuantillonVault is
         _;
     }
 
+    /**
+     * @notice Reverts unless caller is this contract.
+     * @dev Internal guard used by `onlySelf` for explicit self-call commit functions.
+     * @custom:security Prevents direct external invocation of commit-phase helpers.
+     * @custom:validation Requires `msg.sender == address(this)`.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Reverts with `NotAuthorized` when caller is not self.
+     * @custom:reentrancy No external calls.
+     * @custom:access Internal helper used by modifier.
+     * @custom:oracle No oracle dependencies.
+     */
     function _onlySelf() internal view {
         if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }
@@ -632,6 +644,21 @@ contract QuantillonVault is
         _mintQEUROFlow(msg.sender, msg.sender, usdcAmount, minQeuroOut, defaultStakingVaultId);
     }
 
+    /**
+     * @notice Mints QEURO and routes deployed USDC to a specific external vault id.
+     * @dev Same mint flow as `mintQEURO`, but with explicit target vault routing.
+     * @param usdcAmount Amount of USDC provided by caller (6 decimals).
+     * @param minQeuroOut Minimum acceptable QEURO output (18 decimals).
+     * @param vaultId Target staking vault id (0 disables auto-deploy routing).
+     * @custom:security Protected by pause and reentrancy guards.
+     * @custom:validation Reverts on invalid routing id, slippage, oracle, or collateral checks.
+     * @custom:state-changes Updates mint accounting, fee routing, and optional external vault principal.
+     * @custom:events Emits mint and vault deployment events in downstream flow.
+     * @custom:errors Reverts on invalid inputs, oracle/CR checks, or integration failures.
+     * @custom:reentrancy Guarded by `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle Requires valid oracle reads in mint flow.
+     */
     function mintQEUROToVault(
         uint256 usdcAmount,
         uint256 minQeuroOut,
@@ -640,6 +667,24 @@ contract QuantillonVault is
         _mintQEUROFlow(msg.sender, msg.sender, usdcAmount, minQeuroOut, vaultId);
     }
 
+    /**
+     * @notice Mints QEURO then stakes it into the stQEURO token for the selected vault id.
+     * @dev Executes mint flow to this contract, stakes into `stQEUROTokenByVaultId[vaultId]`, then transfers stQEURO to caller.
+     * @param usdcAmount Amount of USDC provided by caller (6 decimals).
+     * @param minQeuroOut Minimum acceptable QEURO output from mint (18 decimals).
+     * @param vaultId Target staking vault id used for routing and stQEURO token selection.
+     * @param minStQEUROOut Minimum acceptable stQEURO output from staking.
+     * @return qeuroMinted QEURO minted before staking.
+     * @return stQEUROMinted stQEURO minted and sent to caller.
+     * @custom:security Protected by pause and reentrancy guards.
+     * @custom:validation Reverts on invalid vault id/token, slippage, and staking failures.
+     * @custom:state-changes Updates mint accounting, optional external deployment, and stQEURO balances.
+     * @custom:events Emits mint/deployment events and staking token events downstream.
+     * @custom:errors Reverts on mint, routing, approval, staking, or transfer failures.
+     * @custom:reentrancy Guarded by `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle Requires valid oracle reads in mint flow.
+     */
     function mintAndStakeQEURO(
         uint256 usdcAmount,
         uint256 minQeuroOut,
@@ -657,6 +702,24 @@ contract QuantillonVault is
         IERC20(stToken).safeTransfer(msg.sender, stQEUROMinted);
     }
 
+    /**
+     * @notice Shared mint pipeline used by mint entrypoints.
+     * @dev Validates routing/oracle/collateral constraints, computes outputs, then dispatches commit phase.
+     * @param payer Address funding the USDC transfer.
+     * @param qeuroRecipient Address receiving minted QEURO.
+     * @param usdcAmount Amount of USDC provided (6 decimals).
+     * @param minQeuroOut Minimum acceptable QEURO output (18 decimals).
+     * @param targetVaultId Vault id to auto-deploy net USDC principal into (0 disables routing).
+     * @return qeuroToMint Final QEURO amount to mint.
+     * @custom:security Enforces protocol collateralization, price deviation, and vault routing checks.
+     * @custom:validation Reverts on invalid addresses/amounts, invalid routing, or failed risk checks.
+     * @custom:state-changes Performs no direct writes until commit dispatch; writes occur in commit helper.
+     * @custom:events Emits no events directly; commit helper emits mint/deployment events.
+     * @custom:errors Reverts on any failed validation or risk check.
+     * @custom:reentrancy Called from guarded external entrypoints.
+     * @custom:access Internal helper.
+     * @custom:oracle Uses live oracle reads for mint pricing and checks.
+     */
     function _mintQEUROFlow(
         address payer,
         address qeuroRecipient,
@@ -688,6 +751,19 @@ contract QuantillonVault is
         _dispatchMintCommit(payload);
     }
 
+    /**
+     * @notice Dispatches mint commit through explicit self-call.
+     * @dev Preserves separation between validation/read phase and commit/interactions phase.
+     * @param payload Packed mint commit payload.
+     * @custom:security Uses `onlySelf`-guarded commit entrypoint.
+     * @custom:validation Assumes payload was prepared by validated mint flow.
+     * @custom:state-changes No direct state changes in dispatcher.
+     * @custom:events No direct events in dispatcher.
+     * @custom:errors Propagates commit-phase revert reasons.
+     * @custom:reentrancy Called from guarded parent flow.
+     * @custom:access Internal helper.
+     * @custom:oracle No direct oracle reads.
+     */
     function _dispatchMintCommit(MintCommitPayload memory payload) internal {
         this._mintQEUROCommit(
             payload.payer,
@@ -702,12 +778,39 @@ contract QuantillonVault is
         );
     }
 
+    /**
+     * @notice Validates mint routing parameters for external vault deployment.
+     * @dev `targetVaultId == 0` is allowed and means no auto-deploy.
+     * @param targetVaultId Vault id requested for principal deployment.
+     * @custom:security Ensures routing only targets active, configured adapters.
+     * @custom:validation Reverts when non-zero vault id is inactive or adapter is unset.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors Reverts with `InvalidVault` or `ZeroAddress` for invalid routing.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
     function _validateMintRouting(uint256 targetVaultId) internal view {
         if (targetVaultId == 0) return;
         if (!stakingVaultActiveById[targetVaultId]) revert CommonErrorLibrary.InvalidVault();
         if (address(stakingVaultAdapterById[targetVaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
     }
 
+    /**
+     * @notice Fetches and validates oracle prices required for minting.
+     * @dev Reads EUR/USD and USDC/USD and verifies both are valid/non-zero.
+     * @return eurUsdPrice Validated EUR/USD price.
+     * @return isValid Validity flag returned by oracle for EUR/USD.
+     * @custom:security Rejects invalid oracle outputs before mint accounting.
+     * @custom:validation Reverts when oracle flags invalid or returns zero USDC/USD.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors Reverts with `InvalidOraclePrice`.
+     * @custom:reentrancy External oracle reads only.
+     * @custom:access Internal helper.
+     * @custom:oracle Requires live oracle reads.
+     */
     function _getValidatedMintPrices() internal returns (uint256 eurUsdPrice, bool isValid) {
         (eurUsdPrice, isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
@@ -716,6 +819,18 @@ contract QuantillonVault is
         if (!usdcIsValid || usdcUsdPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
     }
 
+    /**
+     * @notice Enforces protocol-level mint eligibility constraints.
+     * @dev Requires initialized price cache, active hedger liquidity, and collateralization allowance.
+     * @custom:security Prevents minting when safety prerequisites are unmet.
+     * @custom:validation Reverts when cache is uninitialized, no hedger liquidity, or CR check fails.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors Reverts with protocol-specific eligibility errors.
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle Uses cached state and `canMint` logic.
+     */
     function _enforceMintEligibility() internal view {
         if (lastValidEurUsdPrice == 0) revert CommonErrorLibrary.NotInitialized();
         if (address(hedgerPool) == address(0) || !hedgerPool.hasActiveHedger()) {
@@ -724,6 +839,19 @@ contract QuantillonVault is
         if (!canMint()) revert CommonErrorLibrary.InsufficientCollateralization();
     }
 
+    /**
+     * @notice Enforces mint-time EUR/USD deviation guard unless dev mode is enabled.
+     * @dev Compares live price vs cached baseline and reverts when deviation exceeds configured threshold.
+     * @param eurUsdPrice Current validated EUR/USD price.
+     * @custom:security Blocks minting during abnormal price moves outside policy limits.
+     * @custom:validation Reverts with `ExcessiveSlippage` when deviation rule is violated.
+     * @custom:state-changes No state changes.
+     * @custom:events Emits `PriceDeviationDetected` before reverting on violation.
+     * @custom:errors Reverts with `ExcessiveSlippage`.
+     * @custom:reentrancy No external calls besides pure library logic.
+     * @custom:access Internal helper.
+     * @custom:oracle Uses provided live oracle price and cached baseline.
+     */
     function _enforceMintPriceDeviation(uint256 eurUsdPrice) internal {
         if (devModeEnabled) return;
 
@@ -740,6 +868,24 @@ contract QuantillonVault is
         }
     }
 
+    /**
+     * @notice Computes mint fee, net USDC, and QEURO output.
+     * @dev Applies configured mint fee and slippage floor against `minQeuroOut`.
+     * @param usdcAmount Gross USDC input (6 decimals).
+     * @param eurUsdPrice Validated EUR/USD price.
+     * @param minQeuroOut Minimum acceptable QEURO output.
+     * @return fee Protocol fee deducted from `usdcAmount`.
+     * @return netAmount Net USDC backing minted QEURO.
+     * @return qeuroToMint QEURO output to mint.
+     * @custom:security Enforces minimum-output slippage protection.
+     * @custom:validation Reverts when computed output is below `minQeuroOut`.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors Reverts with `ExcessiveSlippage`.
+     * @custom:reentrancy Not applicable for pure arithmetic helper.
+     * @custom:access Internal helper.
+     * @custom:oracle Uses supplied validated oracle input.
+     */
     function _computeMintAmounts(uint256 usdcAmount, uint256 eurUsdPrice, uint256 minQeuroOut)
         internal
         view
@@ -751,6 +897,21 @@ contract QuantillonVault is
         if (qeuroToMint < minQeuroOut) revert CommonErrorLibrary.ExcessiveSlippage();
     }
 
+    /**
+     * @notice Ensures projected collateralization remains above mint threshold after this mint.
+     * @dev Simulates post-mint collateral/supply state and compares to configured minimum ratio.
+     * @param netAmount Net USDC that will be added as collateral.
+     * @param qeuroToMint QEURO amount that will be minted.
+     * @param eurUsdPrice Validated EUR/USD price used for backing requirement conversion.
+     * @custom:security Prevents minting that would violate collateralization policy.
+     * @custom:validation Reverts if projected backing requirement is zero or projected ratio is too low.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors Reverts with `InvalidAmount` or `InsufficientCollateralization`.
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle Uses supplied validated oracle input.
+     */
     function _enforceProjectedMintCollateralization(uint256 netAmount, uint256 qeuroToMint, uint256 eurUsdPrice)
         internal
         view
@@ -771,12 +932,14 @@ contract QuantillonVault is
      * @notice Commits mint flow effects/interactions after validation phase
      * @dev Called via explicit self-call from `mintQEURO` to separate validation and commit phases.
      * @param payer User receiving freshly minted QEURO
+     * @param qeuroRecipient Address receiving minted QEURO output.
      * @param usdcAmount Gross USDC transferred in
      * @param fee Protocol fee portion from `usdcAmount`
      * @param netAmount Net USDC credited to collateral after fees
      * @param qeuroToMint QEURO amount to mint for `minter`
      * @param eurUsdPrice Validated EUR/USD price used for accounting cache
      * @param isValidPrice Whether oracle read used for cache timestamp was valid
+     * @param targetVaultId Target vault id for optional auto-deployment (`0` disables deployment).
      * @custom:security Restricted by `onlySelf`; executed from `nonReentrant` parent flow
      * @custom:validation Assumes caller already validated collateralization and oracle constraints
      * @custom:state-changes Updates vault accounting, oracle cache timestamps, and optional Aave principal tracker
@@ -831,6 +994,7 @@ contract QuantillonVault is
     /**
      * @notice Internal function to auto-deploy USDC to Aave after minting
      * @dev Uses strict CEI ordering and lets failures revert to preserve accounting integrity
+     * @param vaultId Target external vault id for deployment.
      * @param usdcAmount Amount of USDC to deploy (6 decimals)
      * @custom:security Updates accounting before external interaction to remove reentrancy windows
      * @custom:validation Validates AaveVault is set and amount > 0
@@ -946,6 +1110,19 @@ contract QuantillonVault is
         _dispatchRedeemCommit(payload);
     }
 
+    /**
+     * @notice Dispatches redeem commit through explicit self-call.
+     * @dev Preserves separation between validation/read phase and commit/interactions phase.
+     * @param payload Packed redeem commit payload.
+     * @custom:security Uses `onlySelf`-guarded commit entrypoint.
+     * @custom:validation Assumes payload was prepared by validated redeem flow.
+     * @custom:state-changes No direct state changes in dispatcher.
+     * @custom:events No direct events in dispatcher.
+     * @custom:errors Propagates commit-phase revert reasons.
+     * @custom:reentrancy Called from guarded parent flow.
+     * @custom:access Internal helper.
+     * @custom:oracle No direct oracle reads.
+     */
     function _dispatchRedeemCommit(RedeemCommitPayload memory payload) internal {
         this._redeemQEUROCommit(
             payload.redeemer,
@@ -1430,6 +1607,21 @@ contract QuantillonVault is
         emit ParametersUpdated("feeCollector", 0, 0);
     }
 
+    /**
+     * @notice Configures adapter and activation status for a vault id.
+     * @dev Governance management entrypoint for external staking vault routing.
+     * @param vaultId Vault id to configure.
+     * @param adapter Adapter contract implementing `IExternalStakingVault`.
+     * @param active Activation flag controlling whether vault id is eligible for routing.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Reverts on zero vault id or zero adapter address.
+     * @custom:state-changes Updates adapter mapping and active-status mapping for `vaultId`.
+     * @custom:events Emits `StakingVaultConfigured`.
+     * @custom:errors Reverts with `InvalidVault` or `ZeroAddress`.
+     * @custom:reentrancy No reentrancy-sensitive external calls.
+     * @custom:access Governance-only.
+     * @custom:oracle No oracle dependencies.
+     */
     function setStakingVault(uint256 vaultId, address adapter, bool active) external onlyRole(GOVERNANCE_ROLE) {
         if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
         if (adapter == address(0)) revert CommonErrorLibrary.ZeroAddress();
@@ -1438,6 +1630,19 @@ contract QuantillonVault is
         emit StakingVaultConfigured(vaultId, adapter, active);
     }
 
+    /**
+     * @notice Sets default vault id used for mint routing and fallback redemption priority.
+     * @dev `vaultId == 0` clears default routing.
+     * @param vaultId New default vault id (or 0 to clear).
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Non-zero ids must be active and have a configured adapter.
+     * @custom:state-changes Updates `defaultStakingVaultId`.
+     * @custom:events Emits `DefaultStakingVaultUpdated`.
+     * @custom:errors Reverts with `InvalidVault`/`ZeroAddress` for invalid non-zero ids.
+     * @custom:reentrancy No reentrancy-sensitive external calls.
+     * @custom:access Governance-only.
+     * @custom:oracle No oracle dependencies.
+     */
     function setDefaultStakingVaultId(uint256 vaultId) external onlyRole(GOVERNANCE_ROLE) {
         if (vaultId != 0) {
             if (!stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
@@ -1448,6 +1653,19 @@ contract QuantillonVault is
         emit DefaultStakingVaultUpdated(previous, vaultId);
     }
 
+    /**
+     * @notice Sets ordered vault ids used when sourcing redemption liquidity from external vaults.
+     * @dev Replaces the full priority array with provided values.
+     * @param vaultIds Ordered vault ids to use for redemption withdrawals.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Each id must be non-zero, active, and mapped to a configured adapter.
+     * @custom:state-changes Replaces `redemptionPriorityVaultIds`.
+     * @custom:events Emits `RedemptionPriorityUpdated`.
+     * @custom:errors Reverts with `InvalidVault`/`ZeroAddress` on invalid entries.
+     * @custom:reentrancy No reentrancy-sensitive external calls.
+     * @custom:access Governance-only.
+     * @custom:oracle No oracle dependencies.
+     */
     function setRedemptionPriority(uint256[] calldata vaultIds) external onlyRole(GOVERNANCE_ROLE) {
         delete redemptionPriorityVaultIds;
         for (uint256 i = 0; i < vaultIds.length; ++i) {
@@ -1497,6 +1715,20 @@ contract QuantillonVault is
         emit StQEURORegistered(factory, vaultId, token, vaultName);
     }
 
+    /**
+     * @notice Harvests yield from a specific external vault adapter.
+     * @dev Governance-triggered wrapper around adapter `harvestYield`.
+     * @param vaultId Vault id whose adapter yield should be harvested.
+     * @return harvestedYield Yield harvested by adapter in USDC units.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`; protected by `nonReentrant`.
+     * @custom:validation Reverts when vault id is invalid/inactive or adapter is unset.
+     * @custom:state-changes Adapter-side yield state may update; vault emits harvest event.
+     * @custom:events Emits `ExternalVaultYieldHarvested`.
+     * @custom:errors Reverts on invalid configuration or adapter harvest failures.
+     * @custom:reentrancy Guarded by `nonReentrant`.
+     * @custom:access Governance-only.
+     * @custom:oracle No direct oracle dependency.
+     */
     function harvestVaultYield(uint256 vaultId)
         external
         onlyRole(GOVERNANCE_ROLE)
@@ -1511,6 +1743,20 @@ contract QuantillonVault is
         emit ExternalVaultYieldHarvested(vaultId, harvestedYield);
     }
 
+    /**
+     * @notice Deploys held USDC principal into a configured external vault adapter.
+     * @dev Operator flow for moving idle vault USDC into yield-bearing adapters.
+     * @param vaultId Target vault id.
+     * @param usdcAmount USDC amount to deploy (6 decimals).
+     * @custom:security Restricted to `VAULT_OPERATOR_ROLE`; protected by `nonReentrant`.
+     * @custom:validation Reverts on zero amount, insufficient held liquidity, invalid vault id, or unset adapter.
+     * @custom:state-changes Decreases `totalUsdcHeld`, increases per-vault and global external principal trackers.
+     * @custom:events Emits `UsdcDeployedToExternalVault`.
+     * @custom:errors Reverts on invalid inputs, accounting constraints, or adapter failures.
+     * @custom:reentrancy Guarded by `nonReentrant`.
+     * @custom:access Vault-operator role.
+     * @custom:oracle No direct oracle dependency.
+     */
     function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount) external nonReentrant onlyRole(VAULT_OPERATOR_ROLE) {
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
         if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
@@ -1531,6 +1777,23 @@ contract QuantillonVault is
         emit UsdcDeployedToExternalVault(vaultId, usdcAmount, principalUsdcByVaultId[vaultId]);
     }
 
+    /**
+     * @notice Returns current exposure snapshot for a vault id.
+     * @dev Provides adapter address, active flag, tracked principal, and best-effort underlying read.
+     * @param vaultId Vault id to query.
+     * @return adapter Adapter address mapped to vault id.
+     * @return active Whether vault id is active.
+     * @return principalTracked Principal tracked locally for vault id.
+     * @return currentUnderlying Current underlying balance from adapter (fallbacks to principal on read failure).
+     * @custom:security Read-only helper.
+     * @custom:validation No additional validation; unknown ids return zeroed/default values.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No explicit errors; adapter read failure is handled via fallback.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
+     */
     function getVaultExposure(uint256 vaultId)
         external
         view
@@ -1548,6 +1811,20 @@ contract QuantillonVault is
         }
     }
 
+    /**
+     * @notice Withdraws requested USDC from external vault adapters following priority ordering.
+     * @dev Iterates resolved priority list until amount is fully satisfied or reverts on shortfall.
+     * @param usdcAmount Total USDC amount to source from external vaults.
+     * @return usdcWithdrawn Total USDC withdrawn from adapters.
+     * @custom:security Internal liquidity-sourcing helper for guarded redeem flows.
+     * @custom:validation Reverts with `InsufficientBalance` if aggregate withdrawals cannot satisfy request.
+     * @custom:state-changes Updates per-vault and global principal trackers via delegated withdrawal helper.
+     * @custom:events Emits per-vault withdrawal events from delegated helper.
+     * @custom:errors Reverts on insufficient liquidity or adapter withdrawal mismatch.
+     * @custom:reentrancy Internal helper; downstream adapter calls are performed in controlled flow.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
     function _withdrawUsdcFromExternalVaults(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn) {
         if (usdcAmount == 0) return 0;
 
@@ -1564,6 +1841,19 @@ contract QuantillonVault is
         if (remaining > 0) revert CommonErrorLibrary.InsufficientBalance();
     }
 
+    /**
+     * @notice Resolves external-vault withdrawal priority list.
+     * @dev Uses explicit `redemptionPriorityVaultIds` when configured, otherwise falls back to default vault id.
+     * @return priority Ordered vault ids to use for withdrawal sourcing.
+     * @custom:security Internal read helper.
+     * @custom:validation Reverts if neither explicit priority nor default vault is available.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors Reverts with `InsufficientBalance` when no usable routing exists.
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
     function _resolveWithdrawalPriority() internal view returns (uint256[] memory priority) {
         priority = redemptionPriorityVaultIds;
         if (priority.length > 0) return priority;
@@ -1575,6 +1865,21 @@ contract QuantillonVault is
         priority[0] = defaultVaultId;
     }
 
+    /**
+     * @notice Withdraws up to `remaining` USDC principal from one external vault id.
+     * @dev Caps withdrawal at locally tracked principal and requires adapter to return exact requested amount.
+     * @param vaultId Vault id to withdraw from.
+     * @param remaining Remaining aggregate withdrawal amount required.
+     * @return withdrawnAmount Amount withdrawn from this vault id (0 when skipped/ineligible).
+     * @custom:security Internal helper used by controlled redemption liquidity flow.
+     * @custom:validation Skips inactive/unconfigured/zero-principal vaults; reverts on adapter mismatch.
+     * @custom:state-changes Decreases per-vault and global principal trackers before adapter withdrawal.
+     * @custom:events Emits `UsdcWithdrawnFromExternalVault` on successful withdrawal.
+     * @custom:errors Reverts with `InvalidAmount` if adapter withdrawal result mismatches request.
+     * @custom:reentrancy Internal helper; adapter interaction occurs after accounting updates.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
     function _withdrawFromExternalVault(uint256 vaultId, uint256 remaining) internal returns (uint256 withdrawnAmount) {
         if (!stakingVaultActiveById[vaultId]) return 0;
 
@@ -1780,6 +2085,19 @@ contract QuantillonVault is
         }
     }
 
+    /**
+     * @notice Computes aggregate external-vault collateral balance including accrued yield.
+     * @dev Reads adapter `totalUnderlying` values with principal fallback on read failure.
+     * @return externalCollateral Total external collateral balance in USDC units.
+     * @custom:security Internal read helper.
+     * @custom:validation Uses fallback to tracked principal when adapter reads fail.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No explicit errors; read failures are handled via fallback.
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
     function _getExternalVaultCollateralBalance() internal view returns (uint256 externalCollateral) {
         uint256[] memory priority = redemptionPriorityVaultIds;
         if (priority.length == 0 && defaultStakingVaultId != 0) {
@@ -1805,6 +2123,19 @@ contract QuantillonVault is
         }
     }
 
+    /**
+     * @notice Returns total collateral available including held and external-vault balances.
+     * @dev Sum of `totalUsdcHeld` and `_getExternalVaultCollateralBalance()`.
+     * @return Total collateral in USDC units.
+     * @custom:security Internal read helper.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors Propagates unexpected view-read errors.
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle No direct oracle dependency.
+     */
     function _getTotalCollateralWithAccruedYield() internal view returns (uint256) {
         return totalUsdcHeld + _getExternalVaultCollateralBalance();
     }

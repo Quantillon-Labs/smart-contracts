@@ -212,6 +212,20 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
         return stQEUROByVaultId[vaultId];
     }
 
+    /**
+     * @notice Returns all vault ids registered by a vault contract.
+     * @dev A single QuantillonVault instance can register multiple vault ids.
+     * @param vault Vault contract address.
+     * @return vaultIds Array of registered vault ids for `vault`.
+     * @custom:security Read-only registry accessor.
+     * @custom:validation No additional validation; unknown vaults return an empty array.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
+     */
     function getVaultIdsByVault(address vault) external view returns (uint256[] memory vaultIds) {
         return _vaultIdsByVault[vault];
     }

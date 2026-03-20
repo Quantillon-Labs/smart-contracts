@@ -127,32 +127,15 @@ function getStQEUROByVaultId(uint256 vaultId) external view returns (address stQ
 |`stQEUROToken`|`address`|Registered token address (or zero if unset).|
 
 
-### getStQEUROByVault
+### getVaultIdsByVault
 
-Returns registered stQEURO token by vault address.
+Returns all vault ids registered by a given vault contract.
 
-Read-only registry lookup.
-
-**Notes:**
-- security: Read-only accessor.
-
-- validation: No input validation required.
-
-- state-changes: No state changes.
-
-- events: No events emitted.
-
-- errors: No errors expected.
-
-- reentrancy: Not applicable for view function.
-
-- access: Public view.
-
-- oracle: No oracle dependencies.
+A single QuantillonVault can register multiple staking vault ids.
 
 
 ```solidity
-function getStQEUROByVault(address vault) external view returns (address stQEUROToken);
+function getVaultIdsByVault(address vault) external view returns (uint256[] memory vaultIds);
 ```
 **Parameters**
 
@@ -164,7 +147,7 @@ function getStQEUROByVault(address vault) external view returns (address stQEURO
 
 |Name|Type|Description|
 |----|----|-----------|
-|`stQEUROToken`|`address`|Registered token address (or zero if unset).|
+|`vaultIds`|`uint256[]`|Array of registered vault ids for that vault contract.|
 
 
 ### getVaultById

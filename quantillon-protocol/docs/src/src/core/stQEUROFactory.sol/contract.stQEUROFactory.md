@@ -102,6 +102,13 @@ mapping(address => uint256) public vaultIdByStQEURO
 ```
 
 
+### _vaultIdsByVault
+
+```solidity
+mapping(address => uint256[]) private _vaultIdsByVault
+```
+
+
 ### _vaultNamesById
 
 ```solidity
@@ -324,45 +331,12 @@ function getStQEUROByVaultId(uint256 vaultId) external view returns (address stQ
 |`stQEUROToken_`|`address`|Registered stQEURO token address (or zero if unset).|
 
 
-### getStQEUROByVault
-
-Returns registered stQEURO token by vault address.
-
-Reads factory mapping for vault-to-token resolution.
-
-**Notes:**
-- security: Read-only lookup with no privileged behavior.
-
-- validation: No additional validation; returns zero for unknown vaults.
-
-- state-changes: No state changes.
-
-- events: No events emitted.
-
-- errors: No errors expected.
-
-- reentrancy: Not applicable for view function.
-
-- access: Public view.
-
-- oracle: No oracle dependencies.
+### getVaultIdsByVault
 
 
 ```solidity
-function getStQEUROByVault(address vault) external view returns (address stQEUROToken_);
+function getVaultIdsByVault(address vault) external view returns (uint256[] memory vaultIds);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`vault`|`address`|Vault contract address.|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`stQEUROToken_`|`address`|Registered stQEURO token address (or zero if unset).|
-
 
 ### getVaultById
 

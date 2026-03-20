@@ -211,6 +211,18 @@ contract HedgerPool is
         _;
     }
 
+    /**
+     * @notice Reverts unless caller is this contract.
+     * @dev Internal guard used by `onlySelf` commit helpers invoked via explicit self-calls.
+     * @custom:security Prevents direct external invocation of self-call commit paths.
+     * @custom:validation Requires `msg.sender == address(this)`.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Reverts with `NotAuthorized` when caller is not self.
+     * @custom:reentrancy No external calls.
+     * @custom:access Internal helper used by modifier.
+     * @custom:oracle No oracle dependencies.
+     */
     function _onlySelf() internal view {
         if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }

@@ -337,6 +337,13 @@ modifier onlyVault() ;
 modifier onlySelf() ;
 ```
 
+### _onlySelf
+
+
+```solidity
+function _onlySelf() internal view;
+```
+
 ### _onlyVault
 
 Reverts if caller is not the vault contract
@@ -363,34 +370,6 @@ Used by onlyVault modifier; restricts vault-only callbacks (e.g. realized P&L)
 
 ```solidity
 function _onlyVault() internal view;
-```
-
-### _onlySelf
-
-Reverts if caller is not this contract
-
-Used by onlySelf modifier for self-call only entry points
-
-**Notes:**
-- security: Ensures commit-style entry points can only be reached via explicit self-calls
-
-- validation: Reverts when `msg.sender != address(this)`
-
-- state-changes: None
-
-- events: None
-
-- errors: Reverts with `NotAuthorized` if caller is not this contract
-
-- reentrancy: No external calls
-
-- access: Internal helper for `onlySelf` modifier
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _onlySelf() internal view;
 ```
 
 ### constructor
@@ -589,6 +568,21 @@ function _enterHedgePositionCommit(
 |`positionId`|`uint256`|Created position identifier (single-position model => `1`)|
 
 
+### _initializeOpenedPosition
+
+
+```solidity
+function _initializeOpenedPosition(
+    HedgePosition storage position,
+    address hedger,
+    uint256 positionSize,
+    uint256 netMargin,
+    uint256 currentTime,
+    uint256 leverage,
+    uint256 eurUsdPrice
+) private;
+```
+
 ### exitHedgePosition
 
 Closes an existing hedge position
@@ -737,18 +731,23 @@ function removeMargin(uint256 positionId, uint256 amount) external whenNotPaused
 |`amount`|`uint256`|Amount of USDC to remove from margin (6 decimals)|
 
 
+### _validatePositionHealthAfterMarginRemoval
+
+
+```solidity
+function _validatePositionHealthAfterMarginRemoval(HedgePosition storage position, uint256 newMargin) private;
+```
+
 ### _removeMarginCommit
 
 
 ```solidity
 function _removeMarginCommit(
-    address hedger,
     uint256 positionId,
     uint256 newMargin,
     uint256 newPositionSize,
     uint256 deltaPositionSize,
-    uint256 amount,
-    uint256 newMarginRatio
+    uint256 amount
 ) private;
 ```
 
@@ -1034,48 +1033,6 @@ function _settleInterestRewards(address hedger, uint256 interestDifferential) in
 |----|----|-----------|
 |`hedger`|`address`|Hedger receiving queued rewards|
 |`interestDifferential`|`uint256`|Interest-differential amount to queue|
-
-
-### _emitRewardClaimIfAny
-
-Emits reward-claim event when total claimed rewards are non-zero
-
-Packs reward components for gas-efficient indexed monitoring.
-
-**Notes:**
-- security: Emits event only when there is meaningful reward activity
-
-- validation: Returns early when `totalRewards == 0`
-
-- state-changes: None
-
-- events: Emits `HedgingRewardsClaimed`
-
-- errors: None
-
-- reentrancy: No external calls
-
-- access: Internal function
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _emitRewardClaimIfAny(
-    address hedger,
-    uint256 interestDifferential,
-    uint256 yieldShiftRewards,
-    uint256 totalRewards
-) internal;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`hedger`|`address`|Hedger for whom rewards were claimed|
-|`interestDifferential`|`uint256`|Interest-differential component|
-|`yieldShiftRewards`|`uint256`|YieldShift component|
-|`totalRewards`|`uint256`|Aggregate reward amount|
 
 
 ### withdrawPendingRewards
@@ -1950,13 +1907,13 @@ Handles both profit and loss branches in a single path to keep bytecode compact.
 
 
 ```solidity
-function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal;
+function _applyRealizedPnLToMargin(uint256, HedgePosition storage pos, int256 realizedDelta) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`posId`|`uint256`|Position ID|
+|`<none>`|`uint256`||
 |`pos`|`HedgePosition`|Position storage reference|
 |`realizedDelta`|`int256`|Realized P&L amount (positive = profit, negative = loss)|
 

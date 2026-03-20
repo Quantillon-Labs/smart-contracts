@@ -476,8 +476,6 @@ function initialize(
     address _usdc,
     address _treasury,
     address _timelock,
-    string calldata _tokenName,
-    string calldata _tokenSymbol,
     string calldata _vaultName
 ) public initializer;
 ```
@@ -491,16 +489,14 @@ function initialize(
 |`_usdc`|`address`|Address of the USDC token contract|
 |`_treasury`|`address`|Address of the treasury|
 |`_timelock`|`address`|Address of the timelock contract|
-|`_tokenName`|`string`|ERC20 token name|
-|`_tokenSymbol`|`string`|ERC20 token symbol|
 |`_vaultName`|`string`|Human-readable vault name (e.g. CORE, ALPHA1)|
 
 
-### _initializeStQEURO
+### _initializeStQEURODependencies
 
 Internal initializer shared by both public initialization entrypoints.
 
-Performs full dependency validation, role setup, metadata initialization, and default parameter bootstrap.
+Performs full dependency validation, role setup, and default parameter bootstrap.
 
 **Notes:**
 - security: Centralizes initialization checks to keep both entrypoints consistent and hardened.
@@ -521,13 +517,25 @@ Performs full dependency validation, role setup, metadata initialization, and de
 
 
 ```solidity
-function _initializeStQEURO(InitConfig memory cfg) internal;
+function _initializeStQEURODependencies(
+    address admin,
+    address qeuroAddress,
+    address yieldShiftAddress,
+    address usdcAddress,
+    address treasuryAddress,
+    address timelockAddress
+) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`cfg`|`InitConfig`|Initialization configuration struct with addresses and metadata.|
+|`admin`|`address`|Admin role address|
+|`qeuroAddress`|`address`|QEURO token address|
+|`yieldShiftAddress`|`address`|YieldShift contract address|
+|`usdcAddress`|`address`|USDC token address|
+|`treasuryAddress`|`address`|Treasury address|
+|`timelockAddress`|`address`|Timelock address used by SecureUpgradeable|
 
 
 ### stake
@@ -1576,21 +1584,4 @@ event ETHRecovered(address indexed to, uint256 indexed amount);
 |----|----|-----------|
 |`to`|`address`|Address to which ETH was recovered|
 |`amount`|`uint256`|Amount of ETH recovered|
-
-## Structs
-### InitConfig
-
-```solidity
-struct InitConfig {
-    address admin;
-    address qeuroAddress;
-    address yieldShiftAddress;
-    address usdcAddress;
-    address treasuryAddress;
-    address timelockAddress;
-    string tokenName;
-    string tokenSymbol;
-    string vaultName_;
-}
-```
 

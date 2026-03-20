@@ -336,6 +336,20 @@ YieldShiftSnapshot[] public yieldShiftHistory
 ```
 
 
+### sourceToVaultId
+
+```solidity
+mapping(address => uint256) public sourceToVaultId
+```
+
+
+### enforceSourceVaultBinding
+
+```solidity
+bool public enforceSourceVaultBinding
+```
+
+
 ## Functions
 ### constructor
 
@@ -1283,6 +1297,109 @@ function setYieldSourceAuthorization(address source, bytes32 yieldType, bool aut
 |`authorized`|`bool`|True to authorize the source, false to revoke authorization.|
 
 
+### setSourceVaultBinding
+
+Binds a yield source to a single vault id for optional strict routing.
+
+When strict mode is enabled, calls from `source` can only route yield to `vaultId`.
+
+**Notes:**
+- security: Governance-only control over source/vault routing boundaries.
+
+- validation: Reverts on zero source address or zero vault id.
+
+- state-changes: Updates `sourceToVaultId[source]`.
+
+- events: Emits `SourceVaultBindingUpdated`.
+
+- errors: `ZeroAddress` / `InvalidVault` on invalid inputs.
+
+- reentrancy: Not applicable.
+
+- access: Restricted to governance.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function setSourceVaultBinding(address source, uint256 vaultId) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Yield source address to bind.|
+|`vaultId`|`uint256`|Vault id that this source is allowed to target.|
+
+
+### clearSourceVaultBinding
+
+Clears the vault binding for a yield source.
+
+In strict mode, a cleared source must be rebound before it can call `addYield`.
+
+**Notes:**
+- security: Governance-only.
+
+- validation: Reverts on zero source address.
+
+- state-changes: Resets `sourceToVaultId[source]` to zero.
+
+- events: Emits `SourceVaultBindingUpdated` with vault id `0`.
+
+- errors: `ZeroAddress` on invalid input.
+
+- reentrancy: Not applicable.
+
+- access: Restricted to governance.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function clearSourceVaultBinding(address source) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Yield source address to unbind.|
+
+
+### setSourceVaultBindingEnforcement
+
+Enables or disables strict source-to-vault enforcement.
+
+When enabled, `addYield` requires `sourceToVaultId[msg.sender] == vaultId`.
+
+**Notes:**
+- security: Governance-only mode toggle.
+
+- validation: No extra validation required.
+
+- state-changes: Updates `enforceSourceVaultBinding`.
+
+- events: Emits `SourceVaultBindingModeUpdated`.
+
+- errors: None.
+
+- reentrancy: Not applicable.
+
+- access: Restricted to governance.
+
+- oracle: No oracle dependencies.
+
+
+```solidity
+function setSourceVaultBindingEnforcement(bool enabled) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|True to enforce source/vault binding, false for permissive routing.|
+
+
 ### updateYieldAllocation
 
 Updates yield allocation for a specific user or hedger
@@ -1762,6 +1879,18 @@ OPTIMIZED: Indexed source and timestamp for efficient filtering
 
 ```solidity
 event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp);
+```
+
+### SourceVaultBindingUpdated
+
+```solidity
+event SourceVaultBindingUpdated(address indexed source, uint256 indexed vaultId);
+```
+
+### SourceVaultBindingModeUpdated
+
+```solidity
+event SourceVaultBindingModeUpdated(bool enabled);
 ```
 
 ## Structs

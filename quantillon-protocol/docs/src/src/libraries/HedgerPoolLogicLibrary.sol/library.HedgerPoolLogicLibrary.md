@@ -51,37 +51,16 @@ Validates all position constraints and calculates fee, margin, and position size
 
 
 ```solidity
-function validateAndCalculatePositionParams(
-    uint256 usdcAmount,
-    uint256 leverage,
-    uint256 eurUsdPrice,
-    uint256 entryFee,
-    uint256 minMarginRatio,
-    uint256 maxMarginRatio,
-    uint256 maxLeverage,
-    uint256 maxMargin,
-    uint256 maxPositionSize,
-    uint256 maxEntryPrice,
-    uint256 maxLeverageValue,
-    uint256 currentTime
-) external pure returns (uint256 fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio);
+function validateAndCalculatePositionParams(PositionValidationInput calldata params)
+    external
+    pure
+    returns (uint256 fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC to deposit|
-|`leverage`|`uint256`|Leverage multiplier for the position|
-|`eurUsdPrice`|`uint256`|Current EUR/USD price from oracle|
-|`entryFee`|`uint256`|Entry fee rate in basis points|
-|`minMarginRatio`|`uint256`|Minimum margin ratio in basis points|
-|`maxMarginRatio`|`uint256`|Maximum margin ratio in basis points|
-|`maxLeverage`|`uint256`|Maximum allowed leverage|
-|`maxMargin`|`uint256`|Maximum margin per position|
-|`maxPositionSize`|`uint256`|Maximum position size|
-|`maxEntryPrice`|`uint256`|Maximum entry price|
-|`maxLeverageValue`|`uint256`|Maximum leverage value|
-|`currentTime`|`uint256`|Current timestamp|
+|`params`|`PositionValidationInput`|Packed position validation inputs|
 
 **Returns**
 
@@ -376,4 +355,24 @@ function validateMarginOperation(
 |`newMargin`|`uint256`|New margin amount after operation|
 |`newMarginRatio`|`uint256`|New margin ratio after operation|
 
+
+## Structs
+### PositionValidationInput
+
+```solidity
+struct PositionValidationInput {
+    uint256 usdcAmount;
+    uint256 leverage;
+    uint256 eurUsdPrice;
+    uint256 entryFee;
+    uint256 minMarginRatio;
+    uint256 maxMarginRatio;
+    uint256 maxLeverage;
+    uint256 maxMargin;
+    uint256 maxPositionSize;
+    uint256 maxEntryPrice;
+    uint256 maxLeverageValue;
+    uint256 currentTime;
+}
+```
 

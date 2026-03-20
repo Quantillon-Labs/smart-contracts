@@ -206,20 +206,47 @@ interface IYieldShift {
 
     /**
      * @notice Binds a source to a single vault id for optional strict routing.
+     * @dev Governance hook used to restrict a source to one vault when enforcement is enabled.
      * @param source Yield source address.
      * @param vaultId Vault id the source is allowed to target in strict mode.
+     * @custom:security Restricted to governance in implementation.
+     * @custom:validation Reverts on zero source or invalid vault id per implementation rules.
+     * @custom:state-changes Updates source-to-vault binding map.
+     * @custom:events Emits binding update event in implementation.
+     * @custom:errors Reverts on invalid inputs or unauthorized access.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Governance-only.
+     * @custom:oracle No oracle dependency.
      */
     function setSourceVaultBinding(address source, uint256 vaultId) external;
 
     /**
      * @notice Clears a source-to-vault binding.
+     * @dev Governance hook that removes strict routing assignment for a source.
      * @param source Yield source address.
+     * @custom:security Restricted to governance in implementation.
+     * @custom:validation Reverts on zero source per implementation rules.
+     * @custom:state-changes Deletes source-to-vault binding entry.
+     * @custom:events Emits binding clear event in implementation.
+     * @custom:errors Reverts on invalid inputs or unauthorized access.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Governance-only.
+     * @custom:oracle No oracle dependency.
      */
     function clearSourceVaultBinding(address source) external;
 
     /**
      * @notice Enables or disables strict source-to-vault binding enforcement.
+     * @dev Governance toggle controlling whether `addYield` must respect source bindings.
      * @param enabled True to enforce binding in `addYield`.
+     * @custom:security Restricted to governance in implementation.
+     * @custom:validation Boolean input only; no additional validation required.
+     * @custom:state-changes Updates binding-enforcement flag.
+     * @custom:events Emits enforcement toggle event in implementation.
+     * @custom:errors Reverts on unauthorized access.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Governance-only.
+     * @custom:oracle No oracle dependency.
      */
     function setSourceVaultBindingEnforcement(bool enabled) external;
 

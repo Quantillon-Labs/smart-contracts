@@ -760,8 +760,17 @@ contract AaveVault is
 
     /**
      * @notice Generic external vault adapter deposit entrypoint.
+     * @dev Delegates to `deployToAave` using adapter-standard semantics for QuantillonVault.
      * @param usdcAmount Amount of USDC to deposit (6 decimals).
      * @return sharesReceived Amount of adapter shares/units received.
+     * @custom:security Callable by configured integration flows; underlying logic validates amount and roles.
+     * @custom:validation Reverts on zero amount, invalid state, or failed Aave interaction in delegate path.
+     * @custom:state-changes Updates principal tracking and deploys USDC to Aave via delegated function.
+     * @custom:events Emits deployment/yield-related events from delegated function.
+     * @custom:errors Propagates validation, transfer, and Aave interaction errors from delegated function.
+     * @custom:reentrancy Reentrancy protections are enforced by delegated function flow.
+     * @custom:access Access control is enforced by delegated function flow.
+     * @custom:oracle No direct oracle dependency in this wrapper.
      */
     function depositUnderlying(uint256 usdcAmount) external override returns (uint256 sharesReceived) {
         return deployToAave(usdcAmount);
@@ -769,8 +778,17 @@ contract AaveVault is
 
     /**
      * @notice Generic external vault adapter withdraw entrypoint.
+     * @dev Delegates to `withdrawFromAave` and returns actual USDC withdrawn.
      * @param usdcAmount Amount of USDC to withdraw (6 decimals).
      * @return usdcWithdrawn Actual USDC withdrawn.
+     * @custom:security Callable by configured integration flows; delegated function enforces safety checks.
+     * @custom:validation Reverts on invalid amount/balance or failed Aave withdrawal in delegate path.
+     * @custom:state-changes Updates principal tracking and vault balances through delegated function.
+     * @custom:events Emits withdrawal-related events from delegated function.
+     * @custom:errors Propagates delegated function errors for validation and Aave failures.
+     * @custom:reentrancy Reentrancy protections are enforced by delegated function flow.
+     * @custom:access Access control is enforced by delegated function flow.
+     * @custom:oracle No direct oracle dependency in this wrapper.
      */
     function withdrawUnderlying(uint256 usdcAmount) external override returns (uint256 usdcWithdrawn) {
         return withdrawFromAave(usdcAmount);
@@ -778,7 +796,16 @@ contract AaveVault is
 
     /**
      * @notice Generic external vault adapter harvest entrypoint.
+     * @dev Delegates to `harvestAaveYield` to realize and route harvested yield.
      * @return harvestedYield Net yield harvested in USDC (6 decimals).
+     * @custom:security Delegated function enforces configured role and dependency checks.
+     * @custom:validation Reverts when harvesting preconditions fail in delegated function.
+     * @custom:state-changes Realizes Aave yield and updates accounting in delegated function.
+     * @custom:events Emits harvest/yield distribution events from delegated function.
+     * @custom:errors Propagates delegated function errors.
+     * @custom:reentrancy Reentrancy protections are enforced by delegated function flow.
+     * @custom:access Access control is enforced by delegated function flow.
+     * @custom:oracle No direct oracle dependency in this wrapper.
      */
     function harvestYield() external override returns (uint256 harvestedYield) {
         return harvestAaveYield();
@@ -786,7 +813,16 @@ contract AaveVault is
 
     /**
      * @notice Returns total underlying balance for adapter-generic reads.
+     * @dev Mirrors `getAaveBalance` for adapter-standard interface compatibility.
      * @return underlyingBalance Aave-side USDC-equivalent balance (principal + accrued yield).
+     * @custom:security Read-only accessor.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors No errors expected.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependency.
      */
     function totalUnderlying() external view override returns (uint256 underlyingBalance) {
         return getAaveBalance();

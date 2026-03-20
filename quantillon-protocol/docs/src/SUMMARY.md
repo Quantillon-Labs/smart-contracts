@@ -1,6 +1,5 @@
 # Summary
 - [Home](README.md)
-- [External Vaults Refactor Recap](External-Vaults-Refactor-Recap.md)
 # src
   - [❱ core](src/core/README.md)
     - [❱ vaults](src/core/vaults/README.md)
@@ -9,6 +8,8 @@
       - [IRewardsController](src/core/vaults/AaveVault.sol/interface.IRewardsController.md)
       - [ReserveData](src/core/vaults/AaveVault.sol/struct.ReserveData.md)
       - [AaveVault](src/core/vaults/AaveVault.sol/contract.AaveVault.md)
+      - [IMockMorphoVault](src/core/vaults/MorphoStakingVaultAdapter.sol/interface.IMockMorphoVault.md)
+      - [MorphoStakingVaultAdapter](src/core/vaults/MorphoStakingVaultAdapter.sol/contract.MorphoStakingVaultAdapter.md)
     - [❱ yieldmanagement](src/core/yieldmanagement/README.md)
       - [YieldShift](src/core/yieldmanagement/YieldShift.sol/contract.YieldShift.md)
     - [FeeCollector](src/core/FeeCollector.sol/contract.FeeCollector.md)
@@ -24,6 +25,7 @@
   - [❱ interfaces](src/interfaces/README.md)
     - [IAaveVault](src/interfaces/IAaveVault.sol/interface.IAaveVault.md)
     - [IChainlinkOracle](src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md)
+    - [IExternalStakingVault](src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
     - [IHedgerPool](src/interfaces/IHedgerPool.sol/interface.IHedgerPool.md)
     - [IOracle](src/interfaces/IOracle.sol/interface.IOracle.md)
     - [IQEUROToken](src/interfaces/IQEUROToken.sol/interface.IQEUROToken.md)
@@ -65,6 +67,7 @@
     - [YieldValidationLibrary](src/libraries/YieldValidationLibrary.sol/library.YieldValidationLibrary.md)
   - [❱ mocks](src/mocks/README.md)
     - [MockChainlinkOracle](src/mocks/MockChainlinkOracle.sol/contract.MockChainlinkOracle.md)
+    - [MockMorphoVault](src/mocks/MockMorphoVault.sol/contract.MockMorphoVault.md)
     - [MockStorkOracle](src/mocks/MockStorkOracle.sol/contract.MockStorkOracle.md)
     - [MockUSDC](src/mocks/MockUSDC.sol/contract.MockUSDC.md)
   - [❱ oracle](src/oracle/README.md)

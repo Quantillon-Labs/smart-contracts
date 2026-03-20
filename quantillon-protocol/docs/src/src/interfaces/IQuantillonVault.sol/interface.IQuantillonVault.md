@@ -99,6 +99,22 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external;
 |`minQeuroOut`|`uint256`|Minimum QEURO expected (slippage protection)|
 
 
+### mintQEUROToVault
+
+
+```solidity
+function mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId) external;
+```
+
+### mintAndStakeQEURO
+
+
+```solidity
+function mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId, uint256 minStQEUROOut)
+    external
+    returns (uint256 qeuroMinted, uint256 stQEUROMinted);
+```
+
 ### redeemQEURO
 
 Redeems QEURO for USDC
@@ -166,7 +182,7 @@ function getVaultMetrics()
         uint256 totalUsdcHeld_,
         uint256 totalMinted_,
         uint256 totalDebtValue,
-        uint256 totalUsdcInAave_,
+        uint256 totalUsdcInExternalVaults_,
         uint256 totalUsdcAvailable_
     );
 ```
@@ -177,8 +193,8 @@ function getVaultMetrics()
 |`totalUsdcHeld_`|`uint256`|Total USDC held directly in the vault|
 |`totalMinted_`|`uint256`|Total QEURO minted|
 |`totalDebtValue`|`uint256`|Total debt value in USD|
-|`totalUsdcInAave_`|`uint256`|Total USDC deployed to Aave for yield|
-|`totalUsdcAvailable_`|`uint256`|Total USDC available (vault + Aave)|
+|`totalUsdcInExternalVaults_`|`uint256`|Total USDC principal deployed across external vault adapters|
+|`totalUsdcAvailable_`|`uint256`|Total USDC available (vault + external adapters)|
 
 
 ### calculateMintAmount
@@ -1866,73 +1882,33 @@ function initializePriceCache(uint256 initialEurUsdPrice) external;
 |`initialEurUsdPrice`|`uint256`|Initial EUR/USD price in 18 decimals.|
 
 
-### deployUsdcToAave
-
-Deploys USDC from the vault to Aave for yield generation
-
-Called by UserPool after minting QEURO to automatically deploy USDC to Aave
-
-**Notes:**
-- security: Only callable by VAULT_OPERATOR_ROLE (UserPool)
-
-- validation: Validates amount > 0, AaveVault is set, and sufficient USDC balance
-
-- state-changes: Updates totalUsdcHeld (decreases) and totalUsdcInAave (increases)
-
-- events: Emits UsdcDeployedToAave event
-
-- errors: Reverts if amount is 0, AaveVault not set, or insufficient USDC
-
-- reentrancy: Protected by nonReentrant modifier
-
-- access: Restricted to VAULT_OPERATOR_ROLE
-
-- oracle: No oracle dependencies
+### setStakingVault
 
 
 ```solidity
-function deployUsdcToAave(uint256 usdcAmount) external;
+function setStakingVault(uint256 vaultId, address adapter, bool active) external;
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|Amount of USDC to deploy to Aave (6 decimals)|
-
-
-### updateAaveVault
-
-Updates the AaveVault address for USDC yield generation
-
-Only governance role can update the AaveVault address
-
-**Notes:**
-- security: Validates address is not zero before updating
-
-- validation: Ensures _aaveVault is not address(0)
-
-- state-changes: Updates aaveVault state variable
-
-- events: Emits AaveVaultUpdated event
-
-- errors: Reverts if _aaveVault is address(0)
-
-- reentrancy: No reentrancy risk, simple state update
-
-- access: Restricted to GOVERNANCE_ROLE
-
-- oracle: No oracle dependencies
+### setDefaultStakingVaultId
 
 
 ```solidity
-function updateAaveVault(address _aaveVault) external;
+function setDefaultStakingVaultId(uint256 vaultId) external;
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`_aaveVault`|`address`|New AaveVault address|
+### setRedemptionPriority
 
+
+```solidity
+function setRedemptionPriority(uint256[] calldata vaultIds) external;
+```
+
+### deployUsdcToVault
+
+
+```solidity
+function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount) external;
+```
 
 ### selfRegisterStQEURO
 
@@ -2013,108 +1989,36 @@ function updateHedgerRewardFeeSplit(uint256 newSplit) external;
 |`newSplit`|`uint256`|New fee‑share value (1e18‑scaled, 0–1e18 allowed by implementation).|
 
 
-### harvestAaveInterest
-
-Harvests accrued Aave interest through the configured AaveVault.
-
-Pulls pending yield from `AaveVault` back into the vault and routes it
-according to the protocol’s fee and reward‑sharing rules.
-
-**Notes:**
-- security: Only callable by governance or a dedicated operator role (per implementation).
-
-- validation: Requires a configured AaveVault and sufficient accrued interest.
-
-- state-changes: Updates vault balances and internal yield‑accounting fields.
-
-- events: Emits a harvest event with the realized yield amount.
-
-- errors: Reverts if AaveVault is unset or harvest conditions are not met.
-
-- reentrancy: Protected by nonReentrant modifier in implementation.
-
-- access: Access control enforced by implementation (typically GOVERNANCE_ROLE).
-
-- oracle: No direct oracle dependency; operates on Aave position balances.
+### harvestVaultYield
 
 
 ```solidity
-function harvestAaveInterest() external returns (uint256 harvestedYield);
+function harvestVaultYield(uint256 vaultId) external returns (uint256 harvestedYield);
 ```
-**Returns**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`harvestedYield`|`uint256`|Net USDC yield amount harvested from Aave (6 decimals).|
-
-
-### aaveVault
-
-Returns the AaveVault contract address
-
-The AaveVault contract for USDC yield generation
-
-**Notes:**
-- security: No security validations required - view function
-
-- validation: No input validation required - view function
-
-- state-changes: No state changes - view function only
-
-- events: No events emitted
-
-- errors: No errors thrown - safe view function
-
-- reentrancy: Not applicable - view function
-
-- access: Public - anyone can query aaveVault address
-
-- oracle: No oracle dependencies
+### getVaultExposure
 
 
 ```solidity
-function aaveVault() external view returns (address);
+function getVaultExposure(uint256 vaultId)
+    external
+    view
+    returns (address adapter, bool active, uint256 principalTracked, uint256 currentUnderlying);
 ```
-**Returns**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`address`|Address of the AaveVault contract|
-
-
-### totalUsdcInAave
-
-Returns the total USDC deployed to Aave
-
-Tracks USDC that has been sent to AaveVault for yield generation
-
-**Notes:**
-- security: No security validations required - view function
-
-- validation: No input validation required - view function
-
-- state-changes: No state changes - view function only
-
-- events: No events emitted
-
-- errors: No errors thrown - safe view function
-
-- reentrancy: Not applicable - view function
-
-- access: Public - anyone can query total USDC in Aave
-
-- oracle: No oracle dependencies
+### defaultStakingVaultId
 
 
 ```solidity
-function totalUsdcInAave() external view returns (uint256);
+function defaultStakingVaultId() external view returns (uint256);
 ```
-**Returns**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Total USDC in Aave (6 decimals)|
+### totalUsdcInExternalVaults
 
+
+```solidity
+function totalUsdcInExternalVaults() external view returns (uint256);
+```
 
 ### stQEUROFactory
 
@@ -2144,60 +2048,11 @@ Read-only accessor for the factory bound to this vault instance.
 function stQEUROFactory() external view returns (address);
 ```
 
-### stQEUROToken
-
-Returns the stQEURO token address registered for this vault.
-
-Read-only accessor for the vault-specific stQEURO token.
-
-**Notes:**
-- security: Read-only accessor.
-
-- validation: No input validation required.
-
-- state-changes: No state changes.
-
-- events: No events emitted.
-
-- errors: No errors expected.
-
-- reentrancy: Not applicable for view function.
-
-- access: Public view.
-
-- oracle: No oracle dependencies.
+### stQEUROTokenByVaultId
 
 
 ```solidity
-function stQEUROToken() external view returns (address);
-```
-
-### stQEUROVaultId
-
-Returns the factory vault id bound to this vault.
-
-Read-only accessor for the registered stQEURO factory vault id.
-
-**Notes:**
-- security: Read-only accessor.
-
-- validation: No input validation required.
-
-- state-changes: No state changes.
-
-- events: No events emitted.
-
-- errors: No errors expected.
-
-- reentrancy: Not applicable for view function.
-
-- access: Public view.
-
-- oracle: No oracle dependencies.
-
-
-```solidity
-function stQEUROVaultId() external view returns (uint256);
+function stQEUROTokenByVaultId(uint256 vaultId) external view returns (address);
 ```
 
 ### VAULT_OPERATOR_ROLE

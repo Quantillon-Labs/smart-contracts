@@ -397,6 +397,52 @@ function setYieldSourceAuthorization(address source, bytes32 yieldType, bool aut
 |`authorized`|`bool`|True to authorize, false to deauthorize.|
 
 
+### setSourceVaultBinding
+
+Binds a source to a single vault id for optional strict routing.
+
+
+```solidity
+function setSourceVaultBinding(address source, uint256 vaultId) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Yield source address.|
+|`vaultId`|`uint256`|Vault id the source is allowed to target in strict mode.|
+
+
+### clearSourceVaultBinding
+
+Clears a source-to-vault binding.
+
+
+```solidity
+function clearSourceVaultBinding(address source) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`source`|`address`|Yield source address.|
+
+
+### setSourceVaultBindingEnforcement
+
+Enables or disables strict source-to-vault binding enforcement.
+
+
+```solidity
+function setSourceVaultBindingEnforcement(bool enabled) external;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`enabled`|`bool`|True to enforce binding in `addYield`.|
+
+
 ### emergencyYieldDistribution
 
 Executes an emergency yield distribution with explicit pool amounts.

@@ -36,21 +36,25 @@ import {CommonValidationLibrary} from "./CommonValidationLibrary.sol";
 library HedgerPoolLogicLibrary {
     using VaultMath for uint256;
 
+    struct PositionValidationInput {
+        uint256 usdcAmount;
+        uint256 leverage;
+        uint256 eurUsdPrice;
+        uint256 entryFee;
+        uint256 minMarginRatio;
+        uint256 maxMarginRatio;
+        uint256 maxLeverage;
+        uint256 maxMargin;
+        uint256 maxPositionSize;
+        uint256 maxEntryPrice;
+        uint256 maxLeverageValue;
+        uint256 currentTime;
+    }
+
     /**
      * @notice Validates position parameters and calculates derived values
      * @dev Validates all position constraints and calculates fee, margin, and position size
-     * @param usdcAmount Amount of USDC to deposit
-     * @param leverage Leverage multiplier for the position
-     * @param eurUsdPrice Current EUR/USD price from oracle
-     * @param entryFee Entry fee rate in basis points
-     * @param minMarginRatio Minimum margin ratio in basis points
-     * @param maxMarginRatio Maximum margin ratio in basis points
-     * @param maxLeverage Maximum allowed leverage
-     * @param maxMargin Maximum margin per position
-     * @param maxPositionSize Maximum position size
-     * @param maxEntryPrice Maximum entry price
-     * @param maxLeverageValue Maximum leverage value
-     * @param currentTime Current timestamp
+     * @param params Packed position validation inputs
      * @return fee Calculated entry fee
      * @return netMargin Net margin after fee deduction
      * @return positionSize Calculated position size
@@ -66,18 +70,7 @@ library HedgerPoolLogicLibrary {
      */
 
     function validateAndCalculatePositionParams(
-        uint256 usdcAmount,
-        uint256 leverage,
-        uint256 eurUsdPrice,
-        uint256 entryFee,
-        uint256 minMarginRatio,
-        uint256 maxMarginRatio,
-        uint256 maxLeverage,
-        uint256 maxMargin,
-        uint256 maxPositionSize,
-        uint256 maxEntryPrice,
-        uint256 maxLeverageValue,
-        uint256 currentTime
+        PositionValidationInput calldata params
     ) external pure returns (
         uint256 fee,
         uint256 netMargin,
@@ -85,25 +78,31 @@ library HedgerPoolLogicLibrary {
         uint256 marginRatio
     ) {
         // Validate basic parameters first
-        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
-        HedgerPoolValidationLibrary.validateLeverage(leverage, maxLeverage);
+        CommonValidationLibrary.validatePositiveAmount(params.usdcAmount);
+        HedgerPoolValidationLibrary.validateLeverage(params.leverage, params.maxLeverage);
 
         // Calculate basic values
-        fee = usdcAmount.percentageOf(entryFee);
-        netMargin = usdcAmount - fee;
-        positionSize = netMargin.mulDiv(leverage, 1);
+        fee = params.usdcAmount.percentageOf(params.entryFee);
+        netMargin = params.usdcAmount - fee;
+        positionSize = netMargin.mulDiv(params.leverage, 1);
         marginRatio = netMargin.mulDiv(10000, positionSize);
         
         // Validate calculated values
-        HedgerPoolValidationLibrary.validateMarginRatio(marginRatio, minMarginRatio);
-        HedgerPoolValidationLibrary.validateMaxMarginRatio(marginRatio, maxMarginRatio);
+        HedgerPoolValidationLibrary.validateMarginRatio(marginRatio, params.minMarginRatio);
+        HedgerPoolValidationLibrary.validateMaxMarginRatio(marginRatio, params.maxMarginRatio);
 
         // Final validation with all parameters
         HedgerPoolValidationLibrary.validatePositionParams(
-            netMargin, positionSize, eurUsdPrice, leverage,
-            maxMargin, maxPositionSize, maxEntryPrice, maxLeverageValue
+            netMargin,
+            positionSize,
+            params.eurUsdPrice,
+            params.leverage,
+            params.maxMargin,
+            params.maxPositionSize,
+            params.maxEntryPrice,
+            params.maxLeverageValue
         );
-        HedgerPoolValidationLibrary.validateTimestamp(currentTime);
+        HedgerPoolValidationLibrary.validateTimestamp(params.currentTime);
     }
 
 

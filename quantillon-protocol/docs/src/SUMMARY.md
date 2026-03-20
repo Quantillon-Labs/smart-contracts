@@ -1,5 +1,6 @@
 # Summary
 - [Home](README.md)
+- [External Vaults Refactor Recap](External-Vaults-Refactor-Recap.md)
 # src
   - [❱ core](src/core/README.md)
     - [❱ vaults](src/core/vaults/README.md)

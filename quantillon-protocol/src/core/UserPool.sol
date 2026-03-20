@@ -234,6 +234,17 @@ contract UserPool is
         uint32 oracleRatio;                 // Oracle ratio at time of withdrawal (scaled by 1e6, max ~4.2B)
         uint32 blockNumber;                 // Block number when withdrawal was made (until year 2106)
     }
+
+    /// @notice Packed payload used to commit batch withdrawal accounting and settlement.
+    struct BatchWithdrawalCommitPayload {
+        address user;
+        uint256[] qeuroAmounts;
+        uint256[] usdcReceivedAmounts;
+        uint256 currentTime;
+        uint32 oracleRatio;
+        uint32 currentBlock;
+        uint256 totalWithdrawn;
+    }
     
     // Storage mappings
     /// @notice User information by address
@@ -419,18 +430,6 @@ contract UserPool is
         _;
     }
 
-    /**
-     * @notice Reverts unless caller is this contract
-     * @dev Used by `onlySelf` to protect commit-phase helpers invoked via explicit self-calls.
-     * @custom:security Prevents direct external invocation of commit helpers
-     * @custom:validation Reverts when `msg.sender != address(this)`
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors Reverts with `NotAuthorized` if caller is not self
-     * @custom:reentrancy No external calls
-     * @custom:access Internal helper
-     * @custom:oracle No oracle dependencies
-     */
     function _onlySelf() internal view {
         if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }
@@ -917,10 +916,17 @@ contract UserPool is
         usdcReceivedAmounts = new uint256[](qeuroAmounts.length);
         
         // Validate and process withdrawal
-        _validateAndProcessBatchWithdrawal(qeuroAmounts, minUsdcOuts, usdcReceivedAmounts);
+        (uint32 oracleRatio, uint256 totalWithdrawn) =
+            _validateAndProcessBatchWithdrawal(qeuroAmounts, minUsdcOuts, usdcReceivedAmounts);
         
-        // Final transfers and events
-        _executeBatchTransfers(qeuroAmounts, usdcReceivedAmounts, currentTime);
+        // Final accounting, settlement and events
+        _executeBatchTransfers(
+            qeuroAmounts,
+            usdcReceivedAmounts,
+            currentTime,
+            oracleRatio,
+            totalWithdrawn
+        );
     }
 
     
@@ -943,7 +949,7 @@ contract UserPool is
         uint256[] calldata qeuroAmounts,
         uint256[] calldata minUsdcOuts,
         uint256[] memory usdcReceivedAmounts
-    ) internal {
+    ) internal returns (uint32 oracleRatio, uint256 totalWithdrawn) {
         uint256 length = qeuroAmounts.length;
         uint256 totalQeuroAmount = 0;
         
@@ -967,6 +973,16 @@ contract UserPool is
         
         // Process vault redemptions (vault handles all fees)
         _processVaultRedemptions(qeuroAmounts, minUsdcOuts, usdcReceivedAmounts);
+
+        // Cache oracle ratio once for all batch withdrawal records.
+        oracleRatio = _getOracleRatioScaled();
+
+        // Compute total withdrawn for commit-phase settlement.
+        // Settlement happens after withdrawal accounting is persisted.
+        for (uint256 i = 0; i < length;) {
+            totalWithdrawn += usdcReceivedAmounts[i];
+            unchecked { ++i; }
+        }
     }
     
     /**
@@ -1037,131 +1053,101 @@ contract UserPool is
     function _executeBatchTransfers(
         uint256[] calldata qeuroAmounts,
         uint256[] memory usdcReceivedAmounts,
-        uint256 currentTime
+        uint256 currentTime,
+        uint32 oracleRatio,
+        uint256 totalWithdrawn
     ) internal {
-        uint256 length = qeuroAmounts.length;
-        
-        // Cache oracle ratio and block number at start to avoid reentrancy issues
-        uint32 oracleRatio = _getOracleRatioScaled();
-        uint32 currentBlock = uint32(block.number);
-        
-        // Calculate total withdrawals before state changes
-        uint256 totalWithdrawn = 0;
-        for (uint256 i = 0; i < length;) {
-            totalWithdrawn += usdcReceivedAmounts[i];
-            unchecked { ++i; }
-        }
-        
-        this._executeBatchTransfersCommit(
-            msg.sender,
-            qeuroAmounts,
-            usdcReceivedAmounts,
-            currentTime,
-            oracleRatio,
-            currentBlock,
-            totalWithdrawn
-        );
+        BatchWithdrawalCommitPayload memory payload;
+        payload.user = msg.sender;
+        payload.qeuroAmounts = qeuroAmounts;
+        payload.usdcReceivedAmounts = usdcReceivedAmounts;
+        payload.currentTime = currentTime;
+        payload.oracleRatio = oracleRatio;
+        payload.currentBlock = uint32(block.number);
+        payload.totalWithdrawn = totalWithdrawn;
+
+        this._executeBatchTransfersCommit(payload);
     }
 
     /**
      * @notice Commits batched withdrawal tracking and settlement
-     * @dev Called via explicit self-call from `_executeBatchTransfers` after calculation/read phase.
-     * @param user Withdrawer receiving USDC or pending fallback credits
-     * @param qeuroAmounts Burned QEURO amounts per withdrawal leg
-     * @param usdcReceivedAmounts USDC amounts computed per withdrawal leg
-     * @param currentTime Timestamp persisted for withdrawal tracking
-     * @param oracleRatio Cached oracle ratio associated with this batch
-     * @param currentBlock Block number snapshot associated with this batch
-     * @param totalWithdrawn Total USDC amount to attempt transferring to `user`
+     * @dev Called from `_executeBatchTransfers` after calculation/read phase.
+     * @param payload Packed commit payload with accounting and settlement inputs
      * @custom:security Restricted by `onlySelf`; executes from guarded parent flow
      * @custom:validation Assumes upstream amount validation and redemption processing
      * @custom:state-changes Appends to `userWithdrawals[user]` and increments `totalUserWithdrawals`
      * @custom:events Emits withdrawal tracking events and `WithdrawalPending` on fallback path
-     * @custom:errors Transfer attempt may revert and route to pending withdrawal fallback
+     * @custom:errors Settlement helper may revert and route to pending withdrawal fallback
      * @custom:reentrancy Structured CEI split with accounting before settlement interactions
      * @custom:access External self-call entrypoint only
      * @custom:oracle Uses pre-cached oracle ratio input
      */
     function _executeBatchTransfersCommit(
-        address user,
-        uint256[] calldata qeuroAmounts,
-        uint256[] calldata usdcReceivedAmounts,
-        uint256 currentTime,
-        uint32 oracleRatio,
-        uint32 currentBlock,
-        uint256 totalWithdrawn
+        BatchWithdrawalCommitPayload memory payload
     ) external onlySelf {
-        uint256 length = qeuroAmounts.length;
+        uint256 length = payload.qeuroAmounts.length;
         uint256 totalQeuroWithdrawn = 0;
 
         // EFFECTS
         for (uint256 i = 0; i < length;) {
-            uint256 qeuroAmount = qeuroAmounts[i];
-            userWithdrawals[user].push(UserWithdrawalInfo({
+            uint256 qeuroAmount = payload.qeuroAmounts[i];
+            userWithdrawals[payload.user].push(UserWithdrawalInfo({
                 // forge-lint: disable-next-line(unsafe-typecast)
                 qeuroAmount: uint128(qeuroAmount),
                 // forge-lint: disable-next-line(unsafe-typecast)
-                usdcReceived: uint128(usdcReceivedAmounts[i]),
+                usdcReceived: uint128(payload.usdcReceivedAmounts[i]),
                 // forge-lint: disable-next-line(unsafe-typecast)
-                timestamp: uint64(currentTime),
-                oracleRatio: oracleRatio,
-                blockNumber: currentBlock
+                timestamp: uint64(payload.currentTime),
+                oracleRatio: payload.oracleRatio,
+                blockNumber: payload.currentBlock
             }));
 
             totalQeuroWithdrawn += qeuroAmount;
 
-            emit UserWithdrawal(user, qeuroAmount, usdcReceivedAmounts[i], currentTime);
-            emit UserWithdrawalTracked(user, qeuroAmount, usdcReceivedAmounts[i], oracleRatio, currentTime, currentBlock);
+            emit UserWithdrawal(payload.user, qeuroAmount, payload.usdcReceivedAmounts[i], payload.currentTime);
+            emit UserWithdrawalTracked(
+                payload.user,
+                qeuroAmount,
+                payload.usdcReceivedAmounts[i],
+                payload.oracleRatio,
+                payload.currentTime,
+                payload.currentBlock
+            );
             unchecked { ++i; }
         }
 
         totalUserWithdrawals += totalQeuroWithdrawn;
-        
-        // INTERACTIONS
-        if (totalWithdrawn > 0) {
-            try this._attemptDirectWithdrawalTransfer(user, totalWithdrawn) {
+
+        if (payload.totalWithdrawn > 0) {
+            // Credit pending first so settlement failure keeps funds claimable.
+            pendingUsdcWithdrawals[payload.user] += payload.totalWithdrawn;
+            try this._settlePendingWithdrawalCommit(payload.user, payload.totalWithdrawn) {
+                // settled immediately
             } catch {
-                this._markPendingWithdrawal(user, totalWithdrawn);
+                emit WithdrawalPending(payload.user, payload.totalWithdrawn);
             }
         }
     }
 
     /**
-     * @notice Attempts direct USDC transfer to withdrawal recipient
-     * @dev Self-call helper used by `_executeBatchTransfersCommit` with try/catch fallback.
+     * @notice Settles newly queued pending USDC for a user
+     * @dev Called via self-call from `_executeBatchTransfersCommit`; revert is caught to keep pending balance queued
      * @param user Recipient address
      * @param amount USDC amount to transfer
-     * @custom:security Restricted by `onlySelf`
-     * @custom:validation Reverts on token transfer failure
-     * @custom:state-changes None
+     * @custom:security Restricted by `onlySelf`; called from guarded withdraw flow
+     * @custom:validation Reverts on insufficient pending balance or transfer failure
+     * @custom:state-changes Decrements pending balance for `user`
      * @custom:events None
-     * @custom:errors Reverts with `TokenTransferFailed` when USDC transfer returns false
-     * @custom:reentrancy External token call; executed from guarded parent flow
+     * @custom:errors Reverts on token transfer failure
+     * @custom:reentrancy Follows CEI with pending update before transfer
      * @custom:access External self-call entrypoint only
      * @custom:oracle No oracle dependencies
      */
-    function _attemptDirectWithdrawalTransfer(address user, uint256 amount) external onlySelf {
-        bool success = usdc.transfer(user, amount);
-        if (!success) revert CommonErrorLibrary.TokenTransferFailed();
-    }
-
-    /**
-     * @notice Records pending withdrawal when direct transfer fails
-     * @dev Used as fallback path to support blocked/blacklisted transfer scenarios.
-     * @param user User whose withdrawal is being queued
-     * @param amount USDC amount queued for later claim
-     * @custom:security Restricted by `onlySelf`
-     * @custom:validation Assumes `amount > 0` from caller context
-     * @custom:state-changes Increments `pendingUsdcWithdrawals[user]`
-     * @custom:events Emits `WithdrawalPending`
-     * @custom:errors None
-     * @custom:reentrancy No external calls
-     * @custom:access External self-call entrypoint only
-     * @custom:oracle No oracle dependencies
-     */
-    function _markPendingWithdrawal(address user, uint256 amount) external onlySelf {
-        pendingUsdcWithdrawals[user] += amount;
-        emit WithdrawalPending(user, amount);
+    function _settlePendingWithdrawalCommit(address user, uint256 amount) external onlySelf {
+        uint256 pendingAmount = pendingUsdcWithdrawals[user];
+        if (pendingAmount < amount) revert CommonErrorLibrary.InsufficientBalance();
+        pendingUsdcWithdrawals[user] = pendingAmount - amount;
+        usdc.safeTransfer(user, amount);
     }
 
     /**

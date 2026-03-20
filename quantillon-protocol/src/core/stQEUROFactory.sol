@@ -30,6 +30,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
     mapping(address => address) public stQEUROByVault;
     mapping(uint256 => address) public vaultById;
     mapping(address => uint256) public vaultIdByStQEURO;
+    mapping(address => uint256[]) private _vaultIdsByVault;
     mapping(uint256 => string) private _vaultNamesById;
     mapping(bytes32 => bool) private _vaultNameHashUsed;
 
@@ -134,7 +135,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
         address vault = msg.sender;
         if (vault == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
-        if (stQEUROByVaultId[vaultId] != address(0) || stQEUROByVault[vault] != address(0)) {
+        if (stQEUROByVaultId[vaultId] != address(0)) {
             revert CommonErrorLibrary.AlreadyInitialized();
         }
 
@@ -153,6 +154,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
         stQEUROByVault[vault] = stQEUROToken_;
         vaultById[vaultId] = vault;
         vaultIdByStQEURO[stQEUROToken_] = vaultId;
+        _vaultIdsByVault[vault].push(vaultId);
         _vaultNamesById[vaultId] = vaultName;
         _vaultNameHashUsed[nameHash] = true;
 
@@ -210,22 +212,8 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
         return stQEUROByVaultId[vaultId];
     }
 
-    /**
-     * @notice Returns registered stQEURO token by vault address.
-     * @dev Reads factory mapping for vault-to-token resolution.
-     * @param vault Vault contract address.
-     * @return stQEUROToken_ Registered stQEURO token address (or zero if unset).
-     * @custom:security Read-only lookup with no privileged behavior.
-     * @custom:validation No additional validation; returns zero for unknown vaults.
-     * @custom:state-changes No state changes.
-     * @custom:events No events emitted.
-     * @custom:errors No errors expected.
-     * @custom:reentrancy Not applicable for view function.
-     * @custom:access Public view.
-     * @custom:oracle No oracle dependencies.
-     */
-    function getStQEUROByVault(address vault) external view returns (address stQEUROToken_) {
-        return stQEUROByVault[vault];
+    function getVaultIdsByVault(address vault) external view returns (uint256[] memory vaultIds) {
+        return _vaultIdsByVault[vault];
     }
 
     /**
@@ -445,10 +433,7 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
      * @custom:oracle Uses stored oracle address indirectly through configuration.
      */
     function _buildInitData(string calldata vaultName) internal view returns (bytes memory initData) {
-        string memory tokenName = string.concat("Staked Quantillon Euro ", vaultName);
-        string memory tokenSymbol = string.concat("stQEURO", vaultName);
-        bytes4 initSelector =
-            bytes4(keccak256("initialize(address,address,address,address,address,address,string,string,string)"));
+        bytes4 initSelector = bytes4(keccak256("initialize(address,address,address,address,address,address,string)"));
 
         return
             abi.encodeWithSelector(
@@ -459,8 +444,6 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
                 usdc,
                 treasury,
                 address(timelock),
-                tokenName,
-                tokenSymbol,
                 vaultName
             );
     }

@@ -8,6 +8,7 @@
 - [Security Guide](Security.md)
 - [Deployment Guide](Deployment.md)
 - [stQEUROFactory Technical Upgrade](stQEUROFactory.md)
+- [External Vaults Refactor Recap](External-Vaults-Refactor-Recap.md)
 # src
   - [❱ core](src/core/README.md)
     - [❱ vaults](src/core/vaults/README.md)

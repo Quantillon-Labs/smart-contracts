@@ -59,16 +59,34 @@ contract stQEUROFactoryTest is Test {
         assertTrue(token != address(0));
 
         assertEq(factory.getStQEUROByVaultId(1), token);
-        assertEq(factory.getStQEUROByVault(address(vault)), token);
         assertEq(factory.getVaultById(1), address(vault));
         assertEq(factory.getVaultIdByStQEURO(token), 1);
         assertEq(factory.getVaultName(1), "AAVE");
+        uint256[] memory vaultIds = factory.getVaultIdsByVault(address(vault));
+        assertEq(vaultIds.length, 1);
+        assertEq(vaultIds[0], 1);
 
         stQEUROToken deployed = stQEUROToken(token);
         assertEq(deployed.symbol(), "stQEUROAAVE");
         assertEq(deployed.name(), "Staked Quantillon Euro AAVE");
         assertEq(deployed.vaultName(), "AAVE");
         assertTrue(deployed.hasRole(deployed.YIELD_MANAGER_ROLE(), yieldShift));
+    }
+
+    function test_RegisterVault_MultiVaults_Success() public {
+        address token1 = vault.selfRegister(address(factory), 1, "AAVE");
+        address token2 = otherVault.selfRegister(address(factory), 2, "ALPHA");
+
+        assertTrue(token1 != address(0));
+        assertTrue(token2 != address(0));
+        assertTrue(token1 != token2);
+
+        assertEq(factory.getStQEUROByVaultId(1), token1);
+        assertEq(factory.getStQEUROByVaultId(2), token2);
+        assertEq(factory.getVaultById(1), address(vault));
+        assertEq(factory.getVaultById(2), address(otherVault));
+        assertEq(factory.getVaultName(1), "AAVE");
+        assertEq(factory.getVaultName(2), "ALPHA");
     }
 
     function test_RegisterVault_DuplicateVaultId_Revert() public {
@@ -78,11 +96,21 @@ contract stQEUROFactoryTest is Test {
         otherVault.selfRegister(address(factory), 1, "ALPHA");
     }
 
-    function test_RegisterVault_DuplicateVaultAddress_Revert() public {
-        vault.selfRegister(address(factory), 1, "AAVE");
+    function test_RegisterVault_SameVaultAddress_MultipleIds_Success() public {
+        address token1 = vault.selfRegister(address(factory), 1, "AAVE");
+        address token2 = vault.selfRegister(address(factory), 2, "ALPHA");
 
-        vm.expectRevert(CommonErrorLibrary.AlreadyInitialized.selector);
-        vault.selfRegister(address(factory), 2, "ALPHA");
+        assertTrue(token1 != address(0));
+        assertTrue(token2 != address(0));
+        assertTrue(token1 != token2);
+        assertEq(factory.getStQEUROByVaultId(1), token1);
+        assertEq(factory.getStQEUROByVaultId(2), token2);
+        assertEq(factory.getVaultById(2), address(vault));
+
+        uint256[] memory vaultIds = factory.getVaultIdsByVault(address(vault));
+        assertEq(vaultIds.length, 2);
+        assertEq(vaultIds[0], 1);
+        assertEq(vaultIds[1], 2);
     }
 
     function test_RegisterVault_InvalidVaultName_Revert() public {

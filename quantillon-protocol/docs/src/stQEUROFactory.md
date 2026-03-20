@@ -160,7 +160,12 @@ New function:
 
 Source policy:
 
-- remains global (no strict `source -> vaultId` binding).
+- default remains global (no strict `source -> vaultId` binding).
+- optional strict mode is available through:
+  - `setSourceVaultBinding(source, vaultId)`
+  - `clearSourceVaultBinding(source)`
+  - `setSourceVaultBindingEnforcement(enabled)`
+- when strict mode is enabled, `addYield(vaultId, ...)` reverts unless `sourceToVaultId[msg.sender] == vaultId`.
 
 ---
 
@@ -188,6 +193,10 @@ Change in `harvestAaveYield()`:
 - `IYieldShift`
   - `addYield` becomes `addYield(vaultId, yieldAmount, source)`
   - dependency config: `stQEUROFactory`
+  - optional strict source routing:
+    - `setSourceVaultBinding(source, vaultId)`
+    - `clearSourceVaultBinding(source)`
+    - `setSourceVaultBindingEnforcement(bool)`
 - `IAaveVault`
   - `setYieldVaultId(uint256)`
   - `updateYieldShift(address)`
@@ -240,6 +249,7 @@ No on-chain legacy migration is included in this pass.
 
 - `test/stQEUROFactory.t.sol`
   - registration OK
+  - multi-vault registration (2 active vaults)
   - duplicate `vaultId`
   - duplicate vault address
   - invalid/duplicate `vaultName`
@@ -247,7 +257,7 @@ No on-chain legacy migration is included in this pass.
 
 ### Updated tests
 
-- `YieldShift.t.sol` (`vaultId` routing, factory dependency)
+- `YieldShift.t.sol` (`vaultId` routing, factory dependency, strict `source -> vaultId` policy, multi-vault routing assertions)
 - `AaveVault.t.sol` (`yieldVaultId`, new `addYield` signature)
 - `DeploymentSmoke.t.sol`, `IntegrationTests.t.sol`, `QuantillonInvariants.t.sol`, `LiquidationScenarios.t.sol`, `stQEUROToken.t.sol` (initializer/signature alignment)
 
@@ -277,12 +287,50 @@ To onboard `vaultId = N`:
 
 ## 11) Attention points for next steps
 
-1. Add multi-vault integration tests (2+ active vaults simultaneously).
-2. Evaluate an optional `source -> vaultId` binding policy if stricter controls are needed later.
-3. Document a `stQEUROToken` implementation rotation procedure via `updateTokenImplementation`.
-4. Add on-chain monitoring for:
-   - `VaultRegistered` events
-   - `vaultId/token` consistency in indexers
+### Rotation runbook: `updateTokenImplementation`
+
+Use this for future vault deployments only (already-deployed vault tokens are unchanged).
+
+1. Deploy the new `stQEUROToken` implementation contract.
+2. Smoke-test initialization compatibility off-chain:
+   - verify the 9-argument initializer used by the factory still succeeds.
+   - verify role wiring still grants `YIELD_MANAGER_ROLE` to `YieldShift`.
+3. From governance, execute:
+   - `stQEUROFactory.updateTokenImplementation(newImplementation)`.
+4. Register a canary vault and verify:
+   - metadata (`name`, `symbol`, `vaultName`) is correct.
+   - `factory.getStQEUROByVaultId(canaryId)` resolves as expected.
+   - yield routing still works through `YieldShift.addYield(canaryId, ...)`.
+5. If canary checks fail, roll back by re-pointing:
+   - `stQEUROFactory.updateTokenImplementation(previousImplementation)`.
+
+### Monitoring runbook: `VaultRegistered` and indexer consistency
+
+Use `scripts/deployment/monitor-stqeuro-factory.sh`:
+
+```bash
+./scripts/deployment/monitor-stqeuro-factory.sh \
+  --rpc-url <RPC_URL> \
+  --factory <STQEURO_FACTORY_ADDRESS> \
+  --from-block <START_BLOCK>
+```
+
+What it validates:
+
+1. Streams/parses `VaultRegistered` logs in the selected block range.
+2. For each event, checks on-chain registry consistency:
+   - `getStQEUROByVaultId(vaultId) == event.stQEUROToken`
+   - `getVaultById(vaultId) == event.vault`
+   - `getVaultIdByStQEURO(event.stQEUROToken) == vaultId`
+3. Optionally compares against an indexer snapshot:
+   - `--indexer-snapshot <path-to-json>`
+
+### Status of prior follow-ups
+
+1. Multi-vault integration tests: implemented.
+2. Optional strict `source -> vaultId` policy: implemented.
+3. `updateTokenImplementation` rotation procedure: documented.
+4. `VaultRegistered` + indexer consistency monitoring: implemented.
 
 ---
 

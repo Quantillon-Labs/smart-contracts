@@ -10,6 +10,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IYieldShift} from "../../interfaces/IYieldShift.sol";
+import {IExternalStakingVault} from "../../interfaces/IExternalStakingVault.sol";
 import {VaultMath} from "../../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../../libraries/CommonErrorLibrary.sol";
 import {VaultErrorLibrary} from "../../libraries/VaultErrorLibrary.sol";
@@ -215,7 +216,8 @@ contract AaveVault is
     ReentrancyGuardUpgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
-    SecureUpgradeable
+    SecureUpgradeable,
+    IExternalStakingVault
 {
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -358,7 +360,7 @@ contract AaveVault is
      * @custom:oracle Requires fresh EUR/USD price for health validation
      */
     function deployToAave(uint256 amount) 
-        external 
+        public 
         nonReentrant 
         whenNotPaused 
         returns (uint256 aTokensReceived) 
@@ -407,7 +409,7 @@ contract AaveVault is
      * @custom:oracle No oracle dependency for withdrawals
      */
     function withdrawFromAave(uint256 amount) 
-        external 
+        public 
         nonReentrant 
         returns (uint256 usdcWithdrawn) 
     {
@@ -633,7 +635,7 @@ contract AaveVault is
      * @custom:oracle No oracle dependency for yield harvesting
      */
     function harvestAaveYield() 
-        external 
+        public 
         nonReentrant 
         returns (uint256 yieldHarvested) 
     {
@@ -752,8 +754,42 @@ contract AaveVault is
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function getAaveBalance() external view returns (uint256) {
+    function getAaveBalance() public view returns (uint256) {
         return aUSDC.balanceOf(address(this));
+    }
+
+    /**
+     * @notice Generic external vault adapter deposit entrypoint.
+     * @param usdcAmount Amount of USDC to deposit (6 decimals).
+     * @return sharesReceived Amount of adapter shares/units received.
+     */
+    function depositUnderlying(uint256 usdcAmount) external override returns (uint256 sharesReceived) {
+        return deployToAave(usdcAmount);
+    }
+
+    /**
+     * @notice Generic external vault adapter withdraw entrypoint.
+     * @param usdcAmount Amount of USDC to withdraw (6 decimals).
+     * @return usdcWithdrawn Actual USDC withdrawn.
+     */
+    function withdrawUnderlying(uint256 usdcAmount) external override returns (uint256 usdcWithdrawn) {
+        return withdrawFromAave(usdcAmount);
+    }
+
+    /**
+     * @notice Generic external vault adapter harvest entrypoint.
+     * @return harvestedYield Net yield harvested in USDC (6 decimals).
+     */
+    function harvestYield() external override returns (uint256 harvestedYield) {
+        return harvestAaveYield();
+    }
+
+    /**
+     * @notice Returns total underlying balance for adapter-generic reads.
+     * @return underlyingBalance Aave-side USDC-equivalent balance (principal + accrued yield).
+     */
+    function totalUnderlying() external view override returns (uint256 underlyingBalance) {
+        return getAaveBalance();
     }
 
     /**

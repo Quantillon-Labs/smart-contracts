@@ -57,20 +57,12 @@ interface IStQEUROFactory {
     function getStQEUROByVaultId(uint256 vaultId) external view returns (address stQEUROToken);
 
     /**
-     * @notice Returns registered stQEURO token by vault address.
-     * @dev Read-only registry lookup.
+     * @notice Returns all vault ids registered by a given vault contract.
+     * @dev A single QuantillonVault can register multiple staking vault ids.
      * @param vault Vault contract address.
-     * @return stQEUROToken Registered token address (or zero if unset).
-     * @custom:security Read-only accessor.
-     * @custom:validation No input validation required.
-     * @custom:state-changes No state changes.
-     * @custom:events No events emitted.
-     * @custom:errors No errors expected.
-     * @custom:reentrancy Not applicable for view function.
-     * @custom:access Public view.
-     * @custom:oracle No oracle dependencies.
+     * @return vaultIds Array of registered vault ids for that vault contract.
      */
-    function getStQEUROByVault(address vault) external view returns (address stQEUROToken);
+    function getVaultIdsByVault(address vault) external view returns (uint256[] memory vaultIds);
 
     /**
      * @notice Returns vault address mapped to a vault id.

@@ -23,6 +23,37 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Parse optional CLI arguments
+LIMIT_PERCENT_CLI=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --limit-percent)
+            shift
+            if [ $# -eq 0 ]; then
+                echo "Error: --limit-percent requires a value (1-100)" >&2
+                exit 2
+            fi
+            LIMIT_PERCENT_CLI="$1"
+            ;;
+        --help|-h)
+            cat <<EOF
+Usage: $(basename "$0") [--limit-percent N]
+
+Options:
+  --limit-percent N   Personal contract-size budget as percentage of EIP-170 (1-100)
+                      Also configurable via EIP170_PERSONAL_LIMIT_PERCENT env var.
+                      CLI flag takes precedence over env var.
+EOF
+            exit 0
+            ;;
+        *)
+            echo "Error: Unknown argument '$1'" >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -36,6 +67,23 @@ SUMMARY_FILE="$OUTPUT_DIR/contract-sizes-summary.txt"
 
 # EIP-170 limit: 24KB = 24576 bytes
 EIP170_LIMIT=24576
+PERSONAL_LIMIT_PERCENT="${LIMIT_PERCENT_CLI:-${EIP170_PERSONAL_LIMIT_PERCENT:-100}}"
+
+if ! [[ "$PERSONAL_LIMIT_PERCENT" =~ ^[0-9]+$ ]]; then
+    echo "Error: personal limit percent must be an integer (1-100), got '$PERSONAL_LIMIT_PERCENT'" >&2
+    exit 2
+fi
+
+if [ "$PERSONAL_LIMIT_PERCENT" -lt 1 ] || [ "$PERSONAL_LIMIT_PERCENT" -gt 100 ]; then
+    echo "Error: personal limit percent must be between 1 and 100, got '$PERSONAL_LIMIT_PERCENT'" >&2
+    exit 2
+fi
+
+PERSONAL_LIMIT_BYTES=$((EIP170_LIMIT * PERSONAL_LIMIT_PERCENT / 100))
+PERSONAL_LIMIT_ALIGNS_WITH_EIP170="false"
+if [ "$PERSONAL_LIMIT_BYTES" -ge "$EIP170_LIMIT" ]; then
+    PERSONAL_LIMIT_ALIGNS_WITH_EIP170="true"
+fi
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
@@ -44,6 +92,7 @@ echo -e "${BLUE}🔍 QUANTILLON PROTOCOL - CONTRACT SIZE ANALYSIS${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════════${NC}"
 echo -e "Generated: $(date)"
 echo -e "EIP-170 Limit: $EIP170_LIMIT bytes (24KB)"
+echo -e "Personal Limit: $PERSONAL_LIMIT_PERCENT% ($PERSONAL_LIMIT_BYTES bytes)"
 echo -e "Project: Quantillon Protocol Smart Contracts"
 echo ""
 
@@ -127,6 +176,7 @@ discover_contracts() {
 
 # Initialize arrays
 declare -a critical_contracts=()
+declare -a personal_limit_contracts=()
 declare -a warning_contracts=()
 declare -a safe_contracts=()
 
@@ -176,6 +226,9 @@ while IFS= read -r contract_info; do
         if [ $size -gt $EIP170_LIMIT ]; then
             critical_contracts+=("$contract_name:$size:$percentage")
             echo -e "${RED}❌ $contract_name - $formatted_size ($percentage of limit) - EXCEEDS LIMIT${NC}"
+        elif [ $size -gt $PERSONAL_LIMIT_BYTES ]; then
+            personal_limit_contracts+=("$contract_name:$size:$percentage")
+            echo -e "${RED}⛔ $contract_name - $formatted_size ($percentage of limit) - EXCEEDS PERSONAL LIMIT (${PERSONAL_LIMIT_PERCENT}%)${NC}"
         elif [ $size -gt $((EIP170_LIMIT * 80 / 100)) ]; then
             warning_contracts+=("$contract_name:$size:$percentage")
             echo -e "${YELLOW}⚠️  $contract_name - $formatted_size ($percentage of limit) - WARNING${NC}"
@@ -187,6 +240,7 @@ while IFS= read -r contract_info; do
 done <<< "$discovered_contracts"
 
 echo ""
+total_personal_limit_breaches=$(( ${#critical_contracts[@]} + ${#personal_limit_contracts[@]} ))
 
 # Generate summary statistics
 echo ""
@@ -197,6 +251,7 @@ if [ $contract_count -gt 0 ]; then
     echo -e "Total Combined Size: $(format_size $total_size)"
     avg_size=$((total_size / contract_count))
     echo -e "Average Contract Size: $(format_size $avg_size)"
+    echo -e "Personal Limit Breaches (total, incl. critical): $total_personal_limit_breaches"
 else
     echo -e "${YELLOW}No contracts found to analyze${NC}"
 fi
@@ -209,6 +264,26 @@ if [ ${#critical_contracts[@]} -eq 0 ]; then
     echo -e " No contracts exceed the EIP-170 limit!"
 else
     for contract_info in "${critical_contracts[@]}"; do
+        contract_name=$(echo "$contract_info" | cut -d':' -f1)
+        size=$(echo "$contract_info" | cut -d':' -f2)
+        percentage=$(echo "$contract_info" | cut -d':' -f3)
+        formatted_size=$(format_size $size)
+        echo -e " $contract_name - $formatted_size ($percentage of limit)"
+    done
+fi
+
+echo ""
+
+# Personal limit contracts section
+echo -e "${RED}⛔ PERSONAL LIMIT CONTRACTS (Above ${PERSONAL_LIMIT_PERCENT}% of EIP-170, excluding EIP-170 critical breaches)${NC}"
+echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+if [ "$PERSONAL_LIMIT_ALIGNS_WITH_EIP170" = "true" ]; then
+    echo -e " Personal limit is aligned with EIP-170 (${PERSONAL_LIMIT_PERCENT}%)."
+    echo -e " Contracts above this threshold are reported in the CRITICAL section."
+elif [ ${#personal_limit_contracts[@]} -eq 0 ]; then
+    echo -e " No non-critical contracts exceed the personal limit."
+else
+    for contract_info in "${personal_limit_contracts[@]}"; do
         contract_name=$(echo "$contract_info" | cut -d':' -f1)
         size=$(echo "$contract_info" | cut -d':' -f2)
         percentage=$(echo "$contract_info" | cut -d':' -f3)
@@ -266,6 +341,17 @@ if [ ${#critical_contracts[@]} -gt 0 ]; then
     echo ""
 fi
 
+if [ ${#personal_limit_contracts[@]} -gt 0 ]; then
+    echo -e "${RED}⛔ PERSONAL LIMIT: Contracts above ${PERSONAL_LIMIT_PERCENT}% of EIP-170 require optimization:${NC}"
+    echo -e "   • Move heavy logic to libraries"
+    echo -e "   • Remove non-essential view/helpers from hot contracts"
+    echo -e "   • Re-check with --sizes after each refactor"
+    echo ""
+elif [ "$PERSONAL_LIMIT_ALIGNS_WITH_EIP170" = "true" ] && [ ${#critical_contracts[@]} -gt 0 ]; then
+    echo -e "${RED}⛔ PERSONAL LIMIT: Personal limit aligns with EIP-170; see CRITICAL section for all breaches.${NC}"
+    echo ""
+fi
+
 if [ ${#warning_contracts[@]} -gt 0 ]; then
     echo -e "${YELLOW}⚠️  WARNING: Contracts approaching limit should be monitored:${NC}"
     echo -e "   • Consider refactoring before adding new features"
@@ -285,6 +371,7 @@ fi
     echo "QUANTILLON PROTOCOL - CONTRACT SIZE ANALYSIS REPORT"
     echo "Generated: $(date)"
     echo "EIP-170 Limit: $EIP170_LIMIT bytes (24KB)"
+    echo "Personal Limit: $PERSONAL_LIMIT_PERCENT% ($PERSONAL_LIMIT_BYTES bytes)"
     echo "Project: Quantillon Protocol Smart Contracts"
     echo ""
     echo "EXECUTIVE SUMMARY"
@@ -293,6 +380,7 @@ fi
         echo "Total Combined Size: $(format_size $total_size)"
         avg_size=$((total_size / contract_count))
         echo "Average Contract Size: $(format_size $avg_size)"
+        echo "Personal Limit Breaches Total (including critical): $total_personal_limit_breaches"
     else
         echo "Total Contracts Analyzed: 0"
         echo "No contracts with deployed bytecode found"
@@ -300,6 +388,16 @@ fi
     echo ""
     echo "CRITICAL CONTRACTS (Exceed EIP-170 Limit): ${#critical_contracts[@]}"
     for contract_info in "${critical_contracts[@]}"; do
+        contract_name=$(echo "$contract_info" | cut -d':' -f1)
+        size=$(echo "$contract_info" | cut -d':' -f2)
+        percentage=$(echo "$contract_info" | cut -d':' -f3)
+        formatted_size=$(format_size $size)
+        echo "  - $contract_name: $formatted_size ($percentage of limit)"
+    done
+    echo ""
+    echo "PERSONAL LIMIT CONTRACTS (Above ${PERSONAL_LIMIT_PERCENT}% of EIP-170, excluding EIP-170 critical breaches): ${#personal_limit_contracts[@]}"
+    echo "PERSONAL LIMIT BREACHES TOTAL (including critical): $total_personal_limit_breaches"
+    for contract_info in "${personal_limit_contracts[@]}"; do
         contract_name=$(echo "$contract_info" | cut -d':' -f1)
         size=$(echo "$contract_info" | cut -d':' -f2)
         percentage=$(echo "$contract_info" | cut -d':' -f3)
@@ -330,7 +428,10 @@ fi
 {
     echo "Contract Size Analysis Summary - $(date)"
     echo "========================================"
+    echo "Personal Limit: $PERSONAL_LIMIT_PERCENT% ($PERSONAL_LIMIT_BYTES bytes)"
     echo "Critical Contracts: ${#critical_contracts[@]}"
+    echo "Personal Limit Breaches (non-critical): ${#personal_limit_contracts[@]}"
+    echo "Personal Limit Breaches Total (including critical): $total_personal_limit_breaches"
     echo "Warning Contracts: ${#warning_contracts[@]}"
     echo "Safe Contracts: ${#safe_contracts[@]}"
     echo "Total Size: $(format_size $total_size)"
@@ -351,6 +452,22 @@ fi
             echo "  - $contract_name ($percentage of limit)"
         done
     fi
+    if [ ${#personal_limit_contracts[@]} -gt 0 ]; then
+        echo "PERSONAL LIMIT BREACHES (non-critical):"
+        for contract_info in "${personal_limit_contracts[@]}"; do
+            contract_name=$(echo "$contract_info" | cut -d':' -f1)
+            percentage=$(echo "$contract_info" | cut -d':' -f3)
+            echo "  - $contract_name ($percentage of limit)"
+        done
+    elif [ "$PERSONAL_LIMIT_ALIGNS_WITH_EIP170" = "true" ] && [ ${#critical_contracts[@]} -gt 0 ]; then
+        echo "PERSONAL LIMIT BREACHES (non-critical): none (personal limit aligns with EIP-170)"
+        echo "PERSONAL LIMIT BREACHES (critical):"
+        for contract_info in "${critical_contracts[@]}"; do
+            contract_name=$(echo "$contract_info" | cut -d':' -f1)
+            percentage=$(echo "$contract_info" | cut -d':' -f3)
+            echo "  - $contract_name ($percentage of limit)"
+        done
+    fi
 } > "$SUMMARY_FILE"
 
 echo ""
@@ -359,10 +476,20 @@ echo -e "   Detailed report: $REPORT_FILE"
 echo -e "   Summary report: $SUMMARY_FILE"
 
 # Exit with error code if critical contracts found
-if [ ${#critical_contracts[@]} -gt 0 ]; then
-    echo -e "${RED}❌ Analysis failed: ${#critical_contracts[@]} contracts exceed EIP-170 limit${NC}"
+if [ ${#critical_contracts[@]} -gt 0 ] || [ ${#personal_limit_contracts[@]} -gt 0 ]; then
+    if [ ${#critical_contracts[@]} -gt 0 ] && [ ${#personal_limit_contracts[@]} -gt 0 ]; then
+        echo -e "${RED}❌ Analysis failed: ${#critical_contracts[@]} contracts exceed EIP-170 and ${#personal_limit_contracts[@]} exceed personal limit (${PERSONAL_LIMIT_PERCENT}%)${NC}"
+    elif [ ${#critical_contracts[@]} -gt 0 ]; then
+        if [ "$PERSONAL_LIMIT_ALIGNS_WITH_EIP170" = "true" ]; then
+            echo -e "${RED}❌ Analysis failed: ${#critical_contracts[@]} contracts exceed EIP-170 limit (personal limit ${PERSONAL_LIMIT_PERCENT}% aligns with EIP-170)${NC}"
+        else
+            echo -e "${RED}❌ Analysis failed: ${#critical_contracts[@]} contracts exceed EIP-170 limit${NC}"
+        fi
+    else
+        echo -e "${RED}❌ Analysis failed: ${#personal_limit_contracts[@]} contracts exceed personal limit (${PERSONAL_LIMIT_PERCENT}% of EIP-170)${NC}"
+    fi
     exit 1
 else
-    echo -e "${GREEN}✓ All contracts within EIP-170 limits${NC}"
+    echo -e "${GREEN}✓ All contracts within personal and EIP-170 limits${NC}"
     exit 0
 fi

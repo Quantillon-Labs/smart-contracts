@@ -7,12 +7,12 @@ cache_path = "cache"
 
 # Solidity version
 solc_version = "0.8.24"
-evm_version = "paris"
+evm_version = "shanghai"
 
 # Optimization
 optimizer = true
 optimizer_runs = 0  # Minimize runtime bytecode size on large contracts
-via_ir = true  # Enable IR compilation 
+via_ir = true  # IR pipeline materially reduces runtime bytecode for current oversized contracts
 bytecode_hash = "none"
 cbor_metadata = false
 
@@ -62,7 +62,7 @@ cbor_metadata = false
 # Bytecode size optimization profile
 [profile.size_optimized]
 optimizer = true
-optimizer_runs = 1  # Optimize for deployment size
+optimizer_runs = 0  # Optimize for deployment size
 via_ir = true
 
 # Additional size optimizations
@@ -76,8 +76,9 @@ fail_on_revert = false
 
 # Testing profile
 [profile.test]
-optimizer = false
-via_ir = false
+optimizer = true
+optimizer_runs = 200
+via_ir = true
 
 # Coverage profile with optimized settings
 [profile.coverage]

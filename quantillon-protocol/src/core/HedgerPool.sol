@@ -22,7 +22,6 @@ import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {AdminFunctionsLibrary} from "../libraries/AdminFunctionsLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {HedgerPoolLogicLibrary} from "../libraries/HedgerPoolLogicLibrary.sol";
-import {HedgerPoolOptimizationLibrary} from "../libraries/HedgerPoolOptimizationLibrary.sol";
 import {HedgerPoolRedeemMathLibrary} from "../libraries/HedgerPoolRedeemMathLibrary.sol";
 import {FeeCollector} from "./FeeCollector.sol";
 
@@ -212,6 +211,10 @@ contract HedgerPool is
         _;
     }
 
+    function _onlySelf() internal view {
+        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
+    }
+
     /**
      * @notice Reverts if caller is not the vault contract
      * @dev Used by onlyVault modifier; restricts vault-only callbacks (e.g. realized P&L)
@@ -226,22 +229,6 @@ contract HedgerPool is
      */
     function _onlyVault() internal view {
         if (msg.sender != address(vault)) revert HedgerPoolErrorLibrary.OnlyVault();
-    }
-
-    /**
-     * @notice Reverts if caller is not this contract
-     * @dev Used by onlySelf modifier for self-call only entry points
-     * @custom:security Ensures commit-style entry points can only be reached via explicit self-calls
-     * @custom:validation Reverts when `msg.sender != address(this)`
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors Reverts with `NotAuthorized` if caller is not this contract
-     * @custom:reentrancy No external calls
-     * @custom:access Internal helper for `onlySelf` modifier
-     * @custom:oracle No oracle dependencies
-     */
-    function _onlySelf() internal view {
-        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }
 
     /**
@@ -391,21 +378,23 @@ contract HedgerPool is
         CommonValidationLibrary.validateCondition(isValid, "oracle");
         
         // Calculate position parameters using actual oracle price
-        (uint256 fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio) = 
-            HedgerPoolLogicLibrary.validateAndCalculatePositionParams(
-                usdcAmount,
-                leverage,
-                eurUsdPrice,
-                coreParams.entryFee,
-                coreParams.minMarginRatio,
-                MAX_MARGIN_RATIO,
-                coreParams.maxLeverage,
-                MAX_MARGIN,
-                MAX_POSITION_SIZE,
-                MAX_ENTRY_PRICE,
-                MAX_LEVERAGE,
-                currentTime
-            );
+        HedgerPoolLogicLibrary.PositionValidationInput memory validationInput =
+            HedgerPoolLogicLibrary.PositionValidationInput({
+                usdcAmount: usdcAmount,
+                leverage: leverage,
+                eurUsdPrice: eurUsdPrice,
+                entryFee: coreParams.entryFee,
+                minMarginRatio: coreParams.minMarginRatio,
+                maxMarginRatio: MAX_MARGIN_RATIO,
+                maxLeverage: coreParams.maxLeverage,
+                maxMargin: MAX_MARGIN,
+                maxPositionSize: MAX_POSITION_SIZE,
+                maxEntryPrice: MAX_ENTRY_PRICE,
+                maxLeverageValue: MAX_LEVERAGE,
+                currentTime: currentTime
+            });
+        (uint256 fee, uint256 netMargin, uint256 positionSize, uint256 marginRatio) =
+            HedgerPoolLogicLibrary.validateAndCalculatePositionParams(validationInput);
         // Explicitly use all return values to avoid unused-return warning
         // fee and marginRatio are validated by the library function, no additional checks needed
         if (fee > usdcAmount || marginRatio == 0) revert HedgerPoolErrorLibrary.InvalidPosition();
@@ -453,6 +442,30 @@ contract HedgerPool is
         // Use fixed position ID 1 for single position model.
         positionId = 1;
         HedgePosition storage position = positions[positionId];
+        _initializeOpenedPosition(position, hedger, positionSize, netMargin, currentTime, leverage, eurUsdPrice);
+        hedgerActivePositionId[hedger] = positionId;
+
+        totalMargin += netMargin;
+        totalExposure += positionSize;
+
+        usdc.safeTransferFrom(hedger, address(vault), usdcAmount);
+        vault.addHedgerDeposit(usdcAmount);
+        emit HedgePositionOpened(
+            hedger,
+            positionId,
+            bytes32(0)
+        );
+    }
+
+    function _initializeOpenedPosition(
+        HedgePosition storage position,
+        address hedger,
+        uint256 positionSize,
+        uint256 netMargin,
+        uint256 currentTime,
+        uint256 leverage,
+        uint256 eurUsdPrice
+    ) private {
         position.hedger = hedger;
         // forge-lint: disable-next-line(unsafe-typecast)
         position.positionSize = uint96(positionSize);
@@ -471,18 +484,6 @@ contract HedgerPool is
         position.isActive = true;
         // forge-lint: disable-next-line(unsafe-typecast)
         position.openBlock = uint64(block.number);
-        hedgerActivePositionId[hedger] = positionId;
-
-        totalMargin += netMargin;
-        totalExposure += positionSize;
-
-        usdc.safeTransferFrom(hedger, address(vault), usdcAmount);
-        vault.addHedgerDeposit(usdcAmount);
-        emit HedgePositionOpened(
-            hedger,
-            positionId,
-            HedgerPoolOptimizationLibrary.packPositionOpenData(positionSize, netMargin, leverage, eurUsdPrice)
-        );
     }
 
     /**
@@ -551,7 +552,7 @@ contract HedgerPool is
         emit HedgePositionClosed(
             hedger,
             positionId,
-            HedgerPoolOptimizationLibrary.packPositionCloseData(0, 0, TIME_PROVIDER.currentTime())
+            bytes32(0)
         );
 
         int256 rawPayout = int256(cachedMargin) + pnl;
@@ -637,12 +638,6 @@ contract HedgerPool is
         totalMargin += netAmount;
         totalExposure += deltaPositionSize;
 
-        emit MarginUpdated(
-            msg.sender,
-            positionId,
-            HedgerPoolOptimizationLibrary.packMarginData(netAmount, newMarginRatio, true)
-        );
-
         // MED-6: Pull full amount (including fee) from hedger into this contract first,
         //        then route netAmount to vault and fee to FeeCollector to prevent CR inflation.
         usdc.safeTransferFrom(msg.sender, address(this), amount);
@@ -725,15 +720,19 @@ contract HedgerPool is
         }
 
         _removeMarginCommit(
-            msg.sender,
             positionId,
             newMargin,
             newPositionSize,
             deltaPositionSize,
-            amount,
-            newMarginRatio
+            amount
         );
 
+        _validatePositionHealthAfterMarginRemoval(position, newMargin);
+
+        vault.withdrawHedgerDeposit(msg.sender, amount);
+    }
+
+    function _validatePositionHealthAfterMarginRemoval(HedgePosition storage position, uint256 newMargin) private {
         // Validate that position remains healthy after margin removal using fresh oracle data.
         (uint256 currentPrice, bool isValid) = oracle.getEurUsdPrice();
         if (!isValid || currentPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
@@ -748,18 +747,14 @@ contract HedgerPool is
             position.realizedPnL
         );
         if (wouldBeUnhealthy) revert HedgerPoolErrorLibrary.InsufficientMargin();
-
-        vault.withdrawHedgerDeposit(msg.sender, amount);
     }
 
     function _removeMarginCommit(
-        address hedger,
         uint256 positionId,
         uint256 newMargin,
         uint256 newPositionSize,
         uint256 deltaPositionSize,
-        uint256 amount,
-        uint256 newMarginRatio
+        uint256 amount
     ) private {
         HedgePosition storage position = positions[positionId];
 
@@ -771,11 +766,6 @@ contract HedgerPool is
         totalMargin -= amount;
         totalExposure -= deltaPositionSize;
 
-        emit MarginUpdated(
-            hedger,
-            positionId,
-            HedgerPoolOptimizationLibrary.packMarginData(amount, newMarginRatio, false)
-        );
     }
 
     /**
@@ -930,7 +920,6 @@ contract HedgerPool is
         _settleInterestRewards(hedger, interestDifferential);
         yieldShiftRewards = _claimYieldShiftRewards(hedger);
         totalRewards = interestDifferential + yieldShiftRewards;
-        _emitRewardClaimIfAny(hedger, interestDifferential, yieldShiftRewards, totalRewards);
     }
 
     /**
@@ -1023,35 +1012,6 @@ contract HedgerPool is
         if (interestDifferential == 0) return;
         // Queue rewards for pull-based withdrawal to avoid push-transfer reentrancy surface.
         pendingRewardWithdrawals[hedger] += interestDifferential;
-    }
-
-    /**
-     * @notice Emits reward-claim event when total claimed rewards are non-zero
-     * @dev Packs reward components for gas-efficient indexed monitoring.
-     * @param hedger Hedger for whom rewards were claimed
-     * @param interestDifferential Interest-differential component
-     * @param yieldShiftRewards YieldShift component
-     * @param totalRewards Aggregate reward amount
-     * @custom:security Emits event only when there is meaningful reward activity
-     * @custom:validation Returns early when `totalRewards == 0`
-     * @custom:state-changes None
-     * @custom:events Emits `HedgingRewardsClaimed`
-     * @custom:errors None
-     * @custom:reentrancy No external calls
-     * @custom:access Internal function
-     * @custom:oracle No oracle dependencies
-     */
-    function _emitRewardClaimIfAny(
-        address hedger,
-        uint256 interestDifferential,
-        uint256 yieldShiftRewards,
-        uint256 totalRewards
-    ) internal {
-        if (totalRewards == 0) return;
-        emit HedgingRewardsClaimed(
-            hedger,
-            HedgerPoolOptimizationLibrary.packRewardData(interestDifferential, yieldShiftRewards, totalRewards)
-        );
     }
 
     /**
@@ -1776,7 +1736,6 @@ contract HedgerPool is
     /**
      * @notice Applies realized P&L to position margin and emits MarginUpdated
      * @dev Handles both profit and loss branches in a single path to keep bytecode compact.
-     * @param posId Position ID
      * @param pos Position storage reference
      * @param realizedDelta Realized P&L amount (positive = profit, negative = loss)
      * @custom:security Internal accounting helper called after redemption validations.
@@ -1788,7 +1747,7 @@ contract HedgerPool is
      * @custom:access Internal helper only.
      * @custom:oracle No oracle interaction.
      */
-    function _applyRealizedPnLToMargin(uint256 posId, HedgePosition storage pos, int256 realizedDelta) internal {
+    function _applyRealizedPnLToMargin(uint256, HedgePosition storage pos, int256 realizedDelta) internal {
         if (realizedDelta == 0) return;
         HedgerPoolRedeemMathLibrary.MarginTransition memory transition = HedgerPoolRedeemMathLibrary.computeMarginTransition(
             totalMargin,
@@ -1803,15 +1762,6 @@ contract HedgerPool is
         // forge-lint: disable-next-line(unsafe-typecast)
         pos.positionSize = uint96(transition.nextPositionSize);
 
-        emit MarginUpdated(
-            pos.hedger,
-            posId,
-            HedgerPoolOptimizationLibrary.packMarginData(
-                transition.deltaAmount,
-                transition.newMarginRatio,
-                transition.isProfit
-            )
-        );
     }
 
     /**

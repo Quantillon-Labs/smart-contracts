@@ -173,6 +173,8 @@ contract YieldShift is
         uint64 timestamp;                   // Timestamp (8 bytes, until year 2554)
     }
     YieldShiftSnapshot[] public yieldShiftHistory;
+    mapping(address => uint256) public sourceToVaultId;
+    bool public enforceSourceVaultBinding;
 
     struct YieldModelConfig {
         uint256 baseYieldShift;
@@ -201,6 +203,8 @@ contract YieldShift is
     event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 timestamp);
     /// @dev OPTIMIZED: Indexed source and timestamp for efficient filtering
     event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp);
+    event SourceVaultBindingUpdated(address indexed source, uint256 indexed vaultId);
+    event SourceVaultBindingModeUpdated(bool enabled);
 
     /**
      * @notice Constructor for YieldShift implementation
@@ -391,6 +395,10 @@ contract YieldShift is
         
         CommonValidationLibrary.validatePositiveAmount(yieldAmount);
         if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
+        if (enforceSourceVaultBinding) {
+            uint256 boundVaultId = sourceToVaultId[msg.sender];
+            if (boundVaultId == 0 || boundVaultId != vaultId) revert CommonErrorLibrary.NotAuthorized();
+        }
         
         // Verify USDC was actually received
         uint256 balanceBefore = usdc.balanceOf(address(this));
@@ -980,7 +988,74 @@ contract YieldShift is
         AccessControlLibrary.validateAddress(source);
 
         authorizedYieldSources[source] = authorized;
-        sourceToYieldType[source] = authorized ? yieldType : bytes32(0);
+        if (authorized) {
+            sourceToYieldType[source] = yieldType;
+        } else {
+            sourceToYieldType[source] = bytes32(0);
+            sourceToVaultId[source] = 0;
+            emit SourceVaultBindingUpdated(source, 0);
+        }
+    }
+
+    /**
+     * @notice Binds a yield source to a single vault id for optional strict routing.
+     * @dev When strict mode is enabled, calls from `source` can only route yield to `vaultId`.
+     * @param source Yield source address to bind.
+     * @param vaultId Vault id that this source is allowed to target.
+     * @custom:security Governance-only control over source/vault routing boundaries.
+     * @custom:validation Reverts on zero source address or zero vault id.
+     * @custom:state-changes Updates `sourceToVaultId[source]`.
+     * @custom:events Emits `SourceVaultBindingUpdated`.
+     * @custom:errors `ZeroAddress` / `InvalidVault` on invalid inputs.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to governance.
+     * @custom:oracle No oracle dependencies.
+     */
+    function setSourceVaultBinding(address source, uint256 vaultId) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(source);
+        if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
+        sourceToVaultId[source] = vaultId;
+        emit SourceVaultBindingUpdated(source, vaultId);
+    }
+
+    /**
+     * @notice Clears the vault binding for a yield source.
+     * @dev In strict mode, a cleared source must be rebound before it can call `addYield`.
+     * @param source Yield source address to unbind.
+     * @custom:security Governance-only.
+     * @custom:validation Reverts on zero source address.
+     * @custom:state-changes Resets `sourceToVaultId[source]` to zero.
+     * @custom:events Emits `SourceVaultBindingUpdated` with vault id `0`.
+     * @custom:errors `ZeroAddress` on invalid input.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to governance.
+     * @custom:oracle No oracle dependencies.
+     */
+    function clearSourceVaultBinding(address source) external {
+        AccessControlLibrary.onlyGovernance(this);
+        AccessControlLibrary.validateAddress(source);
+        sourceToVaultId[source] = 0;
+        emit SourceVaultBindingUpdated(source, 0);
+    }
+
+    /**
+     * @notice Enables or disables strict source-to-vault enforcement.
+     * @dev When enabled, `addYield` requires `sourceToVaultId[msg.sender] == vaultId`.
+     * @param enabled True to enforce source/vault binding, false for permissive routing.
+     * @custom:security Governance-only mode toggle.
+     * @custom:validation No extra validation required.
+     * @custom:state-changes Updates `enforceSourceVaultBinding`.
+     * @custom:events Emits `SourceVaultBindingModeUpdated`.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to governance.
+     * @custom:oracle No oracle dependencies.
+     */
+    function setSourceVaultBindingEnforcement(bool enabled) external {
+        AccessControlLibrary.onlyGovernance(this);
+        enforceSourceVaultBinding = enabled;
+        emit SourceVaultBindingModeUpdated(enabled);
     }
 
     /**

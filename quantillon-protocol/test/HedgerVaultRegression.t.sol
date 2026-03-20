@@ -518,7 +518,8 @@ contract HedgerVaultRegressionTest is Test {
         hedgerPool.addMargin(initialPositionId, hedgerUsdcAmount);
         
         // Get vault metrics
-        (uint256 totalUsdcHeld, uint256 totalMinted, uint256 totalDebtValue, , ) = vault.getVaultMetrics();
+        (uint256 totalUsdcHeld, uint256 totalMinted, uint256 totalDebtValue, , ) =
+            (vault.totalUsdcHeld(), vault.totalMinted(), qeuro.totalSupply(), vault.totalUsdcInExternalVaults(), vault.getTotalUsdcAvailable());
         
         // Calculate expected total (accounting for minting fee)
         uint256 mintingFee = (userUsdcAmount * vault.mintFee()) / 1e18;

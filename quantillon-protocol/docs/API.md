@@ -115,8 +115,8 @@ Retrieves comprehensive vault metrics.
 - `uint256`: `totalUsdcHeld` (USDC in vault, 6 decimals)
 - `uint256`: `totalMinted` (QEURO tracked by vault, 18 decimals)
 - `uint256`: `totalDebtValue` (USD value from live supply and cached EUR/USD)
-- `uint256`: `totalUsdcInAave` (tracked principal)
-- `uint256`: `totalUsdcAvailable` (vault + Aave balance including accrued yield)
+- `uint256`: `totalUsdcInExternalVaults` (tracked principal across external adapters)
+- `uint256`: `totalUsdcAvailable` (vault + external vault balances including accrued yield)
 
 **Access:** Public view
 
@@ -135,8 +135,17 @@ Seeds the cached EUR/USD price after deployment (required before first mint).
 ##### `updateHedgerRewardFeeSplit(uint256 newSplit)`
 Updates the fee share routed to HedgerPool reserve (`1e18 = 100%`).
 
-##### `harvestAaveInterest() → (uint256)`
-Triggers Aave yield harvest through AaveVault and returns harvested amount.
+##### `mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId)`
+Mints QEURO and routes collateral to a specific external vault adapter.
+
+##### `mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId, uint256 minStQEUROOut) → (uint256, uint256)`
+One-step flow: mint QEURO and immediately stake into `stQEURO{vaultName}` for the selected `vaultId`.
+
+##### `harvestVaultYield(uint256 vaultId) → (uint256)`
+Triggers yield harvest for a specific external vault adapter.
+
+##### `deployUsdcToVault(uint256 vaultId, uint256 usdcAmount)`
+Operator function to manually deploy vault-held USDC into a selected external vault adapter.
 
 #### Events
 
@@ -145,7 +154,10 @@ event QEUROminted(address indexed user, uint256 usdcAmount, uint256 qeuroAmount)
 event QEURORedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcAmount);
 event LiquidationRedeemed(address indexed user, uint256 qeuroAmount, uint256 usdcPayout, uint256 collateralizationRatioBps, bool isPremium);
 event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReserveShare, uint256 collectorShare);
-event AaveInterestHarvested(uint256 harvestedYield);
+event StakingVaultConfigured(uint256 indexed vaultId, address indexed adapter, bool active);
+event UsdcDeployedToExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
+event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
+event ExternalVaultYieldHarvested(uint256 indexed vaultId, uint256 harvestedYield);
 ```
 
 ---

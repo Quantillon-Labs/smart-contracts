@@ -185,6 +185,9 @@ make validate-natspec
 
 # Check contract bytecode size limits (EIP-170)
 make analyze-contract-sizes
+
+# Enforce a personal EIP-170 budget (example: 97%)
+EIP170_PERSONAL_LIMIT_PERCENT=97 make analyze-contract-sizes
 ```
 
 ### Security And Quality Reports

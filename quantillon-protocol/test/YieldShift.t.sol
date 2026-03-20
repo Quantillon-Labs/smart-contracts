@@ -334,6 +334,9 @@ contract MockAaveVault {
  * @notice Mock stQEURO contract for testing
  */
 contract MockStQEURO {
+    uint256 public totalDistributed;
+    uint256 public distributionCount;
+
     /**
      * @notice Distributes yield for testing
      * @dev Mock function for testing purposes
@@ -348,7 +351,8 @@ contract MockStQEURO {
      * @custom:oracle No oracle dependencies
      */
     function distributeYield(uint256 amount) external {
-        // Mock implementation
+        totalDistributed += amount;
+        distributionCount += 1;
     }
 }
 
@@ -426,6 +430,7 @@ contract YieldShiftTestSuite is Test {
     MockHedgerPool public hedgerPool;
     MockAaveVault public aaveVault;
     MockStQEURO public stQEURO;
+    MockStQEURO public stQEUROVault2;
     MockStQEUROFactory public stQEUROFactory;
 
     // =============================================================================
@@ -456,8 +461,10 @@ contract YieldShiftTestSuite is Test {
         hedgerPool = new MockHedgerPool();
         aaveVault = new MockAaveVault();
         stQEURO = new MockStQEURO();
+        stQEUROVault2 = new MockStQEURO();
         stQEUROFactory = new MockStQEUROFactory();
         stQEUROFactory.setVaultToken(1, address(stQEURO));
+        stQEUROFactory.setVaultToken(2, address(stQEUROVault2));
         
         // Deploy TimeProvider through proxy
         TimeProvider timeProviderImpl = new TimeProvider();
@@ -557,6 +564,14 @@ contract YieldShiftTestSuite is Test {
 
     function _revokeYieldSource(address source) internal {
         yieldShift.setYieldSourceAuthorization(source, bytes32(0), false);
+    }
+
+    function _bindYieldSourceToVault(address source, uint256 vaultId) internal {
+        yieldShift.setSourceVaultBinding(source, vaultId);
+    }
+
+    function _setSourceVaultBindingEnforcement(bool enabled) internal {
+        yieldShift.setSourceVaultBindingEnforcement(enabled);
     }
 
     function _setYieldShiftParameters(uint256 newBaseShift, uint256 newMaxShift, uint256 newAdjustmentSpeed) internal {
@@ -891,6 +906,67 @@ contract YieldShiftTestSuite is Test {
         (uint256 newUserYield, uint256 newHedgerYield,) = yieldShift.getYieldDistributionBreakdown();
         assertGt(newUserYield, initialUserYield);
         assertGt(newHedgerYield, initialHedgerYield);
+    }
+
+    function test_MultiVault_RoutesYieldToDistinctVaultTokens() public {
+        uint256 vault1Yield = 12_000 * 1e6;
+        uint256 vault2Yield = 8_000 * 1e6;
+        uint256 expectedShift = yieldShift.currentYieldShift();
+        uint256 expectedVault1Distribution = vault1Yield * expectedShift / 10_000;
+        uint256 expectedVault2Distribution = vault2Yield * expectedShift / 10_000;
+
+        vm.startPrank(yieldManager);
+        yieldShift.addYield(1, vault1Yield, keccak256("test_source"));
+        yieldShift.addYield(2, vault2Yield, keccak256("test_source"));
+        vm.stopPrank();
+
+        assertEq(stQEURO.totalDistributed(), expectedVault1Distribution);
+        assertEq(stQEUROVault2.totalDistributed(), expectedVault2Distribution);
+        assertEq(stQEURO.distributionCount(), 1);
+        assertEq(stQEUROVault2.distributionCount(), 1);
+    }
+
+    function test_YieldDistribution_AddYieldWrongVaultBinding_RevertWhenEnforced() public {
+        uint256 yieldAmount = 1000 * 1e6;
+
+        vm.prank(governance);
+        _bindYieldSourceToVault(yieldManager, 1);
+
+        vm.prank(governance);
+        _setSourceVaultBindingEnforcement(true);
+
+        vm.prank(yieldManager);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
+        yieldShift.addYield(2, yieldAmount, keccak256("test_source"));
+    }
+
+    function test_YieldDistribution_AddYieldUnboundSource_RevertWhenEnforced() public {
+        uint256 yieldAmount = 1000 * 1e6;
+
+        vm.prank(governance);
+        _setSourceVaultBindingEnforcement(true);
+
+        vm.prank(yieldManager);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
+        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
+    }
+
+    function test_YieldDistribution_AddYieldCorrectVaultBinding_SuccessWhenEnforced() public {
+        uint256 yieldAmount = 1400 * 1e6;
+        uint256 expectedShift = yieldShift.currentYieldShift();
+        uint256 expectedDistribution = yieldAmount * expectedShift / 10_000;
+
+        vm.prank(governance);
+        _bindYieldSourceToVault(yieldManager, 2);
+
+        vm.prank(governance);
+        _setSourceVaultBindingEnforcement(true);
+
+        vm.prank(yieldManager);
+        yieldShift.addYield(2, yieldAmount, keccak256("test_source"));
+
+        assertEq(stQEUROVault2.totalDistributed(), expectedDistribution);
+        assertEq(stQEURO.totalDistributed(), 0);
     }
 
     /**
@@ -1295,6 +1371,44 @@ contract YieldShiftTestSuite is Test {
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
         yieldShift.configureDependencies(cfg);
+    }
+
+    function test_Governance_SetSourceVaultBinding_SuccessAndClear() public {
+        vm.prank(governance);
+        yieldShift.setSourceVaultBinding(yieldManager, 2);
+        assertEq(yieldShift.sourceToVaultId(yieldManager), 2);
+
+        vm.prank(governance);
+        yieldShift.clearSourceVaultBinding(yieldManager);
+        assertEq(yieldShift.sourceToVaultId(yieldManager), 0);
+    }
+
+    function test_Governance_SetSourceVaultBinding_InvalidInputs_Revert() public {
+        vm.prank(governance);
+        vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
+        yieldShift.setSourceVaultBinding(address(0), 1);
+
+        vm.prank(governance);
+        vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
+        yieldShift.setSourceVaultBinding(yieldManager, 0);
+    }
+
+    function test_Governance_SetSourceVaultBinding_Unauthorized_Revert() public {
+        vm.prank(user);
+        vm.expectRevert(CommonErrorLibrary.NotGovernance.selector);
+        yieldShift.setSourceVaultBinding(yieldManager, 1);
+    }
+
+    function test_Governance_SetSourceVaultBindingEnforcement_Success() public {
+        assertFalse(yieldShift.enforceSourceVaultBinding());
+
+        vm.prank(governance);
+        yieldShift.setSourceVaultBindingEnforcement(true);
+        assertTrue(yieldShift.enforceSourceVaultBinding());
+
+        vm.prank(governance);
+        yieldShift.setSourceVaultBindingEnforcement(false);
+        assertFalse(yieldShift.enforceSourceVaultBinding());
     }
 
     function test_Governance_DeprecatedSettersUnavailable() public {

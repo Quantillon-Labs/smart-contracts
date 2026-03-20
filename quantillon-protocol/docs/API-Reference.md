@@ -115,7 +115,7 @@ function getVaultMetrics() external view returns (
     uint256 totalUsdcHeld_,
     uint256 totalMinted_,
     uint256 totalDebtValue,
-    uint256 totalUsdcInAave_,
+    uint256 totalUsdcInExternalVaults_,
     uint256 totalUsdcAvailable_
 )
 ```
@@ -124,8 +124,8 @@ function getVaultMetrics() external view returns (
 - `totalUsdcHeld_`: USDC held directly by vault
 - `totalMinted_`: QEURO minted by vault tracker
 - `totalDebtValue`: USD debt value using live token supply and cached EUR/USD
-- `totalUsdcInAave_`: Principal tracker for Aave allocation
-- `totalUsdcAvailable_`: Total collateral available including accrued Aave yield
+- `totalUsdcInExternalVaults_`: Principal tracker across all configured external vault adapters
+- `totalUsdcAvailable_`: Total collateral available including accrued external-vault yield
 
 #### `getProtocolCollateralizationRatio() → (uint256)`
 ```solidity
@@ -135,7 +135,7 @@ function getProtocolCollateralizationRatio() public view returns (uint256 ratio)
 **Returns**: Current protocol collateralization ratio in 18-decimal percentage format (`100% = 1e20`)
 
 **Description**: Calculates `CR = (TotalCollateral / BackingRequirement) * 1e20` where:
-- `TotalCollateral` = `totalUsdcHeld + currentAaveCollateral` (includes accrued Aave yield when queryable)
+- `TotalCollateral` = `totalUsdcHeld + currentExternalVaultCollateral` (includes accrued adapter yield when queryable)
 - `BackingRequirement` = `QEUROSupply * cachedEurUsdPrice / 1e30`
 
 **Note**: This function uses cached price and returns `0` when required wiring/cache prerequisites are not met.
@@ -166,8 +166,17 @@ Governance-only bootstrap step required after deployment and before first user m
 #### `updateHedgerRewardFeeSplit(uint256 newSplit)`
 Governance setter for fee routing share to HedgerPool reserve (`1e18 = 100%`).
 
-#### `harvestAaveInterest() → (uint256 harvestedYield)`
-Governance entrypoint that triggers Aave harvest through AaveVault.
+#### `mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId)`
+User entrypoint for minting QEURO and routing collateral to a specific external vault adapter.
+
+#### `mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId, uint256 minStQEUROOut) → (uint256 qeuroMinted, uint256 stQEUROMinted)`
+One-step user entrypoint to mint QEURO and stake into the vault-specific stQEURO token.
+
+#### `deployUsdcToVault(uint256 vaultId, uint256 usdcAmount)`
+Vault-operator entrypoint for manual collateral deployment to a specific adapter.
+
+#### `harvestVaultYield(uint256 vaultId) → (uint256 harvestedYield)`
+Governance entrypoint that triggers yield harvest for a specific adapter.
 
 ---
 

@@ -275,7 +275,7 @@ contract MockAaveVault {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependency
      */
-    function deployToAave(uint256 amount) external returns (uint256) {
+    function deployToAave(uint256 amount) public returns (uint256) {
         // Transfer USDC from caller to this contract (simulating Aave deposit)
         // forge-lint: disable-next-line(erc20-unchecked-transfer)
         usdc.transferFrom(msg.sender, address(this), amount);
@@ -298,7 +298,7 @@ contract MockAaveVault {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependency
      */
-    function withdrawFromAave(uint256 amount) external returns (uint256) {
+    function withdrawFromAave(uint256 amount) public returns (uint256) {
         uint256 totalBalance = principalDeposited + accruedYield;
         uint256 withdrawAmount = amount > totalBalance ? totalBalance : amount;
         if (withdrawAmount > 0) {
@@ -328,7 +328,24 @@ contract MockAaveVault {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependency
      */
-    function getAaveBalance() external view returns (uint256) {
+    function getAaveBalance() public view returns (uint256) {
+        return principalDeposited + accruedYield;
+    }
+
+    // Generic adapter surface used by QuantillonVault in multi-vault mode
+    function depositUnderlying(uint256 amount) external returns (uint256) {
+        return deployToAave(amount);
+    }
+
+    function withdrawUnderlying(uint256 amount) external returns (uint256) {
+        return withdrawFromAave(amount);
+    }
+
+    function harvestYield() external returns (uint256) {
+        return harvestAaveYield();
+    }
+
+    function totalUnderlying() external view returns (uint256) {
         return principalDeposited + accruedYield;
     }
 
@@ -343,7 +360,7 @@ contract MockAaveVault {
         harvestAmount = amount;
     }
 
-    function harvestAaveYield() external returns (uint256) {
+    function harvestAaveYield() public returns (uint256) {
         harvestCalls += 1;
         return harvestAmount;
     }
@@ -454,8 +471,12 @@ contract AaveIntegrationTest is Test {
         ERC1967Proxy userPoolProxy = new ERC1967Proxy(address(userPoolImpl), userPoolData);
         userPool = UserPool(address(userPoolProxy));
         
-        // Configure vault with AaveVault and grant roles
-        vault.updateAaveVault(address(aaveVault));
+        // Configure vault with Aave adapter and grant roles
+        vault.setStakingVault(1, address(aaveVault), true);
+        vault.setDefaultStakingVaultId(1);
+        uint256[] memory redemptionPriority = new uint256[](1);
+        redemptionPriority[0] = 1;
+        vault.setRedemptionPriority(redemptionPriority);
         vault.updateUserPool(address(userPool));
         
         // Grant VAULT_OPERATOR_ROLE to UserPool
@@ -522,8 +543,8 @@ contract AaveIntegrationTest is Test {
         
         // Assert: USDC should have been deployed to Aave
         // The vault should have reduced totalUsdcHeld and increased totalUsdcInAave
-        assertGt(vault.totalUsdcInAave(), 0, "USDC should be deployed to Aave");
-        assertEq(aaveVault.totalDeployed(), vault.totalUsdcInAave(), "AaveVault should have received USDC");
+        assertGt(vault.totalUsdcInExternalVaults(), 0, "USDC should be deployed to Aave");
+        assertEq(aaveVault.totalDeployed(), vault.totalUsdcInExternalVaults(), "AaveVault should have received USDC");
     }
     
     /**
@@ -560,7 +581,7 @@ contract AaveIntegrationTest is Test {
             uint256 _totalDebtValue,
             uint256 totalUsdcInAave,
             uint256 totalUsdcAvailable
-        ) = vault.getVaultMetrics();
+        ) = (vault.totalUsdcHeld(), vault.totalMinted(), qeuro.totalSupply(), vault.totalUsdcInExternalVaults(), vault.getTotalUsdcAvailable());
         
         // Suppress unused variable warnings
         _totalMinted;
@@ -615,7 +636,7 @@ contract AaveIntegrationTest is Test {
         userPool.deposit(amounts, minOuts);
         vm.stopPrank();
 
-        uint256 baseline = vault.totalUsdcHeld() + vault.totalUsdcInAave();
+        uint256 baseline = vault.totalUsdcHeld() + vault.totalUsdcInExternalVaults();
         aaveVault.setAccruedYield(500e6);
 
         uint256 totalAvailable = vault.getTotalUsdcAvailable();
@@ -626,7 +647,7 @@ contract AaveIntegrationTest is Test {
         aaveVault.setHarvestAmount(777e6);
 
         vm.prank(admin);
-        uint256 harvested = vault.harvestAaveInterest();
+        uint256 harvested = vault.harvestVaultYield(1);
 
         assertEq(harvested, 777e6, "Harvested amount should match AaveVault return");
         assertEq(aaveVault.harvestCalls(), 1, "Harvest should call into AaveVault once");
@@ -667,7 +688,7 @@ contract AaveIntegrationTest is Test {
         assertGt(qeuroBalance, 0, "User should have QEURO");
         
         // Record Aave balance before redemption
-        uint256 aaveBalanceBefore = vault.totalUsdcInAave();
+        uint256 aaveBalanceBefore = vault.totalUsdcInExternalVaults();
         assertGt(aaveBalanceBefore, 0, "Aave should have USDC");
         
         // Act: Redeem some QEURO (this should trigger Aave withdrawal since vault balance is 0)
@@ -678,8 +699,77 @@ contract AaveIntegrationTest is Test {
         vm.stopPrank();
         
         // Assert: Aave balance should have decreased
-        uint256 aaveBalanceAfter = vault.totalUsdcInAave();
+        uint256 aaveBalanceAfter = vault.totalUsdcInExternalVaults();
         assertLt(aaveBalanceAfter, aaveBalanceBefore, "Aave balance should decrease after redemption");
+    }
+
+    function test_onboardMorpho2StyleVault_routesMintByVaultId() public {
+        MockAaveVault morpho2Adapter = new MockAaveVault(address(usdc));
+
+        vm.startPrank(admin);
+        vault.setStakingVault(2, address(morpho2Adapter), true);
+        vault.setDefaultStakingVaultId(2);
+        uint256[] memory redemptionPriority = new uint256[](2);
+        redemptionPriority[0] = 2;
+        redemptionPriority[1] = 1;
+        vault.setRedemptionPriority(redemptionPriority);
+        vm.stopPrank();
+
+        uint256 depositAmount = 4_000e6;
+        vm.startPrank(user);
+        usdc.approve(address(vault), depositAmount);
+        vault.mintQEUROToVault(depositAmount, 0, 2);
+        vm.stopPrank();
+
+        (address adapter1, bool active1, uint256 principal1, ) = vault.getVaultExposure(1);
+        (address adapter2, bool active2, uint256 principal2, uint256 underlying2) = vault.getVaultExposure(2);
+
+        assertEq(adapter1, address(aaveVault), "Vault 1 adapter mismatch");
+        assertTrue(active1, "Vault 1 should remain active");
+        assertEq(principal1, 0, "Vault 1 should have no principal from vaultId=2 mint");
+
+        assertEq(adapter2, address(morpho2Adapter), "Vault 2 adapter mismatch");
+        assertTrue(active2, "Vault 2 should be active");
+        assertEq(principal2, depositAmount, "Vault 2 principal should match routed deposit");
+        assertEq(underlying2, depositAmount, "Vault 2 underlying should match routed deposit");
+        assertEq(vault.defaultStakingVaultId(), 2, "Default vault should be vaultId=2");
+    }
+
+    function test_onboardThirdPartyVault_redeemRespectsPriorityAcrossVaults() public {
+        MockAaveVault thirdPartyAdapter = new MockAaveVault(address(usdc));
+
+        vm.startPrank(admin);
+        vault.setStakingVault(2, address(thirdPartyAdapter), true);
+        uint256[] memory redemptionPriority = new uint256[](2);
+        redemptionPriority[0] = 2;
+        redemptionPriority[1] = 1;
+        vault.setRedemptionPriority(redemptionPriority);
+        vm.stopPrank();
+
+        uint256 vault1Deposit = 5_000e6;
+        uint256 vault2Deposit = 3_000e6;
+
+        vm.startPrank(user);
+        usdc.approve(address(vault), vault1Deposit + vault2Deposit);
+        vault.mintQEUROToVault(vault1Deposit, 0, 1);
+        vault.mintQEUROToVault(vault2Deposit, 0, 2);
+
+        (, , uint256 principal1Before, ) = vault.getVaultExposure(1);
+        (, , uint256 principal2Before, ) = vault.getVaultExposure(2);
+        assertEq(principal1Before, vault1Deposit, "Vault 1 principal before redeem mismatch");
+        assertEq(principal2Before, vault2Deposit, "Vault 2 principal before redeem mismatch");
+
+        uint256 qeuroBalance = qeuro.balanceOf(user);
+        uint256 redeemAmount = (qeuroBalance * 3) / 4; // Requires > vault2 principal, so redemption should spill to vault1
+        qeuro.approve(address(vault), redeemAmount);
+        vault.redeemQEURO(redeemAmount, 0);
+        vm.stopPrank();
+
+        (, , uint256 principal1After, ) = vault.getVaultExposure(1);
+        (, , uint256 principal2After, ) = vault.getVaultExposure(2);
+
+        assertLt(principal2After, principal2Before, "Vault 2 should be used first for redemption");
+        assertLt(principal1After, principal1Before, "Vault 1 should be used once vault 2 liquidity is exhausted");
     }
     
     // =============================================================================
@@ -704,7 +794,7 @@ contract AaveIntegrationTest is Test {
         
         // Act & Assert: Should revert
         vm.expectRevert();
-        vault.deployUsdcToAave(1000e6);
+        vault.deployUsdcToVault(1, 1000e6);
         
         vm.stopPrank();
     }
@@ -727,7 +817,7 @@ contract AaveIntegrationTest is Test {
         
         // Act & Assert: Should revert
         vm.expectRevert();
-        vault.updateAaveVault(address(0x123));
+        vault.setStakingVault(1, address(0x123), true);
         
         vm.stopPrank();
     }
@@ -754,7 +844,7 @@ contract AaveIntegrationTest is Test {
         
         // This should revert when trying to set zero address
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
-        vault.updateAaveVault(address(0));
+        vault.setStakingVault(1, address(0), true);
         
         vm.stopPrank();
     }
@@ -818,7 +908,7 @@ contract AaveIntegrationTest is Test {
         vm.stopPrank();
         
         // Assert: Minting should succeed, no USDC in Aave
-        assertEq(vaultNoAave.totalUsdcInAave(), 0, "No USDC should be in Aave");
+        assertEq(vaultNoAave.totalUsdcInExternalVaults(), 0, "No USDC should be in Aave");
         assertGt(vaultNoAave.totalUsdcHeld(), 0, "USDC should be in vault");
     }
 }

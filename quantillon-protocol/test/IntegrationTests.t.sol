@@ -301,133 +301,142 @@ contract IntegrationTests is Test {
         
         uint256 initialUserUSDC = mockUSDC.balanceOf(user1);
         uint256 initialVaultUSDC = mockUSDC.balanceOf(address(vault));
+        uint256 eurUsdPrice;
+        uint256 userQEUROBalance;
+        uint256 userStQEUROBalance;
         
         // =============================================================================
         // STEP 1: User deposits USDC to UserPool
         // =============================================================================
-        console.log("\n--- Step 1: User Deposit ---");
-        
-        vm.startPrank(user1);
-        mockUSDC.approve(address(userPool), DEPOSIT_AMOUNT);
-        
-        // Note: UserPool.deposit() would need to be implemented to call vault.mintQEURO()
-        // For now, we'll simulate the flow by directly interacting with vault
-        // In a real scenario, UserPool would handle this internally
-        
-        // Approve vault to spend USDC
-        mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
-        
-        // Get expected QEURO (18 decimals): netAmount * 1e30 / price; use 90% for minQeuroOut to allow fee
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
-        require(isValid, "Oracle price invalid");
-        uint256 expectedQEURO = (DEPOSIT_AMOUNT * 1e30) / eurUsdPrice;
-        vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
-        vm.stopPrank();
+        {
+            console.log("\n--- Step 1: User Deposit ---");
 
-        uint256 userQEUROBalance = qeuroToken.balanceOf(user1);
-        assertGt(userQEUROBalance, 0, "User should receive QEURO");
-        // Actual is slightly less due to 0.1% mint fee; use 2% relative tolerance
-        assertApproxEqRel(userQEUROBalance, expectedQEURO, 0.02e18, "QEURO amount should match calculation");
-        
-        console.log("USDC deposited:", DEPOSIT_AMOUNT / 1e6);
-        console.log("QEURO minted:", userQEUROBalance / 1e18);
-        
-        // Verify vault received USDC (full amount minus mint fee sent to FeeCollector)
-        uint256 vaultUSDCAfter = mockUSDC.balanceOf(address(vault));
-        uint256 currentMintFee = vault.mintFee();
-        uint256 expectedVaultIncrease = DEPOSIT_AMOUNT - (DEPOSIT_AMOUNT * currentMintFee / 1e18);
-        assertEq(vaultUSDCAfter - initialVaultUSDC, expectedVaultIncrease, "Vault should receive USDC minus fee");
+            vm.startPrank(user1);
+            mockUSDC.approve(address(userPool), DEPOSIT_AMOUNT);
+
+            // Note: UserPool.deposit() would need to be implemented to call vault.mintQEURO()
+            // For now, we'll simulate the flow by directly interacting with vault
+            // In a real scenario, UserPool would handle this internally
+            mockUSDC.approve(address(vault), DEPOSIT_AMOUNT);
+
+            bool isValid;
+            (eurUsdPrice, isValid) = oracle.getEurUsdPrice();
+            require(isValid, "Oracle price invalid");
+            uint256 expectedQEURO = (DEPOSIT_AMOUNT * 1e30) / eurUsdPrice;
+            vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
+            vm.stopPrank();
+
+            userQEUROBalance = qeuroToken.balanceOf(user1);
+            assertGt(userQEUROBalance, 0, "User should receive QEURO");
+            // Actual is slightly less due to 0.1% mint fee; use 2% relative tolerance
+            assertApproxEqRel(userQEUROBalance, expectedQEURO, 0.02e18, "QEURO amount should match calculation");
+
+            console.log("USDC deposited:", DEPOSIT_AMOUNT / 1e6);
+            console.log("QEURO minted:", userQEUROBalance / 1e18);
+
+            uint256 vaultUSDCAfter = mockUSDC.balanceOf(address(vault));
+            uint256 expectedVaultIncrease = DEPOSIT_AMOUNT - (DEPOSIT_AMOUNT * vault.mintFee() / 1e18);
+            assertEq(vaultUSDCAfter - initialVaultUSDC, expectedVaultIncrease, "Vault should receive USDC minus fee");
+        }
         
         // =============================================================================
         // STEP 2: User stakes QEURO into stQEURO
         // =============================================================================
-        console.log("\n--- Step 2: User Stakes QEURO ---");
-        
-        uint256 stakeAmount = userQEUROBalance / 2; // Stake half
-        
-        vm.startPrank(user1);
-        qeuroToken.approve(address(stQEURO), stakeAmount);
-        uint256 stQEUROReceived = stQEURO.stake(stakeAmount);
-        vm.stopPrank();
-        
-        uint256 userStQEUROBalance = stQEURO.balanceOf(user1);
-        assertGt(userStQEUROBalance, 0, "User should receive stQEURO");
-        assertEq(userStQEUROBalance, stQEUROReceived, "stQEURO balance should match returned amount");
-        
-        uint256 remainingQEURO = qeuroToken.balanceOf(user1);
-        assertEq(remainingQEURO, userQEUROBalance - stakeAmount, "Remaining QEURO should be correct");
-        
-        console.log("QEURO staked:", stakeAmount / 1e18);
-        console.log("stQEURO received:", userStQEUROBalance / 1e18);
+        {
+            console.log("\n--- Step 2: User Stakes QEURO ---");
+
+            uint256 stakeAmount = userQEUROBalance / 2; // Stake half
+
+            vm.startPrank(user1);
+            qeuroToken.approve(address(stQEURO), stakeAmount);
+            uint256 stQEUROReceived = stQEURO.stake(stakeAmount);
+            vm.stopPrank();
+
+            userStQEUROBalance = stQEURO.balanceOf(user1);
+            assertGt(userStQEUROBalance, 0, "User should receive stQEURO");
+            assertEq(userStQEUROBalance, stQEUROReceived, "stQEURO balance should match returned amount");
+
+            uint256 remainingQEURO = qeuroToken.balanceOf(user1);
+            assertEq(remainingQEURO, userQEUROBalance - stakeAmount, "Remaining QEURO should be correct");
+
+            console.log("QEURO staked:", stakeAmount / 1e18);
+            console.log("stQEURO received:", userStQEUROBalance / 1e18);
+        }
         
         // =============================================================================
         // STEP 3: Verify supply consistency
         // =============================================================================
-        console.log("\n--- Step 3: Supply Consistency Check ---");
-        
-        uint256 totalQEUROSupply = qeuroToken.totalSupply();
-        uint256 stQEUROUnderlying = stQEURO.totalUnderlying();
-        
-        // QEURO in circulation + QEURO locked in stQEURO should equal total supply
-        uint256 qeuroInStQEURO = qeuroToken.balanceOf(address(stQEURO));
-        uint256 qeuroInCirculation = totalQEUROSupply - qeuroInStQEURO;
-        
-        assertEq(qeuroInStQEURO, stQEUROUnderlying, "stQEURO underlying should match locked QEURO");
-        assertEq(totalQEUROSupply, qeuroInCirculation + qeuroInStQEURO, "Total QEURO supply should be consistent");
-        
-        console.log("Total QEURO supply:", totalQEUROSupply / 1e18);
-        console.log("QEURO in stQEUROFactory:", qeuroInStQEURO / 1e18);
-        console.log("QEURO in circulation:", qeuroInCirculation / 1e18);
+        {
+            console.log("\n--- Step 3: Supply Consistency Check ---");
+
+            uint256 totalQEUROSupply = qeuroToken.totalSupply();
+            uint256 stQEUROUnderlying = stQEURO.totalUnderlying();
+
+            // QEURO in circulation + QEURO locked in stQEURO should equal total supply
+            uint256 qeuroInStQEURO = qeuroToken.balanceOf(address(stQEURO));
+            uint256 qeuroInCirculation = totalQEUROSupply - qeuroInStQEURO;
+
+            assertEq(qeuroInStQEURO, stQEUROUnderlying, "stQEURO underlying should match locked QEURO");
+            assertEq(totalQEUROSupply, qeuroInCirculation + qeuroInStQEURO, "Total QEURO supply should be consistent");
+
+            console.log("Total QEURO supply:", totalQEUROSupply / 1e18);
+            console.log("QEURO in stQEUROFactory:", qeuroInStQEURO / 1e18);
+            console.log("QEURO in circulation:", qeuroInCirculation / 1e18);
+        }
         
         // =============================================================================
         // STEP 4: Verify collateralization
         // =============================================================================
-        console.log("\n--- Step 4: Collateralization Check ---");
-        
-        uint256 vaultUSDCBalance = mockUSDC.balanceOf(address(vault));
-        // Convert QEURO (18 dec) to USDC (6 dec) via EUR/USD price (18 dec): USDC = QEURO * price / 1e30
-        uint256 requiredUSDC = (totalQEUROSupply * eurUsdPrice) / 1e30;
+        {
+            console.log("\n--- Step 4: Collateralization Check ---");
 
-        assertGe(vaultUSDCBalance, requiredUSDC, "Vault should have sufficient USDC collateral");
-        
-        uint256 collateralizationRatio = (vaultUSDCBalance * 1e18) / requiredUSDC;
-        console.log("Collateralization ratio:", collateralizationRatio / 1e16, "%");
+            uint256 totalQEUROSupply = qeuroToken.totalSupply();
+            uint256 vaultUSDCBalance = mockUSDC.balanceOf(address(vault));
+            // Convert QEURO (18 dec) to USDC (6 dec) via EUR/USD price (18 dec): USDC = QEURO * price / 1e30
+            uint256 requiredUSDC = (totalQEUROSupply * eurUsdPrice) / 1e30;
+
+            assertGe(vaultUSDCBalance, requiredUSDC, "Vault should have sufficient USDC collateral");
+
+            uint256 collateralizationRatio = (vaultUSDCBalance * 1e18) / requiredUSDC;
+            console.log("Collateralization ratio:", collateralizationRatio / 1e16, "%");
+        }
         
         // =============================================================================
         // STEP 5: User unstakes and redeems QEURO back to USDC
         // =============================================================================
-        console.log("\n--- Step 5: User Unstakes and Redeems ---");
-        
-        vm.startPrank(user1);
-        
-        // Unstake stQEURO
-        stQEURO.unstake(userStQEUROBalance);
-        
-        uint256 qeuroAfterUnstake = qeuroToken.balanceOf(user1);
-        assertApproxEqRel(qeuroAfterUnstake, userQEUROBalance, 0.01e18, "User should have QEURO back after unstaking");
-        
-        // Redeem QEURO for USDC
-        uint256 qeuroToRedeem = qeuroAfterUnstake;
-        uint256 usdcBeforeRedeem = mockUSDC.balanceOf(user1);
-        
-        // Calculate minimum USDC expected (allow slippage for fees)
-        // Convert QEURO (18 dec) to USDC (6 dec) via EUR/USD price (18 dec): USDC = QEURO * price / 1e30
-        uint256 expectedUSDC = (qeuroToRedeem * eurUsdPrice) / 1e30;
-        uint256 minUsdcOut = (expectedUSDC * 80) / 100;
-        
-        qeuroToken.approve(address(vault), qeuroToRedeem);
-        vault.redeemQEURO(qeuroToRedeem, minUsdcOut);
-        
-        uint256 usdcAfterRedeem = mockUSDC.balanceOf(user1);
-        uint256 usdcReceived = usdcAfterRedeem - usdcBeforeRedeem;
-        
-        vm.stopPrank();
-        
-        // Verify redemption amount (should be approximately equal to deposit, minus fees)
-        assertApproxEqRel(usdcReceived, expectedUSDC, 0.01e18, "USDC received should match expected amount");
-        
-        console.log("QEURO redeemed:", qeuroToRedeem / 1e18);
-        console.log("USDC received:", usdcReceived / 1e6);
+        {
+            console.log("\n--- Step 5: User Unstakes and Redeems ---");
+
+            vm.startPrank(user1);
+
+            // Unstake stQEURO
+            stQEURO.unstake(userStQEUROBalance);
+
+            uint256 qeuroAfterUnstake = qeuroToken.balanceOf(user1);
+            assertApproxEqRel(qeuroAfterUnstake, userQEUROBalance, 0.01e18, "User should have QEURO back after unstaking");
+
+            // Redeem QEURO for USDC
+            uint256 qeuroToRedeem = qeuroAfterUnstake;
+            uint256 usdcBeforeRedeem = mockUSDC.balanceOf(user1);
+
+            // Calculate minimum USDC expected (allow slippage for fees)
+            // Convert QEURO (18 dec) to USDC (6 dec) via EUR/USD price (18 dec): USDC = QEURO * price / 1e30
+            uint256 expectedUSDC = (qeuroToRedeem * eurUsdPrice) / 1e30;
+            uint256 minUsdcOut = (expectedUSDC * 80) / 100;
+
+            qeuroToken.approve(address(vault), qeuroToRedeem);
+            vault.redeemQEURO(qeuroToRedeem, minUsdcOut);
+
+            uint256 usdcAfterRedeem = mockUSDC.balanceOf(user1);
+            uint256 usdcReceived = usdcAfterRedeem - usdcBeforeRedeem;
+            vm.stopPrank();
+
+            // Verify redemption amount (should be approximately equal to deposit, minus fees)
+            assertApproxEqRel(usdcReceived, expectedUSDC, 0.01e18, "USDC received should match expected amount");
+
+            console.log("QEURO redeemed:", qeuroToRedeem / 1e18);
+            console.log("USDC received:", usdcReceived / 1e6);
+        }
         
         // =============================================================================
         // STEP 6: Final state verification

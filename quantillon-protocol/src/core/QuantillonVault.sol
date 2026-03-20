@@ -23,8 +23,9 @@ import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IOracle} from "../interfaces/IOracle.sol";
 import {IHedgerPool} from "../interfaces/IHedgerPool.sol";
 import {IUserPool} from "../interfaces/IUserPool.sol";
-import {IAaveVault} from "../interfaces/IAaveVault.sol";
+import {IExternalStakingVault} from "../interfaces/IExternalStakingVault.sol";
 import {IStQEUROFactory} from "../interfaces/IStQEUROFactory.sol";
+import {IstQEURO} from "../interfaces/IstQEURO.sol";
 import {FeeCollector} from "./FeeCollector.sol";
 import {VaultMath} from "../libraries/VaultMath.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
@@ -187,22 +188,41 @@ contract QuantillonVault is
     /// @notice USDC balance before flash loan check (used by flashLoanProtection modifier)
     uint256 private _flashLoanBalanceBefore;
 
-    /// @notice AaveVault contract for USDC yield generation
-    /// @dev Used to deploy idle USDC to Aave lending pool
-    IAaveVault public aaveVault;
-    
-    /// @notice Total USDC deployed to Aave for yield generation
-    /// @dev Tracks USDC that has been sent to AaveVault
-    uint256 public totalUsdcInAave;
+    /// @notice Default vault id used for automatic deployment after minting.
+    uint256 public defaultStakingVaultId;
+
+    /// @notice Total principal deployed across all external staking vaults.
+    uint256 public totalUsdcInExternalVaults;
+
+    /// @notice External staking vault adapter by vault id.
+    mapping(uint256 => IExternalStakingVault) private stakingVaultAdapterById;
+
+    /// @notice Tracked principal deployed to each external staking vault.
+    mapping(uint256 => uint256) private principalUsdcByVaultId;
+
+    /// @notice Active flag for configured external staking vault ids.
+    mapping(uint256 => bool) private stakingVaultActiveById;
+
+    /// @notice Ordered list of active vault ids used for redemption liquidity sourcing.
+    uint256[] private redemptionPriorityVaultIds;
 
     /// @notice stQEURO factory used to register this vault's staking token.
     address public stQEUROFactory;
 
-    /// @notice stQEURO token address registered for this vault.
-    address public stQEUROToken;
+    /// @notice stQEURO token address registered per vault id.
+    mapping(uint256 => address) public stQEUROTokenByVaultId;
 
-    /// @notice Registry id used when creating this vault's stQEURO token.
-    uint256 public stQEUROVaultId;
+    struct LiquidationCommitParams {
+        address redeemer;
+        uint256 qeuroAmount;
+        uint256 totalSupply;
+        uint256 usdcPayout;
+        uint256 netUsdcPayout;
+        uint256 fee;
+        uint256 collateralizationRatioBps;
+        bool isPremium;
+        uint256 externalWithdrawalAmount;
+    }
 
     // Protocol parameters (configurable by governance)
     
@@ -220,7 +240,7 @@ contract QuantillonVault is
     uint256 public hedgerRewardFeeSplit;
 
     /// @notice Maximum value allowed for hedgerRewardFeeSplit
-    uint256 public constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18;
+    uint256 private constant MAX_HEDGER_REWARD_FEE_SPLIT = 1e18;
 
     // INFO-3: TAKES_FEES_DURING_LIQUIDATION was a named constant for the immutable value `true`.
     //         Replaced with inline logic throughout to remove the misleading implication
@@ -268,9 +288,9 @@ contract QuantillonVault is
     bool public devModeEnabled;
 
     /// @notice MED-1: Minimum delay before a proposed dev-mode change takes effect
-    uint256 public constant DEV_MODE_DELAY = 48 hours;
+    uint256 private constant DEV_MODE_DELAY = 48 hours;
     /// @notice MED-1: Canonical block delay for dev-mode proposals (12s block target)
-    uint256 public constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12;
+    uint256 private constant DEV_MODE_DELAY_BLOCKS = DEV_MODE_DELAY / 12;
 
     /// @notice MED-1: Pending dev-mode value awaiting the timelock delay
     bool public pendingDevMode;
@@ -391,10 +411,10 @@ contract QuantillonVault is
     /// @param activatesAt Timestamp at which the change can be applied
     event DevModeProposed(bool pending, uint256 activatesAt);
 
-    /// @notice Emitted when AaveVault address is updated
-    /// @param oldAaveVault Previous AaveVault address
-    /// @param newAaveVault New AaveVault address
-    event AaveVaultUpdated(address indexed oldAaveVault, address indexed newAaveVault);
+    /// @notice Emitted when an external staking vault adapter is configured.
+    event StakingVaultConfigured(uint256 indexed vaultId, address indexed adapter, bool active);
+    event DefaultStakingVaultUpdated(uint256 indexed previousVaultId, uint256 indexed newVaultId);
+    event RedemptionPriorityUpdated(uint256[] vaultIds);
     event StQEURORegistered(
         address indexed factory,
         uint256 indexed vaultId,
@@ -402,20 +422,37 @@ contract QuantillonVault is
         string vaultName
     );
 
-    /// @notice Emitted when USDC is deployed to Aave for yield generation
-    /// @param usdcAmount Amount of USDC deployed to Aave
-    /// @param totalUsdcInAave New total USDC in Aave after deployment
-    event UsdcDeployedToAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
-    event AaveDeploymentFailed(uint256 amount, bytes reason);
+    event UsdcDeployedToExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
+    event ExternalVaultYieldHarvested(uint256 indexed vaultId, uint256 harvestedYield);
+    event ExternalVaultDeploymentFailed(uint256 indexed vaultId, uint256 amount, bytes reason);
     event HedgerSyncFailed(string operation, uint256 amount, uint256 price, bytes reason);
 
-    /// @notice Emitted when USDC is withdrawn from Aave
-    /// @param usdcAmount Amount of USDC withdrawn from Aave
-    /// @param totalUsdcInAave New total USDC in Aave after withdrawal
-    event UsdcWithdrawnFromAave(uint256 indexed usdcAmount, uint256 totalUsdcInAave);
+    event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
     event HedgerRewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
-    event AaveInterestHarvested(uint256 harvestedYield);
     event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReserveShare, uint256 collectorShare);
+
+    struct MintCommitPayload {
+        address payer;
+        address qeuroRecipient;
+        uint256 usdcAmount;
+        uint256 fee;
+        uint256 netAmount;
+        uint256 qeuroToMint;
+        uint256 eurUsdPrice;
+        bool isValidPrice;
+        uint256 targetVaultId;
+    }
+
+    struct RedeemCommitPayload {
+        address redeemer;
+        uint256 qeuroAmount;
+        uint256 usdcToReturn;
+        uint256 netUsdcToReturn;
+        uint256 fee;
+        uint256 eurUsdPrice;
+        bool isValidPrice;
+        uint256 externalWithdrawalAmount;
+    }
 
     // =============================================================================
     // MODIFIERS - Access control and security
@@ -436,6 +473,10 @@ contract QuantillonVault is
         _;
     }
 
+    function _onlySelf() internal view {
+        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
+    }
+
     function _flashLoanProtectionBefore() private {
         _flashLoanBalanceBefore = usdc.balanceOf(address(this));
     }
@@ -445,22 +486,6 @@ contract QuantillonVault is
         if (!FlashLoanProtectionLibrary.validateBalanceChange(_flashLoanBalanceBefore, balanceAfter, 0)) {
             revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
         }
-    }
-
-    /**
-     * @notice Reverts unless caller is this contract
-     * @dev Used to gate commit-phase functions invoked through explicit self-calls.
-     * @custom:security Prevents external callers from invoking internal commit entrypoints directly
-     * @custom:validation Reverts when `msg.sender != address(this)`
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors Reverts with `NotAuthorized` if caller is not self
-     * @custom:reentrancy No external calls
-     * @custom:access Internal helper
-     * @custom:oracle No oracle dependencies
-     */
-    function _onlySelf() internal view {
-        if (msg.sender != address(this)) revert CommonErrorLibrary.NotAuthorized();
     }
 
     // =============================================================================
@@ -604,48 +629,132 @@ contract QuantillonVault is
         uint256 usdcAmount,
         uint256 minQeuroOut
     ) external nonReentrant whenNotPaused flashLoanProtection {
-        // CHECKS
+        _mintQEUROFlow(msg.sender, msg.sender, usdcAmount, minQeuroOut, defaultStakingVaultId);
+    }
+
+    function mintQEUROToVault(
+        uint256 usdcAmount,
+        uint256 minQeuroOut,
+        uint256 vaultId
+    ) external nonReentrant whenNotPaused flashLoanProtection {
+        _mintQEUROFlow(msg.sender, msg.sender, usdcAmount, minQeuroOut, vaultId);
+    }
+
+    function mintAndStakeQEURO(
+        uint256 usdcAmount,
+        uint256 minQeuroOut,
+        uint256 vaultId,
+        uint256 minStQEUROOut
+    ) external nonReentrant whenNotPaused flashLoanProtection returns (uint256 qeuroMinted, uint256 stQEUROMinted) {
+        qeuroMinted = _mintQEUROFlow(msg.sender, address(this), usdcAmount, minQeuroOut, vaultId);
+
+        address stToken = stQEUROTokenByVaultId[vaultId];
+        if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
+        IERC20(address(qeuro)).safeIncreaseAllowance(stToken, qeuroMinted);
+        stQEUROMinted = IstQEURO(stToken).stake(qeuroMinted);
+        if (stQEUROMinted < minStQEUROOut) revert CommonErrorLibrary.ExcessiveSlippage();
+
+        IERC20(stToken).safeTransfer(msg.sender, stQEUROMinted);
+    }
+
+    function _mintQEUROFlow(
+        address payer,
+        address qeuroRecipient,
+        uint256 usdcAmount,
+        uint256 minQeuroOut,
+        uint256 targetVaultId
+    ) internal returns (uint256 qeuroToMint) {
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
-        
-        // Cache all oracle calls in the read phase.
-        (uint256 eurUsdPrice, bool isValid) = oracle.getEurUsdPrice();
+        if (payer == address(0) || qeuroRecipient == address(0)) revert CommonErrorLibrary.InvalidAddress();
+        _validateMintRouting(targetVaultId);
+        (uint256 eurUsdPrice, bool isValid) = _getValidatedMintPrices();
+        _enforceMintEligibility();
+        _enforceMintPriceDeviation(eurUsdPrice);
+        (uint256 fee, uint256 netAmount, uint256 computedQeuroToMint) =
+            _computeMintAmounts(usdcAmount, eurUsdPrice, minQeuroOut);
+        qeuroToMint = computedQeuroToMint;
+        _enforceProjectedMintCollateralization(netAmount, qeuroToMint, eurUsdPrice);
+
+        MintCommitPayload memory payload;
+        payload.payer = payer;
+        payload.qeuroRecipient = qeuroRecipient;
+        payload.usdcAmount = usdcAmount;
+        payload.fee = fee;
+        payload.netAmount = netAmount;
+        payload.qeuroToMint = qeuroToMint;
+        payload.eurUsdPrice = eurUsdPrice;
+        payload.isValidPrice = isValid;
+        payload.targetVaultId = targetVaultId;
+        _dispatchMintCommit(payload);
+    }
+
+    function _dispatchMintCommit(MintCommitPayload memory payload) internal {
+        this._mintQEUROCommit(
+            payload.payer,
+            payload.qeuroRecipient,
+            payload.usdcAmount,
+            payload.fee,
+            payload.netAmount,
+            payload.qeuroToMint,
+            payload.eurUsdPrice,
+            payload.isValidPrice,
+            payload.targetVaultId
+        );
+    }
+
+    function _validateMintRouting(uint256 targetVaultId) internal view {
+        if (targetVaultId == 0) return;
+        if (!stakingVaultActiveById[targetVaultId]) revert CommonErrorLibrary.InvalidVault();
+        if (address(stakingVaultAdapterById[targetVaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+    }
+
+    function _getValidatedMintPrices() internal returns (uint256 eurUsdPrice, bool isValid) {
+        (eurUsdPrice, isValid) = oracle.getEurUsdPrice();
         if (!isValid) revert CommonErrorLibrary.InvalidOraclePrice();
 
-        // Reject minting if USDC is depegged to prevent undercollateralization.
         (uint256 usdcUsdPrice, bool usdcIsValid) = oracle.getUsdcUsdPrice();
         if (!usdcIsValid || usdcUsdPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
+    }
 
-        // LOW-5 / INFO-2: minting requires initialized cache and an active single hedger.
+    function _enforceMintEligibility() internal view {
         if (lastValidEurUsdPrice == 0) revert CommonErrorLibrary.NotInitialized();
         if (address(hedgerPool) == address(0) || !hedgerPool.hasActiveHedger()) {
             revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
         }
-
-        // Check if we can mint based on current state.
         if (!canMint()) revert CommonErrorLibrary.InsufficientCollateralization();
-        
-        // Price deviation check using cached price (skip if dev mode is enabled).
-        if (!devModeEnabled) {
-            (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
-                eurUsdPrice,
-                lastValidEurUsdPrice,
-                MAX_PRICE_DEVIATION,
-                lastPriceUpdateBlock,
-                MIN_BLOCKS_BETWEEN_UPDATES
-            );
-            if (shouldRevert) {
-                emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
-                revert CommonErrorLibrary.ExcessiveSlippage();
-            }
+    }
+
+    function _enforceMintPriceDeviation(uint256 eurUsdPrice) internal {
+        if (devModeEnabled) return;
+
+        (bool shouldRevert, uint256 deviationBps) = PriceValidationLibrary.checkPriceDeviation(
+            eurUsdPrice,
+            lastValidEurUsdPrice,
+            MAX_PRICE_DEVIATION,
+            lastPriceUpdateBlock,
+            MIN_BLOCKS_BETWEEN_UPDATES
+        );
+        if (shouldRevert) {
+            emit PriceDeviationDetected(eurUsdPrice, lastValidEurUsdPrice, deviationBps, block.number);
+            revert CommonErrorLibrary.ExcessiveSlippage();
         }
+    }
 
-        // Calculate mint fee and QEURO amount using validated oracle price.
-        uint256 fee = usdcAmount.mulDiv(mintFee, 1e18);
-        uint256 netAmount = usdcAmount - fee;
-        uint256 qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
+    function _computeMintAmounts(uint256 usdcAmount, uint256 eurUsdPrice, uint256 minQeuroOut)
+        internal
+        view
+        returns (uint256 fee, uint256 netAmount, uint256 qeuroToMint)
+    {
+        fee = usdcAmount.mulDiv(mintFee, 1e18);
+        netAmount = usdcAmount - fee;
+        qeuroToMint = netAmount.mulDiv(1e30, eurUsdPrice);
         if (qeuroToMint < minQeuroOut) revert CommonErrorLibrary.ExcessiveSlippage();
+    }
 
-        // Critical safety check: enforce collateralization on projected post-mint state.
+    function _enforceProjectedMintCollateralization(uint256 netAmount, uint256 qeuroToMint, uint256 eurUsdPrice)
+        internal
+        view
+    {
         uint256 currentSupply = qeuro.totalSupply();
         uint256 collateralBeforeMint = _getTotalCollateralWithAccruedYield();
         uint256 projectedSupply = currentSupply + qeuroToMint;
@@ -656,14 +765,12 @@ contract QuantillonVault is
         if (projectedCollateralizationRatio < minCollateralizationRatioForMinting) {
             revert CommonErrorLibrary.InsufficientCollateralization();
         }
-
-        this._mintQEUROCommit(msg.sender, usdcAmount, fee, netAmount, qeuroToMint, eurUsdPrice, isValid);
     }
 
     /**
      * @notice Commits mint flow effects/interactions after validation phase
      * @dev Called via explicit self-call from `mintQEURO` to separate validation and commit phases.
-     * @param minter User receiving freshly minted QEURO
+     * @param payer User receiving freshly minted QEURO
      * @param usdcAmount Gross USDC transferred in
      * @param fee Protocol fee portion from `usdcAmount`
      * @param netAmount Net USDC credited to collateral after fees
@@ -680,15 +787,17 @@ contract QuantillonVault is
      * @custom:oracle Uses pre-validated oracle price input
      */
     function _mintQEUROCommit(
-        address minter,
+        address payer,
+        address qeuroRecipient,
         uint256 usdcAmount,
         uint256 fee,
         uint256 netAmount,
         uint256 qeuroToMint,
         uint256 eurUsdPrice,
-        bool isValidPrice
+        bool isValidPrice,
+        uint256 targetVaultId
     ) external onlySelf {
-        uint256 autoDeployAmount = address(aaveVault) != address(0) ? netAmount : 0;
+        uint256 autoDeployAmount = targetVaultId != 0 ? netAmount : 0;
 
         // EFFECTS
         lastPriceUpdateBlock = block.number;
@@ -701,20 +810,21 @@ contract QuantillonVault is
         if (autoDeployAmount > 0) {
             unchecked {
                 totalUsdcHeld -= autoDeployAmount;
-                totalUsdcInAave += autoDeployAmount;
+                principalUsdcByVaultId[targetVaultId] += autoDeployAmount;
+                totalUsdcInExternalVaults += autoDeployAmount;
             }
         }
 
         _syncMintWithHedgersOrRevert(netAmount, eurUsdPrice, qeuroToMint);
-        emit QEUROminted(minter, usdcAmount, qeuroToMint);
+        emit QEUROminted(payer, usdcAmount, qeuroToMint);
 
         // INTERACTIONS
-        usdc.safeTransferFrom(minter, address(this), usdcAmount);
+        usdc.safeTransferFrom(payer, address(this), usdcAmount);
         _routeProtocolFees(fee, "minting");
-        qeuro.mint(minter, qeuroToMint);
+        qeuro.mint(qeuroRecipient, qeuroToMint);
 
         if (autoDeployAmount > 0) {
-            _autoDeployToAave(autoDeployAmount);
+            _autoDeployToVault(targetVaultId, autoDeployAmount);
         }
     }
     
@@ -731,15 +841,16 @@ contract QuantillonVault is
      * @custom:access Internal function - no access restrictions
      * @custom:oracle No oracle dependencies
      */
-    function _autoDeployToAave(uint256 usdcAmount) internal {
-        // Skip if AaveVault not configured or amount is zero.
-        if (address(aaveVault) == address(0) || usdcAmount == 0) return;
+    function _autoDeployToVault(uint256 vaultId, uint256 usdcAmount) internal {
+        if (vaultId == 0 || usdcAmount == 0) return;
 
-        // INTERACTIONS only - accounting is updated by the caller before this call.
-        usdc.safeIncreaseAllowance(address(aaveVault), usdcAmount);
-        uint256 aTokensReceived = aaveVault.deployToAave(usdcAmount);
-        if (aTokensReceived == 0) revert CommonErrorLibrary.InvalidAmount();
-        emit UsdcDeployedToAave(usdcAmount, totalUsdcInAave);
+        IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
+        if (!stakingVaultActiveById[vaultId] || address(adapter) == address(0)) revert CommonErrorLibrary.InvalidVault();
+
+        usdc.safeIncreaseAllowance(address(adapter), usdcAmount);
+        uint256 sharesReceived = adapter.depositUnderlying(usdcAmount);
+        if (sharesReceived == 0) revert CommonErrorLibrary.InvalidAmount();
+        emit UsdcDeployedToExternalVault(vaultId, usdcAmount, principalUsdcByVaultId[vaultId]);
     }
 
     /**
@@ -822,16 +933,29 @@ contract QuantillonVault is
 
         if (address(hedgerPool) == address(0)) revert CommonErrorLibrary.InvalidVault();
 
-        uint256 aaveWithdrawalAmount = _planAaveWithdrawal(usdcToReturn);
+        uint256 externalWithdrawalAmount = _planExternalVaultWithdrawal(usdcToReturn);
+        RedeemCommitPayload memory payload;
+        payload.redeemer = msg.sender;
+        payload.qeuroAmount = qeuroAmount;
+        payload.usdcToReturn = usdcToReturn;
+        payload.netUsdcToReturn = netUsdcToReturn;
+        payload.fee = fee;
+        payload.eurUsdPrice = eurUsdPrice;
+        payload.isValidPrice = isValid;
+        payload.externalWithdrawalAmount = externalWithdrawalAmount;
+        _dispatchRedeemCommit(payload);
+    }
+
+    function _dispatchRedeemCommit(RedeemCommitPayload memory payload) internal {
         this._redeemQEUROCommit(
-            msg.sender,
-            qeuroAmount,
-            usdcToReturn,
-            netUsdcToReturn,
-            fee,
-            eurUsdPrice,
-            isValid,
-            aaveWithdrawalAmount
+            payload.redeemer,
+            payload.qeuroAmount,
+            payload.usdcToReturn,
+            payload.netUsdcToReturn,
+            payload.fee,
+            payload.eurUsdPrice,
+            payload.isValidPrice,
+            payload.externalWithdrawalAmount
         );
     }
 
@@ -845,7 +969,7 @@ contract QuantillonVault is
      * @param fee Protocol fee amount from redemption
      * @param eurUsdPrice Validated EUR/USD price used for cache update
      * @param isValidPrice Whether oracle read used for cache timestamp was valid
-     * @param aaveWithdrawalAmount Planned USDC amount to source from Aave (if needed)
+     * @param externalWithdrawalAmount Planned USDC amount to source from Aave (if needed)
      * @custom:security Restricted by `onlySelf`; called from `nonReentrant` parent flow
      * @custom:validation Reverts if held liquidity is insufficient or mint tracker underflows
      * @custom:state-changes Updates collateral/mint trackers and price cache
@@ -863,32 +987,28 @@ contract QuantillonVault is
         uint256 fee,
         uint256 eurUsdPrice,
         bool isValidPrice,
-        uint256 aaveWithdrawalAmount
+        uint256 externalWithdrawalAmount
     ) external onlySelf {
-        if (aaveWithdrawalAmount > 0) {
-            uint256 principalReduction = aaveWithdrawalAmount > totalUsdcInAave ? totalUsdcInAave : aaveWithdrawalAmount;
-            totalUsdcInAave -= principalReduction;
-            totalUsdcHeld += aaveWithdrawalAmount;
-        }
-
-        if (totalUsdcHeld < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
+        uint256 projectedHeld = totalUsdcHeld + externalWithdrawalAmount;
+        if (projectedHeld < usdcToReturn) revert CommonErrorLibrary.InsufficientBalance();
 
         // EFFECTS
         lastPriceUpdateBlock = block.number;
         lastValidEurUsdPrice = eurUsdPrice;
         _updatePriceTimestamp(isValidPrice);
 
-        totalUsdcHeld -= usdcToReturn;
+        totalUsdcHeld = projectedHeld - usdcToReturn;
         if (totalMinted < qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
         totalMinted -= qeuroAmount;
+
+        if (externalWithdrawalAmount > 0) {
+            _withdrawUsdcFromExternalVaults(externalWithdrawalAmount);
+        }
         
         _syncRedeemWithHedgers(usdcToReturn, eurUsdPrice, qeuroAmount);
         emit QEURORedeemed(redeemer, qeuroAmount, netUsdcToReturn);
 
         // INTERACTIONS
-        if (aaveWithdrawalAmount > 0) {
-            _withdrawUsdcFromAave(aaveWithdrawalAmount);
-        }
         qeuro.burn(redeemer, qeuroAmount);
         usdc.safeTransfer(redeemer, netUsdcToReturn);
         _routeProtocolFees(fee, "redemption");
@@ -961,32 +1081,25 @@ contract QuantillonVault is
         uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
         bool isPremium = usdcPayout >= fairValueUsdc;
 
-        uint256 aaveWithdrawalAmount = _planAaveWithdrawal(usdcPayout);
-        this._redeemLiquidationCommit(
-            msg.sender,
-            qeuroAmount,
-            totalSupply,
-            usdcPayout,
-            netUsdcPayout,
-            fee,
-            collateralizationRatioBps,
-            isPremium,
-            aaveWithdrawalAmount
-        );
+        uint256 externalWithdrawalAmount = _planExternalVaultWithdrawal(usdcPayout);
+        LiquidationCommitParams memory params = LiquidationCommitParams({
+            redeemer: msg.sender,
+            qeuroAmount: qeuroAmount,
+            totalSupply: totalSupply,
+            usdcPayout: usdcPayout,
+            netUsdcPayout: netUsdcPayout,
+            fee: fee,
+            collateralizationRatioBps: collateralizationRatioBps,
+            isPremium: isPremium,
+            externalWithdrawalAmount: externalWithdrawalAmount
+        });
+        _redeemLiquidationCommit(params);
     }
 
     /**
      * @notice Commits liquidation-mode redemption effects/interactions
      * @dev Called via explicit self-call from `_redeemLiquidationMode`.
-     * @param redeemer User redeeming in liquidation mode
-     * @param qeuroAmount QEURO amount burned
-     * @param totalSupply Total QEURO supply used for proportional hedger adjustment
-     * @param usdcPayout Gross pro-rata USDC payout
-     * @param netUsdcPayout Net payout transferred to user after fees
-     * @param fee Protocol fee amount
-     * @param collateralizationRatioBps Protocol collateralization ratio (bps) for event metadata
-     * @param isPremium Whether gross payout is at/above fair value
-     * @param aaveWithdrawalAmount Planned Aave withdrawal amount needed for payout
+     * @param params Packed liquidation commit values
      * @custom:security Restricted by `onlySelf`; called from guarded liquidation flow
      * @custom:validation Reverts on insufficient balances or mint tracker underflow
      * @custom:state-changes Updates collateral/mint trackers and notifies hedger pool liquidation accounting
@@ -996,44 +1109,36 @@ contract QuantillonVault is
      * @custom:access External self-call entrypoint only
      * @custom:oracle No direct oracle reads (uses precomputed inputs)
      */
-    function _redeemLiquidationCommit(
-        address redeemer,
-        uint256 qeuroAmount,
-        uint256 totalSupply,
-        uint256 usdcPayout,
-        uint256 netUsdcPayout,
-        uint256 fee,
-        uint256 collateralizationRatioBps,
-        bool isPremium,
-        uint256 aaveWithdrawalAmount
-    ) external onlySelf {
-        if (aaveWithdrawalAmount > 0) {
-            uint256 principalReduction = aaveWithdrawalAmount > totalUsdcInAave ? totalUsdcInAave : aaveWithdrawalAmount;
-            totalUsdcInAave -= principalReduction;
-            totalUsdcHeld += aaveWithdrawalAmount;
+    function _redeemLiquidationCommit(LiquidationCommitParams memory params) internal {
+        uint256 projectedHeld = totalUsdcHeld + params.externalWithdrawalAmount;
+        if (projectedHeld < params.usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
+        totalUsdcHeld = projectedHeld - params.usdcPayout;
+        if (totalMinted < params.qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
+        totalMinted -= params.qeuroAmount;
+
+        if (params.externalWithdrawalAmount > 0) {
+            _withdrawUsdcFromExternalVaults(params.externalWithdrawalAmount);
         }
 
-        if (totalUsdcHeld < usdcPayout) revert CommonErrorLibrary.InsufficientBalance();
-        totalUsdcHeld -= usdcPayout;
-        if (totalMinted < qeuroAmount) revert CommonErrorLibrary.InvalidAmount();
-        totalMinted -= qeuroAmount;
+        _notifyHedgerPoolLiquidation(params.qeuroAmount, params.totalSupply);
+        emit LiquidationRedeemed(
+            params.redeemer,
+            params.qeuroAmount,
+            params.netUsdcPayout,
+            params.collateralizationRatioBps,
+            params.isPremium
+        );
 
-        _notifyHedgerPoolLiquidation(qeuroAmount, totalSupply);
-        emit LiquidationRedeemed(redeemer, qeuroAmount, netUsdcPayout, collateralizationRatioBps, isPremium);
-
-        if (aaveWithdrawalAmount > 0) {
-            _withdrawUsdcFromAave(aaveWithdrawalAmount);
-        }
-        qeuro.burn(redeemer, qeuroAmount);
-        usdc.safeTransfer(redeemer, netUsdcPayout);
-        _transferLiquidationFees(fee);
+        qeuro.burn(params.redeemer, params.qeuroAmount);
+        usdc.safeTransfer(params.redeemer, params.netUsdcPayout);
+        _transferLiquidationFees(params.fee);
     }
 
     /**
      * @notice Calculates required Aave withdrawal to satisfy a USDC payout
      * @dev Returns zero when vault-held USDC already covers `requiredUsdc`.
      * @param requiredUsdc Target USDC amount that must be available in vault balance
-     * @return aaveWithdrawalAmount Additional USDC that should be sourced from Aave
+     * @return vaultWithdrawalAmount Additional USDC that should be sourced from Aave
      * @custom:security Enforces that Aave vault is configured before planning an Aave-backed withdrawal
      * @custom:validation Reverts with `InsufficientBalance` when deficit exists and Aave is not configured
      * @custom:state-changes None
@@ -1043,12 +1148,13 @@ contract QuantillonVault is
      * @custom:access Internal helper
      * @custom:oracle No oracle dependencies
      */
-    function _planAaveWithdrawal(uint256 requiredUsdc) internal view returns (uint256 aaveWithdrawalAmount) {
+    function _planExternalVaultWithdrawal(uint256 requiredUsdc) internal view returns (uint256 vaultWithdrawalAmount) {
         if (requiredUsdc == 0 || totalUsdcHeld >= requiredUsdc) {
             return 0;
         }
-        if (address(aaveVault) == address(0)) revert CommonErrorLibrary.InsufficientBalance();
-        aaveWithdrawalAmount = requiredUsdc - totalUsdcHeld;
+        if (totalUsdcInExternalVaults == 0) revert CommonErrorLibrary.InsufficientBalance();
+        vaultWithdrawalAmount = requiredUsdc - totalUsdcHeld;
+        if (vaultWithdrawalAmount > totalUsdcInExternalVaults) revert CommonErrorLibrary.InsufficientBalance();
     }
 
     /**
@@ -1113,52 +1219,6 @@ contract QuantillonVault is
         _routeProtocolFees(fee, "liquidation");
     }
 
-    /**
-     * @notice Redeems QEURO for USDC using pro-rata distribution in liquidation mode
-     * @dev Only callable when protocol is in liquidation mode (CR <= 101%)
-     * @dev Key formulas:
-     *      - Payout = (qeuroAmount / totalSupply) * totalVaultUsdc (actual USDC in vault)
-     *      - Hedger loss = (qeuroAmount / totalSupply) * hedgerMargin (realized as negative P&L)
-     *      - Fees always applied using `redemptionFee`
-     * @dev Premium if CR > 100%, haircut if CR < 100%
-     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
-     * @param minUsdcOut Minimum USDC expected (slippage protection)
-     * @custom:security Protected by nonReentrant, requires liquidation mode
-     * @custom:validation Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
-     * @custom:state-changes Burns QEURO, transfers USDC pro-rata, reduces hedger margin proportionally
-     * @custom:events Emits LiquidationRedeemed
-     * @custom:errors Reverts if not in liquidation mode or slippage exceeded
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Public - anyone with QEURO can redeem
-     * @custom:oracle Requires oracle price for fair value calculation
-     */
-    // SECURITY: Protected by nonReentrant modifier; external calls to trusted Oracle and AaveVault
-    function redeemQEUROLiquidation(
-        uint256 qeuroAmount,
-        uint256 minUsdcOut
-    ) external nonReentrant whenNotPaused {
-        // CHECKS
-        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
-
-        // MED-5: Reject call when core pool contracts are not yet initialized;
-        // getProtocolCollateralizationRatio() returns 0 in that state, which would
-        // falsely indicate liquidation mode and allow protocol-draining redemptions.
-        if (address(hedgerPool) == address(0) || address(userPool) == address(0)) {
-            revert CommonErrorLibrary.InvalidVault();
-        }
-
-        // Check protocol is in liquidation mode using the configurable critical threshold
-        uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
-        uint256 collateralizationRatioBps = currentRatio18Dec / 1e16;
-        uint256 criticalRatioBps = criticalCollateralizationRatio / 1e16;
-        if (collateralizationRatioBps > criticalRatioBps) revert CommonErrorLibrary.NotInLiquidationMode();
-
-        // Delegate to shared liquidation logic
-        _redeemLiquidationMode(qeuroAmount, minUsdcOut, collateralizationRatioBps);
-    }
-
-
-
     // =============================================================================
     // VIEW FUNCTIONS - Read functions for monitoring
     // =============================================================================
@@ -1169,7 +1229,7 @@ contract QuantillonVault is
      * @return totalUsdcHeld_ Total USDC held directly in the vault
      * @return totalMinted_ Total QEURO minted
      * @return totalDebtValue Total debt value in USD
-     * @return totalUsdcInAave_ Total USDC deployed to Aave for yield
+     * @return totalUsdcInExternalVaults_ Total USDC deployed to Aave for yield
      * @return totalUsdcAvailable_ Total USDC available (vault + Aave)
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
@@ -1180,92 +1240,6 @@ contract QuantillonVault is
      * @custom:access No access restrictions
      * @custom:oracle No oracle dependencies
      */
-    function getVaultMetrics() 
-        external 
-        view
-        returns (
-            uint256 totalUsdcHeld_,
-            uint256 totalMinted_,
-            uint256 totalDebtValue,
-            uint256 totalUsdcInAave_,
-            uint256 totalUsdcAvailable_
-        ) 
-    {
-        totalUsdcHeld_ = totalUsdcHeld;
-        totalMinted_ = totalMinted;
-        totalUsdcInAave_ = totalUsdcInAave;
-        totalUsdcAvailable_ = _getTotalCollateralWithAccruedYield();
-
-        // Use live QEURO totalSupply as the authoritative debt base so metrics
-        // stay in sync even if MINTER_ROLE/BURNER_ROLE operates outside this vault.
-        uint256 _liveSupply = qeuro.totalSupply();
-        if (lastValidEurUsdPrice > 0 && _liveSupply > 0) {
-            totalDebtValue = _liveSupply.mulDiv(lastValidEurUsdPrice, 1e18);
-        } else {
-            totalDebtValue = 0;
-        }
-    }
-
-    /**
-     * @notice Calculates the amount of QEURO that can be minted for a given USDC amount
-     * @dev Calculates mint amount based on cached oracle price and protocol fees
-     * @param usdcAmount Amount of USDC to swap
-     * @return qeuroAmount Amount of QEURO that will be minted (after fees)
-     * @return fee Protocol fee
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes No state changes
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown
-     * @custom:reentrancy No reentrancy protection needed
-     * @custom:access No access restrictions
-     * @custom:oracle Uses cached oracle price (`lastValidEurUsdPrice`)
-     */
-    function calculateMintAmount(uint256 usdcAmount)
-        external
-        view
-        returns (uint256 qeuroAmount, uint256 fee)
-    {
-        uint256 eurUsdPrice = lastValidEurUsdPrice;
-        if (eurUsdPrice == 0) return (0, 0);
-        fee = usdcAmount.mulDiv(mintFee, 1e18);
-        uint256 netAmount = usdcAmount - fee;
-        qeuroAmount = netAmount.mulDiv(1e30, eurUsdPrice);
-    }
-
-    /**
-     * @notice Calculates the amount of USDC received for a QEURO redemption
-     * @dev Calculates redeem amount based on cached oracle price and protocol fees
-     * @param qeuroAmount Amount of QEURO to redeem
-     * @return usdcAmount USDC received (after fees)
-     * @return fee Protocol fee
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes No state changes
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown
-     * @custom:reentrancy No reentrancy protection needed
-     * @custom:access No access restrictions
-     * @custom:oracle Uses cached oracle price (`lastValidEurUsdPrice`)
-     */
-    function calculateRedeemAmount(uint256 qeuroAmount)
-        external
-        view
-        returns (uint256 usdcAmount, uint256 fee)
-    {
-        uint256 eurUsdPrice = lastValidEurUsdPrice;
-        if (eurUsdPrice == 0) return (0, 0);
-
-        uint256 grossUsdcAmount = qeuroAmount.mulDiv(eurUsdPrice, 1e18);
-        
-        // Convert from 18 decimals (QEURO precision) to 6 decimals (USDC precision)
-        grossUsdcAmount = grossUsdcAmount / 1e12;
-        
-        // Apply protocol fees (redemptionFee is in 18 decimals, grossUsdcAmount is in 6 decimals)
-        fee = grossUsdcAmount.mulDiv(redemptionFee, 1e18);
-        usdcAmount = grossUsdcAmount - fee;
-    }
-
     /**
      * @notice Checks if the protocol is properly collateralized by hedgers
      * @dev Public view function to check collateralization status
@@ -1456,24 +1430,33 @@ contract QuantillonVault is
         emit ParametersUpdated("feeCollector", 0, 0);
     }
 
-    /**
-     * @notice Updates the AaveVault address for USDC yield generation
-     * @dev Only governance role can update the AaveVault address
-     * @param _aaveVault New AaveVault address
-     * @custom:security Validates address is not zero before updating
-     * @custom:validation Ensures _aaveVault is not address(0)
-     * @custom:state-changes Updates aaveVault state variable
-     * @custom:events Emits AaveVaultUpdated event
-     * @custom:errors Reverts if _aaveVault is address(0)
-     * @custom:reentrancy No reentrancy risk, simple state update
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function updateAaveVault(address _aaveVault) external onlyRole(GOVERNANCE_ROLE) {
-        if (_aaveVault == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        address oldAaveVault = address(aaveVault);
-        aaveVault = IAaveVault(_aaveVault);
-        emit AaveVaultUpdated(oldAaveVault, _aaveVault);
+    function setStakingVault(uint256 vaultId, address adapter, bool active) external onlyRole(GOVERNANCE_ROLE) {
+        if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
+        if (adapter == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        stakingVaultAdapterById[vaultId] = IExternalStakingVault(adapter);
+        stakingVaultActiveById[vaultId] = active;
+        emit StakingVaultConfigured(vaultId, adapter, active);
+    }
+
+    function setDefaultStakingVaultId(uint256 vaultId) external onlyRole(GOVERNANCE_ROLE) {
+        if (vaultId != 0) {
+            if (!stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
+            if (address(stakingVaultAdapterById[vaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        }
+        uint256 previous = defaultStakingVaultId;
+        defaultStakingVaultId = vaultId;
+        emit DefaultStakingVaultUpdated(previous, vaultId);
+    }
+
+    function setRedemptionPriority(uint256[] calldata vaultIds) external onlyRole(GOVERNANCE_ROLE) {
+        delete redemptionPriorityVaultIds;
+        for (uint256 i = 0; i < vaultIds.length; ++i) {
+            uint256 vaultId = vaultIds[i];
+            if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
+            if (address(stakingVaultAdapterById[vaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+            redemptionPriorityVaultIds.push(vaultId);
+        }
+        emit RedemptionPriorityUpdated(vaultIds);
     }
 
     /**
@@ -1499,15 +1482,14 @@ contract QuantillonVault is
         returns (address token)
     {
         if (factory == address(0)) revert CommonErrorLibrary.InvalidToken();
-        if (stQEUROToken != address(0)) revert CommonErrorLibrary.AlreadyInitialized();
         if (vaultId == 0) revert CommonErrorLibrary.InvalidVault();
+        if (stQEUROTokenByVaultId[vaultId] != address(0)) revert CommonErrorLibrary.AlreadyInitialized();
 
         token = IStQEUROFactory(factory).previewVaultToken(address(this), vaultId, vaultName);
         if (token == address(0)) revert CommonErrorLibrary.InvalidAddress();
 
         stQEUROFactory = factory;
-        stQEUROToken = token;
-        stQEUROVaultId = vaultId;
+        stQEUROTokenByVaultId[vaultId] = token;
 
         address registeredToken = IStQEUROFactory(factory).registerVault(vaultId, vaultName);
         if (registeredToken != token) revert CommonErrorLibrary.InvalidAddress();
@@ -1515,87 +1497,102 @@ contract QuantillonVault is
         emit StQEURORegistered(factory, vaultId, token, vaultName);
     }
 
-    /**
-     * @notice Harvests accrued Aave interest through AaveVault and routes yield via YieldShift.
-     * @dev HIGH-2 / NEW-1 remediation entrypoint for explicit yield synchronization.
-     * @return harvestedYield Amount harvested by AaveVault (USDC 6 decimals).
-     * @custom:security Restricted to governance and guarded by `nonReentrant`.
-     * @custom:validation Requires configured AaveVault address.
-     * @custom:state-changes May update Aave-side accounting and emits local harvest event.
-     * @custom:events Emits `AaveInterestHarvested`.
-     * @custom:errors Reverts when AaveVault is unset or downstream harvest call fails.
-     * @custom:reentrancy Protected by `nonReentrant`.
-     * @custom:access Restricted to `GOVERNANCE_ROLE`.
-     * @custom:oracle No direct oracle interaction.
-     */
-    function harvestAaveInterest() external onlyRole(GOVERNANCE_ROLE) nonReentrant returns (uint256 harvestedYield) {
-        if (address(aaveVault) == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        harvestedYield = aaveVault.harvestAaveYield();
-        emit AaveInterestHarvested(harvestedYield);
+    function harvestVaultYield(uint256 vaultId)
+        external
+        onlyRole(GOVERNANCE_ROLE)
+        nonReentrant
+        returns (uint256 harvestedYield)
+    {
+        IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
+        if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
+        if (address(adapter) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+
+        harvestedYield = adapter.harvestYield();
+        emit ExternalVaultYieldHarvested(vaultId, harvestedYield);
     }
 
-    // =============================================================================
-    // AAVE INTEGRATION FUNCTIONS - Deploy USDC to Aave for yield generation
-    // =============================================================================
-
-    /**
-     * @notice Deploys USDC from the vault to Aave for yield generation
-     * @dev Called by UserPool after minting QEURO to automatically deploy USDC to Aave
-     * @param usdcAmount Amount of USDC to deploy to Aave (6 decimals)
-     * @custom:security Only callable by VAULT_OPERATOR_ROLE (UserPool)
-     * @custom:validation Validates amount > 0, AaveVault is set, and sufficient USDC balance
-     * @custom:state-changes Updates totalUsdcHeld (decreases) and totalUsdcInAave (increases)
-     * @custom:events Emits UsdcDeployedToAave event
-     * @custom:errors Reverts if amount is 0, AaveVault not set, or insufficient USDC
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to VAULT_OPERATOR_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function deployUsdcToAave(uint256 usdcAmount) external nonReentrant onlyRole(VAULT_OPERATOR_ROLE) {
-        // CHECKS
+    function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount) external nonReentrant onlyRole(VAULT_OPERATOR_ROLE) {
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
-        if (address(aaveVault) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
-        
-        // EFFECTS - Update state before external calls
+        if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
+        IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
+        if (address(adapter) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+
         unchecked {
             totalUsdcHeld -= usdcAmount;
-            totalUsdcInAave += usdcAmount;
+            principalUsdcByVaultId[vaultId] += usdcAmount;
+            totalUsdcInExternalVaults += usdcAmount;
         }
-        
-        emit UsdcDeployedToAave(usdcAmount, totalUsdcInAave);
-        
-        // INTERACTIONS - Transfer USDC to AaveVault and deploy to Aave
-        usdc.safeIncreaseAllowance(address(aaveVault), usdcAmount);
-        uint256 aTokensReceived = aaveVault.deployToAave(usdcAmount);
-        
-        // Validate that deployment was successful (aTokensReceived should be > 0)
-        if (aTokensReceived == 0) revert CommonErrorLibrary.InvalidAmount();
+
+        usdc.safeIncreaseAllowance(address(adapter), usdcAmount);
+        uint256 sharesReceived = adapter.depositUnderlying(usdcAmount);
+        if (sharesReceived == 0) revert CommonErrorLibrary.InvalidAmount();
+
+        emit UsdcDeployedToExternalVault(vaultId, usdcAmount, principalUsdcByVaultId[vaultId]);
     }
 
-    /**
-     * @notice Withdraws USDC from Aave back to the vault
-     * @dev Called internally when redemptions require more USDC than available in vault
-     * @param usdcAmount Amount of USDC to withdraw from Aave (6 decimals)
-     * @return usdcWithdrawn Actual amount of USDC withdrawn
-     * @custom:security Internal function, called during redemption flow
-     * @custom:validation Validates amount > 0 and AaveVault is set
-     * @custom:state-changes Updates totalUsdcHeld (increases) and totalUsdcInAave (decreases)
-     * @custom:events Emits UsdcWithdrawnFromAave event
-     * @custom:errors Reverts if amount is 0 or AaveVault not set
-     * @custom:reentrancy Not protected - internal function only
-     * @custom:access Internal function - called by redeemQEURO
-     * @custom:oracle No oracle dependencies
-     */
-    // SECURITY: Internal function called from nonReentrant context; external call to trusted AaveVault
-    function _withdrawUsdcFromAave(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn) {
-        if (address(aaveVault) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+    function getVaultExposure(uint256 vaultId)
+        external
+        view
+        returns (address adapter, bool active, uint256 principalTracked, uint256 currentUnderlying)
+    {
+        adapter = address(stakingVaultAdapterById[vaultId]);
+        active = stakingVaultActiveById[vaultId];
+        principalTracked = principalUsdcByVaultId[vaultId];
+        if (adapter != address(0)) {
+            try IExternalStakingVault(adapter).totalUnderlying() returns (uint256 underlying) {
+                currentUnderlying = underlying;
+            } catch {
+                currentUnderlying = principalTracked;
+            }
+        }
+    }
+
+    function _withdrawUsdcFromExternalVaults(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn) {
         if (usdcAmount == 0) return 0;
 
-        // INTERACTIONS only - accounting is updated by the caller before this call.
-        usdcWithdrawn = aaveVault.withdrawFromAave(usdcAmount);
-        if (usdcWithdrawn != usdcAmount) revert CommonErrorLibrary.ExcessiveSlippage();
-        emit UsdcWithdrawnFromAave(usdcWithdrawn, totalUsdcInAave);
+        uint256 remaining = usdcAmount;
+        uint256[] memory priority = _resolveWithdrawalPriority();
+
+        for (uint256 i = 0; i < priority.length && remaining > 0; ++i) {
+            uint256 withdrawn = _withdrawFromExternalVault(priority[i], remaining);
+            if (withdrawn == 0) continue;
+            usdcWithdrawn += withdrawn;
+            remaining -= withdrawn;
+        }
+
+        if (remaining > 0) revert CommonErrorLibrary.InsufficientBalance();
+    }
+
+    function _resolveWithdrawalPriority() internal view returns (uint256[] memory priority) {
+        priority = redemptionPriorityVaultIds;
+        if (priority.length > 0) return priority;
+
+        uint256 defaultVaultId = defaultStakingVaultId;
+        if (defaultVaultId == 0) revert CommonErrorLibrary.InsufficientBalance();
+
+        priority = new uint256[](1);
+        priority[0] = defaultVaultId;
+    }
+
+    function _withdrawFromExternalVault(uint256 vaultId, uint256 remaining) internal returns (uint256 withdrawnAmount) {
+        if (!stakingVaultActiveById[vaultId]) return 0;
+
+        IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
+        if (address(adapter) == address(0)) return 0;
+
+        uint256 principalTracked = principalUsdcByVaultId[vaultId];
+        if (principalTracked == 0) return 0;
+
+        uint256 requested = remaining > principalTracked ? principalTracked : remaining;
+        principalUsdcByVaultId[vaultId] = principalTracked - requested;
+        totalUsdcInExternalVaults -= requested;
+
+        uint256 withdrawn = adapter.withdrawUnderlying(requested);
+        if (withdrawn != requested) revert CommonErrorLibrary.InvalidAmount();
+
+        emit UsdcWithdrawnFromExternalVault(vaultId, requested, principalUsdcByVaultId[vaultId]);
+        return requested;
     }
     
 
@@ -1671,7 +1668,7 @@ contract QuantillonVault is
      * @custom:access Restricted to HedgerPool contract only
      * @custom:oracle No oracle dependencies
      */
-    // SECURITY: Protected by nonReentrant modifier; external call to trusted AaveVault
+    // SECURITY: Protected by nonReentrant modifier; external calls to configured adapters
     function withdrawHedgerDeposit(address hedger, uint256 usdcAmount) external nonReentrant {
         if (msg.sender != address(hedgerPool)) revert CommonErrorLibrary.NotAuthorized();
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
@@ -1681,24 +1678,16 @@ contract QuantillonVault is
         uint256 totalAvailable = _getTotalCollateralWithAccruedYield();
         if (totalAvailable < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
 
-        uint256 aaveWithdrawalAmount = _planAaveWithdrawal(usdcAmount);
-        if (aaveWithdrawalAmount > 0) {
-            uint256 principalReduction = aaveWithdrawalAmount > totalUsdcInAave ? totalUsdcInAave : aaveWithdrawalAmount;
-            totalUsdcInAave -= principalReduction;
-            totalUsdcHeld += aaveWithdrawalAmount;
-        }
+        uint256 externalWithdrawalAmount = _planExternalVaultWithdrawal(usdcAmount);
+        uint256 projectedHeld = totalUsdcHeld + externalWithdrawalAmount;
+        if (projectedHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
+        totalUsdcHeld = projectedHeld - usdcAmount;
 
-        if (totalUsdcHeld < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
-
-        // Update vault's total USDC reserves.
-        unchecked {
-            totalUsdcHeld -= usdcAmount;
+        if (externalWithdrawalAmount > 0) {
+            _withdrawUsdcFromExternalVaults(externalWithdrawalAmount);
         }
 
         // INTERACTIONS
-        if (aaveWithdrawalAmount > 0) {
-            _withdrawUsdcFromAave(aaveWithdrawalAmount);
-        }
         usdc.safeTransfer(hedger, usdcAmount);
         
         emit HedgerDepositWithdrawn(hedger, usdcAmount, totalUsdcHeld);
@@ -1791,45 +1780,33 @@ contract QuantillonVault is
         }
     }
 
-    /**
-     * @notice Returns current Aave collateral balance including accrued yield when available.
-     * @dev Falls back to tracked principal if the external balance query is unavailable.
-     * @return collateralBalance Aave-side collateral balance in USDC units (6 decimals).
-     * @custom:security View helper with defensive fallback path.
-     * @custom:validation Returns tracked principal when Aave balance query reverts.
-     * @custom:state-changes None - view function.
-     * @custom:events None.
-     * @custom:errors None - errors are caught via try/catch fallback.
-     * @custom:reentrancy Not applicable - view function.
-     * @custom:access Internal helper.
-     * @custom:oracle No oracle interaction.
-     */
-    function _getAaveCollateralBalance() internal view returns (uint256) {
-        if (address(aaveVault) == address(0)) {
-            return totalUsdcInAave;
+    function _getExternalVaultCollateralBalance() internal view returns (uint256 externalCollateral) {
+        uint256[] memory priority = redemptionPriorityVaultIds;
+        if (priority.length == 0 && defaultStakingVaultId != 0) {
+            IExternalStakingVault defaultAdapter = stakingVaultAdapterById[defaultStakingVaultId];
+            uint256 principalTracked = principalUsdcByVaultId[defaultStakingVaultId];
+            if (address(defaultAdapter) == address(0)) return principalTracked;
+            try defaultAdapter.totalUnderlying() returns (uint256 currentBalance) {
+                return currentBalance;
+            } catch {
+                return principalTracked;
+            }
         }
-        try aaveVault.getAaveBalance() returns (uint256 currentAaveBalance) {
-            return currentAaveBalance;
-        } catch {
-            return totalUsdcInAave;
+        for (uint256 i = 0; i < priority.length; ++i) {
+            uint256 vaultId = priority[i];
+            IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
+            if (address(adapter) == address(0)) continue;
+            uint256 principalTracked = principalUsdcByVaultId[vaultId];
+            try adapter.totalUnderlying() returns (uint256 currentBalance) {
+                externalCollateral += currentBalance;
+            } catch {
+                externalCollateral += principalTracked;
+            }
         }
     }
 
-    /**
-     * @notice HIGH-2/NEW-1: total protocol collateral including accrued Aave interest.
-     * @dev Uses on-chain Aave balance (principal + yield) with a principal fallback path.
-     * @return totalCollateral Combined vault-held + Aave-held collateral in USDC units (6 decimals).
-     * @custom:security View helper used by CR calculations and withdrawal checks.
-     * @custom:validation Relies on `_getAaveCollateralBalance` fallback behavior.
-     * @custom:state-changes None - view function.
-     * @custom:events None.
-     * @custom:errors None.
-     * @custom:reentrancy Not applicable - view function.
-     * @custom:access Internal helper.
-     * @custom:oracle No oracle interaction.
-     */
     function _getTotalCollateralWithAccruedYield() internal view returns (uint256) {
-        return totalUsdcHeld + _getAaveCollateralBalance();
+        return totalUsdcHeld + _getExternalVaultCollateralBalance();
     }
 
     /**
@@ -1951,27 +1928,6 @@ contract QuantillonVault is
      * @custom:access Public.
      * @custom:oracle Uses cached oracle price.
      */
-    function getProtocolCollateralizationRatioView() public view returns (uint256 ratio) {
-        return getProtocolCollateralizationRatio();
-    }
-
-    /**
-     * @notice LOW-4: Pure view variant of canMint using cached oracle price.
-     * @dev Delegates to `canMint()` and performs no state refresh.
-     * @return mintAllowed True when mint preconditions currently pass.
-     * @custom:security View-only wrapper.
-     * @custom:validation Inherits price-cache and hedger-liveness checks from delegated function.
-     * @custom:state-changes None - view function.
-     * @custom:events None.
-     * @custom:errors None.
-     * @custom:reentrancy Not applicable - view function.
-     * @custom:access Public.
-     * @custom:oracle Uses cached oracle price.
-     */
-    function canMintView() public view returns (bool) {
-        return canMint();
-    }
-
     /**
      * @notice LOW-5: Seeds the oracle price cache so minting checks have a baseline.
      * @dev Governance MUST call this once immediately after deployment, before any user mints.
@@ -2030,135 +1986,6 @@ contract QuantillonVault is
      * @custom:access Public - anyone can check liquidation status
      * @custom:oracle Requires oracle price for collateral calculation
      */
-    function getLiquidationStatus() external view returns (
-        bool isInLiquidation,
-        uint256 collateralizationRatioBps,
-        uint256 totalCollateralUsdc,
-        uint256 totalQeuroSupply
-    ) {
-        // Get current QEURO supply
-        totalQeuroSupply = qeuro.totalSupply();
-        
-        // If no QEURO supply, not in liquidation
-        if (totalQeuroSupply == 0) {
-            return (false, 0, 0, 0);
-        }
-        
-        // Get collateralization ratio (18 decimals format)
-        uint256 currentRatio18Dec = getProtocolCollateralizationRatio();
-        
-        // Convert from 18 decimals to basis points (divide by 1e16)
-        // Format: percentage * 1e18, so 100% = 1e20, 101% = 1.01e20
-        // To convert to bps: (ratio / 1e18) * 10000 = ratio / 1e16
-        // 1e20 (100%) -> 10000 bps, 1.01e20 (101%) -> 10100 bps
-        collateralizationRatioBps = currentRatio18Dec / 1e16;
-        
-        // Total collateral = actual USDC in vault (user deposits + hedger margin)
-        totalCollateralUsdc = _getTotalCollateralWithAccruedYield();
-        
-        uint256 criticalRatioBps = criticalCollateralizationRatio / 1e16;
-
-        // Liquidation mode when CR <= configured critical threshold
-        isInLiquidation = collateralizationRatioBps <= criticalRatioBps;
-    }
-
-    /**
-     * @notice Calculates pro-rata payout for liquidation mode redemption
-     * @dev Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
-     * @dev Premium if CR > 100%, haircut if CR < 100%
-     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
-     * @return usdcPayout Amount of USDC the user would receive (6 decimals)
-     * @return isPremium True if payout > fair value (CR > 100%), false if haircut (CR < 100%)
-     * @return premiumOrDiscountBps Premium or discount in basis points (e.g., 50 = 0.5%)
-     * @custom:security View function - no state changes
-     * @custom:validation Validates qeuroAmount > 0
-     * @custom:state-changes None - view function
-     * @custom:events None
-     * @custom:errors Throws InvalidAmount if qeuroAmount is 0
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can calculate payout
-     * @custom:oracle Requires oracle price for fair value calculation
-     */
-    function calculateLiquidationPayout(uint256 qeuroAmount) external view returns (
-        uint256 usdcPayout,
-        bool isPremium,
-        uint256 premiumOrDiscountBps
-    ) {
-        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
-        
-        // Get total QEURO supply
-        uint256 totalSupply = qeuro.totalSupply();
-        if (totalSupply == 0) {
-            return (0, false, 0);
-        }
-        
-        // Use cached price so this function stays view-only/off-chain safe.
-        uint256 eurUsdPrice = lastValidEurUsdPrice;
-        if (eurUsdPrice == 0) {
-            return (0, false, 0);
-        }
-        
-        // INFO-5: Use actual vault USDC balance (same formula as _redeemLiquidationMode) so this
-        // view function matches the real liquidation payout in stress scenarios.
-        uint256 totalCollateralUsdc = _getTotalCollateralWithAccruedYield();
-
-        // Calculate pro-rata payout: (qeuroAmount / totalSupply) * totalCollateral
-        // qeuroAmount (18 dec) * totalCollateral (6 dec) / totalSupply (18 dec) = 6 dec
-        usdcPayout = qeuroAmount.mulDiv(totalCollateralUsdc, totalSupply);
-        
-        // Calculate fair value: qeuroAmount * eurUsdPrice
-        // qeuroAmount (18 dec) * eurUsdPrice (18 dec) / 1e18 = 18 dec, then / 1e12 = 6 dec
-        uint256 fairValueUsdc = qeuroAmount.mulDiv(eurUsdPrice, 1e18) / 1e12;
-        
-        // Determine if premium or discount
-        if (usdcPayout >= fairValueUsdc) {
-            isPremium = true;
-            // Premium = (payout - fairValue) / fairValue * 10000
-            if (fairValueUsdc > 0) {
-                premiumOrDiscountBps = (usdcPayout - fairValueUsdc).mulDiv(10000, fairValueUsdc);
-            }
-        } else {
-            isPremium = false;
-            // Discount = (fairValue - payout) / fairValue * 10000
-            if (fairValueUsdc > 0) {
-                premiumOrDiscountBps = (fairValueUsdc - usdcPayout).mulDiv(10000, fairValueUsdc);
-            }
-        }
-    }
-    
-    /**
-     * @notice Returns the current price protection status
-     * @return lastValidPrice Last valid EUR/USD price used
-     * @return lastUpdateBlock Block number of last price update
-     * @return maxDeviation Maximum allowed price deviation in basis points
-     * @return minBlocks Minimum blocks required between updates
-     * @dev Useful for monitoring and debugging price protection
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function getPriceProtectionStatus() external view returns (
-        uint256 lastValidPrice,
-        uint256 lastUpdateBlock,
-        uint256 maxDeviation,
-        uint256 minBlocks
-    ) {
-        return (
-            lastValidEurUsdPrice,
-            lastPriceUpdateBlock,
-            MAX_PRICE_DEVIATION,
-            MIN_BLOCKS_BETWEEN_UPDATES
-        );
-    }
-
-
-
-
 
     // =============================================================================
     // EMERGENCY FUNCTIONS - Emergency functions

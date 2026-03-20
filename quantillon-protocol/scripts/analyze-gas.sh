@@ -15,12 +15,15 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
+FORGE_SRC_BUILD_CMD=(forge build --build-info --skip "*/test/**" "*/script/**" --force)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Load environment variables using shared utility
 source "$(dirname "${BASH_SOURCE[0]}")/utils/load-env.sh"
 setup_environment --allow-missing
+cd "$PROJECT_ROOT"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-OUTPUT_DIR="$RESULTS_DIR/gas-analysis"
+OUTPUT_DIR="$PROJECT_ROOT/$RESULTS_DIR/gas-analysis"
 TEXT_REPORT_FILE="$OUTPUT_DIR/gas-analysis-$TIMESTAMP.txt"
 
 # Create output directory if it doesn't exist
@@ -62,6 +65,7 @@ command_exists() {
 # Function to generate human-readable text report
 generate_report() {
     local content="$1"
+    mkdir -p "$OUTPUT_DIR"
     echo -e "$content" >> "$TEXT_REPORT_FILE"
 }
 
@@ -116,7 +120,7 @@ fi
 
 # 1. Build contracts first
 print_section "Building Contracts"
-if forge build > /dev/null 2>&1; then
+if "${FORGE_SRC_BUILD_CMD[@]}" > /dev/null 2>&1; then
     print_success "Contracts built successfully"
     generate_report "BUILD STATUS\n------------\n Contracts compiled successfully\n\n"
 else
@@ -131,9 +135,14 @@ echo "🔍 Generating detailed gas report (single comprehensive run)..."
 
 # Run forge test with gas report ONCE and save full output
 GAS_REPORT_FILE="$OUTPUT_DIR/forge-gas-report-full.txt"
-if forge test --gas-report 2>&1 | tee "$GAS_REPORT_FILE"; then
+if FOUNDRY_PROFILE=test forge test --gas-report 2>&1 | tee "$GAS_REPORT_FILE"; then
     print_success "Forge gas report generated and cached"
-    generate_report "FORGE GAS REPORT\n---------------\n$(head -100 "$GAS_REPORT_FILE")\n\n"
+    if [ -f "$GAS_REPORT_FILE" ]; then
+        generate_report "FORGE GAS REPORT\n---------------\n$(head -100 "$GAS_REPORT_FILE")\n\n"
+    else
+        print_warning "Gas report file missing after run; recording fallback note"
+        generate_report "FORGE GAS REPORT\n---------------\n Gas report command succeeded but output file was not found at $GAS_REPORT_FILE\n\n"
+    fi
 else
     print_warning "Gas report generation had issues (partial results may be available)"
     generate_report "FORGE GAS REPORT\n---------------\n$(head -100 "$GAS_REPORT_FILE" 2>/dev/null || echo "Failed to generate gas report")\n\n"
@@ -213,7 +222,7 @@ echo "📏 Analyzing contract sizes..."
 
 # Get contract sizes and write directly to report
 # Note: forge build --sizes can cause core dumps in some versions, so we handle it gracefully
-CONTRACT_SIZES=$(timeout 30 forge build --sizes 2>&1 || echo "Failed to get contract sizes (forge build --sizes crashed or timed out)")
+CONTRACT_SIZES=$(timeout 30 forge build --sizes --skip "*/test/**" "*/script/**" 2>&1 || echo "Failed to get contract sizes (forge build --sizes crashed or timed out)")
 
 if [ -n "$CONTRACT_SIZES" ] && [ "$CONTRACT_SIZES" != "Failed to get contract sizes" ] && [ "$CONTRACT_SIZES" != "Failed to get contract sizes (forge build --sizes crashed or timed out)" ]; then
     print_success "Contract size analysis completed"

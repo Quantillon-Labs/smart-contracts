@@ -42,6 +42,10 @@ contract LiquidationScenarios is IntegrationTests {
         vault.updatePriceCache();
     }
 
+    function _isInLiquidationCompat() internal view returns (bool) {
+        return vault.getProtocolCollateralizationRatio() <= vault.criticalCollateralizationRatio();
+    }
+
     /**
      * @notice Override setUp to use a smaller hedger deposit for liquidation testing
      */
@@ -256,7 +260,7 @@ contract LiquidationScenarios is IntegrationTests {
         // Set price to max allowed (2.0 EUR/USD) to trigger liquidation mode
         _setOraclePriceAndRefreshCache(2.0e18);
 
-        (bool isInLiquidation,,,) = vault.getLiquidationStatus();
+        bool isInLiquidation = _isInLiquidationCompat();
         assertTrue(isInLiquidation, "Protocol should be in liquidation mode");
 
         vm.startPrank(user1);
@@ -320,7 +324,7 @@ contract LiquidationScenarios is IntegrationTests {
 
         _setOraclePriceAndRefreshCache(2.0e18);
 
-        (bool isInLiquidation,,,) = vault.getLiquidationStatus();
+        bool isInLiquidation = _isInLiquidationCompat();
         assertTrue(isInLiquidation, "Protocol should be in liquidation mode");
 
         uint256 hedgerMarginBefore = hedgerPool.totalMargin();
@@ -388,13 +392,13 @@ contract LiquidationScenarios is IntegrationTests {
 
         // Price ~1.13: CR just above 101% (collateral 10.5k, backing ~10.4k)
         _setOraclePriceAndRefreshCache(1.13e18);
-        (bool inLiq1,,,) = vault.getLiquidationStatus();
+        bool inLiq1 = _isInLiquidationCompat();
         // At 1.13, backing = 10k/1.10*1.13 = ~10.27k; CR = 10.5/10.27 > 1.01
         assertFalse(inLiq1, "CR just above 101% should not be in liquidation");
 
         // Price 1.15: CR drops below 101%
         _setOraclePriceAndRefreshCache(1.15e18);
-        (bool inLiq2,,,) = vault.getLiquidationStatus();
+        bool inLiq2 = _isInLiquidationCompat();
         assertTrue(inLiq2, "CR just below 101% should be in liquidation");
     }
 }

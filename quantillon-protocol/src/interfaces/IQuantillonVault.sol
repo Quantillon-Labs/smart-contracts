@@ -54,6 +54,15 @@ interface IQuantillonVault {
      */
     function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external;
 
+    function mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId) external;
+
+    function mintAndStakeQEURO(
+        uint256 usdcAmount,
+        uint256 minQeuroOut,
+        uint256 vaultId,
+        uint256 minStQEUROOut
+    ) external returns (uint256 qeuroMinted, uint256 stQEUROMinted);
+
     /**
      * @notice Redeems QEURO for USDC
      * @dev Converts QEURO (18 decimals) to USDC (6 decimals) using oracle price
@@ -76,8 +85,8 @@ interface IQuantillonVault {
      * @return totalUsdcHeld_ Total USDC held directly in the vault
      * @return totalMinted_ Total QEURO minted
      * @return totalDebtValue Total debt value in USD
-     * @return totalUsdcInAave_ Total USDC deployed to Aave for yield
-     * @return totalUsdcAvailable_ Total USDC available (vault + Aave)
+     * @return totalUsdcInExternalVaults_ Total USDC principal deployed across external vault adapters
+     * @return totalUsdcAvailable_ Total USDC available (vault + external adapters)
       * @custom:security Read-only helper
       * @custom:validation None
       * @custom:state-changes None
@@ -91,7 +100,7 @@ interface IQuantillonVault {
         uint256 totalUsdcHeld_,
         uint256 totalMinted_,
         uint256 totalDebtValue,
-        uint256 totalUsdcInAave_,
+        uint256 totalUsdcInExternalVaults_,
         uint256 totalUsdcAvailable_
     );
 
@@ -869,39 +878,13 @@ interface IQuantillonVault {
      */
     function initializePriceCache(uint256 initialEurUsdPrice) external;
 
-    // =============================================================================
-    // AAVE INTEGRATION - Functions for USDC yield generation via Aave
-    // =============================================================================
+    function setStakingVault(uint256 vaultId, address adapter, bool active) external;
 
-    /**
-     * @notice Deploys USDC from the vault to Aave for yield generation
-     * @dev Called by UserPool after minting QEURO to automatically deploy USDC to Aave
-     * @param usdcAmount Amount of USDC to deploy to Aave (6 decimals)
-     * @custom:security Only callable by VAULT_OPERATOR_ROLE (UserPool)
-     * @custom:validation Validates amount > 0, AaveVault is set, and sufficient USDC balance
-     * @custom:state-changes Updates totalUsdcHeld (decreases) and totalUsdcInAave (increases)
-     * @custom:events Emits UsdcDeployedToAave event
-     * @custom:errors Reverts if amount is 0, AaveVault not set, or insufficient USDC
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to VAULT_OPERATOR_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function deployUsdcToAave(uint256 usdcAmount) external;
+    function setDefaultStakingVaultId(uint256 vaultId) external;
 
-    /**
-     * @notice Updates the AaveVault address for USDC yield generation
-     * @dev Only governance role can update the AaveVault address
-     * @param _aaveVault New AaveVault address
-     * @custom:security Validates address is not zero before updating
-     * @custom:validation Ensures _aaveVault is not address(0)
-     * @custom:state-changes Updates aaveVault state variable
-     * @custom:events Emits AaveVaultUpdated event
-     * @custom:errors Reverts if _aaveVault is address(0)
-     * @custom:reentrancy No reentrancy risk, simple state update
-     * @custom:access Restricted to GOVERNANCE_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function updateAaveVault(address _aaveVault) external;
+    function setRedemptionPriority(uint256[] calldata vaultIds) external;
+
+    function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount) external;
 
     /**
      * @notice Registers this vault into stQEUROFactory and deploys its dedicated token.
@@ -939,51 +922,16 @@ interface IQuantillonVault {
      */
     function updateHedgerRewardFeeSplit(uint256 newSplit) external;
 
-    /**
-     * @notice Harvests accrued Aave interest through the configured AaveVault.
-     * @dev Pulls pending yield from `AaveVault` back into the vault and routes it
-     *      according to the protocol’s fee and reward‑sharing rules.
-     * @return harvestedYield Net USDC yield amount harvested from Aave (6 decimals).
-     * @custom:security Only callable by governance or a dedicated operator role (per implementation).
-     * @custom:validation Requires a configured AaveVault and sufficient accrued interest.
-     * @custom:state-changes Updates vault balances and internal yield‑accounting fields.
-     * @custom:events Emits a harvest event with the realized yield amount.
-     * @custom:errors Reverts if AaveVault is unset or harvest conditions are not met.
-     * @custom:reentrancy Protected by nonReentrant modifier in implementation.
-     * @custom:access Access control enforced by implementation (typically GOVERNANCE_ROLE).
-     * @custom:oracle No direct oracle dependency; operates on Aave position balances.
-     */
-    function harvestAaveInterest() external returns (uint256 harvestedYield);
+    function harvestVaultYield(uint256 vaultId) external returns (uint256 harvestedYield);
 
-    /**
-     * @notice Returns the AaveVault contract address
-     * @dev The AaveVault contract for USDC yield generation
-     * @return Address of the AaveVault contract
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query aaveVault address
-     * @custom:oracle No oracle dependencies
-     */
-    function aaveVault() external view returns (address);
+    function getVaultExposure(uint256 vaultId)
+        external
+        view
+        returns (address adapter, bool active, uint256 principalTracked, uint256 currentUnderlying);
 
-    /**
-     * @notice Returns the total USDC deployed to Aave
-     * @dev Tracks USDC that has been sent to AaveVault for yield generation
-     * @return Total USDC in Aave (6 decimals)
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query total USDC in Aave
-     * @custom:oracle No oracle dependencies
-     */
-    function totalUsdcInAave() external view returns (uint256);
+    function defaultStakingVaultId() external view returns (uint256);
+
+    function totalUsdcInExternalVaults() external view returns (uint256);
 
     /**
      * @notice Returns configured stQEUROFactory address.
@@ -999,33 +947,7 @@ interface IQuantillonVault {
      */
     function stQEUROFactory() external view returns (address);
 
-    /**
-     * @notice Returns the stQEURO token address registered for this vault.
-     * @dev Read-only accessor for the vault-specific stQEURO token.
-     * @custom:security Read-only accessor.
-     * @custom:validation No input validation required.
-     * @custom:state-changes No state changes.
-     * @custom:events No events emitted.
-     * @custom:errors No errors expected.
-     * @custom:reentrancy Not applicable for view function.
-     * @custom:access Public view.
-     * @custom:oracle No oracle dependencies.
-     */
-    function stQEUROToken() external view returns (address);
-
-    /**
-     * @notice Returns the factory vault id bound to this vault.
-     * @dev Read-only accessor for the registered stQEURO factory vault id.
-     * @custom:security Read-only accessor.
-     * @custom:validation No input validation required.
-     * @custom:state-changes No state changes.
-     * @custom:events No events emitted.
-     * @custom:errors No errors expected.
-     * @custom:reentrancy Not applicable for view function.
-     * @custom:access Public view.
-     * @custom:oracle No oracle dependencies.
-     */
-    function stQEUROVaultId() external view returns (uint256);
+    function stQEUROTokenByVaultId(uint256 vaultId) external view returns (address);
 
     /**
      * @notice Returns the vault operator role identifier

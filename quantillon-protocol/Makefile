@@ -82,7 +82,7 @@ setup-env:
 build:
 	@echo "🔨 Building contracts..."
 	@mkdir -p $(RESULTS_DIR)
-	forge build --force 2>&1 | tee $(BUILD_OUTPUT)
+	@$(BASH) -lc 'set -o pipefail; forge build --build-info --skip */test/** */script/** --force 2>&1 | tee "$(BUILD_OUTPUT)"'
 
 clean:
 	@echo "🧹 Cleaning build artifacts and results..."
@@ -93,7 +93,7 @@ clean:
 
 test:
 	@echo "🧪 Running tests..."
-	forge test
+	FOUNDRY_PROFILE=test forge test
 
 coverage:
 	@echo "📊 Generating coverage report..."

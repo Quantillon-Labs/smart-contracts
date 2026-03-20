@@ -205,6 +205,25 @@ interface IYieldShift {
     function setYieldSourceAuthorization(address source, bytes32 yieldType, bool authorized) external;
 
     /**
+     * @notice Binds a source to a single vault id for optional strict routing.
+     * @param source Yield source address.
+     * @param vaultId Vault id the source is allowed to target in strict mode.
+     */
+    function setSourceVaultBinding(address source, uint256 vaultId) external;
+
+    /**
+     * @notice Clears a source-to-vault binding.
+     * @param source Yield source address.
+     */
+    function clearSourceVaultBinding(address source) external;
+
+    /**
+     * @notice Enables or disables strict source-to-vault binding enforcement.
+     * @param enabled True to enforce binding in `addYield`.
+     */
+    function setSourceVaultBindingEnforcement(bool enabled) external;
+
+    /**
      * @notice Executes an emergency yield distribution with explicit pool amounts.
      * @dev Transfers specified portions of yield pool balances to UserPool and HedgerPool.
      * @param userAmount Amount to distribute to user pool.

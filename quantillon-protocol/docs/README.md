@@ -28,6 +28,9 @@ Step-by-step instructions for deploying and configuring the protocol.
 ### [stQEUROFactory Technical Upgrade](./stQEUROFactory.md)
 Detailed technical note for the multi-vault staking refactor (`stQEUROFactory`, vault self-registration, YieldShift routing by `vaultId`).
 
+### [External Vaults Refactor Recap](./External-Vaults-Refactor-Recap.md)
+Decision-complete handoff for UI refactor: ABI/event deltas, new read model, vaultId routing, and localhost QA flow.
+
 ---
 
 ## 🚀 Quick Links
@@ -42,12 +45,14 @@ Detailed technical note for the multi-vault staking refactor (`stQEUROFactory`, 
 - [**Error Handling**](./API-Reference.md#error-handling) - Error codes and handling
 - [**Gas Optimization**](./API-Reference.md#gas-optimization) - Performance tips
 - [**stQEURO Multi-Vault Upgrade**](./stQEUROFactory.md) - Implementation and runbook
+- [**External Vaults Recap (UI Handoff)**](./External-Vaults-Refactor-Recap.md) - Contract deltas and UI migration checklist
 
 ### For Auditors
 - [**Security Guide**](./Security.md) - Security considerations
 - [**Architecture**](./Architecture.md) - System design
 - [**Access Control**](./API-Reference.md#access-control-roles) - Role definitions
 - [**stQEUROFactory Upgrade Note**](./stQEUROFactory.md) - Breaking changes and verification map
+- [**External Vaults Refactor Recap**](./External-Vaults-Refactor-Recap.md) - ABI/event/read-model migration map
 
 ---
 
@@ -107,6 +112,9 @@ make validate-natspec
 
 # Verify EIP-170 contract size limits
 make analyze-contract-sizes
+
+# Enforce a personal EIP-170 budget (example: 97%)
+EIP170_PERSONAL_LIMIT_PERCENT=97 make analyze-contract-sizes
 ```
 
 ### Documentation Generation

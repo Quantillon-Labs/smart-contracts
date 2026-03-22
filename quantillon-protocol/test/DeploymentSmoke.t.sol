@@ -174,7 +174,7 @@ contract DeploymentSmokeTest is Test {
             address(usdc),
             address(0), // userPool
             address(0), // hedgerPool
-            address(0), // aaveVault
+            address(0), // mockAaveVault
             address(0), // stQEURO
             timelock,
             treasury
@@ -255,7 +255,7 @@ contract DeploymentSmokeTest is Test {
             YieldShift.YieldDependencyConfig({
                 userPool: address(userPool),
                 hedgerPool: address(hedgerPool),
-                aaveVault: address(vault),
+                mockAaveVault: address(vault),
                 stQEUROFactory: address(stQEURO),
                 treasury: treasury
             })

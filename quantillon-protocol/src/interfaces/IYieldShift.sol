@@ -12,7 +12,7 @@ interface IYieldShift {
     struct YieldDependencyConfig {
         address userPool;
         address hedgerPool;
-        address aaveVault;
+        address mockAaveVault;
         address stQEUROFactory;
         address treasury;
     }
@@ -24,7 +24,7 @@ interface IYieldShift {
      * @param _usdc USDC token address used for yield accounting.
      * @param _userPool UserPool contract address (optional at deploy time).
      * @param _hedgerPool HedgerPool contract address (optional at deploy time).
-     * @param _aaveVault AaveVault contract address (optional at deploy time).
+     * @param _mockAaveVault MockAaveVault contract address (optional at deploy time).
      * @param _stQEUROFactory stQEURO factory contract address (optional at deploy time).
      * @param _timelock Timelock contract used for SecureUpgradeable.
      * @param _treasury Treasury address for recovery flows.
@@ -42,7 +42,7 @@ interface IYieldShift {
         address _usdc,
         address _userPool,
         address _hedgerPool,
-        address _aaveVault,
+        address _mockAaveVault,
         address _stQEUROFactory,
         address _timelock,
         address _treasury

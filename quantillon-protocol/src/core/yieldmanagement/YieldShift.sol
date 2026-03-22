@@ -11,7 +11,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IUserPool} from "../../interfaces/IUserPool.sol";
 import {IHedgerPool} from "../../interfaces/IHedgerPool.sol";
-import {IAaveVault} from "../../interfaces/IAaveVault.sol";
+import {IMockAaveVault} from "../../interfaces/IMockAaveVault.sol";
 import {IstQEURO} from "../../interfaces/IstQEURO.sol";
 import {IStQEUROFactory} from "../../interfaces/IStQEUROFactory.sol";
 import {VaultMath} from "../../libraries/VaultMath.sol";
@@ -117,7 +117,7 @@ contract YieldShift is
     IERC20 public usdc;
     IUserPool public userPool;
     IHedgerPool public hedgerPool;
-    IAaveVault public aaveVault;
+    IMockAaveVault public mockAaveVault;
     IStQEUROFactory public stQEUROFactory;
 
     /// @notice TimeProvider contract for centralized time management
@@ -186,7 +186,7 @@ contract YieldShift is
     struct YieldDependencyConfig {
         address userPool;
         address hedgerPool;
-        address aaveVault;
+        address mockAaveVault;
         address stQEUROFactory;
         address treasury;
     }
@@ -232,7 +232,7 @@ contract YieldShift is
      * @param _usdc Address of the USDC token contract
      * @param _userPool Address of the user pool contract
      * @param _hedgerPool Address of the hedger pool contract
-     * @param _aaveVault Address of the Aave vault contract
+     * @param _mockAaveVault Address of the Aave vault contract
      * @param _stQEUROFactory Address of the stQEURO factory contract
      * @param _timelock Address of the timelock contract
      * @param _treasury Address of the treasury
@@ -250,7 +250,7 @@ contract YieldShift is
         address _usdc,
         address _userPool,
         address _hedgerPool,
-        address _aaveVault,
+        address _mockAaveVault,
         address _stQEUROFactory,
         address _timelock,
         address _treasury
@@ -280,9 +280,9 @@ contract YieldShift is
             AccessControlLibrary.validateAddress(_hedgerPool);
             hedgerPool = IHedgerPool(_hedgerPool);
         }
-        if (_aaveVault != address(0)) {
-            AccessControlLibrary.validateAddress(_aaveVault);
-            aaveVault = IAaveVault(_aaveVault);
+        if (_mockAaveVault != address(0)) {
+            AccessControlLibrary.validateAddress(_mockAaveVault);
+            mockAaveVault = IMockAaveVault(_mockAaveVault);
         }
         if (_stQEUROFactory != address(0)) {
             AccessControlLibrary.validateAddress(_stQEUROFactory);
@@ -934,17 +934,17 @@ contract YieldShift is
 
     /**
      * @notice Batch-updates external dependency addresses used for yield distribution.
-     * @dev Wires or re-wires the `userPool`, `hedgerPool`, `aaveVault`, `stQEUROFactory` and `treasury`
+     * @dev Wires or re-wires the `userPool`, `hedgerPool`, `mockAaveVault`, `stQEUROFactory` and `treasury`
      *      references in a single governance transaction.
      * @param cfg Struct containing the new dependency configuration:
      *        - `userPool`: UserPool contract address.
      *        - `hedgerPool`: HedgerPool contract address.
-     *        - `aaveVault`: AaveVault contract address.
+     *        - `mockAaveVault`: MockAaveVault contract address.
      *        - `stQEUROFactory`: stQEURO factory contract address.
      *        - `treasury`: treasury address receiving recovered funds.
-     * @custom:security Only governance may call; validates all addresses are non-zero and sane.
+     * @custom:security Only governance may call; validates required addresses and allows optional mockAaveVault.
      * @custom:validation Uses `AccessControlLibrary` / `YieldValidationLibrary` to check addresses.
-     * @custom:state-changes Updates `userPool`, `hedgerPool`, `aaveVault`, `stQEUROFactory`, `treasury`.
+     * @custom:state-changes Updates `userPool`, `hedgerPool`, `mockAaveVault`, `stQEUROFactory`, `treasury`.
      * @custom:events None – downstream contracts emit their own events on meaningful actions.
      * @custom:errors Library validation errors on zero/invalid addresses.
      * @custom:reentrancy Not applicable – no external calls after state updates.
@@ -955,14 +955,16 @@ contract YieldShift is
         AccessControlLibrary.onlyGovernance(this);
         AccessControlLibrary.validateAddress(cfg.userPool);
         AccessControlLibrary.validateAddress(cfg.hedgerPool);
-        AccessControlLibrary.validateAddress(cfg.aaveVault);
         AccessControlLibrary.validateAddress(cfg.stQEUROFactory);
         YieldValidationLibrary.validateTreasuryAddress(cfg.treasury);
         CommonValidationLibrary.validateNonZeroAddress(cfg.treasury, "treasury");
+        if (cfg.mockAaveVault != address(0)) {
+            AccessControlLibrary.validateAddress(cfg.mockAaveVault);
+        }
 
         userPool = IUserPool(cfg.userPool);
         hedgerPool = IHedgerPool(cfg.hedgerPool);
-        aaveVault = IAaveVault(cfg.aaveVault);
+        mockAaveVault = IMockAaveVault(cfg.mockAaveVault);
         stQEUROFactory = IStQEUROFactory(cfg.stQEUROFactory);
         treasury = cfg.treasury;
     }

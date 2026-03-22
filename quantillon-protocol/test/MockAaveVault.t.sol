@@ -2,7 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {AaveVault} from "../src/core/vaults/AaveVault.sol";
+import {MockAaveVault} from "../src/core/vaults/MockAaveVault.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
@@ -658,7 +658,7 @@ contract MockYieldShift {
 
 /**
  * @title AaveVaultTestSuite
- * @notice Comprehensive test suite for the AaveVault contract
+ * @notice Comprehensive test suite for the MockAaveVault contract
  * 
  * @dev This test suite covers:
  *      - Initialization and setup
@@ -702,8 +702,8 @@ contract AaveVaultTestSuite is Test {
     // TEST VARIABLES
     // =============================================================================
     
-    AaveVault public implementation;
-    AaveVault public aaveVault;
+    MockAaveVault public implementation;
+    MockAaveVault public mockAaveVault;
     MockUSDC public usdc;
     MockAUSDC public aUSDC;
     MockAavePool public aavePool;
@@ -716,7 +716,7 @@ contract AaveVaultTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Sets up the AaveVault test environment
+     * @notice Sets up the MockAaveVault test environment
      * @dev Deploys all necessary contracts and initializes the Aave vault for testing
      * @custom:security Uses proxy pattern for upgradeable contract testing
      * @custom:validation No input validation required - setup function
@@ -737,11 +737,11 @@ contract AaveVaultTestSuite is Test {
         yieldShift = new MockYieldShift();
         
         // Deploy implementation
-        implementation = new AaveVault();
+        implementation = new MockAaveVault();
         
         // Deploy proxy
         bytes memory initData = abi.encodeWithSelector(
-            AaveVault.initialize.selector,
+            MockAaveVault.initialize.selector,
             admin,
             address(usdc),
             address(aaveProvider),
@@ -756,28 +756,28 @@ contract AaveVaultTestSuite is Test {
             initData
         );
         
-        aaveVault = AaveVault(address(proxy));
+        mockAaveVault = MockAaveVault(address(proxy));
         
         // Grant additional roles for testing
         vm.startPrank(admin);
-        aaveVault.grantRole(aaveVault.GOVERNANCE_ROLE(), governance);
-        aaveVault.grantRole(aaveVault.VAULT_MANAGER_ROLE(), vaultManager);
-        aaveVault.grantRole(aaveVault.EMERGENCY_ROLE(), emergencyRole);
+        mockAaveVault.grantRole(mockAaveVault.GOVERNANCE_ROLE(), governance);
+        mockAaveVault.grantRole(mockAaveVault.VAULT_MANAGER_ROLE(), vaultManager);
+        mockAaveVault.grantRole(mockAaveVault.EMERGENCY_ROLE(), emergencyRole);
         vm.stopPrank();
 
         vm.prank(governance);
-        aaveVault.setYieldVaultId(1);
+        mockAaveVault.setYieldVaultId(1);
         
         // Mint USDC to contracts for testing
-        usdc.mint(address(aaveVault), 10000000 * 1e6); // 10M USDC
+        usdc.mint(address(mockAaveVault), 10000000 * 1e6); // 10M USDC
         usdc.mint(address(aavePool), 100000000 * 1e6); // 100M USDC
         usdc.mint(vaultManager, 1000000 * 1e6); // 1M USDC
         
         // Approve aUSDC transfers for the vault
-        aUSDC.approve(address(aaveVault), type(uint256).max);
+        aUSDC.approve(address(mockAaveVault), type(uint256).max);
         
         // Approve aUSDC transfers from vault to aave pool
-        vm.prank(address(aaveVault));
+        vm.prank(address(mockAaveVault));
         aUSDC.approve(address(aavePool), type(uint256).max);
     }
 
@@ -799,14 +799,14 @@ contract AaveVaultTestSuite is Test {
      */
     function testInitialization_WithValidParameters_ShouldInitializeCorrectly() public view {
         // Check roles are properly assigned
-        assertTrue(aaveVault.hasRole(aaveVault.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(aaveVault.hasRole(aaveVault.VAULT_MANAGER_ROLE(), vaultManager));
-        assertTrue(aaveVault.hasRole(aaveVault.EMERGENCY_ROLE(), emergencyRole));
+        assertTrue(mockAaveVault.hasRole(mockAaveVault.DEFAULT_ADMIN_ROLE(), admin));
+        assertTrue(mockAaveVault.hasRole(mockAaveVault.VAULT_MANAGER_ROLE(), vaultManager));
+        assertTrue(mockAaveVault.hasRole(mockAaveVault.EMERGENCY_ROLE(), emergencyRole));
         
         // Check initial state variables - only check what's actually available
-        assertTrue(aaveVault.hasRole(aaveVault.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(aaveVault.hasRole(aaveVault.VAULT_MANAGER_ROLE(), vaultManager));
-        assertTrue(aaveVault.hasRole(aaveVault.EMERGENCY_ROLE(), emergencyRole));
+        assertTrue(mockAaveVault.hasRole(mockAaveVault.DEFAULT_ADMIN_ROLE(), admin));
+        assertTrue(mockAaveVault.hasRole(mockAaveVault.VAULT_MANAGER_ROLE(), vaultManager));
+        assertTrue(mockAaveVault.hasRole(mockAaveVault.EMERGENCY_ROLE(), emergencyRole));
     }
     
     /**
@@ -822,10 +822,10 @@ contract AaveVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroAdmin_Revert() public {
-        AaveVault newImplementation = new AaveVault();
+        MockAaveVault newImplementation = new MockAaveVault();
         
         bytes memory initData = abi.encodeWithSelector(
-            AaveVault.initialize.selector,
+            MockAaveVault.initialize.selector,
             address(0),
             address(usdc),
             address(aaveProvider),
@@ -852,10 +852,10 @@ contract AaveVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Initialization_ZeroUsdc_Revert() public {
-        AaveVault newImplementation = new AaveVault();
+        MockAaveVault newImplementation = new MockAaveVault();
         
         bytes memory initData = abi.encodeWithSelector(
-            AaveVault.initialize.selector,
+            MockAaveVault.initialize.selector,
             admin,
             address(0),
             address(aaveProvider),
@@ -889,21 +889,21 @@ contract AaveVaultTestSuite is Test {
         uint256 deployAmount = 1000000 * 1e6; // 1M USDC
         
         // Record initial state
-        uint256 initialAaveBalance = aaveVault.getAaveBalance();
-        uint256 initialPrincipal = aaveVault.principalDeposited();
+        uint256 initialAaveBalance = mockAaveVault.getAaveBalance();
+        uint256 initialPrincipal = mockAaveVault.principalDeposited();
         
         // Approve USDC transfer
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         
         // Deploy to Aave
         vm.prank(vaultManager);
-        uint256 aTokensReceived = aaveVault.deployToAave(deployAmount);
+        uint256 aTokensReceived = mockAaveVault.deployToAave(deployAmount);
         
         // Check that deployment was successful
         assertGt(aTokensReceived, 0);
-        assertEq(aaveVault.getAaveBalance(), initialAaveBalance + aTokensReceived);
-        assertEq(aaveVault.principalDeposited(), initialPrincipal + deployAmount);
+        assertEq(mockAaveVault.getAaveBalance(), initialAaveBalance + aTokensReceived);
+        assertEq(mockAaveVault.principalDeposited(), initialPrincipal + deployAmount);
     }
     
     /**
@@ -922,11 +922,11 @@ contract AaveVaultTestSuite is Test {
         uint256 deployAmount = 1000000 * 1e6;
         
         vm.prank(user);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         
         vm.prank(user);
         vm.expectRevert();
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
     }
     
     /**
@@ -944,7 +944,7 @@ contract AaveVaultTestSuite is Test {
     function test_AaveIntegration_DeployToAaveZeroAmount_Revert() public {
         vm.prank(vaultManager);
         vm.expectRevert(CommonErrorLibrary.InvalidAmount.selector);
-        aaveVault.deployToAave(0);
+        mockAaveVault.deployToAave(0);
     }
     
     /**
@@ -963,11 +963,11 @@ contract AaveVaultTestSuite is Test {
         uint256 excessiveAmount = MAX_AAVE_EXPOSURE + 1;
         
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), excessiveAmount);
+        usdc.approve(address(mockAaveVault), excessiveAmount);
         
         vm.prank(vaultManager);
         vm.expectRevert(CommonErrorLibrary.WouldExceedLimit.selector);
-        aaveVault.deployToAave(excessiveAmount);
+        mockAaveVault.deployToAave(excessiveAmount);
     }
     
     /**
@@ -986,23 +986,23 @@ contract AaveVaultTestSuite is Test {
         // First deploy some USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Record initial state
-        uint256 initialAaveBalance = aaveVault.getAaveBalance();
-        uint256 initialPrincipal = aaveVault.principalDeposited();
+        uint256 initialAaveBalance = mockAaveVault.getAaveBalance();
+        uint256 initialPrincipal = mockAaveVault.principalDeposited();
         
         // Withdraw a small amount to avoid breaching minimum balance
         uint256 withdrawAmount = 200000 * 1e6; // 200K USDC (small enough to not breach minimum)
         vm.prank(vaultManager);
-        uint256 usdcWithdrawn = aaveVault.withdrawFromAave(withdrawAmount);
+        uint256 usdcWithdrawn = mockAaveVault.withdrawFromAave(withdrawAmount);
         
         // Check that withdrawal was successful
         assertGt(usdcWithdrawn, 0);
-        assertLt(aaveVault.getAaveBalance(), initialAaveBalance);
-        assertLt(aaveVault.principalDeposited(), initialPrincipal);
+        assertLt(mockAaveVault.getAaveBalance(), initialAaveBalance);
+        assertLt(mockAaveVault.principalDeposited(), initialPrincipal);
     }
     
     /**
@@ -1021,28 +1021,28 @@ contract AaveVaultTestSuite is Test {
         // First deploy some USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Enable emergency mode to bypass minimum balance check
         vm.prank(emergencyRole);
-        aaveVault.toggleEmergencyMode(true, "Test withdrawal");
+        mockAaveVault.toggleEmergencyMode(true, "Test withdrawal");
         
         // Record initial state
-        aaveVault.getAaveBalance(); // Call to ensure state is consistent
+        mockAaveVault.getAaveBalance(); // Call to ensure state is consistent
         
         // Withdraw all from Aave
         vm.prank(vaultManager);
-        uint256 usdcWithdrawn = aaveVault.withdrawFromAave(type(uint256).max);
+        uint256 usdcWithdrawn = mockAaveVault.withdrawFromAave(type(uint256).max);
         
         // Check that withdrawal was successful
         assertGt(usdcWithdrawn, 0);
-        assertEq(aaveVault.getAaveBalance(), 0);
+        assertEq(mockAaveVault.getAaveBalance(), 0);
         
         // Disable emergency mode
         vm.prank(emergencyRole);
-        aaveVault.toggleEmergencyMode(false, "Test complete");
+        mockAaveVault.toggleEmergencyMode(false, "Test complete");
     }
 
     // =============================================================================
@@ -1065,36 +1065,36 @@ contract AaveVaultTestSuite is Test {
         // First deploy USDC to Aave to generate yield
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Simulate yield generation by minting aUSDC directly
-        aUSDC.mint(address(aaveVault), 5000 * 1e6); // 5K USDC yield
+        aUSDC.mint(address(mockAaveVault), 5000 * 1e6); // 5K USDC yield
         
         // Record initial state
-        uint256 initialYieldHarvested = aaveVault.totalYieldHarvested();
-        uint256 initialFeesCollected = aaveVault.totalFeesCollected();
+        uint256 initialYieldHarvested = mockAaveVault.totalYieldHarvested();
+        uint256 initialFeesCollected = mockAaveVault.totalFeesCollected();
         
         // Harvest yield
         vm.prank(vaultManager);
-        uint256 yieldHarvested = aaveVault.harvestAaveYield();
+        uint256 yieldHarvested = mockAaveVault.harvestAaveYield();
         
         // Check that yield was harvested
         assertGt(yieldHarvested, 0);
-        assertGt(aaveVault.totalYieldHarvested(), initialYieldHarvested);
+        assertGt(mockAaveVault.totalYieldHarvested(), initialYieldHarvested);
         // Fees collected only increase when yieldFee > 0
-        if (aaveVault.yieldFee() > 0) {
-            assertGt(aaveVault.totalFeesCollected(), initialFeesCollected);
+        if (mockAaveVault.yieldFee() > 0) {
+            assertGt(mockAaveVault.totalFeesCollected(), initialFeesCollected);
         } else {
-            assertEq(aaveVault.totalFeesCollected(), initialFeesCollected);
+            assertEq(mockAaveVault.totalFeesCollected(), initialFeesCollected);
         }
     }
 
     function test_YieldManagement_HarvestAaveYield_NoYieldVaultId_Revert() public {
-        AaveVault localImpl = new AaveVault();
+        MockAaveVault localImpl = new MockAaveVault();
         bytes memory initData = abi.encodeWithSelector(
-            AaveVault.initialize.selector,
+            MockAaveVault.initialize.selector,
             admin,
             address(usdc),
             address(aaveProvider),
@@ -1104,7 +1104,7 @@ contract AaveVaultTestSuite is Test {
             admin
         );
         ERC1967Proxy proxy = new ERC1967Proxy(address(localImpl), initData);
-        AaveVault localVault = AaveVault(address(proxy));
+        MockAaveVault localVault = MockAaveVault(address(proxy));
 
         vm.startPrank(admin);
         localVault.grantRole(localVault.GOVERNANCE_ROLE(), governance);
@@ -1139,16 +1139,16 @@ contract AaveVaultTestSuite is Test {
         // Deploy small amount to generate minimal yield
         uint256 deployAmount = 100000 * 1e6; // 100K USDC
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Add small yield (below threshold)
-        aUSDC.mint(address(aaveVault), 500 * 1e6); // 500 USDC yield (below 1000 threshold)
+        aUSDC.mint(address(mockAaveVault), 500 * 1e6); // 500 USDC yield (below 1000 threshold)
         
         vm.prank(vaultManager);
         vm.expectRevert(CommonErrorLibrary.BelowThreshold.selector);
-        aaveVault.harvestAaveYield();
+        mockAaveVault.harvestAaveYield();
     }
     
     /**
@@ -1167,18 +1167,18 @@ contract AaveVaultTestSuite is Test {
         // Deploy USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Check initial yield (should be 0)
-        assertEq(aaveVault.getAvailableYield(), 0);
+        assertEq(mockAaveVault.getAvailableYield(), 0);
         
         // Add yield
-        aUSDC.mint(address(aaveVault), 5000 * 1e6);
+        aUSDC.mint(address(mockAaveVault), 5000 * 1e6);
         
         // Check available yield
-        assertEq(aaveVault.getAvailableYield(), 5000 * 1e6);
+        assertEq(mockAaveVault.getAvailableYield(), 5000 * 1e6);
     }
     
     /**
@@ -1197,18 +1197,18 @@ contract AaveVaultTestSuite is Test {
         // Deploy USDC and add yield
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
-        aUSDC.mint(address(aaveVault), 10000 * 1e6); // 10K USDC yield
+        aUSDC.mint(address(mockAaveVault), 10000 * 1e6); // 10K USDC yield
         
         // Get yield distribution
-        (uint256 protocolYield, uint256 userYield, uint256 hedgerYield) = aaveVault.getYieldDistribution();
+        (uint256 protocolYield, uint256 userYield, uint256 hedgerYield) = mockAaveVault.getYieldDistribution();
         
         // Check calculations using actual fee from contract
         uint256 totalYield = 10000 * 1e6;
-        uint256 fee = aaveVault.yieldFee();
+        uint256 fee = mockAaveVault.yieldFee();
         uint256 expectedProtocol = totalYield * fee / 10000;
         uint256 netYield = totalYield - expectedProtocol;
         assertEq(protocolYield, expectedProtocol);
@@ -1236,12 +1236,12 @@ contract AaveVaultTestSuite is Test {
         // Deploy USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Check Aave balance
-        assertEq(aaveVault.getAaveBalance(), deployAmount);
+        assertEq(mockAaveVault.getAaveBalance(), deployAmount);
     }
     
     /**
@@ -1260,15 +1260,15 @@ contract AaveVaultTestSuite is Test {
         // Deploy USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Add yield
-        aUSDC.mint(address(aaveVault), 5000 * 1e6);
+        aUSDC.mint(address(mockAaveVault), 5000 * 1e6);
         
         // Check accrued interest
-        assertEq(aaveVault.getAccruedInterest(), 5000 * 1e6);
+        assertEq(mockAaveVault.getAccruedInterest(), 5000 * 1e6);
     }
     
     /**
@@ -1284,7 +1284,7 @@ contract AaveVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_AavePosition_WithValidParameters_ShouldGetAaveAPY() public view {
-        uint256 apy = aaveVault.getAaveAPY();
+        uint256 apy = mockAaveVault.getAaveAPY();
         assertGt(apy, 0);
     }
     
@@ -1304,12 +1304,12 @@ contract AaveVaultTestSuite is Test {
         // Deploy USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Get position details
-        (uint256 principalDeposited_, uint256 currentBalance, uint256 aTokenBalance, uint256 lastUpdateTime) = aaveVault.getAavePositionDetails();
+        (uint256 principalDeposited_, uint256 currentBalance, uint256 aTokenBalance, uint256 lastUpdateTime) = mockAaveVault.getAavePositionDetails();
         
         // Check details
         assertEq(principalDeposited_, deployAmount);
@@ -1342,13 +1342,13 @@ contract AaveVaultTestSuite is Test {
         // Deploy USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Test auto rebalancing
         vm.prank(vaultManager);
-        (, uint256 newAllocation, ) = aaveVault.autoRebalance();
+        (, uint256 newAllocation, ) = mockAaveVault.autoRebalance();
         
         // Check rebalancing result
         assertGe(newAllocation, 0);
@@ -1375,10 +1375,10 @@ contract AaveVaultTestSuite is Test {
         uint256 newMaxExposure = 75000000 * 1e6; // 75M USDC
         
         vm.prank(governance);
-        aaveVault.setMaxAaveExposure(newMaxExposure);
+        mockAaveVault.setMaxAaveExposure(newMaxExposure);
         
         // Check that max exposure was updated
-        (,,,, uint256 maxExposure_) = aaveVault.getAaveConfig();
+        (,,,, uint256 maxExposure_) = mockAaveVault.getAaveConfig();
         assertEq(maxExposure_, newMaxExposure);
     }
     
@@ -1399,7 +1399,7 @@ contract AaveVaultTestSuite is Test {
         
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.ConfigValueTooHigh.selector);
-        aaveVault.setMaxAaveExposure(excessiveExposure);
+        mockAaveVault.setMaxAaveExposure(excessiveExposure);
     }
     
     /**
@@ -1418,25 +1418,25 @@ contract AaveVaultTestSuite is Test {
         // First deploy USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
         // Record initial state
-        aaveVault.getAaveBalance(); // Call to ensure state is consistent
+        mockAaveVault.getAaveBalance(); // Call to ensure state is consistent
         
         // Emergency withdrawal
         vm.prank(emergencyRole);
-        uint256 amountWithdrawn = aaveVault.emergencyWithdrawFromAave();
+        uint256 amountWithdrawn = mockAaveVault.emergencyWithdrawFromAave();
         
         // Check emergency withdrawal
         assertGt(amountWithdrawn, 0);
-        assertEq(aaveVault.getAaveBalance(), 0);
-        assertTrue(aaveVault.emergencyMode());
+        assertEq(mockAaveVault.getAaveBalance(), 0);
+        assertTrue(mockAaveVault.emergencyMode());
         
         // Reset emergency mode
         vm.prank(emergencyRole);
-        aaveVault.toggleEmergencyMode(false, "Test complete");
+        mockAaveVault.toggleEmergencyMode(false, "Test complete");
     }
     
     /**
@@ -1455,11 +1455,11 @@ contract AaveVaultTestSuite is Test {
         // Deploy USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        aaveVault.deployToAave(deployAmount);
+        mockAaveVault.deployToAave(deployAmount);
         
-        (uint256 exposureRatio, uint256 concentrationRisk, uint256 liquidityRisk) = aaveVault.getRiskMetrics();
+        (uint256 exposureRatio, uint256 concentrationRisk, uint256 liquidityRisk) = mockAaveVault.getRiskMetrics();
         
         // Check risk metrics
         assertGe(exposureRatio, 0);
@@ -1492,10 +1492,10 @@ contract AaveVaultTestSuite is Test {
         uint256 newRebalanceThreshold = 1000; // 10%
         
         vm.prank(governance);
-        aaveVault.updateAaveParameters(newHarvestThreshold, newYieldFee, newRebalanceThreshold);
+        mockAaveVault.updateAaveParameters(newHarvestThreshold, newYieldFee, newRebalanceThreshold);
         
         // Check that parameters were updated
-        (,, uint256 harvestThreshold_, uint256 yieldFee_,) = aaveVault.getAaveConfig();
+        (,, uint256 harvestThreshold_, uint256 yieldFee_,) = mockAaveVault.getAaveConfig();
         assertEq(harvestThreshold_, newHarvestThreshold);
         assertEq(yieldFee_, newYieldFee);
     }
@@ -1516,12 +1516,12 @@ contract AaveVaultTestSuite is Test {
         // Test yield fee too high
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        aaveVault.updateAaveParameters(1000 * 1e6, 2500, 500); // 25% fee
+        mockAaveVault.updateAaveParameters(1000 * 1e6, 2500, 500); // 25% fee
         
         // Test rebalance threshold too high
         vm.prank(governance);
         vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        aaveVault.updateAaveParameters(1000 * 1e6, 1000, 2500); // 25% threshold
+        mockAaveVault.updateAaveParameters(1000 * 1e6, 1000, 2500); // 25% threshold
     }
     
     /**
@@ -1538,14 +1538,14 @@ contract AaveVaultTestSuite is Test {
      */
     function test_Configuration_ToggleEmergencyMode() public {
         vm.prank(emergencyRole);
-        aaveVault.toggleEmergencyMode(true, "Test emergency");
+        mockAaveVault.toggleEmergencyMode(true, "Test emergency");
         
-        assertTrue(aaveVault.emergencyMode());
+        assertTrue(mockAaveVault.emergencyMode());
         
         vm.prank(emergencyRole);
-        aaveVault.toggleEmergencyMode(false, "Test recovery");
+        mockAaveVault.toggleEmergencyMode(false, "Test recovery");
         
-        assertFalse(aaveVault.emergencyMode());
+        assertFalse(mockAaveVault.emergencyMode());
     }
 
     // =============================================================================
@@ -1573,15 +1573,15 @@ contract AaveVaultTestSuite is Test {
     function test_Emergency_PauseAndUnpause() public {
         // Pause vault
         vm.prank(emergencyRole);
-        aaveVault.pause();
+        mockAaveVault.pause();
         
-        assertTrue(aaveVault.paused());
+        assertTrue(mockAaveVault.paused());
         
         // Unpause vault
         vm.prank(emergencyRole);
-        aaveVault.unpause();
+        mockAaveVault.unpause();
         
-        assertFalse(aaveVault.paused());
+        assertFalse(mockAaveVault.paused());
     }
     
     /**
@@ -1599,7 +1599,7 @@ contract AaveVaultTestSuite is Test {
     function test_Emergency_PauseUnauthorized_Revert() public {
         vm.prank(user);
         vm.expectRevert();
-        aaveVault.pause();
+        mockAaveVault.pause();
     }
     
     /**
@@ -1617,12 +1617,12 @@ contract AaveVaultTestSuite is Test {
     function test_Emergency_RecoverToken() public {
         // Create a mock ERC20 token
         MockERC20 mockToken = new MockERC20("Mock Token", "MOCK");
-        mockToken.mint(address(aaveVault), 1000e18);
+        mockToken.mint(address(mockAaveVault), 1000e18);
         
         uint256 initialTreasuryBalance = mockToken.balanceOf(admin); // admin is treasury
         
         vm.prank(admin);
-        aaveVault.recoverToken(address(mockToken), 500e18);
+        mockAaveVault.recoverToken(address(mockToken), 500e18);
         
         // Verify tokens were sent to treasury (admin)
         assertEq(mockToken.balanceOf(admin), initialTreasuryBalance + 500e18);
@@ -1642,12 +1642,12 @@ contract AaveVaultTestSuite is Test {
      */
     function test_Emergency_RecoverUsdc_Success() public {
         // Give some USDC to the contract for testing
-        usdc.mint(address(aaveVault), 1000 * 1e6);
+        usdc.mint(address(mockAaveVault), 1000 * 1e6);
         
         uint256 initialTreasuryBalance = usdc.balanceOf(admin); // admin is treasury
         
         vm.prank(admin);
-        aaveVault.recoverToken(address(usdc), 1000 * 1e6);
+        mockAaveVault.recoverToken(address(usdc), 1000 * 1e6);
         
         // Verify USDC was sent to treasury
         assertEq(usdc.balanceOf(admin), initialTreasuryBalance + 1000 * 1e6);
@@ -1667,12 +1667,12 @@ contract AaveVaultTestSuite is Test {
      */
     function test_Emergency_RecoverAUsdc_Success() public {
         // Give some aUSDC to the contract for testing
-        aUSDC.mint(address(aaveVault), 1000 * 1e6);
+        aUSDC.mint(address(mockAaveVault), 1000 * 1e6);
         
         uint256 initialTreasuryBalance = aUSDC.balanceOf(admin); // admin is treasury
         
         vm.prank(admin);
-        aaveVault.recoverToken(address(aUSDC), 1000 * 1e6);
+        mockAaveVault.recoverToken(address(aUSDC), 1000 * 1e6);
         
         // Verify aUSDC was sent to treasury
         assertEq(aUSDC.balanceOf(admin), initialTreasuryBalance + 1000 * 1e6);
@@ -1698,32 +1698,32 @@ contract AaveVaultTestSuite is Test {
         // 1. Deploy USDC to Aave
         uint256 deployAmount = 1000000 * 1e6;
         vm.prank(vaultManager);
-        usdc.approve(address(aaveVault), deployAmount);
+        usdc.approve(address(mockAaveVault), deployAmount);
         vm.prank(vaultManager);
-        uint256 aTokensReceived = aaveVault.deployToAave(deployAmount);
+        uint256 aTokensReceived = mockAaveVault.deployToAave(deployAmount);
         
         assertGt(aTokensReceived, 0);
-        assertEq(aaveVault.getAaveBalance(), aTokensReceived);
+        assertEq(mockAaveVault.getAaveBalance(), aTokensReceived);
         
         // 2. Generate yield
-        aUSDC.mint(address(aaveVault), 5000 * 1e6);
+        aUSDC.mint(address(mockAaveVault), 5000 * 1e6);
         
         // 3. Harvest yield
         vm.prank(vaultManager);
-        uint256 yieldHarvested = aaveVault.harvestAaveYield();
+        uint256 yieldHarvested = mockAaveVault.harvestAaveYield();
         
         assertGt(yieldHarvested, 0);
-        assertGt(aaveVault.totalYieldHarvested(), 0);
+        assertGt(mockAaveVault.totalYieldHarvested(), 0);
         
         // 4. Check position details
-        (uint256 principalDeposited_, uint256 currentBalance, uint256 aTokenBalance,) = aaveVault.getAavePositionDetails();
+        (uint256 principalDeposited_, uint256 currentBalance, uint256 aTokenBalance,) = mockAaveVault.getAavePositionDetails();
         
         assertEq(principalDeposited_, deployAmount);
         assertGt(currentBalance, 0);
         assertEq(aTokenBalance, currentBalance);
         
         // 5. Check risk metrics
-        (uint256 exposureRatio, uint256 concentrationRisk, uint256 liquidityRisk) = aaveVault.getRiskMetrics();
+        (uint256 exposureRatio, uint256 concentrationRisk, uint256 liquidityRisk) = mockAaveVault.getRiskMetrics();
         
         assertGt(exposureRatio, 0);
         assertLe(concentrationRisk, 3);
@@ -1748,7 +1748,7 @@ contract AaveVaultTestSuite is Test {
         
         // Claim rewards
         vm.prank(vaultManager);
-        uint256 rewardsClaimed = aaveVault.claimAaveRewards();
+        uint256 rewardsClaimed = mockAaveVault.claimAaveRewards();
         
         // Check that rewards were claimed
         assertGt(rewardsClaimed, 0);
@@ -1779,11 +1779,11 @@ contract AaveVaultTestSuite is Test {
         uint256 initialBalance = admin.balance;
         
         // Send ETH to the contract
-        vm.deal(address(aaveVault), recoveryAmount);
+        vm.deal(address(mockAaveVault), recoveryAmount);
         
         // Admin recovers ETH to treasury (admin)
         vm.prank(admin);
-        aaveVault.recoverETH();
+        mockAaveVault.recoverETH();
         
         uint256 finalBalance = admin.balance;
         assertEq(finalBalance, initialBalance + recoveryAmount);
@@ -1802,11 +1802,11 @@ contract AaveVaultTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Recovery_RecoverETHByNonAdmin_Revert() public {
-        vm.deal(address(aaveVault), 1 ether);
+        vm.deal(address(mockAaveVault), 1 ether);
         
         vm.prank(vaultManager);
         vm.expectRevert();
-        aaveVault.recoverETH();
+        mockAaveVault.recoverETH();
     }
 
 
@@ -1826,7 +1826,7 @@ contract AaveVaultTestSuite is Test {
     function test_Recovery_RecoverETHNoBalance_Revert() public {
         vm.prank(admin);
         vm.expectRevert(CommonErrorLibrary.NoETHToRecover.selector);
-        aaveVault.recoverETH();
+        mockAaveVault.recoverETH();
     }
 }
 

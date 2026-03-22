@@ -289,7 +289,7 @@ contract MockHedgerPool {
 
 /**
  * @title MockAaveVault
- * @notice Mock AaveVault contract for testing
+ * @notice Mock MockAaveVault contract for testing
  */
 contract MockAaveVault {
     uint256 public yieldAmount = 50000 * 1e6; // 50K USDC yield
@@ -428,7 +428,7 @@ contract YieldShiftTestSuite is Test {
     MockUSDC public usdc;
     MockUserPool public userPool;
     MockHedgerPool public hedgerPool;
-    MockAaveVault public aaveVault;
+    MockAaveVault public mockAaveVault;
     MockStQEURO public stQEURO;
     MockStQEURO public stQEUROVault2;
     MockStQEUROFactory public stQEUROFactory;
@@ -459,7 +459,7 @@ contract YieldShiftTestSuite is Test {
         usdc = new MockUSDC();
         userPool = new MockUserPool();
         hedgerPool = new MockHedgerPool();
-        aaveVault = new MockAaveVault();
+        mockAaveVault = new MockAaveVault();
         stQEURO = new MockStQEURO();
         stQEUROVault2 = new MockStQEURO();
         stQEUROFactory = new MockStQEUROFactory();
@@ -487,7 +487,7 @@ contract YieldShiftTestSuite is Test {
             address(usdc),
             address(userPool),
             address(hedgerPool),
-            address(aaveVault),
+            address(mockAaveVault),
             address(stQEUROFactory),
             mockTimelock,
             admin // Use admin as treasury for testing
@@ -511,13 +511,13 @@ contract YieldShiftTestSuite is Test {
         
         // Mint USDC to contracts for testing
         usdc.mint(address(yieldShift), 1000000 * 1e6); // 1M USDC
-        usdc.mint(address(aaveVault), 100000 * 1e6); // 100K USDC
+        usdc.mint(address(mockAaveVault), 100000 * 1e6); // 100K USDC
         
         // Approve USDC transfers
         usdc.approve(address(yieldShift), type(uint256).max);
         
-        // Approve USDC transfers from aaveVault to yieldShift
-        vm.prank(address(aaveVault));
+        // Approve USDC transfers from mockAaveVault to yieldShift
+        vm.prank(address(mockAaveVault));
         usdc.approve(address(yieldShift), type(uint256).max);
         
         // Authorize different addresses for different yield sources
@@ -525,9 +525,9 @@ contract YieldShiftTestSuite is Test {
         vm.prank(admin);
         _authorizeYieldSource(yieldManager, keccak256("test_source"));
         
-        // Authorize aaveVault for aave yield
+        // Authorize mockAaveVault for aave yield
         vm.prank(admin);
-        _authorizeYieldSource(address(aaveVault), keccak256("aave"));
+        _authorizeYieldSource(address(mockAaveVault), keccak256("aave"));
         
         // Authorize user for fees yield
         vm.prank(admin);
@@ -676,7 +676,7 @@ contract YieldShiftTestSuite is Test {
             address(usdc),
             address(userPool),
             address(hedgerPool),
-            address(aaveVault),
+            address(mockAaveVault),
             address(stQEUROFactory),
             mockTimelock,
             admin
@@ -717,7 +717,7 @@ contract YieldShiftTestSuite is Test {
             address(0),
             address(userPool),
             address(hedgerPool),
-            address(aaveVault),
+            address(mockAaveVault),
             address(stQEUROFactory),
             mockTimelock,
             admin
@@ -1194,7 +1194,7 @@ contract YieldShiftTestSuite is Test {
         uint256 protocolFees = 3000 * 1e6;
         uint256 interestDifferential = 2000 * 1e6;
         
-        vm.prank(address(aaveVault));
+        vm.prank(address(mockAaveVault));
         yieldShift.addYield(1, aaveYield, keccak256("aave"));
         
         vm.prank(user);
@@ -1363,7 +1363,7 @@ contract YieldShiftTestSuite is Test {
         YieldShift.YieldDependencyConfig memory cfg = YieldShift.YieldDependencyConfig({
             userPool: address(0),
             hedgerPool: address(hedgerPool),
-            aaveVault: address(aaveVault),
+            mockAaveVault: address(mockAaveVault),
             stQEUROFactory: address(stQEUROFactory),
             treasury: admin
         });
@@ -1565,18 +1565,18 @@ contract YieldShiftTestSuite is Test {
     function test_Automated_HarvestAndDistributeAaveYield() public {
         // Set Aave yield amount
         uint256 aaveYield = 5000 * 1e6;
-        aaveVault.setYieldAmount(aaveYield);
+        mockAaveVault.setYieldAmount(aaveYield);
         
         // Record initial state
         uint256 initialTotalYield = yieldShift.totalYieldGenerated();
         
         // Test the individual components instead of the full function to avoid reentrancy issues
-        // 1. Test that aaveVault.harvestAaveYield() works
-        uint256 harvestedYield = aaveVault.harvestAaveYield();
+        // 1. Test that mockAaveVault.harvestAaveYield() works
+        uint256 harvestedYield = mockAaveVault.harvestAaveYield();
         assertEq(harvestedYield, aaveYield);
         
-        // 2. Test that we can add yield manually using the authorized aaveVault
-        vm.prank(address(aaveVault));
+        // 2. Test that we can add yield manually using the authorized mockAaveVault
+        vm.prank(address(mockAaveVault));
         yieldShift.addYield(1, aaveYield, keccak256("aave"));
         
         // Check that yield was added
@@ -1873,7 +1873,7 @@ contract YieldShiftTestSuite is Test {
         uint256 aaveYield = 5000 * 1e6;
         uint256 protocolFees = 3000 * 1e6;
         
-        vm.prank(address(aaveVault));
+        vm.prank(address(mockAaveVault));
         yieldShift.addYield(1, aaveYield, keccak256("aave"));
         
         vm.prank(user);

@@ -2,13 +2,13 @@
 pragma solidity 0.8.24;
 
 /**
- * @title IAaveVault
- * @notice Interface for the AaveVault (Aave V3 USDC yield vault)
- * @dev Mirrors the external/public API of `src/core/vaults/AaveVault.sol`
+ * @title IMockAaveVault
+ * @notice Interface for the MockAaveVault (Aave V3 USDC yield vault)
+ * @dev Mirrors the external/public API of `src/core/vaults/MockAaveVault.sol`
  * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
-interface IAaveVault {
+interface IMockAaveVault {
     /**
      * @notice Initializes the Aave vault
      * @param admin Admin address
@@ -18,7 +18,7 @@ interface IAaveVault {
      * @param _yieldShift YieldShift contract address
      * @param _timelock Timelock contract address
      * @param _treasury Treasury address
-     * @dev Initializes the AaveVault contract with required addresses
+     * @dev Initializes the MockAaveVault contract with required addresses
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates input parameters and business logic constraints
      * @custom:state-changes Updates contract state variables

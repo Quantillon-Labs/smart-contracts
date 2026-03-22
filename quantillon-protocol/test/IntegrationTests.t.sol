@@ -28,7 +28,7 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  * @notice Fully on-chain integration tests for Quantillon Protocol
  * 
  * @dev This test suite performs real contract deployments and interactions:
- *      1. Deploys all core contracts (TimeProvider, QEURO, Vault, UserPool, HedgerPool, stQEURO, YieldShift, AaveVault, FeeCollector, Oracle)
+ *      1. Deploys all core contracts (TimeProvider, QEURO, Vault, UserPool, HedgerPool, stQEURO, YieldShift, MockAaveVault, FeeCollector, Oracle)
  *      2. Wires contracts together with proper dependencies
  *      3. Performs actual on-chain operations:
  *         - User deposits USDC to UserPool
@@ -188,7 +188,7 @@ contract IntegrationTests is Test {
             address(mockUSDC),
             address(0), // userPool (will be set later)
             address(0), // hedgerPool (will be set later)
-            address(0), // aaveVault (will be set later)
+            address(0), // mockAaveVault (will be set later)
             address(0), // stQEURO (will be set later)
             timelock,
             treasury
@@ -253,7 +253,7 @@ contract IntegrationTests is Test {
             YieldShift.YieldDependencyConfig({
                 userPool: address(userPool),
                 hedgerPool: address(hedgerPool),
-                aaveVault: address(vault),
+                mockAaveVault: address(vault),
                 stQEUROFactory: address(stQEURO),
                 treasury: treasury
             })

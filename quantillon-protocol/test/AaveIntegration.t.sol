@@ -233,7 +233,7 @@ contract MockHedgerPool {
 
 /**
  * @title MockAaveVault
- * @notice Mock AaveVault for testing the integration
+ * @notice Mock MockAaveVault for testing the integration
  */
 contract MockAaveVault {
     IERC20 public usdc;
@@ -378,7 +378,7 @@ contract AaveIntegrationTest is Test {
     MockUSDC public usdc;
     MockOracle public oracle;
     MockHedgerPool public hedgerPool;
-    MockAaveVault public aaveVault;
+    MockAaveVault public mockAaveVault;
     FeeCollector public feeCollector;
     TimeProvider public timeProvider;
     
@@ -409,7 +409,7 @@ contract AaveIntegrationTest is Test {
         usdc = new MockUSDC();
         oracle = new MockOracle();
         hedgerPool = new MockHedgerPool();
-        aaveVault = new MockAaveVault(address(usdc));
+        mockAaveVault = new MockAaveVault(address(usdc));
         
         // Deploy TimeProvider
         timeProvider = new TimeProvider();
@@ -472,7 +472,7 @@ contract AaveIntegrationTest is Test {
         userPool = UserPool(address(userPoolProxy));
         
         // Configure vault with Aave adapter and grant roles
-        vault.setStakingVault(1, address(aaveVault), true);
+        vault.setStakingVault(1, address(mockAaveVault), true);
         vault.setDefaultStakingVaultId(1);
         uint256[] memory redemptionPriority = new uint256[](1);
         redemptionPriority[0] = 1;
@@ -544,7 +544,7 @@ contract AaveIntegrationTest is Test {
         // Assert: USDC should have been deployed to Aave
         // The vault should have reduced totalUsdcHeld and increased totalUsdcInAave
         assertGt(vault.totalUsdcInExternalVaults(), 0, "USDC should be deployed to Aave");
-        assertEq(aaveVault.totalDeployed(), vault.totalUsdcInExternalVaults(), "AaveVault should have received USDC");
+        assertEq(mockAaveVault.totalDeployed(), vault.totalUsdcInExternalVaults(), "MockAaveVault should have received USDC");
     }
     
     /**
@@ -637,20 +637,20 @@ contract AaveIntegrationTest is Test {
         vm.stopPrank();
 
         uint256 baseline = vault.totalUsdcHeld() + vault.totalUsdcInExternalVaults();
-        aaveVault.setAccruedYield(500e6);
+        mockAaveVault.setAccruedYield(500e6);
 
         uint256 totalAvailable = vault.getTotalUsdcAvailable();
         assertEq(totalAvailable, baseline + 500e6, "Accrued yield should be included in total availability");
     }
 
     function test_harvestAaveInterest_callsAaveVault() public {
-        aaveVault.setHarvestAmount(777e6);
+        mockAaveVault.setHarvestAmount(777e6);
 
         vm.prank(admin);
         uint256 harvested = vault.harvestVaultYield(1);
 
-        assertEq(harvested, 777e6, "Harvested amount should match AaveVault return");
-        assertEq(aaveVault.harvestCalls(), 1, "Harvest should call into AaveVault once");
+        assertEq(harvested, 777e6, "Harvested amount should match MockAaveVault return");
+        assertEq(mockAaveVault.harvestCalls(), 1, "Harvest should call into MockAaveVault once");
     }
     
     // =============================================================================
@@ -724,7 +724,7 @@ contract AaveIntegrationTest is Test {
         (address adapter1, bool active1, uint256 principal1, ) = vault.getVaultExposure(1);
         (address adapter2, bool active2, uint256 principal2, uint256 underlying2) = vault.getVaultExposure(2);
 
-        assertEq(adapter1, address(aaveVault), "Vault 1 adapter mismatch");
+        assertEq(adapter1, address(mockAaveVault), "Vault 1 adapter mismatch");
         assertTrue(active1, "Vault 1 should remain active");
         assertEq(principal1, 0, "Vault 1 should have no principal from vaultId=2 mint");
 
@@ -839,7 +839,7 @@ contract AaveIntegrationTest is Test {
      * @custom:oracle No oracle dependency
      */
     function test_deployUsdcToAave_zeroAddress() public {
-        // Arrange: Set AaveVault to zero address
+        // Arrange: Set MockAaveVault to zero address
         vm.startPrank(admin);
         
         // This should revert when trying to set zero address
@@ -862,10 +862,10 @@ contract AaveIntegrationTest is Test {
      * @custom:oracle No oracle dependency
      */
     function test_deposit_worksWithoutAaveVault() public {
-        // Arrange: Deploy a new vault without AaveVault set
+        // Arrange: Deploy a new vault without MockAaveVault set
         vm.startPrank(admin);
         
-        // Deploy new vault without AaveVault
+        // Deploy new vault without MockAaveVault
         QuantillonVault vaultImpl = new QuantillonVault();
         bytes memory vaultData = abi.encodeWithSelector(
             QuantillonVault.initialize.selector,

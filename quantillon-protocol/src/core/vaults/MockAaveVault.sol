@@ -20,7 +20,7 @@ import {TreasuryRecoveryLibrary} from "../../libraries/TreasuryRecoveryLibrary.s
 import {SecureUpgradeable} from "../SecureUpgradeable.sol";
 
 /**
- * @title AaveVault
+ * @title MockAaveVault
  * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
@@ -148,7 +148,7 @@ struct ReserveData {
 }
 
 /**
- * @title AaveVault
+ * @title MockAaveVault
  * @notice Aave integration vault for yield generation through USDC lending
  * 
  * @dev Main characteristics:
@@ -211,7 +211,7 @@ struct ReserveData {
  * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
-contract AaveVault is 
+contract MockAaveVault is 
     Initializable,
     ReentrancyGuardUpgradeable,
     AccessControlUpgradeable,
@@ -262,7 +262,7 @@ contract AaveVault is
     event EmergencyModeToggled(string indexed reason, bool enabled);
 
     /**
-     * @notice Constructor for AaveVault implementation
+     * @notice Constructor for MockAaveVault implementation
      * @dev Disables initialization on implementation for security
      * @custom:security Disables initialization on implementation for security
      * @custom:validation No input validation required
@@ -278,7 +278,7 @@ contract AaveVault is
     }
 
     /**
-     * @notice Initialize the AaveVault contract
+     * @notice Initialize the MockAaveVault contract
      * @dev Sets up the contract with all required addresses and roles
      * @param admin Address of the admin role
      * @param _usdc Address of the USDC token contract

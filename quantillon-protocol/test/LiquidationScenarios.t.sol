@@ -208,7 +208,7 @@ contract LiquidationScenarios is IntegrationTests {
             YieldShift.YieldDependencyConfig({
                 userPool: address(userPool),
                 hedgerPool: address(hedgerPool),
-                aaveVault: address(vault),
+                mockAaveVault: address(vault),
                 stQEUROFactory: address(stQEURO),
                 treasury: treasury
             })

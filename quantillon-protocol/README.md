@@ -22,6 +22,8 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **[Deployment Guide](https://smartcontracts.quantillon.money/Deployment.html)** - Complete deployment instructions and procedures
 - **[Security Guide](https://smartcontracts.quantillon.money/Security.html)** - Security practices and considerations
 - **[stQEUROFactory Technical Upgrade](./docs/stQEUROFactory.md)** - Multi-vault staking refactor details and runbook
+- **[Multi-Vault Staking Runtime Flow](./docs/Multi-Vault-Staking-Flow.md)** - Contract-level mint/redeem/hedger routing behavior after the `vaultId` refactor
+- **[External Vault Onboarding Runbook](./docs/External-Vault-Onboarding-Runbook.md)** - Operator guide for `setup-external-vaults.sh`
 - **[Documentation Hub](https://smartcontracts.quantillon.money/)** - Comprehensive documentation overview
 
 ### 🎯 Key Features
@@ -32,7 +34,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **Governance Token**: QTI token with vote-escrow mechanics for decentralized governance
 - **Advanced Hedging**: EUR/USD hedging positions with margin management and liquidation systems
 - **Yield-Bearing Wrapper**: stQEURO token that automatically accrues yield for holders
-- **Aave Integration**: Automated yield farming through Aave protocol integration
+- **External Adapter Integration**: Multi-vault adapter model with post-deploy onboarding
 - **Comprehensive Security**: Role-based access control, reentrancy protection, and emergency pause mechanisms
 - **Gas-Optimized Design**: Custom errors, centralized validation, and consolidated error libraries
 
@@ -50,7 +52,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 | **HedgerPool** | Hedging operations | EUR/USD short positions, margin management, liquidation at 101% CR |
 | **stQEUROFactory** | Multi-vault staking factory | Deploys one stQEURO proxy per vault, registry by `vaultId` |
 | **stQEUROToken** | Yield-bearing wrapper | Automatic yield accrual via exchange rate, no lock-up |
-| **AaveVault** | Aave v3 integration | Automated USDC yield farming, reward harvesting, emergency controls |
+| **MockAaveVault** | Mock Aave-style adapter | External adapter model validation, yield fee/harvest controls for staging |
 | **YieldShift** | Yield management | Dynamic distribution between pools, 7-day holding period, TWAP-based allocation |
 | **OracleRouter** | Oracle routing | Routes between Chainlink and Stork oracles, switchable by governance |
 | **ChainlinkOracle** | Chainlink price feeds | EUR/USD and USDC/USD via Chainlink, 1 hr staleness check, circuit breakers |
@@ -103,7 +105,7 @@ make slither
 
 ### 🔐 Unified Deployment
 
-All 13 contracts are deployed in a single `forge script` invocation via `DeployQuantillon.s.sol`. Deployed addresses are written to `deployments/{chainId}/addresses.json`.
+Core contracts are deployed in a single `forge script` invocation via `DeployQuantillon.s.sol`. Deployed addresses are written to `deployments/{chainId}/addresses.json`.
 
 ```bash
 # Deploy to localhost with mock contracts
@@ -114,6 +116,9 @@ All 13 contracts are deployed in a single `forge script` invocation via `DeployQ
 
 # Deploy to Base mainnet (production)
 ./scripts/deployment/deploy.sh base --verify --production
+
+# Then onboard external vault adapters (post-core step)
+./scripts/deployment/setup-external-vaults.sh --help
 ```
 
 ### 📋 Deployment Options

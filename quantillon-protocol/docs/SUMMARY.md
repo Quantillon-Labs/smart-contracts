@@ -8,6 +8,8 @@
 - [Security Guide](Security.md)
 - [Deployment Guide](Deployment.md)
 - [stQEUROFactory Technical Upgrade](stQEUROFactory.md)
+- [Multi-Vault Staking Runtime Flow](Multi-Vault-Staking-Flow.md)
+- [External Vault Onboarding Runbook](External-Vault-Onboarding-Runbook.md)
 - [External Vaults Refactor Recap](External-Vaults-Refactor-Recap.md)
 # src
   - [❱ core](src/core/README.md)

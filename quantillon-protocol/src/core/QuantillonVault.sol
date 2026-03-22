@@ -997,8 +997,8 @@ contract QuantillonVault is
      * @param vaultId Target external vault id for deployment.
      * @param usdcAmount Amount of USDC to deploy (6 decimals)
      * @custom:security Updates accounting before external interaction to remove reentrancy windows
-     * @custom:validation Validates AaveVault is set and amount > 0
-     * @custom:state-changes Updates totalUsdcHeld and totalUsdcInAave before calling AaveVault
+     * @custom:validation Validates MockAaveVault is set and amount > 0
+     * @custom:state-changes Updates totalUsdcHeld and totalUsdcInAave before calling MockAaveVault
      * @custom:events Emits UsdcDeployedToAave on success
      * @custom:errors Reverts on failed deployment or invalid Aave return value
      * @custom:reentrancy Not protected - internal function only
@@ -1041,7 +1041,7 @@ contract QuantillonVault is
      * @custom:oracle Requires fresh oracle price data
      * @custom:security No flash loan protection needed - legitimate redemption operation
      */
-    // SECURITY: Protected by nonReentrant modifier; external calls to trusted Oracle and AaveVault
+    // SECURITY: Protected by nonReentrant modifier; external calls to trusted Oracle and MockAaveVault
     function redeemQEURO(
         uint256 qeuroAmount,
         uint256 minUsdcOut
@@ -1230,7 +1230,7 @@ contract QuantillonVault is
      * @custom:access Internal function - called by redeemQEURO
      * @custom:oracle Requires valid EUR/USD price from oracle
      */
-    // SECURITY: Internal function called from nonReentrant redeemQEURO; trusted Oracle and AaveVault
+    // SECURITY: Internal function called from nonReentrant redeemQEURO; trusted Oracle and MockAaveVault
     function _redeemLiquidationMode(
         uint256 qeuroAmount,
         uint256 minUsdcOut,

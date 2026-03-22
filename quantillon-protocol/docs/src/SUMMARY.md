@@ -1,5 +1,7 @@
 # Summary
 - [Home](README.md)
+- [Multi-Vault Staking Runtime Flow](Multi-Vault-Staking-Flow.md)
+- [External Vault Onboarding Runbook](External-Vault-Onboarding-Runbook.md)
 # src
   - [❱ core](src/core/README.md)
     - [❱ vaults](src/core/vaults/README.md)

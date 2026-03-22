@@ -65,8 +65,6 @@ TimeProvider
             │
             ├── QTIToken + ERC1967Proxy
             │
-            ├── AaveVault + ERC1967Proxy (uses Aave V3 or mock)
-            │
             ├── UserPool + ERC1967Proxy
             ├── HedgerPool + ERC1967Proxy
             ├── YieldShift + ERC1967Proxy
@@ -80,22 +78,21 @@ After deployment, addresses are written to `deployments/{chainId}/addresses.json
 Required post-deploy wiring now enforced in-script (deployment reverts if any check fails):
 - `quantillonVault.initializePriceCache()`
 - `yieldShift.configureDependencies(...)`
-- `yieldShift.setYieldSourceAuthorization(aaveVault, "aave", true)`
 - `yieldShift.bootstrapDefaults()`
-- `aaveVault.updateYieldShift(yieldShift)`
 - `hedgerPool.configureDependencies(...)` (includes `feeCollector`)
 - `feeCollector.authorizeFeeSource(quantillonVault)`
 - `feeCollector.authorizeFeeSource(hedgerPool)`
 
-Vault registration is intentionally deferred: `DeployQuantillon.s.sol` does not register any stQEURO vault token on initialization.
+Vault registration is intentionally deferred: `DeployQuantillon.s.sol` does not register any stQEURO vault token or adapter on initialization.
+Use `scripts/deployment/setup-external-vaults.sh` for post-core onboarding.
 
 ### Network Configuration
 
-| Network | Chain ID | USDC | Aave V3 | Stork | Chainlink EUR/USD |
-|---------|----------|------|---------|-------|-------------------|
-| Localhost (Anvil) | 31337 | Base mainnet USDC or MockUSDC | Mock | Mock | Mock (or real on fork) |
-| Base Sepolia | 84532 | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | `0xE4C23309117Aa30342BFaae6c95c6478e0A4Ad00` (or mock) | Mock | `0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165` |
-| Base Mainnet | 8453 | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | `0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64B` | `0x647DFd812BC1e116c6992CB2bC353b2112176fD6` | `0xc91D87E81faB8f93699ECf7Ee9B44D11e1D53F0F` |
+| Network | Chain ID | USDC | Stork | Chainlink EUR/USD |
+|---------|----------|------|-------|-------------------|
+| Localhost (Anvil) | 31337 | Base mainnet USDC or MockUSDC | Mock | Mock (or real on fork) |
+| Base Sepolia | 84532 | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | Mock | `0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165` |
+| Base Mainnet | 8453 | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | `0x647DFd812BC1e116c6992CB2bC353b2112176fD6` | `0xc91D87E81faB8f93699ECf7Ee9B44D11e1D53F0F` |
 
 ---
 
@@ -146,7 +143,6 @@ The script automatically:
 - Sets gas price to 2 gwei
 - Uses `--slow` to send transactions one-at-a-time (avoids nonce desync with public RPCs)
 - Polls for stable nonce before broadcasting
-- Falls back to mock Aave if Base Sepolia Aave addresses have no code
 
 ### Output
 
@@ -218,6 +214,25 @@ Copies all contract JSON artifacts from `out/` to the path specified in `FRONTEN
 
 Reads `deployments/{chainId}/addresses.json` and writes the frontend `addresses.json` to `FRONTEND_ADDRESSES_FILE`.
 
+### 3. Onboard External Vaults (Required for Multi-Vault Staking)
+
+Core deploy does not set adapter routing/defaults. Onboard vaults with:
+
+```bash
+./scripts/deployment/setup-external-vaults.sh \
+  --rpc-url http://localhost:8545 \
+  --private-key "$PRIVATE_KEY" \
+  --quantillon-vault 0xQuantillonVault \
+  --factory 0xStQEUROFactory \
+  --yield-shift 0xYieldShift \
+  --vault 1:AAVE1:0xMockAaveAdapter \
+  --vault 2:MORPHO1:0xMorphoAdapter \
+  --default-vault-id 2 \
+  --enforce-source-bindings
+```
+
+See the dedicated runbook: `docs/External-Vault-Onboarding-Runbook.md`.
+
 ---
 
 ## Accessing Deployed Addresses
@@ -245,7 +260,6 @@ jq '.qeuroToken' deployments/31337/addresses.json
       "qeuroToken": "0x...",
       "quantillonVault": "0x...",
       "qtiToken": "0x...",
-      "aaveVault": "0x...",
       "stQEUROFactory": "0x...",
       "stQeuroToken": "0x...",
       "userPool": "0x...",

@@ -9,7 +9,7 @@ import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {UserPool} from "../src/core/UserPool.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
-import {AaveVault} from "../src/core/vaults/AaveVault.sol";
+import {MockAaveVault} from "../src/core/vaults/MockAaveVault.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {FeeCollector} from "../src/core/FeeCollector.sol";
 import {MockChainlinkOracle} from "../src/mocks/MockChainlinkOracle.sol";
@@ -51,7 +51,7 @@ contract QuantillonInvariants is Test {
     UserPool public userPool;
     HedgerPool public hedgerPool;
     YieldShift public yieldShift;
-    AaveVault public aaveVault;
+    MockAaveVault public mockAaveVault;
     stQEUROToken public stQEURO;
     FeeCollector public feeCollector;
     MockChainlinkOracle public oracle;
@@ -256,7 +256,7 @@ contract QuantillonInvariants is Test {
             address(usdc),
             address(0), // userPool
             address(0), // hedgerPool
-            address(0), // aaveVault
+            address(0), // mockAaveVault
             address(0), // stQEURO
             mockTimelock,
             treasury
@@ -317,7 +317,7 @@ contract QuantillonInvariants is Test {
             YieldShift.YieldDependencyConfig({
                 userPool: address(userPool),
                 hedgerPool: address(hedgerPool),
-                aaveVault: address(vault),
+                mockAaveVault: address(vault),
                 stQEUROFactory: address(stQEURO),
                 treasury: treasury
             })

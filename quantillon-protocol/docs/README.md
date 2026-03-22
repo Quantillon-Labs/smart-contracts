@@ -28,8 +28,14 @@ Step-by-step instructions for deploying and configuring the protocol.
 ### [stQEUROFactory Technical Upgrade](./stQEUROFactory.md)
 Detailed technical note for the multi-vault staking refactor (`stQEUROFactory`, vault self-registration, YieldShift routing by `vaultId`).
 
+### [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md)
+Contract runtime behavior for mint/stake/redeem/hedger flows after the `vaultId` refactor (default vault, redemption priority, adapter routing).
+
 ### [External Vaults Refactor Recap](./External-Vaults-Refactor-Recap.md)
 Decision-complete handoff for UI refactor: ABI/event deltas, new read model, vaultId routing, and localhost QA flow.
+
+### [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md)
+Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs, parameters, examples, verification).
 
 ---
 
@@ -45,13 +51,16 @@ Decision-complete handoff for UI refactor: ABI/event deltas, new read model, vau
 - [**Error Handling**](./API-Reference.md#error-handling) - Error codes and handling
 - [**Gas Optimization**](./API-Reference.md#gas-optimization) - Performance tips
 - [**stQEURO Multi-Vault Upgrade**](./stQEUROFactory.md) - Implementation and runbook
+- [**Multi-Vault Runtime Flow**](./Multi-Vault-Staking-Flow.md) - Mint/redeem/hedger runtime routing guide
 - [**External Vaults Recap (UI Handoff)**](./External-Vaults-Refactor-Recap.md) - Contract deltas and UI migration checklist
+- [**External Vault Onboarding Runbook**](./External-Vault-Onboarding-Runbook.md) - Post-core setup for adapters/default/redemption routing
 
 ### For Auditors
 - [**Security Guide**](./Security.md) - Security considerations
 - [**Architecture**](./Architecture.md) - System design
 - [**Access Control**](./API-Reference.md#access-control-roles) - Role definitions
 - [**stQEUROFactory Upgrade Note**](./stQEUROFactory.md) - Breaking changes and verification map
+- [**Multi-Vault Runtime Flow**](./Multi-Vault-Staking-Flow.md) - Runtime behavior and operations map
 - [**External Vaults Refactor Recap**](./External-Vaults-Refactor-Recap.md) - ABI/event/read-model migration map
 
 ---
@@ -69,8 +78,10 @@ Decision-complete handoff for UI refactor: ABI/event deltas, new read model, vau
 - **stQEUROToken** - Vault-level yield-bearing QEURO wrapper implementation deployed by the factory
 
 ### Yield Management
-- **AaveVault** - USDC yield farming via Aave v3: supply, harvest rewards, emergency withdrawal
+- **MockAaveVault** - Mock Aave-style adapter model for external vault onboarding/testing
 - **YieldShift** - Dynamic yield allocation between UserPool and HedgerPool; TWAP-based balancing
+
+External adapters are onboarded post-core deployment via [`setup-external-vaults.sh`](../scripts/deployment/setup-external-vaults.sh). See the [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md).
 
 ### Oracle System
 - **OracleRouter** - Oracle-agnostic router implementing `IOracle`; routes to Chainlink or Stork (switchable by governance)

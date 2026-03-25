@@ -66,6 +66,9 @@ uint256 public principalDeposited
 
 Initializes Aave adapter dependencies and roles.
 
+Grants `DEFAULT_ADMIN_ROLE`, `GOVERNANCE_ROLE`, and `VAULT_MANAGER_ROLE`,
+then stores dependency pointers used by the adapter functions.
+
 **Notes:**
 - security: Validates non-zero dependency addresses and vault id.
 
@@ -101,6 +104,8 @@ constructor(address admin, address usdc_, address aaveVault_, address yieldShift
 ### depositUnderlying
 
 Deposits USDC into the configured Aave vault.
+
+Tracks principal and forwards the deposit to `aaveVault.depositUnderlying`.
 
 **Notes:**
 - security: Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
@@ -145,6 +150,8 @@ function depositUnderlying(uint256 usdcAmount)
 
 Withdraws USDC principal from the configured Aave vault.
 
+Withdraws up to the tracked principal, then transfers the withdrawn USDC to `msg.sender`.
+
 **Notes:**
 - security: Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
 
@@ -188,6 +195,9 @@ function withdrawUnderlying(uint256 usdcAmount)
 
 Harvests accrued yield from the Aave vault and routes it to YieldShift.
 
+Computes yield as `totalUnderlyingOf(this) - principalDeposited`, withdraws it,
+and routes it to `yieldShift.addYield`.
+
 **Notes:**
 - security: Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
 
@@ -225,6 +235,8 @@ function harvestYield()
 
 Returns current underlying balance controlled by this adapter.
 
+Reads the underlying amount from the configured `aaveVault`.
+
 **Notes:**
 - security: Read-only helper.
 
@@ -256,6 +268,8 @@ function totalUnderlying() external view override returns (uint256 underlyingBal
 ### setAaveVault
 
 Updates the configured Aave vault endpoint.
+
+Updates the `aaveVault` pointer; the adapter uses the new vault for future deposits/withdrawals.
 
 **Notes:**
 - security: Restricted to `GOVERNANCE_ROLE`.
@@ -289,6 +303,8 @@ function setAaveVault(address newAaveVault) external onlyRole(GOVERNANCE_ROLE);
 
 Updates YieldShift destination contract.
 
+Updates the `yieldShift` pointer; future harvested yield is routed to the new contract.
+
 **Notes:**
 - security: Restricted to `GOVERNANCE_ROLE`.
 
@@ -320,6 +336,8 @@ function setYieldShift(address newYieldShift) external onlyRole(GOVERNANCE_ROLE)
 ### setYieldVaultId
 
 Updates destination vault id used when routing harvested yield.
+
+Updates the `yieldVaultId` used by `harvestYield` when calling `yieldShift.addYield`.
 
 **Notes:**
 - security: Restricted to `GOVERNANCE_ROLE`.

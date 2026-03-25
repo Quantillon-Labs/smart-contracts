@@ -16,6 +16,8 @@ interface IMockAaveVault {
      * @param assets Amount of USDC to deposit.
      * @param onBehalfOf Account credited with vault shares.
      * @return shares Vault shares minted for the deposit.
+     * @dev Forwards parameters to the underlying vault and relies on the adapter-level
+     *      access control and `nonReentrant` protection in the main adapter.
      * @custom:security External dependency call; trust model is environment-specific.
      * @custom:validation Reverts on invalid amount or vault-side checks.
      * @custom:state-changes Updates vault share/asset accounting.
@@ -32,6 +34,8 @@ interface IMockAaveVault {
      * @param assets Amount of USDC requested.
      * @param to Recipient of withdrawn USDC.
      * @return withdrawn Actual USDC withdrawn.
+     * @dev Forwards parameters to the underlying vault.
+     *      Reverts and/or returns values are handled by the calling adapter.
      * @custom:security External dependency call; trust model is environment-specific.
      * @custom:validation Reverts on insufficient balance or vault-side checks.
      * @custom:state-changes Updates vault share/asset accounting.
@@ -47,6 +51,7 @@ interface IMockAaveVault {
      * @notice Returns underlying assets held for an account.
      * @param account Account to query.
      * @return Underlying USDC-equivalent amount for `account`.
+     * @dev View helper used by the adapter to compute available yield.
      * @custom:security Read-only helper.
      * @custom:validation No input validation required at interface level.
      * @custom:state-changes No state changes.
@@ -88,6 +93,8 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
      * @param aaveVault_ Mock Aave vault address.
      * @param yieldShift_ YieldShift contract address.
      * @param yieldVaultId_ YieldShift vault id used when routing harvested yield.
+     * @dev Grants `DEFAULT_ADMIN_ROLE`, `GOVERNANCE_ROLE`, and `VAULT_MANAGER_ROLE`,
+     *      then stores dependency pointers used by the adapter functions.
      * @custom:security Validates non-zero dependency addresses and vault id.
      * @custom:validation Reverts on zero address or zero `yieldVaultId_`.
      * @custom:state-changes Initializes role assignments and adapter dependency pointers.
@@ -117,6 +124,7 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
      * @notice Deposits USDC into the configured Aave vault.
      * @param usdcAmount Amount of USDC to deposit (6 decimals).
      * @return sharesReceived Aave vault shares received for the deposit.
+     * @dev Tracks principal and forwards the deposit to `aaveVault.depositUnderlying`.
      * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
      * @custom:validation Reverts on zero amount or zero-share deposit outcome.
      * @custom:state-changes Increases `principalDeposited` and updates vault position.
@@ -140,6 +148,7 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
      * @notice Withdraws USDC principal from the configured Aave vault.
      * @param usdcAmount Requested USDC withdrawal amount (6 decimals).
      * @return usdcWithdrawn Actual USDC withdrawn and transferred to caller.
+     * @dev Withdraws up to the tracked principal, then transfers the withdrawn USDC to `msg.sender`.
      * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
      * @custom:validation Reverts on zero amount or when no principal is tracked.
      * @custom:state-changes Decreases `principalDeposited` and updates vault position.
@@ -170,6 +179,8 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
     /**
      * @notice Harvests accrued yield from the Aave vault and routes it to YieldShift.
      * @return harvestedYield USDC yield harvested and routed (6 decimals).
+     * @dev Computes yield as `totalUnderlyingOf(this) - principalDeposited`, withdraws it,
+     *      and routes it to `yieldShift.addYield`.
      * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
      * @custom:validation Reverts only on downstream failures; returns zero when no yield is available.
      * @custom:state-changes Leaves principal unchanged and routes yield through YieldShift.
@@ -194,6 +205,7 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
     /**
      * @notice Returns current underlying balance controlled by this adapter.
      * @return underlyingBalance Underlying USDC-equivalent balance in the Aave vault.
+     * @dev Reads the underlying amount from the configured `aaveVault`.
      * @custom:security Read-only helper.
      * @custom:validation No input validation required.
      * @custom:state-changes No state changes.
@@ -210,6 +222,7 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
     /**
      * @notice Updates the configured Aave vault endpoint.
      * @param newAaveVault New Aave vault address.
+     * @dev Updates the `aaveVault` pointer; the adapter uses the new vault for future deposits/withdrawals.
      * @custom:security Restricted to `GOVERNANCE_ROLE`.
      * @custom:validation Reverts on zero address input.
      * @custom:state-changes Updates `aaveVault` pointer.
@@ -229,6 +242,7 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
     /**
      * @notice Updates YieldShift destination contract.
      * @param newYieldShift New YieldShift contract address.
+     * @dev Updates the `yieldShift` pointer; future harvested yield is routed to the new contract.
      * @custom:security Restricted to `GOVERNANCE_ROLE`.
      * @custom:validation Reverts on zero address input.
      * @custom:state-changes Updates `yieldShift` dependency pointer.
@@ -248,6 +262,7 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
     /**
      * @notice Updates destination vault id used when routing harvested yield.
      * @param newYieldVaultId New YieldShift vault id.
+     * @dev Updates the `yieldVaultId` used by `harvestYield` when calling `yieldShift.addYield`.
      * @custom:security Restricted to `GOVERNANCE_ROLE`.
      * @custom:validation Reverts when `newYieldVaultId` is zero.
      * @custom:state-changes Updates `yieldVaultId`.

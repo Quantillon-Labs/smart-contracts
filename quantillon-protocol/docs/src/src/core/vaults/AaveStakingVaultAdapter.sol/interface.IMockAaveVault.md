@@ -5,6 +5,9 @@
 
 Deposits underlying assets into the mock Aave vault.
 
+Forwards parameters to the underlying vault and relies on the adapter-level
+access control and `nonReentrant` protection in the main adapter.
+
 **Notes:**
 - security: External dependency call; trust model is environment-specific.
 
@@ -44,6 +47,9 @@ function depositUnderlying(uint256 assets, address onBehalfOf) external returns 
 
 Withdraws underlying assets from the mock Aave vault.
 
+Forwards parameters to the underlying vault.
+Reverts and/or returns values are handled by the calling adapter.
+
 **Notes:**
 - security: External dependency call; trust model is environment-specific.
 
@@ -82,6 +88,8 @@ function withdrawUnderlying(uint256 assets, address to) external returns (uint25
 ### totalUnderlyingOf
 
 Returns underlying assets held for an account.
+
+View helper used by the adapter to compute available yield.
 
 **Notes:**
 - security: Read-only helper.

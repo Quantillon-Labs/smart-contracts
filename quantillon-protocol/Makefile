@@ -2,7 +2,7 @@
 
 .PHONY: help build test coverage slither mythril security clean validate-natspec \
         docs gas-analysis benchmark-gas analyze-warnings analyze-contract-sizes \
-        setup-env check-env install all ci \
+        setup-env check-env install all ci ci-base \
         deploy-localhost deploy-base-sepolia deploy-base deploy-dry-run \
         deploy-check deploy-secure-localhost deploy-secure-base-sepolia deploy-secure-base
 
@@ -28,7 +28,7 @@ help:
 	@echo ""
 	@echo "🧪 Test:"
 	@echo "  make test                   - Run all tests"
-	@echo "  make coverage               - Generate lcov coverage report"
+	@echo "  make coverage               - Generate lcov coverage report (runs tests once)"
 	@echo ""
 	@echo "🔍 Security:"
 	@echo "  make slither                - Slither static analysis"
@@ -48,7 +48,7 @@ help:
 	@echo ""
 	@echo "🚀 Pipelines:"
 	@echo "  make ci                     - CI pipeline (build+test+lint+analysis)"
-	@echo "  make all                    - Full local pipeline (ci+coverage+docs+mythril)"
+	@echo "  make all                    - Full local pipeline (ci-base+coverage; tests run via coverage)"
 	@echo ""
 	@echo "🌐 Deployment:"
 	@echo "  make deploy-localhost       - Localhost with mock contracts (requires Anvil: anvil --port 8545)"
@@ -151,11 +151,15 @@ analyze-contract-sizes:
 # ─── Pipelines ────────────────────────────────────────────────────────────────
 
 # CI: fast pipeline for automated environments (no mythril, no coverage — run as separate jobs)
-ci: build test slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes
+ci-base: build slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes
+	@echo "🚀 CI base pipeline completed!"
+
+# Note: `forge coverage` runs the unit tests internally, so `make all` should not depend on `make test`.
+ci: ci-base test
 	@echo "🚀 CI pipeline completed!"
 
-# all: full local pipeline, builds on ci and adds slow targets
-all: ci coverage docs mythril
+# all: full local pipeline, builds on ci-base and adds coverage + slow targets
+all: ci-base coverage docs mythril
 	@echo "🎯 Full pipeline completed!"
 
 # ─── Install ──────────────────────────────────────────────────────────────────

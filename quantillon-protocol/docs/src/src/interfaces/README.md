@@ -1,7 +1,6 @@
 
 
 # Contents
-- [IAaveVaultAdapter](IAaveVaultAdapter.sol/interface.IAaveVaultAdapter.md)
 - [IChainlinkOracle](IChainlinkOracle.sol/interface.IChainlinkOracle.md)
 - [IExternalStakingVault](IExternalStakingVault.sol/interface.IExternalStakingVault.md)
 - [IHedgerPool](IHedgerPool.sol/interface.IHedgerPool.md)

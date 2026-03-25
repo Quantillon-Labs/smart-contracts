@@ -15,7 +15,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-FORGE_SRC_BUILD_CMD=(forge build --build-info --skip "*/test/**" "*/script/**" --force)
+FORGE_SRC_BUILD_CMD=(forge build --build-info --skip "*/test/**" "*/script/**")
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Load environment variables using shared utility
@@ -120,7 +120,10 @@ fi
 
 # 1. Build contracts first
 print_section "Building Contracts"
-if "${FORGE_SRC_BUILD_CMD[@]}" > /dev/null 2>&1; then
+if [ -d "out" ] && [ -d "out/build-info" ]; then
+    print_success "Existing build artifacts found, reusing them"
+    generate_report "BUILD STATUS\n------------\n Reused existing build artifacts from out/\n\n"
+elif "${FORGE_SRC_BUILD_CMD[@]}" > /dev/null 2>&1; then
     print_success "Contracts built successfully"
     generate_report "BUILD STATUS\n------------\n Contracts compiled successfully\n\n"
 else

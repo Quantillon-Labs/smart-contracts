@@ -22,7 +22,7 @@ help:
 	@echo "  make setup-env              - Set up .env from template"
 	@echo ""
 	@echo "📦 Build:"
-	@echo "  make build                  - Compile all contracts"
+	@echo "  make build                  - Compile contracts (reuses cache when unchanged)"
 	@echo "  make clean                  - Clean build artifacts and results"
 	@echo "  RESULTS_DIR=path make build - Use custom output directory"
 	@echo ""
@@ -37,7 +37,7 @@ help:
 	@echo "  make validate-natspec       - NatSpec coverage check"
 	@echo ""
 	@echo "⛽ Gas & Size:"
-	@echo "  make gas-analysis           - Gas optimization analysis"
+	@echo "  make gas-analysis           - Gas optimization analysis (reuses build artifacts when possible)"
 	@echo "  make benchmark-gas          - Gas benchmarking"
 	@echo "  make analyze-warnings       - Build warning analysis"
 	@echo "  make analyze-contract-sizes - EIP-170 size check"
@@ -82,7 +82,7 @@ setup-env:
 build:
 	@echo "🔨 Building contracts..."
 	@mkdir -p $(RESULTS_DIR)
-	@$(BASH) -lc 'set -o pipefail; forge build --build-info --skip */test/** */script/** --force 2>&1 | tee "$(BUILD_OUTPUT)"'
+	@$(BASH) -lc 'set -o pipefail; forge build --build-info --skip */test/** */script/** 2>&1 | tee "$(BUILD_OUTPUT)"'
 
 clean:
 	@echo "🧹 Cleaning build artifacts and results..."

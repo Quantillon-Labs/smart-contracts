@@ -9,7 +9,7 @@ import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {UserPool} from "../src/core/UserPool.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
-import {AaveVaultAdapter as MockAaveVault} from "../src/core/vaults/AaveVaultAdapter.sol";
+import {MockAaveVault} from "../src/mocks/MockAaveVault.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {FeeCollector} from "../src/core/FeeCollector.sol";
 import {MockChainlinkOracle} from "../src/mocks/MockChainlinkOracle.sol";

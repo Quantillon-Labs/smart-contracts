@@ -20,7 +20,7 @@ import {TreasuryRecoveryLibrary} from "../../libraries/TreasuryRecoveryLibrary.s
 import {SecureUpgradeable} from "../SecureUpgradeable.sol";
 
 /**
- * @title MockAaveVault
+ * @title AaveVaultAdapter
  * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
@@ -148,7 +148,7 @@ struct ReserveData {
 }
 
 /**
- * @title MockAaveVault
+ * @title AaveVaultAdapter
  * @notice Aave integration vault for yield generation through USDC lending
  * 
  * @dev Main characteristics:
@@ -211,7 +211,7 @@ struct ReserveData {
  * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
-contract MockAaveVault is 
+contract AaveVaultAdapter is 
     Initializable,
     ReentrancyGuardUpgradeable,
     AccessControlUpgradeable,

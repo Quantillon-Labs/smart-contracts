@@ -11,7 +11,8 @@ Core smart contracts implementing:
 - **QuantillonVault**: Main USDC ↔ QEURO vault
 - **UserPool / HedgerPool**: Dual-pool architecture for deposits and hedging
 - **YieldShift**: Dynamic yield distribution
-- **AaveVault**: Aave v3 integration for yield generation
+- **AaveVaultAdapter**: UUPS-upgradeable Aave V3 adapter for yield generation
+- **AaveStakingVaultAdapter / MorphoStakingVaultAdapter**: Lightweight non-upgradeable adapters (symmetric pattern) wrapping mock vaults for localhost development
 
 ## Tech Stack
 
@@ -27,7 +28,7 @@ Core smart contracts implementing:
 smart-contracts/
 └── quantillon-protocol/           # Main project directory
     ├── src/
-    │   ├── core/                  # Core contracts (9 files)
+    │   ├── core/                  # Core contracts
     │   │   ├── QEUROToken.sol
     │   │   ├── QTIToken.sol
     │   │   ├── QuantillonVault.sol
@@ -36,19 +37,21 @@ smart-contracts/
     │   │   ├── stQEUROToken.sol
     │   │   ├── FeeCollector.sol
     │   │   ├── SecureUpgradeable.sol
-    │   │   └── TimelockUpgradeable.sol
-    │   ├── vaults/
-    │   │   └── AaveVault.sol
-    │   ├── yieldmanagement/
-    │   │   └── YieldShift.sol
+    │   │   ├── TimelockUpgradeable.sol
+    │   │   ├── vaults/
+    │   │   │   ├── AaveVaultAdapter.sol         # UUPS-upgradeable Aave V3 adapter
+    │   │   │   ├── AaveStakingVaultAdapter.sol  # Lightweight adapter for MockAaveVault
+    │   │   │   └── MorphoStakingVaultAdapter.sol # Lightweight adapter for MockMorphoVault
+    │   │   └── yieldmanagement/
+    │   │       └── YieldShift.sol
     │   ├── oracle/
     │   │   ├── ChainlinkOracle.sol
     │   │   ├── OracleRouter.sol
     │   │   └── StorkOracle.sol
-    │   ├── interfaces/            # 13 interface files
+    │   ├── interfaces/            # 17 interface files
     │   ├── libraries/             # 18 utility libraries
-    │   └── mocks/                 # Test mocks
-    ├── test/                      # 52 test files (~1,300+ tests)
+    │   └── mocks/                 # Test mocks (MockAaveVault, MockMorphoVault, MockUSDC, etc.)
+    ├── test/                      # 57 test files (~1,471 tests)
     ├── scripts/
     │   ├── deployment/            # Deploy scripts (git-crypt encrypted)
     │   ├── analyze-gas.sh
@@ -65,7 +68,7 @@ smart-contracts/
 ```bash
 # Build & Test
 make build              # Compile all contracts
-make test               # Run all tests (1,300+ tests)
+make test               # Run all tests (1,471+ tests)
 make coverage           # Generate coverage report
 make clean              # Clean artifacts
 
@@ -168,6 +171,7 @@ contract MyContract is Initializable, SecureUpgradeable {
 4. **Error Libraries**: Custom errors in CommonErrorLibrary for gas efficiency
 5. **Reentrancy Protection**: ReentrancyGuardUpgradeable on all state-changing functions
 6. **Emergency Pause**: PausableUpgradeable with PAUSER_ROLE
+7. **Symmetric Adapter Pattern**: Lightweight non-upgradeable adapters (`AaveStakingVaultAdapter`, `MorphoStakingVaultAdapter`) wrap simple mock vaults (`MockAaveVault`, `MockMorphoVault`) with identical interfaces — deploy Step 1: mock vault, Step 2: adapter pointing to it
 
 ## Deployment Strategy
 
@@ -177,11 +181,11 @@ Networks: localhost (31337), Base Sepolia (84532), Base Mainnet (8453).
 
 ## Testing Standards
 
-- **1,300+ tests passing** (100% pass rate)
+- **1,471+ tests passing** (100% pass rate, 57 test files)
 - Fuzz tests: 1000 runs
 - Invariant tests: 256 runs, depth 15
 - Naming: `test_*`, `testFuzz_*`, `invariant_*`
-- ~56 explicit skips with documented rationale
+- ~46 explicit skips with documented rationale
 - Run `make test` before pushing
 
 ## Security Notes

@@ -101,12 +101,62 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut) external;
 
 ### mintQEUROToVault
 
+Mints QEURO and routes resulting principal toward a specific vault id.
+
+Variant of mint flow with explicit external-vault routing control.
+
+**Notes:**
+- security: Protected by implementation pause/reentrancy controls.
+
+- validation: Implementations validate vault id state and slippage/oracle checks.
+
+- state-changes: Updates mint accounting and optional external-vault principal allocation.
+
+- events: Emits mint and potentially vault-deployment events in implementation.
+
+- errors: Reverts on invalid routing, slippage, oracle, or collateralization failures.
+
+- reentrancy: Implementation is expected to guard with `nonReentrant`.
+
+- access: Public.
+
+- oracle: Requires fresh oracle price data.
+
 
 ```solidity
 function mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to swap.|
+|`minQeuroOut`|`uint256`|Minimum QEURO expected (slippage protection).|
+|`vaultId`|`uint256`|Target vault id for principal routing (`0` disables explicit routing).|
+
 
 ### mintAndStakeQEURO
+
+Mints QEURO and stakes it into the stQEURO token for a selected vault id.
+
+One-step user flow combining mint and stake operations.
+
+**Notes:**
+- security: Protected by implementation pause/reentrancy controls.
+
+- validation: Implementations validate vault/token availability and slippage constraints.
+
+- state-changes: Updates mint and staking state across integrated contracts.
+
+- events: Emits mint/staking events in implementation and downstream contracts.
+
+- errors: Reverts on invalid vault, slippage, or integration failures.
+
+- reentrancy: Implementation is expected to guard with `nonReentrant`.
+
+- access: Public.
+
+- oracle: Requires fresh oracle price data for mint.
 
 
 ```solidity
@@ -114,6 +164,22 @@ function mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaul
     external
     returns (uint256 qeuroMinted, uint256 stQEUROMinted);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC to swap.|
+|`minQeuroOut`|`uint256`|Minimum QEURO expected from mint.|
+|`vaultId`|`uint256`|Target vault id for mint routing and stQEURO token selection.|
+|`minStQEUROOut`|`uint256`|Minimum stQEURO expected from staking.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroMinted`|`uint256`|QEURO minted before staking.|
+|`stQEUROMinted`|`uint256`|stQEURO minted and returned to user.|
+
 
 ### redeemQEURO
 
@@ -1884,31 +1950,142 @@ function initializePriceCache(uint256 initialEurUsdPrice) external;
 
 ### setStakingVault
 
+Configures adapter binding and active status for a vault id.
+
+Governance-managed registry update for external vault routing.
+
+**Notes:**
+- security: Restricted to governance in implementation.
+
+- validation: Reverts on invalid vault id or adapter address per implementation rules.
+
+- state-changes: Updates vault-id adapter and active-status mappings.
+
+- events: Emits vault configuration event in implementation.
+
+- errors: Reverts on invalid configuration values.
+
+- reentrancy: Not typically reentrancy-sensitive.
+
+- access: Governance-only in implementation.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function setStakingVault(uint256 vaultId, address adapter, bool active) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id to configure.|
+|`adapter`|`address`|Adapter contract implementing `IExternalStakingVault`.|
+|`active`|`bool`|Whether the vault id should be active for routing.|
+
 
 ### setDefaultStakingVaultId
+
+Sets the default vault id used for routing/fallback behavior.
+
+`vaultId == 0` may be used to clear default routing depending on implementation.
+
+**Notes:**
+- security: Restricted to governance in implementation.
+
+- validation: Non-zero ids are validated against active configured adapters.
+
+- state-changes: Updates default vault-id configuration.
+
+- events: Emits default-vault update event in implementation.
+
+- errors: Reverts on invalid/unconfigured ids.
+
+- reentrancy: Not reentrancy-sensitive.
+
+- access: Governance-only in implementation.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function setDefaultStakingVaultId(uint256 vaultId) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|New default vault id.|
+
 
 ### setRedemptionPriority
+
+Sets ordered vault ids used for redemption liquidity sourcing.
+
+Replaces current priority ordering with provided array.
+
+**Notes:**
+- security: Restricted to governance in implementation.
+
+- validation: Each id is validated as active/configured by implementation.
+
+- state-changes: Updates redemption-priority configuration.
+
+- events: Emits redemption-priority update event in implementation.
+
+- errors: Reverts on invalid ids.
+
+- reentrancy: Not reentrancy-sensitive.
+
+- access: Governance-only in implementation.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function setRedemptionPriority(uint256[] calldata vaultIds) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultIds`|`uint256[]`|Ordered vault ids.|
+
 
 ### deployUsdcToVault
+
+Deploys held USDC into a configured external vault id.
+
+Operator flow for moving idle collateral into yield adapters.
+
+**Notes:**
+- security: Restricted to operator role in implementation.
+
+- validation: Reverts on invalid amount, vault config, or insufficient held balance.
+
+- state-changes: Updates held/external principal accounting and adapter position.
+
+- events: Emits deployment event in implementation.
+
+- errors: Reverts on adapter or accounting failures.
+
+- reentrancy: Implementation is expected to guard with `nonReentrant`.
+
+- access: Role-restricted in implementation.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount) external;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Target vault id.|
+|`usdcAmount`|`uint256`|Amount of USDC to deploy.|
+
 
 ### selfRegisterStQEURO
 
@@ -1991,12 +2168,66 @@ function updateHedgerRewardFeeSplit(uint256 newSplit) external;
 
 ### harvestVaultYield
 
+Harvests yield from a configured external vault id.
+
+Governance-triggered adapter harvest operation.
+
+**Notes:**
+- security: Restricted to governance in implementation.
+
+- validation: Reverts when vault id is invalid/inactive or adapter is unset.
+
+- state-changes: May update adapter and downstream yield accounting.
+
+- events: Emits vault-yield harvested event in implementation.
+
+- errors: Reverts on configuration or adapter failures.
+
+- reentrancy: Implementation is expected to guard with `nonReentrant`.
+
+- access: Governance-only in implementation.
+
+- oracle: No direct oracle dependency.
+
 
 ```solidity
 function harvestVaultYield(uint256 vaultId) external returns (uint256 harvestedYield);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id to harvest.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`harvestedYield`|`uint256`|Yield harvested in USDC units.|
+
 
 ### getVaultExposure
+
+Returns exposure snapshot for a vault id.
+
+Includes adapter address, active status, tracked principal, and current underlying read.
+
+**Notes:**
+- security: Read-only helper.
+
+- validation: No additional validation required.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No explicit errors expected by interface contract.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
@@ -2005,20 +2236,89 @@ function getVaultExposure(uint256 vaultId)
     view
     returns (address adapter, bool active, uint256 principalTracked, uint256 currentUnderlying);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id to query.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`adapter`|`address`|Adapter address bound to vault id.|
+|`active`|`bool`|Whether the vault id is active.|
+|`principalTracked`|`uint256`|Principal tracked locally for vault id.|
+|`currentUnderlying`|`uint256`|Current underlying balance from adapter (implementation may fallback).|
+
 
 ### defaultStakingVaultId
+
+Returns configured default staking vault id.
+
+Used by clients to infer default mint routing.
+
+**Notes:**
+- security: Read-only accessor.
+
+- validation: No input validation required.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function defaultStakingVaultId() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Default vault id (`0` when unset).|
+
 
 ### totalUsdcInExternalVaults
+
+Returns total principal tracked across external vault adapters.
+
+Aggregated accounting metric for externally deployed USDC.
+
+**Notes:**
+- security: Read-only accessor.
+
+- validation: No input validation required.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function totalUsdcInExternalVaults() external view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Total USDC principal tracked in external vaults.|
+
 
 ### stQEUROFactory
 
@@ -2050,10 +2350,43 @@ function stQEUROFactory() external view returns (address);
 
 ### stQEUROTokenByVaultId
 
+Returns stQEURO token address bound to a vault id.
+
+Mapping accessor for vault-id-to-stQEURO token identity.
+
+**Notes:**
+- security: Read-only accessor.
+
+- validation: No input validation required; unknown ids return zero address.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function stQEUROTokenByVaultId(uint256 vaultId) external view returns (address);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault identifier.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`address`|stQEURO token address bound to `vaultId` (or zero if unset).|
+
 
 ### VAULT_OPERATOR_ROLE
 

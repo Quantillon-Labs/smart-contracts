@@ -339,6 +339,27 @@ modifier onlySelf() ;
 
 ### _onlySelf
 
+Reverts unless caller is this contract.
+
+Internal guard used by `onlySelf` commit helpers invoked via explicit self-calls.
+
+**Notes:**
+- security: Prevents direct external invocation of self-call commit paths.
+
+- validation: Requires `msg.sender == address(this)`.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Reverts with `NotAuthorized` when caller is not self.
+
+- reentrancy: No external calls.
+
+- access: Internal helper used by modifier.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function _onlySelf() internal view;

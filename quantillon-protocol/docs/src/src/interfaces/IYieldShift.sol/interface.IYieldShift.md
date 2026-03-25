@@ -31,7 +31,7 @@ function initialize(
     address _usdc,
     address _userPool,
     address _hedgerPool,
-    address _aaveVault,
+    address _mockAaveVault,
     address _stQEUROFactory,
     address _timelock,
     address _treasury
@@ -45,7 +45,7 @@ function initialize(
 |`_usdc`|`address`|USDC token address used for yield accounting.|
 |`_userPool`|`address`|UserPool contract address (optional at deploy time).|
 |`_hedgerPool`|`address`|HedgerPool contract address (optional at deploy time).|
-|`_aaveVault`|`address`|AaveVault contract address (optional at deploy time).|
+|`_mockAaveVault`|`address`|MockAaveVault contract address (optional at deploy time).|
 |`_stQEUROFactory`|`address`|stQEURO factory contract address (optional at deploy time).|
 |`_timelock`|`address`|Timelock contract used for SecureUpgradeable.|
 |`_treasury`|`address`|Treasury address for recovery flows.|
@@ -401,6 +401,25 @@ function setYieldSourceAuthorization(address source, bytes32 yieldType, bool aut
 
 Binds a source to a single vault id for optional strict routing.
 
+Governance hook used to restrict a source to one vault when enforcement is enabled.
+
+**Notes:**
+- security: Restricted to governance in implementation.
+
+- validation: Reverts on zero source or invalid vault id per implementation rules.
+
+- state-changes: Updates source-to-vault binding map.
+
+- events: Emits binding update event in implementation.
+
+- errors: Reverts on invalid inputs or unauthorized access.
+
+- reentrancy: Not applicable.
+
+- access: Governance-only.
+
+- oracle: No oracle dependency.
+
 
 ```solidity
 function setSourceVaultBinding(address source, uint256 vaultId) external;
@@ -417,6 +436,25 @@ function setSourceVaultBinding(address source, uint256 vaultId) external;
 
 Clears a source-to-vault binding.
 
+Governance hook that removes strict routing assignment for a source.
+
+**Notes:**
+- security: Restricted to governance in implementation.
+
+- validation: Reverts on zero source per implementation rules.
+
+- state-changes: Deletes source-to-vault binding entry.
+
+- events: Emits binding clear event in implementation.
+
+- errors: Reverts on invalid inputs or unauthorized access.
+
+- reentrancy: Not applicable.
+
+- access: Governance-only.
+
+- oracle: No oracle dependency.
+
 
 ```solidity
 function clearSourceVaultBinding(address source) external;
@@ -431,6 +469,25 @@ function clearSourceVaultBinding(address source) external;
 ### setSourceVaultBindingEnforcement
 
 Enables or disables strict source-to-vault binding enforcement.
+
+Governance toggle controlling whether `addYield` must respect source bindings.
+
+**Notes:**
+- security: Restricted to governance in implementation.
+
+- validation: Boolean input only; no additional validation required.
+
+- state-changes: Updates binding-enforcement flag.
+
+- events: Emits enforcement toggle event in implementation.
+
+- errors: Reverts on unauthorized access.
+
+- reentrancy: Not applicable.
+
+- access: Governance-only.
+
+- oracle: No oracle dependency.
 
 
 ```solidity
@@ -1428,7 +1485,7 @@ struct YieldModelConfig {
 struct YieldDependencyConfig {
     address userPool;
     address hedgerPool;
-    address aaveVault;
+    address mockAaveVault;
     address stQEUROFactory;
     address treasury;
 }

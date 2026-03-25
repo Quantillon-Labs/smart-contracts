@@ -529,6 +529,27 @@ modifier onlySelf() ;
 
 ### _onlySelf
 
+Reverts unless caller is this contract.
+
+Internal guard used by `onlySelf` for explicit self-call commit functions.
+
+**Notes:**
+- security: Prevents direct external invocation of commit-phase helpers.
+
+- validation: Requires `msg.sender == address(this)`.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Reverts with `NotAuthorized` when caller is not self.
+
+- reentrancy: No external calls.
+
+- access: Internal helper used by modifier.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function _onlySelf() internal view;
@@ -681,6 +702,27 @@ function mintQEURO(uint256 usdcAmount, uint256 minQeuroOut)
 
 ### mintQEUROToVault
 
+Mints QEURO and routes deployed USDC to a specific external vault id.
+
+Same mint flow as `mintQEURO`, but with explicit target vault routing.
+
+**Notes:**
+- security: Protected by pause and reentrancy guards.
+
+- validation: Reverts on invalid routing id, slippage, oracle, or collateral checks.
+
+- state-changes: Updates mint accounting, fee routing, and optional external vault principal.
+
+- events: Emits mint and vault deployment events in downstream flow.
+
+- errors: Reverts on invalid inputs, oracle/CR checks, or integration failures.
+
+- reentrancy: Guarded by `nonReentrant`.
+
+- access: Public.
+
+- oracle: Requires valid oracle reads in mint flow.
+
 
 ```solidity
 function mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId)
@@ -689,8 +731,37 @@ function mintQEUROToVault(uint256 usdcAmount, uint256 minQeuroOut, uint256 vault
     whenNotPaused
     flashLoanProtection;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC provided by caller (6 decimals).|
+|`minQeuroOut`|`uint256`|Minimum acceptable QEURO output (18 decimals).|
+|`vaultId`|`uint256`|Target staking vault id (0 disables auto-deploy routing).|
+
 
 ### mintAndStakeQEURO
+
+Mints QEURO then stakes it into the stQEURO token for the selected vault id.
+
+Executes mint flow to this contract, stakes into `stQEUROTokenByVaultId[vaultId]`, then transfers stQEURO to caller.
+
+**Notes:**
+- security: Protected by pause and reentrancy guards.
+
+- validation: Reverts on invalid vault id/token, slippage, and staking failures.
+
+- state-changes: Updates mint accounting, optional external deployment, and stQEURO balances.
+
+- events: Emits mint/deployment events and staking token events downstream.
+
+- errors: Reverts on mint, routing, approval, staking, or transfer failures.
+
+- reentrancy: Guarded by `nonReentrant`.
+
+- access: Public.
+
+- oracle: Requires valid oracle reads in mint flow.
 
 
 ```solidity
@@ -701,8 +772,45 @@ function mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaul
     flashLoanProtection
     returns (uint256 qeuroMinted, uint256 stQEUROMinted);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Amount of USDC provided by caller (6 decimals).|
+|`minQeuroOut`|`uint256`|Minimum acceptable QEURO output from mint (18 decimals).|
+|`vaultId`|`uint256`|Target staking vault id used for routing and stQEURO token selection.|
+|`minStQEUROOut`|`uint256`|Minimum acceptable stQEURO output from staking.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroMinted`|`uint256`|QEURO minted before staking.|
+|`stQEUROMinted`|`uint256`|stQEURO minted and sent to caller.|
+
 
 ### _mintQEUROFlow
+
+Shared mint pipeline used by mint entrypoints.
+
+Validates routing/oracle/collateral constraints, computes outputs, then dispatches commit phase.
+
+**Notes:**
+- security: Enforces protocol collateralization, price deviation, and vault routing checks.
+
+- validation: Reverts on invalid addresses/amounts, invalid routing, or failed risk checks.
+
+- state-changes: Performs no direct writes until commit dispatch; writes occur in commit helper.
+
+- events: Emits no events directly; commit helper emits mint/deployment events.
+
+- errors: Reverts on any failed validation or risk check.
+
+- reentrancy: Called from guarded external entrypoints.
+
+- access: Internal helper.
+
+- oracle: Uses live oracle reads for mint pricing and checks.
 
 
 ```solidity
@@ -714,29 +822,148 @@ function _mintQEUROFlow(
     uint256 targetVaultId
 ) internal returns (uint256 qeuroToMint);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`payer`|`address`|Address funding the USDC transfer.|
+|`qeuroRecipient`|`address`|Address receiving minted QEURO.|
+|`usdcAmount`|`uint256`|Amount of USDC provided (6 decimals).|
+|`minQeuroOut`|`uint256`|Minimum acceptable QEURO output (18 decimals).|
+|`targetVaultId`|`uint256`|Vault id to auto-deploy net USDC principal into (0 disables routing).|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroToMint`|`uint256`|Final QEURO amount to mint.|
+
 
 ### _dispatchMintCommit
+
+Dispatches mint commit through explicit self-call.
+
+Preserves separation between validation/read phase and commit/interactions phase.
+
+**Notes:**
+- security: Uses `onlySelf`-guarded commit entrypoint.
+
+- validation: Assumes payload was prepared by validated mint flow.
+
+- state-changes: No direct state changes in dispatcher.
+
+- events: No direct events in dispatcher.
+
+- errors: Propagates commit-phase revert reasons.
+
+- reentrancy: Called from guarded parent flow.
+
+- access: Internal helper.
+
+- oracle: No direct oracle reads.
 
 
 ```solidity
 function _dispatchMintCommit(MintCommitPayload memory payload) internal;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`payload`|`MintCommitPayload`|Packed mint commit payload.|
+
 
 ### _validateMintRouting
+
+Validates mint routing parameters for external vault deployment.
+
+`targetVaultId == 0` is allowed and means no auto-deploy.
+
+**Notes:**
+- security: Ensures routing only targets active, configured adapters.
+
+- validation: Reverts when non-zero vault id is inactive or adapter is unset.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: Reverts with `InvalidVault` or `ZeroAddress` for invalid routing.
+
+- reentrancy: Not applicable for view function.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function _validateMintRouting(uint256 targetVaultId) internal view;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`targetVaultId`|`uint256`|Vault id requested for principal deployment.|
+
 
 ### _getValidatedMintPrices
+
+Fetches and validates oracle prices required for minting.
+
+Reads EUR/USD and USDC/USD and verifies both are valid/non-zero.
+
+**Notes:**
+- security: Rejects invalid oracle outputs before mint accounting.
+
+- validation: Reverts when oracle flags invalid or returns zero USDC/USD.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: Reverts with `InvalidOraclePrice`.
+
+- reentrancy: External oracle reads only.
+
+- access: Internal helper.
+
+- oracle: Requires live oracle reads.
 
 
 ```solidity
 function _getValidatedMintPrices() internal returns (uint256 eurUsdPrice, bool isValid);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurUsdPrice`|`uint256`|Validated EUR/USD price.|
+|`isValid`|`bool`|Validity flag returned by oracle for EUR/USD.|
+
 
 ### _enforceMintEligibility
+
+Enforces protocol-level mint eligibility constraints.
+
+Requires initialized price cache, active hedger liquidity, and collateralization allowance.
+
+**Notes:**
+- security: Prevents minting when safety prerequisites are unmet.
+
+- validation: Reverts when cache is uninitialized, no hedger liquidity, or CR check fails.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: Reverts with protocol-specific eligibility errors.
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: Uses cached state and `canMint` logic.
 
 
 ```solidity
@@ -745,12 +972,60 @@ function _enforceMintEligibility() internal view;
 
 ### _enforceMintPriceDeviation
 
+Enforces mint-time EUR/USD deviation guard unless dev mode is enabled.
+
+Compares live price vs cached baseline and reverts when deviation exceeds configured threshold.
+
+**Notes:**
+- security: Blocks minting during abnormal price moves outside policy limits.
+
+- validation: Reverts with `ExcessiveSlippage` when deviation rule is violated.
+
+- state-changes: No state changes.
+
+- events: Emits `PriceDeviationDetected` before reverting on violation.
+
+- errors: Reverts with `ExcessiveSlippage`.
+
+- reentrancy: No external calls besides pure library logic.
+
+- access: Internal helper.
+
+- oracle: Uses provided live oracle price and cached baseline.
+
 
 ```solidity
 function _enforceMintPriceDeviation(uint256 eurUsdPrice) internal;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurUsdPrice`|`uint256`|Current validated EUR/USD price.|
+
 
 ### _computeMintAmounts
+
+Computes mint fee, net USDC, and QEURO output.
+
+Applies configured mint fee and slippage floor against `minQeuroOut`.
+
+**Notes:**
+- security: Enforces minimum-output slippage protection.
+
+- validation: Reverts when computed output is below `minQeuroOut`.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: Reverts with `ExcessiveSlippage`.
+
+- reentrancy: Not applicable for pure arithmetic helper.
+
+- access: Internal helper.
+
+- oracle: Uses supplied validated oracle input.
 
 
 ```solidity
@@ -759,8 +1034,45 @@ function _computeMintAmounts(uint256 usdcAmount, uint256 eurUsdPrice, uint256 mi
     view
     returns (uint256 fee, uint256 netAmount, uint256 qeuroToMint);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Gross USDC input (6 decimals).|
+|`eurUsdPrice`|`uint256`|Validated EUR/USD price.|
+|`minQeuroOut`|`uint256`|Minimum acceptable QEURO output.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`fee`|`uint256`|Protocol fee deducted from `usdcAmount`.|
+|`netAmount`|`uint256`|Net USDC backing minted QEURO.|
+|`qeuroToMint`|`uint256`|QEURO output to mint.|
+
 
 ### _enforceProjectedMintCollateralization
+
+Ensures projected collateralization remains above mint threshold after this mint.
+
+Simulates post-mint collateral/supply state and compares to configured minimum ratio.
+
+**Notes:**
+- security: Prevents minting that would violate collateralization policy.
+
+- validation: Reverts if projected backing requirement is zero or projected ratio is too low.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: Reverts with `InvalidAmount` or `InsufficientCollateralization`.
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: Uses supplied validated oracle input.
 
 
 ```solidity
@@ -768,6 +1080,14 @@ function _enforceProjectedMintCollateralization(uint256 netAmount, uint256 qeuro
     internal
     view;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`netAmount`|`uint256`|Net USDC that will be added as collateral.|
+|`qeuroToMint`|`uint256`|QEURO amount that will be minted.|
+|`eurUsdPrice`|`uint256`|Validated EUR/USD price used for backing requirement conversion.|
+
 
 ### _mintQEUROCommit
 
@@ -811,14 +1131,14 @@ function _mintQEUROCommit(
 |Name|Type|Description|
 |----|----|-----------|
 |`payer`|`address`|User receiving freshly minted QEURO|
-|`qeuroRecipient`|`address`||
+|`qeuroRecipient`|`address`|Address receiving minted QEURO output.|
 |`usdcAmount`|`uint256`|Gross USDC transferred in|
 |`fee`|`uint256`|Protocol fee portion from `usdcAmount`|
 |`netAmount`|`uint256`|Net USDC credited to collateral after fees|
 |`qeuroToMint`|`uint256`|QEURO amount to mint for `minter`|
 |`eurUsdPrice`|`uint256`|Validated EUR/USD price used for accounting cache|
 |`isValidPrice`|`bool`|Whether oracle read used for cache timestamp was valid|
-|`targetVaultId`|`uint256`||
+|`targetVaultId`|`uint256`|Target vault id for optional auto-deployment (`0` disables deployment).|
 
 
 ### _autoDeployToVault
@@ -830,9 +1150,9 @@ Uses strict CEI ordering and lets failures revert to preserve accounting integri
 **Notes:**
 - security: Updates accounting before external interaction to remove reentrancy windows
 
-- validation: Validates AaveVault is set and amount > 0
+- validation: Validates MockAaveVault is set and amount > 0
 
-- state-changes: Updates totalUsdcHeld and totalUsdcInAave before calling AaveVault
+- state-changes: Updates totalUsdcHeld and totalUsdcInAave before calling MockAaveVault
 
 - events: Emits UsdcDeployedToAave on success
 
@@ -852,7 +1172,7 @@ function _autoDeployToVault(uint256 vaultId, uint256 usdcAmount) internal;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`vaultId`|`uint256`||
+|`vaultId`|`uint256`|Target external vault id for deployment.|
 |`usdcAmount`|`uint256`|Amount of USDC to deploy (6 decimals)|
 
 
@@ -902,10 +1222,37 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external nonReentr
 
 ### _dispatchRedeemCommit
 
+Dispatches redeem commit through explicit self-call.
+
+Preserves separation between validation/read phase and commit/interactions phase.
+
+**Notes:**
+- security: Uses `onlySelf`-guarded commit entrypoint.
+
+- validation: Assumes payload was prepared by validated redeem flow.
+
+- state-changes: No direct state changes in dispatcher.
+
+- events: No direct events in dispatcher.
+
+- errors: Propagates commit-phase revert reasons.
+
+- reentrancy: Called from guarded parent flow.
+
+- access: Internal helper.
+
+- oracle: No direct oracle reads.
+
 
 ```solidity
 function _dispatchRedeemCommit(RedeemCommitPayload memory payload) internal;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`payload`|`RedeemCommitPayload`|Packed redeem commit payload.|
+
 
 ### _redeemQEUROCommit
 
@@ -1501,24 +1848,107 @@ function updateFeeCollector(address _feeCollector) external onlyRole(GOVERNANCE_
 
 ### setStakingVault
 
+Configures adapter and activation status for a vault id.
+
+Governance management entrypoint for external staking vault routing.
+
+**Notes:**
+- security: Restricted to `GOVERNANCE_ROLE`.
+
+- validation: Reverts on zero vault id or zero adapter address.
+
+- state-changes: Updates adapter mapping and active-status mapping for `vaultId`.
+
+- events: Emits `StakingVaultConfigured`.
+
+- errors: Reverts with `InvalidVault` or `ZeroAddress`.
+
+- reentrancy: No reentrancy-sensitive external calls.
+
+- access: Governance-only.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function setStakingVault(uint256 vaultId, address adapter, bool active) external onlyRole(GOVERNANCE_ROLE);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id to configure.|
+|`adapter`|`address`|Adapter contract implementing `IExternalStakingVault`.|
+|`active`|`bool`|Activation flag controlling whether vault id is eligible for routing.|
+
 
 ### setDefaultStakingVaultId
+
+Sets default vault id used for mint routing and fallback redemption priority.
+
+`vaultId == 0` clears default routing.
+
+**Notes:**
+- security: Restricted to `GOVERNANCE_ROLE`.
+
+- validation: Non-zero ids must be active and have a configured adapter.
+
+- state-changes: Updates `defaultStakingVaultId`.
+
+- events: Emits `DefaultStakingVaultUpdated`.
+
+- errors: Reverts with `InvalidVault`/`ZeroAddress` for invalid non-zero ids.
+
+- reentrancy: No reentrancy-sensitive external calls.
+
+- access: Governance-only.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function setDefaultStakingVaultId(uint256 vaultId) external onlyRole(GOVERNANCE_ROLE);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|New default vault id (or 0 to clear).|
+
 
 ### setRedemptionPriority
+
+Sets ordered vault ids used when sourcing redemption liquidity from external vaults.
+
+Replaces the full priority array with provided values.
+
+**Notes:**
+- security: Restricted to `GOVERNANCE_ROLE`.
+
+- validation: Each id must be non-zero, active, and mapped to a configured adapter.
+
+- state-changes: Replaces `redemptionPriorityVaultIds`.
+
+- events: Emits `RedemptionPriorityUpdated`.
+
+- errors: Reverts with `InvalidVault`/`ZeroAddress` on invalid entries.
+
+- reentrancy: No reentrancy-sensitive external calls.
+
+- access: Governance-only.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function setRedemptionPriority(uint256[] calldata vaultIds) external onlyRole(GOVERNANCE_ROLE);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultIds`|`uint256[]`|Ordered vault ids to use for redemption withdrawals.|
+
 
 ### selfRegisterStQEURO
 
@@ -1568,6 +1998,27 @@ function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata v
 
 ### harvestVaultYield
 
+Harvests yield from a specific external vault adapter.
+
+Governance-triggered wrapper around adapter `harvestYield`.
+
+**Notes:**
+- security: Restricted to `GOVERNANCE_ROLE`; protected by `nonReentrant`.
+
+- validation: Reverts when vault id is invalid/inactive or adapter is unset.
+
+- state-changes: Adapter-side yield state may update; vault emits harvest event.
+
+- events: Emits `ExternalVaultYieldHarvested`.
+
+- errors: Reverts on invalid configuration or adapter harvest failures.
+
+- reentrancy: Guarded by `nonReentrant`.
+
+- access: Governance-only.
+
+- oracle: No direct oracle dependency.
+
 
 ```solidity
 function harvestVaultYield(uint256 vaultId)
@@ -1576,8 +2027,41 @@ function harvestVaultYield(uint256 vaultId)
     nonReentrant
     returns (uint256 harvestedYield);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id whose adapter yield should be harvested.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`harvestedYield`|`uint256`|Yield harvested by adapter in USDC units.|
+
 
 ### deployUsdcToVault
+
+Deploys held USDC principal into a configured external vault adapter.
+
+Operator flow for moving idle vault USDC into yield-bearing adapters.
+
+**Notes:**
+- security: Restricted to `VAULT_OPERATOR_ROLE`; protected by `nonReentrant`.
+
+- validation: Reverts on zero amount, insufficient held liquidity, invalid vault id, or unset adapter.
+
+- state-changes: Decreases `totalUsdcHeld`, increases per-vault and global external principal trackers.
+
+- events: Emits `UsdcDeployedToExternalVault`.
+
+- errors: Reverts on invalid inputs, accounting constraints, or adapter failures.
+
+- reentrancy: Guarded by `nonReentrant`.
+
+- access: Vault-operator role.
+
+- oracle: No direct oracle dependency.
 
 
 ```solidity
@@ -1586,8 +2070,36 @@ function deployUsdcToVault(uint256 vaultId, uint256 usdcAmount)
     nonReentrant
     onlyRole(VAULT_OPERATOR_ROLE);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Target vault id.|
+|`usdcAmount`|`uint256`|USDC amount to deploy (6 decimals).|
+
 
 ### getVaultExposure
+
+Returns current exposure snapshot for a vault id.
+
+Provides adapter address, active flag, tracked principal, and best-effort underlying read.
+
+**Notes:**
+- security: Read-only helper.
+
+- validation: No additional validation; unknown ids return zeroed/default values.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No explicit errors; adapter read failure is handled via fallback.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
@@ -1596,27 +2108,136 @@ function getVaultExposure(uint256 vaultId)
     view
     returns (address adapter, bool active, uint256 principalTracked, uint256 currentUnderlying);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id to query.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`adapter`|`address`|Adapter address mapped to vault id.|
+|`active`|`bool`|Whether vault id is active.|
+|`principalTracked`|`uint256`|Principal tracked locally for vault id.|
+|`currentUnderlying`|`uint256`|Current underlying balance from adapter (fallbacks to principal on read failure).|
+
 
 ### _withdrawUsdcFromExternalVaults
+
+Withdraws requested USDC from external vault adapters following priority ordering.
+
+Iterates resolved priority list until amount is fully satisfied or reverts on shortfall.
+
+**Notes:**
+- security: Internal liquidity-sourcing helper for guarded redeem flows.
+
+- validation: Reverts with `InsufficientBalance` if aggregate withdrawals cannot satisfy request.
+
+- state-changes: Updates per-vault and global principal trackers via delegated withdrawal helper.
+
+- events: Emits per-vault withdrawal events from delegated helper.
+
+- errors: Reverts on insufficient liquidity or adapter withdrawal mismatch.
+
+- reentrancy: Internal helper; downstream adapter calls are performed in controlled flow.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function _withdrawUsdcFromExternalVaults(uint256 usdcAmount) internal returns (uint256 usdcWithdrawn);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcAmount`|`uint256`|Total USDC amount to source from external vaults.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`usdcWithdrawn`|`uint256`|Total USDC withdrawn from adapters.|
+
 
 ### _resolveWithdrawalPriority
+
+Resolves external-vault withdrawal priority list.
+
+Uses explicit `redemptionPriorityVaultIds` when configured, otherwise falls back to default vault id.
+
+**Notes:**
+- security: Internal read helper.
+
+- validation: Reverts if neither explicit priority nor default vault is available.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: Reverts with `InsufficientBalance` when no usable routing exists.
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function _resolveWithdrawalPriority() internal view returns (uint256[] memory priority);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`priority`|`uint256[]`|Ordered vault ids to use for withdrawal sourcing.|
+
 
 ### _withdrawFromExternalVault
+
+Withdraws up to `remaining` USDC principal from one external vault id.
+
+Caps withdrawal at locally tracked principal and requires adapter to return exact requested amount.
+
+**Notes:**
+- security: Internal helper used by controlled redemption liquidity flow.
+
+- validation: Skips inactive/unconfigured/zero-principal vaults; reverts on adapter mismatch.
+
+- state-changes: Decreases per-vault and global principal trackers before adapter withdrawal.
+
+- events: Emits `UsdcWithdrawnFromExternalVault` on successful withdrawal.
+
+- errors: Reverts with `InvalidAmount` if adapter withdrawal result mismatches request.
+
+- reentrancy: Internal helper; adapter interaction occurs after accounting updates.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
 
 
 ```solidity
 function _withdrawFromExternalVault(uint256 vaultId, uint256 remaining) internal returns (uint256 withdrawnAmount);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault id to withdraw from.|
+|`remaining`|`uint256`|Remaining aggregate withdrawal amount required.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`withdrawnAmount`|`uint256`|Amount withdrawn from this vault id (0 when skipped/ineligible).|
+
 
 ### withdrawProtocolFees
 
@@ -1862,17 +2483,71 @@ function _updatePriceTimestamp(bool isValid) internal;
 
 ### _getExternalVaultCollateralBalance
 
+Computes aggregate external-vault collateral balance including accrued yield.
+
+Reads adapter `totalUnderlying` values with principal fallback on read failure.
+
+**Notes:**
+- security: Internal read helper.
+
+- validation: Uses fallback to tracked principal when adapter reads fail.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No explicit errors; read failures are handled via fallback.
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function _getExternalVaultCollateralBalance() internal view returns (uint256 externalCollateral);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`externalCollateral`|`uint256`|Total external collateral balance in USDC units.|
+
 
 ### _getTotalCollateralWithAccruedYield
+
+Returns total collateral available including held and external-vault balances.
+
+Sum of `totalUsdcHeld` and `_getExternalVaultCollateralBalance()`.
+
+**Notes:**
+- security: Internal read helper.
+
+- validation: No input validation required.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: Propagates unexpected view-read errors.
+
+- reentrancy: Not applicable for view helper.
+
+- access: Internal helper.
+
+- oracle: No direct oracle dependency.
 
 
 ```solidity
 function _getTotalCollateralWithAccruedYield() internal view returns (uint256);
 ```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Total collateral in USDC units.|
+
 
 ### _routeProtocolFees
 

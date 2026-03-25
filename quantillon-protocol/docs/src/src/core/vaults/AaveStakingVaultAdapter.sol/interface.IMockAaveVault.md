@@ -1,11 +1,9 @@
-# IMockMorphoVault
+# IMockAaveVault
 
 ## Functions
 ### depositUnderlying
 
-Deposits underlying assets into the mock Morpho vault.
-
-Test-only vault interface used by the adapter in localhost simulations.
+Deposits underlying assets into the mock Aave vault.
 
 **Notes:**
 - security: External dependency call; trust model is environment-specific.
@@ -44,9 +42,7 @@ function depositUnderlying(uint256 assets, address onBehalfOf) external returns 
 
 ### withdrawUnderlying
 
-Withdraws underlying assets from the mock Morpho vault.
-
-Test-only vault interface used by the adapter in localhost simulations.
+Withdraws underlying assets from the mock Aave vault.
 
 **Notes:**
 - security: External dependency call; trust model is environment-specific.
@@ -86,8 +82,6 @@ function withdrawUnderlying(uint256 assets, address to) external returns (uint25
 ### totalUnderlyingOf
 
 Returns underlying assets held for an account.
-
-Read helper used by the adapter for principal/yield accounting.
 
 **Notes:**
 - security: Read-only helper.

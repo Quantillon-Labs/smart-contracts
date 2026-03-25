@@ -1,10 +1,11 @@
 
 
 # Contents
-- [IAaveVault](IAaveVault.sol/interface.IAaveVault.md)
+- [IAaveVaultAdapter](IAaveVaultAdapter.sol/interface.IAaveVaultAdapter.md)
 - [IChainlinkOracle](IChainlinkOracle.sol/interface.IChainlinkOracle.md)
 - [IExternalStakingVault](IExternalStakingVault.sol/interface.IExternalStakingVault.md)
 - [IHedgerPool](IHedgerPool.sol/interface.IHedgerPool.md)
+- [IMockAaveVault](IMockAaveVault.sol/interface.IMockAaveVault.md)
 - [IOracle](IOracle.sol/interface.IOracle.md)
 - [IQEUROToken](IQEUROToken.sol/interface.IQEUROToken.md)
 - [IQTIToken](IQTIToken.sol/interface.IQTIToken.md)

@@ -1,10 +1,12 @@
 
 
 # Contents
-- [IPool](AaveVault.sol/interface.IPool.md)
-- [IPoolAddressesProvider](AaveVault.sol/interface.IPoolAddressesProvider.md)
-- [IRewardsController](AaveVault.sol/interface.IRewardsController.md)
-- [ReserveData](AaveVault.sol/struct.ReserveData.md)
-- [AaveVault](AaveVault.sol/contract.AaveVault.md)
+- [IMockAaveVault](AaveStakingVaultAdapter.sol/interface.IMockAaveVault.md)
+- [AaveStakingVaultAdapter](AaveStakingVaultAdapter.sol/contract.AaveStakingVaultAdapter.md)
+- [IPool](AaveVaultAdapter.sol/interface.IPool.md)
+- [IPoolAddressesProvider](AaveVaultAdapter.sol/interface.IPoolAddressesProvider.md)
+- [IRewardsController](AaveVaultAdapter.sol/interface.IRewardsController.md)
+- [ReserveData](AaveVaultAdapter.sol/struct.ReserveData.md)
+- [AaveVaultAdapter](AaveVaultAdapter.sol/contract.AaveVaultAdapter.md)
 - [IMockMorphoVault](MorphoStakingVaultAdapter.sol/interface.IMockMorphoVault.md)
 - [MorphoStakingVaultAdapter](MorphoStakingVaultAdapter.sol/contract.MorphoStakingVaultAdapter.md)

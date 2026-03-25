@@ -1,11 +1,14 @@
-# MorphoStakingVaultAdapter
+# AaveStakingVaultAdapter
 **Inherits:**
 AccessControl, ReentrancyGuard, [IExternalStakingVault](/src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
 
 **Title:**
-MorphoStakingVaultAdapter
+AaveStakingVaultAdapter
 
-Generic external vault adapter for Morpho-like third-party vaults.
+Generic external vault adapter for Aave-like third-party vaults.
+
+Mirrors MorphoStakingVaultAdapter structure for symmetric localhost testing.
+Wraps a MockAaveVault (simple share-accounting mock) and routes yield to YieldShift.
 
 
 ## State Variables
@@ -30,10 +33,10 @@ IERC20 public immutable USDC
 ```
 
 
-### morphoVault
+### aaveVault
 
 ```solidity
-IMockMorphoVault public morphoVault
+IMockAaveVault public aaveVault
 ```
 
 
@@ -61,9 +64,7 @@ uint256 public principalDeposited
 ## Functions
 ### constructor
 
-Initializes Morpho adapter dependencies and roles.
-
-Configures governance/operator roles and immutable USDC reference.
+Initializes Aave adapter dependencies and roles.
 
 **Notes:**
 - security: Validates non-zero dependency addresses and vault id.
@@ -84,7 +85,7 @@ Configures governance/operator roles and immutable USDC reference.
 
 
 ```solidity
-constructor(address admin, address usdc_, address morphoVault_, address yieldShift_, uint256 yieldVaultId_) ;
+constructor(address admin, address usdc_, address aaveVault_, address yieldShift_, uint256 yieldVaultId_) ;
 ```
 **Parameters**
 
@@ -92,16 +93,14 @@ constructor(address admin, address usdc_, address morphoVault_, address yieldShi
 |----|----|-----------|
 |`admin`|`address`|Admin address granted governance and manager roles.|
 |`usdc_`|`address`|USDC token address.|
-|`morphoVault_`|`address`|Mock Morpho vault address.|
+|`aaveVault_`|`address`|Mock Aave vault address.|
 |`yieldShift_`|`address`|YieldShift contract address.|
 |`yieldVaultId_`|`uint256`|YieldShift vault id used when routing harvested yield.|
 
 
 ### depositUnderlying
 
-Deposits USDC into the configured Morpho vault.
-
-Pulls USDC from caller, deposits to Morpho, and increases tracked principal.
+Deposits USDC into the configured Aave vault.
 
 **Notes:**
 - security: Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
@@ -139,14 +138,12 @@ function depositUnderlying(uint256 usdcAmount)
 
 |Name|Type|Description|
 |----|----|-----------|
-|`sharesReceived`|`uint256`|Morpho vault shares received for the deposit.|
+|`sharesReceived`|`uint256`|Aave vault shares received for the deposit.|
 
 
 ### withdrawUnderlying
 
-Withdraws USDC principal from the configured Morpho vault.
-
-Caps withdrawal to tracked principal, redeems from Morpho, then returns USDC to caller.
+Withdraws USDC principal from the configured Aave vault.
 
 **Notes:**
 - security: Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
@@ -189,9 +186,7 @@ function withdrawUnderlying(uint256 usdcAmount)
 
 ### harvestYield
 
-Harvests accrued yield from Morpho and routes it to YieldShift.
-
-Withdraws only the amount above tracked principal, then forwards to YieldShift.
+Harvests accrued yield from the Aave vault and routes it to YieldShift.
 
 **Notes:**
 - security: Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
@@ -230,8 +225,6 @@ function harvestYield()
 
 Returns current underlying balance controlled by this adapter.
 
-Read helper used by QuantillonVault for exposure accounting.
-
 **Notes:**
 - security: Read-only helper.
 
@@ -257,23 +250,21 @@ function totalUnderlying() external view override returns (uint256 underlyingBal
 
 |Name|Type|Description|
 |----|----|-----------|
-|`underlyingBalance`|`uint256`|Underlying USDC-equivalent balance in Morpho.|
+|`underlyingBalance`|`uint256`|Underlying USDC-equivalent balance in the Aave vault.|
 
 
-### setMorphoVault
+### setAaveVault
 
-Updates the configured Morpho vault endpoint.
-
-Governance maintenance hook for swapping vault implementation/address.
+Updates the configured Aave vault endpoint.
 
 **Notes:**
 - security: Restricted to `GOVERNANCE_ROLE`.
 
 - validation: Reverts on zero address input.
 
-- state-changes: Updates `morphoVault` pointer.
+- state-changes: Updates `aaveVault` pointer.
 
-- events: Emits `MorphoVaultUpdated`.
+- events: Emits `AaveVaultUpdated`.
 
 - errors: Reverts with `ZeroAddress` for invalid input.
 
@@ -285,20 +276,18 @@ Governance maintenance hook for swapping vault implementation/address.
 
 
 ```solidity
-function setMorphoVault(address newMorphoVault) external onlyRole(GOVERNANCE_ROLE);
+function setAaveVault(address newAaveVault) external onlyRole(GOVERNANCE_ROLE);
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newMorphoVault`|`address`|New Morpho vault address.|
+|`newAaveVault`|`address`|New Aave vault address.|
 
 
 ### setYieldShift
 
 Updates YieldShift destination contract.
-
-Governance maintenance hook for yield routing dependency changes.
 
 **Notes:**
 - security: Restricted to `GOVERNANCE_ROLE`.
@@ -332,8 +321,6 @@ function setYieldShift(address newYieldShift) external onlyRole(GOVERNANCE_ROLE)
 
 Updates destination vault id used when routing harvested yield.
 
-Governance maintenance hook aligning adapter output with YieldShift vault mapping.
-
 **Notes:**
 - security: Restricted to `GOVERNANCE_ROLE`.
 
@@ -363,10 +350,10 @@ function setYieldVaultId(uint256 newYieldVaultId) external onlyRole(GOVERNANCE_R
 
 
 ## Events
-### MorphoVaultUpdated
+### AaveVaultUpdated
 
 ```solidity
-event MorphoVaultUpdated(address indexed oldVault, address indexed newVault);
+event AaveVaultUpdated(address indexed oldVault, address indexed newVault);
 ```
 
 ### YieldShiftUpdated

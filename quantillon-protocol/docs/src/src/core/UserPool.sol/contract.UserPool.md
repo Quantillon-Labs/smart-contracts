@@ -471,6 +471,27 @@ modifier onlySelf() ;
 
 ### _onlySelf
 
+Reverts unless caller is this contract.
+
+Internal guard used by `onlySelf` for commit-phase helpers reached via explicit self-calls.
+
+**Notes:**
+- security: Prevents direct external invocation of self-call commit paths.
+
+- validation: Requires `msg.sender == address(this)`.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: Reverts with `NotAuthorized` when caller is not self.
+
+- reentrancy: No external calls.
+
+- access: Internal helper used by modifier.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function _onlySelf() internal view;
@@ -1033,6 +1054,13 @@ function _validateAndProcessBatchWithdrawal(
 |`minUsdcOuts`|`uint256[]`|Array of minimum USDC amounts expected|
 |`usdcReceivedAmounts`|`uint256[]`|Array to store received USDC amounts|
 
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`oracleRatio`|`uint32`|Oracle ratio snapshot stored with withdrawal tracking entries.|
+|`totalWithdrawn`|`uint256`|Total USDC withdrawn across the batch.|
+
 
 ### _processVaultRedemptions
 
@@ -1118,8 +1146,8 @@ function _executeBatchTransfers(
 |`qeuroAmounts`|`uint256[]`|Array of QEURO amounts withdrawn|
 |`usdcReceivedAmounts`|`uint256[]`|Array of USDC amounts received|
 |`currentTime`|`uint256`|Current timestamp for events|
-|`oracleRatio`|`uint32`||
-|`totalWithdrawn`|`uint256`||
+|`oracleRatio`|`uint32`|Oracle ratio snapshot associated with this batch.|
+|`totalWithdrawn`|`uint256`|Total USDC withdrawn across the batch.|
 
 
 ### _executeBatchTransfersCommit

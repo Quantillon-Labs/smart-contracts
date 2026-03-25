@@ -333,10 +333,43 @@ function getStQEUROByVaultId(uint256 vaultId) external view returns (address stQ
 
 ### getVaultIdsByVault
 
+Returns all vault ids registered by a vault contract.
+
+A single QuantillonVault instance can register multiple vault ids.
+
+**Notes:**
+- security: Read-only registry accessor.
+
+- validation: No additional validation; unknown vaults return an empty array.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function getVaultIdsByVault(address vault) external view returns (uint256[] memory vaultIds);
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vault`|`address`|Vault contract address.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultIds`|`uint256[]`|Array of registered vault ids for `vault`.|
+
 
 ### getVaultById
 

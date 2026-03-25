@@ -122,10 +122,10 @@ IHedgerPool public hedgerPool
 ```
 
 
-### aaveVault
+### mockAaveVault
 
 ```solidity
-IAaveVault public aaveVault
+IMockAaveVault public mockAaveVault
 ```
 
 
@@ -415,7 +415,7 @@ function initialize(
     address _usdc,
     address _userPool,
     address _hedgerPool,
-    address _aaveVault,
+    address _mockAaveVault,
     address _stQEUROFactory,
     address _timelock,
     address _treasury
@@ -429,7 +429,7 @@ function initialize(
 |`_usdc`|`address`|Address of the USDC token contract|
 |`_userPool`|`address`|Address of the user pool contract|
 |`_hedgerPool`|`address`|Address of the hedger pool contract|
-|`_aaveVault`|`address`|Address of the Aave vault contract|
+|`_mockAaveVault`|`address`|Address of the Aave vault contract|
 |`_stQEUROFactory`|`address`|Address of the stQEURO factory contract|
 |`_timelock`|`address`|Address of the timelock contract|
 |`_treasury`|`address`|Address of the treasury|
@@ -1229,15 +1229,15 @@ function configureYieldModel(YieldModelConfig calldata cfg) external;
 
 Batch-updates external dependency addresses used for yield distribution.
 
-Wires or re-wires the `userPool`, `hedgerPool`, `aaveVault`, `stQEUROFactory` and `treasury`
+Wires or re-wires the `userPool`, `hedgerPool`, `mockAaveVault`, `stQEUROFactory` and `treasury`
 references in a single governance transaction.
 
 **Notes:**
-- security: Only governance may call; validates all addresses are non-zero and sane.
+- security: Only governance may call; validates required addresses and allows optional mockAaveVault.
 
 - validation: Uses `AccessControlLibrary` / `YieldValidationLibrary` to check addresses.
 
-- state-changes: Updates `userPool`, `hedgerPool`, `aaveVault`, `stQEUROFactory`, `treasury`.
+- state-changes: Updates `userPool`, `hedgerPool`, `mockAaveVault`, `stQEUROFactory`, `treasury`.
 
 - events: None – downstream contracts emit their own events on meaningful actions.
 
@@ -1257,7 +1257,7 @@ function configureDependencies(YieldDependencyConfig calldata cfg) external;
 
 |Name|Type|Description|
 |----|----|-----------|
-|`cfg`|`YieldDependencyConfig`|Struct containing the new dependency configuration: - `userPool`: UserPool contract address. - `hedgerPool`: HedgerPool contract address. - `aaveVault`: AaveVault contract address. - `stQEUROFactory`: stQEURO factory contract address. - `treasury`: treasury address receiving recovered funds.|
+|`cfg`|`YieldDependencyConfig`|Struct containing the new dependency configuration: - `userPool`: UserPool contract address. - `hedgerPool`: HedgerPool contract address. - `mockAaveVault`: MockAaveVault contract address. - `stQEUROFactory`: stQEURO factory contract address. - `treasury`: treasury address receiving recovered funds.|
 
 
 ### setYieldSourceAuthorization
@@ -1934,7 +1934,7 @@ struct YieldModelConfig {
 struct YieldDependencyConfig {
     address userPool;
     address hedgerPool;
-    address aaveVault;
+    address mockAaveVault;
     address stQEUROFactory;
     address treasury;
 }

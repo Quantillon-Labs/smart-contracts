@@ -133,6 +133,23 @@ Returns all vault ids registered by a given vault contract.
 
 A single QuantillonVault can register multiple staking vault ids.
 
+**Notes:**
+- security: Read-only registry accessor.
+
+- validation: No additional validation; unknown vaults return an empty array.
+
+- state-changes: No state changes.
+
+- events: No events emitted.
+
+- errors: No errors expected.
+
+- reentrancy: Not applicable for view function.
+
+- access: Public view.
+
+- oracle: No oracle dependencies.
+
 
 ```solidity
 function getVaultIdsByVault(address vault) external view returns (uint256[] memory vaultIds);

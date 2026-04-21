@@ -185,6 +185,25 @@ function mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaul
 
 Credits harvested user yield into a vault-specific stQEURO series.
 
+Converts harvested USDC yield into QEURO using the vault minting path and deposits the resulting backing directly into the target stQEURO vault.
+
+**Notes:**
+- security: Restricted in implementation to authorized yield distributors and validated vault bindings.
+
+- validation: Implementations validate vault registration, non-zero amounts, and fee/oracle constraints before crediting yield.
+
+- state-changes: Pulls or accounts for harvested USDC, mints QEURO backing, updates protocol accounting, and increases the target vault's asset balance.
+
+- events: Emits implementation-defined yield crediting and mint-related events.
+
+- errors: Reverts on invalid vault ids, zero amounts, oracle failures, or downstream minting/transfer failures.
+
+- reentrancy: Implementation is expected to guard integrated token-transfer flows.
+
+- access: Restricted in implementation to a dedicated yield-distributor permission.
+
+- oracle: Requires fresh oracle price data for USDC-to-QEURO conversion.
+
 
 ```solidity
 function creditVaultYield(uint256 vaultId, uint256 usdcAmount) external returns (uint256 qeuroMinted);

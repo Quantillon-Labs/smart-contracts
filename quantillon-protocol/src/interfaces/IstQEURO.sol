@@ -3,902 +3,278 @@ pragma solidity 0.8.24;
 
 /**
  * @title IstQEURO
- * @notice Interface for the stQEURO yield-bearing wrapper token (yield accrual mechanism)
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
- * @custom:security-contact team@quantillon.money
+ * @notice Minimal ERC-4626-oriented interface for stQEURO vault tokens.
  */
 interface IstQEURO {
     /**
-     * @notice Initializes the stQEURO token
-     * @dev Sets up the stQEURO token with initial configuration and assigns roles to admin
-     * @param admin Admin address
-     * @param _qeuro QEURO token address
-     * @param _yieldShift YieldShift contract address
-     * @param _usdc USDC token address
-     * @param _treasury Treasury address
-     * @param timelock Timelock contract address
-     * @custom:security Validates all addresses are not zero and initializes roles
-     * @custom:validation Validates admin is not address(0), all contract addresses are valid
-     * @custom:state-changes Initializes roles, sets contract addresses, enables staking
-     * @custom:events Emits role assignment and initialization events
-     * @custom:errors Throws InvalidAddress if any address is zero
-     * @custom:reentrancy Protected by onlyInitializing modifier
-     * @custom:access Internal function - only callable during initialization
-     * @custom:oracle No oracle dependencies
+     * @notice Returns the underlying ERC-20 asset managed by the vault.
+     * @dev Implementations should return the QEURO token address used by the ERC-4626 vault.
+     * @return underlyingAsset Address of the underlying QEURO asset.
+     * @custom:security Read-only helper.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function initialize(
-        address admin,
-        address _qeuro,
-        address _yieldShift,
-        address _usdc,
-        address _treasury,
-        address timelock
-    ) external;
+    function asset() external view returns (address);
 
     /**
-     * @notice Initializes the stQEURO token with dynamic metadata for a vault.
-     * @dev Configures dependencies and vault-specific token metadata for proxy deployment.
-     * @param admin Admin address
-     * @param _qeuro QEURO token address
-     * @param _yieldShift YieldShift contract address
-     * @param _usdc USDC token address
-     * @param _treasury Treasury address
-     * @param timelock Timelock contract address
-     * @param _tokenName ERC20 token name for this vault token instance
-     * @param _tokenSymbol ERC20 token symbol for this vault token instance
-     * @param _vaultName Human-readable vault name
-     * @custom:security Validates critical dependency addresses and initializes role-gated configuration.
-     * @custom:validation Implementations should reject zero/invalid addresses and malformed metadata inputs.
-     * @custom:state-changes Initializes metadata, core dependencies, and role assignments.
-     * @custom:events Emits initialization and role-grant related events in implementation.
-     * @custom:errors Reverts on invalid initialization parameters.
-     * @custom:reentrancy Protected by initializer semantics in implementation.
-     * @custom:access Public initializer for proxy deployment flow.
-     * @custom:oracle No direct oracle dependency during initialization.
+     * @notice Returns the total QEURO assets currently backing the vault.
+     * @dev Implementations should include principal and compounded yield held by the ERC-4626 vault.
+     * @return managedAssets Total QEURO assets managed by the vault.
+     * @custom:security Read-only helper.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function initialize(
-        address admin,
-        address _qeuro,
-        address _yieldShift,
-        address _usdc,
-        address _treasury,
-        address timelock,
-        string calldata _tokenName,
-        string calldata _tokenSymbol,
-        string calldata _vaultName
-    ) external;
+    function totalAssets() external view returns (uint256);
 
     /**
-     * @notice Stake QEURO to receive stQEURO
-     * @dev Converts QEURO to stQEURO at current exchange rate with yield accrual
-     * @param qeuroAmount Amount of QEURO to stake
-     * @return stQEUROAmount Amount of stQEURO received
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Converts a QEURO asset amount into the equivalent share amount.
+     * @dev Mirrors ERC-4626 share-conversion math using the current vault exchange rate.
+     * @param assets Amount of QEURO assets to convert.
+     * @return shares Equivalent stQEURO shares for `assets`.
+     * @custom:security Read-only helper.
+     * @custom:validation Uses the current vault accounting model and rounding rules.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function stake(uint256 qeuroAmount) external returns (uint256 stQEUROAmount);
+    function convertToShares(uint256 assets) external view returns (uint256 shares);
 
     /**
-     * @notice Unstake QEURO by burning stQEURO
-     * @dev Converts stQEURO back to QEURO at current exchange rate
-     * @param stQEUROAmount Amount of stQEURO to burn
-     * @return qeuroAmount Amount of QEURO received
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Converts a stQEURO share amount into the equivalent asset amount.
+     * @dev Mirrors ERC-4626 asset-conversion math using the current vault exchange rate.
+     * @param shares Amount of stQEURO shares to convert.
+     * @return assets Equivalent QEURO assets for `shares`.
+     * @custom:security Read-only helper.
+     * @custom:validation Uses the current vault accounting model and rounding rules.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function unstake(uint256 stQEUROAmount) external returns (uint256 qeuroAmount);
+    function convertToAssets(uint256 shares) external view returns (uint256 assets);
 
     /**
-     * @notice Batch stake QEURO amounts
-     * @dev Efficiently stakes multiple QEURO amounts in a single transaction
-     * @param qeuroAmounts Array of QEURO amounts
-     * @return stQEUROAmounts Array of stQEURO minted
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Previews how many shares a deposit would mint.
+     * @dev Mirrors ERC-4626 preview math without transferring assets.
+     * @param assets Amount of QEURO assets to preview.
+     * @return shares Estimated stQEURO shares for the deposit.
+     * @custom:security Read-only helper.
+     * @custom:validation Uses current vault accounting and rounding behavior.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function batchStake(uint256[] calldata qeuroAmounts) external returns (uint256[] memory stQEUROAmounts);
+    function previewDeposit(uint256 assets) external view returns (uint256 shares);
 
     /**
-     * @notice Batch unstake stQEURO amounts
-     * @dev Efficiently unstakes multiple stQEURO amounts in a single transaction
-     * @param stQEUROAmounts Array of stQEURO amounts
-     * @return qeuroAmounts Array of QEURO returned
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Previews how many assets would be required to mint a target share amount.
+     * @dev Mirrors ERC-4626 preview math without transferring assets.
+     * @param shares Amount of stQEURO shares to preview.
+     * @return assets Estimated QEURO assets required to mint `shares`.
+     * @custom:security Read-only helper.
+     * @custom:validation Uses current vault accounting and rounding behavior.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function batchUnstake(uint256[] calldata stQEUROAmounts) external returns (uint256[] memory qeuroAmounts);
+    function previewMint(uint256 shares) external view returns (uint256 assets);
 
     /**
-     * @notice Batch transfer stQEURO to multiple recipients
-     * @dev Efficiently transfers stQEURO to multiple recipients in a single transaction
-     * @param recipients Array of recipient addresses
-     * @param amounts Array of amounts to transfer
-     * @return success True if all transfers succeeded
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Previews how many shares would be burned to withdraw a target asset amount.
+     * @dev Mirrors ERC-4626 preview math without transferring assets.
+     * @param assets Amount of QEURO assets to preview.
+     * @return shares Estimated stQEURO shares burned for the withdrawal.
+     * @custom:security Read-only helper.
+     * @custom:validation Uses current vault accounting and rounding behavior.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function batchTransfer(address[] calldata recipients, uint256[] calldata amounts) external returns (bool);
+    function previewWithdraw(uint256 assets) external view returns (uint256 shares);
 
     /**
-     * @notice Distribute yield to stQEURO holders (increases exchange rate)
-     * @dev Distributes yield by increasing the exchange rate for all stQEURO holders
-     * @param yieldAmount Amount of yield in USDC
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Previews how many assets would be returned for a target share redemption.
+     * @dev Mirrors ERC-4626 preview math without transferring assets.
+     * @param shares Amount of stQEURO shares to preview.
+     * @return assets Estimated QEURO assets returned for redeeming `shares`.
+     * @custom:security Read-only helper.
+     * @custom:validation Uses current vault accounting and rounding behavior.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function distributeYield(uint256 yieldAmount) external;
+    function previewRedeem(uint256 shares) external view returns (uint256 assets);
 
     /**
-     * @notice Claim accumulated yield for a user (in USDC)
-     * @dev Claims the user's accumulated yield and transfers it to their address
-     * @return yieldAmount Amount of yield claimed
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Deposits QEURO and mints stQEURO shares to a receiver.
+     * @dev Implementations should follow ERC-4626 deposit semantics and emit a `Deposit` event.
+     * @param assets Amount of QEURO assets to deposit.
+     * @param receiver Address receiving the minted stQEURO shares.
+     * @return shares Amount of stQEURO shares minted.
+     * @custom:security Implementations should apply pause, allowance, and asset-transfer protections.
+     * @custom:validation Implementations validate deposit amount, receiver, and available limits.
+     * @custom:state-changes Transfers QEURO into the vault and mints stQEURO shares.
+     * @custom:events Emits the standard ERC-4626 `Deposit` event in implementation.
+     * @custom:errors Reverts on invalid input, paused state, or ERC-20/ERC-4626 failures.
+     * @custom:reentrancy Implementation should guard integrated transfer flows as needed.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function claimYield() external returns (uint256 yieldAmount);
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
 
     /**
-     * @notice Get pending yield for a user (in USDC)
-     * @dev Returns the amount of yield available for a specific user to claim
-     * @param user User address
-     * @return yieldAmount Pending yield amount
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Mints a target share amount by supplying the required QEURO assets.
+     * @dev Implementations should follow ERC-4626 mint semantics and emit a `Deposit` event.
+     * @param shares Amount of stQEURO shares to mint.
+     * @param receiver Address receiving the minted stQEURO shares.
+     * @return assets Amount of QEURO assets required for the mint.
+     * @custom:security Implementations should apply pause, allowance, and asset-transfer protections.
+     * @custom:validation Implementations validate share amount, receiver, and available limits.
+     * @custom:state-changes Transfers QEURO into the vault and mints stQEURO shares.
+     * @custom:events Emits the standard ERC-4626 `Deposit` event in implementation.
+     * @custom:errors Reverts on invalid input, paused state, or ERC-20/ERC-4626 failures.
+     * @custom:reentrancy Implementation should guard integrated transfer flows as needed.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function getPendingYield(address user) external view returns (uint256 yieldAmount);
+    function mint(uint256 shares, address receiver) external returns (uint256 assets);
 
     /**
-     * @notice Get current exchange rate between QEURO and stQEURO
-     * @dev Returns the current exchange rate used for staking/unstaking operations
-     * @return exchangeRate Current exchange rate (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Withdraws QEURO assets from the vault.
+     * @dev Implementations should follow ERC-4626 withdraw semantics and emit a `Withdraw` event.
+     * @param assets Amount of QEURO assets to withdraw.
+     * @param receiver Address receiving the withdrawn QEURO.
+     * @param owner Share owner whose balance and allowance are consumed.
+     * @return shares Amount of stQEURO shares burned.
+     * @custom:security Implementations should apply pause, allowance, and asset-transfer protections.
+     * @custom:validation Implementations validate asset amount, receiver/owner, and available limits.
+     * @custom:state-changes Burns stQEURO shares and transfers QEURO assets out of the vault.
+     * @custom:events Emits the standard ERC-4626 `Withdraw` event in implementation.
+     * @custom:errors Reverts on invalid input, paused state, insufficient balances, or ERC-20/ERC-4626 failures.
+     * @custom:reentrancy Implementation should guard integrated transfer flows as needed.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function getExchangeRate() external view returns (uint256);
+    function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
 
     /**
-     * @notice Get total value locked in stQEURO
-     * @dev Returns the total value locked in the stQEURO system
-     * @return tvl Total value locked (18 decimals)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Redeems stQEURO shares for the underlying QEURO assets.
+     * @dev Implementations should follow ERC-4626 redeem semantics and emit a `Withdraw` event.
+     * @param shares Amount of stQEURO shares to redeem.
+     * @param receiver Address receiving the redeemed QEURO.
+     * @param owner Share owner whose balance and allowance are consumed.
+     * @return assets Amount of QEURO assets returned.
+     * @custom:security Implementations should apply pause, allowance, and asset-transfer protections.
+     * @custom:validation Implementations validate share amount, receiver/owner, and available limits.
+     * @custom:state-changes Burns stQEURO shares and transfers QEURO assets out of the vault.
+     * @custom:events Emits the standard ERC-4626 `Withdraw` event in implementation.
+     * @custom:errors Reverts on invalid input, paused state, insufficient balances, or ERC-20/ERC-4626 failures.
+     * @custom:reentrancy Implementation should guard integrated transfer flows as needed.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function getTVL() external view returns (uint256);
+    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
 
     /**
-     * @notice Get user's QEURO equivalent balance
-     * @dev Returns the QEURO equivalent value of a user's stQEURO balance
-     * @param user User address
-     * @return qeuroEquivalent QEURO equivalent of stQEURO balance
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Returns the current share balance for an owner.
+     * @dev Mirrors the ERC-20 balance view for stQEURO shares.
+     * @param owner Account whose share balance is being queried.
+     * @return shares Current stQEURO share balance of `owner`.
+     * @custom:security Read-only helper.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function getQEUROEquivalent(address user) external view returns (uint256 qeuroEquivalent);
+    function balanceOf(address owner) external view returns (uint256 shares);
 
     /**
-     * @notice Get staking statistics
-     * @dev Returns comprehensive staking statistics and metrics
-     * @return totalStQEUROSupply Total stQEURO supply
-     * @return totalQEUROUnderlying Total QEURO underlying
-     * @return currentExchangeRate Current exchange rate
-     * @return _totalYieldEarned Total yield earned
-     * @return apy Annual percentage yield
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Returns the total outstanding supply of stQEURO shares.
+     * @dev Mirrors the ERC-20 total supply view for the vault share token.
+     * @return sharesSupply Total stQEURO shares currently issued.
+     * @custom:security Read-only helper.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function getStakingStats() external view returns (
-        uint256 totalStQEUROSupply,
-        uint256 totalQEUROUnderlying,
-        uint256 currentExchangeRate,
-        uint256 _totalYieldEarned,
-        uint256 apy
-    );
+    function totalSupply() external view returns (uint256 sharesSupply);
 
     /**
-     * @notice Update yield parameters
-     * @dev Updates yield-related parameters with security checks
-     * @param _yieldFee New yield fee percentage
-     * @param _minYieldThreshold New minimum yield threshold
-     * @param _maxUpdateFrequency New maximum update frequency
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function updateYieldParameters(
-        uint256 _yieldFee,
-        uint256 _minYieldThreshold,
-        uint256 _maxUpdateFrequency
-    ) external;
-
-    /**
-     * @notice Update treasury address
-     * @dev Updates the treasury address for yield distribution
-     * @param _treasury New treasury address
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function updateTreasury(address _treasury) external;
-
-    /**
-     * @notice Pause the contract
-     * @dev Pauses all stQEURO operations for emergency situations
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function pause() external;
-
-    /**
-     * @notice Unpause the contract
-     * @dev Resumes all stQEURO operations after being paused
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function unpause() external;
-
-    /**
-     * @notice Emergency withdrawal of QEURO
-     * @dev Allows emergency withdrawal of QEURO for a specific user
-     * @param user User address to withdraw for
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function emergencyWithdraw(address user) external;
-
-    /**
-     * @notice Recover accidentally sent tokens
-     * @dev Allows recovery of ERC20 tokens accidentally sent to the contract
-     * @param token Token address to recover
-     * @param amount Amount to transfer
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function recoverToken(address token, uint256 amount) external;
-
-    /**
-     * @notice Recover accidentally sent ETH
-     * @dev Allows recovery of ETH accidentally sent to the contract
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function recoverETH() external;
-
-    // View functions for token metadata
-    /**
-     * @notice Returns the name of the token
-     * @dev Returns the token name for display purposes
-     * @return The token name
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query token name
-     * @custom:oracle No oracle dependencies
-     */
-    function name() external view returns (string memory);
-    
-    /**
-     * @notice Returns the symbol of the token
-     * @dev Returns the token symbol for display purposes
-     * @return The token symbol
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query token symbol
-     * @custom:oracle No oracle dependencies
-     */
-    function symbol() external view returns (string memory);
-    
-    /**
-     * @notice Returns the decimals of the token
-     * @dev Returns the number of decimals used for token amounts
-     * @return The number of decimals
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query token decimals
-     * @custom:oracle No oracle dependencies
-     */
-    function decimals() external view returns (uint8);
-    
-    /**
-     * @notice Returns the total supply of the token
-     * @dev Returns the total amount of tokens in existence
-     * @return The total supply
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query total supply
-     * @custom:oracle No oracle dependencies
-     */
-    function totalSupply() external view returns (uint256);
-    
-    /**
-     * @notice Returns the balance of an account
-     * @dev Returns the token balance of the specified account
-     * @param account The account to check
-     * @return The balance of the account
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query account balance
-     * @custom:oracle No oracle dependencies
-     */
-    function balanceOf(address account) external view returns (uint256);
-
-    // ERC20 functions
-    /**
-     * @notice Transfers tokens to a recipient
-     * @dev Transfers the specified amount of tokens to the recipient
-     * @param to The recipient address
-     * @param amount The amount to transfer
-     * @return True if the transfer succeeded
-     * @custom:security Validates recipient is not address(0) and caller has sufficient balance
-     * @custom:validation Validates to != address(0) and amount <= balanceOf(msg.sender)
-     * @custom:state-changes Updates balances of sender and recipient
-     * @custom:events Emits Transfer event
-     * @custom:errors Throws InsufficientBalance if amount > balance
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Public - any token holder can transfer
-     * @custom:oracle No oracle dependencies
-     */
-    function transfer(address to, uint256 amount) external returns (bool);
-    
-    /**
-     * @notice Returns the allowance for a spender
-     * @dev Returns the amount of tokens that the spender is allowed to spend
-     * @param owner The owner address
-     * @param spender The spender address
-     * @return The allowance amount
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query allowance
-     * @custom:oracle No oracle dependencies
-     */
-    function allowance(address owner, address spender) external view returns (uint256);
-    
-    /**
-     * @notice Approves a spender to spend tokens
-     * @dev Sets the allowance for the spender to spend tokens on behalf of the caller
-     * @param spender The spender address
-     * @param amount The amount to approve
-     * @return True if the approval succeeded
-     * @custom:security Validates spender is not address(0)
-     * @custom:validation Validates spender != address(0)
-     * @custom:state-changes Updates allowance mapping
-     * @custom:events Emits Approval event
-     * @custom:errors No errors thrown - safe function
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Public - any token holder can approve
-     * @custom:oracle No oracle dependencies
-     */
-    function approve(address spender, uint256 amount) external returns (bool);
-    
-    /**
-     * @notice Transfers tokens from one account to another
-     * @dev Transfers tokens from the from account to the to account
-     * @param from The sender address
-     * @param to The recipient address
-     * @param amount The amount to transfer
-     * @return True if the transfer succeeded
-     * @custom:security Validates recipient is not address(0) and sufficient allowance
-     * @custom:validation Validates to != address(0) and amount <= allowance(from, msg.sender)
-     * @custom:state-changes Updates balances and allowance
-     * @custom:events Emits Transfer event
-     * @custom:errors Throws InsufficientAllowance if amount > allowance
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Public - any approved spender can transfer
-     * @custom:oracle No oracle dependencies
-     */
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-
-    // AccessControl functions
-    /**
-     * @notice Checks if an account has a specific role
-     * @dev Returns true if the account has been granted the role
-     * @param role The role to check
-     * @param account The account to check
-     * @return True if the account has the role
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can check roles
-     * @custom:oracle No oracle dependencies
-     */
-    function hasRole(bytes32 role, address account) external view returns (bool);
-    
-    /**
-     * @notice Returns the admin role for a role
-     * @dev Returns the role that is the admin of the given role
-     * @param role The role to check
-     * @return The admin role
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query role admin
-     * @custom:oracle No oracle dependencies
-     */
-    function getRoleAdmin(bytes32 role) external view returns (bytes32);
-    
-    /**
-     * @notice Grants a role to an account
-     * @dev Grants the specified role to the account
-     * @param role The role to grant
-     * @param account The account to grant the role to
-     * @custom:security Validates caller has admin role for the specified role
-     * @custom:validation Validates account is not address(0)
-     * @custom:state-changes Grants role to account
-     * @custom:events Emits RoleGranted event
-     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks admin role
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to role admin
-     * @custom:oracle No oracle dependencies
-     */
-    function grantRole(bytes32 role, address account) external;
-    
-    /**
-     * @notice Revokes a role from an account
-     * @dev Revokes the specified role from the account
-     * @param role The role to revoke
-     * @param account The account to revoke the role from
-     * @custom:security Validates caller has admin role for the specified role
-     * @custom:validation Validates account is not address(0)
-     * @custom:state-changes Revokes role from account
-     * @custom:events Emits RoleRevoked event
-     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks admin role
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to role admin
-     * @custom:oracle No oracle dependencies
-     */
-    function revokeRole(bytes32 role, address account) external;
-    
-    /**
-     * @notice Renounces a role
-     * @dev Renounces the specified role from the caller
-     * @param role The role to renounce
-     * @param callerConfirmation The caller confirmation
-     * @custom:security Validates caller is renouncing their own role
-     * @custom:validation Validates callerConfirmation == msg.sender
-     * @custom:state-changes Removes role from caller
-     * @custom:events Emits RoleRenounced event
-     * @custom:errors Throws AccessControlInvalidCaller if callerConfirmation != msg.sender
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Public - anyone can renounce their own roles
-     * @custom:oracle No oracle dependencies
-     */
-    function renounceRole(bytes32 role, address callerConfirmation) external;
-
-    // Pausable functions
-    /**
-     * @notice Returns the paused state
-     * @dev Returns true if the contract is paused
-     * @return True if paused
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can check pause status
-     * @custom:oracle No oracle dependencies
-     */
-    function paused() external view returns (bool);
-
-    // UUPS functions
-    /**
-     * @notice Upgrades the implementation
-     * @dev Upgrades the contract to a new implementation
-     * @param newImplementation The new implementation address
-     * @custom:security Validates caller has UPGRADER_ROLE
-     * @custom:validation Validates newImplementation is not address(0)
-     * @custom:state-changes Updates implementation address
-     * @custom:events Emits Upgraded event
-     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks UPGRADER_ROLE
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to UPGRADER_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function upgradeTo(address newImplementation) external;
-    
-    /**
-     * @notice Upgrades the implementation and calls a function
-     * @dev Upgrades the contract and calls a function on the new implementation
-     * @param newImplementation The new implementation address
-     * @param data The function call data
-     * @custom:security Validates caller has UPGRADER_ROLE
-     * @custom:validation Validates newImplementation is not address(0)
-     * @custom:state-changes Updates implementation address and calls initialization
-     * @custom:events Emits Upgraded event
-     * @custom:errors Throws AccessControlUnauthorizedAccount if caller lacks UPGRADER_ROLE
-     * @custom:reentrancy Not protected - no external calls
-     * @custom:access Restricted to UPGRADER_ROLE
-     * @custom:oracle No oracle dependencies
-     */
-    function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
-
-    // Constants
-    /**
-     * @notice Returns the governance role
-     * @dev Returns the role identifier for governance functions
-     * @return The governance role
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query role identifier
-     * @custom:oracle No oracle dependencies
-     */
-    function GOVERNANCE_ROLE() external view returns (bytes32);
-    
-    /**
-     * @notice Returns the yield manager role
-     * @dev Returns the role identifier for yield management functions
-     * @return The yield manager role
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query role identifier
-     * @custom:oracle No oracle dependencies
-     */
-    function YIELD_MANAGER_ROLE() external view returns (bytes32);
-    
-    /**
-     * @notice Returns the emergency role
-     * @dev Returns the role identifier for emergency functions
-     * @return The emergency role
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query role identifier
-     * @custom:oracle No oracle dependencies
-     */
-    function EMERGENCY_ROLE() external view returns (bytes32);
-    
-    /**
-     * @notice Returns the upgrader role
-     * @dev Returns the role identifier for upgrade functions
-     * @return The upgrader role
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query role identifier
-     * @custom:oracle No oracle dependencies
-     */
-    function UPGRADER_ROLE() external view returns (bytes32);
-
-    // State variables
-    /**
-     * @notice Returns the QEURO token address
-     * @dev Returns the address of the underlying QEURO token
-     * @return The QEURO token address
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query token address
-     * @custom:oracle No oracle dependencies
-     */
-    function qeuro() external view returns (address);
-    
-    /**
-     * @notice Returns the YieldShift contract address
-     * @dev Returns the address of the YieldShift contract
-     * @return The YieldShift contract address
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query contract address
-     * @custom:oracle No oracle dependencies
-     */
-    function yieldShift() external view returns (address);
-    
-    /**
-     * @notice Returns the USDC token address
-     * @dev Returns the address of the USDC token
-     * @return The USDC token address
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query token address
-     * @custom:oracle No oracle dependencies
-     */
-    function usdc() external view returns (address);
-    
-    /**
-     * @notice Returns the treasury address
-     * @dev Returns the address of the treasury contract
-     * @return The treasury address
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query treasury address
-     * @custom:oracle No oracle dependencies
-     */
-    function treasury() external view returns (address);
-    
-    /**
-     * @notice Returns the current exchange rate
-     * @dev Returns the current exchange rate between QEURO and stQEURO
-     * @return The current exchange rate
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query exchange rate
-     * @custom:oracle No oracle dependencies
-     */
-    function exchangeRate() external view returns (uint256);
-    
-    /**
-     * @notice Returns the last update time
-     * @dev Returns the timestamp of the last exchange rate update
-     * @return The last update time
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query last update time
-     * @custom:oracle No oracle dependencies
-     */
-    function lastUpdateTime() external view returns (uint256);
-    
-    /**
-     * @notice Returns the total underlying QEURO
-     * @dev Returns the total amount of QEURO underlying all stQEURO
-     * @return The total underlying QEURO
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query total underlying
-     * @custom:oracle No oracle dependencies
-     */
-    function totalUnderlying() external view returns (uint256);
-    
-    /**
-     * @notice Returns the total yield earned
-     * @dev Returns the total amount of yield earned by all stQEURO holders
-     * @return The total yield earned
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query total yield earned
-     * @custom:oracle No oracle dependencies
-     */
-    function totalYieldEarned() external view returns (uint256);
-    
-    /**
-     * @notice Returns the yield fee percentage
-     * @dev Returns the percentage of yield that goes to the treasury
-     * @return The yield fee percentage
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query yield fee
-     * @custom:oracle No oracle dependencies
+     * @notice Returns the configured yield fee for compounded vault yield.
+     * @dev Implementations generally express the fee in basis points.
+     * @return feeBps Current yield fee in basis points.
+     * @custom:security Read-only helper.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
     function yieldFee() external view returns (uint256);
-    
+
     /**
-     * @notice Returns the minimum yield threshold
-     * @dev Returns the minimum yield amount required for distribution
-     * @return The minimum yield threshold
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query minimum yield threshold
-     * @custom:oracle No oracle dependencies
+     * @notice Updates the yield fee applied to compounded vault yield.
+     * @dev Implementations typically restrict this governance action and validate basis-point caps.
+     * @param _yieldFee New yield fee in basis points.
+     * @custom:security Restricted in implementation to governance or admin roles.
+     * @custom:validation Implementations validate `_yieldFee` against configured fee limits.
+     * @custom:state-changes Updates the stored yield-fee configuration.
+     * @custom:events Emits implementation-defined yield-parameter update events.
+     * @custom:errors Reverts on invalid fee values or missing privileges in implementation.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted in implementation to governance or admin roles.
+     * @custom:oracle Not applicable.
      */
-    function minYieldThreshold() external view returns (uint256);
-    
+    function updateYieldParameters(uint256 _yieldFee) external;
+
     /**
-     * @notice Returns the maximum update frequency
-     * @dev Returns the maximum frequency for exchange rate updates
-     * @return The maximum update frequency
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe view function
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can query maximum update frequency
-     * @custom:oracle No oracle dependencies
+     * @notice Returns the human-readable vault name associated with the share series.
+     * @dev Used by frontends and admin tooling to distinguish vault-specific stQEURO series.
+     * @return name Vault name or suffix configured for the share token.
+     * @custom:security Read-only helper.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function maxUpdateFrequency() external view returns (uint256);
-    
-    /**
-     * @notice Gets the virtual protection status and parameters
-     * @dev Returns virtual protection configuration for monitoring
-     * @return isEnabled Whether virtual protection is enabled
-     * @return maxDeviation Maximum allowed deviation from real price
-     * @return lastUpdateTimestamp Last time the virtual price was updated
-     * @return virtualPrice Current virtual price
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public access - anyone can query virtual protection status
-     * @custom:oracle No oracle dependencies
-     */
-    function getVirtualProtectionStatus() external view returns (
-        bool isEnabled,
-        uint256 maxDeviation,
-        uint256 lastUpdateTimestamp,
-        uint256 virtualPrice
-    );
+    function vaultName() external view returns (string memory);
 }

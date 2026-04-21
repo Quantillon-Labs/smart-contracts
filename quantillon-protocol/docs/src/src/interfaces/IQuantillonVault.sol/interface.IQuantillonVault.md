@@ -181,6 +181,28 @@ function mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaul
 |`stQEUROMinted`|`uint256`|stQEURO minted and returned to user.|
 
 
+### creditVaultYield
+
+Credits harvested user yield into a vault-specific stQEURO series.
+
+
+```solidity
+function creditVaultYield(uint256 vaultId, uint256 usdcAmount) external returns (uint256 qeuroMinted);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault identifier receiving the compounded yield.|
+|`usdcAmount`|`uint256`|User-side harvested yield in USDC.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroMinted`|`uint256`|Net QEURO minted into the stQEURO vault.|
+
+
 ### redeemQEURO
 
 Redeems QEURO for USDC

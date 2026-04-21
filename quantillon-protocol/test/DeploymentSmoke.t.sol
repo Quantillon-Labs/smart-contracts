@@ -372,10 +372,10 @@ contract DeploymentSmokeTest is Test {
         uint256 qeuroForStake = qeuroToken.balanceOf(user1) / 2;
 
         qeuroToken.approve(address(stQEURO), qeuroForStake);
-        uint256 stAmount = stQEURO.stake(qeuroForStake);
+        uint256 stAmount = stQEURO.deposit(qeuroForStake, user1);
         assertGt(stAmount, 0, "stQEURO should be minted");
 
-        uint256 qeuroBack = stQEURO.unstake(stAmount);
+        uint256 qeuroBack = stQEURO.redeem(stAmount, user1, user1);
         assertGt(qeuroBack, 0, "Unstake should return QEURO");
         vm.stopPrank();
     }

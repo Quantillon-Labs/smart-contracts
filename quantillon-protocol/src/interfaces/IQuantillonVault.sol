@@ -97,6 +97,23 @@ interface IQuantillonVault {
     ) external returns (uint256 qeuroMinted, uint256 stQEUROMinted);
 
     /**
+     * @notice Credits harvested user yield into a vault-specific stQEURO series.
+     * @dev Converts harvested USDC yield into QEURO using the vault minting path and deposits the resulting backing directly into the target stQEURO vault.
+     * @param vaultId Vault identifier receiving the compounded yield.
+     * @param usdcAmount User-side harvested yield in USDC.
+     * @return qeuroMinted Net QEURO minted into the stQEURO vault.
+     * @custom:security Restricted in implementation to authorized yield distributors and validated vault bindings.
+     * @custom:validation Implementations validate vault registration, non-zero amounts, and fee/oracle constraints before crediting yield.
+     * @custom:state-changes Pulls or accounts for harvested USDC, mints QEURO backing, updates protocol accounting, and increases the target vault's asset balance.
+     * @custom:events Emits implementation-defined yield crediting and mint-related events.
+     * @custom:errors Reverts on invalid vault ids, zero amounts, oracle failures, or downstream minting/transfer failures.
+     * @custom:reentrancy Implementation is expected to guard integrated token-transfer flows.
+     * @custom:access Restricted in implementation to a dedicated yield-distributor permission.
+     * @custom:oracle Requires fresh oracle price data for USDC-to-QEURO conversion.
+     */
+    function creditVaultYield(uint256 vaultId, uint256 usdcAmount) external returns (uint256 qeuroMinted);
+
+    /**
      * @notice Redeems QEURO for USDC
      * @dev Converts QEURO (18 decimals) to USDC (6 decimals) using oracle price
      * @param qeuroAmount Amount of QEURO to swap

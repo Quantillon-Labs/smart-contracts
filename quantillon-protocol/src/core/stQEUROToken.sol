@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-// =============================================================================
-// IMPORTS - OpenZeppelin libraries and protocol interfaces
-// =============================================================================
-
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
@@ -15,77 +12,19 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
-import {IYieldShift} from "../interfaces/IYieldShift.sol";
-import {IOracle} from "../interfaces/IOracle.sol";
-import {VaultMath} from "../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
-import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
 
 /**
  * @title stQEUROToken
- * @notice Yield-bearing wrapper for QEURO tokens (yield accrual mechanism)
- * 
- * @dev Main characteristics:
- *      - Yield-bearing wrapper token for QEURO
- *      - Exchange rate increases over time as yield accrues
- *      - Similar to stETH (Lido's staked ETH token)
- *      - Automatic yield distribution to all stQEURO holders
- *      - Fee structure for protocol sustainability
- *      - Emergency pause mechanism for crisis situations
- *      - Upgradeable via UUPS pattern
- * 
- * @dev Staking mechanics:
- *      - Users stake QEURO to receive stQEURO
- *      - Exchange rate starts at 1:1 and increases over time
- *      - Yield is distributed proportionally to all stQEURO holders
- *      - Users can unstake at any time to receive QEURO + accrued yield
- *      - No lock-up period or cooldown requirements
- * 
- * @dev Yield distribution:
- *      - Yield is distributed from protocol fees and yield shift mechanisms
- *      - Exchange rate increases as yield accrues
- *      - All stQEURO holders benefit from yield automatically
- *      - Yield fees charged for protocol sustainability
- *      - Real-time yield tracking and distribution
- * 
- * @dev Exchange rate mechanism:
- *      - Exchange rate = (totalUnderlying + totalYieldEarned) / totalSupply
- *      - Increases over time as yield is earned
- *      - Updated periodically or when yield is distributed
- *      - Minimum yield threshold prevents frequent updates
- *      - Maximum update frequency prevents excessive gas costs
- * 
- * @dev Fee structure:
- *      - Yield fees on distributed yield
- *      - Treasury receives fees for protocol sustainability
- *      - Dynamic fee adjustment based on market conditions
- *      - Transparent fee structure for users
- * 
- * @dev Security features:
- *      - Role-based access control for all critical operations
- *      - Reentrancy protection for all external calls
- *      - Emergency pause mechanism for crisis situations
- *      - Upgradeable architecture for future improvements
- *      - Secure yield distribution mechanisms
- *      - Exchange rate validation
- * 
- * @dev Integration points:
- *      - QEURO token for staking and unstaking
- *      - USDC for yield payments
- *      - Yield shift mechanism for yield management
- *      - Treasury for fee collection
- *      - Vault math library for calculations
- * 
- * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
- * @custom:security-contact team@quantillon.money
+ * @notice ERC-4626 vault over QEURO used for per-vault staking series.
  */
-contract stQEUROToken is 
+contract stQEUROToken is
     Initializable,
-    ERC20Upgradeable,
+    ERC4626Upgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -93,287 +32,91 @@ contract stQEUROToken is
 {
     using SafeERC20 for IERC20;
     using Address for address payable;
-    using VaultMath for uint256;
 
-    // =============================================================================
-    // CONSTANTS AND ROLES - Protocol roles and limits
-    // =============================================================================
-    
-    /// @notice Role for governance operations (parameter updates, emergency actions)
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to governance multisig or DAO
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
-    
-    /// @notice Role for yield management operations (distribution, updates)
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to yield management system or governance
-    bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE");
-    
-    /// @notice Role for emergency operations (pause, emergency actions)
-    /// @dev keccak256 hash avoids role collisions with other contracts
-    /// @dev Should be assigned to emergency multisig
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
-    
-    /// @notice Role for performing contract upgrades via UUPS pattern
 
-
-    // =============================================================================
-    // STATE VARIABLES - External contracts and configuration
-    // =============================================================================
-    
-    /// @notice QEURO token contract for staking and unstaking
-    /// @dev Used for all QEURO staking and unstaking operations
-    /// @dev Should be the official QEURO token contract
     IQEUROToken public qeuro;
-    
-    /// @notice YieldShift contract for yield distribution
-    /// @dev Handles yield distribution and management
-    /// @dev Used for yield calculations and distributions
-    IYieldShift public yieldShift;
-    
-    /// @notice USDC token for yield payments
-    /// @dev Used for yield distributions to stQEURO holders
-    /// @dev Should be the official USDC contract on the target network
-    IERC20 public usdc;
-    
-    /// @notice Treasury address for fee collection
-    /// @dev Receives yield fees for protocol sustainability
-    /// @dev Should be a secure multisig or DAO treasury
     address public treasury;
+    string public vaultName;
+    uint256 public yieldFee;
 
-    /// @notice Oracle for EUR/USD price — used to convert USDC yield to QEURO denomination
-    /// @dev HIGH-3: required so distributeYield() scales 6-dec USDC yield to 18-dec QEURO exchange rate
-    IOracle public oracle;
-
-    /// @notice Cached EUR/USD conversion price (18 decimals) used by distributeYield
-    /// @dev Updated by governance to avoid external oracle callbacks during yield distribution
-    uint256 public yieldConversionPrice;
-
-    /// @notice TimeProvider contract for centralized time management
-    /// @dev Used to replace direct block.timestamp usage for testability and consistency
     TimeProvider public immutable TIME_PROVIDER;
 
-    /// @notice Human-readable vault identifier used to derive token metadata
-    string public vaultName;
-
-    // Yield and exchange rate variables
-    /// @notice Exchange rate between QEURO and stQEURO (18 decimals)
-    /// @dev Increases over time as yield accrues (like stETH)
-    /// @dev Formula: (totalUnderlying + totalYieldEarned) / totalSupply
-    uint256 public exchangeRate;
-    
-    /// @notice Timestamp of last exchange rate update
-    /// @dev Used to track when exchange rate was last updated
-    /// @dev Used for yield calculation intervals
-    uint256 public lastUpdateTime;
-    
-    /// @notice Total QEURO underlying the stQEURO supply
-    /// @dev Sum of all QEURO staked by users
-    /// @dev Used for exchange rate calculations
-    uint256 public totalUnderlying;
-
-    /// @notice totalUnderlying before flash loan check (used by flashLoanProtection modifier)
-    uint256 private _flashLoanTotalUnderlyingBefore;
-    
-    /// @notice Total yield earned by stQEURO holders
-    /// @dev Sum of all yield distributed to stQEURO holders
-    /// @dev Used for exchange rate calculations and analytics
-    uint256 public totalYieldEarned;
-    
-    // Fee and threshold configuration
-    /// @notice Fee charged on yield distributions (in basis points)
-    /// @dev Example: 200 = 2% yield fee
-    /// @dev Revenue source for the protocol
-    uint256 public yieldFee;
-    
-    /// @notice Minimum yield amount to trigger exchange rate update
-    /// @dev Prevents frequent updates for small yield amounts
-    /// @dev Reduces gas costs and improves efficiency
-    uint256 public minYieldThreshold;
-    
-    /// @notice Maximum time between exchange rate updates (in seconds)
-    /// @dev Ensures regular updates even with low yield
-    /// @dev Example: 1 day = 86400 seconds
-    uint256 public maxUpdateFrequency;
-
-    /// @notice Virtual shares to prevent exchange rate manipulation
-    /// @dev Prevents donation attacks by maintaining minimum share value
-    uint256 private constant VIRTUAL_SHARES = 1e8;
-    
-    /// @notice Virtual assets to prevent exchange rate manipulation
-    /// @dev Prevents donation attacks by maintaining minimum asset value
-    uint256 private constant VIRTUAL_ASSETS = 1e8;
-    
-    /// @notice Maximum batch size for staking operations to prevent DoS
-    /// @dev Prevents out-of-gas attacks through large arrays
-    uint256 public constant MAX_BATCH_SIZE = 100;
-
-    // =============================================================================
-    // EVENTS - Events for tracking and monitoring
-    // =============================================================================
-    
-    /// @notice Emitted when QEURO is staked to receive stQEURO
-    /// @param user Address of the user who staked
-    /// @param qeuroAmount Amount of QEURO staked (18 decimals)
-    /// @param stQEUROAmount Amount of stQEURO received (18 decimals)
-    /// @dev Indexed parameters allow efficient filtering of events
-    event QEUROStaked(address indexed user, uint256 qeuroAmount, uint256 stQEUROAmount);
-    
-    /// @notice Emitted when stQEURO is unstaked to receive QEURO
-    /// @param user Address of the user who unstaked
-    /// @param stQEUROAmount Amount of stQEURO burned (18 decimals)
-    /// @param qeuroAmount Amount of QEURO received (18 decimals)
-    /// @dev Indexed parameters allow efficient filtering of events
-    event QEUROUnstaked(address indexed user, uint256 stQEUROAmount, uint256 qeuroAmount);
-    
-    /// @notice Emitted when exchange rate is updated
-    /// @param oldRate Previous exchange rate (18 decimals)
-    /// @param newRate New exchange rate (18 decimals)
-    /// @param timestamp Timestamp of the update
-    /// @dev Used to track exchange rate changes over time
-    event ExchangeRateUpdated(uint256 oldRate, uint256 newRate, uint256 timestamp);
-    
-    /// @notice Emitted when yield is distributed to stQEURO holders
-    /// @param yieldAmount Amount of yield distributed (18 decimals)
-    /// @param newExchangeRate New exchange rate after distribution (18 decimals)
-    /// @dev Used to track yield distributions and their impact
-    /// @dev OPTIMIZED: Indexed exchange rate for efficient filtering
-    event YieldDistributed(uint256 yieldAmount, uint256 indexed newExchangeRate);
-    
-    /// @notice Emitted when a user claims yield
-    /// @param user Address of the user who claimed yield
-    /// @param yieldAmount Amount of yield claimed (18 decimals)
-    /// @dev Indexed parameters allow efficient filtering of events
-    event YieldClaimed(address indexed user, uint256 yieldAmount);
-    
-    /// @notice Emitted when yield parameters are updated
-    /// @param yieldFee New yield fee in basis points
-    /// @param minYieldThreshold New minimum yield threshold
-    /// @param maxUpdateFrequency New maximum update frequency
-    /// @dev Used to track parameter changes by governance
-    /// @dev OPTIMIZED: Indexed parameter type for efficient filtering
-    event YieldParametersUpdated(string indexed parameterType, uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency);
-    /// @notice Emitted when the cached yield conversion price is updated
-    event YieldConversionPriceUpdated(uint256 oldPrice, uint256 newPrice, address indexed caller);
-
-    /// @notice Emitted when ETH is recovered to the treasury
-    /// @param to Address to which ETH was recovered
-    /// @param amount Amount of ETH recovered
+    event YieldParametersUpdated(uint256 yieldFee);
+    event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury, address indexed caller);
     event ETHRecovered(address indexed to, uint256 indexed amount);
 
-    // =============================================================================
-    // MODIFIERS - Access control and security
-    // =============================================================================
-
     /**
-     * @notice Modifier to protect against flash loan attacks
-     * @dev Checks that the contract's total underlying QEURO doesn't decrease during execution
-     * @dev This prevents flash loans that would drain QEURO from the contract
-     */
-    modifier flashLoanProtection() {
-        _flashLoanProtectionBefore();
-        _;
-        _flashLoanProtectionAfter();
-    }
-
-    function _flashLoanProtectionBefore() private {
-        _flashLoanTotalUnderlyingBefore = totalUnderlying;
-    }
-
-    function _flashLoanProtectionAfter() private view {
-        uint256 totalUnderlyingAfter = totalUnderlying;
-        if (totalUnderlyingAfter < _flashLoanTotalUnderlyingBefore) {
-            revert HedgerPoolErrorLibrary.FlashLoanAttackDetected();
-        }
-    }
-
-    // =============================================================================
-    // INITIALIZER - Contract initialization
-    // =============================================================================
-
-    /**
-     * @notice Constructor for stQEURO token implementation
-     * @dev Initializes the time provider and disables initialization on implementation
-     * @param _TIME_PROVIDER Address of the time provider contract
-     * @custom:security Disables initialization on implementation for security
-     * @custom:validation Validates time provider is not zero address
-     * @custom:state-changes Sets TIME_PROVIDER and disables initializers
-     * @custom:events No events emitted
-     * @custom:errors Throws ZeroAddress if time provider is zero
-     * @custom:reentrancy Not protected - constructor only
-     * @custom:access Public constructor
-     * @custom:oracle No oracle dependencies
+     * @notice Constructs the implementation contract with its immutable time provider.
+     * @dev Validates the provided time provider, stores it immutably, and disables initializers on the implementation.
+     * @param _TIME_PROVIDER Time provider used by inherited secure upgrade and timelock logic.
+     * @custom:security Rejects zero-address dependencies before deployment completes.
+     * @custom:validation Ensures `_TIME_PROVIDER` is non-zero.
+     * @custom:state-changes Sets the immutable `TIME_PROVIDER` reference and disables future initializers on the implementation.
+     * @custom:events None.
+     * @custom:errors Reverts with `ZeroAddress` when `_TIME_PROVIDER` is the zero address.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Deployment only.
+     * @custom:oracle Not applicable.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(TimeProvider _TIME_PROVIDER) {
         if (address(_TIME_PROVIDER) == address(0)) revert CommonErrorLibrary.ZeroAddress();
         TIME_PROVIDER = _TIME_PROVIDER;
-        // Disables initialization on the implementation for security
         _disableInitializers();
     }
 
     /**
-     * @notice Initialize the stQEURO token contract
-     * @dev Sets up the contract with all required addresses and roles
-     * @param admin Address of the admin role
-     * @param _qeuro Address of the QEURO token contract
-     * @param _yieldShift Address of the YieldShift contract
-     * @param _usdc Address of the USDC token contract
-     * @param _treasury Address of the treasury
-     * @param _timelock Address of the timelock contract
-     * @custom:security Validates all addresses are not zero
-     * @custom:validation Validates all input addresses
-     * @custom:state-changes Initializes ERC20, AccessControl, and Pausable
-     * @custom:events Emits initialization events
-     * @custom:errors Throws if any address is zero
-     * @custom:reentrancy Protected by initializer modifier
-     * @custom:access Public initializer
-     * @custom:oracle No oracle dependencies
+     * @notice Initializes the default stQEURO vault series without a vault suffix.
+     * @dev Keeps the legacy initializer shape for factory compatibility, ignores unused placeholder addresses, and wires the ERC-4626 vault over QEURO.
+     * @param admin Address receiving admin, governance, and emergency roles.
+     * @param _qeuro QEURO token used as the ERC-4626 underlying asset.
+     * @param _treasury Treasury that receives recovered assets and fees.
+     * @param _timelock Timelock used by inherited secure upgrade controls.
+     * @custom:security Uses OpenZeppelin initializer guards and validates all named dependencies before role grants.
+     * @custom:validation Ensures admin, token, treasury, and timelock dependencies are valid for vault setup.
+     * @custom:state-changes Initializes ERC-20/ERC-4626 metadata, role assignments, treasury configuration, and the vault asset reference.
+     * @custom:events Emits initialization events through inherited OpenZeppelin modules when applicable.
+     * @custom:errors Reverts on duplicate initialization or invalid dependency addresses.
+     * @custom:reentrancy Not applicable during initialization.
+     * @custom:access Callable once during deployment.
+     * @custom:oracle Not applicable.
      */
     function initialize(
         address admin,
         address _qeuro,
-        address _yieldShift,
-        address _usdc,
+        address,
+        address,
         address _treasury,
         address _timelock
     ) public initializer {
         __ERC20_init("Staked Quantillon Euro", "stQEURO");
-        _initializeStQEURODependencies(
-            admin,
-            _qeuro,
-            _yieldShift,
-            _usdc,
-            _treasury,
-            _timelock
-        );
+        __ERC4626_init(IERC20(_qeuro));
         vaultName = "";
+        _initializeStQEURODependencies(admin, _qeuro, _treasury, _timelock);
     }
 
     /**
-     * @notice Initialize the stQEURO token contract with dynamic metadata for a vault.
-     * @dev Uses caller-supplied token name/symbol and vault label, then delegates setup to `_initializeStQEURO`.
-     * @param admin Address of the admin role
-     * @param _qeuro Address of the QEURO token contract
-     * @param _yieldShift Address of the YieldShift contract
-     * @param _usdc Address of the USDC token contract
-     * @param _treasury Address of the treasury
-     * @param _timelock Address of the timelock contract
-     * @param _vaultName Human-readable vault name (e.g. CORE, ALPHA1)
-     * @custom:security Validates critical addresses and initializes access-controlled roles.
-     * @custom:validation Reverts if required addresses are invalid or zero.
-     * @custom:state-changes Initializes token metadata, roles, dependencies, and core staking parameters.
-     * @custom:events Emits role initialization events from inherited OpenZeppelin modules.
-     * @custom:errors Reverts with custom validation errors when initialization inputs are invalid.
-     * @custom:reentrancy Protected by `initializer`; callable once per proxy instance.
-     * @custom:access Public initializer for proxy deployment flow.
-     * @custom:oracle No direct oracle dependency during initialization.
+     * @notice Initializes a vault-specific stQEURO series with custom metadata.
+     * @dev Builds vault-specific ERC-20 metadata, sets the ERC-4626 asset to QEURO, and applies secure-role configuration.
+     * @param admin Address receiving admin, governance, and emergency roles.
+     * @param _qeuro QEURO token used as the ERC-4626 underlying asset.
+     * @param _treasury Treasury that receives recovered assets and fees.
+     * @param _timelock Timelock used by inherited secure upgrade controls.
+     * @param _vaultName Vault suffix appended to the share-token name and symbol.
+     * @custom:security Uses initializer guards and validates critical dependency addresses before activation.
+     * @custom:validation Ensures named dependencies are non-zero and treasury configuration is valid.
+     * @custom:state-changes Initializes ERC-20/ERC-4626 metadata, stores `vaultName`, and grants operational roles.
+     * @custom:events Emits initialization events through inherited OpenZeppelin modules when applicable.
+     * @custom:errors Reverts on duplicate initialization or invalid dependency addresses.
+     * @custom:reentrancy Not applicable during initialization.
+     * @custom:access Callable once during deployment.
+     * @custom:oracle Not applicable.
      */
     function initialize(
         address admin,
         address _qeuro,
-        address _yieldShift,
-        address _usdc,
         address _treasury,
         address _timelock,
         string calldata _vaultName
@@ -382,48 +125,37 @@ contract stQEUROToken is
         string memory tokenSymbol = string.concat("stQEURO", _vaultName);
 
         __ERC20_init(tokenName, tokenSymbol);
+        __ERC4626_init(IERC20(_qeuro));
         vaultName = _vaultName;
-        _initializeStQEURODependencies(
-            admin,
-            _qeuro,
-            _yieldShift,
-            _usdc,
-            _treasury,
-            _timelock
-        );
+        _initializeStQEURODependencies(admin, _qeuro, _treasury, _timelock);
     }
 
     /**
-     * @notice Internal initializer shared by both public initialization entrypoints.
-     * @dev Performs full dependency validation, role setup, and default parameter bootstrap.
-     * @param admin Admin role address
-     * @param qeuroAddress QEURO token address
-     * @param yieldShiftAddress YieldShift contract address
-     * @param usdcAddress USDC token address
-     * @param treasuryAddress Treasury address
-     * @param timelockAddress Timelock address used by SecureUpgradeable
-     * @custom:security Centralizes initialization checks to keep both entrypoints consistent and hardened.
-     * @custom:validation Reverts if required addresses are zero or invalid for configuration.
-     * @custom:state-changes Initializes inherited modules, role assignments, dependencies, and default rate parameters.
-     * @custom:events Emits inherited initialization/role events as modules are configured.
-     * @custom:errors Reverts with custom address/validation errors when config is invalid.
-     * @custom:reentrancy Internal initializer path; reached only through `initializer`-guarded functions.
-     * @custom:access Internal helper.
-     * @custom:oracle No direct oracle reads during initialization.
+     * @notice Applies the shared dependency and role setup for all stQEURO vault series.
+     * @dev Initializes inherited access-control, pause, reentrancy, and secure-upgrade modules, then stores treasury and QEURO references.
+     * @param admin Address receiving admin, governance, and emergency roles.
+     * @param qeuroAddress Address of the QEURO underlying asset.
+     * @param treasuryAddress Treasury destination for recovered funds.
+     * @param timelockAddress Timelock used by the inherited secure-upgrade module.
+     * @custom:security Centralizes all critical dependency validation before privileged roles are granted.
+     * @custom:validation Requires non-zero admin/token/treasury addresses and a valid treasury destination.
+     * @custom:state-changes Initializes inherited modules, grants roles, stores token/treasury references, and resets `yieldFee` to zero.
+     * @custom:events Emits inherited role/admin initialization events when applicable.
+     * @custom:errors Reverts on invalid addresses or treasury configuration failures.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Internal initialization helper.
+     * @custom:oracle Not applicable.
      */
     function _initializeStQEURODependencies(
         address admin,
         address qeuroAddress,
-        address yieldShiftAddress,
-        address usdcAddress,
         address treasuryAddress,
         address timelockAddress
     ) internal {
         CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
         CommonValidationLibrary.validateNonZeroAddress(qeuroAddress, "token");
-        CommonValidationLibrary.validateNonZeroAddress(yieldShiftAddress, "token");
-        CommonValidationLibrary.validateNonZeroAddress(usdcAddress, "token");
         CommonValidationLibrary.validateNonZeroAddress(treasuryAddress, "treasury");
+        CommonValidationLibrary.validateTreasuryAddress(treasuryAddress);
 
         __AccessControl_init();
         __Pausable_init();
@@ -432,775 +164,370 @@ contract stQEUROToken is
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
-        _grantRole(YIELD_MANAGER_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
-        if (yieldShiftAddress != address(0)) {
-            _grantRole(YIELD_MANAGER_ROLE, yieldShiftAddress);
-        }
 
         qeuro = IQEUROToken(qeuroAddress);
-        yieldShift = IYieldShift(yieldShiftAddress);
-        usdc = IERC20(usdcAddress);
-        if (treasuryAddress == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        CommonValidationLibrary.validateTreasuryAddress(treasuryAddress);
-        CommonValidationLibrary.validateNonZeroAddress(treasuryAddress, "treasury");
         treasury = treasuryAddress;
-
-        // Initialize exchange rate at 1:1
-        exchangeRate = 1e18;
-        lastUpdateTime = TIME_PROVIDER.currentTime();
-
-        // Initial parameters
-        yieldFee = 0; // No fee on yield by default, set via admin panel
-        minYieldThreshold = 1000e6; // 1000 USDC minimum to update
-        maxUpdateFrequency = 1 hours; // Max 1 hour between updates
-        yieldConversionPrice = 1e18; // 1.00 EUR/USD bootstrap value
-    }
-
-    // =============================================================================
-    // CORE STAKING FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Stake QEURO to receive stQEURO
-     * @dev Converts QEURO to stQEURO at current exchange rate
-     * @param qeuroAmount Amount of QEURO to stake
-     * @return stQEUROAmount Amount of stQEURO received
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function stake(uint256 qeuroAmount) external nonReentrant whenNotPaused flashLoanProtection returns (uint256 stQEUROAmount) {
-        CommonValidationLibrary.validatePositiveAmount(qeuroAmount);
-        CommonValidationLibrary.validateSufficientBalance(qeuro.balanceOf(msg.sender), qeuroAmount);
-
-        // Update exchange rate before staking
-        _updateExchangeRate();
-
-        // Calculate stQEURO amount based on current exchange rate
-        // GAS OPTIMIZATION: Cache storage read
-        uint256 exchangeRate_ = exchangeRate;
-        stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate_);
-
-        // Transfer QEURO from user
-
-        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), qeuroAmount);
-
-        // Update totals - Use checked arithmetic for critical state
-        totalUnderlying = totalUnderlying + qeuroAmount;
-
-        // Mint stQEURO to user
-        _mint(msg.sender, stQEUROAmount);
-
-        emit QEUROStaked(msg.sender, qeuroAmount, stQEUROAmount);
+        yieldFee = 0;
     }
 
     /**
-     * @notice Unstake QEURO by burning stQEURO
-     * @dev Burns stQEURO tokens and returns QEURO at current exchange rate
-     * @param stQEUROAmount Amount of stQEURO to burn
-     * @return qeuroAmount Amount of QEURO received
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Returns the maximum assets a receiver can deposit while respecting pause state.
+     * @dev Returns zero when the vault is paused and otherwise delegates limit calculation to the ERC-4626 parent implementation.
+     * @param receiver Address that would receive minted stQEURO shares.
+     * @return maxAssets Maximum QEURO assets currently depositable for `receiver`.
+     * @custom:security Read-only helper.
+     * @custom:validation Paused state forces a zero limit.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function unstake(uint256 stQEUROAmount) external nonReentrant whenNotPaused returns (uint256 qeuroAmount) {
-        CommonValidationLibrary.validatePositiveAmount(stQEUROAmount);
-        CommonValidationLibrary.validateSufficientBalance(balanceOf(msg.sender), stQEUROAmount);
-
-        // Update exchange rate before unstaking
-        _updateExchangeRate();
-
-        // Calculate QEURO amount based on current exchange rate
-        // GAS OPTIMIZATION: Cache storage read
-        uint256 exchangeRate_ = exchangeRate;
-        qeuroAmount = stQEUROAmount.mulDiv(exchangeRate_, 1e18);
-
-        // Ensure we have enough QEURO
-        CommonValidationLibrary.validateSufficientBalance(totalUnderlying, qeuroAmount);
-
-        // Burn stQEURO from user
-        _burn(msg.sender, stQEUROAmount);
-
-        // Update totals - Use checked arithmetic for critical state
-        totalUnderlying = totalUnderlying - qeuroAmount;
-
-        IERC20(address(qeuro)).safeTransfer(msg.sender, qeuroAmount);
-
-        emit QEUROUnstaked(msg.sender, stQEUROAmount, qeuroAmount);
+    function maxDeposit(address receiver) public view override returns (uint256) {
+        if (paused()) return 0;
+        return super.maxDeposit(receiver);
     }
 
     /**
-     * @notice Batch stake QEURO to receive stQEURO for multiple amounts
-     * @dev Processes multiple staking operations in a single transaction
-     * @param qeuroAmounts Array of QEURO amounts to stake
-     * @return stQEUROAmounts Array of stQEURO amounts received
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Returns the maximum shares a receiver can mint while respecting pause state.
+     * @dev Returns zero when the vault is paused and otherwise delegates limit calculation to the ERC-4626 parent implementation.
+     * @param receiver Address that would receive minted stQEURO shares.
+     * @return maxShares Maximum stQEURO shares currently mintable for `receiver`.
+     * @custom:security Read-only helper.
+     * @custom:validation Paused state forces a zero limit.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function batchStake(uint256[] calldata qeuroAmounts) 
-        external 
-        nonReentrant 
-        whenNotPaused 
-        returns (uint256[] memory stQEUROAmounts) 
+    function maxMint(address receiver) public view override returns (uint256) {
+        if (paused()) return 0;
+        return super.maxMint(receiver);
+    }
+
+    /**
+     * @notice Returns the maximum assets an owner can withdraw while respecting pause state.
+     * @dev Returns zero when the vault is paused and otherwise delegates limit calculation to the ERC-4626 parent implementation.
+     * @param owner Share owner whose withdraw capacity is being queried.
+     * @return maxAssets Maximum QEURO assets currently withdrawable by `owner`.
+     * @custom:security Read-only helper.
+     * @custom:validation Paused state forces a zero limit.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
+     */
+    function maxWithdraw(address owner) public view override returns (uint256) {
+        if (paused()) return 0;
+        return super.maxWithdraw(owner);
+    }
+
+    /**
+     * @notice Returns the maximum shares an owner can redeem while respecting pause state.
+     * @dev Returns zero when the vault is paused and otherwise delegates limit calculation to the ERC-4626 parent implementation.
+     * @param owner Share owner whose redeem capacity is being queried.
+     * @return maxShares Maximum stQEURO shares currently redeemable by `owner`.
+     * @custom:security Read-only helper.
+     * @custom:validation Paused state forces a zero limit.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
+     */
+    function maxRedeem(address owner) public view override returns (uint256) {
+        if (paused()) return 0;
+        return super.maxRedeem(owner);
+    }
+
+    /**
+     * @notice Deposits QEURO into the vault and mints stQEURO shares to a receiver.
+     * @dev Wraps the ERC-4626 deposit flow with pause and reentrancy protection.
+     * @param assets Amount of QEURO assets to deposit.
+     * @param receiver Address receiving newly minted stQEURO shares.
+     * @return shares Amount of stQEURO shares minted for `receiver`.
+     * @custom:security Protected by pause and `nonReentrant` guards.
+     * @custom:validation Delegates asset, allowance, and receiver checks to ERC-4626/ERC-20 logic.
+     * @custom:state-changes Transfers QEURO into the vault and mints new stQEURO shares.
+     * @custom:events Emits the standard ERC-4626 `Deposit` event.
+     * @custom:errors Reverts when paused or when ERC-20/ERC-4626 validations fail.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
+     */
+    function deposit(uint256 assets, address receiver)
+        public
+        override
+        nonReentrant
+        whenNotPaused
+        returns (uint256 shares)
     {
-        if (qeuroAmounts.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
-        
-        stQEUROAmounts = new uint256[](qeuroAmounts.length);
-        uint256 totalQeuroAmount = 0;
-        
-        // Pre-validate amounts and calculate total
-        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
-            CommonValidationLibrary.validatePositiveAmount(qeuroAmounts[i]);
-            totalQeuroAmount += qeuroAmounts[i];
-        }
-        
-        CommonValidationLibrary.validateSufficientBalance(qeuro.balanceOf(msg.sender), totalQeuroAmount);
-
-        // Update exchange rate before staking (once for the batch)
-        _updateExchangeRate();
-
-        // Transfer total QEURO from user FIRST
-        IERC20(address(qeuro)).safeTransferFrom(msg.sender, address(this), totalQeuroAmount);
-
-        // Update totals once
-        totalUnderlying = totalUnderlying + totalQeuroAmount;
-
-
-        address staker = msg.sender;
-        uint256 exchangeRate_ = exchangeRate;
-        
-        // Process each stake
-        for (uint256 i = 0; i < qeuroAmounts.length; i++) {
-            uint256 qeuroAmount = qeuroAmounts[i];
-            
-            // Calculate stQEURO amount based on current exchange rate
-            uint256 stQEUROAmount = qeuroAmount.mulDiv(1e18, exchangeRate_);
-            stQEUROAmounts[i] = stQEUROAmount;
-
-            // Mint stQEURO to user
-            _mint(staker, stQEUROAmount);
-
-            emit QEUROStaked(staker, qeuroAmount, stQEUROAmount);
-        }
+        shares = super.deposit(assets, receiver);
     }
 
     /**
-     * @notice Batch unstake QEURO by burning stQEURO for multiple amounts
-     * @dev Processes multiple unstaking operations in a single transaction
-     * @param stQEUROAmounts Array of stQEURO amounts to burn
-     * @return qeuroAmounts Array of QEURO amounts received
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Mints a target amount of stQEURO shares by supplying the required QEURO assets.
+     * @dev Wraps the ERC-4626 mint flow with pause and reentrancy protection.
+     * @param shares Amount of stQEURO shares to mint.
+     * @param receiver Address receiving the minted shares.
+     * @return assets Amount of QEURO assets pulled from the caller.
+     * @custom:security Protected by pause and `nonReentrant` guards.
+     * @custom:validation Delegates share, allowance, and receiver checks to ERC-4626/ERC-20 logic.
+     * @custom:state-changes Transfers QEURO into the vault and mints stQEURO shares.
+     * @custom:events Emits the standard ERC-4626 `Deposit` event.
+     * @custom:errors Reverts when paused or when ERC-20/ERC-4626 validations fail.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function batchUnstake(uint256[] calldata stQEUROAmounts) 
-        external 
-        nonReentrant 
-        whenNotPaused 
-        returns (uint256[] memory qeuroAmounts) 
+    function mint(uint256 shares, address receiver)
+        public
+        override
+        nonReentrant
+        whenNotPaused
+        returns (uint256 assets)
     {
-        if (stQEUROAmounts.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
-        
-        qeuroAmounts = new uint256[](stQEUROAmounts.length);
-        uint256 totalStQEUROAmount = 0;
-        uint256 totalQeuroAmount = 0;
-        
-        // Pre-validate amounts and calculate totals
-        for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
-            CommonValidationLibrary.validatePositiveAmount(stQEUROAmounts[i]);
-            totalStQEUROAmount += stQEUROAmounts[i];
-        }
-        
-        CommonValidationLibrary.validateSufficientBalance(balanceOf(msg.sender), totalStQEUROAmount);
-
-        // Update exchange rate before unstaking (once for the batch)
-        _updateExchangeRate();
-
-        // Calculate total QEURO to return and validate
-        uint256 exchangeRate_ = exchangeRate; // GAS OPTIMIZATION: Cache storage read
-        for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
-            uint256 qeuroAmount = stQEUROAmounts[i].mulDiv(exchangeRate_, 1e18);
-            qeuroAmounts[i] = qeuroAmount;
-            totalQeuroAmount += qeuroAmount;
-        }
-
-        // Ensure we have enough QEURO
-        CommonValidationLibrary.validateSufficientBalance(totalUnderlying, totalQeuroAmount);
-
-
-        address unstaker = msg.sender;
-        
-        // Process each unstake
-        for (uint256 i = 0; i < stQEUROAmounts.length; i++) {
-            uint256 stQEUROAmount = stQEUROAmounts[i];
-            uint256 qeuroAmount = qeuroAmounts[i];
-
-            // Burn stQEURO from user
-            _burn(unstaker, stQEUROAmount);
-
-            // Transfer QEURO to user
-            IERC20(address(qeuro)).safeTransfer(unstaker, qeuroAmount);
-
-            emit QEUROUnstaked(unstaker, stQEUROAmount, qeuroAmount);
-        }
-
-        // Update totals once at the end
-        totalUnderlying = totalUnderlying - totalQeuroAmount;
+        assets = super.mint(shares, receiver);
     }
 
     /**
-     * @notice Batch transfer stQEURO tokens to multiple addresses
-     * @dev Transfers stQEURO tokens to multiple recipients in a single transaction
-     * @param recipients Array of recipient addresses
-     * @param amounts Array of amounts to transfer
-     * @return bool Always returns true if successful
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Withdraws a target amount of QEURO assets from the vault.
+     * @dev Wraps the ERC-4626 withdraw flow with pause and reentrancy protection.
+     * @param assets Amount of QEURO assets to withdraw.
+     * @param receiver Address receiving the withdrawn QEURO.
+     * @param owner Share owner whose balance and allowance are consumed.
+     * @return shares Amount of stQEURO shares burned to complete the withdrawal.
+     * @custom:security Protected by pause and `nonReentrant` guards.
+     * @custom:validation Delegates asset, allowance, and balance checks to ERC-4626/ERC-20 logic.
+     * @custom:state-changes Burns stQEURO shares and transfers QEURO assets out of the vault.
+     * @custom:events Emits the standard ERC-4626 `Withdraw` event.
+     * @custom:errors Reverts when paused or when ERC-20/ERC-4626 validations fail.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
      */
-    function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
-        external
+    function withdraw(uint256 assets, address receiver, address owner)
+        public
+        override
+        nonReentrant
+        whenNotPaused
+        returns (uint256 shares)
+    {
+        shares = super.withdraw(assets, receiver, owner);
+    }
+
+    /**
+     * @notice Redeems stQEURO shares for their corresponding QEURO assets.
+     * @dev Wraps the ERC-4626 redeem flow with pause and reentrancy protection.
+     * @param shares Amount of stQEURO shares to redeem.
+     * @param receiver Address receiving the redeemed QEURO.
+     * @param owner Share owner whose balance and allowance are consumed.
+     * @return assets Amount of QEURO assets transferred to `receiver`.
+     * @custom:security Protected by pause and `nonReentrant` guards.
+     * @custom:validation Delegates share, allowance, and balance checks to ERC-4626/ERC-20 logic.
+     * @custom:state-changes Burns stQEURO shares and transfers QEURO assets out of the vault.
+     * @custom:events Emits the standard ERC-4626 `Withdraw` event.
+     * @custom:errors Reverts when paused or when ERC-20/ERC-4626 validations fail.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
+     */
+    function redeem(uint256 shares, address receiver, address owner)
+        public
+        override
+        nonReentrant
+        whenNotPaused
+        returns (uint256 assets)
+    {
+        assets = super.redeem(shares, receiver, owner);
+    }
+
+    /**
+     * @notice Transfers stQEURO shares while the vault is active.
+     * @dev Blocks share transfers whenever the vault is paused.
+     * @param to Recipient of the transferred stQEURO shares.
+     * @param value Amount of stQEURO shares to transfer.
+     * @return success True when the transfer succeeds.
+     * @custom:security Protected by the pause guard.
+     * @custom:validation Delegates recipient, balance, and amount checks to ERC-20 logic.
+     * @custom:state-changes Moves stQEURO share balances between accounts.
+     * @custom:events Emits the standard ERC-20 `Transfer` event.
+     * @custom:errors Reverts when paused or when ERC-20 validations fail.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
+     */
+    function transfer(address to, uint256 value) public override(ERC20Upgradeable, IERC20) whenNotPaused returns (bool) {
+        return super.transfer(to, value);
+    }
+
+    /**
+     * @notice Transfers stQEURO shares from another account while the vault is active.
+     * @dev Blocks allowance-based share transfers whenever the vault is paused.
+     * @param from Account whose share balance and allowance are consumed.
+     * @param to Recipient of the transferred stQEURO shares.
+     * @param value Amount of stQEURO shares to transfer.
+     * @return success True when the transfer succeeds.
+     * @custom:security Protected by the pause guard.
+     * @custom:validation Delegates allowance, recipient, balance, and amount checks to ERC-20 logic.
+     * @custom:state-changes Moves stQEURO share balances between accounts and updates allowance when applicable.
+     * @custom:events Emits the standard ERC-20 `Transfer` event and allowance events when applicable.
+     * @custom:errors Reverts when paused or when ERC-20 validations fail.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Public.
+     * @custom:oracle Not applicable.
+     */
+    function transferFrom(address from, address to, uint256 value)
+        public
+        override(ERC20Upgradeable, IERC20)
         whenNotPaused
         returns (bool)
     {
-        if (recipients.length != amounts.length) revert CommonErrorLibrary.ArrayLengthMismatch();
-        if (recipients.length > MAX_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
-        
-
-        uint256 length = recipients.length;
-        address sender = msg.sender;
-        
-        // Pre-validate recipients and amounts
-        for (uint256 i = 0; i < length;) {
-            CommonValidationLibrary.validateNonZeroAddress(recipients[i], "recipient");
-            CommonValidationLibrary.validatePositiveAmount(amounts[i]);
-            
-            unchecked { ++i; }
-        }
-        
-        // Perform transfers using OpenZeppelin's transfer mechanism
-        for (uint256 i = 0; i < length;) {
-            _transfer(sender, recipients[i], amounts[i]);
-            
-            unchecked { ++i; }
-        }
-        
-        return true;
-    }
-
-    // =============================================================================
-    // YIELD FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Distribute yield to stQEURO holders (increases exchange rate)
-     * @dev Distributes USDC yield to stQEURO holders by increasing the exchange rate
-     * @param yieldAmount Amount of yield in USDC
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function distributeYield(uint256 yieldAmount) external nonReentrant onlyRole(YIELD_MANAGER_ROLE) {
-        CommonValidationLibrary.validatePositiveAmount(yieldAmount);
-        CommonValidationLibrary.validatePositiveAmount(totalSupply());
-
-        // Calculate fee
-        uint256 fee = yieldAmount.percentageOf(yieldFee);
-        uint256 netYield = yieldAmount - fee;
-        uint256 eurUsdPrice = yieldConversionPrice;
-        if (eurUsdPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
-        // netYield (6 dec USDC) * 1e30 / eurUsdPrice (18 dec) = QEURO in 18 dec
-        // e.g. 500 USDC @ 1.08 EUR/USD → 500e6 * 1e30 / 1.08e18 ≈ 462.96e18 QEURO
-        uint256 yieldInQEURO = netYield.mulDiv(1e30, eurUsdPrice);
-        uint256 oldRate = exchangeRate;
-        uint256 newRate = exchangeRate + yieldInQEURO.mulDiv(1e18, totalSupply());
-        uint256 nowTs = block.timestamp;
-
-        // EFFECTS first (CEI): update accounting before token interactions.
-        exchangeRate = newRate;
-        lastUpdateTime = nowTs;
-        totalYieldEarned = totalYieldEarned + netYield;
-
-        // INTERACTIONS last.
-        usdc.safeTransferFrom(msg.sender, address(this), yieldAmount);
-        if (fee > 0) {
-            usdc.safeTransfer(treasury, fee);
-        }
-
-        emit ExchangeRateUpdated(oldRate, newRate, nowTs);
-        emit YieldDistributed(netYield, newRate);
+        return super.transferFrom(from, to, value);
     }
 
     /**
-     * @notice Claim accumulated yield for a user (in USDC)
-     * @dev In yield accrual model, yield is claimed by unstaking - kept for compatibility
-     * @return yieldAmount Amount of yield claimed (always 0 in this model)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Updates the yield fee charged on compounded vault yield.
+     * @dev Governance can set the fee in basis points up to the configured 20% cap.
+     * @param _yieldFee New yield fee in basis points.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Validates `_yieldFee` against the 2000 bps maximum.
+     * @custom:state-changes Updates the stored `yieldFee`.
+     * @custom:events Emits `YieldParametersUpdated`.
+     * @custom:errors Reverts on invalid fee values or missing governance role.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle Not applicable.
      */
-    function claimYield() public returns (uint256 yieldAmount) {
-        // In yield accrual model, yield is claimed by unstaking
-        // This function is kept for compatibility but returns 0
-        yieldAmount = 0;
-        
-        emit YieldClaimed(msg.sender, yieldAmount);
-    }
-
-    /**
-     * @notice Get pending yield for a user (in USDC)
-     * @dev In yield accrual model, yield is distributed via exchange rate increases
-     * @param user User address
-     * @return yieldAmount Pending yield amount
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getPendingYield(address user) public view returns (uint256 yieldAmount) {
-        uint256 userBalance = balanceOf(user);
-        if (userBalance == 0) return 0;
-
-        // In yield accrual model, yield is distributed via exchange rate increases
-        // Users can claim yield by unstaking (they get more QEURO than they staked)
-        // This function returns 0 as yield is not claimed separately in USDC
-        return 0;
-    }
-
-    // =============================================================================
-    // VIEW FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Get current exchange rate between QEURO and stQEURO
-     * @dev Returns the current exchange rate calculated with yield accrual
-     * @return uint256 Current exchange rate (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getExchangeRate() external view returns (uint256) {
-        return _calculateCurrentExchangeRate();
-    }
-
-    /**
-     * @notice Get total value locked in stQEURO
-     * @dev Returns the total amount of QEURO underlying all stQEURO tokens
-     * @return uint256 Total value locked in QEURO (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getTVL() external view returns (uint256) {
-        return totalUnderlying;
-    }
-
-    /**
-     * @notice Get user's QEURO equivalent balance
-     * @dev Calculates the QEURO equivalent of a user's stQEURO balance
-     * @param user User address
-     * @return qeuroEquivalent QEURO equivalent of stQEURO balance
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getQEUROEquivalent(address user) external view returns (uint256 qeuroEquivalent) {
-        uint256 stQEUROBalance = balanceOf(user);
-        if (stQEUROBalance == 0) return 0;
-
-        uint256 currentRate = _calculateCurrentExchangeRate();
-        qeuroEquivalent = stQEUROBalance.mulDiv(currentRate, 1e18);
-    }
-
-    /**
-     * @notice Get staking statistics
-     * @dev Returns comprehensive staking statistics including supply, TVL, and yield
-     * @return totalStQEUROSupply Total supply of stQEURO tokens
-     * @return totalQEUROUnderlying Total QEURO underlying all stQEURO
-     * @return currentExchangeRate Current exchange rate between QEURO and stQEURO
-     * @return totalYieldEarned_ Total yield earned by all stakers
-     * @return apy Annual percentage yield (calculated off-chain)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function getStakingStats() external view returns (
-        uint256 totalStQEUROSupply,
-        uint256 totalQEUROUnderlying,
-        uint256 currentExchangeRate,
-        uint256 totalYieldEarned_,
-        uint256 apy
-    ) {
-        return (
-            totalSupply(),
-            totalUnderlying,
-            _calculateCurrentExchangeRate(),
-            totalYieldEarned,
-            0 // APY calculated off-chain based on exchange rate changes
-        );
-    }
-
-    // =============================================================================
-    // INTERNAL FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Update exchange rate based on time elapsed and yield accrual
-     * @dev Internal function to update exchange rate when conditions are met
-     * @custom:security Calculates new rate with bounds checking to prevent manipulation
-     * @custom:validation No input validation required
-     * @custom:state-changes Updates exchangeRate and lastUpdateTime if rate changes
-     * @custom:events Emits ExchangeRateUpdated if rate changes
-     * @custom:errors No errors thrown - safe arithmetic used
-     * @custom:reentrancy Not protected - internal function only
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function _updateExchangeRate() internal {
-        uint256 newRate = _calculateCurrentExchangeRate();
-        if (newRate != exchangeRate) {
-            uint256 oldRate = exchangeRate;
-            exchangeRate = newRate;
-            lastUpdateTime = TIME_PROVIDER.currentTime();
-            
-            emit ExchangeRateUpdated(oldRate, newRate, block.timestamp);
-        }
-    }
-
-    /**
-     * @notice Calculate current exchange rate including accrued yield
-     * @return Current exchange rate (18 decimals) including pending yield
-     * @dev Returns the stored exchange rate which is updated via distributeYield()
-     * @custom:security Uses minimum supply threshold to prevent manipulation
-     * @custom:validation No input validation required
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - safe arithmetic used
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function _calculateCurrentExchangeRate() internal view returns (uint256) {
-        uint256 supply = totalSupply();
-        
-        // Minimum supply threshold to prevent manipulation
-        if (supply < 1e6) return 1e18; // Minimum 0.000000000001 stQEURO
-
-        // Return the stored exchange rate which is updated via distributeYield()
-        // Yield is distributed directly to this contract, not through YieldShift
-        return exchangeRate;
-    }
-
-    // =============================================================================
-    // GOVERNANCE FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Update yield parameters
-     * @dev Updates yield fee, minimum threshold, and maximum update frequency
-     * @param _yieldFee New yield fee in basis points
-     * @param _minYieldThreshold New minimum yield threshold in USDC
-     * @param _maxUpdateFrequency New maximum update frequency in seconds
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function updateYieldParameters(
-        uint256 _yieldFee,
-        uint256 _minYieldThreshold,
-        uint256 _maxUpdateFrequency
-    ) external onlyRole(GOVERNANCE_ROLE) {
-        CommonValidationLibrary.validatePercentage(_yieldFee, 2000); // Max 20%
-        CommonValidationLibrary.validateMaxAmount(_maxUpdateFrequency, 24 hours);
-
+    function updateYieldParameters(uint256 _yieldFee) external onlyRole(GOVERNANCE_ROLE) {
+        CommonValidationLibrary.validatePercentage(_yieldFee, 2000);
         yieldFee = _yieldFee;
-        minYieldThreshold = _minYieldThreshold;
-        maxUpdateFrequency = _maxUpdateFrequency;
-
-        emit YieldParametersUpdated("yield", _yieldFee, _minYieldThreshold, _maxUpdateFrequency);
+        emit YieldParametersUpdated(_yieldFee);
     }
 
     /**
-     * @notice Update treasury address
-     * @dev Updates the treasury address for token recovery operations
-     * @param _treasury New treasury address
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Updates the treasury destination used for recovery flows.
+     * @dev Governance can rotate the treasury after standard non-zero and treasury-address validation passes.
+     * @param _treasury New treasury address.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Requires a non-zero address that passes treasury validation rules.
+     * @custom:state-changes Replaces the stored `treasury` address.
+     * @custom:events Emits `TreasuryUpdated`.
+     * @custom:errors Reverts on invalid treasury addresses or missing governance role.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:oracle Not applicable.
      */
     function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE) {
+        if (_treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        CommonValidationLibrary.validateTreasuryAddress(_treasury);
+
+        address oldTreasury = treasury;
         treasury = _treasury;
+
+        emit TreasuryUpdated(oldTreasury, _treasury, msg.sender);
     }
 
     /**
-     * @notice Sets the oracle used to price USDC yield in QEURO terms.
-     * @dev HIGH-3: Required so `distributeYield()` can convert USDC (6 decimals) to QEURO (18 decimals)
-     *      using a EUR/USD price feed. Without a valid oracle, yield distribution reverts.
-     * @param _oracle Address of the `IOracle` implementation (typically `OracleRouter`).
-     * @custom:security Ensures `_oracle` is a non-zero address to avoid bricking yield distribution.
-     * @custom:validation Reverts with `ZeroAddress` if `_oracle` equals `address(0)`.
-     * @custom:state-changes Updates the `oracle` contract reference used by `distributeYield()`.
-     * @custom:events None.
-     * @custom:errors ZeroAddress if `_oracle` is the zero address.
-     * @custom:reentrancy Not applicable – no external calls after state change.
-     * @custom:access Restricted to `GOVERNANCE_ROLE`.
-     * @custom:oracle Configures the external EUR/USD oracle used for USDC→QEURO conversion.
-     */
-    function setOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE) {
-        if (_oracle == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        oracle = IOracle(_oracle);
-    }
-
-    /**
-     * @notice Updates the cached EUR/USD conversion price used in yield distribution.
-     * @dev Governance maintenance hook for manually refreshing conversion cache used by yield accounting.
-     * @param eurUsdPrice New EUR/USD price in 18 decimals.
-     * @custom:security Restricted to `GOVERNANCE_ROLE`
-     * @custom:validation Reverts when `eurUsdPrice == 0`
-     * @custom:state-changes Updates `yieldConversionPrice`
-     * @custom:events Emits `YieldConversionPriceUpdated`
-     * @custom:errors Reverts with `InvalidOraclePrice` when input is zero
-     * @custom:reentrancy No external calls
-     * @custom:access Governance-only external function
-     * @custom:oracle Uses governance-supplied oracle-derived price input
-     */
-    function updateYieldConversionPrice(uint256 eurUsdPrice) external onlyRole(GOVERNANCE_ROLE) {
-        if (eurUsdPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
-        uint256 oldPrice = yieldConversionPrice;
-        yieldConversionPrice = eurUsdPrice;
-        emit YieldConversionPriceUpdated(oldPrice, eurUsdPrice, msg.sender);
-    }
-
-    // =============================================================================
-    // OVERRIDE FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Returns the number of decimals used by the token
-     * @dev Always returns 18 to match QEURO token standard
-     * @return The number of decimals (18)
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function decimals() public pure override returns (uint8) {
-        return 18;
-    }
-
-
-
-    // =============================================================================
-    // EMERGENCY FUNCTIONS
-    // =============================================================================
-
-    /**
-     * @notice Pauses all token transfers and minting/burning operations
-     * @dev Can only be called by addresses with EMERGENCY_ROLE during emergencies
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Pauses deposits, withdrawals, redemptions, and share transfers.
+     * @dev Emergency role can freeze vault interactions until the pause is lifted.
+     * @custom:security Restricted to `EMERGENCY_ROLE`.
+     * @custom:validation None.
+     * @custom:state-changes Sets the paused state to true.
+     * @custom:events Emits the inherited `Paused` event.
+     * @custom:errors Reverts on missing emergency role or if already paused.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to `EMERGENCY_ROLE`.
+     * @custom:oracle Not applicable.
      */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
     }
 
     /**
-     * @notice Unpauses all token transfers and minting/burning operations
-     * @dev Can only be called by addresses with EMERGENCY_ROLE to resume normal operations
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Unpauses deposits, withdrawals, redemptions, and share transfers.
+     * @dev Emergency role can resume normal vault operation after a pause.
+     * @custom:security Restricted to `EMERGENCY_ROLE`.
+     * @custom:validation None.
+     * @custom:state-changes Sets the paused state to false.
+     * @custom:events Emits the inherited `Unpaused` event.
+     * @custom:errors Reverts on missing emergency role or if the vault is not paused.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to `EMERGENCY_ROLE`.
+     * @custom:oracle Not applicable.
      */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
     }
 
     /**
-     * @notice Emergency withdrawal of QEURO (only in emergency)
-     * @dev Emergency function to withdraw QEURO for a specific user
-     * @param user Address of the user to withdraw for
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Forces a full emergency redemption of a user's stQEURO position.
+     * @dev Emergency role can burn all of a user's shares and transfer the current redeemable QEURO balance directly to that user.
+     * @param user Account whose full vault position is being unwound.
+     * @custom:security Restricted to `EMERGENCY_ROLE` and protected by `nonReentrant`.
+     * @custom:validation Returns early when `user` holds no shares.
+     * @custom:state-changes Burns the user's full share balance and transfers corresponding QEURO assets out of the vault.
+     * @custom:events Emits the standard ERC-4626 `Withdraw` event when shares are burned.
+     * @custom:errors Reverts on missing emergency role or failed asset transfer.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Restricted to `EMERGENCY_ROLE`.
+     * @custom:oracle Not applicable.
      */
-    function emergencyWithdraw(address user) external onlyRole(EMERGENCY_ROLE) {
-        uint256 stQEUROBalance = balanceOf(user);
-        if (stQEUROBalance > 0) {
-            uint256 qeuroAmount = stQEUROBalance.mulDiv(exchangeRate, 1e18);
-            
-            _burn(user, stQEUROBalance);
-            totalUnderlying = totalUnderlying > qeuroAmount ? totalUnderlying - qeuroAmount : 0;
-            
-    
-            // safeTransfer() will revert on failure, preventing silent failures
-            IERC20(address(qeuro)).safeTransfer(user, qeuroAmount);
-        }
+    function emergencyWithdraw(address user) external onlyRole(EMERGENCY_ROLE) nonReentrant {
+        uint256 shares = balanceOf(user);
+        if (shares == 0) return;
+
+        uint256 assets = previewRedeem(shares);
+        _burn(user, shares);
+        IERC20(asset()).safeTransfer(user, assets);
+
+        emit Withdraw(msg.sender, user, user, assets, shares);
     }
 
-    // =============================================================================
-    // RECOVERY FUNCTIONS
-    // =============================================================================
-
     /**
-     * @notice Recover accidentally sent tokens to treasury only
-     * @dev Recovers accidentally sent ERC20 tokens to the treasury address
-     * @param token Token address to recover
-     * @param amount Amount to recover
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @notice Recovers non-QEURO ERC-20 tokens mistakenly sent to the vault.
+     * @dev Admin-only recovery route forwards unsupported tokens to the configured treasury and explicitly forbids recovering the underlying asset.
+     * @param token ERC-20 token address to recover.
+     * @param amount Amount of tokens to recover.
+     * @custom:security Restricted to `DEFAULT_ADMIN_ROLE` and blocks recovery of the vault's underlying asset.
+     * @custom:validation Requires `token` to differ from `asset()`.
+     * @custom:state-changes Transfers the specified token amount from the vault to the treasury.
+     * @custom:events Emits downstream ERC-20 `Transfer` events from the recovered token.
+     * @custom:errors Reverts on invalid token selection, failed transfers, or missing admin role.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to `DEFAULT_ADMIN_ROLE`.
+     * @custom:oracle Not applicable.
      */
     function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Use the shared library for secure token recovery to treasury
+        if (token == asset()) revert CommonErrorLibrary.InvalidToken();
         TreasuryRecoveryLibrary.recoverToken(token, amount, address(this), treasury);
     }
 
     /**
-     * @notice Recover ETH to treasury address only
-     * @dev SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+     * @notice Recovers native ETH held by the vault and forwards it to the treasury.
+     * @dev Admin-only recovery route sends the contract's entire ETH balance to the configured treasury.
+     * @custom:security Restricted to `DEFAULT_ADMIN_ROLE`.
+     * @custom:validation Requires a configured treasury and a positive ETH balance.
+     * @custom:state-changes Transfers the full native ETH balance from the vault to the treasury.
+     * @custom:events Emits `ETHRecovered`.
+     * @custom:errors Reverts on missing treasury, zero ETH balance, send failure, or missing admin role.
+     * @custom:reentrancy Not applicable.
+     * @custom:access Restricted to `DEFAULT_ADMIN_ROLE`.
+     * @custom:oracle Not applicable.
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
         uint256 balance = address(this).balance;
         if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
-        emit ETHRecovered(treasury, balance);
         payable(treasury).sendValue(balance);
+        emit ETHRecovered(treasury, balance);
     }
-    
-    /**
-     * @notice Returns the current virtual protection status
-     * @return virtualShares Current virtual shares amount
-     * @return virtualAssets Current virtual assets amount
-     * @return effectiveSupply Effective supply including virtual shares
-     * @return effectiveAssets Effective assets including virtual assets
-     * @dev Useful for monitoring and debugging virtual protection
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
-     */
-    function getVirtualProtectionStatus() external view returns (
-        uint256 virtualShares,
-        uint256 virtualAssets,
-        uint256 effectiveSupply,
-        uint256 effectiveAssets
-    ) {
-        virtualShares = VIRTUAL_SHARES;
-        virtualAssets = VIRTUAL_ASSETS;
-        effectiveSupply = totalSupply() + VIRTUAL_SHARES;
-        effectiveAssets = totalUnderlying + VIRTUAL_ASSETS;
-        
-        return (virtualShares, virtualAssets, effectiveSupply, effectiveAssets);
-    }
-
 }

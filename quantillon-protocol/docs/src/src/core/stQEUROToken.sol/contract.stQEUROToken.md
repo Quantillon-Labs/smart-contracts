@@ -1,104 +1,22 @@
 # stQEUROToken
 **Inherits:**
-Initializable, ERC20Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
+Initializable, ERC4626Upgradeable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
 **Title:**
 stQEUROToken
 
-**Author:**
-Quantillon Labs - Nicolas Bellengé - @chewbaccoin
-
-Yield-bearing wrapper for QEURO tokens (yield accrual mechanism)
-
-Main characteristics:
-- Yield-bearing wrapper token for QEURO
-- Exchange rate increases over time as yield accrues
-- Similar to stETH (Lido's staked ETH token)
-- Automatic yield distribution to all stQEURO holders
-- Fee structure for protocol sustainability
-- Emergency pause mechanism for crisis situations
-- Upgradeable via UUPS pattern
-
-Staking mechanics:
-- Users stake QEURO to receive stQEURO
-- Exchange rate starts at 1:1 and increases over time
-- Yield is distributed proportionally to all stQEURO holders
-- Users can unstake at any time to receive QEURO + accrued yield
-- No lock-up period or cooldown requirements
-
-Yield distribution:
-- Yield is distributed from protocol fees and yield shift mechanisms
-- Exchange rate increases as yield accrues
-- All stQEURO holders benefit from yield automatically
-- Yield fees charged for protocol sustainability
-- Real-time yield tracking and distribution
-
-Exchange rate mechanism:
-- Exchange rate = (totalUnderlying + totalYieldEarned) / totalSupply
-- Increases over time as yield is earned
-- Updated periodically or when yield is distributed
-- Minimum yield threshold prevents frequent updates
-- Maximum update frequency prevents excessive gas costs
-
-Fee structure:
-- Yield fees on distributed yield
-- Treasury receives fees for protocol sustainability
-- Dynamic fee adjustment based on market conditions
-- Transparent fee structure for users
-
-Security features:
-- Role-based access control for all critical operations
-- Reentrancy protection for all external calls
-- Emergency pause mechanism for crisis situations
-- Upgradeable architecture for future improvements
-- Secure yield distribution mechanisms
-- Exchange rate validation
-
-Integration points:
-- QEURO token for staking and unstaking
-- USDC for yield payments
-- Yield shift mechanism for yield management
-- Treasury for fee collection
-- Vault math library for calculations
-
-**Note:**
-security-contact: team@quantillon.money
+ERC-4626 vault over QEURO used for per-vault staking series.
 
 
 ## State Variables
 ### GOVERNANCE_ROLE
-Role for governance operations (parameter updates, emergency actions)
-
-keccak256 hash avoids role collisions with other contracts
-
-Should be assigned to governance multisig or DAO
-
 
 ```solidity
 bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE")
 ```
 
 
-### YIELD_MANAGER_ROLE
-Role for yield management operations (distribution, updates)
-
-keccak256 hash avoids role collisions with other contracts
-
-Should be assigned to yield management system or governance
-
-
-```solidity
-bytes32 public constant YIELD_MANAGER_ROLE = keccak256("YIELD_MANAGER_ROLE")
-```
-
-
 ### EMERGENCY_ROLE
-Role for emergency operations (pause, emergency actions)
-
-keccak256 hash avoids role collisions with other contracts
-
-Should be assigned to emergency multisig
-
 
 ```solidity
 bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
@@ -106,1177 +24,194 @@ bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE")
 
 
 ### qeuro
-Role for performing contract upgrades via UUPS pattern
-
-QEURO token contract for staking and unstaking
-
-Used for all QEURO staking and unstaking operations
-
-Should be the official QEURO token contract
-
 
 ```solidity
 IQEUROToken public qeuro
 ```
 
 
-### yieldShift
-YieldShift contract for yield distribution
-
-Handles yield distribution and management
-
-Used for yield calculations and distributions
-
-
-```solidity
-IYieldShift public yieldShift
-```
-
-
-### usdc
-USDC token for yield payments
-
-Used for yield distributions to stQEURO holders
-
-Should be the official USDC contract on the target network
-
-
-```solidity
-IERC20 public usdc
-```
-
-
 ### treasury
-Treasury address for fee collection
-
-Receives yield fees for protocol sustainability
-
-Should be a secure multisig or DAO treasury
-
 
 ```solidity
 address public treasury
 ```
 
 
-### oracle
-Oracle for EUR/USD price — used to convert USDC yield to QEURO denomination
-
-HIGH-3: required so distributeYield() scales 6-dec USDC yield to 18-dec QEURO exchange rate
-
-
-```solidity
-IOracle public oracle
-```
-
-
-### yieldConversionPrice
-Cached EUR/USD conversion price (18 decimals) used by distributeYield
-
-Updated by governance to avoid external oracle callbacks during yield distribution
-
-
-```solidity
-uint256 public yieldConversionPrice
-```
-
-
-### TIME_PROVIDER
-TimeProvider contract for centralized time management
-
-Used to replace direct block.timestamp usage for testability and consistency
-
-
-```solidity
-TimeProvider public immutable TIME_PROVIDER
-```
-
-
 ### vaultName
-Human-readable vault identifier used to derive token metadata
-
 
 ```solidity
 string public vaultName
 ```
 
 
-### exchangeRate
-Exchange rate between QEURO and stQEURO (18 decimals)
-
-Increases over time as yield accrues (like stETH)
-
-Formula: (totalUnderlying + totalYieldEarned) / totalSupply
-
-
-```solidity
-uint256 public exchangeRate
-```
-
-
-### lastUpdateTime
-Timestamp of last exchange rate update
-
-Used to track when exchange rate was last updated
-
-Used for yield calculation intervals
-
-
-```solidity
-uint256 public lastUpdateTime
-```
-
-
-### totalUnderlying
-Total QEURO underlying the stQEURO supply
-
-Sum of all QEURO staked by users
-
-Used for exchange rate calculations
-
-
-```solidity
-uint256 public totalUnderlying
-```
-
-
-### _flashLoanTotalUnderlyingBefore
-totalUnderlying before flash loan check (used by flashLoanProtection modifier)
-
-
-```solidity
-uint256 private _flashLoanTotalUnderlyingBefore
-```
-
-
-### totalYieldEarned
-Total yield earned by stQEURO holders
-
-Sum of all yield distributed to stQEURO holders
-
-Used for exchange rate calculations and analytics
-
-
-```solidity
-uint256 public totalYieldEarned
-```
-
-
 ### yieldFee
-Fee charged on yield distributions (in basis points)
-
-Example: 200 = 2% yield fee
-
-Revenue source for the protocol
-
 
 ```solidity
 uint256 public yieldFee
 ```
 
 
-### minYieldThreshold
-Minimum yield amount to trigger exchange rate update
-
-Prevents frequent updates for small yield amounts
-
-Reduces gas costs and improves efficiency
-
+### TIME_PROVIDER
 
 ```solidity
-uint256 public minYieldThreshold
-```
-
-
-### maxUpdateFrequency
-Maximum time between exchange rate updates (in seconds)
-
-Ensures regular updates even with low yield
-
-Example: 1 day = 86400 seconds
-
-
-```solidity
-uint256 public maxUpdateFrequency
-```
-
-
-### VIRTUAL_SHARES
-Virtual shares to prevent exchange rate manipulation
-
-Prevents donation attacks by maintaining minimum share value
-
-
-```solidity
-uint256 private constant VIRTUAL_SHARES = 1e8
-```
-
-
-### VIRTUAL_ASSETS
-Virtual assets to prevent exchange rate manipulation
-
-Prevents donation attacks by maintaining minimum asset value
-
-
-```solidity
-uint256 private constant VIRTUAL_ASSETS = 1e8
-```
-
-
-### MAX_BATCH_SIZE
-Maximum batch size for staking operations to prevent DoS
-
-Prevents out-of-gas attacks through large arrays
-
-
-```solidity
-uint256 public constant MAX_BATCH_SIZE = 100
+TimeProvider public immutable TIME_PROVIDER
 ```
 
 
 ## Functions
-### flashLoanProtection
-
-Modifier to protect against flash loan attacks
-
-Checks that the contract's total underlying QEURO doesn't decrease during execution
-
-This prevents flash loans that would drain QEURO from the contract
-
-
-```solidity
-modifier flashLoanProtection() ;
-```
-
-### _flashLoanProtectionBefore
-
-
-```solidity
-function _flashLoanProtectionBefore() private;
-```
-
-### _flashLoanProtectionAfter
-
-
-```solidity
-function _flashLoanProtectionAfter() private view;
-```
-
 ### constructor
 
-Constructor for stQEURO token implementation
-
-Initializes the time provider and disables initialization on implementation
-
-**Notes:**
-- security: Disables initialization on implementation for security
-
-- validation: Validates time provider is not zero address
-
-- state-changes: Sets TIME_PROVIDER and disables initializers
-
-- events: No events emitted
-
-- errors: Throws ZeroAddress if time provider is zero
-
-- reentrancy: Not protected - constructor only
-
-- access: Public constructor
-
-- oracle: No oracle dependencies
-
-- oz-upgrades-unsafe-allow: constructor
+**Note:**
+oz-upgrades-unsafe-allow: constructor
 
 
 ```solidity
 constructor(TimeProvider _TIME_PROVIDER) ;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_TIME_PROVIDER`|`TimeProvider`|Address of the time provider contract|
-
 
 ### initialize
 
-Initialize the stQEURO token contract
-
-Sets up the contract with all required addresses and roles
-
-**Notes:**
-- security: Validates all addresses are not zero
-
-- validation: Validates all input addresses
-
-- state-changes: Initializes ERC20, AccessControl, and Pausable
-
-- events: Emits initialization events
-
-- errors: Throws if any address is zero
-
-- reentrancy: Protected by initializer modifier
-
-- access: Public initializer
-
-- oracle: No oracle dependencies
-
 
 ```solidity
-function initialize(
-    address admin,
-    address _qeuro,
-    address _yieldShift,
-    address _usdc,
-    address _treasury,
-    address _timelock
-) public initializer;
+function initialize(address admin, address _qeuro, address, address, address _treasury, address _timelock)
+    public
+    initializer;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`admin`|`address`|Address of the admin role|
-|`_qeuro`|`address`|Address of the QEURO token contract|
-|`_yieldShift`|`address`|Address of the YieldShift contract|
-|`_usdc`|`address`|Address of the USDC token contract|
-|`_treasury`|`address`|Address of the treasury|
-|`_timelock`|`address`|Address of the timelock contract|
-
 
 ### initialize
 
-Initialize the stQEURO token contract with dynamic metadata for a vault.
-
-Uses caller-supplied token name/symbol and vault label, then delegates setup to `_initializeStQEURO`.
-
-**Notes:**
-- security: Validates critical addresses and initializes access-controlled roles.
-
-- validation: Reverts if required addresses are invalid or zero.
-
-- state-changes: Initializes token metadata, roles, dependencies, and core staking parameters.
-
-- events: Emits role initialization events from inherited OpenZeppelin modules.
-
-- errors: Reverts with custom validation errors when initialization inputs are invalid.
-
-- reentrancy: Protected by `initializer`; callable once per proxy instance.
-
-- access: Public initializer for proxy deployment flow.
-
-- oracle: No direct oracle dependency during initialization.
-
 
 ```solidity
-function initialize(
-    address admin,
-    address _qeuro,
-    address _yieldShift,
-    address _usdc,
-    address _treasury,
-    address _timelock,
-    string calldata _vaultName
-) public initializer;
+function initialize(address admin, address _qeuro, address _treasury, address _timelock, string calldata _vaultName)
+    public
+    initializer;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`admin`|`address`|Address of the admin role|
-|`_qeuro`|`address`|Address of the QEURO token contract|
-|`_yieldShift`|`address`|Address of the YieldShift contract|
-|`_usdc`|`address`|Address of the USDC token contract|
-|`_treasury`|`address`|Address of the treasury|
-|`_timelock`|`address`|Address of the timelock contract|
-|`_vaultName`|`string`|Human-readable vault name (e.g. CORE, ALPHA1)|
-
 
 ### _initializeStQEURODependencies
-
-Internal initializer shared by both public initialization entrypoints.
-
-Performs full dependency validation, role setup, and default parameter bootstrap.
-
-**Notes:**
-- security: Centralizes initialization checks to keep both entrypoints consistent and hardened.
-
-- validation: Reverts if required addresses are zero or invalid for configuration.
-
-- state-changes: Initializes inherited modules, role assignments, dependencies, and default rate parameters.
-
-- events: Emits inherited initialization/role events as modules are configured.
-
-- errors: Reverts with custom address/validation errors when config is invalid.
-
-- reentrancy: Internal initializer path; reached only through `initializer`-guarded functions.
-
-- access: Internal helper.
-
-- oracle: No direct oracle reads during initialization.
 
 
 ```solidity
 function _initializeStQEURODependencies(
     address admin,
     address qeuroAddress,
-    address yieldShiftAddress,
-    address usdcAddress,
     address treasuryAddress,
     address timelockAddress
 ) internal;
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`admin`|`address`|Admin role address|
-|`qeuroAddress`|`address`|QEURO token address|
-|`yieldShiftAddress`|`address`|YieldShift contract address|
-|`usdcAddress`|`address`|USDC token address|
-|`treasuryAddress`|`address`|Treasury address|
-|`timelockAddress`|`address`|Timelock address used by SecureUpgradeable|
-
-
-### stake
-
-Stake QEURO to receive stQEURO
-
-Converts QEURO to stQEURO at current exchange rate
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
+### maxDeposit
 
 
 ```solidity
-function stake(uint256 qeuroAmount)
-    external
+function maxDeposit(address receiver) public view override returns (uint256);
+```
+
+### maxMint
+
+
+```solidity
+function maxMint(address receiver) public view override returns (uint256);
+```
+
+### maxWithdraw
+
+
+```solidity
+function maxWithdraw(address owner) public view override returns (uint256);
+```
+
+### maxRedeem
+
+
+```solidity
+function maxRedeem(address owner) public view override returns (uint256);
+```
+
+### deposit
+
+
+```solidity
+function deposit(uint256 assets, address receiver)
+    public
+    override
     nonReentrant
     whenNotPaused
-    flashLoanProtection
-    returns (uint256 stQEUROAmount);
+    returns (uint256 shares);
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to stake|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`stQEUROAmount`|`uint256`|Amount of stQEURO received|
-
-
-### unstake
-
-Unstake QEURO by burning stQEURO
-
-Burns stQEURO tokens and returns QEURO at current exchange rate
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
+### mint
 
 
 ```solidity
-function unstake(uint256 stQEUROAmount) external nonReentrant whenNotPaused returns (uint256 qeuroAmount);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`stQEUROAmount`|`uint256`|Amount of stQEURO to burn|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO received|
-
-
-### batchStake
-
-Batch stake QEURO to receive stQEURO for multiple amounts
-
-Processes multiple staking operations in a single transaction
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function batchStake(uint256[] calldata qeuroAmounts)
-    external
+function mint(uint256 shares, address receiver)
+    public
+    override
     nonReentrant
     whenNotPaused
-    returns (uint256[] memory stQEUROAmounts);
+    returns (uint256 assets);
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmounts`|`uint256[]`|Array of QEURO amounts to stake|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`stQEUROAmounts`|`uint256[]`|Array of stQEURO amounts received|
-
-
-### batchUnstake
-
-Batch unstake QEURO by burning stQEURO for multiple amounts
-
-Processes multiple unstaking operations in a single transaction
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
+### withdraw
 
 
 ```solidity
-function batchUnstake(uint256[] calldata stQEUROAmounts)
-    external
+function withdraw(uint256 assets, address receiver, address owner)
+    public
+    override
     nonReentrant
     whenNotPaused
-    returns (uint256[] memory qeuroAmounts);
+    returns (uint256 shares);
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`stQEUROAmounts`|`uint256[]`|Array of stQEURO amounts to burn|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmounts`|`uint256[]`|Array of QEURO amounts received|
-
-
-### batchTransfer
-
-Batch transfer stQEURO tokens to multiple addresses
-
-Transfers stQEURO tokens to multiple recipients in a single transaction
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
+### redeem
 
 
 ```solidity
-function batchTransfer(address[] calldata recipients, uint256[] calldata amounts)
-    external
+function redeem(uint256 shares, address receiver, address owner)
+    public
+    override
+    nonReentrant
+    whenNotPaused
+    returns (uint256 assets);
+```
+
+### transfer
+
+
+```solidity
+function transfer(address to, uint256 value)
+    public
+    override(ERC20Upgradeable, IERC20)
     whenNotPaused
     returns (bool);
 ```
-**Parameters**
 
-|Name|Type|Description|
-|----|----|-----------|
-|`recipients`|`address[]`|Array of recipient addresses|
-|`amounts`|`uint256[]`|Array of amounts to transfer|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|bool Always returns true if successful|
-
-
-### distributeYield
-
-Distribute yield to stQEURO holders (increases exchange rate)
-
-Distributes USDC yield to stQEURO holders by increasing the exchange rate
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
+### transferFrom
 
 
 ```solidity
-function distributeYield(uint256 yieldAmount) external nonReentrant onlyRole(YIELD_MANAGER_ROLE);
+function transferFrom(address from, address to, uint256 value)
+    public
+    override(ERC20Upgradeable, IERC20)
+    whenNotPaused
+    returns (bool);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Amount of yield in USDC|
-
-
-### claimYield
-
-Claim accumulated yield for a user (in USDC)
-
-In yield accrual model, yield is claimed by unstaking - kept for compatibility
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function claimYield() public returns (uint256 yieldAmount);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Amount of yield claimed (always 0 in this model)|
-
-
-### getPendingYield
-
-Get pending yield for a user (in USDC)
-
-In yield accrual model, yield is distributed via exchange rate increases
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getPendingYield(address user) public view returns (uint256 yieldAmount);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|User address|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Pending yield amount|
-
-
-### getExchangeRate
-
-Get current exchange rate between QEURO and stQEURO
-
-Returns the current exchange rate calculated with yield accrual
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getExchangeRate() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Current exchange rate (18 decimals)|
-
-
-### getTVL
-
-Get total value locked in stQEURO
-
-Returns the total amount of QEURO underlying all stQEURO tokens
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getTVL() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|uint256 Total value locked in QEURO (18 decimals)|
-
-
-### getQEUROEquivalent
-
-Get user's QEURO equivalent balance
-
-Calculates the QEURO equivalent of a user's stQEURO balance
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getQEUROEquivalent(address user) external view returns (uint256 qeuroEquivalent);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|User address|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroEquivalent`|`uint256`|QEURO equivalent of stQEURO balance|
-
-
-### getStakingStats
-
-Get staking statistics
-
-Returns comprehensive staking statistics including supply, TVL, and yield
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getStakingStats()
-    external
-    view
-    returns (
-        uint256 totalStQEUROSupply,
-        uint256 totalQEUROUnderlying,
-        uint256 currentExchangeRate,
-        uint256 totalYieldEarned_,
-        uint256 apy
-    );
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalStQEUROSupply`|`uint256`|Total supply of stQEURO tokens|
-|`totalQEUROUnderlying`|`uint256`|Total QEURO underlying all stQEURO|
-|`currentExchangeRate`|`uint256`|Current exchange rate between QEURO and stQEURO|
-|`totalYieldEarned_`|`uint256`|Total yield earned by all stakers|
-|`apy`|`uint256`|Annual percentage yield (calculated off-chain)|
-
-
-### _updateExchangeRate
-
-Update exchange rate based on time elapsed and yield accrual
-
-Internal function to update exchange rate when conditions are met
-
-**Notes:**
-- security: Calculates new rate with bounds checking to prevent manipulation
-
-- validation: No input validation required
-
-- state-changes: Updates exchangeRate and lastUpdateTime if rate changes
-
-- events: Emits ExchangeRateUpdated if rate changes
-
-- errors: No errors thrown - safe arithmetic used
-
-- reentrancy: Not protected - internal function only
-
-- access: Internal function - no access restrictions
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _updateExchangeRate() internal;
-```
-
-### _calculateCurrentExchangeRate
-
-Calculate current exchange rate including accrued yield
-
-Returns the stored exchange rate which is updated via distributeYield()
-
-**Notes:**
-- security: Uses minimum supply threshold to prevent manipulation
-
-- validation: No input validation required
-
-- state-changes: No state changes - view function only
-
-- events: No events emitted
-
-- errors: No errors thrown - safe arithmetic used
-
-- reentrancy: Not applicable - view function
-
-- access: Internal function - no access restrictions
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function _calculateCurrentExchangeRate() internal view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|Current exchange rate (18 decimals) including pending yield|
-
 
 ### updateYieldParameters
 
-Update yield parameters
-
-Updates yield fee, minimum threshold, and maximum update frequency
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
 
 ```solidity
-function updateYieldParameters(uint256 _yieldFee, uint256 _minYieldThreshold, uint256 _maxUpdateFrequency)
-    external
-    onlyRole(GOVERNANCE_ROLE);
+function updateYieldParameters(uint256 _yieldFee) external onlyRole(GOVERNANCE_ROLE);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_yieldFee`|`uint256`|New yield fee in basis points|
-|`_minYieldThreshold`|`uint256`|New minimum yield threshold in USDC|
-|`_maxUpdateFrequency`|`uint256`|New maximum update frequency in seconds|
-
 
 ### updateTreasury
-
-Update treasury address
-
-Updates the treasury address for token recovery operations
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
 
 
 ```solidity
 function updateTreasury(address _treasury) external onlyRole(GOVERNANCE_ROLE);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_treasury`|`address`|New treasury address|
-
-
-### setOracle
-
-Sets the oracle used to price USDC yield in QEURO terms.
-
-HIGH-3: Required so `distributeYield()` can convert USDC (6 decimals) to QEURO (18 decimals)
-using a EUR/USD price feed. Without a valid oracle, yield distribution reverts.
-
-**Notes:**
-- security: Ensures `_oracle` is a non-zero address to avoid bricking yield distribution.
-
-- validation: Reverts with `ZeroAddress` if `_oracle` equals `address(0)`.
-
-- state-changes: Updates the `oracle` contract reference used by `distributeYield()`.
-
-- events: None.
-
-- errors: ZeroAddress if `_oracle` is the zero address.
-
-- reentrancy: Not applicable – no external calls after state change.
-
-- access: Restricted to `GOVERNANCE_ROLE`.
-
-- oracle: Configures the external EUR/USD oracle used for USDC→QEURO conversion.
-
-
-```solidity
-function setOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`_oracle`|`address`|Address of the `IOracle` implementation (typically `OracleRouter`).|
-
-
-### updateYieldConversionPrice
-
-Updates the cached EUR/USD conversion price used in yield distribution.
-
-Governance maintenance hook for manually refreshing conversion cache used by yield accounting.
-
-**Notes:**
-- security: Restricted to `GOVERNANCE_ROLE`
-
-- validation: Reverts when `eurUsdPrice == 0`
-
-- state-changes: Updates `yieldConversionPrice`
-
-- events: Emits `YieldConversionPriceUpdated`
-
-- errors: Reverts with `InvalidOraclePrice` when input is zero
-
-- reentrancy: No external calls
-
-- access: Governance-only external function
-
-- oracle: Uses governance-supplied oracle-derived price input
-
-
-```solidity
-function updateYieldConversionPrice(uint256 eurUsdPrice) external onlyRole(GOVERNANCE_ROLE);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`eurUsdPrice`|`uint256`|New EUR/USD price in 18 decimals.|
-
-
-### decimals
-
-Returns the number of decimals used by the token
-
-Always returns 18 to match QEURO token standard
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function decimals() public pure override returns (uint8);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint8`|The number of decimals (18)|
-
 
 ### pause
-
-Pauses all token transfers and minting/burning operations
-
-Can only be called by addresses with EMERGENCY_ROLE during emergencies
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
 
 
 ```solidity
@@ -1285,27 +220,6 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 
 ### unpause
 
-Unpauses all token transfers and minting/burning operations
-
-Can only be called by addresses with EMERGENCY_ROLE to resume normal operations
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
 
 ```solidity
 function unpause() external onlyRole(EMERGENCY_ROLE);
@@ -1313,275 +227,41 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 
 ### emergencyWithdraw
 
-Emergency withdrawal of QEURO (only in emergency)
-
-Emergency function to withdraw QEURO for a specific user
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
 
 ```solidity
-function emergencyWithdraw(address user) external onlyRole(EMERGENCY_ROLE);
+function emergencyWithdraw(address user) external onlyRole(EMERGENCY_ROLE) nonReentrant;
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address of the user to withdraw for|
-
 
 ### recoverToken
-
-Recover accidentally sent tokens to treasury only
-
-Recovers accidentally sent ERC20 tokens to the treasury address
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
 
 
 ```solidity
 function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`token`|`address`|Token address to recover|
-|`amount`|`uint256`|Amount to recover|
-
 
 ### recoverETH
-
-Recover ETH to treasury address only
-
-SECURITY: Restricted to treasury to prevent arbitrary ETH transfers
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
 
 
 ```solidity
 function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE);
 ```
 
-### getVirtualProtectionStatus
-
-Returns the current virtual protection status
-
-Useful for monitoring and debugging virtual protection
-
-**Notes:**
-- security: Validates input parameters and enforces security checks
-
-- validation: Validates input parameters and business logic constraints
-
-- state-changes: Updates contract state variables
-
-- events: Emits relevant events for state changes
-
-- errors: Throws custom errors for invalid conditions
-
-- reentrancy: Protected by reentrancy guard
-
-- access: Restricted to authorized roles
-
-- oracle: Requires fresh oracle price data
-
-
-```solidity
-function getVirtualProtectionStatus()
-    external
-    view
-    returns (uint256 virtualShares, uint256 virtualAssets, uint256 effectiveSupply, uint256 effectiveAssets);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`virtualShares`|`uint256`|Current virtual shares amount|
-|`virtualAssets`|`uint256`|Current virtual assets amount|
-|`effectiveSupply`|`uint256`|Effective supply including virtual shares|
-|`effectiveAssets`|`uint256`|Effective assets including virtual assets|
-
-
 ## Events
-### QEUROStaked
-Emitted when QEURO is staked to receive stQEURO
-
-Indexed parameters allow efficient filtering of events
-
-
-```solidity
-event QEUROStaked(address indexed user, uint256 qeuroAmount, uint256 stQEUROAmount);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address of the user who staked|
-|`qeuroAmount`|`uint256`|Amount of QEURO staked (18 decimals)|
-|`stQEUROAmount`|`uint256`|Amount of stQEURO received (18 decimals)|
-
-### QEUROUnstaked
-Emitted when stQEURO is unstaked to receive QEURO
-
-Indexed parameters allow efficient filtering of events
-
-
-```solidity
-event QEUROUnstaked(address indexed user, uint256 stQEUROAmount, uint256 qeuroAmount);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address of the user who unstaked|
-|`stQEUROAmount`|`uint256`|Amount of stQEURO burned (18 decimals)|
-|`qeuroAmount`|`uint256`|Amount of QEURO received (18 decimals)|
-
-### ExchangeRateUpdated
-Emitted when exchange rate is updated
-
-Used to track exchange rate changes over time
-
-
-```solidity
-event ExchangeRateUpdated(uint256 oldRate, uint256 newRate, uint256 timestamp);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`oldRate`|`uint256`|Previous exchange rate (18 decimals)|
-|`newRate`|`uint256`|New exchange rate (18 decimals)|
-|`timestamp`|`uint256`|Timestamp of the update|
-
-### YieldDistributed
-Emitted when yield is distributed to stQEURO holders
-
-Used to track yield distributions and their impact
-
-OPTIMIZED: Indexed exchange rate for efficient filtering
-
-
-```solidity
-event YieldDistributed(uint256 yieldAmount, uint256 indexed newExchangeRate);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`yieldAmount`|`uint256`|Amount of yield distributed (18 decimals)|
-|`newExchangeRate`|`uint256`|New exchange rate after distribution (18 decimals)|
-
-### YieldClaimed
-Emitted when a user claims yield
-
-Indexed parameters allow efficient filtering of events
-
-
-```solidity
-event YieldClaimed(address indexed user, uint256 yieldAmount);
-```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`user`|`address`|Address of the user who claimed yield|
-|`yieldAmount`|`uint256`|Amount of yield claimed (18 decimals)|
-
 ### YieldParametersUpdated
-Emitted when yield parameters are updated
-
-Used to track parameter changes by governance
-
-OPTIMIZED: Indexed parameter type for efficient filtering
-
 
 ```solidity
-event YieldParametersUpdated(
-    string indexed parameterType, uint256 yieldFee, uint256 minYieldThreshold, uint256 maxUpdateFrequency
-);
+event YieldParametersUpdated(uint256 yieldFee);
 ```
 
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`parameterType`|`string`||
-|`yieldFee`|`uint256`|New yield fee in basis points|
-|`minYieldThreshold`|`uint256`|New minimum yield threshold|
-|`maxUpdateFrequency`|`uint256`|New maximum update frequency|
-
-### YieldConversionPriceUpdated
-Emitted when the cached yield conversion price is updated
-
+### TreasuryUpdated
 
 ```solidity
-event YieldConversionPriceUpdated(uint256 oldPrice, uint256 newPrice, address indexed caller);
+event TreasuryUpdated(address indexed oldTreasury, address indexed newTreasury, address indexed caller);
 ```
 
 ### ETHRecovered
-Emitted when ETH is recovered to the treasury
-
 
 ```solidity
 event ETHRecovered(address indexed to, uint256 indexed amount);
 ```
-
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`to`|`address`|Address to which ETH was recovered|
-|`amount`|`uint256`|Amount of ETH recovered|
 

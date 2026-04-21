@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
+import {StdStorage, stdStorage} from "forge-std/StdStorage.sol";
 import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -336,6 +337,7 @@ contract MockAaveVault {
 contract MockStQEURO {
     uint256 public totalDistributed;
     uint256 public distributionCount;
+    uint256 public lastVaultId;
 
     /**
      * @notice Distributes yield for testing
@@ -350,21 +352,29 @@ contract MockStQEURO {
      * @custom:access Public - test mock
      * @custom:oracle No oracle dependencies
      */
-    function distributeYield(uint256 amount) external {
+    function creditVaultYield(uint256 vaultId, uint256 amount) external returns (uint256 qeuroMinted) {
+        lastVaultId = vaultId;
         totalDistributed += amount;
         distributionCount += 1;
+        qeuroMinted = amount;
     }
 }
 
 contract MockStQEUROFactory {
     mapping(uint256 => address) public tokenByVaultId;
+    mapping(uint256 => address) public vaultById;
 
     function setVaultToken(uint256 vaultId, address token) external {
         tokenByVaultId[vaultId] = token;
+        vaultById[vaultId] = token;
     }
 
     function getStQEUROByVaultId(uint256 vaultId) external view returns (address) {
         return tokenByVaultId[vaultId];
+    }
+
+    function getVaultById(uint256 vaultId) external view returns (address) {
+        return vaultById[vaultId];
     }
 }
 
@@ -388,6 +398,7 @@ contract MockStQEUROFactory {
  */
 contract YieldShiftTestSuite is Test {
     using console2 for uint256;
+    using stdStorage for StdStorage;
 
     // =============================================================================
     // TEST ADDRESSES
@@ -556,6 +567,16 @@ contract YieldShiftTestSuite is Test {
         
         vm.prank(hedger);
         usdc.approve(address(yieldShift), type(uint256).max);
+    }
+
+    function _seedLegacyClaimableYield(uint256 userAmount, uint256 hedgerAmount) internal {
+        uint256 totalAmount = userAmount + hedgerAmount;
+        if (totalAmount > 0) {
+            usdc.mint(address(yieldShift), totalAmount);
+        }
+
+        stdstore.target(address(yieldShift)).sig("userYieldPool()").checked_write(userAmount);
+        stdstore.target(address(yieldShift)).sig("hedgerYieldPool()").checked_write(hedgerAmount);
     }
 
     function _authorizeYieldSource(address source, bytes32 yieldType) internal {
@@ -745,6 +766,8 @@ contract YieldShiftTestSuite is Test {
      */
     function test_YieldDistribution_AddYield() public {
         uint256 yieldAmount = 10000 * 1e6; // 10K USDC
+        uint256 expectedUserAllocation = yieldAmount * yieldShift.currentYieldShift() / 10_000;
+        uint256 expectedHedgerAllocation = yieldAmount - expectedUserAllocation;
         
         // Authorize yieldManager for test_source
         vm.prank(admin);
@@ -768,10 +791,11 @@ contract YieldShiftTestSuite is Test {
         // Check that total yield was increased
         assertEq(yieldShift.totalYieldGenerated(), initialTotalYield + yieldAmount);
         
-        // Check that yield was distributed based on current shift
+        // User-side yield is auto-compounded into the target vault, not left in userYieldPool.
         (uint256 newUserYield, uint256 newHedgerYield,) = yieldShift.getYieldDistributionBreakdown();
-        assertGt(newUserYield, initialUserYield);
-        assertGt(newHedgerYield, initialHedgerYield);
+        assertEq(newUserYield, initialUserYield);
+        assertEq(newHedgerYield, initialHedgerYield + expectedHedgerAllocation);
+        assertEq(stQEURO.totalDistributed(), expectedUserAllocation);
     }
     
     /**
@@ -879,6 +903,8 @@ contract YieldShiftTestSuite is Test {
      */
     function test_YieldDistribution_AddYieldWithAuthorization_Success() public {
         uint256 yieldAmount = 10000 * 1e6;
+        uint256 expectedUserAllocation = yieldAmount * yieldShift.currentYieldShift() / 10_000;
+        uint256 expectedHedgerAllocation = yieldAmount - expectedUserAllocation;
         
         // Authorize a source for yield
         vm.prank(admin);
@@ -902,10 +928,11 @@ contract YieldShiftTestSuite is Test {
         // Check that total yield was increased
         assertEq(yieldShift.totalYieldGenerated(), initialTotalYield + yieldAmount);
         
-        // Check that yield was distributed based on current shift
+        // User-side yield is routed into the vault token; only hedger yield remains claimable here.
         (uint256 newUserYield, uint256 newHedgerYield,) = yieldShift.getYieldDistributionBreakdown();
-        assertGt(newUserYield, initialUserYield);
-        assertGt(newHedgerYield, initialHedgerYield);
+        assertEq(newUserYield, initialUserYield);
+        assertEq(newHedgerYield, initialHedgerYield + expectedHedgerAllocation);
+        assertEq(stQEURO.totalDistributed(), expectedUserAllocation);
     }
 
     function test_MultiVault_RoutesYieldToDistinctVaultTokens() public {
@@ -1013,14 +1040,8 @@ contract YieldShiftTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_YieldClaiming_ClaimUserYield() public {
-        // Setup: Add yield first to populate yield pools
-        uint256 yieldAmount = 2000 * 1e6; // 2K USDC (more than we'll allocate)
-        
-        vm.prank(yieldManager);
-        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
-        
-        // Now allocate a portion to user
         uint256 userAllocation = 1000 * 1e6; // 1K USDC
+        _seedLegacyClaimableYield(userAllocation, 0);
         
         vm.prank(yieldManager);
         yieldShift.updateYieldAllocation(user, userAllocation, true);
@@ -1442,14 +1463,9 @@ contract YieldShiftTestSuite is Test {
       * @custom:oracle No oracle dependency for test function
      */
     function test_Emergency_EmergencyYieldDistribution() public {
-        // Setup: Add yield to pools
-        uint256 yieldAmount = 10000 * 1e6;
-        
-        vm.prank(yieldManager);
-        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
-        
         uint256 userAmount = 3000 * 1e6;
         uint256 hedgerAmount = 2000 * 1e6;
+        _seedLegacyClaimableYield(userAmount, hedgerAmount);
         
         // Record initial balances
         uint256 initialUserPoolBalance = usdc.balanceOf(address(userPool));
@@ -1688,6 +1704,8 @@ contract YieldShiftTestSuite is Test {
     function test_ViewFunctions_GetYieldDistributionBreakdown() public {
         // Add yield
         uint256 yieldAmount = 10000 * 1e6;
+        uint256 expectedUserAllocation = yieldAmount * yieldShift.currentYieldShift() / 10_000;
+        uint256 expectedHedgerAllocation = yieldAmount - expectedUserAllocation;
         
         vm.prank(yieldManager);
         yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
@@ -1695,14 +1713,10 @@ contract YieldShiftTestSuite is Test {
         // Get breakdown
         (uint256 userYieldPool, uint256 hedgerYieldPool, uint256 distributionRatio) = yieldShift.getYieldDistributionBreakdown();
         
-        // Check that pools are not empty
-        assertGt(userYieldPool, 0);
-        assertGt(hedgerYieldPool, 0);
-        
-        // Check that distribution ratio is calculated correctly
-        uint256 totalPool = userYieldPool + hedgerYieldPool;
-        uint256 expectedRatio = userYieldPool * 10000 / totalPool;
-        assertEq(distributionRatio, expectedRatio);
+        assertEq(userYieldPool, 0);
+        assertEq(hedgerYieldPool, expectedHedgerAllocation);
+        assertEq(distributionRatio, 0);
+        assertEq(stQEURO.totalDistributed(), expectedUserAllocation);
     }
     
     /**
@@ -1725,6 +1739,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
         
         // Allocate some yield to users
+        _seedLegacyClaimableYield(1000 * 1e6, 0);
         vm.prank(yieldManager);
         yieldShift.updateYieldAllocation(user, 1000 * 1e6, true);
         
@@ -1880,6 +1895,7 @@ contract YieldShiftTestSuite is Test {
         yieldShift.addYield(1, protocolFees, keccak256("fees"));
         
         // 2. Allocate yield to users and hedgers (skip updateYieldDistribution to avoid TWAP issues)
+        _seedLegacyClaimableYield(1000 * 1e6, 800 * 1e6);
         vm.prank(yieldManager);
         yieldShift.updateYieldAllocation(user, 1000 * 1e6, true);
         

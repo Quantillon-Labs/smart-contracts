@@ -447,15 +447,13 @@ contract stQEUROFactory is Initializable, AccessControlUpgradeable, SecureUpgrad
      * @custom:oracle Uses stored oracle address indirectly through configuration.
      */
     function _buildInitData(string calldata vaultName) internal view returns (bytes memory initData) {
-        bytes4 initSelector = bytes4(keccak256("initialize(address,address,address,address,address,address,string)"));
+        bytes4 initSelector = bytes4(keccak256("initialize(address,address,address,address,string)"));
 
         return
             abi.encodeWithSelector(
                 initSelector,
                 tokenAdmin,
                 qeuro,
-                yieldShift,
-                usdc,
                 treasury,
                 address(timelock),
                 vaultName

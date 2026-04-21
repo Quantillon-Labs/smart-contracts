@@ -421,7 +421,7 @@ contract QuantillonInvariants is Test {
 
         // stQEURO supply consistency
         uint256 stQEUROTotalSupply = stQEURO.totalSupply();
-        uint256 stQEUROUnderlying = stQEURO.totalUnderlying();
+        uint256 stQEUROUnderlying = stQEURO.totalAssets();
 
         // stQEURO should never have more supply than underlying QEURO
         // (exchange rate should be >= 1:1 to prevent dilution)
@@ -855,7 +855,7 @@ contract QuantillonInvariants is Test {
         uint256 stakeAmount = user1QeuroBal / 2;
         vm.startPrank(user1);
         qeuroToken.approve(address(stQEURO), stakeAmount);
-        uint256 stQeuroReceived = stQEURO.stake(stakeAmount);
+        uint256 stQeuroReceived = stQEURO.deposit(stakeAmount, user1);
         vm.stopPrank();
 
         assertGt(stQeuroReceived, 0, "User1 should receive stQEURO");
@@ -873,7 +873,7 @@ contract QuantillonInvariants is Test {
 
         // User1 unstakes
         vm.startPrank(user1);
-        uint256 qeuroBack = stQEURO.unstake(stQeuroReceived);
+        uint256 qeuroBack = stQEURO.redeem(stQeuroReceived, user1, user1);
         vm.stopPrank();
 
         assertGt(qeuroBack, 0, "Should get QEURO back");
@@ -945,10 +945,10 @@ contract QuantillonInvariants is Test {
 
         // Stake
         qeuroToken.approve(address(stQEURO), stakeAmount);
-        uint256 stQeuroReceived = stQEURO.stake(stakeAmount);
+        uint256 stQeuroReceived = stQEURO.deposit(stakeAmount, user1);
 
         // Unstake immediately
-        uint256 qeuroReturned = stQEURO.unstake(stQeuroReceived);
+        uint256 qeuroReturned = stQEURO.redeem(stQeuroReceived, user1, user1);
         vm.stopPrank();
 
         // Should get back approximately the same amount (within rounding)
@@ -1150,7 +1150,7 @@ contract InvariantActionHandler is Test {
 
         vm.startPrank(actor);
         qeuroToken.approve(address(stQEURO), stakeAmount);
-        try stQEURO.stake(stakeAmount) returns (uint256) {
+        try stQEURO.deposit(stakeAmount, actor) returns (uint256) {
             totalStaked += stakeAmount;
             actionCount++;
         } catch {}
@@ -1169,7 +1169,7 @@ contract InvariantActionHandler is Test {
         if (unstakeAmount == 0) return;
 
         vm.startPrank(actor);
-        try stQEURO.unstake(unstakeAmount) returns (uint256) {
+        try stQEURO.redeem(unstakeAmount, actor, actor) returns (uint256) {
             totalUnstaked += unstakeAmount;
             actionCount++;
         } catch {}

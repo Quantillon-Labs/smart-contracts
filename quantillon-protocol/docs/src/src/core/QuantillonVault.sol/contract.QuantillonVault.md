@@ -108,6 +108,15 @@ bytes32 public constant VAULT_OPERATOR_ROLE = keccak256("VAULT_OPERATOR_ROLE")
 ```
 
 
+### YIELD_DISTRIBUTOR_ROLE
+Role allowed to credit harvested user yield into stQEURO vaults.
+
+
+```solidity
+bytes32 public constant YIELD_DISTRIBUTOR_ROLE = keccak256("YIELD_DISTRIBUTOR_ROLE")
+```
+
+
 ### MAX_PRICE_DEVIATION
 Maximum allowed price deviation between consecutive price updates (in basis points)
 
@@ -1994,6 +2003,52 @@ function selfRegisterStQEURO(address factory, uint256 vaultId, string calldata v
 |Name|Type|Description|
 |----|----|-----------|
 |`token`|`address`|Newly deployed stQEURO token address.|
+
+
+### creditVaultYield
+
+Credits harvested user yield into a specific stQEURO vault as real QEURO backing.
+
+Converts harvested user-side USDC into newly minted QEURO sent directly to the target stQEURO vault.
+
+**Notes:**
+- security: Restricted to `YIELD_DISTRIBUTOR_ROLE`; validates oracle, collateralization, and vault bindings.
+
+- validation: Reverts on zero amounts, invalid vault ids, invalid prices, or unsafe collateralization.
+
+- state-changes: Updates price cache metadata, protocol USDC/QEURO accounting, and hedger synchronization state.
+
+- events: Emits no direct event; downstream token mint/transfer events provide observability.
+
+- errors: Reverts on invalid inputs, failed transfers, unsafe mint conditions, or hedger sync failure.
+
+- reentrancy: Guarded by `nonReentrant`.
+
+- access: Restricted to addresses with `YIELD_DISTRIBUTOR_ROLE`.
+
+- oracle: Requires fresh validated EUR/USD and USDC/USD oracle reads.
+
+
+```solidity
+function creditVaultYield(uint256 vaultId, uint256 usdcAmount)
+    external
+    nonReentrant
+    whenNotPaused
+    onlyRole(YIELD_DISTRIBUTOR_ROLE)
+    returns (uint256 qeuroMinted);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`vaultId`|`uint256`|Vault identifier whose stQEURO series receives the compounded yield.|
+|`usdcAmount`|`uint256`|Amount of harvested USDC allocated to users for this vault.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`qeuroMinted`|`uint256`|Net QEURO minted into the stQEURO vault.|
 
 
 ### harvestVaultYield

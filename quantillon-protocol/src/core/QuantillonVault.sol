@@ -124,6 +124,9 @@ contract QuantillonVault is
     /// @dev keccak256 hash avoids role collisions with other contracts
     /// @dev Should be assigned to UserPool contract
     bytes32 public constant VAULT_OPERATOR_ROLE = keccak256("VAULT_OPERATOR_ROLE");
+
+    /// @notice Role allowed to credit harvested user yield into stQEURO vaults.
+    bytes32 public constant YIELD_DISTRIBUTOR_ROLE = keccak256("YIELD_DISTRIBUTOR_ROLE");
     
 
 
@@ -696,10 +699,9 @@ contract QuantillonVault is
         address stToken = stQEUROTokenByVaultId[vaultId];
         if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
         IERC20(address(qeuro)).safeIncreaseAllowance(stToken, qeuroMinted);
-        stQEUROMinted = IstQEURO(stToken).stake(qeuroMinted);
+        stQEUROMinted = IstQEURO(stToken).previewDeposit(qeuroMinted);
         if (stQEUROMinted < minStQEUROOut) revert CommonErrorLibrary.ExcessiveSlippage();
-
-        IERC20(stToken).safeTransfer(msg.sender, stQEUROMinted);
+        stQEUROMinted = IstQEURO(stToken).deposit(qeuroMinted, msg.sender);
     }
 
     /**
@@ -1713,6 +1715,61 @@ contract QuantillonVault is
         if (registeredToken != token) revert CommonErrorLibrary.InvalidAddress();
 
         emit StQEURORegistered(factory, vaultId, token, vaultName);
+    }
+
+    /**
+     * @notice Credits harvested user yield into a specific stQEURO vault as real QEURO backing.
+     * @dev Converts harvested user-side USDC into newly minted QEURO sent directly to the target stQEURO vault.
+     * @param vaultId Vault identifier whose stQEURO series receives the compounded yield.
+     * @param usdcAmount Amount of harvested USDC allocated to users for this vault.
+     * @return qeuroMinted Net QEURO minted into the stQEURO vault.
+     * @custom:security Restricted to `YIELD_DISTRIBUTOR_ROLE`; validates oracle, collateralization, and vault bindings.
+     * @custom:validation Reverts on zero amounts, invalid vault ids, invalid prices, or unsafe collateralization.
+     * @custom:state-changes Updates price cache metadata, protocol USDC/QEURO accounting, and hedger synchronization state.
+     * @custom:events Emits no direct event; downstream token mint/transfer events provide observability.
+     * @custom:errors Reverts on invalid inputs, failed transfers, unsafe mint conditions, or hedger sync failure.
+     * @custom:reentrancy Guarded by `nonReentrant`.
+     * @custom:access Restricted to addresses with `YIELD_DISTRIBUTOR_ROLE`.
+     * @custom:oracle Requires fresh validated EUR/USD and USDC/USD oracle reads.
+     */
+    // slither-disable-next-line reentrancy-benign
+    function creditVaultYield(uint256 vaultId, uint256 usdcAmount)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyRole(YIELD_DISTRIBUTOR_ROLE)
+        returns (uint256 qeuroMinted)
+    {
+        CommonValidationLibrary.validatePositiveAmount(usdcAmount);
+
+        address stToken = stQEUROTokenByVaultId[vaultId];
+        if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
+
+        (uint256 eurUsdPrice, bool isValidPrice) = _getValidatedMintPrices();
+        _enforceMintEligibility();
+        _enforceMintPriceDeviation(eurUsdPrice);
+
+        uint256 feeUsdc = usdcAmount.percentageOf(IstQEURO(stToken).yieldFee());
+        uint256 netUsdcAmount = usdcAmount - feeUsdc;
+        qeuroMinted = netUsdcAmount.mulDiv(1e30, eurUsdPrice);
+        if (qeuroMinted == 0) revert CommonErrorLibrary.InvalidAmount();
+
+        _enforceProjectedMintCollateralization(netUsdcAmount, qeuroMinted, eurUsdPrice);
+
+        lastPriceUpdateBlock = block.number;
+        lastValidEurUsdPrice = eurUsdPrice;
+        _updatePriceTimestamp(isValidPrice);
+
+        totalUsdcHeld += netUsdcAmount;
+        totalMinted += qeuroMinted;
+
+        _syncMintWithHedgersOrRevert(netUsdcAmount, eurUsdPrice, qeuroMinted);
+
+        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
+        if (feeUsdc > 0) {
+            usdc.safeTransfer(treasury, feeUsdc);
+        }
+        qeuro.mint(stToken, qeuroMinted);
     }
 
     /**

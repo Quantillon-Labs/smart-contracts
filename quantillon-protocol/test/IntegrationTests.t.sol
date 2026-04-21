@@ -349,7 +349,7 @@ contract IntegrationTests is Test {
 
             vm.startPrank(user1);
             qeuroToken.approve(address(stQEURO), stakeAmount);
-            uint256 stQEUROReceived = stQEURO.stake(stakeAmount);
+            uint256 stQEUROReceived = stQEURO.deposit(stakeAmount, user1);
             vm.stopPrank();
 
             userStQEUROBalance = stQEURO.balanceOf(user1);
@@ -370,7 +370,7 @@ contract IntegrationTests is Test {
             console.log("\n--- Step 3: Supply Consistency Check ---");
 
             uint256 totalQEUROSupply = qeuroToken.totalSupply();
-            uint256 stQEUROUnderlying = stQEURO.totalUnderlying();
+            uint256 stQEUROUnderlying = stQEURO.totalAssets();
 
             // QEURO in circulation + QEURO locked in stQEURO should equal total supply
             uint256 qeuroInStQEURO = qeuroToken.balanceOf(address(stQEURO));
@@ -410,7 +410,7 @@ contract IntegrationTests is Test {
             vm.startPrank(user1);
 
             // Unstake stQEURO
-            stQEURO.unstake(userStQEUROBalance);
+            stQEURO.redeem(userStQEUROBalance, user1, user1);
 
             uint256 qeuroAfterUnstake = qeuroToken.balanceOf(user1);
             assertApproxEqRel(qeuroAfterUnstake, userQEUROBalance, 0.01e18, "User should have QEURO back after unstaking");

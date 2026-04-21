@@ -12,8 +12,8 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IUserPool} from "../../interfaces/IUserPool.sol";
 import {IHedgerPool} from "../../interfaces/IHedgerPool.sol";
 import {IMockAaveVault} from "../../interfaces/IMockAaveVault.sol";
-import {IstQEURO} from "../../interfaces/IstQEURO.sol";
 import {IStQEUROFactory} from "../../interfaces/IStQEUROFactory.sol";
+import {IQuantillonVault} from "../../interfaces/IQuantillonVault.sol";
 import {VaultMath} from "../../libraries/VaultMath.sol";
 import {CommonErrorLibrary} from "../../libraries/CommonErrorLibrary.sol";
 import {YieldValidationLibrary} from "../../libraries/YieldValidationLibrary.sol";
@@ -415,16 +415,16 @@ contract YieldShift is
         uint256 userAllocation = yieldAmount.mulDiv(currentYieldShift, 10000);
         uint256 hedgerAllocation = yieldAmount - userAllocation;
         
-        userYieldPool += userAllocation;
         hedgerYieldPool += hedgerAllocation;
         
         if (userAllocation > 0) {
             if (address(stQEUROFactory) == address(0)) revert CommonErrorLibrary.InvalidAddress();
-            address stQEUROAddress = stQEUROFactory.getStQEUROByVaultId(vaultId);
-            if (stQEUROAddress == address(0)) revert CommonErrorLibrary.InvalidVault();
+            address vaultAddress = stQEUROFactory.getVaultById(vaultId);
+            if (vaultAddress == address(0)) revert CommonErrorLibrary.InvalidVault();
 
-            usdc.safeIncreaseAllowance(stQEUROAddress, userAllocation);
-            IstQEURO(stQEUROAddress).distributeYield(userAllocation);
+            usdc.safeIncreaseAllowance(vaultAddress, userAllocation);
+            uint256 creditedQeuro = IQuantillonVault(vaultAddress).creditVaultYield(vaultId, userAllocation);
+            if (creditedQeuro == 0) revert CommonErrorLibrary.InvalidAmount();
         }
         
         emit YieldAdded(yieldAmount, string(abi.encodePacked(source)), TIME_PROVIDER.currentTime());

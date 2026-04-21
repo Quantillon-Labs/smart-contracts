@@ -85,7 +85,7 @@ contract CombinedAttackVectors is IntegrationTests {
         vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
         uint256 qeuroBal = qeuroToken.balanceOf(user1);
         qeuroToken.approve(address(stQEURO), qeuroBal / 2);
-        stQEURO.stake(qeuroBal / 2);
+        stQEURO.deposit(qeuroBal / 2, user1);
         vm.stopPrank();
 
         // Sync feed with oracle so getEurUsdPrice returns (1e18, true); otherwise oracle returns isValid=false (deviation from feed 1.10)

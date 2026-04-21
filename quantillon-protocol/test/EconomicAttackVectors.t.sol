@@ -508,7 +508,7 @@ contract EconomicAttackVectorsIntegration is IntegrationTests {
         vault.mintQEURO(DEPOSIT_AMOUNT, (expectedQEURO * 90) / 100);
         uint256 qeuroBal = qeuroToken.balanceOf(user1);
         qeuroToken.approve(address(stQEURO), qeuroBal / 2);
-        stQEURO.stake(qeuroBal / 2);
+        stQEURO.deposit(qeuroBal / 2, user1);
         vm.stopPrank();
 
         eurUsdFeed.setPrice(int256(1e8));

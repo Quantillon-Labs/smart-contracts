@@ -70,7 +70,7 @@ contract stQEUROFactoryTest is Test {
         assertEq(deployed.symbol(), "stQEUROAAVE");
         assertEq(deployed.name(), "Staked Quantillon Euro AAVE");
         assertEq(deployed.vaultName(), "AAVE");
-        assertTrue(deployed.hasRole(deployed.YIELD_MANAGER_ROLE(), yieldShift));
+        assertEq(address(deployed.asset()), qeuro);
     }
 
     function test_RegisterVault_MultiVaults_Success() public {

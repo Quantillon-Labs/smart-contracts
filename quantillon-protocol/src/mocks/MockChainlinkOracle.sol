@@ -344,8 +344,19 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
         // Use internal calculation to avoid external calls
         currentPrice = _calculateEurUsdPrice();
         lastValidPrice = currentPrice;
-        lastUpdate = block.timestamp;
-        isStale = false; // Mock data is never stale
+        try eurUsdPriceFeed.latestRoundData() returns (
+            uint80 roundId,
+            int256 rawPrice,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        ) {
+            lastUpdate = updatedAt;
+            isStale = rawPrice <= 0 || roundId != answeredInRound || startedAt > updatedAt;
+        } catch {
+            lastUpdate = 0;
+            isStale = true;
+        }
         withinBounds = true; // Mock data is always within bounds
     }
     

@@ -425,6 +425,40 @@ contract StorkOracleTest is Test {
         assertGt(price, 0); // Should return last valid price
         assertFalse(isValid, "Price should be invalid due to stale timestamp"); // Should be marked as invalid
     }
+
+    /**
+     * @notice Tests that EUR/USD details use the Stork feed timestamp instead of cache timestamp
+     * @dev Verifies feed freshness remains accurate when no cache-refresh transaction has run
+     */
+    function test_GetEurUsdDetailsUsesFeedTimestamp() public {
+        uint256 cacheTimestamp = storkOracle.lastPriceUpdateTime();
+        vm.warp(block.timestamp + 5 days);
+        uint256 feedTimestamp = block.timestamp - 42;
+        eurUsdFeed.setUpdatedAtForFeed(EUR_USD_FEED_ID, feedTimestamp);
+
+        (, , uint256 lastUpdate, bool isStale, ) = storkOracle.getEurUsdDetails();
+
+        assertEq(lastUpdate, feedTimestamp);
+        assertEq(storkOracle.lastPriceUpdateTime(), cacheTimestamp);
+        assertNotEq(lastUpdate, cacheTimestamp);
+        assertFalse(isStale);
+    }
+
+    /**
+     * @notice Tests that EUR/USD details preserve stale Stork feed timestamps when readable
+     * @dev Verifies stale health comes from isStale while lastUpdate still reflects feed data
+     */
+    function test_GetEurUsdDetailsReturnsReadableStaleFeedTimestamp() public {
+        vm.warp(20_000);
+        uint256 staleTimestamp = 5_000;
+        eurUsdFeed.setUpdatedAtForFeed(EUR_USD_FEED_ID, staleTimestamp);
+
+        (uint256 currentPrice, , uint256 lastUpdate, bool isStale, ) = storkOracle.getEurUsdDetails();
+
+        assertEq(lastUpdate, staleTimestamp);
+        assertEq(currentPrice, storkOracle.lastValidEurUsdPrice());
+        assertTrue(isStale);
+    }
     
     /**
      * @notice Tests that circuit breaker prevents invalid prices
@@ -646,4 +680,3 @@ contract StorkOracleTest is Test {
     
     event CircuitBreakerTriggered(uint256 attemptedPrice, uint256 lastValidPrice, string indexed reason);
 }
-

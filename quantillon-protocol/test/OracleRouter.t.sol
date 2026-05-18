@@ -57,6 +57,15 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
         roundId++;
         updatedAt = block.timestamp;
     }
+
+    /**
+     * @notice Sets the mock feed timestamp
+     * @dev Allows tests to distinguish feed freshness from current block time
+     * @param _updatedAt New feed updatedAt timestamp
+     */
+    function setUpdatedAt(uint256 _updatedAt) external {
+        updatedAt = _updatedAt;
+    }
     
     /**
      * @notice Returns latest round data
@@ -410,7 +419,7 @@ contract OracleRouterTest is Test {
      * @custom:access Public - test function
      * @custom:oracle Delegates to active oracle for detailed price info
      */
-    function test_GetEurUsdDetails() public {
+    function test_GetEurUsdDetails() public view {
         (uint256 currentPrice, uint256 lastValidPrice, uint256 lastUpdate, bool isStale, bool withinBounds) = 
             router.getEurUsdDetails();
         assertGt(currentPrice, 0);
@@ -418,6 +427,22 @@ contract OracleRouterTest is Test {
         assertGt(lastUpdate, 0);
         assertFalse(isStale);
         assertTrue(withinBounds);
+    }
+
+    /**
+     * @notice Tests that router delegates the underlying feed timestamp
+     * @dev Verifies lastUpdate is not replaced with current block time by the router path
+     */
+    function test_GetEurUsdDetailsDelegatesFeedTimestamp() public {
+        vm.warp(block.timestamp + 1 days);
+        uint256 feedTimestamp = block.timestamp - 1 hours;
+        eurUsdFeed.setUpdatedAt(feedTimestamp);
+
+        (, , uint256 lastUpdate, bool isStale, ) = router.getEurUsdDetails();
+
+        assertEq(lastUpdate, feedTimestamp);
+        assertNotEq(lastUpdate, block.timestamp);
+        assertFalse(isStale);
     }
     
     /**
@@ -701,4 +726,3 @@ contract OracleRouterTest is Test {
         address indexed caller
     );
 }
-

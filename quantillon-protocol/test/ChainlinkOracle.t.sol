@@ -1326,6 +1326,40 @@ contract ChainlinkOracleTestSuite is Test {
         assertFalse(isStale);
         assertTrue(withinBounds);
     }
+
+    /**
+     * @notice Test EUR/USD details use the feed timestamp instead of cache timestamp
+     * @dev Verifies feed freshness remains accurate when no cache-refresh transaction has run
+     */
+    function test_HealthMonitoring_GetEurUsdDetailsUsesFeedTimestamp() public {
+        uint256 cacheTimestamp = oracle.lastPriceUpdateTime();
+        vm.warp(block.timestamp + 5 days);
+        uint256 feedTimestamp = block.timestamp - 42;
+        mockEurUsdFeed.setUpdatedAt(feedTimestamp);
+
+        (, , uint256 lastUpdate, bool isStale, ) = oracle.getEurUsdDetails();
+
+        assertEq(lastUpdate, feedTimestamp);
+        assertEq(oracle.lastPriceUpdateTime(), cacheTimestamp);
+        assertNotEq(lastUpdate, cacheTimestamp);
+        assertFalse(isStale);
+    }
+
+    /**
+     * @notice Test EUR/USD details preserve stale feed timestamps when readable
+     * @dev Verifies stale health comes from isStale while lastUpdate still reflects feed data
+     */
+    function test_HealthMonitoring_GetEurUsdDetailsReturnsReadableStaleFeedTimestamp() public {
+        vm.warp(20_000);
+        uint256 staleTimestamp = 5_000;
+        mockEurUsdFeed.setUpdatedAt(staleTimestamp);
+
+        (uint256 currentPrice, , uint256 lastUpdate, bool isStale, ) = oracle.getEurUsdDetails();
+
+        assertEq(lastUpdate, staleTimestamp);
+        assertEq(currentPrice, oracle.lastValidEurUsdPrice());
+        assertTrue(isStale);
+    }
     
     /**
      * @notice Test oracle configuration

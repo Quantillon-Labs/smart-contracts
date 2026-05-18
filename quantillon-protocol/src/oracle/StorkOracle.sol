@@ -631,7 +631,7 @@ contract StorkOracle is
      * @dev Provides comprehensive EUR/USD price information including validation status
      * @return currentPrice Current price (may be fallback)
      * @return lastValidPrice Last validated price stored
-     * @return lastUpdate Timestamp of last update
+     * @return lastUpdate Timestamp reported by the underlying EUR/USD feed
      * @return isStale True if the feed data is stale
      * @return withinBounds True if within configured min/max bounds
      * @custom:security Provides detailed price information for debugging and monitoring
@@ -654,48 +654,40 @@ contract StorkOracle is
             bool withinBounds
         ) 
     {
-        // Get current price directly without calling external function on self
-        if (circuitBreakerTriggered || paused()) {
-            currentPrice = lastValidEurUsdPrice;
-        } else {
-            try eurUsdPriceFeed.getTemporalNumericValueV1(eurUsdFeedId) returns (IStorkFeed.TemporalNumericValue memory data) {
-                if (_validateTimestamp(data.timestamp) && data.value > 0) {
-                    // Stork feeds use 18 decimals
-                    currentPrice = _scalePrice(data.value, STORK_FEED_DECIMALS);
-                    
-                    // Check bounds and deviation
-                    bool isValid = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
-                    
-                    // Skip deviation check if dev mode is enabled
-                    if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
-                        uint256 base = lastValidEurUsdPrice;
-                        uint256 diff = currentPrice > base ? currentPrice - base : base - currentPrice;
-                        uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
-                        if (deviationBps > MAX_PRICE_DEVIATION) {
-                            isValid = false;
-                        }
-                    }
-                    
-                    if (!isValid) {
-                        currentPrice = lastValidEurUsdPrice;
-                    }
-                } else {
-                    currentPrice = lastValidEurUsdPrice;
-                }
-            } catch {
-                currentPrice = lastValidEurUsdPrice;
-            }
-        }
-        
-        lastValidPrice = lastValidEurUsdPrice;
-        lastUpdate = lastPriceUpdateTime;
-        
-        // Staleness check
         try eurUsdPriceFeed.getTemporalNumericValueV1(eurUsdFeedId) returns (IStorkFeed.TemporalNumericValue memory data) {
             isStale = !_validateTimestamp(data.timestamp) || data.value <= 0;
+            lastUpdate = data.timestamp;
+
+            if (circuitBreakerTriggered || paused() || isStale) {
+                currentPrice = lastValidEurUsdPrice;
+            } else {
+                // Stork feeds use 18 decimals
+                currentPrice = _scalePrice(data.value, STORK_FEED_DECIMALS);
+
+                // Check bounds and deviation
+                bool isValid = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
+
+                // Skip deviation check if dev mode is enabled
+                if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
+                    uint256 base = lastValidEurUsdPrice;
+                    uint256 diff = currentPrice > base ? currentPrice - base : base - currentPrice;
+                    uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
+                    if (deviationBps > MAX_PRICE_DEVIATION) {
+                        isValid = false;
+                    }
+                }
+
+                if (!isValid) {
+                    currentPrice = lastValidEurUsdPrice;
+                }
+            }
         } catch {
+            lastUpdate = 0;
             isStale = true;
+            currentPrice = lastValidEurUsdPrice;
         }
+
+        lastValidPrice = lastValidEurUsdPrice;
         
         // Bounds check
         withinBounds = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;

@@ -64,19 +64,19 @@ interface IOracle {
      * @dev Provides comprehensive EUR/USD price information including validation status
      * @return currentPrice Current price (may be fallback)
      * @return lastValidPrice Last validated price stored
-     * @return lastUpdate Timestamp of last successful update
+     * @return lastUpdate Timestamp reported by the underlying EUR/USD feed
      * @return isStale True if the feed data is stale
      * @return withinBounds True if within configured min/max bounds
      * @custom:security Provides detailed price information for debugging and monitoring
      * @custom:validation Checks price freshness and bounds validation
-     * @custom:state-changes May update internal state during price check
+     * @custom:state-changes No state changes - view function only
      * @custom:events No events emitted
      * @custom:errors No errors thrown
      * @custom:reentrancy Not protected - read-only operation
      * @custom:access Public - no access restrictions
      * @custom:oracle Queries active oracle for detailed EUR/USD price information
      */
-    function getEurUsdDetails() external returns (
+    function getEurUsdDetails() external view returns (
         uint256 currentPrice,
         uint256 lastValidPrice,
         uint256 lastUpdate,
@@ -155,4 +155,3 @@ interface IOracle {
         uint80 usdcUsdLatestRound
     );
 }
-

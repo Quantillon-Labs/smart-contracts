@@ -574,7 +574,7 @@ contract ChainlinkOracle is
      * @dev Provides comprehensive EUR/USD price data including staleness and bounds checks
      * @return currentPrice Current price (may be fallback)
      * @return lastValidPrice Last validated price
-     * @return lastUpdate Timestamp of last update
+     * @return lastUpdate Timestamp reported by the underlying EUR/USD feed
      * @return isStale true if the price is stale
      * @return withinBounds true if within acceptable bounds
      * @custom:security Validates price feed data integrity and circuit breaker status
@@ -597,62 +597,46 @@ contract ChainlinkOracle is
             bool withinBounds
         ) 
     {
-        // Get current price directly without calling external function on self
-        if (circuitBreakerTriggered || paused()) {
-            currentPrice = lastValidEurUsdPrice;
-        } else {
-            try eurUsdPriceFeed.latestRoundData() returns (
-                uint80 roundId,
-                int256 rawPrice,
-                uint256 startedAt,
-                uint256 updatedAt,
-                uint80 answeredInRound
-            ) {
-                // Use all return values meaningfully
-                if (_validateTimestamp(updatedAt) && rawPrice > 0 && (roundId == answeredInRound) && (startedAt <= updatedAt)) {
-                    uint8 feedDecimals = eurUsdPriceFeed.decimals();
-                    currentPrice = _scalePrice(rawPrice, feedDecimals);
-                    
-                    // Check bounds and deviation
-                    bool isValid = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
-                    
-                    // Skip deviation check if dev mode is enabled
-                    if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
-                        uint256 base = lastValidEurUsdPrice;
-                        uint256 diff = currentPrice > base ? currentPrice - base : base - currentPrice;
-                        uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
-                        if (deviationBps > MAX_PRICE_DEVIATION) {
-                            isValid = false;
-                        }
-                    }
-                    
-                    if (!isValid) {
-                        currentPrice = lastValidEurUsdPrice;
-                    }
-                } else {
-                    currentPrice = lastValidEurUsdPrice;
-                }
-            } catch {
-                currentPrice = lastValidEurUsdPrice;
-            }
-        }
-        
-        lastValidPrice = lastValidEurUsdPrice;
-        lastUpdate = lastPriceUpdateTime;
-        
-        // Staleness check
         try eurUsdPriceFeed.latestRoundData() returns (
             uint80 roundId,
-            int256 price,
+            int256 rawPrice,
             uint256 startedAt,
             uint256 updatedAt,
             uint80 answeredInRound
         ) {
-            // Use all return values meaningfully
-            isStale = !_validateTimestamp(updatedAt) || (roundId != answeredInRound) || (price <= 0) || (startedAt > updatedAt);
+            lastUpdate = updatedAt;
+            isStale = !_validateTimestamp(updatedAt) || (roundId != answeredInRound) || (rawPrice <= 0) || (startedAt > updatedAt);
+
+            if (circuitBreakerTriggered || paused() || isStale) {
+                currentPrice = lastValidEurUsdPrice;
+            } else {
+                uint8 feedDecimals = eurUsdPriceFeed.decimals();
+                currentPrice = _scalePrice(rawPrice, feedDecimals);
+
+                // Check bounds and deviation
+                bool isValid = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;
+
+                // Skip deviation check if dev mode is enabled
+                if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
+                    uint256 base = lastValidEurUsdPrice;
+                    uint256 diff = currentPrice > base ? currentPrice - base : base - currentPrice;
+                    uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
+                    if (deviationBps > MAX_PRICE_DEVIATION) {
+                        isValid = false;
+                    }
+                }
+
+                if (!isValid) {
+                    currentPrice = lastValidEurUsdPrice;
+                }
+            }
         } catch {
+            lastUpdate = 0;
             isStale = true;
+            currentPrice = lastValidEurUsdPrice;
         }
+
+        lastValidPrice = lastValidEurUsdPrice;
         
         // Bounds check
         withinBounds = currentPrice >= minEurUsdPrice && currentPrice <= maxEurUsdPrice;

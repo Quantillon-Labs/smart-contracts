@@ -479,19 +479,19 @@ contract OracleRouter is
      * @dev Delegates to active oracle getEurUsdDetails()
      * @return currentPrice Current price (may be fallback)
      * @return lastValidPrice Last validated price stored
-     * @return lastUpdate Timestamp of last successful update
+     * @return lastUpdate Timestamp reported by the underlying EUR/USD feed
      * @return isStale True if the feed data is stale
      * @return withinBounds True if within configured min/max bounds
      * @custom:security Delegates to oracle
      * @custom:validation Via oracle
-     * @custom:state-changes May update oracle state
+     * @custom:state-changes No state changes - view function only
      * @custom:events None
      * @custom:errors Via oracle
      * @custom:reentrancy External call to oracle
      * @custom:access Anyone
      * @custom:oracle Delegates to active oracle
      */
-    function getEurUsdDetails() external override returns (
+    function getEurUsdDetails() external view override returns (
         uint256 currentPrice,
         uint256 lastValidPrice,
         uint256 lastUpdate,

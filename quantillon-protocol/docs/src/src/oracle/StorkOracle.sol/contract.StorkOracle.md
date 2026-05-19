@@ -655,7 +655,7 @@ function getEurUsdDetails()
 |----|----|-----------|
 |`currentPrice`|`uint256`|Current price (may be fallback)|
 |`lastValidPrice`|`uint256`|Last validated price stored|
-|`lastUpdate`|`uint256`|Timestamp of last update|
+|`lastUpdate`|`uint256`|Timestamp reported by the underlying EUR/USD feed|
 |`isStale`|`bool`|True if the feed data is stale|
 |`withinBounds`|`bool`|True if within configured min/max bounds|
 

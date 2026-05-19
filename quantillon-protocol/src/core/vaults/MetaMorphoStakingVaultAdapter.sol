@@ -73,13 +73,13 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         if (usdcAmount == 0) revert CommonErrorLibrary.InvalidAmount();
         if (metaMorphoVault.maxDeposit(address(this)) < usdcAmount) revert CommonErrorLibrary.InsufficientBalance();
 
+        principalDeposited += usdcAmount;
         USDC.safeTransferFrom(msg.sender, address(this), usdcAmount);
         USDC.forceApprove(address(metaMorphoVault), usdcAmount);
         sharesReceived = metaMorphoVault.deposit(usdcAmount, address(this));
         USDC.forceApprove(address(metaMorphoVault), 0);
 
         if (sharesReceived == 0) revert CommonErrorLibrary.InvalidAmount();
-        principalDeposited += usdcAmount;
     }
 
     /**
@@ -100,6 +100,7 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         uint256 requested = usdcAmount > principalDeposited ? principalDeposited : usdcAmount;
         if (metaMorphoVault.maxWithdraw(address(this)) < requested) revert CommonErrorLibrary.InsufficientBalance();
 
+        principalDeposited -= requested;
         uint256 balanceBefore = USDC.balanceOf(address(this));
         uint256 sharesBurned = metaMorphoVault.withdraw(requested, address(this), address(this));
         if (sharesBurned == 0) revert CommonErrorLibrary.InvalidAmount();
@@ -107,7 +108,6 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         uint256 received = USDC.balanceOf(address(this)) - balanceBefore;
         if (received < requested) revert CommonErrorLibrary.InvalidAmount();
 
-        principalDeposited -= requested;
         USDC.safeTransfer(msg.sender, requested);
         return requested;
     }

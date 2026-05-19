@@ -5,6 +5,7 @@
     - [❱ vaults](src/core/vaults/README.md)
       - [IMockAaveVault](src/core/vaults/AaveStakingVaultAdapter.sol/interface.IMockAaveVault.md)
       - [AaveStakingVaultAdapter](src/core/vaults/AaveStakingVaultAdapter.sol/contract.AaveStakingVaultAdapter.md)
+      - [MetaMorphoStakingVaultAdapter](src/core/vaults/MetaMorphoStakingVaultAdapter.sol/contract.MetaMorphoStakingVaultAdapter.md)
       - [IMockMorphoVault](src/core/vaults/MorphoStakingVaultAdapter.sol/interface.IMockMorphoVault.md)
       - [MorphoStakingVaultAdapter](src/core/vaults/MorphoStakingVaultAdapter.sol/contract.MorphoStakingVaultAdapter.md)
     - [❱ yieldmanagement](src/core/yieldmanagement/README.md)

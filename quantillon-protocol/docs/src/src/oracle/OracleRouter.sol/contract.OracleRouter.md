@@ -589,7 +589,7 @@ Delegates to active oracle getEurUsdDetails()
 
 - validation: Via oracle
 
-- state-changes: May update oracle state
+- state-changes: No state changes - view function only
 
 - events: None
 
@@ -605,6 +605,7 @@ Delegates to active oracle getEurUsdDetails()
 ```solidity
 function getEurUsdDetails()
     external
+    view
     override
     returns (uint256 currentPrice, uint256 lastValidPrice, uint256 lastUpdate, bool isStale, bool withinBounds);
 ```
@@ -614,7 +615,7 @@ function getEurUsdDetails()
 |----|----|-----------|
 |`currentPrice`|`uint256`|Current price (may be fallback)|
 |`lastValidPrice`|`uint256`|Last validated price stored|
-|`lastUpdate`|`uint256`|Timestamp of last successful update|
+|`lastUpdate`|`uint256`|Timestamp reported by the underlying EUR/USD feed|
 |`isStale`|`bool`|True if the feed data is stale|
 |`withinBounds`|`bool`|True if within configured min/max bounds|
 

@@ -15,7 +15,13 @@ fi
 source venv/bin/activate
 pip install -r requirements.txt >/dev/null
 
-SLITHER_DIR="$RESULTS_DIR/slither"
+if [[ "$RESULTS_DIR" = /* ]]; then
+    RESULTS_DIR_ABS="$RESULTS_DIR"
+else
+    RESULTS_DIR_ABS="$ROOT_DIR/$RESULTS_DIR"
+fi
+
+SLITHER_DIR="$RESULTS_DIR_ABS/slither"
 mkdir -p "$SLITHER_DIR"
 
 CHECKLIST_FILE="$SLITHER_DIR/slither-checklist.txt"
@@ -40,15 +46,12 @@ rm -f "$CHECKLIST_FILE" "$IGNORED_FILE" "$REPORT_JSON" "$REPORT_IGNORED_JSON" "$
 
 echo "[slither] running checklist (main scope)..."
 MAIN_CHECKLIST_EXIT=0
-if ! slither . "${SLITHER_SCOPE_ARGS[@]}" --checklist 2>&1 | tee "$CHECKLIST_FILE"; then
-    MAIN_CHECKLIST_EXIT=$?
-fi
+slither . "${SLITHER_SCOPE_ARGS[@]}" --checklist 2>&1 | tee "$CHECKLIST_FILE" || MAIN_CHECKLIST_EXIT=$?
 
 # Main machine-readable outputs use non-ignored findings.
 JSON_EXIT=0
-if ! slither . "${SLITHER_SCOPE_ARGS[@]}" --json "$REPORT_JSON"; then
-    JSON_EXIT=$?
-fi
+mkdir -p "$SLITHER_DIR"
+slither . "${SLITHER_SCOPE_ARGS[@]}" --json "$REPORT_JSON" || JSON_EXIT=$?
 if [ ! -s "$REPORT_JSON" ]; then
     echo "[slither] failed to produce JSON report: $REPORT_JSON"
     deactivate
@@ -56,16 +59,15 @@ if [ ! -s "$REPORT_JSON" ]; then
 fi
 
 SARIF_EXIT=0
-if ! slither . "${SLITHER_SCOPE_ARGS[@]}" --sarif "$REPORT_SARIF"; then
-    SARIF_EXIT=$?
-fi
+mkdir -p "$SLITHER_DIR"
+slither . "${SLITHER_SCOPE_ARGS[@]}" --sarif "$REPORT_SARIF" || SARIF_EXIT=$?
 
 # Optional appendix with ignored findings (for auditability only, never used for gating).
 IGNORED_JSON_EXIT=0
-if ! slither . "${SLITHER_SCOPE_ARGS[@]}" --show-ignored-findings --json "$REPORT_IGNORED_JSON"; then
-    IGNORED_JSON_EXIT=$?
-fi
+mkdir -p "$SLITHER_DIR"
+slither . "${SLITHER_SCOPE_ARGS[@]}" --show-ignored-findings --json "$REPORT_IGNORED_JSON" || IGNORED_JSON_EXIT=$?
 if [ ! -s "$REPORT_IGNORED_JSON" ]; then
+    mkdir -p "$SLITHER_DIR"
     echo '{"results":{"detectors":[]}}' > "$REPORT_IGNORED_JSON"
 fi
 

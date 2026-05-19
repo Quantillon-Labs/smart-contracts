@@ -50,13 +50,24 @@ bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE")
 
 
 ### MAX_PRICE_STALENESS
-Maximum duration before a price is considered stale (1 hour)
+Maximum duration before the EUR/USD price is considered stale (2 hours)
 
-3600 seconds = reasonable limit for real-time DeFi
+7200 seconds gives the primary FX feed limited heartbeat headroom while keeping mint/redeem pricing fresh.
 
 
 ```solidity
-uint256 public constant MAX_PRICE_STALENESS = 3600
+uint256 public constant MAX_PRICE_STALENESS = 2 hours
+```
+
+
+### MAX_USDC_PRICE_STALENESS
+Maximum duration before the USDC/USD price is considered stale (25 hours)
+
+Chainlink stablecoin feeds often refresh on a daily heartbeat; this is slightly above that cadence.
+
+
+```solidity
+uint256 public constant MAX_USDC_PRICE_STALENESS = 25 hours
 ```
 
 
@@ -498,6 +509,28 @@ function _validateTimestamp(uint256 reportedTime) internal view returns (bool);
 |`<none>`|`bool`|true if the timestamp is valid, false otherwise|
 
 
+### _validateTimestampWithMaxAge
+
+Validates a feed timestamp against a caller-selected maximum age.
+
+
+```solidity
+function _validateTimestampWithMaxAge(uint256 reportedTime, uint256 maxStaleness) internal view returns (bool);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`reportedTime`|`uint256`|Timestamp reported by the feed.|
+|`maxStaleness`|`uint256`|Maximum accepted age before drift tolerance.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`bool`|true if the timestamp is valid, false otherwise.|
+
+
 ### _updatePrices
 
 Updates and validates internal prices
@@ -639,7 +672,7 @@ function getEurUsdDetails()
 |----|----|-----------|
 |`currentPrice`|`uint256`|Current price (may be fallback)|
 |`lastValidPrice`|`uint256`|Last validated price|
-|`lastUpdate`|`uint256`|Timestamp of last update|
+|`lastUpdate`|`uint256`|Timestamp reported by the underlying EUR/USD feed|
 |`isStale`|`bool`|true if the price is stale|
 |`withinBounds`|`bool`|true if within acceptable bounds|
 

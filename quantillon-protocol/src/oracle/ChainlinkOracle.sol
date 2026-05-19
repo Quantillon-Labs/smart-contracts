@@ -71,9 +71,13 @@ contract ChainlinkOracle is
     /// @notice Role for contract upgrades
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
-    /// @notice Maximum duration before a price is considered stale (1 hour)
-    /// @dev 3600 seconds = reasonable limit for real-time DeFi
-    uint256 public constant MAX_PRICE_STALENESS = 3600;
+    /// @notice Maximum duration before the EUR/USD price is considered stale (2 hours)
+    /// @dev 7200 seconds gives the primary FX feed limited heartbeat headroom while keeping mint/redeem pricing fresh.
+    uint256 public constant MAX_PRICE_STALENESS = 2 hours;
+
+    /// @notice Maximum duration before the USDC/USD price is considered stale (25 hours)
+    /// @dev Chainlink stablecoin feeds often refresh on a daily heartbeat; this is slightly above that cadence.
+    uint256 public constant MAX_USDC_PRICE_STALENESS = 25 hours;
     
     /// @notice Maximum allowed deviation from previous price (5%)
     /// @dev 500 basis points = 5% in basis points (500/10000)
@@ -368,12 +372,22 @@ contract ChainlinkOracle is
      * @custom:oracle No oracle dependencies for timestamp validation
      */
     function _validateTimestamp(uint256 reportedTime) internal view returns (bool) {
+        return _validateTimestampWithMaxAge(reportedTime, MAX_PRICE_STALENESS);
+    }
+
+    /**
+     * @notice Validates a feed timestamp against a caller-selected maximum age.
+     * @param reportedTime Timestamp reported by the feed.
+     * @param maxStaleness Maximum accepted age before drift tolerance.
+     * @return true if the timestamp is valid, false otherwise.
+     */
+    function _validateTimestampWithMaxAge(uint256 reportedTime, uint256 maxStaleness) internal view returns (bool) {
         // Reject if reported time is in the future
         if (reportedTime > TIME_PROVIDER.currentTime()) return false;
         
         // Check if the timestamp is too old (beyond normal staleness + drift)
         // Use safe arithmetic to prevent underflow
-        uint256 maxAllowedAge = MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT;
+        uint256 maxAllowedAge = maxStaleness + MAX_TIMESTAMP_DRIFT;
         if (TIME_PROVIDER.currentTime() > reportedTime + maxAllowedAge) return false;
         
         return true;
@@ -446,7 +460,7 @@ contract ChainlinkOracle is
         
         // Calculate USDC/USD price for event emission
         uint256 usdcUsdPrice = 1e18; // Default fallback
-        if (_validateTimestamp(usdcUsdUpdatedAt) && usdcUsdRawPrice > 0) {
+        if (_validateTimestampWithMaxAge(usdcUsdUpdatedAt, MAX_USDC_PRICE_STALENESS) && usdcUsdRawPrice > 0) {
             uint8 usdcUsdFeedDecimals = usdcUsdPriceFeed.decimals();
             usdcUsdPrice = _scalePrice(usdcUsdRawPrice, usdcUsdFeedDecimals);
             
@@ -554,7 +568,7 @@ contract ChainlinkOracle is
             uint80 answeredInRound
         ) {
             // Use all return values meaningfully
-            usdcUsdFresh = _validateTimestamp(updatedAt) && (roundId == answeredInRound) && (price > 0) && (startedAt <= updatedAt);
+            usdcUsdFresh = _validateTimestampWithMaxAge(updatedAt, MAX_USDC_PRICE_STALENESS) && (roundId == answeredInRound) && (price > 0) && (startedAt <= updatedAt);
         } catch {
             usdcUsdFresh = false;
         }
@@ -1002,7 +1016,7 @@ contract ChainlinkOracle is
         (uint80 roundId, int256 rawPrice, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = usdcUsdPriceFeed.latestRoundData();
         
         // Freshness check with timestamp validation and data integrity
-        if (!_validateTimestamp(updatedAt) || rawPrice <= 0 || roundId != answeredInRound || startedAt > updatedAt) {
+        if (!_validateTimestampWithMaxAge(updatedAt, MAX_USDC_PRICE_STALENESS) || rawPrice <= 0 || roundId != answeredInRound || startedAt > updatedAt) {
             return (1e18, false); // Fallback to $1.00
         }
 

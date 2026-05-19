@@ -240,8 +240,8 @@ contract OracleEdgeCases is Test {
         // Advance time to avoid underflow, then set stale price
         vm.warp(block.timestamp + 10000); // Move to timestamp 10001
         
-        // Set stale price (2 hours old)
-        uint256 staleTimestamp = block.timestamp - 7200; // 10001 - 7200 = 2801
+        // Set stale price beyond the oracle's EUR/USD staleness window and drift tolerance.
+        uint256 staleTimestamp = block.timestamp - oracle.MAX_PRICE_STALENESS() - oracle.MAX_TIMESTAMP_DRIFT() - 1;
         // forge-lint: disable-next-line(unsafe-typecast)
         mockEurUsdFeed.setPrice(int256(110 * PRECISION));
         mockEurUsdFeed.setUpdatedAt(staleTimestamp);

@@ -267,7 +267,9 @@ contract ChainlinkOracleTestSuite is Test {
     uint256 public constant USDC_USD_PRICE = 1e18; // 1.00 USDC/USD (18 decimals)
     uint256 public constant MIN_EUR_USD_PRICE = 80 * 1e16; // 0.80 EUR/USD
     uint256 public constant MAX_EUR_USD_PRICE = 140 * 1e16; // 1.40 EUR/USD
-    uint256 public constant MAX_PRICE_STALENESS = 3600;
+    uint256 public constant MAX_PRICE_STALENESS = 2 hours;
+    uint256 public constant MAX_USDC_PRICE_STALENESS = 25 hours;
+    uint256 public constant MAX_TIMESTAMP_DRIFT = 900;
     uint256 public constant BASIS_POINTS = 10000;
 
     // =============================================================================
@@ -429,10 +431,10 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_PriceFetching_EurUsdStaleData() public {
         // Set stale timestamp by warping time forward
-        vm.warp(block.timestamp + 3600 + 900 + 1);
+        vm.warp(block.timestamp + MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT + 1);
         
         // Update the mock's timestamp to be stale (beyond the combined threshold)
-        mockEurUsdFeed.setUpdatedAt(block.timestamp - 3600 - 900 - 1);
+        mockEurUsdFeed.setUpdatedAt(block.timestamp - MAX_PRICE_STALENESS - MAX_TIMESTAMP_DRIFT - 1);
         
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         
@@ -455,16 +457,30 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_PriceFetching_UsdcUsdStaleData() public {
         // Set stale timestamp by warping time forward
-        vm.warp(block.timestamp + 3600 + 900 + 1);
+        vm.warp(block.timestamp + MAX_USDC_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT + 1);
         
-        // Update the mock's timestamp to be stale (beyond the combined threshold)
-        mockUsdcUsdFeed.setUpdatedAt(block.timestamp - 3600 - 900 - 1);
+        // Update the mock's timestamp to be stale (beyond the USDC heartbeat threshold)
+        mockUsdcUsdFeed.setUpdatedAt(block.timestamp - MAX_USDC_PRICE_STALENESS - MAX_TIMESTAMP_DRIFT - 1);
         
         (uint256 price, bool isValid) = oracle.getUsdcUsdPrice();
         
         // Should return $1.00 fallback
         assertEq(price, 1e18);
         assertFalse(isValid);
+    }
+
+    /**
+     * @notice Test USDC/USD accepts the stablecoin heartbeat window.
+     * @dev Verifies USDC/USD does not use the tighter EUR/USD freshness window.
+     */
+    function test_PriceFetching_UsdcUsdAcceptsStablecoinHeartbeatWindow() public {
+        vm.warp(block.timestamp + 2 hours);
+        mockUsdcUsdFeed.setUpdatedAt(block.timestamp - 2 hours);
+
+        (uint256 price, bool isValid) = oracle.getUsdcUsdPrice();
+
+        assertEq(price, USDC_USD_PRICE);
+        assertTrue(isValid);
     }
     
     /**
@@ -1246,17 +1262,32 @@ contract ChainlinkOracleTestSuite is Test {
      */
     function test_HealthMonitoring_StaleEurUsdData() public {
         // Set stale timestamp by warping time forward
-        vm.warp(block.timestamp + 3600 + 900 + 1);
+        vm.warp(block.timestamp + MAX_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT + 1);
         
         // Update the mock's timestamp to be stale (beyond the combined threshold)
-        mockEurUsdFeed.setUpdatedAt(block.timestamp - 3600 - 900 - 1);
-        mockUsdcUsdFeed.setUpdatedAt(block.timestamp - 3600 - 900 - 1);
+        mockEurUsdFeed.setUpdatedAt(block.timestamp - MAX_PRICE_STALENESS - MAX_TIMESTAMP_DRIFT - 1);
         
         (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) = oracle.getOracleHealth();
         
         assertFalse(isHealthy);
         assertFalse(eurUsdFresh);
-        assertFalse(usdcUsdFresh); // Both feeds become stale when time is warped
+        assertTrue(usdcUsdFresh);
+    }
+
+    /**
+     * @notice Test oracle health with stale USDC/USD data.
+     * @dev Verifies health monitoring uses the longer stablecoin heartbeat window.
+     */
+    function test_HealthMonitoring_StaleUsdcUsdData() public {
+        vm.warp(block.timestamp + MAX_USDC_PRICE_STALENESS + MAX_TIMESTAMP_DRIFT + 1);
+        mockEurUsdFeed.setUpdatedAt(block.timestamp);
+        mockUsdcUsdFeed.setUpdatedAt(block.timestamp - MAX_USDC_PRICE_STALENESS - MAX_TIMESTAMP_DRIFT - 1);
+
+        (bool isHealthy, bool eurUsdFresh, bool usdcUsdFresh) = oracle.getOracleHealth();
+
+        assertFalse(isHealthy);
+        assertTrue(eurUsdFresh);
+        assertFalse(usdcUsdFresh);
     }
     
     /**
@@ -1379,6 +1410,7 @@ contract ChainlinkOracleTestSuite is Test {
         assertEq(minPrice, MIN_EUR_USD_PRICE);
         assertEq(maxPrice, MAX_EUR_USD_PRICE);
         assertEq(maxStaleness, oracle.MAX_PRICE_STALENESS());
+        assertEq(oracle.MAX_USDC_PRICE_STALENESS(), MAX_USDC_PRICE_STALENESS);
         assertEq(usdcTolerance, 200); // 2%
         assertFalse(circuitBreakerActive);
     }
@@ -1579,8 +1611,8 @@ contract ChainlinkOracleTestSuite is Test {
         // Ensure we have a reasonable timestamp to work with
         vm.warp(1000000); // Set to a reasonable timestamp
         
-        // Test with a very old timestamp (2 hours ago) - should be rejected
-        uint256 oldTimestamp = block.timestamp - 7200; // 2 hours ago
+        // Test with a timestamp beyond the stale window - should be rejected
+        uint256 oldTimestamp = block.timestamp - MAX_PRICE_STALENESS - MAX_TIMESTAMP_DRIFT - 1;
         mockEurUsdFeed.setUpdatedAt(oldTimestamp);
         
         // Test that the oracle correctly rejects this as stale
@@ -1589,8 +1621,8 @@ contract ChainlinkOracleTestSuite is Test {
         assertGt(price, 0, "Should return last valid price when invalid");
         
         // Test with a suspiciously large time difference (manipulation attempt)
-        // This should be beyond the normal staleness window + drift tolerance (900 seconds)
-        uint256 suspiciousTimestamp = block.timestamp - 3600 - 900 - 100; // Beyond tolerance
+        // This should be beyond the normal staleness window + drift tolerance
+        uint256 suspiciousTimestamp = block.timestamp - MAX_PRICE_STALENESS - MAX_TIMESTAMP_DRIFT - 100;
         mockEurUsdFeed.setUpdatedAt(suspiciousTimestamp);
         
         // Test that the oracle correctly rejects suspicious timestamps

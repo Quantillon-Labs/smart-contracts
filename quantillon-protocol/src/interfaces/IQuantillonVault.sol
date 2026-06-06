@@ -130,65 +130,6 @@ interface IQuantillonVault {
     function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external;
 
     /**
-     * @notice Retrieves the vault's global metrics
-     * @dev Provides comprehensive vault statistics for monitoring and analysis
-     * @return totalUsdcHeld_ Total USDC held directly in the vault
-     * @return totalMinted_ Total QEURO minted
-     * @return totalDebtValue Total debt value in USD
-     * @return totalUsdcInExternalVaults_ Total USDC principal deployed across external vault adapters
-     * @return totalUsdcAvailable_ Total USDC available (vault + external adapters)
-      * @custom:security Read-only helper
-      * @custom:validation None
-      * @custom:state-changes None
-      * @custom:events None
-      * @custom:errors None
-      * @custom:reentrancy Not applicable
-      * @custom:access Public
-      * @custom:oracle Uses cached oracle price for debt-value conversion
-     */
-    function getVaultMetrics() external view returns (
-        uint256 totalUsdcHeld_,
-        uint256 totalMinted_,
-        uint256 totalDebtValue,
-        uint256 totalUsdcInExternalVaults_,
-        uint256 totalUsdcAvailable_
-    );
-
-    /**
-     * @notice Computes QEURO mint amount for a USDC swap
-     * @dev Uses cached oracle price to calculate QEURO equivalent without executing swap
-     * @param usdcAmount USDC to swap
-     * @return qeuroAmount Expected QEURO to mint (after fees)
-     * @return fee Protocol fee
-      * @custom:security Read-only helper
-      * @custom:validation Returns zeroes when price cache is uninitialized
-      * @custom:state-changes None
-      * @custom:events None
-      * @custom:errors None
-      * @custom:reentrancy Not applicable
-      * @custom:access Public
-      * @custom:oracle Uses cached oracle price only
-     */
-    function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee);
-
-    /**
-     * @notice Computes USDC redemption amount for a QEURO swap
-     * @dev Uses cached oracle price to calculate USDC equivalent without executing swap
-     * @param qeuroAmount QEURO to swap
-     * @return usdcAmount USDC returned after fees
-     * @return fee Protocol fee
-      * @custom:security Read-only helper
-      * @custom:validation Returns zeroes when price cache is uninitialized
-      * @custom:state-changes None
-      * @custom:events None
-      * @custom:errors None
-      * @custom:reentrancy Not applicable
-      * @custom:access Public
-      * @custom:oracle Uses cached oracle price only
-     */
-    function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee);
-
-    /**
      * @notice Updates vault parameters
      * @dev Allows governance to update fee parameters for minting and redemption
      * @param _mintFee New minting fee (1e18-scaled, where 1e18 = 100%)
@@ -704,29 +645,6 @@ interface IQuantillonVault {
     function updateUserPool(address _userPool) external;
 
     /**
-     * @notice Gets the price protection status and parameters
-     * @dev Returns price protection configuration for monitoring
-     * @return lastValidPrice Last valid EUR/USD price
-     * @return lastUpdateBlock Block number of last price update
-     * @return maxDeviation Maximum allowed price deviation
-     * @return minBlocks Minimum blocks between price updates
-     * @custom:security No security validations required - view function
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public access - anyone can query price protection status
-     * @custom:oracle No oracle dependencies
-     */
-    function getPriceProtectionStatus() external view returns (
-        uint256 lastValidPrice,
-        uint256 lastUpdateBlock,
-        uint256 maxDeviation,
-        uint256 minBlocks
-    );
-
-    /**
      * @notice Updates the fee collector address
      * @dev Updates the fee collector contract address
      * @param _feeCollector New fee collector address
@@ -776,80 +694,40 @@ interface IQuantillonVault {
     function canMint() external view returns (bool);
 
     /**
-     * @notice Checks if liquidation should be triggered based on current collateralization ratio
-     * @dev Returns true if collateralization ratio < criticalCollateralizationRatio
-     * @return shouldLiquidate Whether liquidation should be triggered
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
+     * @notice Checks if liquidation should be triggered based on the CACHED collateralization ratio
+     * @dev ADVISORY / OBSERVABILITY ONLY. Uses the cached EUR/USD price, which can lag the live
+     *      oracle price by up to the 2% deviation guard. Mirrors `redeemQEURO` routing semantics
+     *      (true only when `0 < CR <= criticalCollateralizationRatio`). For an authoritative live
+     *      check use `shouldTriggerLiquidationLive()`.
+     * @return shouldLiquidate Whether liquidation should be triggered at the cached price
+     * @custom:security View function - no state changes
+     * @custom:validation No input validation required - safe view function
      * @custom:state-changes No state changes - view function
      * @custom:events No events emitted - view function
      * @custom:errors No errors thrown - safe view function
      * @custom:reentrancy Not applicable - view function
      * @custom:access Public - anyone can check liquidation status
-     * @custom:oracle No oracle dependencies
+     * @custom:oracle Uses cached oracle price
      */
     function shouldTriggerLiquidation() external view returns (bool);
 
     /**
-     * @notice Returns liquidation status and key metrics for pro-rata redemption
-     * @dev Protocol enters liquidation mode when CR <= 101%
-     * @return isInLiquidation True if protocol is in liquidation mode
-     * @return collateralizationRatioBps Current CR in basis points
-     * @return totalCollateralUsdc Total protocol collateral in USDC (6 decimals)
-     * @return totalQeuroSupply Total QEURO supply (18 decimals)
-     * @custom:security View function - no state changes
-     * @custom:validation No input validation required
-     * @custom:state-changes None - view function
-     * @custom:events None
-     * @custom:errors None
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can check liquidation status
-     * @custom:oracle Requires oracle price for collateral calculation
+     * @notice Authoritative live-price check for whether the protocol is in liquidation territory
+     * @dev Reads the live EUR/USD oracle price and applies the same routing decision as `redeemQEURO`
+     *      (`0 < CR <= criticalCollateralizationRatio`). Non-`view` because the oracle EUR/USD getter
+     *      is non-`view`; call via `eth_call`/`staticCall` (no protocol state is mutated).
+     * @return shouldLiquidate True if at/below the critical ratio at the live price
+     * @return collateralizationRatio Current collateralization ratio in 18-decimal percentage format (1e20 = 100%)
+     * @custom:security Read-only intent; performs no protocol state changes
+     * @custom:validation Reverts if the oracle EUR/USD price is invalid
+     * @custom:state-changes None in this contract
+     * @custom:events No events emitted
+     * @custom:errors Reverts with InvalidOraclePrice when the oracle price is invalid
+     * @custom:reentrancy No protocol state changes; single external oracle read
+     * @custom:access Public - anyone can check live liquidation status
+     * @custom:oracle Requires a fresh, valid live EUR/USD oracle price
      */
-    function getLiquidationStatus() external view returns (
-        bool isInLiquidation,
-        uint256 collateralizationRatioBps,
-        uint256 totalCollateralUsdc,
-        uint256 totalQeuroSupply
-    );
-
-    /**
-     * @notice Calculates pro-rata payout for liquidation mode redemption
-     * @dev Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
-     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
-     * @return usdcPayout Amount of USDC the user would receive (6 decimals)
-     * @return isPremium True if payout > fair value (CR > 100%)
-     * @return premiumOrDiscountBps Premium or discount in basis points
-     * @custom:security View function - no state changes
-     * @custom:validation Validates qeuroAmount > 0
-     * @custom:state-changes None - view function
-     * @custom:events None
-     * @custom:errors Throws InvalidAmount if qeuroAmount is 0
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Public - anyone can calculate payout
-     * @custom:oracle Requires oracle price for fair value calculation
-     */
-    function calculateLiquidationPayout(uint256 qeuroAmount) external view returns (
-        uint256 usdcPayout,
-        bool isPremium,
-        uint256 premiumOrDiscountBps
-    );
-
-    /**
-     * @notice Redeems QEURO for USDC using pro-rata distribution in liquidation mode
-     * @dev Only callable when protocol is in liquidation mode (CR <= 101%)
-     * @param qeuroAmount Amount of QEURO to redeem (18 decimals)
-     * @param minUsdcOut Minimum USDC expected (slippage protection)
-     * @custom:security Protected by nonReentrant, requires liquidation mode
-     * @custom:validation Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
-     * @custom:state-changes Burns QEURO, transfers USDC pro-rata
-     * @custom:events Emits LiquidationRedeemed
-     * @custom:errors Reverts if not in liquidation mode or slippage exceeded
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Public - anyone with QEURO can redeem
-     * @custom:oracle Requires oracle price for collateral calculation
-     */
-    function redeemQEUROLiquidation(uint256 qeuroAmount, uint256 minUsdcOut) external;
+    function shouldTriggerLiquidationLive() external returns (bool shouldLiquidate, uint256 collateralizationRatio);
 
     /**
      * @notice Calculates the current protocol collateralization ratio
@@ -865,38 +743,6 @@ interface IQuantillonVault {
      * @custom:oracle Requires fresh oracle price data (via HedgerPool)
      */
     function getProtocolCollateralizationRatio() external view returns (uint256);
-
-    /**
-     * @notice View-only collateralization ratio using cached price.
-     * @dev Returns the same units as `getProtocolCollateralizationRatio()` but relies solely
-     *      on the cached EUR/USD price to remain view-safe (no external oracle calls).
-     * @return ratio Cached collateralization ratio in 1e18‑scaled percentage format.
-     * @custom:security View helper; does not mutate state or touch external oracles.
-     * @custom:validation Returns a stale or sentinel value if the cache is uninitialized.
-     * @custom:state-changes None – pure view over cached pricing and vault balances.
-     * @custom:events None.
-     * @custom:errors None – callers must handle edge cases (e.g. 0 collateral).
-     * @custom:reentrancy Not applicable – view function only.
-     * @custom:access Public – intended for dashboards and off‑chain monitoring.
-     * @custom:oracle Uses only the last cached price maintained on-chain.
-     */
-    function getProtocolCollateralizationRatioView() external view returns (uint256);
-
-    /**
-     * @notice View-only mintability check using cached price and current hedger status.
-     * @dev Equivalent to `canMint()` but guaranteed not to perform fresh oracle reads,
-     *      making it safe for off‑chain calls that must not revert due to oracle issues.
-     * @return canMintCached True if, based on cached price and current hedger state, minting would be allowed.
-     * @custom:security Read‑only helper; never mutates state or external dependencies.
-     * @custom:validation Returns false on uninitialized cache or missing hedger configuration.
-     * @custom:state-changes None – pure read of cached price and protocol state.
-     * @custom:events None.
-     * @custom:errors None – callers interpret the boolean.
-     * @custom:reentrancy Not applicable – view function only.
-     * @custom:access Public – anyone can pre‑check mint conditions.
-     * @custom:oracle Uses cached price only; no live oracle reads.
-     */
-    function canMintView() external view returns (bool);
 
     /**
      * @notice Updates the price cache with the current oracle price

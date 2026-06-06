@@ -180,4 +180,181 @@ contract QuantillonVaultMintCollateralizationAndLiquidationThresholdTest is Test
         uint256 received = usdcAfter - usdcBefore;
         assertEq(received, 100e6, "redeem should use normal mode when CR > configured critical threshold");
     }
+
+    function test_RedeemRoutesToLiquidationWhenFreshPriceCrFallsBelowCritical() public {
+        vm.prank(admin);
+        vault.updateCollateralizationThresholds(101e18, 101e18);
+
+        // Cached price is 1.0. Build cached CR = 101.1%:
+        // 1,000 USDC user collateral + 11 USDC hedger margin backs 1,000 QEURO.
+        uint256 hedgerMargin = 11e6;
+        vm.startPrank(hedger);
+        usdc.approve(address(hedgerPool), hedgerMargin);
+        hedgerPool.seedMargin(hedgerMargin);
+        vm.stopPrank();
+
+        uint256 bootstrapDeposit = 1_000e6;
+        vm.prank(bootstrapUser);
+        usdc.approve(address(vault), bootstrapDeposit);
+        vm.prank(bootstrapUser);
+        vault.mintQEURO(bootstrapDeposit, 0);
+
+        uint256 cachedCrBefore = vault.getProtocolCollateralizationRatio();
+        assertGt(cachedCrBefore, vault.criticalCollateralizationRatio(), "cached CR should be above critical");
+
+        uint256 livePrice = 1.019e18; // +1.9%, within the vault's 2% deviation guard.
+        oracle.setPrices(livePrice, 1e18);
+        vm.roll(block.number + 1);
+
+        uint256 totalCollateralBefore = vault.getTotalUsdcAvailable();
+        uint256 totalSupplyBefore = qeuro.totalSupply();
+        uint256 freshBackingRequirement = (totalSupplyBefore * livePrice) / 1e18 / 1e12;
+        uint256 freshCrBefore = (totalCollateralBefore * 1e20) / freshBackingRequirement;
+        assertLt(freshCrBefore, vault.criticalCollateralizationRatio(), "fresh CR should be below critical");
+
+        uint256 redeemAmount = 900e18;
+        uint256 expectedNormalPayout = (redeemAmount * livePrice) / 1e18 / 1e12;
+        uint256 expectedLiquidationPayout = (redeemAmount * totalCollateralBefore) / totalSupplyBefore;
+        assertGt(expectedNormalPayout, expectedLiquidationPayout, "normal payout should exceed liquidation payout");
+
+        uint256 hedgerMarginBefore = hedgerPool.totalMargin();
+        uint256 usdcBefore = usdc.balanceOf(bootstrapUser);
+
+        vm.prank(bootstrapUser);
+        vault.redeemQEURO(redeemAmount, 0);
+
+        uint256 received = usdc.balanceOf(bootstrapUser) - usdcBefore;
+        uint256 expectedMarginLoss = (redeemAmount * hedgerMarginBefore) / totalSupplyBefore;
+
+        assertEq(received, expectedLiquidationPayout, "redeem should use liquidation pro-rata payout");
+        assertEq(hedgerPool.totalMargin(), hedgerMarginBefore - expectedMarginLoss, "hedger margin should be reduced");
+    }
+
+    function test_RedeemUsesNormalModeWhenFreshPriceCrStaysAboveCritical() public {
+        vm.prank(admin);
+        vault.updateCollateralizationThresholds(101e18, 101e18);
+
+        uint256 hedgerMargin = 30e6;
+        vm.startPrank(hedger);
+        usdc.approve(address(hedgerPool), hedgerMargin);
+        hedgerPool.seedMargin(hedgerMargin);
+        vm.stopPrank();
+
+        uint256 bootstrapDeposit = 1_000e6;
+        vm.prank(bootstrapUser);
+        usdc.approve(address(vault), bootstrapDeposit);
+        vm.prank(bootstrapUser);
+        vault.mintQEURO(bootstrapDeposit, 0);
+
+        uint256 livePrice = 1.01e18; // Fresh CR remains above 101%.
+        oracle.setPrices(livePrice, 1e18);
+        vm.roll(block.number + 1);
+
+        uint256 redeemAmount = 100e18;
+        uint256 expectedNormalPayout = (redeemAmount * livePrice) / 1e18 / 1e12;
+        uint256 usdcBefore = usdc.balanceOf(bootstrapUser);
+        uint256 hedgerMarginBefore = hedgerPool.totalMargin();
+
+        vm.prank(bootstrapUser);
+        vault.redeemQEURO(redeemAmount, 0);
+
+        uint256 received = usdc.balanceOf(bootstrapUser) - usdcBefore;
+        assertEq(received, expectedNormalPayout, "redeem should use normal live-price payout");
+        assertEq(hedgerPool.totalMargin(), hedgerMarginBefore, "normal redeem should not use liquidation accounting");
+    }
+
+    /// @notice Cached canMint() is false, yet a mint succeeds because the binding gate uses the live
+    ///         price: when EUR/USD moves DOWN within the deviation guard, the live-price CR rises
+    ///         above the mint threshold even though the cached-price CR is still below it.
+    function test_CachedCanMintFalseButLivePriceMintSucceedsWhenEurMovesDown() public {
+        // Bootstrap to ~106% CR at the initialized cached price of 1.0
+        // (1,000 USDC user collateral + 60 USDC hedger margin backs 1,000 QEURO).
+        uint256 hedgerMargin = 60e6;
+        vm.startPrank(hedger);
+        usdc.approve(address(hedgerPool), hedgerMargin);
+        hedgerPool.seedMargin(hedgerMargin);
+        vm.stopPrank();
+
+        uint256 bootstrapDeposit = 1_000e6;
+        vm.prank(bootstrapUser);
+        usdc.approve(address(vault), bootstrapDeposit);
+        vm.prank(bootstrapUser);
+        vault.mintQEURO(bootstrapDeposit, 0);
+        assertTrue(vault.canMint(), "canMint should be true right after bootstrap");
+
+        // Bump the CACHED price up 1.5% (within the 2% guard) by committing it via a tiny redeem.
+        // This drops the cached-price CR to ~104.4%, just below the 105% mint threshold.
+        oracle.setPrices(1.015e18, 1e18);
+        vm.roll(block.number + 1);
+        vm.prank(bootstrapUser);
+        vault.redeemQEURO(1e18, 0);
+
+        uint256 mintThreshold = vault.minCollateralizationRatioForMinting();
+        assertLt(vault.getProtocolCollateralizationRatio(), mintThreshold, "cached CR should be below mint threshold");
+        assertFalse(vault.canMint(), "cached canMint() must be false");
+
+        // EUR/USD now moves DOWN ~1.5% from the cached price (within the 2% deviation guard).
+        // A lower EUR price means a smaller backing requirement, so the live-price CR rises above 105%.
+        uint256 livePrice = 0.99978e18;
+        oracle.setPrices(livePrice, 1e18);
+        vm.roll(block.number + 1);
+
+        uint256 totalCollateral = vault.getTotalUsdcAvailable();
+        uint256 supply = qeuro.totalSupply();
+        uint256 liveBackingRequirement = (supply * livePrice) / 1e18 / 1e12;
+        uint256 liveCr = (totalCollateral * 1e20) / liveBackingRequirement;
+        assertGe(liveCr, mintThreshold, "live-price CR should be at/above mint threshold");
+
+        // The binding mint gate uses the live price, so a small mint SUCCEEDS even though the public
+        // cached canMint() reports false.
+        uint256 supplyBefore = qeuro.totalSupply();
+        vm.prank(bootstrapUser);
+        usdc.approve(address(vault), 1e6);
+        vm.prank(bootstrapUser);
+        vault.mintQEURO(1e6, 0);
+        assertGt(qeuro.totalSupply(), supplyBefore, "live-price mint should succeed despite cached canMint() == false");
+    }
+
+    /// @notice shouldTriggerLiquidationLive() reflects the live oracle price and can diverge from the
+    ///         cached shouldTriggerLiquidation() near the critical threshold (Bertie's scenario): the
+    ///         cached view says "not liquidation" while the live view says "liquidation".
+    function test_ShouldTriggerLiquidationLiveDivergesFromCachedNearThreshold() public {
+        // Mint threshold == critical == 101% so we can bootstrap a CR just above critical.
+        vm.prank(admin);
+        vault.updateCollateralizationThresholds(101e18, 101e18);
+
+        // Build cached CR = 101.1% at the cached price of 1.0
+        // (1,000 USDC user collateral + 11 USDC hedger margin backs 1,000 QEURO).
+        uint256 hedgerMargin = 11e6;
+        vm.startPrank(hedger);
+        usdc.approve(address(hedgerPool), hedgerMargin);
+        hedgerPool.seedMargin(hedgerMargin);
+        vm.stopPrank();
+
+        uint256 bootstrapDeposit = 1_000e6;
+        vm.prank(bootstrapUser);
+        usdc.approve(address(vault), bootstrapDeposit);
+        vm.prank(bootstrapUser);
+        vault.mintQEURO(bootstrapDeposit, 0);
+
+        uint256 critical = vault.criticalCollateralizationRatio();
+        assertGt(vault.getProtocolCollateralizationRatio(), critical, "cached CR should be above critical");
+
+        // EUR/USD moves UP 1.9% (within the 2% deviation guard) but is NOT committed to the cache.
+        // The live-price CR (~99.2%) falls at/below critical while the cached CR (101.1%) stays above.
+        oracle.setPrices(1.019e18, 1e18);
+
+        // Cached view: still reports NOT in liquidation.
+        assertFalse(vault.shouldTriggerLiquidation(), "cached shouldTriggerLiquidation() should be false");
+
+        // Live view: reports IN liquidation, and the two predicates disagree.
+        (bool liveShouldLiquidate, uint256 liveRatio) = vault.shouldTriggerLiquidationLive();
+        assertTrue(liveShouldLiquidate, "live shouldTriggerLiquidationLive() should be true");
+        assertGt(liveRatio, 0, "live ratio should be non-zero");
+        assertLe(liveRatio, critical, "live ratio should be at/below critical");
+        assertTrue(
+            liveShouldLiquidate != vault.shouldTriggerLiquidation(),
+            "live and cached liquidation predicates must diverge near the threshold"
+        );
+    }
 }

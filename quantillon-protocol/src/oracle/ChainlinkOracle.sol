@@ -377,9 +377,18 @@ contract ChainlinkOracle is
 
     /**
      * @notice Validates a feed timestamp against a caller-selected maximum age.
+     * @dev Rejects future-dated timestamps and timestamps older than `maxStaleness + MAX_TIMESTAMP_DRIFT`.
      * @param reportedTime Timestamp reported by the feed.
      * @param maxStaleness Maximum accepted age before drift tolerance.
      * @return true if the timestamp is valid, false otherwise.
+     * @custom:security Validates timestamp is not in future and within acceptable age.
+     * @custom:validation Validates reportedTime <= currentTime and within maxStaleness + MAX_TIMESTAMP_DRIFT.
+     * @custom:state-changes No state changes - view function.
+     * @custom:events No events emitted.
+     * @custom:errors No errors thrown - safe view function.
+     * @custom:reentrancy Not applicable - view function.
+     * @custom:access Internal function - no access restrictions.
+     * @custom:oracle No oracle dependencies for timestamp validation.
      */
     function _validateTimestampWithMaxAge(uint256 reportedTime, uint256 maxStaleness) internal view returns (bool) {
         // Reject if reported time is in the future

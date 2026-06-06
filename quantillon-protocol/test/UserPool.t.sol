@@ -201,15 +201,6 @@ contract UserPoolTestSuite is Test {
             abi.encodeWithSelector(IQuantillonVault.mintQEURO.selector),
             abi.encode() // mintQEURO doesn't return anything
         );
-        // Setup calculateMintAmount to return a reasonable conversion rate (1 USDC = ~0.93 QEURO at 1.08 EUR/USD)
-        // For any USDC amount, return (usdcAmount * 1e12 * 100) / 108
-        // Since we can't do dynamic calculations in mocks, we'll need to mock each specific call
-        // For now, just return 0 for any call - tests will need to be updated to handle this
-        vm.mockCall(
-            mockVault,
-            abi.encodeWithSelector(IQuantillonVault.calculateMintAmount.selector),
-            abi.encode(uint256(0), uint256(0)) // Return 0 QEURO and 0 fee as default
-        );
         vm.mockCall(
             mockVault,
             abi.encodeWithSelector(IQuantillonVault.redeemQEURO.selector),

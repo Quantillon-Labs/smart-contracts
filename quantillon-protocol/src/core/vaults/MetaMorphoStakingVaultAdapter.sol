@@ -32,6 +32,25 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
     event YieldVaultIdUpdated(uint256 indexed oldVaultId, uint256 indexed newVaultId);
     event YieldSourceUpdated(bytes32 indexed oldSource, bytes32 indexed newSource);
 
+    /**
+     * @notice Initializes MetaMorpho adapter dependencies, roles, and yield routing config.
+     * @dev Configures governance/manager roles, immutable USDC reference, and validates that the
+     *      MetaMorpho ERC-4626 vault's asset matches USDC.
+     * @param admin Admin address granted default-admin, governance, and manager roles.
+     * @param usdc_ USDC token address.
+     * @param metaMorphoVault_ MetaMorpho ERC-4626 vault address (asset must equal `usdc_`).
+     * @param yieldShift_ YieldShift contract address.
+     * @param yieldVaultId_ YieldShift vault id used when routing harvested yield.
+     * @param yieldSource_ Yield source tag forwarded to YieldShift accounting.
+     * @custom:security Validates non-zero dependencies, non-zero ids, and matching ERC-4626 asset.
+     * @custom:validation Reverts on zero address, zero vault id, zero yield source, or asset mismatch.
+     * @custom:state-changes Initializes role assignments and adapter dependency/config pointers.
+     * @custom:events No events emitted by constructor.
+     * @custom:errors Reverts with `ZeroAddress`, `InvalidVault`, `InvalidAmount`, or `InvalidAddress`.
+     * @custom:reentrancy Not applicable - constructor only.
+     * @custom:access Public constructor.
+     * @custom:oracle No oracle dependencies.
+     */
     constructor(
         address admin,
         address usdc_,
@@ -60,8 +79,18 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
 
     /**
      * @notice Deposits USDC into the MetaMorpho ERC-4626 vault and tracks principal.
-     * @param usdcAmount Amount of USDC to deposit.
+     * @dev Pulls USDC from caller, deposits into the ERC-4626 vault using a scoped approval, and
+     *      increases tracked principal by the deposited amount.
+     * @param usdcAmount Amount of USDC to deposit (6 decimals).
      * @return sharesReceived MetaMorpho shares minted to this adapter.
+     * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
+     * @custom:validation Reverts on zero amount, insufficient deposit capacity, or zero-share outcome.
+     * @custom:state-changes Increases `principalDeposited` and updates the ERC-4626 vault position.
+     * @custom:events Emits downstream transfer/deposit events from dependencies.
+     * @custom:errors Reverts with `InvalidAmount` or `InsufficientBalance` on failed checks.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Restricted to vault manager role.
+     * @custom:oracle No oracle dependencies.
      */
     function depositUnderlying(uint256 usdcAmount)
         external
@@ -84,8 +113,18 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
 
     /**
      * @notice Withdraws tracked principal from MetaMorpho and returns USDC to the caller.
-     * @param usdcAmount Requested USDC amount.
-     * @return usdcWithdrawn Actual USDC amount withdrawn.
+     * @dev Caps the withdrawal to tracked principal, redeems from the ERC-4626 vault, verifies the
+     *      received amount, decreases tracked principal, then transfers USDC to the caller.
+     * @param usdcAmount Requested USDC amount (6 decimals).
+     * @return usdcWithdrawn Actual USDC amount withdrawn and transferred to the caller.
+     * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
+     * @custom:validation Reverts on zero amount, no tracked principal, insufficient liquidity, or shortfall.
+     * @custom:state-changes Decreases `principalDeposited` and updates the ERC-4626 vault position.
+     * @custom:events Emits downstream transfer/withdrawal events from dependencies.
+     * @custom:errors Reverts with `InvalidAmount` or `InsufficientBalance` on failed checks.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Restricted to vault manager role.
+     * @custom:oracle No oracle dependencies.
      */
     function withdrawUnderlying(uint256 usdcAmount)
         external
@@ -114,7 +153,18 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
 
     /**
      * @notice Harvests accrued ERC-4626 share yield and routes it to YieldShift.
-     * @return harvestedYield Yield harvested in USDC.
+     * @dev Computes yield as the underlying balance above tracked principal, caps it to the vault's
+     *      liquid withdrawable amount, redeems it, and forwards it to YieldShift with the configured
+     *      vault id and source tag. Returns zero when no yield is available.
+     * @return harvestedYield Yield harvested and routed in USDC (6 decimals).
+     * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
+     * @custom:validation Returns zero when no yield is available; reverts only on downstream failures.
+     * @custom:state-changes Leaves `principalDeposited` unchanged and routes yield through YieldShift.
+     * @custom:events Emits downstream transfer/yield events from dependencies.
+     * @custom:errors Reverts with `InvalidAmount` on withdrawal mismatch or downstream failures.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Restricted to vault manager role.
+     * @custom:oracle No oracle dependencies.
      */
     function harvestYield()
         external
@@ -145,11 +195,34 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
 
     /**
      * @notice Returns the USDC value of this adapter's MetaMorpho shares.
+     * @dev Read helper used by QuantillonVault for exposure accounting; delegates to `_totalUnderlying`.
+     * @return underlyingBalance Underlying USDC-equivalent balance held via ERC-4626 shares.
+     * @custom:security Read-only helper.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors May revert if the downstream ERC-4626 read fails.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Public view.
+     * @custom:oracle No oracle dependencies.
      */
     function totalUnderlying() external view override returns (uint256 underlyingBalance) {
         return _totalUnderlying();
     }
 
+    /**
+     * @notice Updates the configured MetaMorpho ERC-4626 vault endpoint.
+     * @dev Governance maintenance hook; validates the new vault's asset matches USDC before swapping.
+     * @param newMetaMorphoVault New MetaMorpho ERC-4626 vault address.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Reverts on zero address or asset mismatch with USDC.
+     * @custom:state-changes Updates `metaMorphoVault` pointer.
+     * @custom:events Emits `MetaMorphoVaultUpdated`.
+     * @custom:errors Reverts with `ZeroAddress` or `InvalidAddress` for invalid input.
+     * @custom:reentrancy No external calls after state change.
+     * @custom:access Restricted to governance role.
+     * @custom:oracle No oracle dependencies.
+     */
     function setMetaMorphoVault(address newMetaMorphoVault) external onlyRole(GOVERNANCE_ROLE) {
         if (newMetaMorphoVault == address(0)) revert CommonErrorLibrary.ZeroAddress();
         if (IERC4626(newMetaMorphoVault).asset() != address(USDC)) revert CommonErrorLibrary.InvalidAddress();
@@ -159,6 +232,19 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         emit MetaMorphoVaultUpdated(oldVault, newMetaMorphoVault);
     }
 
+    /**
+     * @notice Updates YieldShift destination contract.
+     * @dev Governance maintenance hook for yield routing dependency changes.
+     * @param newYieldShift New YieldShift contract address.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Reverts on zero address input.
+     * @custom:state-changes Updates `yieldShift` dependency pointer.
+     * @custom:events Emits `YieldShiftUpdated`.
+     * @custom:errors Reverts with `ZeroAddress` for invalid input.
+     * @custom:reentrancy No external calls after state change.
+     * @custom:access Restricted to governance role.
+     * @custom:oracle No oracle dependencies.
+     */
     function setYieldShift(address newYieldShift) external onlyRole(GOVERNANCE_ROLE) {
         if (newYieldShift == address(0)) revert CommonErrorLibrary.ZeroAddress();
         address oldYieldShift = address(yieldShift);
@@ -166,6 +252,19 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         emit YieldShiftUpdated(oldYieldShift, newYieldShift);
     }
 
+    /**
+     * @notice Updates destination vault id used when routing harvested yield.
+     * @dev Governance maintenance hook aligning adapter output with YieldShift vault mapping.
+     * @param newYieldVaultId New YieldShift vault id.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Reverts when `newYieldVaultId` is zero.
+     * @custom:state-changes Updates `yieldVaultId`.
+     * @custom:events Emits `YieldVaultIdUpdated`.
+     * @custom:errors Reverts with `InvalidVault` for zero id.
+     * @custom:reentrancy No external calls after state change.
+     * @custom:access Restricted to governance role.
+     * @custom:oracle No oracle dependencies.
+     */
     function setYieldVaultId(uint256 newYieldVaultId) external onlyRole(GOVERNANCE_ROLE) {
         if (newYieldVaultId == 0) revert CommonErrorLibrary.InvalidVault();
         uint256 old = yieldVaultId;
@@ -173,6 +272,19 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         emit YieldVaultIdUpdated(old, newYieldVaultId);
     }
 
+    /**
+     * @notice Updates the yield source tag forwarded to YieldShift accounting.
+     * @dev Governance maintenance hook for adjusting the source label used in yield routing.
+     * @param newYieldSource New non-zero yield source tag.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Reverts when `newYieldSource` is zero.
+     * @custom:state-changes Updates `yieldSource`.
+     * @custom:events Emits `YieldSourceUpdated`.
+     * @custom:errors Reverts with `InvalidAmount` for a zero source tag.
+     * @custom:reentrancy No external calls after state change.
+     * @custom:access Restricted to governance role.
+     * @custom:oracle No oracle dependencies.
+     */
     function setYieldSource(bytes32 newYieldSource) external onlyRole(GOVERNANCE_ROLE) {
         if (newYieldSource == bytes32(0)) revert CommonErrorLibrary.InvalidAmount();
         bytes32 old = yieldSource;
@@ -180,6 +292,19 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
         emit YieldSourceUpdated(old, newYieldSource);
     }
 
+    /**
+     * @notice Returns the USDC-equivalent value of this adapter's MetaMorpho shares.
+     * @dev Converts the adapter's ERC-4626 share balance to assets via `convertToAssets`.
+     * @return Underlying USDC-equivalent amount held via ERC-4626 shares.
+     * @custom:security Internal read-only helper.
+     * @custom:validation No input validation required.
+     * @custom:state-changes No state changes.
+     * @custom:events No events emitted.
+     * @custom:errors May revert if the downstream ERC-4626 read fails.
+     * @custom:reentrancy Not applicable for view function.
+     * @custom:access Internal.
+     * @custom:oracle No oracle dependencies.
+     */
     function _totalUnderlying() internal view returns (uint256) {
         return metaMorphoVault.convertToAssets(metaMorphoVault.balanceOf(address(this)));
     }

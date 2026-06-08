@@ -1677,8 +1677,14 @@ contract UserPool is
         uint256 currentQeuroSupply = qeuro.totalSupply();
         if (currentQeuroSupply == 0) return 0;
 
-        (uint256 currentRate,, uint256 lastUpdate, bool isStale, bool withinBounds) = oracle.getEurUsdDetails();
-        if (currentRate == 0 || lastUpdate == 0 || isStale || !withinBounds) {
+        (
+            uint256 currentRate,
+            uint256 lastValidPrice,
+            uint256 lastUpdate,
+            bool isStale,
+            bool withinBounds
+        ) = oracle.getEurUsdDetails();
+        if (currentRate == 0 || lastValidPrice == 0 || lastUpdate == 0 || isStale || !withinBounds) {
             revert CommonErrorLibrary.InvalidOraclePrice();
         }
 

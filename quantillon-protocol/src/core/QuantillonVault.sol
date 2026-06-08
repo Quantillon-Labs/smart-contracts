@@ -12,7 +12,6 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {VaultErrorLibrary} from "../libraries/VaultErrorLibrary.sol";
@@ -101,7 +100,6 @@ contract QuantillonVault is
     SecureUpgradeable             // Secure upgrade pattern
 {
     using SafeERC20 for IERC20;
-    using Address for address payable;
     using VaultMath for uint256;   // Precise math operations
 
     // =============================================================================
@@ -1048,6 +1046,7 @@ contract QuantillonVault is
      * @custom:security No flash loan protection needed - legitimate redemption operation
      */
     // SECURITY: Protected by nonReentrant modifier; external calls to trusted Oracle and MockAaveVault
+    // slither-disable-next-line reentrancy-benign
     function redeemQEURO(
         uint256 qeuroAmount,
         uint256 minUsdcOut
@@ -1281,15 +1280,15 @@ contract QuantillonVault is
 
     /**
      * @notice Commits liquidation-mode redemption effects/interactions
-     * @dev Called via explicit self-call from `_redeemLiquidationMode`.
+     * @dev Called from `_redeemLiquidationMode`.
      * @param params Packed liquidation commit values
-     * @custom:security Restricted by `onlySelf`; called from guarded liquidation flow
+     * @custom:security Called from guarded liquidation flow
      * @custom:validation Reverts on insufficient balances or mint tracker underflow
      * @custom:state-changes Updates collateral/mint trackers and notifies hedger pool liquidation accounting
      * @custom:events Emits `LiquidationRedeemed` and downstream fee routing events
      * @custom:errors Reverts on balance/transfer/integration failures
      * @custom:reentrancy CEI commit path invoked from `nonReentrant` parent
-     * @custom:access External self-call entrypoint only
+     * @custom:access Internal helper
      * @custom:oracle No direct oracle reads (uses precomputed inputs)
      */
     function _redeemLiquidationCommit(LiquidationCommitParams memory params) internal {
@@ -2530,11 +2529,13 @@ contract QuantillonVault is
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
+    // slither-disable-next-line low-level-calls
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
         uint256 balance = address(this).balance;
         if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
-        payable(treasury).sendValue(balance);
+        (bool success, ) = payable(treasury).call{value: balance}("");
+        if (!success) revert CommonErrorLibrary.ETHTransferFailed();
     }
 
     /**

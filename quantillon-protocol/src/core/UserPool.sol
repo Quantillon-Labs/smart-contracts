@@ -11,7 +11,6 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IQEUROToken} from "../interfaces/IQEUROToken.sol";
 import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
@@ -97,7 +96,6 @@ contract UserPool is
     SecureUpgradeable
 {
     using SafeERC20 for IERC20;
-    using Address for address payable;
     using VaultMath for uint256;
 
     // =============================================================================
@@ -1991,11 +1989,13 @@ contract UserPool is
      * @custom:access Restricted to authorized roles
      * @custom:oracle Requires fresh oracle price data
      */
+    // slither-disable-next-line low-level-calls
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
         uint256 balance = address(this).balance;
         if (balance < 1) revert CommonErrorLibrary.NoETHToRecover();
         emit ETHRecovered(treasury, balance);
-        payable(treasury).sendValue(balance);
+        (bool success, ) = payable(treasury).call{value: balance}("");
+        if (!success) revert CommonErrorLibrary.ETHTransferFailed();
     }
 }

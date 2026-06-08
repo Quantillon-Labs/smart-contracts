@@ -56,6 +56,7 @@ done
 
 # Configuration
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+FORGE_SRC_BUILD_CMD=(forge build --build-info --skip "*/test/**" "*/script/**")
 
 # Load environment variables using shared utility
 source "$(dirname "${BASH_SOURCE[0]}")/utils/load-env.sh"
@@ -186,9 +187,13 @@ contract_count=0
 echo -e "${BLUE}📊 DISCOVERING AND ANALYZING SMART CONTRACTS${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Check if forge build has been run
-if [ ! -d "out" ]; then
-    echo -e "${RED}Error: 'out' directory not found. Please run 'forge build' first.${NC}" >&2
+# Rebuild deployment artifacts so prior test/gas-report runs cannot pollute out/.
+echo -e "Rebuilding source-only deployment artifacts..."
+forge clean >/dev/null 2>&1
+if FOUNDRY_PROFILE=default "${FORGE_SRC_BUILD_CMD[@]}" >/dev/null; then
+    echo -e "${GREEN}✓ Deployment artifacts rebuilt with default profile${NC}"
+else
+    echo -e "${RED}Error: failed to rebuild deployment artifacts for size analysis.${NC}" >&2
     exit 1
 fi
 

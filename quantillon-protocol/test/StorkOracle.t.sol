@@ -202,6 +202,16 @@ contract MockStorkFeed {
     }
 }
 
+contract StorkOracleGate {
+    error InvalidOraclePrice();
+
+    function requireLivePrice(StorkOracle oracle) external returns (uint256) {
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert InvalidOraclePrice();
+        return price;
+    }
+}
+
 /**
  * @title StorkOracleTest
  * @notice Test suite for StorkOracle contract
@@ -216,6 +226,7 @@ contract StorkOracleTest is Test {
     
     MockStorkFeed public eurUsdFeed;
     MockStorkFeed public usdcUsdFeed;
+    StorkOracleGate public gate;
     
     address public admin = address(0x1);
     address public treasury = address(0x2);
@@ -277,6 +288,7 @@ contract StorkOracleTest is Test {
             )
         );
         storkOracle = StorkOracle(payable(address(oracleProxy)));
+        gate = new StorkOracleGate();
     }
     
     /**
@@ -312,12 +324,54 @@ contract StorkOracleTest is Test {
      * @custom:access Public - test function
      * @custom:oracle Queries Stork feed for EUR/USD price
      */
-    function test_GetEurUsdPrice() public view {
+    function test_GetEurUsdPrice() public {
         (uint256 price, bool isValid) = storkOracle.getEurUsdPrice();
         assertGt(price, 0);
         assertTrue(isValid);
         // Price is already in 18 decimals (Stork uses 18 decimals)
         assertApproxEqRel(price, 1.08e18, 0.01e18);
+    }
+
+    function test_CumulativeValidMovesAdvanceBaseline() public {
+        eurUsdFeed.setPriceForFeed(EUR_USD_FEED_ID, 1.10e18);
+        eurUsdFeed.setUpdatedAtForFeed(EUR_USD_FEED_ID, block.timestamp);
+        vm.prank(admin);
+        storkOracle.resetCircuitBreaker();
+        assertEq(storkOracle.lastValidEurUsdPrice(), 1.10e18);
+
+        eurUsdFeed.setPriceForFeed(EUR_USD_FEED_ID, 1.14e18);
+        eurUsdFeed.setUpdatedAtForFeed(EUR_USD_FEED_ID, block.timestamp);
+        (uint256 firstMovePrice, bool firstMoveValid) = storkOracle.getEurUsdPrice();
+
+        assertTrue(firstMoveValid);
+        assertEq(firstMovePrice, 1.14e18);
+        assertEq(storkOracle.lastValidEurUsdPrice(), 1.14e18);
+        assertEq(gate.requireLivePrice(storkOracle), 1.14e18);
+
+        eurUsdFeed.setPriceForFeed(EUR_USD_FEED_ID, 1.156e18);
+        eurUsdFeed.setUpdatedAtForFeed(EUR_USD_FEED_ID, block.timestamp);
+        (uint256 secondMovePrice, bool secondMoveValid) = storkOracle.getEurUsdPrice();
+
+        assertTrue(secondMoveValid);
+        assertEq(secondMovePrice, 1.156e18);
+        assertEq(storkOracle.lastValidEurUsdPrice(), 1.156e18);
+        assertEq(gate.requireLivePrice(storkOracle), 1.156e18);
+    }
+
+    function test_DirectLargeMoveDoesNotAdvanceBaseline() public {
+        eurUsdFeed.setPriceForFeed(EUR_USD_FEED_ID, 1.10e18);
+        eurUsdFeed.setUpdatedAtForFeed(EUR_USD_FEED_ID, block.timestamp);
+        vm.prank(admin);
+        storkOracle.resetCircuitBreaker();
+        assertEq(storkOracle.lastValidEurUsdPrice(), 1.10e18);
+
+        eurUsdFeed.setPriceForFeed(EUR_USD_FEED_ID, 1.166e18);
+        eurUsdFeed.setUpdatedAtForFeed(EUR_USD_FEED_ID, block.timestamp);
+        (uint256 price, bool isValid) = storkOracle.getEurUsdPrice();
+
+        assertFalse(isValid);
+        assertEq(price, 1.10e18);
+        assertEq(storkOracle.lastValidEurUsdPrice(), 1.10e18);
     }
     
     /**

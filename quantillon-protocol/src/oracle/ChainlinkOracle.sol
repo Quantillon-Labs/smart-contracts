@@ -403,6 +403,94 @@ contract ChainlinkOracle is
     }
 
     /**
+     * @notice Validates a raw EUR/USD feed value against freshness, bounds, and deviation policy.
+     * @param rawPrice Raw EUR/USD price from the feed.
+     * @param updatedAt Feed update timestamp.
+     * @param feedDecimals Number of decimals used by the feed.
+     * @return price Scaled EUR/USD price, or 0 if validation fails before scaling.
+     * @return isValid True when the price can be accepted as the next oracle baseline.
+     */
+    function _validateEurUsdPriceData(
+        int256 rawPrice,
+        uint256 updatedAt,
+        uint8 feedDecimals
+    ) internal view returns (uint256 price, bool isValid) {
+        if (!_validateTimestamp(updatedAt) || rawPrice <= 0) {
+            return (0, false);
+        }
+
+        price = _scalePrice(rawPrice, feedDecimals);
+        isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
+
+        if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
+            uint256 base = lastValidEurUsdPrice;
+            uint256 diff = price > base ? price - base : base - price;
+            uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
+            if (deviationBps > MAX_PRICE_DEVIATION) {
+                isValid = false;
+            }
+        }
+    }
+
+    /**
+     * @notice Normalizes USDC/USD for PriceUpdated events, falling back to $1.00 if invalid.
+     */
+    function _normalizeUsdcUsdPrice(
+        int256 rawPrice,
+        uint256 updatedAt,
+        uint8 feedDecimals
+    ) internal view returns (uint256 usdcUsdPrice) {
+        usdcUsdPrice = 1e18;
+        if (_validateTimestampWithMaxAge(updatedAt, MAX_USDC_PRICE_STALENESS) && rawPrice > 0) {
+            uint256 scaledPrice = _scalePrice(rawPrice, feedDecimals);
+            uint256 tolerance = _divRound(1e18 * usdcToleranceBps, BASIS_POINTS);
+            uint256 minPrice = 1e18 - tolerance;
+            uint256 maxPrice = 1e18 + tolerance;
+
+            if (scaledPrice >= minPrice && scaledPrice <= maxPrice) {
+                usdcUsdPrice = scaledPrice;
+            }
+        }
+    }
+
+    /**
+     * @notice Reads USDC/USD for update events without making EUR/USD reads depend on USDC health.
+     */
+    function _readUsdcUsdPriceForEvent() internal view returns (uint256 usdcUsdPrice) {
+        usdcUsdPrice = 1e18;
+        try usdcUsdPriceFeed.latestRoundData() returns (
+            uint80 roundId,
+            int256 rawPrice,
+            uint256 startedAt,
+            uint256 updatedAt,
+            uint80 answeredInRound
+        ) {
+            if (roundId != answeredInRound || startedAt > updatedAt) {
+                return 1e18;
+            }
+
+            try usdcUsdPriceFeed.decimals() returns (uint8 feedDecimals) {
+                return _normalizeUsdcUsdPrice(rawPrice, updatedAt, feedDecimals);
+            } catch {
+                return 1e18;
+            }
+        } catch {
+            return 1e18;
+        }
+    }
+
+    /**
+     * @notice Commits an accepted EUR/USD price as the new oracle deviation baseline.
+     */
+    function _commitEurUsdPrice(uint256 eurUsdPrice, uint256 usdcUsdPrice) internal {
+        lastValidEurUsdPrice = eurUsdPrice;
+        lastPriceUpdateTime = TIME_PROVIDER.currentTime();
+        lastPriceUpdateBlock = block.number;
+
+        emit PriceUpdated(eurUsdPrice, usdcUsdPrice, TIME_PROVIDER.currentTime());
+    }
+
+    /**
      * @notice Updates and validates internal prices
      * @dev Internal function called during initialization and resets, fetches fresh prices from Chainlink
      * @custom:security Validates price data integrity, circuit breaker bounds, and deviation limits
@@ -429,32 +517,9 @@ contract ChainlinkOracle is
         CommonValidationLibrary.validateCondition(usdcUsdRoundId == usdcUsdAnsweredInRound, "oracle");
         CommonValidationLibrary.validateCondition(usdcUsdStartedAt <= usdcUsdUpdatedAt, "oracle");
         
-        // Validate EUR/USD price
-        bool eurUsdValid = true;
-        uint256 eurUsdPrice = 0;
-        
-        // Check if EUR/USD price is fresh and positive with timestamp validation
-        if (!_validateTimestamp(eurUsdUpdatedAt) || eurUsdRawPrice <= 0) {
-            eurUsdValid = false;
-        } else {
-            // Convert Chainlink decimals to 18 decimals
-            uint8 eurUsdFeedDecimals = eurUsdPriceFeed.decimals();
-            eurUsdPrice = _scalePrice(eurUsdRawPrice, eurUsdFeedDecimals);
-            
-            // Circuit breaker bounds check
-            eurUsdValid = eurUsdPrice >= minEurUsdPrice && eurUsdPrice <= maxEurUsdPrice;
-            
-            // Deviation check against last valid price (reject sudden jumps > MAX_PRICE_DEVIATION)
-            // Skip deviation check if dev mode is enabled
-            if (eurUsdValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
-                uint256 base = lastValidEurUsdPrice;
-                uint256 diff = eurUsdPrice > base ? eurUsdPrice - base : base - eurUsdPrice;
-                uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
-                if (deviationBps > MAX_PRICE_DEVIATION) {
-                    eurUsdValid = false;
-                }
-            }
-        }
+        uint8 eurUsdFeedDecimals = eurUsdPriceFeed.decimals();
+        (uint256 eurUsdPrice, bool eurUsdValid) =
+            _validateEurUsdPriceData(eurUsdRawPrice, eurUsdUpdatedAt, eurUsdFeedDecimals);
         
         // If EUR/USD invalid, trigger the circuit breaker
         if (!eurUsdValid) {
@@ -467,29 +532,9 @@ contract ChainlinkOracle is
             return;
         }
         
-        // Calculate USDC/USD price for event emission
-        uint256 usdcUsdPrice = 1e18; // Default fallback
-        if (_validateTimestampWithMaxAge(usdcUsdUpdatedAt, MAX_USDC_PRICE_STALENESS) && usdcUsdRawPrice > 0) {
-            uint8 usdcUsdFeedDecimals = usdcUsdPriceFeed.decimals();
-            usdcUsdPrice = _scalePrice(usdcUsdRawPrice, usdcUsdFeedDecimals);
-            
-            // Check USDC tolerance
-            uint256 tolerance = _divRound(1e18 * usdcToleranceBps, BASIS_POINTS);
-            uint256 minPrice = 1e18 - tolerance;
-            uint256 maxPrice = 1e18 + tolerance;
-            
-            if (usdcUsdPrice < minPrice || usdcUsdPrice > maxPrice) {
-                usdcUsdPrice = 1e18; // Use fallback if outside tolerance
-            }
-        }
-
-        // Update internal values
-        lastValidEurUsdPrice = eurUsdPrice;
-        lastPriceUpdateTime = TIME_PROVIDER.currentTime();
-        lastPriceUpdateBlock = block.number;
-
-        // Emit update event
-        emit PriceUpdated(eurUsdPrice, usdcUsdPrice, TIME_PROVIDER.currentTime());
+        uint8 usdcUsdFeedDecimals = usdcUsdPriceFeed.decimals();
+        uint256 usdcUsdPrice = _normalizeUsdcUsdPrice(usdcUsdRawPrice, usdcUsdUpdatedAt, usdcUsdFeedDecimals);
+        _commitEurUsdPrice(eurUsdPrice, usdcUsdPrice);
     }
 
     /**
@@ -938,14 +983,14 @@ contract ChainlinkOracle is
      * 
      * @custom:security Validates timestamp freshness, circuit breaker status, price bounds
      * @custom:validation Checks price > 0, timestamp < 1 hour old, within min/max bounds
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
+     * @custom:state-changes Updates lastValidEurUsdPrice, lastPriceUpdateTime, and lastPriceUpdateBlock when valid
+     * @custom:events Emits PriceUpdated when a valid price advances the baseline
      * @custom:errors No errors thrown - returns fallback price if invalid
-     * @custom:reentrancy Not applicable - view function
+     * @custom:reentrancy Not protected - external oracle reads only
      * @custom:access Public - no access restrictions
      * @custom:oracle Requires fresh Chainlink EUR/USD price feed data
      */
-    function getEurUsdPrice() external view returns (uint256 price, bool isValid) {
+    function getEurUsdPrice() external returns (uint256 price, bool isValid) {
         // If circuit breaker is active or contract is paused, use the last valid price
         if (circuitBreakerTriggered || paused()) {
             return (lastValidEurUsdPrice, false);
@@ -977,29 +1022,16 @@ contract ChainlinkOracle is
             return (lastValidEurUsdPrice, false);
         }
 
-        // Convert Chainlink decimals (usually 8) to 18 decimals
         uint8 feedDecimals = eurUsdPriceFeed.decimals();
-        price = _scalePrice(rawPrice, feedDecimals);
-
-        // Circuit breaker bounds check
-        isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
-
-        // Deviation check against last valid price (reject sudden jumps > MAX_PRICE_DEVIATION)
-        // Skip deviation check if dev mode is enabled
-        if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
-            uint256 base = lastValidEurUsdPrice;
-            uint256 diff = price > base ? price - base : base - price;
-    
-            uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
-            if (deviationBps > MAX_PRICE_DEVIATION) {
-                isValid = false;
-            }
-        }
+        (price, isValid) = _validateEurUsdPriceData(rawPrice, updatedAt, feedDecimals);
         
         // If price invalid, return the last valid price
         if (!isValid) {
             price = lastValidEurUsdPrice;
+            return (price, false);
         }
+
+        _commitEurUsdPrice(price, _readUsdcUsdPriceForEvent());
     }
 
     /**

@@ -3,8 +3,10 @@ pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {OracleRouter} from "../src/oracle/OracleRouter.sol";
+import {ChainlinkOracle} from "../src/oracle/ChainlinkOracle.sol";
 import {MockChainlinkOracle} from "../src/mocks/MockChainlinkOracle.sol";
 import {MockStorkOracle} from "../src/mocks/MockStorkOracle.sol";
+import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {AggregatorV3Interface} from "chainlink-brownie-contracts/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -284,6 +286,54 @@ contract OracleRouterTest is Test {
         assertGt(price, 0);
         assertTrue(isValid);
         assertEq(price, 1.08e18); // Chainlink price
+    }
+
+    function test_GetEurUsdPrice_AdvancesProductionChainlinkBaseline() public {
+        MockAggregatorV3 realEurUsdFeed = new MockAggregatorV3(8);
+        MockAggregatorV3 realUsdcUsdFeed = new MockAggregatorV3(8);
+        realEurUsdFeed.setPrice(110_000_000);
+        realUsdcUsdFeed.setPrice(100_000_000);
+
+        TimeProvider timeProviderImpl = new TimeProvider();
+        ERC1967Proxy timeProviderProxy = new ERC1967Proxy(
+            address(timeProviderImpl),
+            abi.encodeWithSelector(TimeProvider.initialize.selector, admin, admin, admin)
+        );
+        TimeProvider timeProvider = TimeProvider(payable(address(timeProviderProxy)));
+
+        ChainlinkOracle realChainlinkImpl = new ChainlinkOracle(timeProvider);
+        ERC1967Proxy realChainlinkProxy = new ERC1967Proxy(
+            address(realChainlinkImpl),
+            abi.encodeWithSelector(
+                ChainlinkOracle.initialize.selector,
+                admin,
+                address(realEurUsdFeed),
+                address(realUsdcUsdFeed),
+                treasury
+            )
+        );
+        ChainlinkOracle realChainlinkOracle = ChainlinkOracle(address(realChainlinkProxy));
+
+        OracleRouter realRouterImpl = new OracleRouter();
+        ERC1967Proxy realRouterProxy = new ERC1967Proxy(
+            address(realRouterImpl),
+            abi.encodeWithSelector(
+                OracleRouter.initialize.selector,
+                admin,
+                address(realChainlinkOracle),
+                address(storkOracle),
+                treasury,
+                OracleRouter.OracleType.CHAINLINK
+            )
+        );
+        OracleRouter realRouter = OracleRouter(payable(address(realRouterProxy)));
+
+        realEurUsdFeed.setPrice(114_000_000);
+        (uint256 price, bool isValid) = realRouter.getEurUsdPrice();
+
+        assertTrue(isValid);
+        assertEq(price, 1.14e18);
+        assertEq(realChainlinkOracle.lastValidEurUsdPrice(), 1.14e18);
     }
     
     /**

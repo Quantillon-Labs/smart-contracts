@@ -10,19 +10,19 @@ import {IQuantillonVault} from "../interfaces/IQuantillonVault.sol";
 interface IViewOracle {
     /**
      * @notice Returns EUR/USD oracle price and validity flag
-     * @dev Minimal read-only oracle view interface used by optimization helpers.
+     * @dev Minimal oracle interface used by optimization helpers.
      * @return price EUR/USD price in 18 decimals
      * @return isValid Whether the reported price is valid
-     * @custom:security Read-only oracle accessor
+     * @custom:security Validated oracle accessor
      * @custom:validation Implementer should guarantee returned values follow protocol expectations
-     * @custom:state-changes None
-     * @custom:events None
+     * @custom:state-changes Implementation-defined; production oracles may refresh their accepted baseline
+     * @custom:events Implementation-defined
      * @custom:errors Implementation-defined
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access External view interface method
+     * @custom:reentrancy External oracle call
+     * @custom:access External interface method
      * @custom:oracle Primary oracle read dependency
      */
-    function getEurUsdPrice() external view returns (uint256 price, bool isValid);
+    function getEurUsdPrice() external returns (uint256 price, bool isValid);
 }
 
 /**
@@ -383,14 +383,14 @@ library HedgerPoolOptimizationLibrary {
      * @return isValid True if price is valid
      * @custom:security Ensures oracle price data is valid before use
      * @custom:validation Validates oracle response format and data
-     * @custom:state-changes No state changes - view function
-     * @custom:events No events emitted
+     * @custom:state-changes May update oracle baseline when the oracle accepts a live price
+     * @custom:events Via oracle implementation
      * @custom:errors No errors thrown - returns boolean result
-     * @custom:reentrancy Not applicable - view function
+     * @custom:reentrancy External oracle call
      * @custom:access External function
      * @custom:oracle Depends on oracle contract for price data
      */
-    function getValidOraclePrice(address oracleAddress) external view returns (uint256 price, bool isValid) {
+    function getValidOraclePrice(address oracleAddress) external returns (uint256 price, bool isValid) {
         if (oracleAddress == address(0)) {
             return (0, false);
         }

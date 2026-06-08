@@ -238,6 +238,16 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     }
 }
 
+contract ChainlinkOracleGate {
+    error InvalidOraclePrice();
+
+    function requireLivePrice(ChainlinkOracle oracle) external returns (uint256) {
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        if (!isValid) revert InvalidOraclePrice();
+        return price;
+    }
+}
+
 /**
  * @title ChainlinkOracleTestSuite
  * @notice Comprehensive test suite for the ChainlinkOracle contract
@@ -280,6 +290,7 @@ contract ChainlinkOracleTestSuite is Test {
     ChainlinkOracle public oracle;
     MockAggregatorV3 public mockEurUsdFeed;
     MockAggregatorV3 public mockUsdcUsdFeed;
+    ChainlinkOracleGate public gate;
 
     // =============================================================================
     // SETUP AND TEARDOWN
@@ -341,6 +352,8 @@ contract ChainlinkOracleTestSuite is Test {
         oracle.grantRole(oracle.ORACLE_MANAGER_ROLE(), oracleManager);
         oracle.grantRole(oracle.EMERGENCY_ROLE(), emergencyRole);
         vm.stopPrank();
+
+        gate = new ChainlinkOracleGate();
     }
 
     // =============================================================================
@@ -391,7 +404,7 @@ contract ChainlinkOracleTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function testPriceFetching_WithValidData_ShouldGetEurUsdPriceSuccessfully() public view {
+    function testPriceFetching_WithValidData_ShouldGetEurUsdPriceSuccessfully() public {
         (uint256 price, bool isValid) = oracle.getEurUsdPrice();
         
         assertEq(price, EUR_USD_PRICE);
@@ -575,6 +588,40 @@ contract ChainlinkOracleTestSuite is Test {
         // Should return last valid price and be invalid due to deviation
         assertEq(price, EUR_USD_PRICE); // Last valid price
         assertFalse(isValid);
+    }
+
+    function test_PriceFetching_CumulativeValidMovesAdvanceBaseline() public {
+        assertEq(oracle.lastValidEurUsdPrice(), 1.10e18);
+
+        mockEurUsdFeed.setPrice(114_000_000); // 1.14, +3.64% from baseline
+        mockEurUsdFeed.setUpdatedAt(block.timestamp);
+        (uint256 firstMovePrice, bool firstMoveValid) = oracle.getEurUsdPrice();
+
+        assertTrue(firstMoveValid);
+        assertEq(firstMovePrice, 1.14e18);
+        assertEq(oracle.lastValidEurUsdPrice(), 1.14e18);
+        assertEq(gate.requireLivePrice(oracle), 1.14e18);
+
+        mockEurUsdFeed.setPrice(115_600_000); // 1.156, +1.40% from previous accepted price
+        mockEurUsdFeed.setUpdatedAt(block.timestamp);
+        (uint256 secondMovePrice, bool secondMoveValid) = oracle.getEurUsdPrice();
+
+        assertTrue(secondMoveValid);
+        assertEq(secondMovePrice, 1.156e18);
+        assertEq(oracle.lastValidEurUsdPrice(), 1.156e18);
+        assertEq(gate.requireLivePrice(oracle), 1.156e18);
+    }
+
+    function test_PriceFetching_DirectLargeMoveDoesNotAdvanceBaseline() public {
+        assertEq(oracle.lastValidEurUsdPrice(), 1.10e18);
+
+        mockEurUsdFeed.setPrice(116_600_000); // 1.166, +6% from baseline
+        mockEurUsdFeed.setUpdatedAt(block.timestamp);
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+
+        assertFalse(isValid);
+        assertEq(price, 1.10e18);
+        assertEq(oracle.lastValidEurUsdPrice(), 1.10e18);
     }
 
     // =============================================================================

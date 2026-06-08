@@ -453,6 +453,77 @@ contract StorkOracle is
     }
 
     /**
+     * @notice Validates a raw EUR/USD Stork value against freshness, bounds, and deviation policy.
+     * @param rawPrice Raw EUR/USD price from Stork.
+     * @param timestamp Stork update timestamp.
+     * @return price Scaled EUR/USD price, or 0 if validation fails before scaling.
+     * @return isValid True when the price can be accepted as the next oracle baseline.
+     */
+    function _validateEurUsdPriceData(
+        int256 rawPrice,
+        uint256 timestamp
+    ) internal view returns (uint256 price, bool isValid) {
+        if (!_validateTimestamp(timestamp) || rawPrice <= 0) {
+            return (0, false);
+        }
+
+        price = _scalePrice(rawPrice, STORK_FEED_DECIMALS);
+        isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
+
+        if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
+            uint256 base = lastValidEurUsdPrice;
+            uint256 diff = price > base ? price - base : base - price;
+            uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
+            if (deviationBps > MAX_PRICE_DEVIATION) {
+                isValid = false;
+            }
+        }
+    }
+
+    /**
+     * @notice Normalizes USDC/USD for PriceUpdated events, falling back to $1.00 if invalid.
+     */
+    function _normalizeUsdcUsdPrice(
+        int256 rawPrice,
+        uint256 timestamp
+    ) internal view returns (uint256 usdcUsdPrice) {
+        usdcUsdPrice = 1e18;
+        if (_validateTimestamp(timestamp) && rawPrice > 0) {
+            uint256 scaledPrice = _scalePrice(rawPrice, STORK_FEED_DECIMALS);
+            uint256 tolerance = _divRound(1e18 * usdcToleranceBps, BASIS_POINTS);
+            uint256 minPrice = 1e18 - tolerance;
+            uint256 maxPrice = 1e18 + tolerance;
+
+            if (scaledPrice >= minPrice && scaledPrice <= maxPrice) {
+                usdcUsdPrice = scaledPrice;
+            }
+        }
+    }
+
+    /**
+     * @notice Reads USDC/USD for update events without making EUR/USD reads depend on USDC health.
+     */
+    function _readUsdcUsdPriceForEvent() internal view returns (uint256 usdcUsdPrice) {
+        usdcUsdPrice = 1e18;
+        try usdcUsdPriceFeed.getTemporalNumericValueV1(usdcUsdFeedId) returns (IStorkFeed.TemporalNumericValue memory data) {
+            return _normalizeUsdcUsdPrice(data.value, data.timestamp);
+        } catch {
+            return 1e18;
+        }
+    }
+
+    /**
+     * @notice Commits an accepted EUR/USD price as the new oracle deviation baseline.
+     */
+    function _commitEurUsdPrice(uint256 eurUsdPrice, uint256 usdcUsdPrice) internal {
+        lastValidEurUsdPrice = eurUsdPrice;
+        lastPriceUpdateTime = TIME_PROVIDER.currentTime();
+        lastPriceUpdateBlock = block.number;
+
+        emit PriceUpdated(eurUsdPrice, usdcUsdPrice, TIME_PROVIDER.currentTime());
+    }
+
+    /**
      * @notice Updates and validates internal prices
      * @dev Internal function called during initialization and resets, fetches fresh prices from Stork
      * @custom:security Validates prices, checks bounds, and triggers circuit breaker if needed
@@ -477,32 +548,8 @@ contract StorkOracle is
         // Validate data integrity
         CommonValidationLibrary.validateCondition(usdcUsdData.timestamp > 0, "oracle");
         
-        // Validate EUR/USD price
-        bool eurUsdValid = true;
-        uint256 eurUsdPrice = 0;
-        
-        // Check if EUR/USD price is fresh and positive with timestamp validation
-        if (!_validateTimestamp(eurUsdData.timestamp) || eurUsdData.value <= 0) {
-            eurUsdValid = false;
-        } else {
-            // Convert Stork decimals to 18 decimals
-            // Stork feeds use 18 decimals, so no scaling needed
-            eurUsdPrice = _scalePrice(eurUsdData.value, STORK_FEED_DECIMALS);
-            
-            // Circuit breaker bounds check
-            eurUsdValid = eurUsdPrice >= minEurUsdPrice && eurUsdPrice <= maxEurUsdPrice;
-            
-            // Deviation check against last valid price (reject sudden jumps > MAX_PRICE_DEVIATION)
-            // Skip deviation check if dev mode is enabled
-            if (eurUsdValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
-                uint256 base = lastValidEurUsdPrice;
-                uint256 diff = eurUsdPrice > base ? eurUsdPrice - base : base - eurUsdPrice;
-                uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
-                if (deviationBps > MAX_PRICE_DEVIATION) {
-                    eurUsdValid = false;
-                }
-            }
-        }
+        (uint256 eurUsdPrice, bool eurUsdValid) =
+            _validateEurUsdPriceData(eurUsdData.value, eurUsdData.timestamp);
         
         // If EUR/USD invalid, trigger the circuit breaker
         if (!eurUsdValid) {
@@ -515,29 +562,8 @@ contract StorkOracle is
             return;
         }
         
-        // Calculate USDC/USD price for event emission
-        uint256 usdcUsdPrice = 1e18; // Default fallback
-        if (_validateTimestamp(usdcUsdData.timestamp) && usdcUsdData.value > 0) {
-            // Stork feeds use 18 decimals, so no scaling needed
-            usdcUsdPrice = _scalePrice(usdcUsdData.value, STORK_FEED_DECIMALS);
-            
-            // Check USDC tolerance
-            uint256 tolerance = _divRound(1e18 * usdcToleranceBps, BASIS_POINTS);
-            uint256 minPrice = 1e18 - tolerance;
-            uint256 maxPrice = 1e18 + tolerance;
-            
-            if (usdcUsdPrice < minPrice || usdcUsdPrice > maxPrice) {
-                usdcUsdPrice = 1e18; // Use fallback if outside tolerance
-            }
-        }
-
-        // Update internal values
-        lastValidEurUsdPrice = eurUsdPrice;
-        lastPriceUpdateTime = TIME_PROVIDER.currentTime();
-        lastPriceUpdateBlock = block.number;
-
-        // Emit update event
-        emit PriceUpdated(eurUsdPrice, usdcUsdPrice, TIME_PROVIDER.currentTime());
+        uint256 usdcUsdPrice = _normalizeUsdcUsdPrice(usdcUsdData.value, usdcUsdData.timestamp);
+        _commitEurUsdPrice(eurUsdPrice, usdcUsdPrice);
     }
 
     /**
@@ -945,10 +971,10 @@ contract StorkOracle is
      *      6. Return valid price or fallback
      * @custom:security Validates price freshness and bounds before returning
      * @custom:validation Checks price staleness, circuit breaker state, and bounds
-     * @custom:state-changes No state changes - view function
-     * @custom:events No events emitted
+     * @custom:state-changes Updates lastValidEurUsdPrice, lastPriceUpdateTime, and lastPriceUpdateBlock when valid
+     * @custom:events Emits PriceUpdated when a valid price advances the baseline
      * @custom:errors No errors thrown, returns isValid=false for invalid prices
-     * @custom:reentrancy Not protected - view function
+     * @custom:reentrancy Not protected - external oracle read only
      * @custom:access Public - no access restrictions
      * @custom:oracle Queries Stork feed contract for EUR/USD price
      * @dev SECURITY NOTE: Stork is a pull oracle — on-chain prices are updated by keeper transactions.
@@ -958,7 +984,7 @@ contract StorkOracle is
      *      (2) minPositionHoldBlocks in HedgerPool enforces a minimum hold period after entry.
      *      For stronger guarantees, consider a commit-reveal entry scheme or using Stork's push model.
      */
-    function getEurUsdPrice() external view returns (uint256 price, bool isValid) {
+    function getEurUsdPrice() external returns (uint256 price, bool isValid) {
         // If circuit breaker is active or contract is paused, use the last valid price
         if (circuitBreakerTriggered || paused()) {
             return (lastValidEurUsdPrice, false);
@@ -972,29 +998,15 @@ contract StorkOracle is
             return (lastValidEurUsdPrice, false);
         }
 
-        // Convert Stork decimals to 18 decimals
-        // Stork feeds use 18 decimals
-        price = _scalePrice(data.value, STORK_FEED_DECIMALS);
-
-        // Circuit breaker bounds check
-        isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
-
-        // Deviation check against last valid price (reject sudden jumps > MAX_PRICE_DEVIATION)
-        // Skip deviation check if dev mode is enabled
-        if (isValid && lastValidEurUsdPrice > 0 && !devModeEnabled) {
-            uint256 base = lastValidEurUsdPrice;
-            uint256 diff = price > base ? price - base : base - price;
-    
-            uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
-            if (deviationBps > MAX_PRICE_DEVIATION) {
-                isValid = false;
-            }
-        }
+        (price, isValid) = _validateEurUsdPriceData(data.value, data.timestamp);
         
         // If price invalid, return the last valid price
         if (!isValid) {
             price = lastValidEurUsdPrice;
+            return (price, false);
         }
+
+        _commitEurUsdPrice(price, _readUsdcUsdPriceForEvent());
     }
 
     /**

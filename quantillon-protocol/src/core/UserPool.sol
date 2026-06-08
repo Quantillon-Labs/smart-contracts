@@ -1660,6 +1660,32 @@ contract UserPool is
      */
 
     /**
+     * @notice Get the current user pool size in USDC terms
+     * @dev Returns current QEURO supply converted to USDC using the read-only oracle details path.
+     *      `totalUserDeposits` is cumulative analytics state and is not a live pool-size metric.
+     * @return uint256 Current user pool TVL in USDC (6 decimals)
+     * @custom:security Uses validated oracle details and reverts on stale or out-of-bounds prices
+     * @custom:validation Reverts if the oracle price cannot support a current TVL metric
+     * @custom:state-changes No state changes - view function
+     * @custom:events No events emitted
+     * @custom:errors Throws InvalidOraclePrice when oracle details are stale, invalid, or zero
+     * @custom:reentrancy Not applicable - view function
+     * @custom:access Public access
+     * @custom:oracle Requires fresh read-only EUR/USD oracle details
+     */
+    function getTotalDeposits() external view returns (uint256) {
+        uint256 currentQeuroSupply = qeuro.totalSupply();
+        if (currentQeuroSupply == 0) return 0;
+
+        (uint256 currentRate,, uint256 lastUpdate, bool isStale, bool withinBounds) = oracle.getEurUsdDetails();
+        if (currentRate == 0 || lastUpdate == 0 || isStale || !withinBounds) {
+            revert CommonErrorLibrary.InvalidOraclePrice();
+        }
+
+        return currentQeuroSupply.mulDiv(currentRate, 1e18) / 1e12;
+    }
+
+    /**
      * @notice Get the total QEURO staked across all users
      * @dev Returns the total amount of QEURO currently staked in the pool
      * @return uint256 Total QEURO staked (18 decimals)

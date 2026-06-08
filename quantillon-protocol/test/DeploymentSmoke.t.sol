@@ -19,11 +19,15 @@ import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 import {FeeCollector} from "../src/core/FeeCollector.sol";
 import {YieldShift} from "../src/core/yieldmanagement/YieldShift.sol";
+import {IUserPool} from "../src/interfaces/IUserPool.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 
 // Oracle + mocks
 import {MockChainlinkOracle} from "../src/mocks/MockChainlinkOracle.sol";
 import {MockAggregatorV3} from "./ChainlinkOracle.t.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
+
+contract MissingUserPoolMetric {}
 
 /// @notice Deployment smoke tests that roughly mirror the 4‑phase deployment plan.
 contract DeploymentSmokeTest is Test {
@@ -322,6 +326,60 @@ contract DeploymentSmokeTest is Test {
         assertTrue(vault.hasRole(vault.EMERGENCY_ROLE(), emergency), "Emergency should have EMERGENCY_ROLE on vault");
         assertTrue(userPool.hasRole(userPool.EMERGENCY_ROLE(), emergency), "Emergency should have EMERGENCY_ROLE on userPool");
         assertTrue(hedgerPool.hasRole(hedgerPool.EMERGENCY_ROLE(), emergency), "Emergency should have EMERGENCY_ROLE on hedgerPool");
+    }
+
+    /// @notice YieldShift must read the live real UserPool metric, not silently treat it as zero.
+    function test_DeploymentSmoke_YieldShiftReadsRealUserPoolMetric() public {
+        deployFullProtocol();
+
+        uint256 mintAmount = 500_000 * 1e6;
+        vm.startPrank(user1);
+        usdc.approve(address(vault), mintAmount);
+        (uint256 eurPrice, bool isValid) = oracle.getEurUsdPrice();
+        require(isValid, "oracle invalid");
+        uint256 expectedQeuro = (mintAmount * 1e30) / eurPrice;
+        vault.mintQEURO(mintAmount, (expectedQeuro * 80) / 100);
+        vm.stopPrank();
+
+        (bool ok, bytes memory result) = address(userPool).staticcall(
+            abi.encodeWithSelector(IUserPool.getTotalDeposits.selector)
+        );
+        assertTrue(ok, "real UserPool should implement getTotalDeposits()");
+        uint256 directUserMetric = abi.decode(result, (uint256));
+        assertGt(directUserMetric, 0, "real UserPool metric should be non-zero");
+
+        (uint256 userPoolSize, uint256 hedgerPoolSize, uint256 poolRatio,) = yieldShift.getPoolMetrics();
+        assertEq(userPoolSize, directUserMetric, "YieldShift should read the real UserPool metric");
+        assertGt(hedgerPoolSize, 0, "Hedger exposure should still be counted");
+        assertGt(poolRatio, 9_000, "Pools should be close to balanced");
+        assertLt(poolRatio, 11_000, "Pools should be close to balanced");
+
+        uint256 beforeShift = yieldShift.currentYieldShift();
+        yieldShift.updateYieldDistribution();
+        assertEq(yieldShift.currentYieldShift(), beforeShift, "Balanced pools should not move away from users");
+    }
+
+    /// @notice Broken user pool integrations must fail explicitly instead of becoming a zero-size pool.
+    function test_DeploymentSmoke_YieldShiftRevertsWhenUserPoolMetricMissing() public {
+        deployFullProtocol();
+
+        MissingUserPoolMetric missingMetric = new MissingUserPoolMetric();
+        vm.prank(admin);
+        yieldShift.configureDependencies(
+            YieldShift.YieldDependencyConfig({
+                userPool: address(missingMetric),
+                hedgerPool: address(hedgerPool),
+                mockAaveVault: address(vault),
+                stQEUROFactory: address(stQEURO),
+                treasury: treasury
+            })
+        );
+
+        vm.expectRevert(CommonErrorLibrary.YieldCalculationError.selector);
+        yieldShift.getPoolMetrics();
+
+        vm.expectRevert(CommonErrorLibrary.YieldCalculationError.selector);
+        yieldShift.updateYieldDistribution();
     }
 
     /// @notice End‑to‑end smoke test: deploy, then run minimal mint/redeem flows.

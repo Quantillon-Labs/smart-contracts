@@ -202,9 +202,9 @@ interface IUserPool {
     );
 
     /**
-     * @notice Total USDC-equivalent deposits in the pool
-     * @dev Returns the total value of all deposits in the pool
-     * @return Total deposits in USDC equivalent
+     * @notice Current user-side pool size in USDC terms
+     * @dev Returns live user pool TVL in USDC equivalent; historical deposit counters are exposed separately.
+     * @return Current user pool size in USDC equivalent
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -967,4 +967,4 @@ interface IUserPool {
      * @custom:oracle Requires fresh oracle price data
      */
     function recoverETH() external;
-} 
+}

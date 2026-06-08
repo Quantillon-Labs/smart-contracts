@@ -55,7 +55,7 @@ library YieldShiftOptimizationLibrary {
      * @custom:validation Input validation handled by calling contract
      * @custom:state-changes No state changes - view function
      * @custom:events No events emitted
-     * @custom:errors No errors thrown - view function
+     * @custom:errors Reverts when a configured pool metric integration fails
      * @custom:reentrancy Not applicable - view function
      * @custom:access Public function
      * @custom:oracle No oracle dependencies
@@ -75,13 +75,13 @@ library YieldShiftOptimizationLibrary {
         try IUserPool(userPoolAddress).getTotalDeposits() returns (uint256 deposits) {
             userPoolSize = deposits;
         } catch {
-            userPoolSize = 0;
+            revert CommonErrorLibrary.YieldCalculationError();
         }
         
         try IHedgerPool(hedgerPoolAddress).totalExposure() returns (uint256 exposure) {
             hedgerPoolSize = exposure;
         } catch {
-            hedgerPoolSize = 0;
+            revert CommonErrorLibrary.YieldCalculationError();
         }
         
         if (hedgerPoolSize == 0) {
@@ -105,7 +105,7 @@ library YieldShiftOptimizationLibrary {
      * @custom:validation Input validation handled by calling contract
      * @custom:state-changes No state changes - view function
      * @custom:events No events emitted
-     * @custom:errors No errors thrown - view function
+     * @custom:errors Reverts when a configured pool metric integration fails
      * @custom:reentrancy Not applicable - view function
      * @custom:access Public function
      * @custom:oracle No oracle dependencies
@@ -129,14 +129,14 @@ library YieldShiftOptimizationLibrary {
         try IUserPool(userPoolAddress).getTotalDeposits() returns (uint256 deposits) {
             currentUserPoolSize = deposits;
         } catch {
-            currentUserPoolSize = 0;
+            revert CommonErrorLibrary.YieldCalculationError();
         }
         
         uint256 currentHedgerPoolSize = 0;
         try IHedgerPool(hedgerPoolAddress).totalExposure() returns (uint256 exposure) {
             currentHedgerPoolSize = exposure;
         } catch {
-            currentHedgerPoolSize = 0;
+            revert CommonErrorLibrary.YieldCalculationError();
         }
         
         // Calculate eligible pool sizes based on holding period

@@ -204,7 +204,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      */
     function _calculateEurUsdPrice() internal pure returns (uint256) {
         // Mock price calculation - in real implementation this would be from external source
-        return 1.10e9; // 1.10 * 1e9 (9 decimals)
+        return 1.10e18; // 1.10 USD per EUR (18 decimals)
     }
     
     /**
@@ -213,7 +213,7 @@ contract MockChainlinkOracle is IChainlinkOracle, Initializable, AccessControlUp
      */
     function _calculateUsdcUsdPrice() internal pure returns (uint256) {
         // Mock price calculation - in real implementation this would be from external source
-        return 1.00e9; // 1.00 * 1e9 (9 decimals)
+        return 1.00e18; // 1.00 USD per USDC (18 decimals)
     }
     
     /**

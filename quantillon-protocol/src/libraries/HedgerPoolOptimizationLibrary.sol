@@ -350,7 +350,7 @@ library HedgerPoolOptimizationLibrary {
             try IUserPool(userPoolAddress).getTotalDeposits() returns (uint256 totalDeposits) {
                 userDeposits = totalDeposits;
             } catch {
-                userDeposits = 0;
+                revert CommonErrorLibrary.YieldCalculationError();
             }
         }
         

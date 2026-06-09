@@ -157,8 +157,17 @@ dropped `totalVotingPower` (the governance metric denominator) by ~400,000e18. T
 `test_VoteEscrow_ExtendLock` uses an *equal* amount so the regression is masked; it never asserts
 `votingPower` after the second lock.
 
-**PoC.** `test/AuditPoC.t.sol::test_PoC_AddingToLockCollapsesVotingPower` — locks 100k@365d, tops up
-1 QTI@365d, asserts `votingPower` and `totalVotingPower` *decrease* (passes while the bug exists).
+**PoC — executed & passing** (`test/AuditPoC.t.sol::test_PoC_AddingToLockCollapsesVotingPower`,
+`forge test`, solc 0.8.24, test profile):
+```
+amount after first lock : 100000000000000000000000   (100,000 QTI)
+votingPower after first : 400000000000000000000000   (400,000)
+amount after top-up      : 100001000000000000000000   (100,001 QTI — increased)
+votingPower after top-up : 4000000000000000000        (4 — collapsed)
+totalVotingPower after 2 : 4000000000000000000        (4 — collapsed)
+[PASS] test_PoC_AddingToLockCollapsesVotingPower
+```
+Adding 1 QTI cut voting power from 400,000 to 4 and dropped the global `totalVotingPower` identically.
 
 **Recommendation.** Recompute over the full position with the effective (extended) duration:
 `newVotingPower = newAmount * _calculateVotingPowerMultiplier(effectiveLockTime) / 1e18`; set
@@ -320,7 +329,8 @@ trailing partial interval, and enforce a minimum spacing between recorded snapsh
 
 - **H-1, H-2, M-3, M-4, M-5, M-6** confirmed by source trace (H-1/H-2 corroborated by the protocol's
   own contradicting code/comments).
-- **M-1** confirmed by source **and** a runnable Foundry PoC (`test/AuditPoC.t.sol`).
+- **M-1** confirmed by source **and** an executed, passing Foundry PoC (`test/AuditPoC.t.sol`,
+  output reproduced above).
 - **M-2** mechanism confirmed and shown to be partly intended by existing tests; framed as a liveness
   risk, not a clean exploit.
 - **L-4, L-5** marked needs-verification with the exact test that would confirm them.

@@ -1,16 +1,16 @@
 # Graph Report - smart-contracts  (2026-06-08)
 
 ## Corpus Check
-- 1632 files · ~1,272,102 words
+- 1669 files · ~1,275,003 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 17249 nodes · 18142 edges · 2810 communities (1516 shown, 1294 thin omitted)
+- 17453 nodes · 18309 edges · 2809 communities (1541 shown, 1268 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 144 edges (avg confidence: 0.64)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `81d02972`
+- Built from commit: `a324f0ce`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -2027,32 +2027,19 @@
 - [[_COMMUNITY_Community 2013|Community 2013]]
 - [[_COMMUNITY_Community 2014|Community 2014]]
 - [[_COMMUNITY_Community 2015|Community 2015]]
-- [[_COMMUNITY_Community 2016|Community 2016]]
 - [[_COMMUNITY_Community 2017|Community 2017]]
 - [[_COMMUNITY_Community 2018|Community 2018]]
-- [[_COMMUNITY_Community 2019|Community 2019]]
 - [[_COMMUNITY_Community 2020|Community 2020]]
 - [[_COMMUNITY_Community 2021|Community 2021]]
-- [[_COMMUNITY_Community 2022|Community 2022]]
 - [[_COMMUNITY_Community 2023|Community 2023]]
-- [[_COMMUNITY_Community 2024|Community 2024]]
 - [[_COMMUNITY_Community 2025|Community 2025]]
 - [[_COMMUNITY_Community 2026|Community 2026]]
 - [[_COMMUNITY_Community 2027|Community 2027]]
 - [[_COMMUNITY_Community 2028|Community 2028]]
-- [[_COMMUNITY_Community 2029|Community 2029]]
 - [[_COMMUNITY_Community 2030|Community 2030]]
-- [[_COMMUNITY_Community 2031|Community 2031]]
-- [[_COMMUNITY_Community 2032|Community 2032]]
 - [[_COMMUNITY_Community 2033|Community 2033]]
-- [[_COMMUNITY_Community 2034|Community 2034]]
-- [[_COMMUNITY_Community 2035|Community 2035]]
-- [[_COMMUNITY_Community 2036|Community 2036]]
-- [[_COMMUNITY_Community 2037|Community 2037]]
-- [[_COMMUNITY_Community 2038|Community 2038]]
 - [[_COMMUNITY_Community 2039|Community 2039]]
 - [[_COMMUNITY_Community 2040|Community 2040]]
-- [[_COMMUNITY_Community 2041|Community 2041]]
 - [[_COMMUNITY_Community 2042|Community 2042]]
 - [[_COMMUNITY_Community 2043|Community 2043]]
 - [[_COMMUNITY_Community 2044|Community 2044]]
@@ -2061,16 +2048,13 @@
 - [[_COMMUNITY_Community 2047|Community 2047]]
 - [[_COMMUNITY_Community 2048|Community 2048]]
 - [[_COMMUNITY_Community 2049|Community 2049]]
-- [[_COMMUNITY_Community 2050|Community 2050]]
 - [[_COMMUNITY_Community 2051|Community 2051]]
-- [[_COMMUNITY_Community 2052|Community 2052]]
 - [[_COMMUNITY_Community 2053|Community 2053]]
 - [[_COMMUNITY_Community 2054|Community 2054]]
 - [[_COMMUNITY_Community 2055|Community 2055]]
 - [[_COMMUNITY_Community 2056|Community 2056]]
 - [[_COMMUNITY_Community 2057|Community 2057]]
 - [[_COMMUNITY_Community 2058|Community 2058]]
-- [[_COMMUNITY_Community 2059|Community 2059]]
 - [[_COMMUNITY_Community 2060|Community 2060]]
 - [[_COMMUNITY_Community 2061|Community 2061]]
 - [[_COMMUNITY_Community 2062|Community 2062]]
@@ -2091,7 +2075,6 @@
 - [[_COMMUNITY_Community 2077|Community 2077]]
 - [[_COMMUNITY_Community 2078|Community 2078]]
 - [[_COMMUNITY_Community 2079|Community 2079]]
-- [[_COMMUNITY_Community 2080|Community 2080]]
 - [[_COMMUNITY_Community 2081|Community 2081]]
 - [[_COMMUNITY_Community 2082|Community 2082]]
 - [[_COMMUNITY_Community 2083|Community 2083]]
@@ -2228,7 +2211,6 @@
 - [[_COMMUNITY_Community 2214|Community 2214]]
 - [[_COMMUNITY_Community 2215|Community 2215]]
 - [[_COMMUNITY_Community 2216|Community 2216]]
-- [[_COMMUNITY_Community 2217|Community 2217]]
 - [[_COMMUNITY_Community 2218|Community 2218]]
 - [[_COMMUNITY_Community 2219|Community 2219]]
 - [[_COMMUNITY_Community 2220|Community 2220]]
@@ -2256,6 +2238,23 @@
 - [[_COMMUNITY_Community 2242|Community 2242]]
 - [[_COMMUNITY_Community 2808|Community 2808]]
 - [[_COMMUNITY_Community 2809|Community 2809]]
+- [[_COMMUNITY_Community 2810|Community 2810]]
+- [[_COMMUNITY_Community 2811|Community 2811]]
+- [[_COMMUNITY_Community 2812|Community 2812]]
+- [[_COMMUNITY_Community 2813|Community 2813]]
+- [[_COMMUNITY_Community 2814|Community 2814]]
+- [[_COMMUNITY_Community 2815|Community 2815]]
+- [[_COMMUNITY_Community 2816|Community 2816]]
+- [[_COMMUNITY_Community 2817|Community 2817]]
+- [[_COMMUNITY_Community 2818|Community 2818]]
+- [[_COMMUNITY_Community 2819|Community 2819]]
+- [[_COMMUNITY_Community 2820|Community 2820]]
+- [[_COMMUNITY_Community 2821|Community 2821]]
+- [[_COMMUNITY_Community 2822|Community 2822]]
+- [[_COMMUNITY_Community 2823|Community 2823]]
+- [[_COMMUNITY_Community 2824|Community 2824]]
+- [[_COMMUNITY_Community 2825|Community 2825]]
+- [[_COMMUNITY_Community 2826|Community 2826]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `Errors` - 180 edges
@@ -2298,7 +2297,7 @@
 - **Secure Upgrade Subsystem: ISecureUpgradeable + ITimelockUpgradeable + multi-sig** — interface_isecureupgradeable, interface_itimelockupgradeable, concept_multisig_timelock, concept_uups_upgrade_pattern [EXTRACTED 0.95]
 - **Quantillon Protocol Branding Assets** — docs_banner_png, docs_favicon_png, book_favicon_svg, book_favicon_png [INFERRED 0.85]
 
-## Communities (2810 total, 1294 thin omitted)
+## Communities (2809 total, 1268 thin omitted)
 
 ### Community 0 - "Community 0"
 Cohesion: 0.09
@@ -2358,7 +2357,7 @@ Nodes (30): bool, bytes, int, Cheatcode, Cheatcodes, CheatcodesPrinter, cmp_chea
 
 ### Community 25 - "Community 25"
 Cohesion: 0.08
-Nodes (30): bool, bytes, int, Cheatcode, Cheatcodes, CheatcodesPrinter, cmp_cheatcode(), CmpCheatcode (+22 more)
+Nodes (31): PyEnum, bool, bytes, int, Cheatcode, Cheatcodes, CheatcodesPrinter, cmp_cheatcode() (+23 more)
 
 ### Community 26 - "Community 26"
 Cohesion: 0.08
@@ -2366,7 +2365,7 @@ Nodes (30): bool, bytes, int, Cheatcode, Cheatcodes, CheatcodesPrinter, cmp_chea
 
 ### Community 27 - "Community 27"
 Cohesion: 0.08
-Nodes (31): PyEnum, bool, bytes, int, Cheatcode, Cheatcodes, CheatcodesPrinter, cmp_cheatcode() (+23 more)
+Nodes (30): bool, bytes, int, Cheatcode, Cheatcodes, CheatcodesPrinter, cmp_cheatcode(), CmpCheatcode (+22 more)
 
 ### Community 28 - "Community 28"
 Cohesion: 0.03
@@ -2397,8 +2396,8 @@ Cohesion: 0.04
 Nodes (54): _addToPoolHistory, addYield, bootstrapDefaults, _calculateHedgerAllocation, _calculateHoldingPeriodDiscount, calculateOptimalYieldShift, checkAndUpdateYieldDistribution, claimHedgerYield (+46 more)
 
 ### Community 35 - "Community 35"
-Cohesion: 0.05
-Nodes (30): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, TOKENS, value, { VoteType }, { ethers } (+22 more)
+Cohesion: 0.22
+Nodes (7): { ethers }, { expect }, { loadFixture }, offChainComputed, { PANIC_CODES }, { RevertType }, saltHex
 
 ### Community 36 - "Community 36"
 Cohesion: 0.04
@@ -2466,11 +2465,11 @@ Nodes (30): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, TOKENS,
 
 ### Community 52 - "Community 52"
 Cohesion: 0.05
-Nodes (32): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, TOKENS, value, { VoteType }, { ethers } (+24 more)
+Nodes (30): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, TOKENS, value, { VoteType }, { ethers } (+22 more)
 
 ### Community 53 - "Community 53"
-Cohesion: 0.05
-Nodes (42): addHedgerDeposit, _applyPriceCacheUpdate, _calculateLiquidationFees, code:solidity (function getProtocolCollateralizationRatio() public view ret), code:solidity (modifier flashLoanProtection() ;), code:solidity (function _onlySelf() internal view;), code:solidity (function _flashLoanProtectionAfter() private view;), code:solidity (function _dispatchMintCommit(MintCommitPayload memory payloa) (+34 more)
+Cohesion: 0.12
+Nodes (16): addHedgerDeposit, code:solidity (function _syncRedeemWithHedgers(uint256 amount, uint256 rede), code:solidity (function proposeDevMode(bool enabled) external onlyRole(DEFA), code:solidity (function mintQEUROToVault(uint256 usdcAmount, uint256 minQeu), code:solidity (function updateHedgerPool(address _hedgerPool) external only), code:solidity (function getVaultExposure(uint256 vaultId)), code:solidity (function _withdrawFromExternalVault(uint256 vaultId, uint256), code:solidity (function addHedgerDeposit(uint256 usdcAmount) external nonRe) (+8 more)
 
 ### Community 54 - "Community 54"
 Cohesion: 0.05
@@ -2490,11 +2489,11 @@ Nodes (17): padding, format, LENGTHS, { range }, { capitalize }, TYPES, { capita
 
 ### Community 58 - "Community 58"
 Cohesion: 0.05
-Nodes (17): padding, format, LENGTHS, { range }, { capitalize }, TYPES, { capitalize }, format (+9 more)
+Nodes (17): padding, { capitalize }, TYPES, format, sanitize, { TYPES }, { capitalize }, format (+9 more)
 
 ### Community 59 - "Community 59"
-Cohesion: 0.05
-Nodes (17): padding, format, LENGTHS, { range }, { capitalize }, TYPES, { capitalize }, format (+9 more)
+Cohesion: 0.08
+Nodes (11): padding, { capitalize }, TYPES, format, { TYPES }, format, { TYPES }, format (+3 more)
 
 ### Community 60 - "Community 60"
 Cohesion: 0.05
@@ -2505,12 +2504,12 @@ Cohesion: 0.05
 Nodes (40): AaveStakingVaultAdapter, aaveVault, AaveVaultUpdated, code:solidity (bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNA), code:solidity (function withdrawUnderlying(uint256 usdcAmount)), code:solidity (function harvestYield()), code:solidity (function totalUnderlying() external view override returns (u), code:solidity (function setAaveVault(address newAaveVault) external onlyRol) (+32 more)
 
 ### Community 62 - "Community 62"
-Cohesion: 0.09
-Nodes (31): _authorizeUpgrade, checkPriceFeedConnectivity, code:solidity (function initialize(address admin, address _eurUsdPriceFeed,), code:solidity (function updateTreasury(address _treasury) external onlyRole), code:solidity (function unpause() external onlyRole(EMERGENCY_ROLE);), code:solidity (function _divRound(uint256 a, uint256 b) internal pure retur), code:solidity (function _validateTimestamp(uint256 reportedTime) internal v), code:solidity (function _validateTimestampWithMaxAge(uint256 reportedTime, ) (+23 more)
+Cohesion: 0.10
+Nodes (29): _authorizeUpgrade, code:solidity (function initialize(address admin, address _eurUsdPriceFeed,), code:solidity (function updateTreasury(address _treasury) external onlyRole), code:solidity (function unpause() external onlyRole(EMERGENCY_ROLE);), code:solidity (function _divRound(uint256 a, uint256 b) internal pure retur), code:solidity (function _validateTimestamp(uint256 reportedTime) internal v), code:solidity (function _validateTimestampWithMaxAge(uint256 reportedTime, ), code:solidity (function _updatePrices() internal;) (+21 more)
 
 ### Community 63 - "Community 63"
-Cohesion: 0.08
-Nodes (34): BASIS_POINTS, BLOCKS_PER_HOUR, code:solidity (bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORA), code:solidity (AggregatorV3Interface public eurUsdPriceFeed), code:solidity (AggregatorV3Interface public usdcUsdPriceFeed), code:solidity (AggregatorV3Interface public sequencerUptimeFeed), code:solidity (uint256 public sequencerGracePeriod), code:solidity (address public treasury) (+26 more)
+Cohesion: 0.07
+Nodes (38): BASIS_POINTS, BLOCKS_PER_HOUR, code:solidity (bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORA), code:solidity (AggregatorV3Interface public eurUsdPriceFeed), code:solidity (AggregatorV3Interface public usdcUsdPriceFeed), code:solidity (AggregatorV3Interface public sequencerUptimeFeed), code:solidity (uint256 public sequencerGracePeriod), code:solidity (address public treasury) (+30 more)
 
 ### Community 64 - "Community 64"
 Cohesion: 0.05
@@ -2525,16 +2524,16 @@ Cohesion: 0.05
 Nodes (40): code:solidity (bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNA), code:solidity (function withdrawUnderlying(uint256 usdcAmount)), code:solidity (function harvestYield()), code:solidity (function totalUnderlying() external view override returns (u), code:solidity (function setMorphoVault(address newMorphoVault) external onl), code:solidity (function setYieldShift(address newYieldShift) external onlyR), code:solidity (function setYieldVaultId(uint256 newYieldVaultId) external o), code:solidity (event MorphoVaultUpdated(address indexed oldVault, address i) (+32 more)
 
 ### Community 67 - "Community 67"
-Cohesion: 0.05
-Nodes (36): {
-  argv: { pattern, skipPatterns, verbose, concurrency, _: artifacts },
-}, { compile }, getContractsMetadata, { hideBin }, limit, semver, yargs, entries (+28 more)
+Cohesion: 0.10
+Nodes (19): {
+  argv: { pattern, skipPatterns, minVersionForContracts, minVersionForInterfaces, concurrency, _: artifacts },
+}, candidates, file, fs, getApplicablePragmas(), getContractsMetadata, getMinimalApplicablePragma(), graph (+11 more)
 
 ### Community 68 - "Community 68"
-Cohesion: 0.05
-Nodes (36): {
-  argv: { pattern, skipPatterns, verbose, concurrency, _: artifacts },
-}, { compile }, getContractsMetadata, { hideBin }, limit, semver, yargs, entries (+28 more)
+Cohesion: 0.10
+Nodes (19): {
+  argv: { pattern, skipPatterns, minVersionForContracts, minVersionForInterfaces, concurrency, _: artifacts },
+}, candidates, file, fs, getApplicablePragmas(), getContractsMetadata, getMinimalApplicablePragma(), graph (+11 more)
 
 ### Community 69 - "Community 69"
 Cohesion: 0.05
@@ -2557,8 +2556,8 @@ Cohesion: 0.05
 Nodes (37): 1. Environment Setup, 2. Deploy to Localhost, 3. Deploy to Testnet, 4. Deploy to Production, code:bash (./scripts/deployment/deploy.sh [environment] [options]), code:bash (./scripts/deployment/setup-external-vaults.sh \), code:bash (# Error: Anvil is not running on http://localhost:8545), code:bash (# Error: No environment file found) (+29 more)
 
 ### Community 74 - "Community 74"
-Cohesion: 0.09
-Nodes (15): { ethers }, { expect }, time, { envSetup, shouldBehaveLikeVesting }, { ethers }, { expect }, { loadFixture }, { min } (+7 more)
+Cohesion: 0.07
+Nodes (23): { ethers }, { expect }, time, { envSetup, shouldBehaveLikeVesting }, { ethers }, { expect }, { loadFixture }, { min } (+15 more)
 
 ### Community 75 - "Community 75"
 Cohesion: 0.05
@@ -2573,8 +2572,8 @@ Cohesion: 0.06
 Nodes (20): AMOUNTS, { ethers }, { expect }, { loadFixture }, MODES, { shouldBehaveLikeVotes }, { sum }, time (+12 more)
 
 ### Community 78 - "Community 78"
-Cohesion: 0.05
-Nodes (24): { ethers }, { expect }, fractional, { GovernorHelper }, { loadFixture }, params, steps, { sum } (+16 more)
+Cohesion: 0.06
+Nodes (20): AMOUNTS, { ethers }, { expect }, { loadFixture, mine }, MODES, { shouldBehaveLikeVotes }, { sum }, time (+12 more)
 
 ### Community 79 - "Community 79"
 Cohesion: 0.05
@@ -2582,7 +2581,7 @@ Nodes (36): code:solidity (uint256 public constant UPGRADE_DELAY = 48 hours), co
 
 ### Community 80 - "Community 80"
 Cohesion: 0.06
-Nodes (23): cosmos, AMOUNTS, { ethers }, { expect }, { loadFixture, mine }, MODES, { shouldBehaveLikeVotes }, { sum } (+15 more)
+Nodes (25): cosmos, { anyValue }, deployToken(), { ethers }, { expect }, fixture(), { GovernorHelper }, iterate (+17 more)
 
 ### Community 81 - "Community 81"
 Cohesion: 0.06
@@ -2725,16 +2724,16 @@ Cohesion: 0.09
 Nodes (15): { ethers }, { expect }, time, { envSetup, shouldBehaveLikeVesting }, { ethers }, { expect }, { loadFixture }, { min } (+7 more)
 
 ### Community 105 - "Community 105"
-Cohesion: 0.07
-Nodes (23): { ethers }, { expect }, time, { envSetup, shouldBehaveLikeVesting }, { ethers }, { expect }, { loadFixture }, { min } (+15 more)
+Cohesion: 0.09
+Nodes (15): { ethers }, { expect }, time, { envSetup, shouldBehaveLikeVesting }, { ethers }, { expect }, { loadFixture }, { min } (+7 more)
 
 ### Community 106 - "Community 106"
 Cohesion: 0.06
 Nodes (30): code:block1 (smart-contracts/), code:bash (# Clone the repository), code:bash (cd quantillon-protocol), code:bash (cd quantillon-protocol), code:bash (cd quantillon-protocol), code:bash (# Code Quality & Analysis), Contract Documentation, 🤝 Contributing (+22 more)
 
 ### Community 107 - "Community 107"
-Cohesion: 0.07
-Nodes (20): { ethers, entrypoint }, { ethers, entrypoint }, { ERC4337Helper }, { getDomain }, { loadFixture }, { PackedUserOperation }, { shouldBehaveLikeAccountCore, shouldBehaveLikeAccountHolder }, { shouldBehaveLikeERC1271 } (+12 more)
+Cohesion: 0.18
+Nodes (9): { ethers, entrypoint }, { ERC4337Helper }, { getDomain }, { loadFixture }, { NonNativeSigner, P256SigningKey }, { PackedUserOperation }, { shouldBehaveLikeAccountCore, shouldBehaveLikeAccountHolder }, { shouldBehaveLikeERC1271 } (+1 more)
 
 ### Community 108 - "Community 108"
 Cohesion: 0.07
@@ -2757,8 +2756,8 @@ Cohesion: 0.07
 Nodes (18): { ethers }, { expect }, { getDomain, Ballot, ExtendedBallot }, { GovernorHelper }, { loadFixture }, { shouldBehaveLikeNoncesKeyed }, tokenSupply, value (+10 more)
 
 ### Community 113 - "Community 113"
-Cohesion: 0.07
-Nodes (24): { ethers }, { expect }, { getDomain, Delegation }, { mine }, { shouldBehaveLikeERC6372 }, time, { batchInBlock }, { ethers } (+16 more)
+Cohesion: 0.05
+Nodes (33): { expect }, time, { ethers }, { expect }, { getDomain, Delegation }, { mine }, { shouldBehaveLikeERC6372 }, time (+25 more)
 
 ### Community 114 - "Community 114"
 Cohesion: 0.07
@@ -2837,12 +2836,12 @@ Cohesion: 0.10
 Nodes (18): deployToken(), { ethers }, { expect }, fixture(), { getDomain, Ballot }, { GovernorHelper }, { loadFixture }, { ProposalState, VoteType } (+10 more)
 
 ### Community 133 - "Community 133"
-Cohesion: 0.08
-Nodes (20): deployToken(), { ethers }, { expect }, fixture(), { getDomain, Ballot }, { GovernorHelper }, { loadFixture }, { ProposalState, VoteType } (+12 more)
+Cohesion: 0.10
+Nodes (18): deployToken(), { ethers }, { expect }, fixture(), { getDomain, Ballot }, { GovernorHelper }, { loadFixture }, { ProposalState, VoteType } (+10 more)
 
 ### Community 134 - "Community 134"
-Cohesion: 0.09
-Nodes (25): default, CommonBase, IERC1155Errors, IERC20Errors, IERC721Errors, ScriptBase, TestBase, 0.8.24 (+17 more)
+Cohesion: 0.07
+Nodes (33): default, CommonBase, IERC1155Errors, IERC20Errors, IERC721Errors, ScriptBase, TestBase, 0.8.24 (+25 more)
 
 ### Community 135 - "Community 135"
 Cohesion: 0.25
@@ -2873,8 +2872,8 @@ Cohesion: 0.10
 Nodes (18): erc1967Slot(), erc7201format(), erc7201Slot(), { ethers }, getAddressInSlot(), getSlot(), { setStorageAt }, upgradeableSlot() (+10 more)
 
 ### Community 142 - "Community 142"
-Cohesion: 0.08
-Nodes (18): AMOUNTS, { ethers }, { expect }, { loadFixture }, MODES, { shouldBehaveLikeVotes }, { sum }, time (+10 more)
+Cohesion: 0.11
+Nodes (15): { expect }, { mine }, { network }, { unique }, { batchInBlock }, { ethers }, { expect }, { getDomain, Delegation } (+7 more)
 
 ### Community 143 - "Community 143"
 Cohesion: 0.08
@@ -2937,8 +2936,8 @@ Cohesion: 0.09
 Nodes (22): `addMargin(uint256 positionId, uint256 usdcAmount)`, `applySingleHedgerRotation()`, `claimHedgingRewards() → (uint256, uint256, uint256)`, code:solidity (function exitHedgePosition(uint256 positionId) external retu), code:solidity (function addMargin(uint256 positionId, uint256 usdcAmount) e), code:solidity (function removeMargin(uint256 positionId, uint256 usdcAmount), code:solidity (function claimHedgingRewards() external returns (uint256 int), code:solidity (function withdrawPendingRewards(address recipient) external) (+14 more)
 
 ### Community 158 - "Community 158"
-Cohesion: 0.09
-Nodes (23): code:solidity (uint256 public totalMargin), code:solidity (address public feeCollector), code:solidity (uint256 public constant MAX_REWARD_FEE_SPLIT = 1e18), code:solidity (uint256 public singleHedgerPendingAt), code:solidity (mapping(address => HedgerRewardState) private hedgerRewards), code:solidity (uint256 public constant MAX_ENTRY_PRICE = MAX_UINT96_VALUE), code:solidity (uint256 public constant DEFAULT_MIN_MARGIN_RATIO_BPS = 500), code:solidity (uint128 public constant MAX_UINT128_VALUE = type(uint128).ma) (+15 more)
+Cohesion: 0.03
+Nodes (65): code:solidity (bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNA), code:solidity (uint256 public totalMargin), code:solidity (uint256 public totalExposure), code:solidity (uint256 public totalFilledExposure), code:solidity (address public singleHedger), code:solidity (uint256 public minPositionHoldBlocks = 5), code:solidity (mapping(address => uint256) public pendingRewardWithdrawals), code:solidity (address public feeCollector) (+57 more)
 
 ### Community 159 - "Community 159"
 Cohesion: 0.09
@@ -2965,8 +2964,8 @@ Cohesion: 0.17
 Nodes (10): { ethers, predeploy }, { expect }, expected, { loadFixture }, { MAX_UINT48 }, { packValidationData, UserOperation }, userOp, validationData (+2 more)
 
 ### Community 166 - "Community 166"
-Cohesion: 0.20
-Nodes (8): domain, { domainSeparator, hashTypedData }, { ethers }, { expect }, expectedHash, { loadFixture }, message, structhash
+Cohesion: 0.15
+Nodes (10): { ethers }, { expect }, { getDomain, OverrideBallot }, { GovernorHelper }, { loadFixture, mine }, TOKENS, tokenSupply, value (+2 more)
 
 ### Community 169 - "Community 169"
 Cohesion: 0.09
@@ -3021,8 +3020,8 @@ Cohesion: 0.10
 Nodes (11): { capitalize, mapValues }, MAP_TYPES, SET_TYPES, toMapTypeDescr(), toSetTypeDescr(), format, { fromBytes32, toBytes32 }, { MAP_TYPES } (+3 more)
 
 ### Community 182 - "Community 182"
-Cohesion: 0.09
-Nodes (16): calldata, delay, { ethers }, { expect }, fn, fnRestricted, { impersonate }, isConsumingScheduledOp (+8 more)
+Cohesion: 0.17
+Nodes (10): calldata, delay, { ethers }, { expect }, fn, fnRestricted, { impersonate }, isConsumingScheduledOp (+2 more)
 
 ### Community 183 - "Community 183"
 Cohesion: 0.09
@@ -3069,8 +3068,8 @@ Cohesion: 0.10
 Nodes (13): format, { OPTS }, VALUE_SIZES, { capitalize }, format, { OPTS }, allCheckpoints, { ethers } (+5 more)
 
 ### Community 194 - "Community 194"
-Cohesion: 0.05
-Nodes (33): { expect }, time, { ethers }, { expect }, { getDomain, Delegation }, { mine }, { shouldBehaveLikeERC6372 }, time (+25 more)
+Cohesion: 0.10
+Nodes (15): { expect }, time, { ethers }, { expect }, { getDomain, Delegation }, { mine }, { shouldBehaveLikeERC6372 }, time (+7 more)
 
 ### Community 195 - "Community 195"
 Cohesion: 0.10
@@ -3093,8 +3092,8 @@ Cohesion: 0.10
 Nodes (19): defaultWeights, { ERC4337Helper }, { ethers, predeploy }, { expect }, { getDomain }, { loadFixture }, { MAX_UINT64 }, { NonNativeSigner, P256SigningKey, RSASHA256SigningKey, MultiERC7913SigningKey } (+11 more)
 
 ### Community 200 - "Community 200"
-Cohesion: 0.10
-Nodes (16): { ethers }, generators, { ethers }, { expect }, { generators }, { loadFixture }, otherSlot, slot (+8 more)
+Cohesion: 0.08
+Nodes (19): { ethers }, generators, { ethers }, { expect }, { generators }, { loadFixture }, otherSlot, slot (+11 more)
 
 ### Community 201 - "Community 201"
 Cohesion: 0.10
@@ -3105,8 +3104,8 @@ Cohesion: 0.10
 Nodes (19): defaultWeights, { ERC4337Helper }, { ethers, predeploy }, { expect }, { getDomain }, { loadFixture }, { MAX_UINT64 }, { NonNativeSigner, P256SigningKey, RSASHA256SigningKey, MultiERC7913SigningKey } (+11 more)
 
 ### Community 203 - "Community 203"
-Cohesion: 0.10
-Nodes (16): { ethers }, generators, { ethers }, { expect }, { generators }, { loadFixture }, otherSlot, slot (+8 more)
+Cohesion: 0.22
+Nodes (7): { ethers }, { expect }, { generators }, { loadFixture }, otherSlot, slot, TYPES
 
 ### Community 204 - "Community 204"
 Cohesion: 0.10
@@ -3153,8 +3152,8 @@ Cohesion: 0.10
 Nodes (12): { ethers }, { expect }, OTHER_ROLE, ROLE, { shouldSupportInterfaces }, time, { DEFAULT_ADMIN_ROLE, shouldBehaveLikeAccessControl }, { ethers } (+4 more)
 
 ### Community 215 - "Community 215"
-Cohesion: 0.11
-Nodes (13): { ethers, predeploy }, { expect }, { impersonate }, { shouldSupportInterfaces }, { SIG_VALIDATION_SUCCESS, SIG_VALIDATION_FAILURE }, { ERC4337Helper }, { ethers, predeploy }, { getDomain } (+5 more)
+Cohesion: 0.06
+Nodes (23): { ERC4337Helper }, { ethers, predeploy }, { getDomain }, { loadFixture }, { PackedUserOperation }, { shouldBehaveLikeAccountCore, shouldBehaveLikeAccountHolder }, { shouldBehaveLikeERC1271 }, { shouldBehaveLikeERC7821 } (+15 more)
 
 ### Community 216 - "Community 216"
 Cohesion: 0.10
@@ -3233,8 +3232,10 @@ Cohesion: 0.14
 Nodes (6): ERC4337Utils, ERC7739Signer, { ethers }, { formatType }, PersonalSign, TypedDataSign()
 
 ### Community 235 - "Community 235"
-Cohesion: 0.11
-Nodes (15): { expect }, { mine }, { network }, { unique }, { batchInBlock }, { ethers }, { expect }, { getDomain, Delegation } (+7 more)
+Cohesion: 0.10
+Nodes (17): {
+  argv: { pattern, skipPatterns, verbose, concurrency, _: artifacts },
+}, { compile }, getContractsMetadata, { hideBin }, limit, semver, yargs, entries (+9 more)
 
 ### Community 236 - "Community 236"
 Cohesion: 0.13
@@ -3253,8 +3254,8 @@ Cohesion: 0.13
 Nodes (11): { argv }, average(), chalk, formatCellMarkdown(), formatCellShell(), fs, { hideBin }, plusSign() (+3 more)
 
 ### Community 240 - "Community 240"
-Cohesion: 0.11
-Nodes (9): format, { product }, sanitize, { SIZES }, format, { product }, { SIZES }, iterate (+1 more)
+Cohesion: 0.13
+Nodes (7): format, { product }, sanitize, { SIZES }, format, sanitize, { TYPES }
 
 ### Community 241 - "Community 241"
 Cohesion: 0.14
@@ -3273,12 +3274,14 @@ Cohesion: 0.11
 Nodes (17): ChainlinkOracle, FeeCollector, HedgerPool, MockEURUSD, MockUSDC, MockUSDCUSD, OracleRouter, QEUROToken (+9 more)
 
 ### Community 245 - "Community 245"
-Cohesion: 0.11
-Nodes (13): { ethers, entrypoint }, { ethers, entrypoint }, { expect }, { impersonate }, { shouldSupportInterfaces }, { SIG_VALIDATION_SUCCESS, SIG_VALIDATION_FAILURE }, { ERC4337Helper }, { getDomain } (+5 more)
+Cohesion: 0.10
+Nodes (17): {
+  argv: { pattern, skipPatterns, verbose, concurrency, _: artifacts },
+}, { compile }, getContractsMetadata, { hideBin }, limit, semver, yargs, entries (+9 more)
 
 ### Community 246 - "Community 246"
 Cohesion: 0.11
-Nodes (18): files, lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol, _format, artifacts, contentHash, imports, interfaceReprHash, lastModificationDate (+10 more)
+Nodes (18): files, lib/forge-std/src/console2.sol, _format, artifacts, contentHash, imports, interfaceReprHash, lastModificationDate (+10 more)
 
 ### Community 247 - "Community 247"
 Cohesion: 0.11
@@ -3353,8 +3356,8 @@ Cohesion: 0.11
 Nodes (13): { ethers, predeploy }, { expect }, { impersonate }, { shouldSupportInterfaces }, { SIG_VALIDATION_SUCCESS, SIG_VALIDATION_FAILURE }, { ERC4337Helper }, { ethers, predeploy }, { getDomain } (+5 more)
 
 ### Community 265 - "Community 265"
-Cohesion: 0.11
-Nodes (14): { artifacts, ethers }, { generators }, { setCode }, { ethers }, { expect }, { forceDeployCode }, { loadFixture }, outer (+6 more)
+Cohesion: 0.10
+Nodes (14): format, { product }, { SIZES }, { ethers }, { expect }, { forceDeployCode }, { loadFixture }, outer (+6 more)
 
 ### Community 266 - "Community 266"
 Cohesion: 0.16
@@ -3443,8 +3446,8 @@ Nodes (12): {
 }, coder, data, entries, { ethers }, { expect }, { loadFixture }, payload (+4 more)
 
 ### Community 285 - "Community 285"
-Cohesion: 0.12
-Nodes (15): action, { anyValue }, defaultDelay, { ethers }, { expect }, { GovernorHelper }, { id }, { loadFixture } (+7 more)
+Cohesion: 0.05
+Nodes (30): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, TOKENS, value, { VoteType }, { ethers } (+22 more)
 
 ### Community 286 - "Community 286"
 Cohesion: 0.12
@@ -3575,8 +3578,8 @@ Cohesion: 0.12
 Nodes (14): appSeparator, contentsHash, details, domainBytes, encoded, { ERC4337Utils, PersonalSign }, { ethers }, { expect } (+6 more)
 
 ### Community 313 - "Community 313"
-Cohesion: 0.12
-Nodes (14): appSeparator, contentsHash, details, domainBytes, encoded, { ERC4337Utils, PersonalSign }, { ethers }, { expect } (+6 more)
+Cohesion: 0.11
+Nodes (15): { expect }, { mine }, { network }, { unique }, { batchInBlock }, { ethers }, { expect }, { getDomain, Delegation } (+7 more)
 
 ### Community 314 - "Community 314"
 Cohesion: 0.12
@@ -3831,8 +3834,8 @@ Cohesion: 0.15
 Nodes (13): AaveVault, `autoRebalance() → (bool, uint256, uint256)`, code:solidity (event USDCDepositedToAave(uint256 amount);), `deployToAave(uint256 usdcAmount)`, Events, Functions, `getAaveAPY() → (uint256)`, `getAaveBalance() → (uint256)` (+5 more)
 
 ### Community 377 - "Community 377"
-Cohesion: 0.12
-Nodes (16): `addMargin(uint256 positionId, uint256 usdcAmount)`, `applySingleHedgerRotation()`, `claimHedgingRewards() → (uint256, uint256, uint256)`, code:solidity (event HedgePositionOpened(address indexed hedger, uint256 in), `configureDependencies((...))`, `configureRiskAndFees((...))`, `enterHedgePosition(uint256 usdcAmount, uint256 leverage) → (uint256)`, Events (+8 more)
+Cohesion: 0.15
+Nodes (13): `addMargin(uint256 positionId, uint256 usdcAmount)`, `applySingleHedgerRotation()`, `claimHedgingRewards() → (uint256, uint256, uint256)`, `configureDependencies((...))`, `configureRiskAndFees((...))`, `enterHedgePosition(uint256 usdcAmount, uint256 leverage) → (uint256)`, `exitHedgePosition(uint256 positionId) → (int256)`, Functions (+5 more)
 
 ### Community 378 - "Community 378"
 Cohesion: 0.15
@@ -3843,8 +3846,8 @@ Cohesion: 0.15
 Nodes (13): code:solidity (event VaultRegistered(uint256 indexed vaultId, address index), Events, Functions, `getStQEUROByVault(address vault) -> (address)`, `getStQEUROByVaultId(uint256 vaultId) -> (address)`, `getVaultById(uint256 vaultId) -> (address)`, `getVaultIdByStQEURO(address stQEUROToken) -> (uint256)`, `getVaultName(uint256 vaultId) -> (string)` (+5 more)
 
 ### Community 380 - "Community 380"
-Cohesion: 0.15
-Nodes (12): _accrueAndExtractInterestRewards, code:solidity (function _accrueAndExtractInterestRewards(address hedger, He), code:solidity (function recover(address token, uint256 amount) external;), code:solidity (function setSingleHedger(address hedger) external;), code:solidity (function _getValidOraclePrice() internal returns (uint256);), code:solidity (function _decreaseFilledVolume(uint256 usdcAmount, uint256 r), _decreaseFilledVolume, _finalizePosition (+4 more)
+Cohesion: 0.03
+Nodes (56): _accrueAndExtractInterestRewards, addMargin, _applyFillChange, code:solidity (modifier onlyVault() ;), code:solidity (function _onlySelf() internal view;), code:solidity (function _onlyVault() internal view;), code:solidity (constructor(TimeProvider _TIME_PROVIDER) ;), code:solidity (function _exitHedgePositionCommit(address hedger, uint256 po) (+48 more)
 
 ### Community 381 - "Community 381"
 Cohesion: 0.15
@@ -3935,16 +3938,16 @@ Cohesion: 0.15
 Nodes (12): code:bash ($ curl -L https://foundry.paradigm.xyz | bash), code:bash ($ cd /path/to/your-erc4626-vault), code:solidity (// SPDX-License-Identifier: AGPL-3.0), code:block4 ($ forge test), Disclaimer, ERC4626 Property Tests, Examples, Overview (+4 more)
 
 ### Community 403 - "Community 403"
-Cohesion: 0.06
-Nodes (23): { ERC4337Helper }, { ethers, predeploy }, { getDomain }, { loadFixture }, { PackedUserOperation }, { shouldBehaveLikeAccountCore, shouldBehaveLikeAccountHolder }, { shouldBehaveLikeERC1271 }, { shouldBehaveLikeERC7821 } (+15 more)
+Cohesion: 0.11
+Nodes (13): { ethers, predeploy }, { expect }, { impersonate }, { shouldSupportInterfaces }, { SIG_VALIDATION_SUCCESS, SIG_VALIDATION_FAILURE }, { ERC4337Helper }, { ethers, predeploy }, { getDomain } (+5 more)
 
 ### Community 404 - "Community 404"
 Cohesion: 0.15
 Nodes (11): { ERC4337Helper }, { ethers, predeploy }, { getDomain }, { loadFixture }, { NonNativeSigner, P256SigningKey, WebAuthnSigningKey }, p256Signer, { PackedUserOperation }, { shouldBehaveLikeAccountCore, shouldBehaveLikeAccountHolder } (+3 more)
 
 ### Community 405 - "Community 405"
-Cohesion: 0.15
-Nodes (10): { ethers }, { expect }, { getDomain, OverrideBallot }, { GovernorHelper }, { loadFixture, mine }, TOKENS, tokenSupply, value (+2 more)
+Cohesion: 0.11
+Nodes (13): { ethers, entrypoint }, { ethers, entrypoint }, { expect }, { impersonate }, { shouldSupportInterfaces }, { SIG_VALIDATION_SUCCESS, SIG_VALIDATION_FAILURE }, { ERC4337Helper }, { getDomain } (+5 more)
 
 ### Community 406 - "Community 406"
 Cohesion: 0.11
@@ -3968,7 +3971,7 @@ Nodes (11): { ERC4337Helper }, { ethers, predeploy }, { getDomain }, { loadFixtu
 
 ### Community 411 - "Community 411"
 Cohesion: 0.12
-Nodes (14): { ethers }, { expect }, fractional, { GovernorHelper }, { loadFixture }, params, steps, { sum } (+6 more)
+Nodes (15): action, { anyValue }, defaultDelay, { ethers }, { expect }, { GovernorHelper }, { id }, { loadFixture } (+7 more)
 
 ### Community 412 - "Community 412"
 Cohesion: 0.17
@@ -3979,8 +3982,8 @@ Cohesion: 0.15
 Nodes (9): { ethers }, { loadFixture }, { shouldSupportInterfaces }, { expect }, GOVERNOR_INTERFACE, INTERFACE_IDS, { interfaceId }, { mapValues } (+1 more)
 
 ### Community 414 - "Community 414"
-Cohesion: 0.15
-Nodes (8): { ethers }, { expect }, { ethers }, { generators }, { loadFixture }, { MAP_TYPES, typeDescr, toMapTypeDescr }, { mapValues }, { shouldBehaveLikeMap }
+Cohesion: 0.10
+Nodes (12): { ethers }, { expect }, { loadFixture }, { range }, { ethers }, { expect }, { ethers }, { generators } (+4 more)
 
 ### Community 415 - "Community 415"
 Cohesion: 0.15
@@ -4051,12 +4054,12 @@ Cohesion: 0.17
 Nodes (10): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, { ProposalState, VoteType }, quorum, time, TOKENS (+2 more)
 
 ### Community 432 - "Community 432"
-Cohesion: 0.17
-Nodes (12): { anyValue }, deployToken(), { ethers }, { expect }, fixture(), { GovernorHelper }, iterate, { loadFixture } (+4 more)
+Cohesion: 0.12
+Nodes (14): { ethers }, { expect }, fractional, { GovernorHelper }, { loadFixture }, params, steps, { sum } (+6 more)
 
 ### Community 433 - "Community 433"
-Cohesion: 0.15
-Nodes (11): data, { ethers }, { expect }, { getDomain, ExtendedBallot }, { GovernorHelper }, { loadFixture }, params, TOKENS (+3 more)
+Cohesion: 0.33
+Nodes (6): circuitBreakerTriggered, code:solidity (uint256 public lastPriceUpdateBlock), code:solidity (bool public circuitBreakerTriggered), code:solidity (uint256 public usdcToleranceBps), devModeEnabled, usdcToleranceBps
 
 ### Community 434 - "Community 434"
 Cohesion: 0.20
@@ -4095,8 +4098,8 @@ Cohesion: 0.17
 Nodes (10): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, { ProposalState, VoteType }, quorum, time, TOKENS (+2 more)
 
 ### Community 443 - "Community 443"
-Cohesion: 0.17
-Nodes (10): dropped, { ethers }, { expect }, { generators }, { loadFixture }, { PANIC_CODES }, pushed, stored (+2 more)
+Cohesion: 0.15
+Nodes (9): { ethers, entrypoint }, { ERC4337Helper }, { getDomain }, { loadFixture }, { PackedUserOperation }, { shouldBehaveLikeAccountCore, shouldBehaveLikeAccountHolder }, { shouldBehaveLikeERC1271 }, { shouldBehaveLikeERC7821 } (+1 more)
 
 ### Community 444 - "Community 444"
 Cohesion: 0.17
@@ -4115,8 +4118,8 @@ Cohesion: 0.17
 Nodes (10): addresses, { ethers }, { expect }, input, { loadFixture }, { PANIC_CODES }, str1, str2 (+2 more)
 
 ### Community 448 - "Community 448"
-Cohesion: 0.17
-Nodes (10): AMOUNTS, { ethers }, { expect }, { loadFixture, mine }, MODES, { shouldBehaveLikeVotes }, { sum }, time (+2 more)
+Cohesion: 0.11
+Nodes (8): format, LENGTHS, { range }, { capitalize }, format, { TYPES }, iterate, strings
 
 ### Community 449 - "Community 449"
 Cohesion: 0.17
@@ -4151,8 +4154,8 @@ Cohesion: 0.17
 Nodes (10): addresses, { ethers }, { expect }, input, { loadFixture }, { PANIC_CODES }, str1, str2 (+2 more)
 
 ### Community 457 - "Community 457"
-Cohesion: 0.17
-Nodes (10): dropped, { ethers }, { expect }, { generators }, { loadFixture }, { PANIC_CODES }, pushed, stored (+2 more)
+Cohesion: 0.10
+Nodes (15): { artifacts, ethers }, { generators }, { setCode }, { ethers }, generators, dropped, { ethers }, { expect } (+7 more)
 
 ### Community 458 - "Community 458"
 Cohesion: 0.17
@@ -4324,7 +4327,7 @@ Nodes (11): 1. Always Validate Inputs, 2. Use Slippage Protection, 3. Check Cont
 
 ### Community 500 - "Community 500"
 Cohesion: 0.18
-Nodes (10): Bug Bounty Program, code:mermaid (graph TB), Multi-Layer Security Model, Overview, Primary Contacts, Program Details, Quantillon Protocol Security Guide, Security Architecture (+2 more)
+Nodes (10): code:mermaid (graph TB), Multi-Layer Security Model, Overview, Primary Contacts, Quantillon Protocol Security Guide, Real-Time Monitoring, Security Architecture, Security Contacts (+2 more)
 
 ### Community 501 - "Community 501"
 Cohesion: 0.18
@@ -4404,11 +4407,11 @@ Nodes (9): { ERC4337Helper }, { ethers, predeploy }, { getDomain }, { loadFixtur
 
 ### Community 520 - "Community 520"
 Cohesion: 0.18
-Nodes (9): { ethers }, { expect }, { GovernorHelper }, { impersonate }, { loadFixture }, { ProposalState }, TOKENS, tokenSupply (+1 more)
+Nodes (9): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, { ProposalState, VoteType }, time, TOKENS, tokenSupply (+1 more)
 
 ### Community 521 - "Community 521"
-Cohesion: 0.18
-Nodes (9): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, { ProposalState, VoteType }, time, TOKENS, tokenSupply (+1 more)
+Cohesion: 0.15
+Nodes (11): data, { ethers }, { expect }, { getDomain, ExtendedBallot }, { GovernorHelper }, { loadFixture }, params, TOKENS (+3 more)
 
 ### Community 522 - "Community 522"
 Cohesion: 0.18
@@ -4439,8 +4442,8 @@ Cohesion: 0.18
 Nodes (9): current, files, fs, gitStatus, proc, semver, [tag], updated (+1 more)
 
 ### Community 529 - "Community 529"
-Cohesion: 0.18
-Nodes (7): { ethers }, { expect }, { loadFixture }, { MAX_UINT32, MAX_UINT64 }, { ethers }, { expect }, { MAX_UINT64 }
+Cohesion: 0.12
+Nodes (14): appSeparator, contentsHash, details, domainBytes, encoded, { ERC4337Utils, PersonalSign }, { ethers }, { expect } (+6 more)
 
 ### Community 530 - "Community 530"
 Cohesion: 0.18
@@ -4483,8 +4486,8 @@ Cohesion: 0.20
 Nodes (9): ensureLowerOrderS(), { ethers }, { expect }, { loadFixture }, messageHash, prepareSignature(), [r, s], { secp256r1 } (+1 more)
 
 ### Community 540 - "Community 540"
-Cohesion: 0.18
-Nodes (11): code:solidity (uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18), code:solidity (mapping(uint256 => uint256) private principalUsdcByVaultId), code:solidity (bytes32 public constant VAULT_OPERATOR_ROLE = keccak256("VAU), code:solidity (bool public devModeEnabled), code:solidity (uint256 private constant CRITICAL_COLLATERALIZATION_RATIO_BP), CRITICAL_COLLATERALIZATION_RATIO_BPS, devModeEnabled, MIN_ALLOWED_CRITICAL_RATIO (+3 more)
+Cohesion: 0.05
+Nodes (37): code:solidity (bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNA), code:solidity (uint256 private constant MIN_ALLOWED_CRITICAL_RATIO = 100e18), code:solidity (IOracle public oracle), code:solidity (address public treasury), code:solidity (uint256 public defaultStakingVaultId), code:solidity (bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENC), code:solidity (uint256 public totalUsdcInExternalVaults), code:solidity (mapping(uint256 => address) public stQEUROTokenByVaultId) (+29 more)
 
 ### Community 541 - "Community 541"
 Cohesion: 0.18
@@ -4511,8 +4514,8 @@ Cohesion: 0.20
 Nodes (10): `blacklistAddress(address account)`, `burn(uint256 amount)`, code:solidity (event TokensMinted(address indexed to, uint256 amount);), Events, Functions, `getTokenInfo() → (uint256, uint256, uint256, bool, bool)`, `mint(address to, uint256 amount)`, QEUROToken (+2 more)
 
 ### Community 547 - "Community 547"
-Cohesion: 0.14
-Nodes (14): code:solidity (event QEUROminted(address indexed user, uint256 usdcAmount, ), code:solidity (event TokensLocked(address indexed user, uint256 amount, uin), Core Contracts, `createProposal(string memory description, uint256 startTime, uint256 endTime) → (uint256)`, Events, Events, Functions, `getLockInfo(address user) → (uint256, uint256, uint256, uint256)` (+6 more)
+Cohesion: 0.20
+Nodes (10): code:solidity (event TokensLocked(address indexed user, uint256 amount, uin), `createProposal(string memory description, uint256 startTime, uint256 endTime) → (uint256)`, Events, Functions, `getLockInfo(address user) → (uint256, uint256, uint256, uint256)`, `getVotingPower(address user) → (uint256)`, `lock(uint256 amount, uint256 lockTime) → (uint256)`, QTIToken (+2 more)
 
 ### Community 548 - "Community 548"
 Cohesion: 0.20
@@ -4579,8 +4582,8 @@ Cohesion: 0.20
 Nodes (7): data, data1, data2, { ethers }, { expect }, { getAddressInSlot, BeaconSlot }, { loadFixture }
 
 ### Community 564 - "Community 564"
-Cohesion: 0.20
-Nodes (8): domain, { domainSeparator, hashTypedData }, { ethers }, { expect }, expectedHash, { loadFixture }, message, structhash
+Cohesion: 0.09
+Nodes (15): { ethers }, types, { ethers }, { expect }, { getDomain, domainSeparator, Permit }, { loadFixture }, time, domain (+7 more)
 
 ### Community 565 - "Community 565"
 Cohesion: 0.22
@@ -4611,8 +4614,8 @@ Cohesion: 0.18
 Nodes (11): ERC20, 0.8.24, lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol, artifacts, contentHash, imports, interfaceReprHash, lastModificationDate (+3 more)
 
 ### Community 572 - "Community 572"
-Cohesion: 0.18
-Nodes (9): { ethers }, { expect }, { GovernorHelper }, { loadFixture, mine }, { ProposalState, VoteType }, time, TOKENS, tokenSupply (+1 more)
+Cohesion: 0.12
+Nodes (14): { ethers }, { expect }, fractional, { GovernorHelper }, { loadFixture }, params, steps, { sum } (+6 more)
 
 ### Community 573 - "Community 573"
 Cohesion: 0.18
@@ -4855,8 +4858,8 @@ Cohesion: 0.22
 Nodes (7): { ethers }, { expect }, index, { loadFixture }, lorem, present, result
 
 ### Community 634 - "Community 634"
-Cohesion: 0.22
-Nodes (7): { ethers }, { expect }, { loadFixture }, offChainComputed, { PANIC_CODES }, { RevertType }, saltHex
+Cohesion: 0.18
+Nodes (7): { ethers }, { expect }, { loadFixture }, { MAX_UINT32, MAX_UINT64 }, { ethers }, { expect }, { MAX_UINT64 }
 
 ### Community 635 - "Community 635"
 Cohesion: 0.22
@@ -4896,7 +4899,7 @@ Nodes (6): buffer, buffer31, buffer32, { ethers }, { expect }, { loadFixture }
 
 ### Community 644 - "Community 644"
 Cohesion: 0.22
-Nodes (9): lib/openzeppelin-contracts/contracts/interfaces/IERC165.sol, artifacts, contentHash, imports, interfaceReprHash, lastModificationDate, seenByCompiler, sourceName (+1 more)
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 645 - "Community 645"
 Cohesion: 0.22
@@ -4915,8 +4918,8 @@ Cohesion: 0.22
 Nodes (7): { ethers }, { expect }, { loadFixture }, offChainComputed, { PANIC_CODES }, { RevertType }, saltHex
 
 ### Community 649 - "Community 649"
-Cohesion: 0.22
-Nodes (7): base, { erc7201Slot }, { ethers }, { expect }, { generators }, { loadFixture }, offset
+Cohesion: 0.17
+Nodes (12): CircuitBreakerTriggered, code:solidity (function resetCircuitBreaker() external onlyRole(EMERGENCY_R), code:solidity (function pause() external onlyRole(EMERGENCY_ROLE);), code:solidity (function getUsdcUsdPrice() external view returns (uint256 pr), code:solidity (function updateUsdcTolerance(uint256 newToleranceBps) extern), code:solidity (function proposeDevMode(bool enabled) external onlyRole(DEFA), code:solidity (function setSequencerUptimeFeed(address feed, uint256 graceP), getUsdcUsdPrice (+4 more)
 
 ### Community 650 - "Community 650"
 Cohesion: 0.31
@@ -4987,32 +4990,24 @@ Cohesion: 0.32
 Nodes (7): cp, format, fs, generateFromTemplate(), getVersion(), needsLinter, path
 
 ### Community 668 - "Community 668"
-Cohesion: 0.25
-Nodes (6): { ethers }, { expect }, ids, { loadFixture }, { shouldSupportInterfaces }, values
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 669 - "Community 669"
-Cohesion: 0.29
-Nodes (7): deployReceiver(), { ethers }, { expect }, fixture(), { loadFixture }, { PANIC_CODES }, { RevertType }
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 670 - "Community 670"
-Cohesion: 0.25
-Nodes (6): { ethers }, { expect }, { loadFixture }, { PANIC_CODES }, {
-  shouldBehaveLikeERC20,
-  shouldBehaveLikeERC20Transfer,
-  shouldBehaveLikeERC20Approve,
-}, TOKENS
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 671 - "Community 671"
-Cohesion: 0.25
-Nodes (6): { ethers }, { expect }, { loadFixture }, { RevertType }, {
-  shouldBehaveLikeERC20,
-  shouldBehaveLikeERC20Transfer,
-  shouldBehaveLikeERC20Approve,
-}, { shouldSupportInterfaces }
+Cohesion: 0.22
+Nodes (9): lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol, artifacts, contentHash, imports, interfaceReprHash, lastModificationDate, seenByCompiler, sourceName (+1 more)
 
 ### Community 672 - "Community 672"
-Cohesion: 0.29
-Nodes (7): deployReceiver(), { ethers }, { expect }, fixture(), { loadFixture }, { PANIC_CODES }, { RevertType }
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 673 - "Community 673"
 Cohesion: 0.25
@@ -5063,8 +5058,8 @@ Nodes (6): { ethers }, { expect }, { loadFixture }, { RevertType }, {
 }, { shouldSupportInterfaces }
 
 ### Community 684 - "Community 684"
-Cohesion: 0.18
-Nodes (7): { ethers }, { expect }, { loadFixture }, { MAX_UINT32, MAX_UINT64 }, { ethers }, { expect }, { MAX_UINT64 }
+Cohesion: 0.17
+Nodes (10): AMOUNTS, { ethers }, { expect }, { loadFixture }, MODES, { shouldBehaveLikeVotes }, { sum }, time (+2 more)
 
 ### Community 685 - "Community 685"
 Cohesion: 0.25
@@ -5079,20 +5074,20 @@ Cohesion: 0.32
 Nodes (7): cp, format, fs, generateFromTemplate(), getVersion(), needsLinter, path
 
 ### Community 689 - "Community 689"
-Cohesion: 0.22
-Nodes (7): base, { erc7201Slot }, { ethers }, { expect }, { generators }, { loadFixture }, offset
+Cohesion: 0.17
+Nodes (10): AMOUNTS, { ethers }, { expect }, { loadFixture, mine }, MODES, { shouldBehaveLikeVotes }, { sum }, time (+2 more)
 
 ### Community 690 - "Community 690"
 Cohesion: 0.29
 Nodes (7): deployReceiver(), { ethers }, { expect }, fixture(), { loadFixture }, { PANIC_CODES }, { RevertType }
 
 ### Community 691 - "Community 691"
-Cohesion: 0.25
-Nodes (8): lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol, contentHash, imports, interfaceReprHash, lastModificationDate, seenByCompiler, sourceName, versionRequirement
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 692 - "Community 692"
-Cohesion: 0.33
-Nodes (4): { ethers }, { expect }, { getAddressInSlot, ImplementationSlot }, { loadFixture }
+Cohesion: 0.15
+Nodes (11): data, { ethers }, { expect }, { getDomain, ExtendedBallot }, { GovernorHelper }, { loadFixture }, params, TOKENS (+3 more)
 
 ### Community 693 - "Community 693"
 Cohesion: 0.29
@@ -5219,11 +5214,8 @@ Cohesion: 0.33
 Nodes (6): changelog, extractSection(), { join }, makeWordRegExp(), { readFileSync }, { version }
 
 ### Community 724 - "Community 724"
-Cohesion: 0.29
-Nodes (5): { ethers }, { expect }, { loadFixture }, {
-  shouldBehaveLikeAccessControl,
-  shouldBehaveLikeAccessControlDefaultAdminRules,
-}, time
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 725 - "Community 725"
 Cohesion: 0.29
@@ -5238,12 +5230,12 @@ Cohesion: 0.29
 Nodes (5): { ethers }, { expect }, ids, { loadFixture }, values
 
 ### Community 728 - "Community 728"
-Cohesion: 0.29
-Nodes (5): { ethers }, { expect }, { loadFixture }, { shouldBehaveLikeERC20 }, { shouldSupportInterfaces }
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 729 - "Community 729"
-Cohesion: 0.29
-Nodes (5): { ethers }, { expect }, { loadFixture }, { max, min }, { shouldBehaveLikeERC20 }
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 730 - "Community 730"
 Cohesion: 0.29
@@ -5297,28 +5289,28 @@ Cohesion: 0.29
 Nodes (5): { ethers }, { expect }, heap, { loadFixture }, { PANIC_CODES }
 
 ### Community 742 - "Community 742"
-Cohesion: 0.29
-Nodes (3): format, sanitize, { TYPES }
+Cohesion: 0.18
+Nodes (7): { ethers }, { expect }, { loadFixture }, { MAX_UINT32, MAX_UINT64 }, { ethers }, { expect }, { MAX_UINT64 }
 
 ### Community 743 - "Community 743"
 Cohesion: 0.33
 Nodes (6): changelog, extractSection(), { join }, makeWordRegExp(), { readFileSync }, { version }
 
 ### Community 744 - "Community 744"
-Cohesion: 0.29
-Nodes (5): { ethers }, { expect }, { getDomain, domainSeparator, Permit }, { loadFixture }, time
+Cohesion: 0.18
+Nodes (9): { ethers }, { expect }, { GovernorHelper }, { loadFixture }, { ProposalState, VoteType }, time, TOKENS, tokenSupply (+1 more)
 
 ### Community 745 - "Community 745"
 Cohesion: 0.29
 Nodes (5): { ethers }, { expect }, ids, { loadFixture }, values
 
 ### Community 746 - "Community 746"
-Cohesion: 0.29
-Nodes (3): format, sanitize, { TYPES }
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 747 - "Community 747"
-Cohesion: 0.29
-Nodes (5): { ethers }, { expect }, { getDomain, domainSeparator, Permit }, { loadFixture }, time
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 748 - "Community 748"
 Cohesion: 0.29
@@ -5440,12 +5432,12 @@ Cohesion: 0.33
 Nodes (4): data, { ethers }, { expect }, { loadFixture }
 
 ### Community 777 - "Community 777"
-Cohesion: 0.33
-Nodes (4): { ethers }, { expect }, { loadFixture }, { shouldSupportInterfaces }
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
 
 ### Community 778 - "Community 778"
-Cohesion: 0.33
-Nodes (4): { ethers }, { expect }, { loadFixture }, { shouldBehaveLikeERC721 }
+Cohesion: 0.22
+Nodes (7): { ethers }, { expect }, { generators }, { loadFixture }, otherSlot, slot, TYPES
 
 ### Community 779 - "Community 779"
 Cohesion: 0.33
@@ -5550,8 +5542,8 @@ Cohesion: 0.33
 Nodes (3): { ethers, config }, { expect }, { loadFixture }
 
 ### Community 803 - "Community 803"
-Cohesion: 0.33
-Nodes (4): { ethers }, { expect }, { getAddressInSlot, ImplementationSlot }, { loadFixture }
+Cohesion: 0.22
+Nodes (7): base, { erc7201Slot }, { ethers }, { expect }, { generators }, { loadFixture }, offset
 
 ### Community 804 - "Community 804"
 Cohesion: 0.33
@@ -5567,7 +5559,7 @@ Nodes (4): data, { ethers }, { expect }, { loadFixture }
 
 ### Community 807 - "Community 807"
 Cohesion: 0.67
-Nodes (3): Real-Time Monitoring, Security Dashboards, Security Monitoring
+Nodes (3): Bug Bounty Program, Program Details, Submission Process
 
 ### Community 809 - "Community 809"
 Cohesion: 0.33
@@ -6134,32 +6126,127 @@ Cohesion: 0.67
 Nodes (3): 4.4.1 (2021-12-14), Breaking change, code:diff (contract A {)
 
 ### Community 1026 - "Community 1026"
-Cohesion: 0.20
-Nodes (10): circuitBreakerTriggered, code:solidity (uint256 public lastValidEurUsdPrice), code:solidity (uint256 public lastPriceUpdateTime), code:solidity (uint256 public lastPriceUpdateBlock), code:solidity (bool public circuitBreakerTriggered), code:solidity (uint256 public usdcToleranceBps), devModeEnabled, lastPriceUpdateBlock (+2 more)
+Cohesion: 0.25
+Nodes (7): action, chainId, ChainlinkOracle, ChainlinkOracleCurrentImplementation, ChainlinkOracleNewImplementation, ChainlinkOracleOldImplementation, timestamp
 
 ### Community 1029 - "Community 1029"
 Cohesion: 0.18
 Nodes (11): code:solidity (bool public devModeEnabled), code:solidity (uint256 public constant DEV_MODE_DELAY = 48 hours), code:solidity (bool public pendingDevMode), code:solidity (uint256 public devModePendingAt), code:solidity (TimeProvider public immutable TIME_PROVIDER), code:solidity (constructor(TimeProvider _TIME_PROVIDER) ;), constructor, DEV_MODE_DELAY (+3 more)
 
+### Community 1030 - "Community 1030"
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
+
+### Community 1031 - "Community 1031"
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
+
+### Community 1032 - "Community 1032"
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
+
 ### Community 1034 - "Community 1034"
-Cohesion: 0.20
-Nodes (10): applyDevMode, code:solidity (function triggerCircuitBreaker() external onlyRole(EMERGENCY), code:solidity (function getEurUsdPrice() external view returns (uint256 pri), code:solidity (function updatePriceBounds(uint256 _minPrice, uint256 _maxPr), code:solidity (function updatePriceFeeds(address _eurUsdFeed, address _usdc), code:solidity (function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE), getEurUsdPrice, PriceUpdated (+2 more)
+Cohesion: 0.25
+Nodes (8): applyDevMode, code:solidity (function getEurUsdPrice() external view returns (uint256 pri), code:solidity (function updatePriceBounds(uint256 _minPrice, uint256 _maxPr), code:solidity (function updatePriceFeeds(address _eurUsdFeed, address _usdc), code:solidity (function applyDevMode() external onlyRole(DEFAULT_ADMIN_ROLE), PriceUpdated, updatePriceBounds, updatePriceFeeds
 
 ### Community 1036 - "Community 1036"
-Cohesion: 0.12
-Nodes (16): CircuitBreakerTriggered, code:solidity (function checkPriceFeedConnectivity()), code:solidity (function recoverToken(address token, uint256 amount) externa), code:solidity (function resetCircuitBreaker() external onlyRole(EMERGENCY_R), code:solidity (function pause() external onlyRole(EMERGENCY_ROLE);), code:solidity (function getUsdcUsdPrice() external view returns (uint256 pr), code:solidity (function updateUsdcTolerance(uint256 newToleranceBps) extern), code:solidity (function proposeDevMode(bool enabled) external onlyRole(DEFA) (+8 more)
+Cohesion: 0.20
+Nodes (8): domain, { domainSeparator, hashTypedData }, { ethers }, { expect }, expectedHash, { loadFixture }, message, structhash
+
+### Community 1288 - "Community 1288"
+Cohesion: 0.25
+Nodes (6): { ethers }, { expect }, ids, { loadFixture }, { shouldSupportInterfaces }, values
+
+### Community 1289 - "Community 1289"
+Cohesion: 0.29
+Nodes (7): deployReceiver(), { ethers }, { expect }, fixture(), { loadFixture }, { PANIC_CODES }, { RevertType }
 
 ### Community 1290 - "Community 1290"
 Cohesion: 0.22
 Nodes (9): SafeERC20, lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol, artifacts, contentHash, imports, interfaceReprHash, lastModificationDate, sourceName (+1 more)
 
 ### Community 1291 - "Community 1291"
-Cohesion: 0.22
-Nodes (9): lib/forge-std/src/console2.sol, artifacts, contentHash, imports, interfaceReprHash, lastModificationDate, seenByCompiler, sourceName (+1 more)
+Cohesion: 0.20
+Nodes (6): { ethers }, { impersonateAccount, setBalance }, { ethers, predeploy }, { expect }, { impersonate }, { loadFixture, mineUpTo, setCode }
 
 ### Community 1292 - "Community 1292"
 Cohesion: 0.22
 Nodes (7): { ethers }, { expect }, { loadFixture }, offChainComputed, { PANIC_CODES }, { RevertType }, saltHex
+
+### Community 1293 - "Community 1293"
+Cohesion: 0.25
+Nodes (6): { ethers }, { expect }, { loadFixture }, { PANIC_CODES }, {
+  shouldBehaveLikeERC20,
+  shouldBehaveLikeERC20Transfer,
+  shouldBehaveLikeERC20Approve,
+}, TOKENS
+
+### Community 1294 - "Community 1294"
+Cohesion: 0.25
+Nodes (6): { ethers }, { expect }, { loadFixture }, { RevertType }, {
+  shouldBehaveLikeERC20,
+  shouldBehaveLikeERC20Transfer,
+  shouldBehaveLikeERC20Approve,
+}, { shouldSupportInterfaces }
+
+### Community 1295 - "Community 1295"
+Cohesion: 0.29
+Nodes (7): deployReceiver(), { ethers }, { expect }, fixture(), { loadFixture }, { PANIC_CODES }, { RevertType }
+
+### Community 1296 - "Community 1296"
+Cohesion: 0.29
+Nodes (5): { ethers }, { expect }, { loadFixture }, {
+  shouldBehaveLikeAccessControl,
+  shouldBehaveLikeAccessControlDefaultAdminRules,
+}, time
+
+### Community 1297 - "Community 1297"
+Cohesion: 0.29
+Nodes (5): { ethers }, { expect }, { loadFixture }, { shouldBehaveLikeERC20 }, { shouldSupportInterfaces }
+
+### Community 1298 - "Community 1298"
+Cohesion: 0.29
+Nodes (5): { ethers }, { expect }, { loadFixture }, { max, min }, { shouldBehaveLikeERC20 }
+
+### Community 1300 - "Community 1300"
+Cohesion: 0.22
+Nodes (9): lib/openzeppelin-contracts/contracts/interfaces/IERC165.sol, artifacts, contentHash, imports, interfaceReprHash, lastModificationDate, seenByCompiler, sourceName (+1 more)
+
+### Community 1302 - "Community 1302"
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
+
+### Community 1303 - "Community 1303"
+Cohesion: 0.33
+Nodes (4): { ethers }, { expect }, { loadFixture }, { shouldSupportInterfaces }
+
+### Community 1304 - "Community 1304"
+Cohesion: 0.33
+Nodes (4): { ethers }, { expect }, { loadFixture }, { shouldBehaveLikeERC721 }
+
+### Community 1305 - "Community 1305"
+Cohesion: 0.22
+Nodes (8): chain, commit, libraries, pending, receipts, returns, timestamp, transactions
+
+### Community 1312 - "Community 1312"
+Cohesion: 0.22
+Nodes (7): base, { erc7201Slot }, { ethers }, { expect }, { generators }, { loadFixture }, offset
+
+### Community 1313 - "Community 1313"
+Cohesion: 0.22
+Nodes (7): { ethers }, { expect }, { generators }, { loadFixture }, otherSlot, slot, TYPES
+
+### Community 1315 - "Community 1315"
+Cohesion: 0.25
+Nodes (8): checkPriceFeedConnectivity, code:solidity (function getOracleHealth() external view returns (bool isHea), code:solidity (function getOracleConfig()), code:solidity (function checkPriceFeedConnectivity()), code:solidity (function recoverToken(address token, uint256 amount) externa), getOracleConfig, recoverToken, resetCircuitBreaker
+
+### Community 1317 - "Community 1317"
+Cohesion: 0.29
+Nodes (5): { ethers }, { expect }, { getDomain, domainSeparator, Permit }, { loadFixture }, time
+
+### Community 1318 - "Community 1318"
+Cohesion: 0.33
+Nodes (4): { ethers }, { expect }, { getAddressInSlot, ImplementationSlot }, { loadFixture }
 
 ### Community 1328 - "Community 1328"
 Cohesion: 0.29
@@ -6208,29 +6295,45 @@ Nodes (4): { ethers }, { expect }, { loadFixture }, { shouldSupportInterfaces }
 Cohesion: 0.33
 Nodes (4): { ethers }, { expect }, { loadFixture }, { shouldBehaveLikeERC721 }
 
+### Community 2809 - "Community 2809"
+Cohesion: 0.25
+Nodes (3): format, LENGTHS, { range }
+
+### Community 2810 - "Community 2810"
+Cohesion: 0.29
+Nodes (6): action, chainId, currentImplementation, implementation, timestamp, UserPool
+
+### Community 2811 - "Community 2811"
+Cohesion: 0.29
+Nodes (7): code:solidity (event QEUROminted(address indexed user, uint256 usdcAmount, ), code:solidity (event HedgePositionOpened(address indexed hedger, uint256 in), Core Contracts, Events, Events, HedgerPool, QuantillonVault
+
+### Community 2812 - "Community 2812"
+Cohesion: 0.33
+Nodes (4): { ethers }, { expect }, { getAddressInSlot, ImplementationSlot }, { loadFixture }
+
 ## Ambiguous Edges - Review These
 - `Fee Distribution 60/25/15 Split (Treasury/Dev/Community)` → `Interface Segregation Design`  [AMBIGUOUS]
   quantillon-protocol/docs/src/src/core/FeeCollector.sol/contract.FeeCollector.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **9357 isolated node(s):** `marked`, `filter_paths`, `exclude_informational`, `exclude_low`, `exclude_medium` (+9352 more)
+- **9524 isolated node(s):** `marked`, `filter_paths`, `exclude_informational`, `exclude_low`, `exclude_medium` (+9519 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **1294 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **1268 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `Fee Distribution 60/25/15 Split (Treasury/Dev/Community)` and `Interface Segregation Design`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `files` connect `Community 246` to `Community 644`, `Community 134`, `Community 1290`, `Community 1291`, `Community 691`, `Community 571`, `Community 597`, `Community 573`, `Community 580`, `Community 595`, `Community 468`, `Community 469`, `Community 470`, `Community 471`, `Community 472`, `Community 473`, `Community 474`, `Community 475`, `Community 476`, `Community 477`, `Community 478`, `Community 479`, `Community 480`, `Community 481`, `Community 482`, `Community 483`, `Community 484`, `Community 485`, `Community 486`, `Community 487`, `Community 488`, `Community 489`, `Community 490`, `Community 491`, `Community 492`, `Community 370`, `Community 371`, `Community 372`?**
+- **Why does `files` connect `Community 246` to `Community 134`, `Community 1290`, `Community 1300`, `Community 671`, `Community 571`, `Community 573`, `Community 580`, `Community 595`, `Community 468`, `Community 597`, `Community 469`, `Community 470`, `Community 471`, `Community 473`, `Community 474`, `Community 475`, `Community 476`, `Community 477`, `Community 478`, `Community 479`, `Community 472`, `Community 481`, `Community 482`, `Community 483`, `Community 484`, `Community 485`, `Community 486`, `Community 487`, `Community 488`, `Community 489`, `Community 490`, `Community 491`, `Community 492`, `Community 480`, `Community 370`, `Community 371`, `Community 372`?**
+  _High betweenness centrality (0.001) - this node is a cross-community bridge._
+- **Why does `GovernorHelper` connect `Community 167` to `Community 51`?**
+  _High betweenness centrality (0.001) - this node is a cross-community bridge._
+- **Why does `GovernorHelper` connect `Community 163` to `Community 285`?**
   _High betweenness centrality (0.001) - this node is a cross-community bridge._
 - **What connects `marked`, `filter_paths`, `exclude_informational` to the rest of the system?**
-  _9369 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _9536 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 0` be split into smaller, more focused modules?**
   _Cohesion score 0.09413067552602436 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.12318840579710146 - nodes in this community are weakly interconnected._
-- **Should `Community 4` be split into smaller, more focused modules?**
-  _Cohesion score 0.08172043010752689 - nodes in this community are weakly interconnected._
-- **Should `Community 6` be split into smaller, more focused modules?**
-  _Cohesion score 0.11666666666666667 - nodes in this community are weakly interconnected._

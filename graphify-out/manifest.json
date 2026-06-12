@@ -11175,8 +11175,8 @@
     "semantic_hash": ""
   },
   "/var/www/live/smart-contracts/quantillon-protocol/cache/solidity-files-cache.json": {
-    "mtime": 1780901045.6377296,
-    "ast_hash": "ac5d7b46101c773475dacbf0de9295c5",
+    "mtime": 1780929757.2512262,
+    "ast_hash": "c84c043e210d8019d37e85d5e9b15ff3",
     "semantic_hash": ""
   },
   "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeChainlinkOracle.s.sol/8453/run-latest.json": {
@@ -11270,8 +11270,8 @@
     "semantic_hash": ""
   },
   "/var/www/live/smart-contracts/quantillon-protocol/scripts/analyze-contract-sizes.sh": {
-    "mtime": 1778576521.4030151,
-    "ast_hash": "6b05f259725d20b9e093873ae45799e6",
+    "mtime": 1780917366.5334249,
+    "ast_hash": "72d70c6668f80984b3248fff579d6c76",
     "semantic_hash": ""
   },
   "/var/www/live/smart-contracts/quantillon-protocol/scripts/validate-natspec.js": {
@@ -13290,8 +13290,8 @@
     "semantic_hash": ""
   },
   "/var/www/live/smart-contracts/quantillon-protocol/deployments/8453/quantillon-vault-upgrade.json": {
-    "mtime": 1780770066.983961,
-    "ast_hash": "c388b84fa3d76f2c17a0a29da0385409",
+    "mtime": 1780918683.6536946,
+    "ast_hash": "c261a6f2bcde86e09752af0f6bb199a5",
     "semantic_hash": ""
   },
   "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeQuantillonVault.s.sol/8453/run-1780770070865.json": {
@@ -13300,13 +13300,198 @@
     "semantic_hash": ""
   },
   "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeQuantillonVault.s.sol/8453/run-latest.json": {
-    "mtime": 1780770070.8689368,
-    "ast_hash": "99c18586a716a7ba7688cd28960586bf",
+    "mtime": 1780918688.1976676,
+    "ast_hash": "37960b250718902e21a872752975622e",
     "semantic_hash": ""
   },
   "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeQuantillonVault.s.sol/8453/run-1780770000465.json": {
     "mtime": 1780770000.465093,
     "ast_hash": "a0134e594c9f53460d5d799304c874cd",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/deployments/8453/user-pool-upgrade.json": {
+    "mtime": 1780923992.3871083,
+    "ast_hash": "d8f6298195bda1996642af79b5e72931",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/deployments/8453/oracle-implementations-upgrade.json": {
+    "mtime": 1780918628.8060217,
+    "ast_hash": "08baa3842d32867162aa07117b82049a",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeOracleImplementations.s.sol/8453/run-1780918632091.json": {
+    "mtime": 1780918632.0955443,
+    "ast_hash": "e0c70c77fea8eeaf76c7efd2a8c136b4",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeOracleImplementations.s.sol/8453/run-latest.json": {
+    "mtime": 1780918632.0950022,
+    "ast_hash": "e0c70c77fea8eeaf76c7efd2a8c136b4",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeOracleImplementations.s.sol/8453/run-1780918597105.json": {
+    "mtime": 1780918597.105384,
+    "ast_hash": "3547fe72fe4d6b89a0f4272d73e7fdf5",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeOracleImplementations.s.sol/8453/dry-run/run-latest.json": {
+    "mtime": 1780918507.915742,
+    "ast_hash": "286c6715740bf82202601a554cda1071",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeOracleImplementations.s.sol/8453/dry-run/run-1780918507916.json": {
+    "mtime": 1780918507.91641,
+    "ast_hash": "286c6715740bf82202601a554cda1071",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeUserPool.s.sol/8453/run-1780918752197.json": {
+    "mtime": 1780918752.2001312,
+    "ast_hash": "7db82c5530d5a9ddb36f8f7e13832a22",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeUserPool.s.sol/8453/run-latest.json": {
+    "mtime": 1780923996.4750826,
+    "ast_hash": "5ce32865d2118d330b5183290ae32118",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeUserPool.s.sol/8453/dry-run/run-latest.json": {
+    "mtime": 1780923971.6692388,
+    "ast_hash": "0b2066f2688249de53ff135c206f9195",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeUserPool.s.sol/8453/dry-run/run-1780918278216.json": {
+    "mtime": 1780918278.2165637,
+    "ast_hash": "ed2d77efd03a111e79b7ee61b13d043d",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeQuantillonVault.s.sol/8453/run-1780918688196.json": {
+    "mtime": 1780918688.1985352,
+    "ast_hash": "37960b250718902e21a872752975622e",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeQuantillonVault.s.sol/8453/dry-run/run-1780918315397.json": {
+    "mtime": 1780918315.3970985,
+    "ast_hash": "54ea1a093a5ecdfd723cf4eaf121bc73",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeQuantillonVault.s.sol/8453/dry-run/run-latest.json": {
+    "mtime": 1780918315.3958867,
+    "ast_hash": "54ea1a093a5ecdfd723cf4eaf121bc73",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeOracleImplementations.s.sol/8453/run-1780918632091.json": {
+    "mtime": 1780918632.1010344,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeOracleImplementations.s.sol/8453/run-latest.json": {
+    "mtime": 1780918632.100002,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeOracleImplementations.s.sol/8453/run-1780918597105.json": {
+    "mtime": 1780918597.1104395,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeOracleImplementations.s.sol/8453/dry-run/run-latest.json": {
+    "mtime": 1780918507.91641,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeOracleImplementations.s.sol/8453/dry-run/run-1780918507916.json": {
+    "mtime": 1780918507.916438,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeUserPool.s.sol/8453/run-1780918752197.json": {
+    "mtime": 1780918752.2002046,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeUserPool.s.sol/8453/run-latest.json": {
+    "mtime": 1780923996.4800828,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeUserPool.s.sol/8453/dry-run/run-latest.json": {
+    "mtime": 1780923971.674239,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeUserPool.s.sol/8453/dry-run/run-1780918278216.json": {
+    "mtime": 1780918278.2165904,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeQuantillonVault.s.sol/8453/run-1780918688196.json": {
+    "mtime": 1780918688.1985934,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeQuantillonVault.s.sol/8453/run-latest.json": {
+    "mtime": 1780918688.1985352,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeQuantillonVault.s.sol/8453/dry-run/run-1780918315397.json": {
+    "mtime": 1780918315.3971279,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeQuantillonVault.s.sol/8453/dry-run/run-latest.json": {
+    "mtime": 1780918315.3970985,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeUserPool.s.sol/8453/run-1780923996472.json": {
+    "mtime": 1780923996.47533,
+    "ast_hash": "5ce32865d2118d330b5183290ae32118",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeUserPool.s.sol/8453/dry-run/run-1780922969533.json": {
+    "mtime": 1780922969.5337732,
+    "ast_hash": "1f74ad091ee0c9d458f3f2634ae50130",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeUserPool.s.sol/8453/dry-run/run-1780923971670.json": {
+    "mtime": 1780923971.670329,
+    "ast_hash": "0b2066f2688249de53ff135c206f9195",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeUserPool.s.sol/8453/run-1780923996472.json": {
+    "mtime": 1780923996.4807372,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeUserPool.s.sol/8453/dry-run/run-1780922969533.json": {
+    "mtime": 1780922969.53897,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeUserPool.s.sol/8453/dry-run/run-1780923971670.json": {
+    "mtime": 1780923971.6756032,
+    "ast_hash": "3efd86568370f0f4dda3cf4d7cef8ec3",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeYieldAccountingIntegrations.s.sol/8453/dry-run/run-1780929764933.json": {
+    "mtime": 1780929764.9334161,
+    "ast_hash": "db497638cd8c22542b24ebad3df6f623",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/broadcast/UpgradeYieldAccountingIntegrations.s.sol/8453/dry-run/run-latest.json": {
+    "mtime": 1780929764.9331832,
+    "ast_hash": "db497638cd8c22542b24ebad3df6f623",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeYieldAccountingIntegrations.s.sol/8453/dry-run/run-1780929764933.json": {
+    "mtime": 1780929764.9334538,
+    "ast_hash": "1ecfaf8666ffcc124af9e5b049d2235b",
+    "semantic_hash": ""
+  },
+  "/var/www/live/smart-contracts/quantillon-protocol/cache/UpgradeYieldAccountingIntegrations.s.sol/8453/dry-run/run-latest.json": {
+    "mtime": 1780929764.9334161,
+    "ast_hash": "1ecfaf8666ffcc124af9e5b049d2235b",
     "semantic_hash": ""
   }
 }

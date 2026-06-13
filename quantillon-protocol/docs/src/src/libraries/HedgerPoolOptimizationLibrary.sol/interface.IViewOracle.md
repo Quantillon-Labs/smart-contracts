@@ -1,32 +1,34 @@
 # IViewOracle
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/HedgerPoolOptimizationLibrary.sol)
+
 
 ## Functions
 ### getEurUsdPrice
 
 Returns EUR/USD oracle price and validity flag
 
-Minimal read-only oracle view interface used by optimization helpers.
+Minimal oracle interface used by optimization helpers.
 
 **Notes:**
-- security: Read-only oracle accessor
+- security: Validated oracle accessor
 
 - validation: Implementer should guarantee returned values follow protocol expectations
 
-- state-changes: None
+- state-changes: Implementation-defined; production oracles may refresh their accepted baseline
 
-- events: None
+- events: Implementation-defined
 
 - errors: Implementation-defined
 
-- reentrancy: Not applicable - view function
+- reentrancy: External oracle call
 
-- access: External view interface method
+- access: External interface method
 
 - oracle: Primary oracle read dependency
 
 
 ```solidity
-function getEurUsdPrice() external view returns (uint256 price, bool isValid);
+function getEurUsdPrice() external returns (uint256 price, bool isValid);
 ```
 **Returns**
 

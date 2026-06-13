@@ -1,4 +1,6 @@
 # ChainlinkOracle
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/oracle/ChainlinkOracle.sol)
+
 **Inherits:**
 [IChainlinkOracle](/src/interfaces/IChainlinkOracle.sol/interface.IChainlinkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
 
@@ -513,6 +515,25 @@ function _validateTimestamp(uint256 reportedTime) internal view returns (bool);
 
 Validates a feed timestamp against a caller-selected maximum age.
 
+Rejects future-dated timestamps and timestamps older than `maxStaleness + MAX_TIMESTAMP_DRIFT`.
+
+**Notes:**
+- security: Validates timestamp is not in future and within acceptable age.
+
+- validation: Validates reportedTime <= currentTime and within maxStaleness + MAX_TIMESTAMP_DRIFT.
+
+- state-changes: No state changes - view function.
+
+- events: No events emitted.
+
+- errors: No errors thrown - safe view function.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal function - no access restrictions.
+
+- oracle: No oracle dependencies for timestamp validation.
+
 
 ```solidity
 function _validateTimestampWithMaxAge(uint256 reportedTime, uint256 maxStaleness) internal view returns (bool);
@@ -530,6 +551,63 @@ function _validateTimestampWithMaxAge(uint256 reportedTime, uint256 maxStaleness
 |----|----|-----------|
 |`<none>`|`bool`|true if the timestamp is valid, false otherwise.|
 
+
+### _validateEurUsdPriceData
+
+Validates a raw EUR/USD feed value against freshness, bounds, and deviation policy.
+
+
+```solidity
+function _validateEurUsdPriceData(int256 rawPrice, uint256 updatedAt, uint8 feedDecimals)
+    internal
+    view
+    returns (uint256 price, bool isValid);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`rawPrice`|`int256`|Raw EUR/USD price from the feed.|
+|`updatedAt`|`uint256`|Feed update timestamp.|
+|`feedDecimals`|`uint8`|Number of decimals used by the feed.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`price`|`uint256`|Scaled EUR/USD price, or 0 if validation fails before scaling.|
+|`isValid`|`bool`|True when the price can be accepted as the next oracle baseline.|
+
+
+### _normalizeUsdcUsdPrice
+
+Normalizes USDC/USD for PriceUpdated events, falling back to $1.00 if invalid.
+
+
+```solidity
+function _normalizeUsdcUsdPrice(int256 rawPrice, uint256 updatedAt, uint8 feedDecimals)
+    internal
+    view
+    returns (uint256 usdcUsdPrice);
+```
+
+### _readUsdcUsdPriceForEvent
+
+Reads USDC/USD for update events without making EUR/USD reads depend on USDC health.
+
+
+```solidity
+function _readUsdcUsdPriceForEvent() internal view returns (uint256 usdcUsdPrice);
+```
+
+### _commitEurUsdPrice
+
+Commits an accepted EUR/USD price as the new oracle deviation baseline.
+
+
+```solidity
+function _commitEurUsdPrice(uint256 eurUsdPrice, uint256 usdcUsdPrice) internal;
+```
 
 ### _updatePrices
 
@@ -991,13 +1069,13 @@ Validation process:
 
 - validation: Checks price > 0, timestamp < 1 hour old, within min/max bounds
 
-- state-changes: No state changes - view function only
+- state-changes: Updates lastValidEurUsdPrice, lastPriceUpdateTime, and lastPriceUpdateBlock when valid
 
-- events: No events emitted
+- events: Emits PriceUpdated when a valid price advances the baseline
 
 - errors: No errors thrown - returns fallback price if invalid
 
-- reentrancy: Not applicable - view function
+- reentrancy: Not protected - external oracle reads only
 
 - access: Public - no access restrictions
 
@@ -1005,7 +1083,7 @@ Validation process:
 
 
 ```solidity
-function getEurUsdPrice() external view returns (uint256 price, bool isValid);
+function getEurUsdPrice() external returns (uint256 price, bool isValid);
 ```
 **Returns**
 

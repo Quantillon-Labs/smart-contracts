@@ -1,4 +1,6 @@
 # IQuantillonVault
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IQuantillonVault.sol)
+
 **Title:**
 IQuantillonVault
 
@@ -255,135 +257,6 @@ function redeemQEURO(uint256 qeuroAmount, uint256 minUsdcOut) external;
 |----|----|-----------|
 |`qeuroAmount`|`uint256`|Amount of QEURO to swap|
 |`minUsdcOut`|`uint256`|Minimum USDC expected|
-
-
-### getVaultMetrics
-
-Retrieves the vault's global metrics
-
-Provides comprehensive vault statistics for monitoring and analysis
-
-**Notes:**
-- security: Read-only helper
-
-- validation: None
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: Not applicable
-
-- access: Public
-
-- oracle: Uses cached oracle price for debt-value conversion
-
-
-```solidity
-function getVaultMetrics()
-    external
-    view
-    returns (
-        uint256 totalUsdcHeld_,
-        uint256 totalMinted_,
-        uint256 totalDebtValue,
-        uint256 totalUsdcInExternalVaults_,
-        uint256 totalUsdcAvailable_
-    );
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`totalUsdcHeld_`|`uint256`|Total USDC held directly in the vault|
-|`totalMinted_`|`uint256`|Total QEURO minted|
-|`totalDebtValue`|`uint256`|Total debt value in USD|
-|`totalUsdcInExternalVaults_`|`uint256`|Total USDC principal deployed across external vault adapters|
-|`totalUsdcAvailable_`|`uint256`|Total USDC available (vault + external adapters)|
-
-
-### calculateMintAmount
-
-Computes QEURO mint amount for a USDC swap
-
-Uses cached oracle price to calculate QEURO equivalent without executing swap
-
-**Notes:**
-- security: Read-only helper
-
-- validation: Returns zeroes when price cache is uninitialized
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: Not applicable
-
-- access: Public
-
-- oracle: Uses cached oracle price only
-
-
-```solidity
-function calculateMintAmount(uint256 usdcAmount) external view returns (uint256 qeuroAmount, uint256 fee);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|USDC to swap|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Expected QEURO to mint (after fees)|
-|`fee`|`uint256`|Protocol fee|
-
-
-### calculateRedeemAmount
-
-Computes USDC redemption amount for a QEURO swap
-
-Uses cached oracle price to calculate USDC equivalent without executing swap
-
-**Notes:**
-- security: Read-only helper
-
-- validation: Returns zeroes when price cache is uninitialized
-
-- state-changes: None
-
-- events: None
-
-- errors: None
-
-- reentrancy: Not applicable
-
-- access: Public
-
-- oracle: Uses cached oracle price only
-
-
-```solidity
-function calculateRedeemAmount(uint256 qeuroAmount) external view returns (uint256 usdcAmount, uint256 fee);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|QEURO to swap|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcAmount`|`uint256`|USDC returned after fees|
-|`fee`|`uint256`|Protocol fee|
 
 
 ### updateParameters
@@ -1517,46 +1390,6 @@ function updateUserPool(address _userPool) external;
 |`_userPool`|`address`|New UserPool address|
 
 
-### getPriceProtectionStatus
-
-Gets the price protection status and parameters
-
-Returns price protection configuration for monitoring
-
-**Notes:**
-- security: No security validations required - view function
-
-- validation: No input validation required - view function
-
-- state-changes: No state changes - view function only
-
-- events: No events emitted
-
-- errors: No errors thrown
-
-- reentrancy: Not applicable - view function
-
-- access: Public access - anyone can query price protection status
-
-- oracle: No oracle dependencies
-
-
-```solidity
-function getPriceProtectionStatus()
-    external
-    view
-    returns (uint256 lastValidPrice, uint256 lastUpdateBlock, uint256 maxDeviation, uint256 minBlocks);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`lastValidPrice`|`uint256`|Last valid EUR/USD price|
-|`lastUpdateBlock`|`uint256`|Block number of last price update|
-|`maxDeviation`|`uint256`|Maximum allowed price deviation|
-|`minBlocks`|`uint256`|Minimum blocks between price updates|
-
-
 ### updateFeeCollector
 
 Updates the fee collector address
@@ -1665,14 +1498,17 @@ function canMint() external view returns (bool);
 
 ### shouldTriggerLiquidation
 
-Checks if liquidation should be triggered based on current collateralization ratio
+Checks if liquidation should be triggered based on the CACHED collateralization ratio
 
-Returns true if collateralization ratio < criticalCollateralizationRatio
+ADVISORY / OBSERVABILITY ONLY. Uses the cached EUR/USD price, which can lag the live
+oracle price by up to the 2% deviation guard. Mirrors `redeemQEURO` routing semantics
+(true only when `0 < CR <= criticalCollateralizationRatio`). For an authoritative live
+check use `shouldTriggerLiquidationLive()`.
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- security: View function - no state changes
 
-- validation: Validates input parameters and business logic constraints
+- validation: No input validation required - safe view function
 
 - state-changes: No state changes - view function
 
@@ -1684,7 +1520,7 @@ Returns true if collateralization ratio < criticalCollateralizationRatio
 
 - access: Public - anyone can check liquidation status
 
-- oracle: No oracle dependencies
+- oracle: Uses cached oracle price
 
 
 ```solidity
@@ -1694,132 +1530,44 @@ function shouldTriggerLiquidation() external view returns (bool);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|shouldLiquidate Whether liquidation should be triggered|
+|`<none>`|`bool`|shouldLiquidate Whether liquidation should be triggered at the cached price|
 
 
-### getLiquidationStatus
+### shouldTriggerLiquidationLive
 
-Returns liquidation status and key metrics for pro-rata redemption
+Authoritative live-price check for whether the protocol is in liquidation territory
 
-Protocol enters liquidation mode when CR <= 101%
+Reads the live EUR/USD oracle price and applies the same routing decision as `redeemQEURO`
+(`0 < CR <= criticalCollateralizationRatio`). Non-`view` because the oracle EUR/USD getter
+is non-`view`; call via `eth_call`/`staticCall` (no protocol state is mutated).
 
 **Notes:**
-- security: View function - no state changes
+- security: Read-only intent; performs no protocol state changes
 
-- validation: No input validation required
+- validation: Reverts if the oracle EUR/USD price is invalid
 
-- state-changes: None - view function
+- state-changes: None in this contract
 
-- events: None
+- events: No events emitted
 
-- errors: None
+- errors: Reverts with InvalidOraclePrice when the oracle price is invalid
 
-- reentrancy: Not applicable - view function
+- reentrancy: No protocol state changes; single external oracle read
 
-- access: Public - anyone can check liquidation status
+- access: Public - anyone can check live liquidation status
 
-- oracle: Requires oracle price for collateral calculation
+- oracle: Requires a fresh, valid live EUR/USD oracle price
 
 
 ```solidity
-function getLiquidationStatus()
-    external
-    view
-    returns (
-        bool isInLiquidation,
-        uint256 collateralizationRatioBps,
-        uint256 totalCollateralUsdc,
-        uint256 totalQeuroSupply
-    );
+function shouldTriggerLiquidationLive() external returns (bool shouldLiquidate, uint256 collateralizationRatio);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`isInLiquidation`|`bool`|True if protocol is in liquidation mode|
-|`collateralizationRatioBps`|`uint256`|Current CR in basis points|
-|`totalCollateralUsdc`|`uint256`|Total protocol collateral in USDC (6 decimals)|
-|`totalQeuroSupply`|`uint256`|Total QEURO supply (18 decimals)|
-
-
-### calculateLiquidationPayout
-
-Calculates pro-rata payout for liquidation mode redemption
-
-Formula: payout = (qeuroAmount / totalSupply) * totalCollateral
-
-**Notes:**
-- security: View function - no state changes
-
-- validation: Validates qeuroAmount > 0
-
-- state-changes: None - view function
-
-- events: None
-
-- errors: Throws InvalidAmount if qeuroAmount is 0
-
-- reentrancy: Not applicable - view function
-
-- access: Public - anyone can calculate payout
-
-- oracle: Requires oracle price for fair value calculation
-
-
-```solidity
-function calculateLiquidationPayout(uint256 qeuroAmount)
-    external
-    view
-    returns (uint256 usdcPayout, bool isPremium, uint256 premiumOrDiscountBps);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`usdcPayout`|`uint256`|Amount of USDC the user would receive (6 decimals)|
-|`isPremium`|`bool`|True if payout > fair value (CR > 100%)|
-|`premiumOrDiscountBps`|`uint256`|Premium or discount in basis points|
-
-
-### redeemQEUROLiquidation
-
-Redeems QEURO for USDC using pro-rata distribution in liquidation mode
-
-Only callable when protocol is in liquidation mode (CR <= 101%)
-
-**Notes:**
-- security: Protected by nonReentrant, requires liquidation mode
-
-- validation: Validates qeuroAmount > 0, minUsdcOut slippage, liquidation mode
-
-- state-changes: Burns QEURO, transfers USDC pro-rata
-
-- events: Emits LiquidationRedeemed
-
-- errors: Reverts if not in liquidation mode or slippage exceeded
-
-- reentrancy: Protected by nonReentrant modifier
-
-- access: Public - anyone with QEURO can redeem
-
-- oracle: Requires oracle price for collateral calculation
-
-
-```solidity
-function redeemQEUROLiquidation(uint256 qeuroAmount, uint256 minUsdcOut) external;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
-|`minUsdcOut`|`uint256`|Minimum USDC expected (slippage protection)|
+|`shouldLiquidate`|`bool`|True if at/below the critical ratio at the live price|
+|`collateralizationRatio`|`uint256`|Current collateralization ratio in 18-decimal percentage format (1e20 = 100%)|
 
 
 ### getProtocolCollateralizationRatio
@@ -1854,76 +1602,6 @@ function getProtocolCollateralizationRatio() external view returns (uint256);
 |Name|Type|Description|
 |----|----|-----------|
 |`<none>`|`uint256`|ratio Current collateralization ratio in 1e18-scaled percentage format|
-
-
-### getProtocolCollateralizationRatioView
-
-View-only collateralization ratio using cached price.
-
-Returns the same units as `getProtocolCollateralizationRatio()` but relies solely
-on the cached EUR/USD price to remain view-safe (no external oracle calls).
-
-**Notes:**
-- security: View helper; does not mutate state or touch external oracles.
-
-- validation: Returns a stale or sentinel value if the cache is uninitialized.
-
-- state-changes: None – pure view over cached pricing and vault balances.
-
-- events: None.
-
-- errors: None – callers must handle edge cases (e.g. 0 collateral).
-
-- reentrancy: Not applicable – view function only.
-
-- access: Public – intended for dashboards and off‑chain monitoring.
-
-- oracle: Uses only the last cached price maintained on-chain.
-
-
-```solidity
-function getProtocolCollateralizationRatioView() external view returns (uint256);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`uint256`|ratio Cached collateralization ratio in 1e18‑scaled percentage format.|
-
-
-### canMintView
-
-View-only mintability check using cached price and current hedger status.
-
-Equivalent to `canMint()` but guaranteed not to perform fresh oracle reads,
-making it safe for off‑chain calls that must not revert due to oracle issues.
-
-**Notes:**
-- security: Read‑only helper; never mutates state or external dependencies.
-
-- validation: Returns false on uninitialized cache or missing hedger configuration.
-
-- state-changes: None – pure read of cached price and protocol state.
-
-- events: None.
-
-- errors: None – callers interpret the boolean.
-
-- reentrancy: Not applicable – view function only.
-
-- access: Public – anyone can pre‑check mint conditions.
-
-- oracle: Uses cached price only; no live oracle reads.
-
-
-```solidity
-function canMintView() external view returns (bool);
-```
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`<none>`|`bool`|canMintCached True if, based on cached price and current hedger state, minting would be allowed.|
 
 
 ### updatePriceCache

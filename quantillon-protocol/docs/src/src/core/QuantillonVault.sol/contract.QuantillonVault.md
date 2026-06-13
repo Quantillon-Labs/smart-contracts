@@ -1,4 +1,6 @@
 # QuantillonVault
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/QuantillonVault.sol)
+
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
@@ -956,6 +958,9 @@ function _getValidatedMintPrices() internal returns (uint256 eurUsdPrice, bool i
 Enforces protocol-level mint eligibility constraints.
 
 Requires initialized price cache, active hedger liquidity, and collateralization allowance.
+The collateralization gate is evaluated against the supplied live `eurUsdPrice` (not the
+cached price) so the binding mint decision is consistent with the price used for the rest
+of the mint computation. The public `canMint()` view remains a cached-price advisory.
 
 **Notes:**
 - security: Prevents minting when safety prerequisites are unmet.
@@ -972,12 +977,18 @@ Requires initialized price cache, active hedger liquidity, and collateralization
 
 - access: Internal helper.
 
-- oracle: Uses cached state and `canMint` logic.
+- oracle: Uses the supplied live EUR/USD price for the collateralization gate.
 
 
 ```solidity
-function _enforceMintEligibility() internal view;
+function _enforceMintEligibility(uint256 eurUsdPrice) internal view;
 ```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurUsdPrice`|`uint256`|Live, validated EUR/USD price used to value QEURO debt for the CR gate (18 decimals).|
+
 
 ### _enforceMintPriceDeviation
 
@@ -1356,8 +1367,13 @@ In liquidation mode, hedger's unrealizedPnL = -margin (all margin at risk).
 
 
 ```solidity
-function _redeemLiquidationMode(uint256 qeuroAmount, uint256 minUsdcOut, uint256 collateralizationRatioBps)
-    internal;
+function _redeemLiquidationMode(
+    uint256 qeuroAmount,
+    uint256 minUsdcOut,
+    uint256 collateralizationRatioBps,
+    uint256 eurUsdPrice,
+    bool isValidPrice
+) internal;
 ```
 **Parameters**
 
@@ -1366,16 +1382,18 @@ function _redeemLiquidationMode(uint256 qeuroAmount, uint256 minUsdcOut, uint256
 |`qeuroAmount`|`uint256`|Amount of QEURO to redeem (18 decimals)|
 |`minUsdcOut`|`uint256`|Minimum USDC expected (slippage protection)|
 |`collateralizationRatioBps`|`uint256`|Current CR in basis points (for event emission)|
+|`eurUsdPrice`|`uint256`|Live, validated EUR/USD price routed in from `redeemQEURO` (18 decimals)|
+|`isValidPrice`|`bool`|Validity flag for the routed oracle price, used for cache timestamping|
 
 
 ### _redeemLiquidationCommit
 
 Commits liquidation-mode redemption effects/interactions
 
-Called via explicit self-call from `_redeemLiquidationMode`.
+Called from `_redeemLiquidationMode`.
 
 **Notes:**
-- security: Restricted by `onlySelf`; called from guarded liquidation flow
+- security: Called from guarded liquidation flow
 
 - validation: Reverts on insufficient balances or mint tracker underflow
 
@@ -1387,7 +1405,7 @@ Called via explicit self-call from `_redeemLiquidationMode`.
 
 - reentrancy: CEI commit path invoked from `nonReentrant` parent
 
-- access: External self-call entrypoint only
+- access: Internal helper
 
 - oracle: No direct oracle reads (uses precomputed inputs)
 
@@ -1766,7 +1784,7 @@ Updates the HedgerPool contract address for collateralization checks
 
 - state-changes: Updates contract state variables
 
-- events: Emits relevant events for state changes
+- events: No events emitted
 
 - errors: Throws custom errors for invalid conditions
 
@@ -1800,7 +1818,7 @@ Updates the UserPool contract address for user deposit tracking
 
 - state-changes: Updates contract state variables
 
-- events: Emits relevant events for state changes
+- events: No events emitted
 
 - errors: Throws custom errors for invalid conditions
 
@@ -1834,7 +1852,7 @@ Only governance role can update the fee collector address
 
 - state-changes: Updates feeCollector state variable
 
-- events: Emits ParametersUpdated event
+- events: No events emitted
 
 - errors: Reverts if _feeCollector is address(0)
 
@@ -2502,38 +2520,42 @@ function _applyPriceCacheUpdate(uint256 oldPrice, uint256 eurUsdPrice) external 
 |`eurUsdPrice`|`uint256`|New validated EUR/USD price|
 
 
-### _updatePriceTimestamp
+### _commitPriceCache
 
-Updates the last valid price timestamp when a valid price is fetched
+Commits the validated EUR/USD price-cache fields used for flash-loan/deviation protection.
 
-Internal function to track price update timing for monitoring
+Consolidates the repeated cache-write pattern shared by the mint, redeem, liquidation, and
+yield-crediting commit paths plus the governance cache setters. Refreshes the timestamp only
+when the supplied price is valid (commit/governance callers pass `true` for already-validated
+prices). Replaces the former `_updatePriceTimestamp` helper.
 
 **Notes:**
-- security: Updates timestamp only for valid price fetches
+- security: Writes only price-cache bookkeeping fields; callers enforce price validation.
 
-- validation: No input validation required
+- validation: Assumes the caller already validated the supplied price.
 
-- state-changes: Updates lastPriceUpdateTime if price is valid
+- state-changes: Updates lastPriceUpdateBlock, lastValidEurUsdPrice, and (if valid) lastPriceUpdateTime.
 
-- events: No events emitted
+- events: No events emitted.
 
-- errors: No errors thrown
+- errors: No errors thrown.
 
-- reentrancy: Not protected - internal function only
+- reentrancy: Not protected - internal function only.
 
-- access: Internal function - no access restrictions
+- access: Internal function - no access restrictions.
 
-- oracle: No oracle dependencies
+- oracle: No oracle dependencies.
 
 
 ```solidity
-function _updatePriceTimestamp(bool isValid) internal;
+function _commitPriceCache(uint256 eurUsdPrice, bool isValidPrice) internal;
 ```
 **Parameters**
 
 |Name|Type|Description|
 |----|----|-----------|
-|`isValid`|`bool`|Whether the current price fetch was valid|
+|`eurUsdPrice`|`uint256`|Validated EUR/USD price to cache (18 decimals).|
+|`isValidPrice`|`bool`|Whether the price is valid; when true, refreshes `lastPriceUpdateTime`.|
 
 
 ### _getExternalVaultCollateralBalance
@@ -2679,11 +2701,55 @@ function getProtocolCollateralizationRatio() public view returns (uint256 ratio)
 |`ratio`|`uint256`|Current collateralization ratio in 18-decimal percentage format|
 
 
+### _getProtocolCollateralizationRatioAtPrice
+
+Calculates protocol collateralization ratio using a supplied EUR/USD price.
+
+Used by redemption routing so the liquidation decision and payout share one validated price.
+
+**Notes:**
+- security: Internal helper using caller-supplied validated oracle price.
+
+- validation: Returns 0 if pools are unset, supply is 0, price is 0, or backing is 0.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal.
+
+- oracle: Uses supplied oracle price.
+
+
+```solidity
+function _getProtocolCollateralizationRatioAtPrice(uint256 eurUsdPrice) internal view returns (uint256 ratio);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurUsdPrice`|`uint256`|EUR/USD price to value QEURO debt, in 18 decimals.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`ratio`|`uint256`|Collateralization ratio in 18-decimal percentage format.|
+
+
 ### canMint
 
-Checks if minting is allowed based on current collateralization ratio
+Checks if minting is allowed based on the CACHED collateralization ratio
 
-Returns true if collateralization ratio >= minCollateralizationRatioForMinting
+ADVISORY / OBSERVABILITY ONLY. Evaluates the mint gate against the cached EUR/USD price
+(`lastValidEurUsdPrice`), which can lag the live oracle price by up to the configured 2%
+deviation guard. The BINDING mint decision is enforced inside the mint flow via
+`_enforceMintEligibility(eurUsdPrice)` using the live oracle price, so off-chain callers
+of this view may briefly disagree with whether a mint would actually succeed.
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -2700,7 +2766,7 @@ Returns true if collateralization ratio >= minCollateralizationRatioForMinting
 
 - access: Public - anyone can check minting status
 
-- oracle: No oracle dependencies
+- oracle: Uses cached oracle price (`lastValidEurUsdPrice`)
 
 
 ```solidity
@@ -2710,7 +2776,50 @@ function canMint() public view returns (bool);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`bool`|canMint Whether minting is currently allowed|
+|`<none>`|`bool`|canMint Whether minting is currently allowed at the cached price|
+
+
+### _canMintAtPrice
+
+Evaluates mint eligibility using a supplied EUR/USD price.
+
+Shared by the cached `canMint()` view and the live-price binding gate
+`_enforceMintEligibility`. The `lastValidEurUsdPrice == 0` guard enforces the
+LOW-5 invariant that the price cache is bootstrapped before any mint, independent
+of which price values the collateralization ratio.
+
+**Notes:**
+- security: Internal helper using caller-supplied price.
+
+- validation: Requires bootstrapped cache, active hedger, and CR >= mint threshold.
+
+- state-changes: None.
+
+- events: None.
+
+- errors: None - returns boolean flag.
+
+- reentrancy: Not applicable - view function.
+
+- access: Internal.
+
+- oracle: Uses supplied oracle price.
+
+
+```solidity
+function _canMintAtPrice(uint256 eurUsdPrice) internal view returns (bool allowed);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`eurUsdPrice`|`uint256`|EUR/USD price used to value QEURO debt for the CR check (18 decimals).|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`allowed`|`bool`|Whether minting is permitted at the supplied price.|
 
 
 ### initializePriceCache
@@ -2770,14 +2879,20 @@ function initializePriceCache(uint256 initialEurUsdPrice) external onlyRole(GOVE
 
 ### shouldTriggerLiquidation
 
-Checks if liquidation should be triggered based on current collateralization ratio
+Checks if liquidation should be triggered based on the CACHED collateralization ratio
 
-Returns true if collateralization ratio < criticalCollateralizationRatio
+ADVISORY / OBSERVABILITY ONLY. Evaluates against the cached EUR/USD price
+(`lastValidEurUsdPrice`), which can lag the live oracle price by up to the configured 2%
+deviation guard, so this may briefly disagree with live redemption routing near the
+threshold. The authoritative liquidation decision is made inside `redeemQEURO` using the
+live oracle price; for an authoritative live check use `shouldTriggerLiquidationLive()`.
+Mirrors `redeemQEURO` routing semantics: true only when `0 < CR <= criticalCollateralizationRatio`
+(a zero ratio means uninitialized/empty protocol, which is not a liquidation state).
 
 **Notes:**
-- security: Validates input parameters and enforces security checks
+- security: View function - no state changes
 
-- validation: Validates input parameters and business logic constraints
+- validation: No input validation required - safe view function
 
 - state-changes: No state changes - view function
 
@@ -2789,7 +2904,7 @@ Returns true if collateralization ratio < criticalCollateralizationRatio
 
 - access: Public - anyone can check liquidation status
 
-- oracle: No oracle dependencies
+- oracle: Uses cached oracle price (`lastValidEurUsdPrice`)
 
 
 ```solidity
@@ -2799,38 +2914,56 @@ function shouldTriggerLiquidation() public view returns (bool shouldLiquidate);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`shouldLiquidate`|`bool`|Whether liquidation should be triggered|
+|`shouldLiquidate`|`bool`|Whether liquidation should be triggered at the cached price|
+
+
+### shouldTriggerLiquidationLive
+
+Authoritative live-price check for whether the protocol is in liquidation territory.
+
+Reads the live EUR/USD price from the oracle and applies the same routing decision used by
+`redeemQEURO` (`0 < CR <= criticalCollateralizationRatio`). Non-`view` because the oracle
+EUR/USD getter is non-`view` at the `IOracle` interface level; off-chain consumers should
+call via `eth_call`/`staticCall` (no protocol state is mutated by this function).
+
+**Notes:**
+- security: Read-only intent; performs no protocol state changes.
+
+- validation: Reverts if the oracle EUR/USD price is invalid.
+
+- state-changes: None in this contract.
+
+- events: No events emitted.
+
+- errors: Reverts with `InvalidOraclePrice` when the oracle price is invalid.
+
+- reentrancy: No protocol state changes; single external oracle read.
+
+- access: Public - anyone can check live liquidation status.
+
+- oracle: Requires a fresh, valid live EUR/USD oracle price.
+
+
+```solidity
+function shouldTriggerLiquidationLive() external returns (bool shouldLiquidate, uint256 collateralizationRatio);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`shouldLiquidate`|`bool`|True if the protocol is at/below the critical ratio at the live price.|
+|`collateralizationRatio`|`uint256`|Current collateralization ratio in 18-decimal percentage format (1e20 = 100%).|
 
 
 ### pause
 
-Returns liquidation status and key metrics for pro-rata redemption
-
 Pauses all vault operations
-
-Protocol enters liquidation mode when CR <= 101%. In this mode, users can redeem pro-rata.
 
 When paused:
 - No mint/redeem possible
 - Read functions still active
 
 **Notes:**
-- security: View function - no state changes
-
-- validation: No input validation required
-
-- state-changes: None - view function
-
-- events: None
-
-- errors: None
-
-- reentrancy: Not applicable - view function
-
-- access: Public - anyone can check liquidation status
-
-- oracle: Requires oracle price for collateral calculation
-
 - security: Validates input parameters and enforces security checks
 
 - validation: Validates input parameters and business logic constraints
@@ -3359,6 +3492,8 @@ struct LiquidationCommitParams {
     uint256 netUsdcPayout;
     uint256 fee;
     uint256 collateralizationRatioBps;
+    uint256 eurUsdPrice;
+    bool isValidPrice;
     bool isPremium;
     uint256 externalWithdrawalAmount;
 }

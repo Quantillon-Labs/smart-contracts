@@ -1,4 +1,6 @@
 # HedgerPoolOptimizationLibrary
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/libraries/HedgerPoolOptimizationLibrary.sol)
+
 **Title:**
 HedgerPoolOptimizationLibrary
 
@@ -453,13 +455,13 @@ Retrieves and validates price data from the oracle contract
 
 - validation: Validates oracle response format and data
 
-- state-changes: No state changes - view function
+- state-changes: May update oracle baseline when the oracle accepts a live price
 
-- events: No events emitted
+- events: Via oracle implementation
 
 - errors: No errors thrown - returns boolean result
 
-- reentrancy: Not applicable - view function
+- reentrancy: External oracle call
 
 - access: External function
 
@@ -467,7 +469,7 @@ Retrieves and validates price data from the oracle contract
 
 
 ```solidity
-function getValidOraclePrice(address oracleAddress) external view returns (uint256 price, bool isValid);
+function getValidOraclePrice(address oracleAddress) external returns (uint256 price, bool isValid);
 ```
 **Parameters**
 

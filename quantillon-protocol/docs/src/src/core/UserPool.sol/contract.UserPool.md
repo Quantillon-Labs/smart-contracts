@@ -1,4 +1,6 @@
 # UserPool
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/core/UserPool.sol)
+
 **Inherits:**
 Initializable, ReentrancyGuardUpgradeable, AccessControlUpgradeable, PausableUpgradeable, [SecureUpgradeable](/src/core/SecureUpgradeable.sol/abstract.SecureUpgradeable.md)
 
@@ -1679,21 +1681,56 @@ function _getOracleRatioScaled() internal returns (uint32);
 |`<none>`|`uint32`|Oracle ratio scaled to two decimals (e.g., 1.08 EUR/USD becomes 108)|
 
 
-### getTotalStakes
+### getTotalDeposits
 
 Get the total USDC equivalent withdrawals across all users
 
-Get the total QEURO staked across all users
+Get the current user pool size in USDC terms
 
 Used for analytics and cash flow monitoring
 
-Returns the total amount of QEURO currently staked in the pool
+Returns current QEURO supply converted to USDC using the read-only oracle details path.
+`totalUserDeposits` is cumulative analytics state and is not a live pool-size metric.
 
 **Notes:**
 - access: Public access
 
 - oracle: No oracle dependencies
 
+- security: Uses validated oracle details and reverts on stale or out-of-bounds prices
+
+- validation: Reverts if the oracle price cannot support a current TVL metric
+
+- state-changes: No state changes - view function
+
+- events: No events emitted
+
+- errors: Throws InvalidOraclePrice when oracle details are stale, invalid, or zero
+
+- reentrancy: Not applicable - view function
+
+- access: Public access
+
+- oracle: Requires fresh read-only EUR/USD oracle details
+
+
+```solidity
+function getTotalDeposits() external view returns (uint256);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`uint256`|Total withdrawals in USDC equivalent (6 decimals)|
+
+
+### getTotalStakes
+
+Get the total QEURO staked across all users
+
+Returns the total amount of QEURO currently staked in the pool
+
+**Notes:**
 - security: Validates input parameters and enforces security checks
 
 - validation: Validates input parameters and business logic constraints
@@ -1718,7 +1755,7 @@ function getTotalStakes() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|Total withdrawals in USDC equivalent (6 decimals)|
+|`<none>`|`uint256`|uint256 Total QEURO staked (18 decimals)|
 
 
 ### getPoolMetrics

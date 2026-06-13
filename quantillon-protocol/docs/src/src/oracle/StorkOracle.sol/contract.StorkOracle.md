@@ -1,4 +1,6 @@
 # StorkOracle
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/oracle/StorkOracle.sol)
+
 **Inherits:**
 [IStorkOracle](/src/interfaces/IStorkOracle.sol/interface.IStorkOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable
 
@@ -514,6 +516,59 @@ function _validateTimestamp(uint256 reportedTime) internal view returns (bool);
 |`<none>`|`bool`|true if the timestamp is valid, false otherwise|
 
 
+### _validateEurUsdPriceData
+
+Validates a raw EUR/USD Stork value against freshness, bounds, and deviation policy.
+
+
+```solidity
+function _validateEurUsdPriceData(int256 rawPrice, uint256 timestamp)
+    internal
+    view
+    returns (uint256 price, bool isValid);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`rawPrice`|`int256`|Raw EUR/USD price from Stork.|
+|`timestamp`|`uint256`|Stork update timestamp.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`price`|`uint256`|Scaled EUR/USD price, or 0 if validation fails before scaling.|
+|`isValid`|`bool`|True when the price can be accepted as the next oracle baseline.|
+
+
+### _normalizeUsdcUsdPrice
+
+Normalizes USDC/USD for PriceUpdated events, falling back to $1.00 if invalid.
+
+
+```solidity
+function _normalizeUsdcUsdPrice(int256 rawPrice, uint256 timestamp) internal view returns (uint256 usdcUsdPrice);
+```
+
+### _readUsdcUsdPriceForEvent
+
+Reads USDC/USD for update events without making EUR/USD reads depend on USDC health.
+
+
+```solidity
+function _readUsdcUsdPriceForEvent() internal view returns (uint256 usdcUsdPrice);
+```
+
+### _commitEurUsdPrice
+
+Commits an accepted EUR/USD price as the new oracle deviation baseline.
+
+
+```solidity
+function _commitEurUsdPrice(uint256 eurUsdPrice, uint256 usdcUsdPrice) internal;
+```
+
 ### _updatePrices
 
 Updates and validates internal prices
@@ -975,13 +1030,13 @@ For stronger guarantees, consider a commit-reveal entry scheme or using Stork's 
 
 - validation: Checks price staleness, circuit breaker state, and bounds
 
-- state-changes: No state changes - view function
+- state-changes: Updates lastValidEurUsdPrice, lastPriceUpdateTime, and lastPriceUpdateBlock when valid
 
-- events: No events emitted
+- events: Emits PriceUpdated when a valid price advances the baseline
 
 - errors: No errors thrown, returns isValid=false for invalid prices
 
-- reentrancy: Not protected - view function
+- reentrancy: Not protected - external oracle read only
 
 - access: Public - no access restrictions
 
@@ -989,7 +1044,7 @@ For stronger guarantees, consider a commit-reveal entry scheme or using Stork's 
 
 
 ```solidity
-function getEurUsdPrice() external view returns (uint256 price, bool isValid);
+function getEurUsdPrice() external returns (uint256 price, bool isValid);
 ```
 **Returns**
 

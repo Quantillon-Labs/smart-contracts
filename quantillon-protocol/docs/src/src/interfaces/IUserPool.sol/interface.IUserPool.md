@@ -1,4 +1,6 @@
 # IUserPool
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/0c6311949cabadbce9e79a7dafc6269035f6039e/src/interfaces/IUserPool.sol)
+
 **Title:**
 IUserPool
 
@@ -451,9 +453,9 @@ function getUserInfo(address user)
 
 ### getTotalDeposits
 
-Total USDC-equivalent deposits in the pool
+Current user-side pool size in USDC terms
 
-Returns the total value of all deposits in the pool
+Returns live user pool TVL in USDC equivalent; historical deposit counters are exposed separately.
 
 **Notes:**
 - security: Validates input parameters and enforces security checks
@@ -480,7 +482,7 @@ function getTotalDeposits() external view returns (uint256);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`uint256`|Total deposits in USDC equivalent|
+|`<none>`|`uint256`|Current user pool size in USDC equivalent|
 
 
 ### getTotalStakes

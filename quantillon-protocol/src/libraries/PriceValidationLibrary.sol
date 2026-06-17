@@ -14,6 +14,9 @@ pragma solidity 0.8.24;
  * @custom:security-contact team@quantillon.money
  */
 library PriceValidationLibrary {
+    /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
+    string internal constant VERSION = "1.0.0";
+
     /**
      * @notice Checks if price deviation exceeds maximum allowed
      * @dev Only checks deviation if enough blocks have passed since last update

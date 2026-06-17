@@ -24,8 +24,8 @@ contract MockQEUROTokenV2 is QEUROToken {
         return newVariable;
     }
 
-    function version() external pure returns (uint256) {
-        return 2;
+    function version() external pure override returns (string memory) {
+        return "2.0.0";
     }
 }
 
@@ -42,8 +42,8 @@ contract MockQTITokenV2 is QTIToken {
         newFeature = value;
     }
 
-    function version() external pure returns (uint256) {
-        return 2;
+    function version() external pure override returns (string memory) {
+        return "2.0.0";
     }
 }
 
@@ -238,7 +238,7 @@ contract UpgradeTests is Test {
 
         qeuroV2.setNewVariable(12345);
         assertEq(qeuroV2.getNewVariable(), 12345, "New variable should be set");
-        assertEq(qeuroV2.version(), 2, "Version should be 2");
+        assertEq(qeuroV2.version(), "2.0.0", "Version should be 2.0.0");
     }
 
     /**
@@ -302,7 +302,7 @@ contract UpgradeTests is Test {
 
         qtiV2.setNewFeature(99999);
         assertEq(qtiV2.newFeature(), 99999, "New feature should be set");
-        assertEq(qtiV2.version(), 2, "Version should be 2");
+        assertEq(qtiV2.version(), "2.0.0", "Version should be 2.0.0");
     }
 
     // =============================================================================

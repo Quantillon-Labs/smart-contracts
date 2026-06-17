@@ -16,6 +16,24 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 library VaultMath {
+    /**
+     * @notice Returns the semantic version of this linked library.
+     * @dev On-chain version of the standalone deployed library; bump per semver on any change.
+     *      See deployments/{chainId}/versions.json for deployed-address provenance.
+     * @return Semantic version string (e.g. "1.0.0").
+     * @custom:security No security implications - returns a compile-time constant.
+     * @custom:validation No input validation required.
+     * @custom:state-changes None - pure function.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable - pure function.
+     * @custom:access Public - anyone can read the version.
+     * @custom:oracle No oracle dependencies.
+     */
+    function version() external pure returns (string memory) {
+        return "1.0.0";
+    }
+
     /// @notice Precision for percentage calculations (10000 = 100%)
     uint256 public constant BASIS_POINTS = 10000;
     

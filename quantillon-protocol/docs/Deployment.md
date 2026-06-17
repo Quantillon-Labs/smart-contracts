@@ -6,6 +6,35 @@ This guide covers deploying and configuring the Quantillon Protocol smart contra
 
 ---
 
+## Versioning & Provenance
+
+Every core contract implements `IVersioned.version()` — a `pure` semver getter that, read through the proxy, reflects the **deployed implementation**. Linked libraries expose `version()`; inlined libraries carry a `VERSION` constant.
+
+**Golden rule — every change is traced through a version bump.** Any change to a deployed contract or library (correction, bug fix, update, or upgrade) MUST bump its `version()` per semver:
+
+- **PATCH** (`1.0.0 → 1.0.1`): bug fix or internal-logic change.
+- **MINOR** (`1.0.0 → 1.1.0`): new function or externally-observable behavior (ABI-additive).
+- **MAJOR**: reserved — storage-layout / ABI breaks are disallowed by the upgrade-safety gates.
+
+This is enforced in CI by `make check-version-bump`: it hashes each contract's metadata-free runtime bytecode and **fails** if the bytecode changed without a `version()` bump. After an intentional bump, re-baseline with `scripts/check-version-bump.sh --update` (commits the new hash+version to `version-baseline/`).
+
+**Deployed-version manifest.** `deployments/{chainId}/versions.json` is the single source of truth for what version is live, written automatically by the `UpgradeBase` upgrade scripts on every deploy (each entry: `proxy`, `implementation`, `version`, `gitCommit`, `deployedAt`). Pass `GIT_COMMIT=$(git rev-parse --short HEAD)` to the upgrade scripts so the commit is recorded.
+
+**Answering "what is deployed / what needs upgrading?"**
+
+```bash
+# On-chain: read the live implementation's version directly
+cast call <proxy> "version()(string)" --rpc-url $RPC_URL
+
+# Report deployed-vs-source for every contract (flags which need an upgrade)
+make check-deployed-versions
+
+# One-time seed of versions.json for contracts deployed before versioning existed
+RPC_URL=$RPC_URL GIT_COMMIT=<sha> scripts/deployment/backfill-versions.sh 8453
+```
+
+---
+
 ## Prerequisites
 
 ### Required Tools

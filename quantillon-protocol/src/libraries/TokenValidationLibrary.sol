@@ -17,6 +17,9 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 library TokenValidationLibrary {
+    /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
+    string internal constant VERSION = "1.0.0";
+
     /**
      * @notice Validates fee amount against maximum allowed fee
      * @dev Ensures fees don't exceed protocol limits (typically in basis points)

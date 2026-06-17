@@ -17,6 +17,9 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 library YieldValidationLibrary {
+    /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
+    string internal constant VERSION = "1.0.0";
+
     /**
      * @notice Validates yield shift percentage (0-100%)
      * @dev Ensures yield shift is within valid range of 0-10000 basis points

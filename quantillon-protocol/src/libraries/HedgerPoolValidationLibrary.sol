@@ -19,6 +19,9 @@ import {VaultErrorLibrary} from "./VaultErrorLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 library HedgerPoolValidationLibrary {
+    /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
+    string internal constant VERSION = "1.0.0";
+
     /**
      * @notice Validates leverage parameters for trading positions
      * @dev Ensures leverage is within acceptable bounds (> 0 and <= max)

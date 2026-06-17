@@ -15,6 +15,9 @@ pragma solidity 0.8.24;
  * @custom:security-contact team@quantillon.money
  */
 library TokenErrorLibrary {
+    /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
+    string internal constant VERSION = "1.0.0";
+
     // Token Operation Errors
     error MintingDisabled();
     error BlacklistedAddress();

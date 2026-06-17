@@ -17,6 +17,9 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 library CommonValidationLibrary {
+    /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
+    string internal constant VERSION = "1.0.0";
+
     /**
      * @notice Validates that an address is not zero
      * @dev Checks if the provided address is the zero address and reverts with appropriate error.

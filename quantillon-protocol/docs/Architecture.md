@@ -6,6 +6,8 @@ The Quantillon Protocol is a sophisticated DeFi ecosystem built around a euro-pe
 
 The staking layer now supports a multi-vault model through `stQEUROFactory`: each staking vault has its own non-fungible staking token instance (`stQEURO{vaultName}`).
 
+**Versioning.** Every core contract implements `IVersioned.version()` (a `pure` semver getter reflecting the deployed implementation); linked libraries expose `version()` and inlined libraries carry a `VERSION` constant. Any change to a deployed contract/library must be traced through a semver bump (enforced by `make check-version-bump`); `deployments/{chainId}/versions.json` records the live version + commit per contract. See `Deployment.md` → "Versioning & Provenance".
+
 ---
 
 ## System Architecture

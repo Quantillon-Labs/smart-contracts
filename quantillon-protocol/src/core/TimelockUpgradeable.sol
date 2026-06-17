@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
+import {IVersioned} from "../interfaces/IVersioned.sol";
+
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
@@ -16,7 +18,26 @@ import {ISecureUpgradeable} from "../interfaces/ISecureUpgradeable.sol";
  * @notice Secure upgrade mechanism with timelock and multi-sig requirements
  * @dev Replaces unrestricted upgrade capability with governance-controlled upgrades
  */
-contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, PausableUpgradeable {
+contract TimelockUpgradeable is Initializable, AccessControlUpgradeable, PausableUpgradeable, IVersioned {
+
+    /**
+     * @notice Returns the semantic version of this implementation.
+     * @dev Pure getter (no storage slot) read through the proxy, so it reflects the deployed
+     *      implementation. Bump per semver on any change; enforced by `make check-version-bump`.
+     *      See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
+     * @return Semantic version string (e.g. "1.0.0").
+     * @custom:security No security implications - returns a compile-time constant.
+     * @custom:validation No input validation required.
+     * @custom:state-changes None - pure function.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable - pure function.
+     * @custom:access Public - anyone can read the version.
+     * @custom:oracle No oracle dependencies.
+     */
+    function version() external pure virtual override returns (string memory) {
+        return "1.0.0";
+    }
     
     // ============ Constants ============
     

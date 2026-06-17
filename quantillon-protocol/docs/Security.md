@@ -223,6 +223,7 @@ function emergencyPause() external onlyRole(EMERGENCY_ROLE) {
 - **Risk**: Malicious or faulty upgrades
 - **Mitigation**: Timelock controls, governance
 - **Monitoring**: Upgrade proposal tracking
+- **Version traceability**: every core contract exposes `IVersioned.version()` and any change is traced through a semver bump (CI-enforced via `make check-version-bump`); `deployments/{chainId}/versions.json` records the live implementation + commit per contract, so an auditor can confirm exactly which source version is deployed (`cast call <proxy> "version()(string)"`).
 
 **Integration Risk**:
 - **Risk**: Third-party protocol failures

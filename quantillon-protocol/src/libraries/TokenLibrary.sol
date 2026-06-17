@@ -15,6 +15,9 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 library TokenLibrary {
+    /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
+    string internal constant VERSION = "1.0.0";
+
     /**
      * @notice Validates mint parameters
      * @param to Address to mint to

@@ -2,7 +2,7 @@
 
 .PHONY: help build test coverage slither mythril security clean validate-natspec \
         docs gas-analysis benchmark-gas analyze-warnings analyze-contract-sizes \
-        check-storage-layout check-abi check-upgrade-safety \
+        check-storage-layout check-abi check-version-bump check-deployed-versions check-upgrade-safety \
         setup-env check-env install all ci ci-base \
         deploy-localhost deploy-base-sepolia deploy-base deploy-dry-run \
         deploy-check deploy-secure-localhost deploy-secure-base-sepolia deploy-secure-base
@@ -157,14 +157,22 @@ check-abi:
 	@echo "🔌 Checking ABI/selectors against committed baseline (additive-only)..."
 	@$(BASH) ./scripts/check-abi.sh
 
-# Upgrade-safety gate: size + storage-layout + ABI. Fast; suitable for the PR job.
-check-upgrade-safety: build analyze-contract-sizes check-storage-layout check-abi
+check-version-bump:
+	@echo "🔖 Checking version() is bumped when deployed bytecode changes..."
+	@$(BASH) ./scripts/check-version-bump.sh
+
+check-deployed-versions:
+	@echo "📦 Reporting deployed-vs-source contract versions (which need upgrading)..."
+	@$(BASH) ./scripts/check-deployed-versions.sh
+
+# Upgrade-safety gate: size + storage-layout + ABI + version-bump. Fast; suitable for the PR job.
+check-upgrade-safety: build analyze-contract-sizes check-storage-layout check-abi check-version-bump
 	@echo "🔐 Upgrade-safety checks passed!"
 
 # ─── Pipelines ────────────────────────────────────────────────────────────────
 
 # CI: fast pipeline for automated environments (no mythril, no coverage — run as separate jobs)
-ci-base: build slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes check-storage-layout check-abi
+ci-base: build slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes check-storage-layout check-abi check-version-bump
 	@echo "🚀 CI base pipeline completed!"
 
 # Note: `forge coverage` runs the unit tests internally, so `make all` should not depend on `make test`.

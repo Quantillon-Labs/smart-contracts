@@ -60,6 +60,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around **QEURO**, a 
 - **Role-based access control** for all critical operations
 - **Emergency pause mechanisms** for crisis situations
 - **Upgradeable architecture** via UUPS pattern
+- **On-chain versioning** — every core contract exposes `version()`; any change is traced through a semver bump (CI-enforced), with deployed versions tracked in `deployments/{chainId}/versions.json`
 - **Oracle integration** for EUR/USD price feeds
 - **Yield generation** through multiple mechanisms
 

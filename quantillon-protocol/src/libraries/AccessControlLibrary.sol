@@ -18,6 +18,9 @@ import {CommonErrorLibrary} from "./CommonErrorLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 library AccessControlLibrary {
+    /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
+    string internal constant VERSION = "1.0.0";
+
     /**
      * @notice Ensures the caller has governance role
      * @dev Reverts with NotGovernance if caller lacks GOVERNANCE_ROLE

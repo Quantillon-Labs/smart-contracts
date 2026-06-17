@@ -1,0 +1,10 @@
+0:0	address	20
+1:0	address	20
+2:0	address	20
+3:0	mapping(address => bool)	32
+4:0	uint256	32
+5:0	uint256	32
+6:0	uint256	32
+7:0	mapping(address => uint256)	32
+8:0	mapping(address => uint256)	32
+9:0	mapping(address => uint256)	32

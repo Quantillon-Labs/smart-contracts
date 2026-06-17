@@ -151,9 +151,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function setTimelock(address _timelock) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_timelock == address(0)) revert CommonErrorLibrary.ZeroAddress();
@@ -162,21 +162,29 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
     }
     
     /**
-     * @notice Toggle secure upgrades
-     * @dev Enables or disables the secure upgrade mechanism
-     * @param enabled Whether to enable secure upgrades
+     * @notice (Re-)enable secure upgrades
+     * @dev Enables secure upgrades. Disabling is intentionally NOT possible through
+     *      this function: it must go through the quorum-gated, timelocked
+     *      emergency-disable flow (proposeEmergencyDisableSecureUpgrades →
+     *      approveEmergencyDisableSecureUpgrades → applyEmergencyDisableSecureUpgrades).
+     *      Passing enabled=false reverts. (F-5 audit fix: an instant disable here let
+     *      a single admin bypass the emergency flow and then call emergencyUpgrade with
+     *      no timelock.)
+     * @param enabled Must be true; false reverts (use the emergency-disable flow)
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function toggleSecureUpgrades(bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        secureUpgradesEnabled = enabled;
-        emit SecureUpgradesToggled(enabled);
+        // Disabling must use the quorum-gated, timelocked emergency-disable flow.
+        if (!enabled) revert CommonErrorLibrary.NotAuthorized();
+        secureUpgradesEnabled = true;
+        emit SecureUpgradesToggled(true);
     }
     
     /**
@@ -190,9 +198,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function proposeUpgrade(
         address newImplementation,
@@ -214,9 +222,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function executeUpgrade(address newImplementation) external onlyTimelock {
         _authorizeUpgrade(newImplementation);
@@ -233,9 +241,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function emergencyUpgrade(
         address newImplementation,
@@ -282,9 +290,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function isUpgradePending(address implementation) external view returns (bool isPending) {
         if (address(timelock) == address(0)) return false;
@@ -303,9 +311,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getPendingUpgrade(address implementation) external view returns (ITimelockUpgradeable.PendingUpgrade memory upgrade) {
         if (address(timelock) == address(0)) {
@@ -334,9 +342,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function canExecuteUpgrade(address implementation) external view returns (bool canExecute) {
         if (address(timelock) == address(0)) return false;
@@ -354,9 +362,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getUpgradeSecurityStatus() external view returns (
         address timelockAddress,
@@ -380,9 +388,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     /// @notice INFO-4: Propose disabling secure upgrades; enforces a 24-hour timelock
     function proposeEmergencyDisableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -531,9 +539,9 @@ abstract contract SecureUpgradeable is UUPSUpgradeable, AccessControlUpgradeable
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function enableSecureUpgrades() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (address(timelock) == address(0)) revert CommonErrorLibrary.ZeroAddress();

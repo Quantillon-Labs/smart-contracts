@@ -1,0 +1,17 @@
+0:0	contract ITimelockUpgradeable	20
+0:20	bool	1
+10:0	mapping(address => address)	32
+11:0	mapping(uint256 => address)	32
+12:0	mapping(address => uint256)	32
+13:0	mapping(address => uint256[])	32
+14:0	mapping(uint256 => string)	32
+15:0	mapping(bytes32 => bool)	32
+1:0	uint256	32
+2:0	address	20
+3:0	address	20
+4:0	address	20
+5:0	address	20
+6:0	address	20
+7:0	address	20
+8:0	address	20
+9:0	mapping(uint256 => address)	32

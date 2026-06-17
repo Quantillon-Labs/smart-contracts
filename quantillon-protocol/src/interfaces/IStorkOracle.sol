@@ -50,7 +50,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Updates minPrice and maxPrice state variables
      * @custom:events Emits PriceBoundsUpdated event
      * @custom:errors Throws if minPrice >= maxPrice or invalid bounds
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to ORACLE_MANAGER_ROLE
      * @custom:oracle No oracle dependency - configuration update only
      */
@@ -65,7 +65,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Updates usdcTolerance state variable
      * @custom:events Emits UsdcToleranceUpdated event
      * @custom:errors Throws if tolerance is invalid or out of bounds
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to ORACLE_MANAGER_ROLE
      * @custom:oracle No oracle dependency - configuration update only
      */
@@ -82,7 +82,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Updates eurUsdPriceFeed, usdcUsdPriceFeed, and feed IDs
      * @custom:events Emits PriceFeedsUpdated event
      * @custom:errors Throws if feed address is zero or invalid
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to ORACLE_MANAGER_ROLE
      * @custom:oracle Updates Stork feed contract references
      */
@@ -96,7 +96,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Resets circuitBreakerTriggered flag
      * @custom:events Emits CircuitBreakerReset event
      * @custom:errors No errors thrown
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to ORACLE_MANAGER_ROLE
      * @custom:oracle Resumes normal oracle price queries
      */
@@ -110,7 +110,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Sets circuitBreakerTriggered flag to true
      * @custom:events Emits CircuitBreakerTriggered event
      * @custom:errors No errors thrown
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to ORACLE_MANAGER_ROLE
      * @custom:oracle Switches to fallback prices instead of live oracle queries
      */
@@ -124,7 +124,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Sets paused state to true
      * @custom:events Emits Paused event
      * @custom:errors No errors thrown
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to EMERGENCY_ROLE
      * @custom:oracle Halts all oracle price queries
      */
@@ -138,7 +138,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Sets paused state to false
      * @custom:events Emits Unpaused event
      * @custom:errors No errors thrown
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to EMERGENCY_ROLE
      * @custom:oracle Resumes normal oracle price queries
      */
@@ -154,7 +154,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Transfers tokens from contract to treasury
      * @custom:events Emits TokenRecovered event
      * @custom:errors Throws if token is zero address or transfer fails
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependency
      */
@@ -168,7 +168,7 @@ interface IStorkOracle is IOracle {
      * @custom:state-changes Transfers ETH from contract to treasury
      * @custom:events Emits ETHRecovered event
      * @custom:errors Throws if transfer fails
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependency
      */

@@ -306,9 +306,9 @@ contract ChainlinkOracle is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_treasury != address(0), "Treasury cannot be zero address");
@@ -404,11 +404,22 @@ contract ChainlinkOracle is
 
     /**
      * @notice Validates a raw EUR/USD feed value against freshness, bounds, and deviation policy.
+     * @dev Checks freshness via _validateTimestamp, scales the raw price, enforces the
+     *      [minEurUsdPrice, maxEurUsdPrice] band, and (unless devModeEnabled) rejects a price
+     *      deviating more than MAX_PRICE_DEVIATION bps from lastValidEurUsdPrice.
      * @param rawPrice Raw EUR/USD price from the feed.
      * @param updatedAt Feed update timestamp.
      * @param feedDecimals Number of decimals used by the feed.
      * @return price Scaled EUR/USD price, or 0 if validation fails before scaling.
      * @return isValid True when the price can be accepted as the next oracle baseline.
+     * @custom:security Enforces staleness, circuit-breaker bounds, and deviation limits before acceptance.
+     * @custom:validation Returns isValid=false on stale, non-positive, out-of-bounds, or over-deviation input.
+     * @custom:state-changes None - view function.
+     * @custom:events None.
+     * @custom:errors None - signals failure via the (0, false) return.
+     * @custom:reentrancy Not applicable - view function.
+     * @custom:access Internal - no access restrictions.
+     * @custom:oracle Reads cached bounds/baseline; does not call external feeds.
      */
     function _validateEurUsdPriceData(
         int256 rawPrice,
@@ -434,6 +445,20 @@ contract ChainlinkOracle is
 
     /**
      * @notice Normalizes USDC/USD for PriceUpdated events, falling back to $1.00 if invalid.
+     * @dev Returns $1.00 (1e18) unless the feed value is fresh (within MAX_USDC_PRICE_STALENESS),
+     *      positive, and within usdcToleranceBps of $1.00, in which case the scaled price is returned.
+     * @param rawPrice Raw USDC/USD price from the feed.
+     * @param updatedAt Feed update timestamp.
+     * @param feedDecimals Number of decimals used by the feed.
+     * @return usdcUsdPrice Normalized USDC/USD price (18 decimals); $1.00 on any failure.
+     * @custom:security Bounds USDC to a tolerance band so a depegged/stale USDC feed cannot distort events.
+     * @custom:validation Falls back to 1e18 on stale, non-positive, or out-of-tolerance input.
+     * @custom:state-changes None - view function.
+     * @custom:events None.
+     * @custom:errors None - falls back to 1e18.
+     * @custom:reentrancy Not applicable - view function.
+     * @custom:access Internal - no access restrictions.
+     * @custom:oracle Used only to enrich PriceUpdated events; does not gate EUR/USD reads.
      */
     function _normalizeUsdcUsdPrice(
         int256 rawPrice,
@@ -455,6 +480,18 @@ contract ChainlinkOracle is
 
     /**
      * @notice Reads USDC/USD for update events without making EUR/USD reads depend on USDC health.
+     * @dev try/catch reads usdcUsdPriceFeed.latestRoundData()/decimals(); returns $1.00 if the round
+     *      is inconsistent or any call reverts, otherwise delegates to _normalizeUsdcUsdPrice. Decoupled
+     *      so a failing USDC feed can never block an EUR/USD read.
+     * @return usdcUsdPrice USDC/USD price (18 decimals) for event enrichment; $1.00 on any failure.
+     * @custom:security Isolates USDC-feed failures from the EUR/USD path via try/catch.
+     * @custom:validation Rejects inconsistent rounds (roundId != answeredInRound, startedAt > updatedAt).
+     * @custom:state-changes None - view function.
+     * @custom:events None.
+     * @custom:errors None - all failures fall back to 1e18.
+     * @custom:reentrancy Not applicable - view function (external staticcall only).
+     * @custom:access Internal - no access restrictions.
+     * @custom:oracle Reads the USDC/USD Chainlink feed; result used only for events.
      */
     function _readUsdcUsdPriceForEvent() internal view returns (uint256 usdcUsdPrice) {
         usdcUsdPrice = 1e18;
@@ -481,6 +518,18 @@ contract ChainlinkOracle is
 
     /**
      * @notice Commits an accepted EUR/USD price as the new oracle deviation baseline.
+     * @dev Stores the accepted EUR/USD price as the new baseline, records update time/block, and emits
+     *      PriceUpdated. Called only after a value passes _validateEurUsdPriceData.
+     * @param eurUsdPrice Accepted EUR/USD price to store as the new baseline (18 decimals).
+     * @param usdcUsdPrice USDC/USD price included in the emitted event (18 decimals).
+     * @custom:security Reached only after validation; advances the deviation baseline used by later reads.
+     * @custom:validation Assumes the caller validated the price; performs no checks itself.
+     * @custom:state-changes Sets lastValidEurUsdPrice, lastPriceUpdateTime, lastPriceUpdateBlock.
+     * @custom:events Emits PriceUpdated(eurUsdPrice, usdcUsdPrice, timestamp).
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable - no external calls.
+     * @custom:access Internal - no access restrictions.
+     * @custom:oracle Updates the cached oracle baseline; does not call external feeds.
      */
     function _commitEurUsdPrice(uint256 eurUsdPrice, uint256 usdcUsdPrice) internal {
         lastValidEurUsdPrice = eurUsdPrice;
@@ -897,9 +946,9 @@ contract ChainlinkOracle is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (treasury == address(0)) revert CommonErrorLibrary.InvalidAddress();
@@ -923,7 +972,7 @@ contract ChainlinkOracle is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
@@ -943,9 +992,9 @@ contract ChainlinkOracle is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function triggerCircuitBreaker() external onlyRole(EMERGENCY_ROLE) {
         circuitBreakerTriggered = true;

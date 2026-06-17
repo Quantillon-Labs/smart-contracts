@@ -39,8 +39,8 @@ out = "docs"
 ignore = ["lib/**", "test/**", "scripts/**", "node_modules/**"]
 
 [etherscan]
-base = { key = "${ETHERSCAN_API_KEY}", url = "https://api.basescan.org/api" }
-base_sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api-sepolia.basescan.org/api" }
+base = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api" }
+base_sepolia = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api" }
 
 # Testing configuration
 [profile.default.fuzz]

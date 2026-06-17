@@ -367,7 +367,7 @@ contract QEUROToken is
      * @custom:state-changes Initializes all contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to initializer modifier
      * @custom:oracle No oracle dependencies
      */
@@ -452,7 +452,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to MINTER_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -504,7 +504,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Protected by flashLoanProtection modifier
      * @custom:access Restricted to MINTER_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -582,7 +582,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to BURNER_ROLE
      * @custom:oracle No oracle dependencies
      * @custom:security No flash loan protection needed - only vault can burn
@@ -618,7 +618,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Protected by flashLoanProtection modifier
      * @custom:access Restricted to BURNER_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -761,7 +761,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -801,7 +801,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -831,7 +831,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -861,7 +861,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -891,7 +891,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -919,7 +919,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -941,7 +941,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -971,7 +971,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -999,7 +999,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1028,7 +1028,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to COMPLIANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1067,7 +1067,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1182,7 +1182,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to PAUSER_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1204,7 +1204,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to PAUSER_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1442,7 +1442,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1462,7 +1462,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1497,7 +1497,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1523,7 +1523,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1544,7 +1544,7 @@ contract QEUROToken is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */

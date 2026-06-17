@@ -469,9 +469,9 @@ contract TimeProvider is Initializable, AccessControlUpgradeable, UUPSUpgradeabl
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(UPGRADER_ROLE) view {
         // Additional upgrade validation can be added here

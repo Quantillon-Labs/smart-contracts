@@ -33,9 +33,9 @@ library TreasuryRecoveryLibrary {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function recoverToken(
         address token,

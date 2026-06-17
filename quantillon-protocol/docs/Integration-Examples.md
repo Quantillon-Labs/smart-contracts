@@ -135,37 +135,9 @@ async function stakeQEURO(qeuroAmount) {
 }
 ```
 
-### Claiming Staking Rewards
+### Staking Rewards — removed
 
-```javascript
-async function claimStakingRewards() {
-    const userPool = new ethers.Contract(USER_POOL_ADDRESS, USER_POOL_ABI, signer);
-    
-    try {
-        // 1. Check pending rewards
-        const userInfo = await userPool.getUserInfo(signer.address);
-        const pendingRewards = userInfo.pendingRewards;
-        
-        if (pendingRewards.eq(0)) {
-            console.log('No rewards to claim');
-            return null;
-        }
-        
-        // 2. Claim rewards
-        const claimTx = await userPool.claimStakingRewards();
-        const receipt = await claimTx.wait();
-        
-        // 3. Parse events
-        const claimEvent = receipt.events.find(e => e.event === 'RewardsClaimed');
-        console.log(`Claimed ${claimEvent.args.amount} QEURO rewards`);
-        
-        return receipt;
-    } catch (error) {
-        console.error('Claiming rewards failed:', error.message);
-        throw error;
-    }
-}
-```
+There is no `claimStakingRewards` call. The old UserPool staking-reward path was removed in the post-audit cleanup (it minted unbacked QEURO and was non-functional). Protocol yield for users accrues **automatically** through the **stQEURO** wrapper — its exchange rate rises as yield is credited, so simply holding stQEURO earns yield. See *Staking in stQEURO Token* below.
 
 ### Staking in stQEURO Token
 

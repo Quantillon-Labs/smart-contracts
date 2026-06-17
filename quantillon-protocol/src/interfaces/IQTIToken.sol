@@ -19,9 +19,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function initialize(address admin, address _treasury, address timelock) external;
 
@@ -36,9 +36,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Protected by flashLoanProtection modifier
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function lock(uint256 amount, uint256 lockTime) external returns (uint256 veQTI);
 
@@ -51,9 +51,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function unlock() external returns (uint256 amount);
 
@@ -68,9 +68,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Protected by flashLoanProtection modifier
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function batchLock(uint256[] calldata amounts, uint256[] calldata lockTimes) external returns (uint256[] memory veQTIAmounts);
 
@@ -84,9 +84,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function batchUnlock(address[] calldata users) external returns (uint256[] memory amounts);
 
@@ -100,9 +100,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getVotingPower(address user) external view returns (uint256 votingPower);
 
@@ -115,9 +115,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function updateVotingPower() external returns (uint256 newVotingPower);
 
@@ -136,9 +136,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getLockInfo(address user) external view returns (
         uint256 amount,
@@ -161,9 +161,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function createProposal(
         string calldata description,
@@ -181,9 +181,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function vote(uint256 proposalId, bool support) external;
 
@@ -197,9 +197,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Protected by flashLoanProtection modifier
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function batchVote(uint256[] calldata proposalIds, bool[] calldata supportVotes) external;
 
@@ -214,7 +214,7 @@ interface IQTIToken {
      * @custom:errors Throws custom errors for invalid conditions
      * @custom:reentrancy Protected by reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function executeProposal(uint256 proposalId) external;
 
@@ -227,9 +227,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function cancelProposal(uint256 proposalId) external;
 
@@ -250,9 +250,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getProposal(uint256 proposalId) external view returns (
         address proposer,
@@ -278,9 +278,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getReceipt(uint256 proposalId, address voter) external view returns (
         bool hasVoted,
@@ -337,9 +337,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function updateGovernanceParameters(
         uint256 _proposalThreshold,
@@ -356,9 +356,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function updateTreasury(address _treasury) external;
 
@@ -370,9 +370,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function updateDecentralizationLevel() external;
 
@@ -384,9 +384,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function pause() external;
 
@@ -398,9 +398,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function unpause() external;
 
@@ -417,9 +417,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getGovernanceInfo() external view returns (
         uint256 _totalLocked,
@@ -439,9 +439,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function name() external view returns (string memory);
 
@@ -454,9 +454,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function symbol() external view returns (string memory);
 
@@ -469,9 +469,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function decimals() external view returns (uint8);
 
@@ -484,9 +484,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function totalSupply() external view returns (uint256);
 
@@ -500,9 +500,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function balanceOf(address account) external view returns (uint256);
     
@@ -518,9 +518,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function transfer(address to, uint256 amount) external returns (bool);
 
@@ -535,9 +535,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function allowance(address owner, address spender) external view returns (uint256);
 
@@ -552,9 +552,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function approve(address spender, uint256 amount) external returns (bool);
 
@@ -570,9 +570,9 @@ interface IQTIToken {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
     

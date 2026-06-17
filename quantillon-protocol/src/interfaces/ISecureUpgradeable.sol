@@ -19,7 +19,7 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to initializer modifier
      * @custom:oracle No oracle dependencies
      */
@@ -34,9 +34,9 @@ interface ISecureUpgradeable {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function setTimelock(address _timelock) external;
 
@@ -49,9 +49,9 @@ interface ISecureUpgradeable {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function toggleSecureUpgrades(bool enabled) external;
 
@@ -66,9 +66,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function proposeUpgrade(
         address newImplementation,
@@ -85,9 +85,9 @@ interface ISecureUpgradeable {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function executeUpgrade(address newImplementation) external;
 
@@ -101,9 +101,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function emergencyUpgrade(
         address newImplementation,
@@ -120,9 +120,9 @@ interface ISecureUpgradeable {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function isUpgradePending(address implementation) external view returns (bool isPending);
 
@@ -136,9 +136,9 @@ interface ISecureUpgradeable {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getPendingUpgrade(address implementation) external view returns (ITimelockUpgradeable.PendingUpgrade memory upgrade);
 
@@ -152,9 +152,9 @@ interface ISecureUpgradeable {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function canExecuteUpgrade(address implementation) external view returns (bool canExecute);
 
@@ -169,9 +169,9 @@ interface ISecureUpgradeable {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getUpgradeSecurityStatus() external view returns (
         address timelockAddress,
@@ -234,9 +234,9 @@ interface ISecureUpgradeable {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function enableSecureUpgrades() external;
 
@@ -327,9 +327,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function timelock() external view returns (ITimelockUpgradeable);
     
@@ -342,9 +342,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function secureUpgradesEnabled() external view returns (bool);
     
@@ -357,9 +357,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function UPGRADER_ROLE() external view returns (bytes32);
 
@@ -375,9 +375,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function hasRole(bytes32 role, address account) external view returns (bool);
     
@@ -391,9 +391,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getRoleAdmin(bytes32 role) external view returns (bytes32);
     
@@ -407,9 +407,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function grantRole(bytes32 role, address account) external;
     
@@ -423,9 +423,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function revokeRole(bytes32 role, address account) external;
     
@@ -439,9 +439,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function renounceRole(bytes32 role, address callerConfirmation) external;
 
@@ -455,9 +455,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function upgradeTo(address newImplementation) external;
     
@@ -471,9 +471,9 @@ interface ISecureUpgradeable {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
 }

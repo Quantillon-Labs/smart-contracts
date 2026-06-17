@@ -1,0 +1,4 @@
+0:0	contract IChainlinkOracle	20
+1:0	contract IStorkOracle	20
+1:20	enum OracleRouter.OracleType	1
+2:0	address	20

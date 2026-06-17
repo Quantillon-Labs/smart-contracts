@@ -24,9 +24,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function initialize(
         address admin,
@@ -64,9 +64,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function withdrawFromAave(uint256 amount) external returns (uint256 usdcWithdrawn);
 
@@ -79,9 +79,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function claimAaveRewards() external returns (uint256 rewardsClaimed);
 
@@ -94,9 +94,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function harvestAaveYield() external returns (uint256 yieldHarvested);
 
@@ -109,9 +109,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getAvailableYield() external view returns (uint256 available);
 
@@ -126,9 +126,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getYieldDistribution() external view returns (
         uint256 protocolYield,
@@ -145,9 +145,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getAaveBalance() external view returns (uint256);
 
@@ -160,9 +160,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getAccruedInterest() external view returns (uint256);
 
@@ -177,9 +177,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getAaveAPY() external view returns (uint256);
 
@@ -195,9 +195,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getAavePositionDetails() external view returns (
         uint256 principalDeposited_,
@@ -218,9 +218,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getAaveMarketData() external view returns (
         uint256 supplyRate,
@@ -240,9 +240,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function checkAaveHealth() external view returns (
         bool isHealthy,
@@ -260,9 +260,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function autoRebalance() external returns (bool rebalanced, uint256 newAllocation);
 
@@ -276,9 +276,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function calculateOptimalAllocation() external view returns (uint256 optimalAllocation, uint256 expectedYield);
 
@@ -291,9 +291,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function setMaxAaveExposure(uint256 _maxExposure) external;
 
@@ -306,9 +306,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function emergencyWithdrawFromAave() external returns (uint256 amountWithdrawn);
 
@@ -323,9 +323,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getRiskMetrics() external view returns (uint256 exposureRatio, uint256 concentrationRisk, uint256 liquidityRisk);
 
@@ -340,9 +340,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function updateAaveParameters(uint256 newHarvestThreshold, uint256 newYieldFee, uint256 newRebalanceThreshold) external;
 
@@ -389,9 +389,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getAaveConfig() external view returns (
         address aavePool_,
@@ -411,9 +411,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function toggleEmergencyMode(bool enabled, string calldata reason) external;
 
@@ -425,9 +425,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function pause() external;
 
@@ -439,9 +439,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function unpause() external;
 
@@ -455,9 +455,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function recoverToken(address token, uint256 amount) external;
 
@@ -469,9 +469,9 @@ interface IMockAaveVault {
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function recoverETH() external;
 
@@ -487,9 +487,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function hasRole(bytes32 role, address account) external view returns (bool);
     /**
@@ -502,9 +502,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getRoleAdmin(bytes32 role) external view returns (bytes32);
     /**
@@ -517,9 +517,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function grantRole(bytes32 role, address account) external;
     /**
@@ -532,9 +532,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function revokeRole(bytes32 role, address account) external;
     /**
@@ -547,9 +547,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function renounceRole(bytes32 role, address callerConfirmation) external;
 
@@ -563,9 +563,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function paused() external view returns (bool);
 
@@ -579,9 +579,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function upgradeTo(address newImplementation) external;
     /**
@@ -594,9 +594,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function upgradeToAndCall(address newImplementation, bytes memory data) external payable;
 
@@ -610,9 +610,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function GOVERNANCE_ROLE() external view returns (bytes32);
     /**
@@ -624,9 +624,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function VAULT_MANAGER_ROLE() external view returns (bytes32);
     /**
@@ -638,9 +638,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function EMERGENCY_ROLE() external view returns (bytes32);
     /**
@@ -652,9 +652,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function UPGRADER_ROLE() external view returns (bytes32);
 
@@ -669,9 +669,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function usdc() external view returns (address);
     /**
@@ -683,9 +683,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function aUSDC() external view returns (address);
     /**
@@ -697,9 +697,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function aavePool() external view returns (address);
     /**
@@ -711,9 +711,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function aaveProvider() external view returns (address);
     /**
@@ -725,9 +725,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function rewardsController() external view returns (address);
     /**
@@ -739,9 +739,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function yieldShift() external view returns (address);
     /**
@@ -753,9 +753,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function maxAaveExposure() external view returns (uint256);
     /**
@@ -767,9 +767,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function harvestThreshold() external view returns (uint256);
     /**
@@ -781,9 +781,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function yieldFee() external view returns (uint256);
     /**
@@ -809,9 +809,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function rebalanceThreshold() external view returns (uint256);
     /**
@@ -823,9 +823,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function principalDeposited() external view returns (uint256);
     /**
@@ -837,9 +837,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function lastHarvestTime() external view returns (uint256);
     /**
@@ -851,9 +851,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function totalYieldHarvested() external view returns (uint256);
     /**
@@ -865,9 +865,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function totalFeesCollected() external view returns (uint256);
     /**
@@ -879,9 +879,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function utilizationLimit() external view returns (uint256);
     /**
@@ -893,9 +893,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function emergencyExitThreshold() external view returns (uint256);
     /**
@@ -907,9 +907,9 @@ interface IMockAaveVault {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function emergencyMode() external view returns (bool);
 

@@ -993,7 +993,7 @@ contract UserPoolTestSuite is Test {
       * @custom:access Public - no access restrictions
       * @custom:oracle No oracle dependency for test function
      */
-    function test_Rewards_ClaimStakingRewards() public {
+    function test_Rewards_NoClaimablePendingRewards() public {
         // First deposit and stake
         _setupDepositMocks(0, STAKE_AMOUNT); // Enough for staking
         
@@ -1022,49 +1022,13 @@ contract UserPoolTestSuite is Test {
         console2.log("Time elapsed (seconds):", uint256(365 days));
         console2.log("Accumulated yield per share:", userPool.accumulatedYieldPerShare());
         
-        // Check pending rewards before claiming
+        // The staking-reward claim path was removed (audit F-6: it minted unbacked
+        // QEURO; L-2/L-3: the index was never funded and the view diverged from it).
+        // getUserInfo must report 0 claimable rewards regardless of staked time.
         (, , uint256 pendingRewards, , , , ) = userPool.getUserInfo(user1);
-        console2.log("Pending rewards before claiming:", pendingRewards);
-        
-        // Pending rewards are now retrieved from getUserInfo
-        console2.log("Pending rewards after second call:", pendingRewards);
-        
-        // Let's also check the user info to see what's stored
-        (uint256 qeuroBalance, uint256 stakedAmount, uint256 pendingRewardsFromInfo, , , , ) = userPool.getUserInfo(user1);
-        console2.log("User info - QEURO balance:", qeuroBalance);
-        console2.log("User info - Staked amount:", stakedAmount);
-        console2.log("User info - Pending rewards:", pendingRewardsFromInfo);
-        
-        // Claim rewards
-        vm.prank(user1);
-        uint256 rewardAmount = userPool.claimStakingRewards();
-        
-        console2.log("Claimed reward amount:", rewardAmount);
-        
-        // For now, accept that rewards might be 0 due to precision issues
-        // TODO: Investigate reward calculation precision issues
-        console2.log("Note: Reward calculation may have precision issues");
+        assertEq(pendingRewards, 0, "No staking rewards are claimable after removal");
     }
     
-    /**
-     * @notice Test claiming rewards with no stake should return zero
-     * @dev Verifies that users with no stake get no rewards
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_Rewards_ClaimRewardsNoStake() public {
-        vm.prank(user1);
-        uint256 rewardAmount = userPool.claimStakingRewards();
-        
-        // Should return 0 as no stake
-        assertEq(rewardAmount, 0);
-    }
 
     // =============================================================================
     // VIEW FUNCTION TESTS
@@ -1525,13 +1489,8 @@ contract UserPoolTestSuite is Test {
         vm.warp(block.timestamp + 365 days);
         vm.roll(block.number + 365 days / 12); // Advance blocks (assuming 12 second blocks)
         
-        // Claim rewards
-        vm.prank(user1);
-        userPool.claimStakingRewards();
-        
-        // For now, accept that rewards might be 0 due to precision issues
-        // TODO: Investigate reward calculation precision issues
-        
+        // (Staking-reward claim path removed in audit F-6 — nothing to claim here.)
+
         // Check pool metrics
         (uint256 totalUsers_, , , ) = userPool.getPoolMetrics();
         assertEq(totalUsers_, 1);

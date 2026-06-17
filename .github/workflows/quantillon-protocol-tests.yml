@@ -42,6 +42,13 @@ jobs:
       - name: Run tests
         run: make test
 
+      # Upgrade-safety gate on every PR: EIP-170 size (vault/UserPool sit at ~99%),
+      # append-only storage-layout diff, and additive-only ABI/selector diff.
+      # Previously these ran nightly-only; moved onto the PR gate so a regression
+      # is caught before merge, not the next morning.
+      - name: Upgrade-safety gate (size, storage-layout, ABI)
+        run: make analyze-contract-sizes check-storage-layout check-abi
+
   ci-heavy:
     name: Full CI Suite (nightly)
     runs-on: ubuntu-latest

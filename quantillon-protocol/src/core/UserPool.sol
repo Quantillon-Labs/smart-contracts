@@ -494,7 +494,7 @@ contract UserPool is
      * @custom:state-changes Initializes all contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to initializer modifier
      * @custom:oracle Requires oracle for analytics functions
      */
@@ -795,11 +795,9 @@ contract UserPool is
         
         // Calculate totals for batch updates
         uint256 totalUsdcAmount = 0;
-        uint256 totalQeuroToMint = 0;
-        
+
         for (uint256 i = 0; i < usdcAmounts.length; i++) {
             totalUsdcAmount += usdcAmounts[i];
-            totalQeuroToMint += minQeuroOuts[i];
         }
         
         // Update user state once (single update outside loop)
@@ -1311,112 +1309,6 @@ contract UserPool is
         emit QEUROUnstaked(msg.sender, amount, TIME_PROVIDER.currentTime());
     }
 
-    /**
-     * @notice Claim staking rewards
-     * @dev This function allows users to claim their pending staking rewards.
-     *      It calculates and transfers the rewards based on their staked amount.
-     * @return rewardAmount Amount of QEURO rewards claimed (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function claimStakingRewards() external nonReentrant returns (uint256 rewardAmount) {
-        // Cache timestamp to avoid external calls
-        uint256 currentTime = TIME_PROVIDER.currentTime();
-        _updatePendingRewards(msg.sender, currentTime);
-        
-        UserInfo storage user = userInfo[msg.sender];
-        rewardAmount = user.pendingRewards;
-        
-        if (rewardAmount > 0) {
-            user.pendingRewards = 0;
-            
-            // Mint reward tokens (could be QEURO or QTI)
-            qeuro.mint(msg.sender, rewardAmount);
-            
-            emit StakingRewardsClaimed(msg.sender, rewardAmount, TIME_PROVIDER.currentTime());
-        }
-    }
-
-    /**
-     * @notice Batch claim staking rewards for multiple users (admin function)
-     * @dev This function allows admins to claim rewards for multiple users in one transaction.
-     *      Useful for protocol-wide reward distributions or automated reward processing.
-     * @param users Array of user addresses to claim rewards for
-     * @return rewardAmounts Array of reward amounts claimed for each user (18 decimals)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
-     */
-    function batchRewardClaim(address[] calldata users) 
-        external 
-        nonReentrant 
-        onlyRole(GOVERNANCE_ROLE)
-        returns (uint256[] memory rewardAmounts) 
-    {
-        if (users.length > MAX_REWARD_BATCH_SIZE) revert CommonErrorLibrary.BatchSizeTooLarge();
-        
-        rewardAmounts = new uint256[](users.length);
-        
-        // Cache timestamp to avoid external calls in loop
-        uint256 currentTime = TIME_PROVIDER.currentTime();
-        // forge-lint: disable-next-line(unsafe-typecast)
-        uint64 currentTimestamp = uint64(currentTime);
-        
-        // Store users with non-zero rewards to minimize external calls
-        address[] memory usersToMint = new address[](users.length);
-        uint256[] memory amountsToMint = new uint256[](users.length);
-        uint256 mintCount = 0;
-
-        for (uint256 i = 0; i < users.length; i++) {
-            address user = users[i];
-            _updatePendingRewards(user, currentTime);
-            
-            UserInfo storage userInfo_ = userInfo[user];
-            uint256 rewardAmount = userInfo_.pendingRewards;
-            rewardAmounts[i] = rewardAmount;
-            
-            if (rewardAmount > 0) {
-                userInfo_.pendingRewards = 0;
-                
-                // Store for batched minting
-                usersToMint[mintCount] = user;
-                amountsToMint[mintCount] = rewardAmount;
-                mintCount++;
-            }
-        }
-        
-        // Use batch minting to avoid external calls in loop
-        if (mintCount > 0) {
-            // Create arrays for batch minting
-            address[] memory recipients = new address[](mintCount);
-            uint256[] memory amounts = new uint256[](mintCount);
-            
-            for (uint256 i = 0; i < mintCount; i++) {
-                recipients[i] = usersToMint[i];
-                amounts[i] = amountsToMint[i];
-            }
-            
-            // Single batch mint call instead of multiple individual calls
-            qeuro.batchMint(recipients, amounts);
-            
-            // Emit events for each user
-            for (uint256 i = 0; i < mintCount; i++) {
-                emit StakingRewardsClaimed(recipients[i], amounts[i], currentTimestamp);
-            }
-        }
-    }
-
     // =============================================================================
     // YIELD DISTRIBUTION
     // =============================================================================
@@ -1518,30 +1410,10 @@ contract UserPool is
     ) {
         UserInfo storage userdata = userInfo[user];
         
-        // Calculate pending rewards
-        uint256 calculatedPendingRewards = userdata.pendingRewards;
-        if (userdata.stakedAmount > 0) {
-            uint256 currentBlock = block.number;
-            uint256 lastRewardBlock = userLastRewardBlock[user];
-            
-            if (lastRewardBlock >= 1) {
-                uint256 blocksElapsed = currentBlock - lastRewardBlock;
-                uint256 timeElapsed = blocksElapsed * 12; // seconds
-                
-                if (timeElapsed > MAX_REWARD_PERIOD) {
-                    timeElapsed = MAX_REWARD_PERIOD;
-                }
-                
-                uint256 stakingReward = uint256(userdata.stakedAmount)
-                    .mulDiv(stakingAPY, 10000)
-                    .mulDiv(timeElapsed, 365 days);
-                
-                uint256 yieldReward = uint256(userdata.stakedAmount)
-                    .mulDiv(accumulatedYieldPerShare, 1e18);
-                
-                calculatedPendingRewards += stakingReward + yieldReward;
-            }
-        }
+        // The staking-reward claim path was removed (audit F-6: it minted unbacked
+        // QEURO; L-2/L-3: the index was never funded and this view diverged from it).
+        // No rewards are claimable, so report 0 rather than a phantom accrual.
+        uint256 calculatedPendingRewards = 0;
         
         return (
             userdata.qeuroBalance,
@@ -1700,9 +1572,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getTotalStakes() external view returns (uint256) {
         return totalStakes;
@@ -1720,9 +1592,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getPoolMetrics() external view returns (
         uint256 totalUsers_,
@@ -1814,9 +1686,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function calculateProjectedRewards(uint256 qeuroAmount, uint256 duration) 
         external 
@@ -1841,9 +1713,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function updateStakingParameters(
         uint256 newStakingAPY,
@@ -1942,9 +1814,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
@@ -1959,9 +1831,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
@@ -1977,9 +1849,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function isPoolActive() external view returns (bool) {
         return !paused();
@@ -2001,9 +1873,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function recoverToken(address token, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         AdminFunctionsLibrary.recoverToken(address(this), token, amount, treasury, DEFAULT_ADMIN_ROLE);
@@ -2017,9 +1889,9 @@ contract UserPool is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     // slither-disable-next-line low-level-calls
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {

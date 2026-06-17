@@ -235,7 +235,7 @@ event MaxSupplyUpdated(uint256 oldMaxSupply, uint256 newMaxSupply);
 
 ### QTIToken
 
-The governance token with vote-escrow mechanics.
+The governance token with vote-escrow mechanics. **Note: governance is dormant** — no mint path is wired, so supply is 0 and the functions below are inactive until a future activation upgrade.
 
 #### Functions
 
@@ -387,13 +387,8 @@ Unstakes QEURO tokens.
 - Sufficient staked balance
 - Cooldown period completed
 
-##### `claimStakingRewards() → (uint256)`
-Claims accumulated staking rewards.
-
-**Returns:**
-- `uint256`: Amount of rewards claimed
-
-**Access:** Public
+##### `claimStakingRewards()` — ⚠️ REMOVED
+Removed in the post-audit cleanup: it minted unbacked QEURO and was non-functional (UserPool holds no `MINTER_ROLE`). User yield now accrues automatically through the **stQEURO** wrapper (rising exchange rate); there is no staking-reward claim call.
 
 ##### `getUserInfo(address user) → (uint256, uint256, uint256, uint256, uint256)`
 Gets comprehensive user information.
@@ -849,13 +844,8 @@ Refreshes and applies current distribution between user and hedger pools.
 
 **Access:** Public (`whenNotPaused`)
 
-##### `claimUserYield(address user) → (uint256)`
-Claims yield for user pool.
-
-**Returns:**
-- `uint256`: Amount of yield claimed
-
-**Access:** `YIELD_MANAGER_ROLE`
+##### `claimUserYield(address user)` — ⚠️ REMOVED
+Removed in the post-audit cleanup: the `userYieldPool` it spent was never funded by `addYield`, so it always reverted. User yield now accrues automatically through the **stQEURO** wrapper. (`claimHedgerYield` is unaffected.)
 
 ##### `claimHedgerYield(address hedger) → (uint256)`
 Claims yield for hedger pool.
@@ -1170,7 +1160,7 @@ uint256 minQeuroOut = (usdcAmount * 95) / 100; // 5% slippage tolerance
 vault.mintQEURO(usdcAmount, minQeuroOut);
 ```
 
-### Staking QEURO for Rewards
+### Staking QEURO
 
 ```solidity
 // 1. Approve QEURO spending
@@ -1179,8 +1169,8 @@ qeuro.approve(userPoolAddress, qeuroAmount);
 // 2. Stake QEURO
 userPool.stake(qeuroAmount);
 
-// 3. Claim rewards later
-uint256 rewards = userPool.claimStakingRewards();
+// There is no staking-reward claim. Protocol yield for users accrues automatically
+// through the stQEURO wrapper (rising exchange rate) — wrap QEURO into stQEURO to earn it.
 ```
 
 ### Opening a Hedge Position

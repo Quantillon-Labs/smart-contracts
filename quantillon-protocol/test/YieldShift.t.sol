@@ -1028,42 +1028,6 @@ contract YieldShiftTestSuite is Test {
     // =============================================================================
     
     /**
-     * @notice Test user yield claiming
-     * @dev Verifies user yield claiming functionality
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_YieldClaiming_ClaimUserYield() public {
-        uint256 userAllocation = 1000 * 1e6; // 1K USDC
-        _seedLegacyClaimableYield(userAllocation, 0);
-        
-        vm.prank(yieldManager);
-        yieldShift.updateYieldAllocation(user, userAllocation, true);
-        
-        // Set last deposit time to meet holding period
-        vm.warp(block.timestamp + MIN_HOLDING_PERIOD + 1);
-        
-        // Record initial balances
-        uint256 initialUserBalance = usdc.balanceOf(user);
-        uint256 initialPendingYield = yieldShift.userPendingYield(user);
-        
-        // Claim yield
-        vm.prank(user);
-        uint256 claimedAmount = yieldShift.claimUserYield(user);
-        
-        // Check that yield was claimed
-        assertEq(claimedAmount, initialPendingYield);
-        assertEq(usdc.balanceOf(user), initialUserBalance + claimedAmount);
-        assertEq(yieldShift.userPendingYield(user), 0);
-    }
-    
-    /**
      * @notice Test hedger yield claiming
      * @dev Verifies hedger yield claiming functionality
       * @custom:security No security implications - test function
@@ -1105,69 +1069,6 @@ contract YieldShiftTestSuite is Test {
         assertEq(yieldShift.hedgerPendingYield(hedger), 0);
     }
     
-    /**
-     * @notice Test yield claiming before holding period should revert
-     * @dev Verifies holding period requirement
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_YieldClaiming_ClaimBeforeHoldingPeriod_Revert() public {
-        // Setup: Add yield and allocate to user
-        uint256 yieldAmount = 1000 * 1e6;
-        
-        vm.prank(yieldManager);
-        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
-        
-        vm.prank(yieldManager);
-        yieldShift.updateYieldAllocation(user, yieldAmount, true);
-        
-        // Set last deposit time to current time (not enough time has passed)
-        vm.prank(address(userPool));
-        yieldShift.updateLastDepositTime(user);
-        
-        // Try to claim before holding period
-        vm.prank(user);
-        vm.expectRevert(CommonErrorLibrary.HoldingPeriodNotMet.selector);
-        yieldShift.claimUserYield(user);
-    }
-    
-    /**
-     * @notice Test yield claiming by unauthorized address should revert
-     * @dev Verifies access control
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_YieldClaiming_ClaimUnauthorized_Revert() public {
-        // Setup: Add yield and allocate to user
-        uint256 yieldAmount = 1000 * 1e6;
-        
-        vm.prank(yieldManager);
-        yieldShift.addYield(1, yieldAmount, keccak256("test_source"));
-        
-        vm.prank(yieldManager);
-        yieldShift.updateYieldAllocation(user, yieldAmount, true);
-        
-        // Set last deposit time to meet holding period
-        vm.warp(block.timestamp + MIN_HOLDING_PERIOD + 1);
-        
-        // Try to claim by unauthorized address
-        vm.prank(hedger);
-        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
-        yieldShift.claimUserYield(user);
-    }
-
     // =============================================================================
     // POOL METRICS TESTS
     // =============================================================================
@@ -1743,10 +1644,6 @@ contract YieldShiftTestSuite is Test {
         vm.prank(yieldManager);
         yieldShift.updateYieldAllocation(user, 1000 * 1e6, true);
         
-        // Set last deposit time and claim
-        vm.warp(block.timestamp + MIN_HOLDING_PERIOD + 1);
-        vm.prank(user);
-        yieldShift.claimUserYield(user);
         
         // Get performance metrics
         yieldShift.getYieldPerformanceMetrics(); // Call to ensure state is consistent
@@ -1757,30 +1654,6 @@ contract YieldShiftTestSuite is Test {
     // =============================================================================
     // EDGE CASES AND ERROR CONDITIONS TESTS
     // =============================================================================
-    
-    /**
-     * @notice Test yield claiming with zero pending yield
-     * @dev Verifies handling of zero yield claims
-      * @custom:security No security implications - test function
-      * @custom:validation No input validation required - test function
-      * @custom:state-changes No state changes - test function
-      * @custom:events No events emitted - test function
-      * @custom:errors No errors thrown - test function
-      * @custom:reentrancy Not applicable - test function
-      * @custom:access Public - no access restrictions
-      * @custom:oracle No oracle dependency for test function
-     */
-    function test_EdgeCases_ClaimZeroYield() public {
-        // Set last deposit time to meet holding period
-        vm.warp(block.timestamp + MIN_HOLDING_PERIOD + 1);
-        
-        // Claim yield when none is pending
-        vm.prank(user);
-        uint256 claimedAmount = yieldShift.claimUserYield(user);
-        
-        // Should return 0
-        assertEq(claimedAmount, 0);
-    }
     
     /**
      * @notice Test yield distribution with moderate pool ratios
@@ -1906,14 +1779,11 @@ contract YieldShiftTestSuite is Test {
         vm.warp(block.timestamp + MIN_HOLDING_PERIOD + 1);
         
         // 4. Claim yield
-        vm.prank(user);
-        uint256 userClaimed = yieldShift.claimUserYield(user);
         
         vm.prank(hedger);
         uint256 hedgerClaimed = yieldShift.claimHedgerYield(hedger);
         
         // 5. Verify results
-        assertGt(userClaimed, 0);
         assertGt(hedgerClaimed, 0);
         assertGt(yieldShift.totalYieldDistributed(), 0);
         

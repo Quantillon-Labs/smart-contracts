@@ -2,6 +2,7 @@
 
 .PHONY: help build test coverage slither mythril security clean validate-natspec \
         docs gas-analysis benchmark-gas analyze-warnings analyze-contract-sizes \
+        check-storage-layout check-abi check-upgrade-safety \
         setup-env check-env install all ci ci-base \
         deploy-localhost deploy-base-sepolia deploy-base deploy-dry-run \
         deploy-check deploy-secure-localhost deploy-secure-base-sepolia deploy-secure-base
@@ -148,10 +149,22 @@ analyze-contract-sizes:
 	@echo "📏 Analyzing contract sizes against EIP-170..."
 	@$(BASH) ./scripts/analyze-contract-sizes.sh
 
+check-storage-layout:
+	@echo "🧱 Checking storage-layout against committed baseline (append-only)..."
+	@$(BASH) ./scripts/check-storage-layout.sh
+
+check-abi:
+	@echo "🔌 Checking ABI/selectors against committed baseline (additive-only)..."
+	@$(BASH) ./scripts/check-abi.sh
+
+# Upgrade-safety gate: size + storage-layout + ABI. Fast; suitable for the PR job.
+check-upgrade-safety: build analyze-contract-sizes check-storage-layout check-abi
+	@echo "🔐 Upgrade-safety checks passed!"
+
 # ─── Pipelines ────────────────────────────────────────────────────────────────
 
 # CI: fast pipeline for automated environments (no mythril, no coverage — run as separate jobs)
-ci-base: build slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes
+ci-base: build slither validate-natspec gas-analysis analyze-warnings analyze-contract-sizes check-storage-layout check-abi
 	@echo "🚀 CI base pipeline completed!"
 
 # Note: `forge coverage` runs the unit tests internally, so `make all` should not depend on `make test`.

@@ -71,8 +71,8 @@ await qeuro.approve(userPoolAddress, qeuroAmount);
 // Stake QEURO
 await userPool.stake(qeuroAmount);
 
-// Claim rewards later
-const rewards = await userPool.claimStakingRewards();
+// Note: there is no staking-reward claim. Protocol yield accrues automatically
+// through the stQEURO wrapper (its exchange rate rises) — wrap QEURO into stQEURO to earn it.
 ```
 
 ### 4. Participate in Governance

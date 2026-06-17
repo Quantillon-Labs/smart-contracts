@@ -432,6 +432,9 @@ contract QuantillonVault is
 
     event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
     event HedgerRewardFeeSplitUpdated(uint256 previousSplit, uint256 newSplit);
+
+    /// @notice Emitted when the oracle address is changed via updateOracle
+    event OracleUpdated(address indexed oldOracle, address indexed newOracle);
     event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReserveShare, uint256 collectorShare);
 
     struct MintCommitPayload {
@@ -546,7 +549,7 @@ contract QuantillonVault is
      * @custom:state-changes Initializes all contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to initializer modifier
      * @custom:oracle No oracle dependencies
      */
@@ -1466,7 +1469,7 @@ contract QuantillonVault is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1518,7 +1521,7 @@ contract QuantillonVault is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1545,16 +1548,17 @@ contract QuantillonVault is
      * @dev Updates the oracle contract address for price feeds
      * @param _oracle New oracle address
       * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:validation Reverts if the new oracle is the zero address
+      * @custom:state-changes Updates the oracle address
+      * @custom:events Emits OracleUpdated(oldOracle, newOracle)
+      * @custom:errors Throws InvalidOracle if the new oracle is the zero address
+      * @custom:reentrancy Not protected - single state write, no external calls
+      * @custom:access Restricted to GOVERNANCE_ROLE
+      * @custom:oracle Sets the oracle address; does not read price data
      */
     function updateOracle(address _oracle) external onlyRole(GOVERNANCE_ROLE) {
         if (_oracle == address(0)) revert CommonErrorLibrary.InvalidOracle();
+        emit OracleUpdated(address(oracle), _oracle);
         oracle = IOracle(_oracle);
     }
 
@@ -1567,7 +1571,7 @@ contract QuantillonVault is
      * @custom:state-changes Updates contract state variables
      * @custom:events No events emitted
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1585,7 +1589,7 @@ contract QuantillonVault is
      * @custom:state-changes Updates contract state variables
      * @custom:events No events emitted
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -1970,9 +1974,9 @@ contract QuantillonVault is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function withdrawProtocolFees(address to) external onlyRole(GOVERNANCE_ROLE) {
         if (to == address(0)) revert CommonErrorLibrary.InvalidAddress();
@@ -2452,9 +2456,9 @@ contract QuantillonVault is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function pause() external onlyRole(EMERGENCY_ROLE) {
         _pause();
@@ -2468,9 +2472,9 @@ contract QuantillonVault is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function unpause() external onlyRole(EMERGENCY_ROLE) {
         _unpause();
@@ -2499,7 +2503,7 @@ contract QuantillonVault is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to DEFAULT_ADMIN_ROLE
      * @custom:oracle No oracle dependencies
      */
@@ -2525,9 +2529,9 @@ contract QuantillonVault is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     // slither-disable-next-line low-level-calls
     function recoverETH() external onlyRole(DEFAULT_ADMIN_ROLE) {

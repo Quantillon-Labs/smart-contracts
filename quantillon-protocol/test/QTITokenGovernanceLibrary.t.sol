@@ -80,8 +80,9 @@ contract QTITokenGovernanceLibraryTest is Test {
      * @notice Fuzz test multiplier is always between 1x and 4x
      */
     function testFuzz_CalculateVotingPowerMultiplier_AlwaysInRange(uint256 lockTime) public pure {
-        vm.assume(lockTime >= MIN_LOCK_TIME);
-        vm.assume(lockTime <= MAX_LOCK_TIME); // Avoid overflow with huge lockTime
+        // bound() (not vm.assume) constructs in-range inputs so the fuzzer never
+        // rejects — avoids the 65536-reject cap that flaked under the coverage profile.
+        lockTime = bound(lockTime, MIN_LOCK_TIME, MAX_LOCK_TIME);
 
         uint256 multiplier = QTITokenGovernanceLibrary.calculateVotingPowerMultiplier(lockTime);
 

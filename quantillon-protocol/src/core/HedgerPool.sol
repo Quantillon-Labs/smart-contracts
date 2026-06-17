@@ -465,7 +465,35 @@ contract HedgerPool is
         emit HedgePositionOpened(
             hedger,
             positionId,
-            bytes32(0)
+            _packHedgeEventData(position.positionSize, position.margin, position.leverage)
+        );
+    }
+
+    /**
+     * @notice Packs position fields into the bytes32 carried by hedge-position events
+     * @dev Layout (MSB->LSB): [255:160] positionSize (uint96) | [159:64] margin (uint96)
+     *      | [63:48] leverage (uint16) | [47:0] reserved. Used by HedgePositionOpened,
+     *      HedgePositionClosed and MarginUpdated so indexers can read position state from the event.
+     * @param positionSize_ Position size to pack (uint96)
+     * @param margin_ Margin to pack (uint96)
+     * @param leverage_ Leverage to pack (uint16)
+     * @return Packed bytes32 event payload
+     * @custom:security No security implications - pure bit-packing of already-validated values
+     * @custom:validation No validation - caller supplies struct-typed values
+     * @custom:state-changes None - pure function
+     * @custom:events None
+     * @custom:errors None
+     * @custom:reentrancy Not applicable - pure function
+     * @custom:access Internal - no access restrictions
+     * @custom:oracle Not applicable - no oracle dependency
+     */
+    function _packHedgeEventData(uint96 positionSize_, uint96 margin_, uint16 leverage_)
+        internal
+        pure
+        returns (bytes32)
+    {
+        return bytes32(
+            (uint256(positionSize_) << 160) | (uint256(margin_) << 64) | (uint256(leverage_) << 48)
         );
     }
 
@@ -552,6 +580,9 @@ contract HedgerPool is
         uint256 cachedPositionSize = uint256(position.positionSize);
         uint256 cachedMargin = uint256(position.margin);
 
+        // Pack position data for the close event before the position is finalized/zeroed.
+        bytes32 closedData = _packHedgeEventData(position.positionSize, position.margin, position.leverage);
+
         // EFFECTS
         _unwindFilledVolume(position);
         _finalizePosition(hedger, positionId, position, cachedMargin, cachedPositionSize);
@@ -564,7 +595,7 @@ contract HedgerPool is
         emit HedgePositionClosed(
             hedger,
             positionId,
-            bytes32(0)
+            closedData
         );
 
         int256 rawPayout = int256(cachedMargin) + pnl;
@@ -599,7 +630,7 @@ contract HedgerPool is
      * @custom:state-changes Updates position margin, hedger stats, transfers USDC to vault
      * @custom:events Emits MarginAdded with position details
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by flashLoanProtection modifier
+     * @custom:reentrancy Protected by reentrancy guard
      * @custom:access Restricted to position owner
      * @custom:oracle No oracle dependencies
      */
@@ -646,6 +677,8 @@ contract HedgerPool is
         position.margin = uint96(newMargin);
         // forge-lint: disable-next-line(unsafe-typecast)
         position.positionSize = uint96(newPositionSize);
+
+        emit MarginUpdated(msg.sender, positionId, _packHedgeEventData(position.positionSize, position.margin, position.leverage));
 
         totalMargin += netAmount;
         totalExposure += deltaPositionSize;
@@ -697,7 +730,7 @@ contract HedgerPool is
      * @custom:state-changes Updates position margin, hedger stats, withdraws USDC from vault
      * @custom:events Emits MarginUpdated with position details
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by flashLoanProtection modifier
+     * @custom:reentrancy Protected by reentrancy guard
      * @custom:access Restricted to position owner
      * @custom:oracle No oracle dependencies
      */
@@ -740,6 +773,8 @@ contract HedgerPool is
         );
 
         _validatePositionHealthAfterMarginRemoval(position, newMargin);
+
+        emit MarginUpdated(msg.sender, positionId, _packHedgeEventData(position.positionSize, position.margin, position.leverage));
 
         vault.withdrawHedgerDeposit(msg.sender, amount);
     }
@@ -1074,7 +1109,7 @@ contract HedgerPool is
      * @custom:errors None - returns 0 for invalid states
      * @custom:reentrancy Not applicable - view function
      * @custom:access Public - anyone can query effective collateral
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Takes the EUR/USD price as a parameter; caller must supply fresh oracle data
      */
     function getTotalEffectiveHedgerCollateral(uint256 price) external view returns (uint256 t) {
         if (singleHedger == address(0)) return 0;

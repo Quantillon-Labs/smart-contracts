@@ -342,7 +342,7 @@ contract YieldShift is
       * @custom:errors Throws custom errors for invalid conditions
       * @custom:reentrancy Protected by reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function updateYieldDistribution() external nonReentrant whenNotPaused {
         // Apply holding period requirements to current pool metrics
@@ -434,50 +434,6 @@ contract YieldShift is
 
 
     /**
-     * @notice Claim user yield
-     * @dev Claims yield for a user after holding period requirements are met
-     * @param user Address of the user to claim yield for
-     * @return yieldAmount Amount of yield claimed
-     * @custom:security Validates caller is authorized and holding period is met
-     * @custom:validation Validates user has pending yield and meets holding period
-     * @custom:state-changes Updates user pending yield and transfers USDC
-     * @custom:events Emits YieldClaimed event
-     * @custom:errors Throws if caller is unauthorized or holding period not met
-     * @custom:reentrancy Protected by nonReentrant modifier
-     * @custom:access Restricted to user or user pool
-     * @custom:oracle No oracle dependencies
-     */
-    function claimUserYield(address user) 
-        external 
-        nonReentrant 
-        returns (uint256 yieldAmount) 
-    {
-        if (msg.sender != user && msg.sender != address(userPool)) {
-            revert CommonErrorLibrary.NotAuthorized();
-        }
-        
-        yieldAmount = userPendingYield[user];
-        
-        if (yieldAmount > 0) {
-            // Check holding period
-            if (TIME_PROVIDER.currentTime() < lastDepositTime[user] + MIN_HOLDING_PERIOD) {
-                revert CommonErrorLibrary.HoldingPeriodNotMet();
-            }
-            
-            if (userYieldPool < yieldAmount) revert CommonErrorLibrary.InsufficientYield();
-            
-            userPendingYield[user] = 0;
-            userLastClaim[user] = TIME_PROVIDER.currentTime();
-            userYieldPool -= yieldAmount;
-            totalYieldDistributed += yieldAmount;
-            
-            usdc.safeTransfer(user, yieldAmount);
-            
-            emit UserYieldClaimed(user, yieldAmount, TIME_PROVIDER.currentTime());
-        }
-    }
-
-    /**
      * @notice Claim hedger yield
      * @dev Claims yield for a hedger
      * @param hedger Address of the hedger to claim yield for
@@ -567,9 +523,9 @@ contract YieldShift is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function _getCurrentPoolMetrics() internal view returns (
         uint256 userPoolSize,
@@ -593,9 +549,9 @@ contract YieldShift is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function _getEligiblePoolMetrics() internal view returns (
         uint256 userPoolSize,
@@ -619,9 +575,9 @@ contract YieldShift is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function _calculateHoldingPeriodDiscount() internal view returns (uint256 discountBps) {
         return YieldShiftOptimizationLibrary.calculateHoldingPeriodDiscount(
@@ -663,9 +619,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function updateLastDepositTime(address user) external {
         if (msg.sender != address(userPool) && msg.sender != address(hedgerPool)) {
@@ -685,9 +641,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getYieldDistributionBreakdown() external view returns (
         uint256 userYieldPool_,
@@ -713,9 +669,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getPoolMetrics() external view returns (
         uint256 userPoolSize,
@@ -737,9 +693,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function calculateOptimalYieldShift() external view returns (
         uint256 optimalShift,
@@ -767,9 +723,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getYieldSources() external view returns (
         uint256 aaveYield,
@@ -799,9 +755,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getHistoricalYieldShift(uint256 period) external view returns (
         uint256 averageShift,
@@ -838,9 +794,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function getYieldPerformanceMetrics() external view returns (
         uint256 totalYieldDistributed_,
@@ -1071,13 +1027,18 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function updateYieldAllocation(address user, uint256 amount, bool isUser) external {
         AccessControlLibrary.onlyYieldManager(this);
         if (isUser) {
+            // NOTE (audit F-8): the user yield-pool path is vestigial. userYieldPool is
+            // never funded by addYield (user yield accrues via creditVaultYield -> stQEURO)
+            // and the claimUserYield() function was removed, so userPendingYield set here
+            // is NOT claimable on-chain. Do not call with isUser=true. A future upgrade
+            // should remove this branch and the userYieldPool/userPendingYield storage.
             userPendingYield[user] += amount;
         } else {
             hedgerPendingYield[user] += amount;
@@ -1094,9 +1055,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function emergencyYieldDistribution(uint256 userAmount, uint256 hedgerAmount) external {
         AccessControlLibrary.onlyEmergencyRole(this);
@@ -1122,9 +1083,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function pauseYieldDistribution() external {
         AccessControlLibrary.onlyEmergencyRole(this);
@@ -1139,9 +1100,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function resumeYieldDistribution() external {
         AccessControlLibrary.onlyEmergencyRole(this);
@@ -1158,9 +1119,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     /**
      * @notice Checks if a yield source is authorized for a specific yield type
@@ -1173,9 +1134,9 @@ contract YieldShift is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function isYieldSourceAuthorized(address source, bytes32 yieldType) external view returns (bool) {
         return authorizedYieldSources[source] && sourceToYieldType[source] == yieldType;
@@ -1189,9 +1150,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function checkAndUpdateYieldDistribution() external {
         uint256 timeSinceUpdate = TIME_PROVIDER.currentTime() - lastUpdateTime;
@@ -1222,9 +1183,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function forceUpdateYieldDistribution() external {
         AccessControlLibrary.onlyGovernance(this);
@@ -1243,9 +1204,9 @@ contract YieldShift is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function getTimeWeightedAverage(PoolSnapshot[] storage poolHistory, uint256 period, bool isUserPool) 
         internal 
@@ -1304,9 +1265,9 @@ contract YieldShift is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function _recordPoolSnapshot() internal {
         (uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize,) = _getEligiblePoolMetrics();
@@ -1325,9 +1286,9 @@ contract YieldShift is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function _recordPoolSnapshotWithEligibleSizes(uint256 eligibleUserPoolSize, uint256 eligibleHedgerPoolSize) internal {
         _addToPoolHistory(userPoolHistory, eligibleUserPoolSize, true);
@@ -1345,9 +1306,9 @@ contract YieldShift is
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function _addToPoolHistory(PoolSnapshot[] storage poolHistory, uint256 poolSize, bool isUserPool) internal {
         uint256 length = poolHistory.length;
@@ -1381,9 +1342,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function recoverToken(address token, uint256 amount) external {
         AccessControlLibrary.onlyAdmin(this);
@@ -1399,9 +1360,9 @@ contract YieldShift is
       * @custom:state-changes Updates contract state variables
       * @custom:events Emits relevant events for state changes
       * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Protected by reentrancy guard
+      * @custom:reentrancy Not protected by a reentrancy guard
       * @custom:access Restricted to authorized roles
-      * @custom:oracle Requires fresh oracle price data
+      * @custom:oracle Not applicable - no oracle dependency
      */
     function recoverETH() external {
         AccessControlLibrary.onlyAdmin(this);

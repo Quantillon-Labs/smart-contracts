@@ -238,19 +238,26 @@ contract SecureUpgradeableTest is Test {
     // TOGGLE SECURE UPGRADES TESTS
     // =============================================================================
 
-    function test_ToggleSecureUpgrades_Disable() public {
+    function test_ToggleSecureUpgrades_DisableReverts() public {
+        // F-5: toggleSecureUpgrades can no longer instant-disable. Allowing it would let
+        // a single admin bypass the quorum+delay emergency-disable flow and then call
+        // emergencyUpgrade with no timelock. Disabling must use the emergency flow.
         vm.prank(admin);
-        vm.expectEmit(false, false, false, true);
-        emit SecureUpgradesToggled(false);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
         secureContract.toggleSecureUpgrades(false);
 
-        assertFalse(secureContract.secureUpgradesEnabled(), "Secure upgrades should be disabled");
+        assertTrue(secureContract.secureUpgradesEnabled(), "Secure upgrades must remain enabled");
+
+        // While secure upgrades remain enabled (with a timelock set), emergencyUpgrade
+        // is unreachable — so the bypass is fully closed.
+        vm.prank(upgrader);
+        vm.expectRevert(CommonErrorLibrary.NotAuthorized.selector);
+        secureContract.emergencyUpgrade(address(implementationV2), "should not work");
     }
 
     function test_ToggleSecureUpgrades_Enable() public {
         // First disable
-        vm.prank(admin);
-        secureContract.toggleSecureUpgrades(false);
+        _disableSecureUpgradesWithQuorum();
 
         // Then enable
         vm.prank(admin);
@@ -283,8 +290,7 @@ contract SecureUpgradeableTest is Test {
     }
 
     function test_ProposeUpgrade_RevertWhenDisabled() public {
-        vm.prank(admin);
-        secureContract.toggleSecureUpgrades(false);
+        _disableSecureUpgradesWithQuorum();
 
         vm.prank(upgrader);
         vm.expectRevert(CommonErrorLibrary.NotActive.selector);
@@ -396,8 +402,7 @@ contract SecureUpgradeableTest is Test {
 
     function test_EmergencyUpgrade_SuccessWhenSecureUpgradesDisabled() public {
         // Disable secure upgrades
-        vm.prank(admin);
-        secureContract.toggleSecureUpgrades(false);
+        _disableSecureUpgradesWithQuorum();
 
         // Perform emergency upgrade
         vm.prank(upgrader);
@@ -436,8 +441,7 @@ contract SecureUpgradeableTest is Test {
     }
 
     function test_EmergencyUpgrade_RevertNotUpgrader() public {
-        vm.prank(admin);
-        secureContract.toggleSecureUpgrades(false);
+        _disableSecureUpgradesWithQuorum();
 
         vm.prank(attacker);
         vm.expectRevert();
@@ -678,8 +682,7 @@ contract SecureUpgradeableTest is Test {
 
     function test_Security_UpgraderCanDirectlyUpgradeWhenSecureDisabled() public {
         // Disable secure upgrades
-        vm.prank(admin);
-        secureContract.toggleSecureUpgrades(false);
+        _disableSecureUpgradesWithQuorum();
 
         // Now upgrader can upgrade directly
         vm.prank(upgrader);
@@ -688,8 +691,7 @@ contract SecureUpgradeableTest is Test {
 
     function test_Security_NonUpgraderCannotUpgradeEvenWhenSecureDisabled() public {
         // Disable secure upgrades
-        vm.prank(admin);
-        secureContract.toggleSecureUpgrades(false);
+        _disableSecureUpgradesWithQuorum();
 
         // Attacker still cannot upgrade
         vm.prank(attacker);
@@ -698,8 +700,7 @@ contract SecureUpgradeableTest is Test {
     }
 
     function test_Security_CannotUpgradeToZeroAddress() public {
-        vm.prank(admin);
-        secureContract.toggleSecureUpgrades(false);
+        _disableSecureUpgradesWithQuorum();
 
         vm.prank(upgrader);
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);

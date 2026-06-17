@@ -49,7 +49,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around **QEURO**, a 
 ### Core Components
 
 - **QEUROToken**: Euro-pegged stablecoin with configurable supply cap and rate limiting
-- **QTIToken**: Governance token with vote-escrow mechanics and voting power multipliers
+- **QTIToken**: Governance token with vote-escrow mechanics and voting power multipliers (governance dormant — no mint path wired yet, so supply is 0 until a future activation upgrade)
 - **QuantillonVault**: Main vault for overcollateralized QEURO minting
 - **UserPool**: User deposit and staking management with yield distribution
 - **HedgerPool**: EUR/USD hedging operations with margin management

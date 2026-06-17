@@ -254,169 +254,50 @@ contract EconomicAttackVectors is Test {
 
     // test_Economic_SandwichAttack_SlippageProtection: executable in EconomicAttackVectorsIntegration below
 
-    /**
-     * @notice Test MEV protection through transaction ordering
-     * @dev Verifies commit-reveal or other MEV mitigation
-     */
-    function test_Economic_MEVProtection() public {
-        vm.skip(true, "MEV protection tests pending contract MEV hooks; scenario requires full protocol");
-    }
 
     // =============================================================================
     // ARBITRAGE ATTACK TESTS
     // =============================================================================
 
-    /**
-     * @notice Test cross-pool arbitrage is not profitable
-     * @dev Verifies pricing consistency across pools
-     */
-    function test_Economic_CrossPoolArbitrage_NotProfitable() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by IntegrationTests");
-    }
 
-    /**
-     * @notice Test arbitrage through stQEURO exchange rate
-     * @dev Verifies exchange rate manipulation is prevented
-     */
-    function test_Economic_stQEUROArbitrage_Blocked() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by IntegrationTests");
-    }
 
     // =============================================================================
     // YIELD MANIPULATION TESTS
     // =============================================================================
 
-    /**
-     * @notice Test yield cannot be extracted through timing attacks
-     * @dev Verifies yield distribution is time-weighted
-     */
-    function test_Economic_YieldTimingAttack_Blocked() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by IntegrationTests");
-    }
 
-    /**
-     * @notice Test yield shift parameters are bounded
-     * @dev Verifies yield shift cannot be set to exploitable values
-     */
-    function test_Economic_YieldShiftBounds_Enforced() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by YieldValidationLibrary tests");
-    }
 
     // =============================================================================
     // COLLATERAL MANIPULATION TESTS
     // =============================================================================
 
-    /**
-     * @notice Test minimum collateralization ratio is enforced
-     * @dev Verifies positions cannot be undercollateralized
-     */
-    function test_Economic_MinCollateralRatio_Enforced() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by IntegrationTests / LiquidationScenarios");
-    }
 
-    /**
-     * @notice Test maximum leverage is limited
-     * @dev Verifies leverage cannot exceed safe limits
-     */
-    function test_Economic_MaxLeverage_Limited() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by HedgerPool tests");
-    }
 
     // =============================================================================
     // FEE EXTRACTION TESTS
     // =============================================================================
 
-    /**
-     * @notice Test fees cannot be bypassed
-     * @dev Verifies all operations charge appropriate fees
-     */
-    function test_Economic_FeeBypass_Blocked() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by FeeCollector / IntegrationTests");
-    }
 
-    /**
-     * @notice Test fee accumulation is accurate
-     * @dev Verifies fee collection is correct
-     */
-    function test_Economic_FeeAccumulation_Accurate() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by FeeCollector / IntegrationTests");
-    }
 
     // =============================================================================
     // LIQUIDATION ATTACK TESTS
     // =============================================================================
 
-    /**
-     * @notice Test self-liquidation is not profitable
-     * @dev Verifies liquidation penalties prevent self-liquidation attacks
-     */
-    function test_Economic_SelfLiquidation_NotProfitable() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by LiquidationScenarios");
-    }
 
-    /**
-     * @notice Test liquidation race conditions are handled
-     * @dev Verifies concurrent liquidations are processed correctly
-     */
-    function test_Economic_LiquidationRaceCondition_Handled() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by RaceConditionTests / LiquidationScenarios");
-    }
 
-    /**
-     * @notice Test cascading liquidations are controlled
-     * @dev Verifies cascade protection mechanisms
-     */
-    function test_Economic_CascadingLiquidations_Controlled() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by LiquidationScenarios");
-    }
 
     // =============================================================================
     // ECONOMIC INVARIANT TESTS
     // =============================================================================
 
-    /**
-     * @notice Test total supply invariants
-     * @dev Verifies minted tokens equal backing
-     */
-    function test_Economic_SupplyBacking_Invariant() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by QuantillonInvariants");
-    }
 
-    /**
-     * @notice Test collateral is always sufficient
-     * @dev Verifies system is never undercollateralized
-     */
-    function test_Economic_CollateralSufficiency_Invariant() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by QuantillonInvariants");
-    }
 
     // =============================================================================
     // ATTACK SCENARIO TESTS
     // =============================================================================
 
-    /**
-     * @notice Test comprehensive economic attack scenario
-     * @dev Simulates a sophisticated economic attack
-     */
-    function test_Economic_ComprehensiveAttack_Blocked() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by CombinedAttackVectors / IntegrationTests");
-    }
 
-    /**
-     * @notice Test coordinated multi-user attack
-     * @dev Simulates attack using multiple accounts
-     */
-    function test_Economic_CoordinatedAttack_Blocked() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by IntegrationTests");
-    }
 
-    /**
-     * @notice Test economic attack through governance
-     * @dev Verifies governance cannot extract value
-     */
-    function test_Economic_GovernanceExtraction_Blocked() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by CombinedAttackVectors / GovernanceAttackVectors");
-    }
 
     // =============================================================================
     // PAUSE MECHANISM ECONOMIC TESTS
@@ -464,29 +345,8 @@ contract EconomicAttackVectors is Test {
     // ECONOMIC PARAMETER TESTS
     // =============================================================================
 
-    /**
-     * @notice Test fee parameters are bounded
-     * @dev Verifies fee limits exist
-     */
-    function test_Economic_FeeBounds() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by FeeCollector tests");
-    }
 
-    /**
-     * @notice Test collateral parameters are bounded
-     * @dev Verifies collateral limits exist
-     */
-    function test_Economic_CollateralBounds() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by QuantillonVault / HedgerPool tests");
-    }
 
-    /**
-     * @notice Test cooldown periods are enforced
-     * @dev Verifies timing restrictions exist
-     */
-    function test_Economic_CooldownEnforcement() public {
-        vm.skip(true, "Scenario requires full protocol deployment; covered by UserPool / HedgerPool tests");
-    }
 }
 
 /**

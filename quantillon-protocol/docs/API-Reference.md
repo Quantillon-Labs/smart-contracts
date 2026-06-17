@@ -367,13 +367,8 @@ function unstake(uint256 qeuroAmount) external
 - Sufficient staked balance
 - Cooldown period completed
 
-#### `claimStakingRewards() → (uint256)`
-```solidity
-function claimStakingRewards() external returns (uint256 rewardAmount)
-```
-
-**Modifiers**: `whenNotPaused`, `nonReentrant`  
-**Events**: `RewardsClaimed(address indexed user, uint256 amount)`
+#### `claimStakingRewards()` — ⚠️ REMOVED
+> Removed in the post-audit cleanup: it minted unbacked QEURO and was non-functional on the live deployment (UserPool holds no `MINTER_ROLE`). User yield now accrues automatically through the **stQEURO** wrapper (rising exchange rate); there is no staking-reward claim call.
 
 #### `getUserInfo(address user) → (uint256, uint256, uint256, uint256, uint256)`
 ```solidity
@@ -754,13 +749,8 @@ function updateYieldDistribution() external
 **Modifiers**: `whenNotPaused`, `nonReentrant`  
 **Events**: `YieldDistributionUpdated(uint256 userPoolYield, uint256 hedgerPoolYield, uint256 currentShift)`
 
-#### `claimUserYield(address user) → (uint256)`
-```solidity
-function claimUserYield(address user) external returns (uint256 yieldAmount)
-```
-
-**Modifiers**: `whenNotPaused`, `nonReentrant`  
-**Events**: `UserYieldClaimed(address indexed user, uint256 yieldAmount, uint256 timestamp)`
+#### `claimUserYield(address user)` — ⚠️ REMOVED
+> Removed in the post-audit cleanup: the `userYieldPool` it spent was never funded by `addYield` (the user share routes via `creditVaultYield` → stQEURO), so it always reverted. User yield now accrues automatically through the **stQEURO** wrapper. (Hedger yield via `claimHedgerYield` is unaffected.)
 
 #### `claimHedgerYield(address hedger) → (uint256)`
 ```solidity

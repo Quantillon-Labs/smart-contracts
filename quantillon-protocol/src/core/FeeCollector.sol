@@ -160,7 +160,26 @@ contract FeeCollector is
     // =============================================================================
     // INITIALIZATION
     // =============================================================================
-    
+
+    /**
+     * @notice Locks the implementation so it cannot be initialized directly
+     * @dev Disables initializers on the implementation contract; only proxies may be
+     *      initialized. Brings FeeCollector in line with the other core contracts,
+     *      which all call _disableInitializers() (F-3/F-4 audit fix).
+     * @custom:security Prevents implementation-contract initialization
+     * @custom:validation No input validation required - constructor
+     * @custom:state-changes Disables initializers on the implementation
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - constructor
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
+     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @notice Initializes the FeeCollector contract
      * @dev Sets up the initial configuration for fee collection and distribution

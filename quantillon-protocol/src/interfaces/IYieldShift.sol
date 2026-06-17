@@ -93,21 +93,6 @@ interface IYieldShift {
      */
     function addYield(uint256 vaultId, uint256 yieldAmount, bytes32 source) external;
 
-    /**
-     * @notice Claims accumulated user yield for a specific address.
-     * @dev Enforces holding period via `lastDepositTime` before releasing USDC yield.
-     * @param user Address whose yield is being claimed.
-     * @return yieldAmount Amount of USDC yield transferred to `user`.
-     * @custom:security Callable by user or UserPool; checks holding period and pool balances.
-     * @custom:validation Reverts if holding period not met or pool has insufficient yield.
-     * @custom:state-changes Updates `userPendingYield`, `userLastClaim`, `userYieldPool`, `totalYieldDistributed`.
-     * @custom:events Emits `UserYieldClaimed`.
-     * @custom:errors Reverts with holding‑period or insufficient‑yield errors.
-     * @custom:reentrancy Protected by nonReentrant modifier in implementation.
-     * @custom:access Restricted to `user` or UserPool contract.
-     * @custom:oracle No direct oracle dependency.
-     */
-    function claimUserYield(address user) external returns (uint256 yieldAmount);
 
     /**
      * @notice Claims accumulated hedger yield for a specific hedger.
@@ -561,7 +546,7 @@ interface IYieldShift {
 
     /**
      * @notice Returns pending yield for a user.
-     * @dev Reads per‑user pending yield that can be claimed via `claimUserYield`.
+     * @dev Per-user pending-yield bookkeeping. NOTE (audit F-8): userYieldPool is never funded by the normal addYield flow (user yield accrues via stQEURO), so this value is vestigial and not claimable on-chain.
      * @param user User address.
      * @return amount Pending yield amount.
      * @custom:security View‑only.

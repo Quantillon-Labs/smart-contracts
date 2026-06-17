@@ -12,11 +12,11 @@ Core smart contracts implementing:
 - **QEURO**: Euro-pegged stablecoin (1:1 via EUR/USD oracle)
 - **stQEURO**: Yield-bearing auto-compounding wrapper
 - **stQEUROFactory**: Deploys one stQEURO proxy per external vault, registry by `vaultId`
-- **QTI**: Governance token with vote-escrow mechanics
+- **QTI**: Governance token with vote-escrow mechanics (dormant — no mint path wired, supply currently 0)
 - **QuantillonVault**: Main USDC ↔ QEURO vault (overcollateralized ≥105%, liquidation at 101%)
 - **UserPool / HedgerPool**: Dual-pool architecture for deposits and hedging
 - **FeeCollector**: Fee distribution with 60/25/15 split (treasury/dev/community)
-- **YieldShift**: Dynamic yield distribution between pools (TWAP-based, 7-day holding period)
+- **YieldShift**: Dynamic yield distribution between pools (eligible-pool sizing + gradual adjustment, 7-day holding period)
 - **AaveStakingVaultAdapter / MorphoStakingVaultAdapter**: Lightweight non-upgradeable adapters (symmetric pattern) wrapping mock vaults for localhost development
 
 ## Tech Stack
@@ -59,6 +59,11 @@ make validate-natspec   # Documentation validation
 # Analysis
 make gas-analysis       # Gas optimization analysis
 make analyze-contract-sizes  # EIP-170 size check
+
+# Upgrade-safety gates (storage-frozen / size-critical contracts)
+make check-storage-layout    # append-only storage-layout diff vs storage-layout/ baselines
+make check-abi               # additive-only ABI/selector diff vs abi-baseline/ baselines
+make check-upgrade-safety    # build + size + storage-layout + ABI (the PR gate)
 
 # Documentation
 make docs               # Generate HTML docs (forge doc)
@@ -111,14 +116,14 @@ FeeCollector (60/25/15 treasury/dev/community)
 | Contract | Purpose |
 |----------|---------|
 | **QEUROToken** | Euro-pegged stablecoin, 18 decimals, mint/burn with rate limiting |
-| **QTIToken** | Governance token, fixed 100M supply, vote-escrow with 4× voting power |
+| **QTIToken** | Governance token, 100M supply cap, vote-escrow with 4× voting power. **Dormant: no mint path is wired, so supply is 0 and lock/vote/propose are inactive until an activation upgrade mints the cap** |
 | **QuantillonVault** | Main USDC→QEURO swap, oracle-priced, fee management |
 | **FeeCollector** | Fee distribution with per-token accounting |
-| **UserPool** | USDC deposits, QEURO staking, unstaking cooldown, yield routing |
+| **UserPool** | USDC deposits, QEURO staking, unstaking cooldown; user yield accrues via stQEURO (the staking-reward claim path was removed) |
 | **HedgerPool** | EUR/USD short positions (hedgers are SHORT EUR), margin management, liquidation at 101% CR |
 | **stQEUROFactory** | Factory deploying one stQEURO proxy per vault, `vaultId` registry |
 | **stQEUROToken** | Yield-bearing wrapper, exchange rate increases as yield accrues (similar to stETH) |
-| **YieldShift** | Dynamic yield split between UserPool/HedgerPool, TWAP-based, 7-day holding period |
+| **YieldShift** | Dynamic yield split between UserPool/HedgerPool, 7-day holding period; binding allocation uses holding-period-filtered eligible-pool sizes + gradual adjustment (TWAP helpers feed historical metrics only) |
 | **OracleRouter** | Routes between Chainlink and Stork oracles, switchable by governance |
 | **TimeProvider** | Centralized `block.timestamp` wrapper used across contracts |
 
@@ -132,6 +137,9 @@ Hedgers are SHORT EUR (they owe QEURO to users):
 ### Oracle Architecture
 
 `OracleRouter` implements `IOracle` and routes to either `ChainlinkOracle` or `StorkOracle`. All protocol contracts depend only on `IOracle` (oracle-agnostic). Both oracle adapters validate EUR/USD and USDC/USD feeds with 1hr staleness checks and circuit breakers.
+
+- **`getEurUsdPrice()` is non-`view` by design**: on a fresh valid read it commits the price into the deviation-baseline cache (`lastValidEurUsdPrice`/`lastPriceUpdateTime`/`lastPriceUpdateBlock`) and emits `PriceUpdated`. So every price read is a state write, and consumers such as `QuantillonVault.shouldTriggerLiquidationLive()` are non-`view` too. Integrators that only need a cheap read should use the cached getters rather than `getEurUsdPrice()`.
+- **Failover is manual**: `OracleRouter` routes to a single `activeOracle` with no automatic fallback or disagreement handling. If the active oracle returns `isValid=false`, callers revert; switching is a deliberate governance action via `switchOracle` (`ORACLE_MANAGER_ROLE`). Operate a monitor/alert on oracle health.
 
 ## Coding Conventions
 
@@ -173,7 +181,7 @@ contract MyContract is Initializable, SecureUpgradeable {
 
 ## Architecture Patterns
 
-1. **UUPS Upgradeable**: All core contracts use OpenZeppelin UUPS proxy via `SecureUpgradeable` base (adds timelock + multi-sig requirement for upgrades, 24hr emergency-disable delay, quorum of 2)
+1. **UUPS Upgradeable**: All core contracts use OpenZeppelin UUPS proxy via `SecureUpgradeable` base (a `timelock` pointer gates upgrades; a quorum-gated 24hr emergency-disable path exists in the base). **Live trust model (Base mainnet, since 2026-06-15):** all privileged roles are held by a **2-of-2 Gnosis Safe** (`0x1d7fF432…e6cd`); each core proxy's `timelock` is an **OpenZeppelin `TimelockController`** (`0x7Ade8f3B…8342`, 12h delay, Safe = sole proposer/executor); the deployer EOA is fully de-privileged (retains only SlippageStorage `WRITER`). Upgrades run `Safe → controller.schedule → wait 12h → controller.execute`. See `BATCH0_OPS_RUNBOOK.md`.
 2. **Role-Based Access**: `AccessControlUpgradeable` with defined roles (`MINTER_ROLE`, `PAUSER_ROLE`, `UPGRADER_ROLE`, etc.)
 3. **Library Pattern**: Business logic extracted to libraries to stay under EIP-170 bytecode limit — 24 libraries in `src/libraries/`
 4. **Error Libraries**: Custom errors in domain-specific libraries (`CommonErrorLibrary`, `VaultErrorLibrary`, `HedgerPoolErrorLibrary`, `TokenErrorLibrary`, etc.) for gas efficiency
@@ -189,15 +197,16 @@ Networks: localhost (31337), Base Sepolia (84532), Base Mainnet (8453).
 
 ## Testing Standards
 
-- **57 test files, 1,471+ tests** (100% pass rate)
+- **57 test files, 1,415 passing tests** (0 failing, 11 skipped)
 - Fuzz tests: 1000 runs; Invariant tests: 256 runs, depth 15
 - Naming: `test_*`, `testFuzz_*`, `invariant_*`
-- ~46 explicit skips with documented rationale
+- 11 explicit skips with documented rationale (the misleading pure-skip attack stubs were removed; real attack coverage lives in `EconomicAttackVectorsIntegration` + integration tests)
 - Run `FOUNDRY_PROFILE=test forge test` (or `make test`) before pushing
 
 ## Security Notes
 
 - Security contact: team@quantillon.money
+- **Governance (Base mainnet, since 2026-06-15):** 2-of-2 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). Record: `BATCH0_OPS_RUNBOOK.md`. **Audit fixes F-3/4/5/6/8/11/14/15/19 deployed 2026-06-17** via the Timelock (finalize tx `0x50d8…b46`); the prior `toggleSecureUpgrades(false)` instant-disable bypass (F-5) is now closed on all 7 SecureUpgradeable proxies.
 - Slither: 0 Critical, 0 Medium findings
 - Custom errors required (not `require` strings)
 - NatSpec 100% coverage enforced via `make validate-natspec`

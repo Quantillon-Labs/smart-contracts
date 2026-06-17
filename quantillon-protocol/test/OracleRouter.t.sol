@@ -747,7 +747,8 @@ contract OracleRouterTest is Test {
      */
     function test_Revert_CannotSwitchToSameOracle() public {
         vm.prank(admin);
-        vm.expectRevert("OracleRouter: Already using this oracle");
+        // F-11: switchOracle now reverts with the CommonErrorLibrary.NoChangeDetected custom error
+        vm.expectRevert(bytes4(keccak256("NoChangeDetected()")));
         router.switchOracle(OracleRouter.OracleType.CHAINLINK); // Already using Chainlink
     }
     
@@ -768,6 +769,24 @@ contract OracleRouterTest is Test {
         vm.expectRevert();
         // Router initialize requires 5 parameters: admin, chainlinkOracle, storkOracle, treasury, defaultOracle
         router.initialize(admin, address(chainlinkOracle), address(storkOracle), treasury, OracleRouter.OracleType.CHAINLINK);
+    }
+
+    /**
+     * @notice The implementation contract itself cannot be initialized (F-3/F-4)
+     * @dev The constructor calls _disableInitializers(), so initializing the
+     *      implementation directly (not via a proxy) must revert.
+     * @custom:security Verifies implementation-takeover vector is closed
+     * @custom:validation No validation - test function
+     * @custom:state-changes None - revert expected
+     * @custom:events No events emitted
+     * @custom:errors Expects revert with InvalidInitialization error
+     * @custom:reentrancy Not protected - test function
+     * @custom:access Public - test function
+     * @custom:oracle No oracle dependency
+     */
+    function test_Revert_InitializeImplementationDirectly() public {
+        vm.expectRevert();
+        implementation.initialize(admin, address(chainlinkOracle), address(storkOracle), treasury, OracleRouter.OracleType.CHAINLINK);
     }
     
     event OracleSwitched(

@@ -115,6 +115,25 @@ contract OracleRouter is
     // =============================================================================
 
     /**
+     * @notice Locks the implementation so it cannot be initialized directly
+     * @dev Disables initializers on the implementation contract; only proxies may be
+     *      initialized. Brings OracleRouter in line with the other core/oracle
+     *      contracts, which all call _disableInitializers() (F-3/F-4 audit fix).
+     * @custom:security Prevents implementation-contract initialization
+     * @custom:validation No input validation required - constructor
+     * @custom:state-changes Disables initializers on the implementation
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy Not applicable - constructor
+     * @custom:access No access restrictions
+     * @custom:oracle No oracle dependencies
+     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
      * @notice Initializes the router contract with both oracle addresses
      * @dev Sets up all core dependencies, roles, and default oracle selection
      * @param admin Address with administrator privileges
@@ -372,7 +391,7 @@ contract OracleRouter is
      * @custom:oracle None
      */
     function switchOracle(OracleType newOracle) external onlyRole(ORACLE_MANAGER_ROLE) {
-        require(newOracle != activeOracle, "OracleRouter: Already using this oracle");
+        if (newOracle == activeOracle) revert CommonErrorLibrary.NoChangeDetected();
 
         address oracleAddress = newOracle == OracleType.CHAINLINK
             ? address(chainlinkOracle)
@@ -645,7 +664,7 @@ contract OracleRouter is
         if (activeOracle == OracleType.CHAINLINK) {
             chainlinkOracle.updatePriceFeeds(_eurUsdFeed, _usdcUsdFeed);
         } else {
-            revert("OracleRouter: Use oracle-specific updatePriceFeeds for Stork");
+            revert CommonErrorLibrary.InvalidParameter();
         }
     }
 

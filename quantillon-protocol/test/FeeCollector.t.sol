@@ -131,7 +131,25 @@ contract FeeCollectorTest is Test {
         assertTrue(feeCollector.hasRole(feeCollector.TREASURY_ROLE(), treasury));
         assertTrue(feeCollector.hasRole(feeCollector.EMERGENCY_ROLE(), admin));
     }
-    
+
+    /**
+     * @notice The implementation contract itself cannot be initialized (F-3/F-4)
+     * @dev The constructor calls _disableInitializers(), so initializing the
+     *      implementation directly (not via a proxy) must revert.
+     * @custom:security Verifies implementation-takeover vector is closed
+     * @custom:validation No validation - test function
+     * @custom:state-changes None - revert expected
+     * @custom:events No events emitted
+     * @custom:errors Expects revert with InvalidInitialization error
+     * @custom:reentrancy No reentrancy risk in test environment
+     * @custom:access Public test function
+     * @custom:oracle No oracle dependencies
+     */
+    function test_Revert_InitializeImplementationDirectly() public {
+        vm.expectRevert();
+        feeCollectorImpl.initialize(admin, treasury, devFund, communityFund);
+    }
+
     /**
      * @notice Test initialization with zero addresses
      * @dev Verifies that initialization fails with zero addresses

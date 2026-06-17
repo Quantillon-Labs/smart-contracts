@@ -1,0 +1,7 @@
+0:0	contract ITimelockUpgradeable	20
+0:20	bool	1
+1:0	uint256	32
+2:0	contract IQEUROToken	20
+3:0	address	20
+4:0	string	32
+5:0	uint256	32

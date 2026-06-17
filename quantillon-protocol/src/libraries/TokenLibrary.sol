@@ -27,9 +27,9 @@ library TokenLibrary {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function validateMint(address to, uint256 amount, uint256 totalSupply, uint256 maxSupply) internal pure {
         if (to == address(0)) revert CommonErrorLibrary.InvalidAddress();
@@ -48,9 +48,9 @@ library TokenLibrary {
      * @custom:state-changes Updates contract state variables
      * @custom:events Emits relevant events for state changes
      * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Protected by reentrancy guard
+     * @custom:reentrancy Not protected by a reentrancy guard
      * @custom:access Restricted to authorized roles
-     * @custom:oracle Requires fresh oracle price data
+     * @custom:oracle Not applicable - no oracle dependency
      */
     function validateBurn(address from, uint256 amount, uint256 balance) internal pure {
         if (from == address(0)) revert CommonErrorLibrary.InvalidAddress();

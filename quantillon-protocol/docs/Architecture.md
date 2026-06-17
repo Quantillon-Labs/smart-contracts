@@ -89,6 +89,8 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 **Purpose**: Governance token with vote-escrow mechanics for protocol governance.
 
+> **Status: dormant.** No mint path is wired in the deployed contract, so total supply is 0 and lock/vote/propose are inactive until a future activation upgrade mints the cap. The features below describe the intended design.
+
 **Key Features**:
 - Vote-escrow token mechanics
 - Time-weighted voting power

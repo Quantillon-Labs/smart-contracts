@@ -70,7 +70,7 @@ Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs
 ### Core Contracts
 - **QuantillonVault** - Main vault: USDC ↔ QEURO swaps, ≥105% collateralization, liquidation at 101%
 - **QEUROToken** - Euro-pegged stablecoin: mint/burn via vault, rate limiting, compliance (blacklist/whitelist)
-- **QTIToken** - Governance token: vote-escrow, fixed 100M supply, up to 4× voting power multiplier
+- **QTIToken** - Governance token: vote-escrow, 100M supply cap, up to 4× voting power multiplier (dormant — no mint path wired, supply currently 0)
 - **FeeCollector** - Protocol fee aggregation and distribution (60% treasury / 25% dev / 15% community)
 - **UserPool** - User deposits (USDC), QEURO staking, yield distribution with 7-day holding period
 - **HedgerPool** - EUR/USD short positions for hedgers, margin management, liquidation at 101% CR

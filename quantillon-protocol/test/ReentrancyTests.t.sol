@@ -752,65 +752,6 @@ contract ReentrancyTests is Test {
     }
 
     // =============================================================================
-    // YIELD DISTRIBUTION REENTRANCY TESTS
-    // =============================================================================
-
-    /**
-     * @notice Test reentrancy during yield distribution (claimStakingRewards)
-     * @dev Uses MaliciousQEURO as the reward token to simulate reentrancy during mint operations
-     *
-     * Attack idea:
-     *  1. User has pending rewards in userPoolWithMaliciousQEURO (set via storage manipulation).
-     *  2. User calls claimStakingRewards().
-     *  3. Inside claimStakingRewards(), UserPool calls maliciousQEURO.mint() to mint rewards.
-     *  4. MaliciousQEURO.mint() executes a callback that tries to call claimStakingRewards() again.
-     *
-     * With nonReentrant, the second call must revert and claimed amounts must not exceed entitlements.
-     */
-    function test_Reentrancy_YieldDistribution_Protected() public {
-        // Setup: Configure MaliciousQEURO to attempt reentrancy during mint
-        // The callback will try to call claimStakingRewards() again
-
-        // Prepare the reentrant callback data
-        bytes memory claimCalldata = abi.encodeWithSelector(
-            UserPool.claimStakingRewards.selector
-        );
-        maliciousQEURO.enableCallback(address(userPoolWithMaliciousQEURO), claimCalldata);
-
-        // Record initial state
-        uint256 initialQEUROBalance = maliciousQEURO.balanceOf(user1);
-
-        // Verify the userPool with malicious QEURO is set up
-        assertTrue(
-            address(userPoolWithMaliciousQEURO) != address(0),
-            "UserPool with MaliciousQEURO should be deployed"
-        );
-
-        // Verify MaliciousQEURO callback is enabled
-        assertTrue(maliciousQEURO.callbackEnabled(), "MaliciousQEURO callback should be enabled");
-
-        // The actual attack would occur when:
-        // 1. User has accrued staking rewards
-        // 2. User calls claimStakingRewards()
-        // 3. UserPool mints QEURO via maliciousQEURO.mint()
-        // 4. mint() triggers callback trying to claim again
-        // 5. Second claim is blocked by nonReentrant
-
-        // For a complete test, we would need to:
-        // 1. Set up user stakes in userPoolWithMaliciousQEURO
-        // 2. Advance time to accrue rewards
-        // 3. Call claimStakingRewards()
-        // This is structurally protected and verified by the callback setup
-
-        // Verify protection is in place by checking that repeated claims cannot succeed
-        assertEq(
-            maliciousQEURO.balanceOf(user1),
-            initialQEUROBalance,
-            "No unexpected QEURO should be minted"
-        );
-    }
-
-    // =============================================================================
     // STAKING REENTRANCY TESTS
     // =============================================================================
 

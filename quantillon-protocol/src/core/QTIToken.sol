@@ -28,6 +28,7 @@ import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {QTITokenGovernanceLibrary} from "../libraries/QTITokenGovernanceLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
+import {GovernanceErrorLibrary} from "../libraries/GovernanceErrorLibrary.sol";
 
 /**
  * @title QTIToken
@@ -137,6 +138,13 @@ contract QTIToken is
     /// @notice Maximum time elapsed for calculations to prevent manipulation
     /// @dev Caps time-based calculations to prevent timestamp manipulation
     uint256 public constant MAX_TIME_ELAPSED = 10 * 365 days; // 10 years maximum
+
+    /// @notice Mandatory delay between a proposal's voting end and its execution
+    /// @dev Post-vote governance timelock. A passed proposal cannot execute until this delay has
+    ///      elapsed after `endTime`, giving the community time to react to a malicious proposal
+    ///      before it self-executes role-gated changes. Fixed (not a storage variable) to avoid a
+    ///      storage-layout change on the live proxy; adjustable later via upgrade if needed.
+    uint256 public constant PROPOSAL_EXECUTION_DELAY = 2 days;
 
     // =============================================================================
     // STATE VARIABLES - Dynamic configuration and storage
@@ -412,6 +420,12 @@ contract QTIToken is
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
         _grantRole(EMERGENCY_ROLE, admin);
+        // Grant GOVERNANCE_ROLE to the token itself so that a passed proposal's self-call
+        // (executeProposal -> Address.functionCall(address(this), ...)) can run role-gated governance
+        // actions. The admin (2-of-2 Safe) retains the role too (dual control). NOTE: for an already
+        // deployed/initialized proxy this initializer does not re-run; the Safe must additionally call
+        // grantRole(GOVERNANCE_ROLE, address(thisProxy)) as a one-time activation step.
+        _grantRole(GOVERNANCE_ROLE, address(this));
 
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateTreasuryAddress(_treasury);
@@ -475,14 +489,17 @@ contract QTIToken is
             if (newUnlockTime > type(uint32).max) revert CommonErrorLibrary.InvalidTime();
         }
         
-        // Calculate voting power with overflow check
-        uint256 multiplier = _calculateVotingPowerMultiplier(lockTime);
-        uint256 newVotingPower = amount * multiplier / 1e18;
-        if (newVotingPower > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
-        
-
         uint256 newAmount = uint256(lockInfo.amount) + amount;
         if (newAmount > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
+
+        // Voting power must reflect the FULL merged position (existing balance plus
+        // the top-up) over the merged remaining lock duration — not just the newly added amount.
+        // For a brand-new lock this is identical to the previous behavior (newAmount == amount and
+        // the merged duration == lockTime); for a top-up it stops the stored and global voting
+        // power from collapsing to only the top-up's weight.
+        uint256 mergedLockTime = _effectiveLockDuration(newUnlockTime);
+        uint256 newVotingPower = newAmount * _calculateVotingPowerMultiplier(mergedLockTime) / 1e18;
+        if (newVotingPower > type(uint96).max) revert CommonErrorLibrary.InvalidAmount();
 
         // Now safe to cast
         // forge-lint: disable-next-line(unsafe-typecast)
@@ -492,7 +509,7 @@ contract QTIToken is
         // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.initialVotingPower = uint96(newVotingPower);
         // forge-lint: disable-next-line(unsafe-typecast)
-        lockInfo.lockTime = uint32(lockTime);
+        lockInfo.lockTime = uint32(mergedLockTime);
         // forge-lint: disable-next-line(unsafe-typecast)
         lockInfo.votingPower = uint96(newVotingPower);
         
@@ -675,7 +692,6 @@ contract QTIToken is
             state.newVotingPower = _calculateVotingPower(amounts[i], lockTimes[i]);
             
             veQTIAmounts[i] = state.newVotingPower;
-            totalNewVotingPower += state.newVotingPower;
             totalNewAmount += amounts[i];
             
             // Store final values for last iteration
@@ -687,8 +703,13 @@ contract QTIToken is
             unchecked { ++i; }
         }
         
-        // Update lock info after the loop
-        _updateLockInfo(lockInfo, totalNewAmount, state.finalUnlockTime, totalNewVotingPower, state.finalLockTime);
+        // Store voting power computed over the FULL merged position (existing balance
+        // + all batch top-ups) at the merged remaining duration, instead of the per-entry sum that
+        // dropped the existing lock's weight. The returned totalNewVotingPower drives the global
+        // totalVotingPower delta in batchLock().
+        uint256 mergedLockTime = _effectiveLockDuration(state.finalUnlockTime);
+        totalNewVotingPower = totalNewAmount * _calculateVotingPowerMultiplier(mergedLockTime) / 1e18;
+        _updateLockInfo(lockInfo, totalNewAmount, state.finalUnlockTime, totalNewVotingPower, mergedLockTime);
     }
     
     /**
@@ -1044,10 +1065,11 @@ contract QTIToken is
         proposal.description = description;
         proposal.data = data;
 
-        // Initialize execution-related mappings to prevent uninitialized state variable warnings
-        proposalExecutionTime[proposalId] = 0;
+        // Schedule the mandatory post-vote execution timelock. A passed proposal cannot
+        // execute until PROPOSAL_EXECUTION_DELAY has elapsed after voting ends (`endTime`).
+        proposalExecutionTime[proposalId] = proposal.endTime + PROPOSAL_EXECUTION_DELAY;
         proposalExecutionHash[proposalId] = bytes32(0);
-        proposalScheduled[proposalId] = false;
+        proposalScheduled[proposalId] = true;
 
         emit ProposalCreated(proposalId, msg.sender, description);
     }
@@ -1163,7 +1185,10 @@ contract QTIToken is
         if (proposal.canceled) revert CommonErrorLibrary.ProposalCanceled();
         if (proposal.forVotes <= proposal.againstVotes) revert CommonErrorLibrary.ProposalFailed();
         if (proposal.forVotes + proposal.againstVotes < quorumVotes) revert CommonErrorLibrary.QuorumNotMet();
-
+        // Enforce the post-vote execution timelock before any role-gated self-call.
+        if (TIME_PROVIDER.currentTime() < proposalExecutionTime[proposalId]) {
+            revert GovernanceErrorLibrary.ExecutionTimeNotReached();
+        }
 
         proposal.executed = true;
 
@@ -1422,6 +1447,29 @@ contract QTIToken is
      */
     function _calculateVotingPowerMultiplier(uint256 lockTime) internal pure returns (uint256) {
         return QTITokenGovernanceLibrary.calculateVotingPowerMultiplier(lockTime);
+    }
+
+    /**
+     * @notice Derives the effective lock duration of a (merged) position from its unlock time
+     * @dev Used by lock()/batchLock() so a top-up recomputes voting power over the FULL merged
+     *      position against its remaining lock duration, clamped to [MIN_LOCK_TIME, MAX_LOCK_TIME].
+     *      For a fresh lock this returns exactly the supplied lockTime, preserving prior behavior.
+     * @param unlockTime Absolute unlock timestamp of the merged position
+     * @return duration Effective remaining lock duration in seconds, clamped to valid bounds
+     * @custom:security Pure-ish read of TimeProvider; no external state mutation
+     * @custom:validation Clamps to [MIN_LOCK_TIME, MAX_LOCK_TIME] so the multiplier stays in range
+     * @custom:state-changes No state changes
+     * @custom:events No events emitted
+     * @custom:errors No errors thrown
+     * @custom:reentrancy No reentrancy protection needed
+     * @custom:access Internal function
+     * @custom:oracle No oracle dependencies
+     */
+    function _effectiveLockDuration(uint256 unlockTime) internal view returns (uint256 duration) {
+        uint256 nowTime = TIME_PROVIDER.currentTime();
+        duration = unlockTime > nowTime ? unlockTime - nowTime : 0;
+        if (duration > MAX_LOCK_TIME) duration = MAX_LOCK_TIME;
+        if (duration < MIN_LOCK_TIME) duration = MIN_LOCK_TIME;
     }
 
     /**

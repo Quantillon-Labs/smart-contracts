@@ -1328,8 +1328,9 @@ contract QTITokenTestSuite is Test {
         qtiToken.vote(proposalId, true);
         
         // Advance time past voting period
-        vm.warp(block.timestamp + 6 days);
-        
+        // Past voting end (5d) AND the post-vote execution timelock (post-vote timelock: +2d delay)
+        vm.warp(block.timestamp + 8 days);
+
         // Execute proposal
         vm.prank(user1);
         qtiToken.executeProposal(proposalId);
@@ -1817,8 +1818,8 @@ contract QTITokenTestSuite is Test {
         vm.prank(user3);
         qtiToken.vote(proposalId, true);
         
-        // Advance time and execute
-        vm.warp(block.timestamp + 6 days);
+        // Advance past voting end (5d) AND the post-vote execution timelock (post-vote timelock: +2d delay)
+        vm.warp(block.timestamp + 8 days);
         vm.prank(user1);
         qtiToken.executeProposal(proposalId);
         

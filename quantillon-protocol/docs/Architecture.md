@@ -99,8 +99,8 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 - Lock period management
 
 **Architecture Patterns**:
-- **Escrow Pattern**: Time-locked voting power
-- **Voting System**: Proposal and execution framework
+- **Escrow Pattern**: Time-locked voting power; topping up an existing lock recomputes voting power over the **full merged position** (not just the added amount)
+- **Voting System**: On-chain self-execution — the token holds `GOVERNANCE_ROLE`, so a passed proposal executes its own role-gated calldata after a mandatory post-vote timelock (`PROPOSAL_EXECUTION_DELAY`, 2 days). Activation requires the Safe to grant `GOVERNANCE_ROLE` to the QTI proxy.
 - **Decay Function**: Linear voting power decay
 
 ### 4. UserPool

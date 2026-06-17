@@ -206,7 +206,7 @@ Networks: localhost (31337), Base Sepolia (84532), Base Mainnet (8453).
 ## Security Notes
 
 - Security contact: team@quantillon.money
-- **Governance (Base mainnet, since 2026-06-15):** 2-of-2 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). Record: `BATCH0_OPS_RUNBOOK.md`. **Audit fixes F-3/4/5/6/8/11/14/15/19 deployed 2026-06-17** via the Timelock (finalize tx `0x50d8…b46`); the prior `toggleSecureUpgrades(false)` instant-disable bypass (F-5) is now closed on all 7 SecureUpgradeable proxies.
+- **Governance (Base mainnet, since 2026-06-15):** 2-of-2 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). Record: `BATCH0_OPS_RUNBOOK.md`. **Audit fixes F-3/4/5/6/8/11/14/15/19 deployed 2026-06-17** via the Timelock (finalize tx `0x50d8…b46`); the prior `toggleSecureUpgrades(false)` instant-disable bypass (F-5) is now closed on all 7 SecureUpgradeable proxies. **Accepted risk (F-2, 2026-06-17):** OracleRouter / ChainlinkOracle / StorkOracle / FeeCollector are plain-UUPS, upgradeable by the Safe *directly* (no 12h Timelock) — a deliberate choice to keep oracle/fee upgrades fast in a crisis; the 2-of-2 Safe is the sole gate (the single-key risk that drove F-2 is already eliminated).
 - Slither: 0 Critical, 0 Medium findings
 - Custom errors required (not `require` strings)
 - NatSpec 100% coverage enforced via `make validate-natspec`

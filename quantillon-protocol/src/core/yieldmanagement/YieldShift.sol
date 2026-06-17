@@ -1034,15 +1034,15 @@ contract YieldShift is
     function updateYieldAllocation(address user, uint256 amount, bool isUser) external {
         AccessControlLibrary.onlyYieldManager(this);
         if (isUser) {
-            // NOTE (audit F-8): the user yield-pool path is vestigial. userYieldPool is
-            // never funded by addYield (user yield accrues via creditVaultYield -> stQEURO)
-            // and the claimUserYield() function was removed, so userPendingYield set here
-            // is NOT claimable on-chain. Do not call with isUser=true. A future upgrade
-            // should remove this branch and the userYieldPool/userPendingYield storage.
-            userPendingYield[user] += amount;
-        } else {
-            hedgerPendingYield[user] += amount;
+            // F-8: the user yield-pool path is vestigial and unsupported. `userYieldPool` is
+            // never funded (user yield accrues via creditVaultYield -> stQEURO) and
+            // claimUserYield() was removed, so any `userPendingYield` recorded here would be
+            // unclaimable. Reject isUser=true rather than write dead state.
+            // @custom:deprecated `userYieldPool`/`userPendingYield` storage is retained but
+            // unused — it cannot be removed from a live proxy without breaking storage layout.
+            revert CommonErrorLibrary.NotActive();
         }
+        hedgerPendingYield[user] += amount;
     }
 
     /**

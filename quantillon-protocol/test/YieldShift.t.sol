@@ -1641,8 +1641,6 @@ contract YieldShiftTestSuite is Test {
         
         // Allocate some yield to users
         _seedLegacyClaimableYield(1000 * 1e6, 0);
-        vm.prank(yieldManager);
-        yieldShift.updateYieldAllocation(user, 1000 * 1e6, true);
         
         
         // Get performance metrics
@@ -1769,9 +1767,7 @@ contract YieldShiftTestSuite is Test {
         
         // 2. Allocate yield to users and hedgers (skip updateYieldDistribution to avoid TWAP issues)
         _seedLegacyClaimableYield(1000 * 1e6, 800 * 1e6);
-        vm.prank(yieldManager);
-        yieldShift.updateYieldAllocation(user, 1000 * 1e6, true);
-        
+
         vm.prank(yieldManager);
         yieldShift.updateYieldAllocation(hedger, 800 * 1e6, false);
         
@@ -1887,20 +1883,17 @@ contract YieldShiftTestSuite is Test {
     function test_YieldManagement_UpdateYieldAllocation() public {
         uint256 allocationAmount = 1000 * 1e6;
         
-        // Update user yield allocation
+        // F-8: the user yield-pool path is vestigial and now reverts (NotActive).
         vm.prank(yieldManager);
+        vm.expectRevert();
         yieldShift.updateYieldAllocation(user, allocationAmount, true);
-        
-        // Update hedger yield allocation
+
+        // Hedger yield allocation still works.
         vm.prank(yieldManager);
         yieldShift.updateYieldAllocation(hedger, allocationAmount, false);
-        
-        // Check that allocations were updated
-        uint256 userPendingYield = yieldShift.userPendingYield(user);
-        uint256 hedgerPendingYield = yieldShift.hedgerPendingYield(hedger);
-        
-        assertEq(userPendingYield, allocationAmount);
-        assertEq(hedgerPendingYield, allocationAmount);
+
+        assertEq(yieldShift.hedgerPendingYield(hedger), allocationAmount);
+        assertEq(yieldShift.userPendingYield(user), 0);
     }
 
     /**

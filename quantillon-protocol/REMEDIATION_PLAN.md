@@ -165,8 +165,8 @@ QEURO 1:1 peg math, 105%/101% collateralization gates, 60/25/15 fee split, Hedge
 
 | ID | Title | Sev | Batch | Type | Status |
 |---|---|---|---|---|---|
-| F-1 | Single-EOA admin; no Timelock | 🔴 | 0 | OPS | 📋 `BATCH0_OPS_RUNBOOK.md` |
-| F-2 | Oracle/FeeCollector no upgrade timelock | 🔴 | 0 (ops) / later (code) | OPS/CODE | 📋 runbook (ops); code-migration ⏳ |
+| F-1 | Single-EOA admin; no Timelock | 🔴 | 0 | OPS | ✅ **DONE 2026-06-15/17** — Safe + OZ TimelockController live; deployer EOA de-privileged |
+| F-2 | Oracle/FeeCollector no upgrade timelock | 🔴 | 0 (ops) | OPS | ✅ ops done; **code-migration ACCEPTED-RISK (2026-06-17):** oracle/ChainlinkOracle/StorkOracle/FeeCollector stay plain-UUPS Safe-direct (no 12h timelock) for crisis agility — single-key risk already eliminated, 2-of-2 Safe is sole gate |
 | F-9 | Sequencer uptime feed unset | 🟠 | 0 | OPS | 📋 runbook |
 | F-7 (verify) | Feed addresses canonical? | 🟠 | 0 | OPS | 📋 runbook |
 | B-9 | Storage-layout baseline + CI diff | 🟠 | 1 | CI | ✅ `scripts/check-storage-layout.sh` + `storage-layout/` |

@@ -4,10 +4,15 @@
 #
 # RULE: any change to a deployed contract/library — correction, bug fix, update, or upgrade —
 # MUST be traced through a semver bump of its on-chain version() (or, for linked libraries, the
-# version() / VERSION constant). This gate enforces that: it hashes each artifact's
-# metadata-free runtime bytecode (foundry runs with bytecode_hash="none" / cbor_metadata=false,
-# so the hash is insensitive to comments and reflects real code changes only) and fails CI if the
-# bytecode changed while the source version string did not.
+# version() / VERSION constant). This gate enforces that: it hashes each unit's SOURCE FILE and
+# fails CI if the source changed while its version string did not.
+#
+# Why source (not bytecode): compiled bytecode is not reproducible here — `forge inspect` re-links
+# libraries at ephemeral addresses, and the build profile (default optimizer 0 vs test optimizer
+# 200) that last wrote out/ changes the artifact. Hashing the committed source file is fully
+# deterministic and build-independent. A change to a linked library trips that library's own gate;
+# every versioned unit gates on its own source. (Per the rule above, comment/NatSpec edits are also
+# "changes" and require a bump.)
 #
 # Usage:
 #   scripts/check-version-bump.sh           # check against committed baseline (CI)
@@ -62,12 +67,12 @@ for t in "${TARGETS[@]}"; do
   path="${t%%:*}"; name="${t##*:}"
   baseline="$BASELINE_DIR/$name.version"
 
-  bytecode="$(forge inspect "$t" deployedBytecode 2>/dev/null || true)"
-  if [[ -z "$bytecode" || "$bytecode" == "0x" ]]; then
-    echo "ERROR: could not read deployedBytecode for $t (build first with: make build)"
+  # Deterministic source-file hash (see header): build-independent, no compile required.
+  if [[ ! -f "$path" ]]; then
+    echo "ERROR: source not found for $t at $path"
     fail=1; continue
   fi
-  new_hash="$(printf '%s' "$bytecode" | sha256sum | cut -d' ' -f1)"
+  new_hash="$(sha256sum "$path" | cut -d' ' -f1)"
   new_ver="$(extract_version "$path")"
   if [[ -z "$new_ver" ]]; then
     echo "ERROR: $name has no semver version() literal in $path"

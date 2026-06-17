@@ -428,6 +428,9 @@ contract QuantillonVault is
     event UsdcDeployedToExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
     event ExternalVaultYieldHarvested(uint256 indexed vaultId, uint256 harvestedYield);
     event ExternalVaultDeploymentFailed(uint256 indexed vaultId, uint256 amount, bytes reason);
+    /// @notice Deprecated: retained for ABI compatibility with existing off-chain consumers
+    /// @dev No longer emitted. Redeem hedger-sync is atomic (failures
+    ///      revert rather than being swallowed), so this event can never fire.
     event HedgerSyncFailed(string operation, uint256 amount, uint256 price, bytes reason);
 
     event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
@@ -703,6 +706,10 @@ contract QuantillonVault is
         if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
         IERC20(address(qeuro)).safeIncreaseAllowance(stToken, qeuroMinted);
         stQEUROMinted = IstQEURO(stToken).previewDeposit(qeuroMinted);
+        // A positive QEURO deposit must never preview zero stQEURO shares
+        // (would trap the user's QEURO as vault backing with no redeemable position). Also
+        // covers the minStQEUROOut == 0 loss case defensively.
+        if (stQEUROMinted == 0) revert CommonErrorLibrary.InvalidAmount();
         if (stQEUROMinted < minStQEUROOut) revert CommonErrorLibrary.ExcessiveSlippage();
         stQEUROMinted = IstQEURO(stToken).deposit(qeuroMinted, msg.sender);
     }
@@ -1752,6 +1759,13 @@ contract QuantillonVault is
         address stToken = stQEUROTokenByVaultId[vaultId];
         if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
 
+        // Refuse to credit yield into an stQEURO vault that has no shares yet.
+        // Minting QEURO into a zero-supply ERC4626 vault creates assets with no shareholders,
+        // which makes the first staker mint zero shares (or revert with slippage). Yield can
+        // only be credited once there is at least one stQEURO share holder; the first stake
+        // (totalSupply == 0, totalAssets == 0) still mints 1:1 through the normal path.
+        if (IstQEURO(stToken).totalSupply() == 0) revert CommonErrorLibrary.NotInitialized();
+
         (uint256 eurUsdPrice, bool isValidPrice) = _getValidatedMintPrices();
         _enforceMintEligibility(eurUsdPrice);
         _enforceMintPriceDeviation(eurUsdPrice);
@@ -2165,33 +2179,28 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function _getExternalVaultCollateralBalance() internal view returns (uint256 externalCollateral) {
+        // Count only tracked principal (the amount that is actually withdrawable),
+        // NOT adapter.totalUnderlying() (principal + unharvested yield). This keeps redemption /
+        // liquidation collateral in lockstep with what `_planExternalVaultWithdrawal` /
+        // `_withdrawFromExternalVault` can source, so a payout can never be sized against yield
+        // that the withdrawal path (capped at principal) is unable to release. Accrued external
+        // yield reaches users only after `harvestVaultYield` -> `creditVaultYield` (the stQEURO
+        // path); it is intentionally not counted as QEURO redemption backing.
         uint256[] memory priority = redemptionPriorityVaultIds;
         if (priority.length == 0 && defaultStakingVaultId != 0) {
-            IExternalStakingVault defaultAdapter = stakingVaultAdapterById[defaultStakingVaultId];
-            uint256 principalTracked = principalUsdcByVaultId[defaultStakingVaultId];
-            if (address(defaultAdapter) == address(0)) return principalTracked;
-            try defaultAdapter.totalUnderlying() returns (uint256 currentBalance) {
-                return currentBalance;
-            } catch {
-                return principalTracked;
-            }
+            return principalUsdcByVaultId[defaultStakingVaultId];
         }
         for (uint256 i = 0; i < priority.length; ++i) {
-            uint256 vaultId = priority[i];
-            IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
-            if (address(adapter) == address(0)) continue;
-            uint256 principalTracked = principalUsdcByVaultId[vaultId];
-            try adapter.totalUnderlying() returns (uint256 currentBalance) {
-                externalCollateral += currentBalance;
-            } catch {
-                externalCollateral += principalTracked;
-            }
+            externalCollateral += principalUsdcByVaultId[priority[i]];
         }
     }
 
     /**
-     * @notice Returns total collateral available including held and external-vault balances.
-     * @dev Sum of `totalUsdcHeld` and `_getExternalVaultCollateralBalance()`.
+     * @notice Returns total principal-backed collateral (held USDC + tracked external principal).
+     * @dev Sum of `totalUsdcHeld` and `_getExternalVaultCollateralBalance()`. Despite the legacy
+     *      name, this intentionally EXCLUDES unharvested external-vault yield: the
+     *      value equals what redemption/withdrawal can actually source, so collateral counting and
+     *      withdrawal capacity stay consistent. Harvested yield is routed to stQEURO holders.
      * @return Total collateral in USDC units.
      * @custom:security Internal read helper.
      * @custom:validation No input validation required.
@@ -2564,7 +2573,8 @@ contract QuantillonVault is
 
     /**
      * @notice Internal helper to notify HedgerPool about user redeems
-     * @dev Attempts to release hedger fills but swallows failures to avoid blocking users
+     * @dev Releases hedger fills atomically. Reverts propagate, so a paused or
+     *      otherwise unavailable HedgerPool blocks the redeem instead of desyncing exposure.
      * @param amount Gross USDC returned to the user (6 decimals)
      * @param redeemPrice EUR/USD oracle price used for the redeem (18 decimals)
      * @param qeuroAmount QEURO amount that was redeemed (18 decimals)
@@ -2572,7 +2582,7 @@ contract QuantillonVault is
      * @custom:validation No additional validation beyond non-zero guard
      * @custom:state-changes None inside the vault; delegates to HedgerPool
      * @custom:events None
-     * @custom:errors Silently ignores downstream errors
+     * @custom:errors Propagates HedgerPool reverts to preserve redeem/hedger atomicity
      * @custom:reentrancy Not applicable
      * @custom:access Internal helper
      * @custom:oracle Not applicable
@@ -2581,9 +2591,12 @@ contract QuantillonVault is
         if (amount == 0) {
             return;
         }
-        try hedgerPool.recordUserRedeem(amount, redeemPrice, qeuroAmount) {} catch (bytes memory reason) {
-            emit HedgerSyncFailed("redeem", amount, redeemPrice, reason);
-        }
+        // Redeem synchronizes hedger accounting ATOMICALLY, symmetric with
+        // `_syncMintWithHedgersOrRevert`. `recordUserRedeem` tolerates "nothing to release"
+        // (no active hedger / zero filled volume) by no-op, so a healthy redeem never reverts
+        // here; it reverts only when HedgerPool is genuinely unavailable (e.g. paused), which
+        // must block the redeem rather than silently desync filled exposure / realized PnL.
+        hedgerPool.recordUserRedeem(amount, redeemPrice, qeuroAmount);
     }
 
     // =============================================================================

@@ -624,7 +624,11 @@ contract AaveIntegrationTest is Test {
         assertGt(totalAvailable, 0, "Total available should include Aave balance");
     }
 
-    function test_getTotalUsdcAvailable_includesAccruedAaveYield() public {
+    function test_getTotalUsdcAvailable_excludesUnharvestedAaveYield() public {
+        // Unharvested external-vault yield is NOT counted as QEURO redemption
+        // collateral. Availability must equal what the withdrawal path can actually source
+        // (tracked principal), so accrued-but-unharvested yield does not inflate it. That yield
+        // reaches users only via harvestVaultYield -> creditVaultYield (the stQEURO path).
         uint256 depositAmount = 10_000e6;
 
         vm.startPrank(user);
@@ -640,7 +644,7 @@ contract AaveIntegrationTest is Test {
         mockAaveVault.setAccruedYield(500e6);
 
         uint256 totalAvailable = vault.getTotalUsdcAvailable();
-        assertEq(totalAvailable, baseline + 500e6, "Accrued yield should be included in total availability");
+        assertEq(totalAvailable, baseline, "Unharvested external yield must not inflate redemption collateral");
     }
 
     function test_harvestAaveInterest_callsAaveVault() public {

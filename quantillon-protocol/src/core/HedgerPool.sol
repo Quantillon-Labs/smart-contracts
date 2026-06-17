@@ -460,8 +460,17 @@ contract HedgerPool is
         totalMargin += netMargin;
         totalExposure += positionSize;
 
-        usdc.safeTransferFrom(hedger, address(vault), usdcAmount);
-        vault.addHedgerDeposit(usdcAmount);
+        // Credit only net collateral to the vault and route the entry fee to
+        // the reward reserve / FeeCollector instead of inflating vault collateral. The fee is
+        // pulled separately into this contract only when non-zero, so the default zero-fee path
+        // stays identical to the original direct hedger -> vault deposit.
+        uint256 entryFeeAmount = usdcAmount - netMargin;
+        usdc.safeTransferFrom(hedger, address(vault), netMargin);
+        vault.addHedgerDeposit(netMargin);
+        if (entryFeeAmount > 0) {
+            usdc.safeTransferFrom(hedger, address(this), entryFeeAmount);
+            _routeHedgeFee(hedger, entryFeeAmount, "hedge_entry");
+        }
         emit HedgePositionOpened(
             hedger,
             positionId,
@@ -524,6 +533,13 @@ contract HedgerPool is
         position.isActive = true;
         // forge-lint: disable-next-line(unsafe-typecast)
         position.openBlock = uint64(block.number);
+
+        // Start the interest-reward clock when exposure goes live.
+        // Without this, the first claimHedgingRewards() sees a zero clock, which
+        // HedgerPoolLogicLibrary.calculateRewardUpdate() treats as uninitialized and
+        // discards the entire first accrual interval. This function only runs on a
+        // fresh position open, so setting the clock here cannot clobber a live one.
+        hedgerLastRewardBlock[hedger] = currentTime;
     }
 
     /**
@@ -603,8 +619,17 @@ contract HedgerPool is
         uint256 exitFeeAmount = grossPayout.percentageOf(coreParams.exitFee);
         uint256 netPayout = grossPayout - exitFeeAmount;
 
+        // Pay the hedger their net payout directly from the vault (unchanged
+        // flow), then withdraw only the exit fee into this contract to route it to the reward
+        // reserve / FeeCollector instead of leaving it stranded as vault collateral. Pulling
+        // just the fee (rather than intermediating the whole payout) keeps the default zero-fee
+        // path identical to the original direct payout.
         if (netPayout > 0) {
             vault.withdrawHedgerDeposit(hedger, netPayout);
+        }
+        if (exitFeeAmount > 0) {
+            vault.withdrawHedgerDeposit(address(this), exitFeeAmount);
+            _routeHedgeFee(hedger, exitFeeAmount, "hedge_exit");
         }
     }
 
@@ -693,18 +718,39 @@ contract HedgerPool is
 
         // Route fee split: reserve share stays in HedgerPool reward reserve, remainder to FeeCollector.
         // `fee` is already computed above as `amount.percentageOf(coreParams.marginFee)`.
-        if (fee > 0) {
-            uint256 reserveShare = fee.mulDiv(rewardFeeSplit, 1e18);
-            uint256 collectorShare = fee - reserveShare;
+        _routeHedgeFee(msg.sender, fee, "margin");
+    }
 
-            if (reserveShare > 0) {
-                emit RewardReserveFunded(msg.sender, reserveShare);
-            }
+    /**
+     * @notice Routes a hedge fee between the HedgerPool reward reserve and the FeeCollector
+     * @dev Shared by addMargin, position entry, and position exit so every hedge-fee path
+     *      routes identically. The reserve share physically remains in this
+     *      contract's USDC balance (the reward reserve); the collector share is forwarded to
+     *      the FeeCollector. Assumes the gross fee USDC is already held by this contract.
+     * @param funder Address credited as the reserve funder in the emitted event
+     * @param fee Total fee amount in USDC (6 decimals)
+     * @param sourceType Source tag forwarded to FeeCollector accounting
+     * @custom:security Moves already-collected fee USDC only; no authority change
+     * @custom:validation No-op when fee is zero
+     * @custom:state-changes Increases FeeCollector allowance; reserve share stays as USDC balance
+     * @custom:events Emits RewardReserveFunded for the reserve share
+     * @custom:errors Propagates FeeCollector failures
+     * @custom:reentrancy Called within nonReentrant flows
+     * @custom:access Private helper
+     * @custom:oracle No oracle dependency
+     */
+    function _routeHedgeFee(address funder, uint256 fee, string memory sourceType) private {
+        if (fee == 0) return;
+        uint256 reserveShare = fee.mulDiv(rewardFeeSplit, 1e18);
+        uint256 collectorShare = fee - reserveShare;
 
-            if (collectorShare > 0 && feeCollector != address(0)) {
-                usdc.safeIncreaseAllowance(feeCollector, collectorShare);
-                FeeCollector(feeCollector).collectFees(address(usdc), collectorShare, "margin");
-            }
+        if (reserveShare > 0) {
+            emit RewardReserveFunded(funder, reserveShare);
+        }
+
+        if (collectorShare > 0 && feeCollector != address(0)) {
+            usdc.safeIncreaseAllowance(feeCollector, collectorShare);
+            FeeCollector(feeCollector).collectFees(address(usdc), collectorShare, sourceType);
         }
     }
 
@@ -1621,15 +1667,21 @@ contract HedgerPool is
         if (usdcAmount == 0) return;
         if (redeemPrice == 0) revert CommonErrorLibrary.InvalidOraclePrice();
 
-        if (singleHedger == address(0)) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        // Tolerate "nothing to release" by no-op (mirrors recordLiquidationRedeem).
+        // The vault redeem path now syncs hedger accounting atomically, so the absence of hedger
+        // liquidity (no configured hedger, no active position, or zero filled volume) must NOT
+        // block a user's redemption — that state is legitimate while QEURO is still outstanding
+        // (the hedger exited or was liquidated). Only a paused HedgerPool (whenNotPaused on
+        // recordUserRedeem) blocks the redeem, preventing silent exposure desync.
+        if (singleHedger == address(0)) return;
         uint256 positionId = hedgerActivePositionId[singleHedger];
-        if (positionId == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
-        
+        if (positionId == 0) return;
+
         HedgePosition storage pos = positions[positionId];
-        if (!pos.isActive) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
-        
+        if (!pos.isActive) return;
+
         uint256 filled = uint256(pos.filledVolume);
-        if (filled == 0) revert HedgerPoolErrorLibrary.NoActiveHedgerLiquidity();
+        if (filled == 0) return;
         
         // With single position, all qeuroAmount goes to this position (100%)
         uint256 qeuroShare = qeuroAmount;

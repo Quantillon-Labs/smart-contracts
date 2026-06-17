@@ -83,7 +83,7 @@ function redeemQEURO(
 - `qeuroAmount > 0`
 - Sufficient QEURO balance and allowance
 - Automatically routes to liquidation mode when protocol CR is at or below critical threshold
-- Pulls liquidity from Aave when needed (including accrued yield)
+- Pulls liquidity from external vault adapters when needed (tracked principal only; unharvested adapter yield is not used as redemption collateral)
 
 #### `calculateMintAmount(uint256 usdcAmount) → (uint256, uint256)`
 ```solidity
@@ -125,7 +125,7 @@ function getVaultMetrics() external view returns (
 - `totalMinted_`: QEURO minted by vault tracker
 - `totalDebtValue`: USD debt value using live token supply and cached EUR/USD
 - `totalUsdcInExternalVaults_`: Principal tracker across all configured external vault adapters
-- `totalUsdcAvailable_`: Total collateral available including accrued external-vault yield
+- `totalUsdcAvailable_`: Total collateral available — held USDC plus tracked external-vault **principal** (unharvested adapter yield is excluded)
 
 #### `getProtocolCollateralizationRatio() → (uint256)`
 ```solidity
@@ -135,7 +135,7 @@ function getProtocolCollateralizationRatio() public view returns (uint256 ratio)
 **Returns**: Current protocol collateralization ratio in 18-decimal percentage format (`100% = 1e20`)
 
 **Description**: Calculates `CR = (TotalCollateral / BackingRequirement) * 1e20` where:
-- `TotalCollateral` = `totalUsdcHeld + currentExternalVaultCollateral` (includes accrued adapter yield when queryable)
+- `TotalCollateral` = `totalUsdcHeld + tracked external-vault principal` (unharvested adapter yield is excluded; it accrues to stQEURO holders via `harvestVaultYield`/`creditVaultYield`)
 - `BackingRequirement` = `QEUROSupply * cachedEurUsdPrice / 1e30`
 
 **Note**: This function uses cached price and returns `0` when required wiring/cache prerequisites are not met.

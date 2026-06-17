@@ -46,8 +46,8 @@ jobs:
       # append-only storage-layout diff, and additive-only ABI/selector diff.
       # Previously these ran nightly-only; moved onto the PR gate so a regression
       # is caught before merge, not the next morning.
-      - name: Upgrade-safety gate (size, storage-layout, ABI)
-        run: make analyze-contract-sizes check-storage-layout check-abi
+      - name: Upgrade-safety gate (size, storage-layout, ABI, version-bump)
+        run: make analyze-contract-sizes check-storage-layout check-abi check-version-bump
 
   ci-heavy:
     name: Full CI Suite (nightly)

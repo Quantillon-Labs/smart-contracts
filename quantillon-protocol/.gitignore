@@ -57,8 +57,10 @@ artifacts/
 # Broadcast logs (fully ignored - keep local only)
 broadcast/
 
-# Deployment logs (fully ignored - keep local only)
-deployments/
+# Deployment artifacts: ignore everything under deployments/{chainId}/ EXCEPT versions.json,
+# which is committed so deployed-version provenance syncs across workstations via git pull.
+deployments/*/*
+!deployments/*/versions.json
 deployment-*.log
 deployment-*.json
 

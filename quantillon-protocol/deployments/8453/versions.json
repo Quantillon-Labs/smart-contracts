@@ -1,0 +1,93 @@
+{
+  "QEUROToken": {
+    "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
+    "implementation": "0x97a204b6fcc842f4b368418dbe1e4c520a1d6dfb",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "QuantillonVault": {
+    "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
+    "implementation": "0xcdaaff36b6798f5a1be215acd2331567ca9f7d19",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "QTIToken": {
+    "proxy": "0x246c6F441c0f8Fc6A71Db0F12dB5665D373Df271",
+    "implementation": "0x6e1e17e5261f1b98e0fe401a4f2ea08878c4e6c0",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "UserPool": {
+    "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
+    "implementation": "0xcd0ca9de247a22d60c482ad29e67d52cbbce90b4",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "HedgerPool": {
+    "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
+    "implementation": "0x491a56d845a23ceb7aec3c854e802698cca4caf7",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "stQEUROFactory": {
+    "proxy": "0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53",
+    "implementation": "0x20ff2655356d514a6adce3c517a7136bebccff19",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "FeeCollector": {
+    "proxy": "0x0A33F72683cfC2303639d5cB9A45D77fF16d9FAD",
+    "implementation": "0x00b7743b5ab2e69e5ab985984049e611c10e504a",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "YieldShift": {
+    "proxy": "0xdcd66568F8623bDa3387287c31F14b43e49665b1",
+    "implementation": "0x92ffa870e6c23c13f026b414894f6db6740f9812",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "ChainlinkOracle": {
+    "proxy": "0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7",
+    "implementation": "0x57a171e9d5a343e9992ec3dda2465c178a2bdebd",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "StorkOracle": {
+    "proxy": "0x41FcE00E33Ca4f0d8E5528c343FAC98BA178EebC",
+    "implementation": "0x138ee16fe71ad2172eda44fa44532a75e56937fb",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "OracleRouter": {
+    "proxy": "0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0",
+    "implementation": "0x77ec31f7755c560ed1f820408edae0fa088149d5",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "SlippageStorage": {
+    "proxy": "0x0fde0ff2566be3c24af6d654012dddb4f1da099b",
+    "implementation": "0xa68ac8451aa8f460bc8ce7f47d5ba526c05fd561",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  },
+  "TimeProvider": {
+    "proxy": "0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7",
+    "implementation": "0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7",
+    "version": "0.0.0-unversioned",
+    "gitCommit": "f1c55ad",
+    "deployedAt": 1781716808
+  }
+}

@@ -274,9 +274,10 @@ RPC_URL="$BASE_RPC_URL" GIT_COMMIT=f1c55ad \
   ./scripts/deployment/backfill-versions.sh 8453
 ```
 
-> `deployments/` is **git-ignored** — `versions.json` is a per-environment artifact kept on the
-> deploy machine alongside `addresses.json` (it is **not** committed). Regenerate it with the
-> backfill (once) and thereafter the `UpgradeBase` scripts keep it current on each upgrade.
+> `versions.json` is **committed** (a `.gitignore` exception re-includes `deployments/*/versions.json`
+> while the rest of `deployments/` stays ignored), so deployed-version provenance syncs across
+> workstations via `git pull`. Seed it once with the backfill above; thereafter the `UpgradeBase`
+> scripts keep it current on each upgrade — **commit the updated manifest** so other machines pick it up.
 
 After seeding, verify and inspect drift vs source:
 

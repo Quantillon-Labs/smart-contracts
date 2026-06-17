@@ -637,12 +637,13 @@ contract HedgerVaultRegressionTest is Test {
         vm.expectRevert();
         hedgerPool.enterHedgePosition(1000e6, 5);
         
-        // Set as single hedger
+        // Single-hedger redesign: reassignment is synchronous and only permitted while no
+        // position is active (the delayed applySingleHedgerRotation relic is disabled). The
+        // bootstrap hedger has no open position here, so this applies immediately.
         vm.prank(admin);
         hedgerPool.setSingleHedger(newHedger);
 
-        // Existing hedger rotations are delayed and must be applied after cooldown
-        vm.warp(block.timestamp + hedgerPool.SINGLE_HEDGER_ROTATION_DELAY() + 1);
+        // Refresh mocked oracle feeds so the new hedger's open reads a fresh, valid price.
         vm.mockCall(
             address(0x123), // Mock EUR/USD price feed
             abi.encodeWithSelector(0xfeaf968c), // latestRoundData() selector
@@ -653,8 +654,6 @@ contract HedgerVaultRegressionTest is Test {
             abi.encodeWithSelector(0xfeaf968c), // latestRoundData() selector
             abi.encode(uint80(1), int256(1e8), uint256(block.timestamp), uint256(block.timestamp), uint80(1))
         );
-        vm.prank(admin);
-        hedgerPool.applySingleHedgerRotation();
 
         // Authorized hedger should succeed
         vm.prank(newHedger);

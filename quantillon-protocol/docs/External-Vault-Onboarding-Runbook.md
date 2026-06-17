@@ -20,7 +20,18 @@ The script performs, for each `--vault` entry:
 1. Grant `VAULT_FACTORY_ROLE` to `QuantillonVault` on `stQEUROFactory`.
 2. Register the vault token via `selfRegisterStQEURO(factory, vaultId, vaultName)`.
 3. Configure adapter binding via `setStakingVault(vaultId, adapter, true)`.
-4. Optional (`--yield-shift`): authorize adapter as yield source + bind source to vault id.
+4. Grant `VAULT_MANAGER_ROLE` to `QuantillonVault` **on the adapter** (`adapter.grantRole(VAULT_MANAGER_ROLE, vault)`).
+5. Optional (`--yield-shift`): authorize adapter as yield source + bind source to vault id.
+
+> **Audit N-1 — required, do not skip.** The vault calls `adapter.depositUnderlying` /
+> `withdrawUnderlying` / `harvestYield`, all gated by `VAULT_MANAGER_ROLE` on the adapter. The
+> adapter constructor grants that role only to its admin, so without step 4 every external-vault
+> deploy / redeem-sourcing / harvest **reverts**. Step 4's signer must hold the adapter's
+> `DEFAULT_ADMIN_ROLE`.
+
+> **Recommended — seed each new stQEURO series.** To avoid the first-depositor donation/rounding
+> edge case (audit F-4), the operator should make the first stake into each newly registered
+> stQEURO vault (a small deposit) so it is never bootstrapped by an arbitrary first external user.
 
 Then it sets:
 - `setDefaultStakingVaultId(...)`

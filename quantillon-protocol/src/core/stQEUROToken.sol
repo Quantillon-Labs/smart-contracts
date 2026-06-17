@@ -270,6 +270,10 @@ contract stQEUROToken is
         returns (uint256 shares)
     {
         shares = super.deposit(assets, receiver);
+        // F-4: a deposit must never mint zero shares. Before the first staker an attacker can
+        // donate QEURO directly to this vault, inflating totalAssets so a subsequent small deposit
+        // rounds to 0 shares and forfeits the assets. Reverting undoes the asset transfer.
+        if (shares == 0) revert CommonErrorLibrary.InvalidAmount();
     }
 
     /**

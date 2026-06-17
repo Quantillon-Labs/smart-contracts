@@ -141,4 +141,46 @@ contract HedgerPoolInterestRewardAccrualTest is Test {
         (uint256 secondInterestReward,,) = hedgerPool.claimHedgingRewards();
         assertGt(secondInterestReward, 0, "subsequent interval still accrues after the first claim");
     }
+
+    /// @notice F-5: interest accrues on exposure regardless of reserve balance, so the escrow can
+    ///         exceed the funded reward reserve. withdrawPendingRewards must pay the funded portion
+    ///         (never revert on the unfunded remainder) and let the rest be withdrawn after a top-up.
+    function test_F5_PartialWithdrawalWhenReserveUnderfunded() public {
+        vm.prank(hedger);
+        hedgerPool.enterHedgePosition(10_000e6, 5);
+
+        // Accrue a large reward so it dwarfs any entry-fee reserve already in the pool.
+        vm.warp(block.timestamp + 200 days);
+        vm.prank(hedger);
+        (uint256 accrued,,) = hedgerPool.claimHedgingRewards();
+        assertGt(accrued, 0, "interest accrued");
+        assertEq(hedgerPool.pendingRewardWithdrawals(hedger), accrued, "full accrual escrowed (unclamped)");
+
+        // Underfund: top the reserve up by only half the escrow.
+        uint256 reserveBefore = usdc.balanceOf(address(hedgerPool));
+        uint256 fundFirst = accrued / 2;
+        usdc.mint(address(this), fundFirst);
+        usdc.approve(address(hedgerPool), fundFirst);
+        hedgerPool.fundRewardReserve(fundFirst);
+
+        uint256 expectedPaid1 = reserveBefore + fundFirst; // < accrued (reserveBefore << accrued/2)
+        assertLt(expectedPaid1, accrued, "reserve is genuinely underfunded for a full payout");
+
+        // Partial withdrawal: pays only what the reserve can cover, no revert on the remainder.
+        uint256 before = usdc.balanceOf(hedger);
+        vm.prank(hedger);
+        hedgerPool.withdrawPendingRewards(hedger);
+        assertEq(usdc.balanceOf(hedger) - before, expectedPaid1, "pays exactly the funded portion");
+        assertEq(hedgerPool.pendingRewardWithdrawals(hedger), accrued - expectedPaid1, "remainder stays escrowed");
+
+        // Top up the remainder and withdraw it; total withdrawn equals the full accrual.
+        uint256 remaining = hedgerPool.pendingRewardWithdrawals(hedger);
+        usdc.mint(address(this), remaining);
+        usdc.approve(address(hedgerPool), remaining);
+        hedgerPool.fundRewardReserve(remaining);
+        vm.prank(hedger);
+        hedgerPool.withdrawPendingRewards(hedger);
+        assertEq(hedgerPool.pendingRewardWithdrawals(hedger), 0, "remainder withdrawn after funding");
+        assertEq(usdc.balanceOf(hedger) - before, accrued, "total withdrawn equals full accrual");
+    }
 }

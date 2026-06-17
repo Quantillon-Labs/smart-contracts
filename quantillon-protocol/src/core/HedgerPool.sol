@@ -200,6 +200,21 @@ contract HedgerPool is
     event RewardReserveFunded(address indexed funder, uint256 amount);
     event SingleHedgerRotationProposed(address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt);
     event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
+    /// @notice F-6: Emitted when EMERGENCY_ROLE force-closes a position.
+    /// @dev When `outstandingQeuro` is non-zero the closure withdraws hedger margin while QEURO is
+    ///      still outstanding, which reduces protocol collateralization and may push redemptions
+    ///      into liquidation mode. This is an intentional emergency escape hatch; the event exists
+    ///      so monitoring/alerting can detect when backing has been removed under an active supply.
+    /// @param hedger Hedger whose position was force-closed
+    /// @param positionId Closed position id
+    /// @param marginWithdrawn Margin (USDC, 6 decimals) returned to the hedger from the vault
+    /// @param outstandingQeuro QEURO still outstanding at closure time (18 decimals); non-zero means under-backed
+    event EmergencyPositionClosed(
+        address indexed hedger,
+        uint256 indexed positionId,
+        uint256 marginWithdrawn,
+        uint256 outstandingQeuro
+    );
 
     modifier onlyVault() {
         _onlyVault();
@@ -382,7 +397,15 @@ contract HedgerPool is
                 revert HedgerPoolErrorLibrary.HedgerHasActivePosition();
             }
         }
-        
+
+        // Defense-in-depth: the fixed positionId 1 must not already be active under a
+        // different hedger. Overwriting it would double-count totalMargin/totalExposure and
+        // strand the prior hedger's margin. setSingleHedger() already blocks reassignment
+        // while position 1 is active, so this is belt-and-suspenders against any future path.
+        if (positions[1].isActive && positions[1].hedger != msg.sender) {
+            revert HedgerPoolErrorLibrary.HedgerHasActivePosition();
+        }
+
         uint256 currentTime = TIME_PROVIDER.currentTime();
         
         // Get oracle price first to prevent reentrancy
@@ -530,6 +553,10 @@ contract HedgerPool is
         // forge-lint: disable-next-line(unsafe-typecast)
         position.entryPrice = uint96(eurUsdPrice);
         position.unrealizedPnL = 0;
+        // Reset residual P&L/backing so reusing the fixed positionId 1 (after a prior close)
+        // always starts clean and can never inherit stale exposure from a previous hedger.
+        position.realizedPnL = 0;
+        position.qeuroBacked = 0;
         position.isActive = true;
         // forge-lint: disable-next-line(unsafe-typecast)
         position.openBlock = uint64(block.number);
@@ -1118,12 +1145,13 @@ contract HedgerPool is
      *                  can withdraw their own pending rewards.
      * @custom:validation Reverts if `recipient` is the zero address or the caller has no
      *                    pending rewards recorded.
-     * @custom:state-changes Sets `pendingRewardWithdrawals[msg.sender]` to zero and transfers
-     *                       the pending USDC amount to `recipient`.
+     * @custom:state-changes Reduces `pendingRewardWithdrawals[msg.sender]` by the paid amount and
+     *                       transfers that USDC to `recipient`.
      * @custom:events No events emitted; off-chain indexers should track `pendingRewardWithdrawals`
      *                and standard ERC20 `Transfer` events.
-     * @custom:errors Reverts with `ZeroAddress` when `recipient` is zero, and `InvalidAmount`
-     *                when there is no pending reward; SafeERC20 may bubble up token errors.
+     * @custom:errors Reverts with `ZeroAddress` when `recipient` is zero, `InvalidAmount` when
+     *                there is no pending reward, and `InsufficientBalance` when the reward reserve
+     *                is currently empty; SafeERC20 may bubble up token errors.
      * @custom:reentrancy Protected by `nonReentrant`; external interaction is a single USDC transfer.
      * @custom:access External function callable by any hedger for their own pending rewards only.
      * @custom:oracle No oracle dependencies.
@@ -1132,8 +1160,18 @@ contract HedgerPool is
         if (recipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
         uint256 amount = pendingRewardWithdrawals[msg.sender];
         if (amount == 0) revert CommonErrorLibrary.InvalidAmount();
-        pendingRewardWithdrawals[msg.sender] = 0;
-        usdc.safeTransfer(recipient, amount);
+
+        // F-5: pay out only what the reward reserve can currently cover, leaving any unfunded
+        // remainder escrowed for a later withdrawal once the reserve is topped up. This prevents an
+        // over-accrued escrow (interest accrues on exposure regardless of reserve balance) from
+        // bricking withdrawals entirely — the funded portion is always claimable instead of the
+        // whole transfer reverting on insufficient balance.
+        uint256 reserve = usdc.balanceOf(address(this));
+        uint256 payout = amount > reserve ? reserve : amount;
+        if (payout == 0) revert CommonErrorLibrary.InsufficientBalance();
+
+        pendingRewardWithdrawals[msg.sender] = amount - payout;
+        usdc.safeTransfer(recipient, payout);
     }
 
     /**
@@ -1300,10 +1338,16 @@ contract HedgerPool is
      * @dev Security features:
      *      1. Role-based access control (EMERGENCY_ROLE)
      *      2. Position ownership validation
+     * @dev WARNING (audit F-6): unlike the normal `exitHedgePosition` flow, this deliberately does
+     *      NOT run `_validatePositionClosureSafety`. If invoked while QEURO is outstanding
+     *      (`vault.totalMinted() > 0`) it withdraws the hedger's full margin and can leave QEURO
+     *      under-collateralized, pushing redemptions into liquidation mode. This is an accepted
+     *      emergency escape hatch; the `EmergencyPositionClosed` event carries `outstandingQeuro`
+     *      so operators can detect and react when backing has been removed under an active supply.
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Validates emergency role, position ownership, active status
      * @custom:state-changes Closes position, updates hedger stats, withdraws USDC from vault
-     * @custom:events Emits EmergencyPositionClosed with position details
+     * @custom:events Emits EmergencyPositionClosed with margin withdrawn and outstanding QEURO
      * @custom:errors Throws custom errors for invalid conditions
      * @custom:reentrancy Protected by nonReentrant modifier
      * @custom:access Restricted to EMERGENCY_ROLE
@@ -1332,6 +1376,10 @@ contract HedgerPool is
             cachedMargin,
             cachedPositionSize
         );
+
+        // F-6: surface whether this emergency closure removes backing from an outstanding supply.
+        uint256 outstandingQeuro = vault.totalMinted();
+        emit EmergencyPositionClosed(hedger, positionId, cachedMargin, outstandingQeuro);
 
         // INTERACTIONS - All external calls after state updates
         // Withdraw USDC from vault for emergency position closure
@@ -1394,13 +1442,17 @@ contract HedgerPool is
 
     /**
      * @notice Sets the single hedger address allowed to open positions
-     * @dev Replaces the previous multi-hedger whitelist model with a single hedger
+     * @dev Single-hedger model. Bootstraps the hedger when none is set yet, otherwise performs a
+     *      synchronous reassignment that is only permitted while the fixed positionId 1 is
+     *      inactive (no live backing position). The legacy delayed multi-hedger rotation path
+     *      has been retired (see `applySingleHedgerRotation`, now disabled); reassigning while a
+     *      position is active would let a new hedger overwrite live exposure, so it reverts.
      * @param hedger Address of the single hedger
      * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates governance role and non-zero hedger address
+     * @custom:validation Validates governance role, non-zero hedger, and inactive position on reassign
      * @custom:state-changes Updates singleHedger address
-     * @custom:events None
-     * @custom:errors Throws ZeroAddress if hedger is zero
+     * @custom:events Emits `SingleHedgerRotationApplied`
+     * @custom:errors Reverts with InvalidAddress on zero hedger, HedgerHasActivePosition if reassigning while position 1 is active
      * @custom:reentrancy Not protected - governance function
      * @custom:access Restricted to GOVERNANCE_ROLE
      * @custom:oracle No oracle dependencies
@@ -1416,34 +1468,34 @@ contract HedgerPool is
             return;
         }
 
-        // Subsequent changes are delayed and must be applied explicitly.
-        pendingSingleHedger = hedger;
-        singleHedgerPendingAt = TIME_PROVIDER.currentTime() + SINGLE_HEDGER_ROTATION_DELAY;
-        emit SingleHedgerRotationProposed(singleHedger, hedger, singleHedgerPendingAt);
+        // Single-hedger redesign: reassignment is only safe when the current hedger has no
+        // active backing position. The fixed positionId 1 must be free, otherwise a new hedger
+        // opening would overwrite live exposure, double-count totals, and strand margin.
+        if (positions[1].isActive) revert HedgerPoolErrorLibrary.HedgerHasActivePosition();
+
+        address previousHedger = singleHedger;
+        singleHedger = hedger;
+        emit SingleHedgerRotationApplied(previousHedger, hedger);
     }
 
     /**
-     * @notice INFO-2: Applies a previously proposed single-hedger rotation after delay.
-     * @dev Finalizes the delayed rotation configured via `setSingleHedger`.
-     * @custom:security Restricted to governance and guarded by pending-state + delay checks.
-     * @custom:validation Requires a pending hedger and elapsed `SINGLE_HEDGER_ROTATION_DELAY`.
-     * @custom:state-changes Updates `singleHedger` and clears pending rotation fields.
-     * @custom:events Emits `SingleHedgerRotationApplied`.
-     * @custom:errors Reverts when no pending rotation exists or delay has not elapsed.
+     * @notice Deprecated relic of the abandoned multi-hedger rotation; always reverts.
+     * @dev The protocol is single-hedger-only. The former delayed rotation could overwrite the
+     *      live backing position (fixed positionId 1) and corrupt aggregate accounting, so it is
+     *      disabled. Hedger reassignment now happens synchronously via `setSingleHedger`, only
+     *      while position 1 is inactive. Retained (reverting) for ABI compatibility; the
+     *      `pendingSingleHedger` / `singleHedgerPendingAt` storage fields are now vestigial.
+     * @custom:security No state changes; unconditional revert.
+     * @custom:validation None.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Always reverts with `NotActive`.
      * @custom:reentrancy Not applicable - no external calls.
-     * @custom:access Restricted to `GOVERNANCE_ROLE`.
+     * @custom:access Open (reverts for all callers).
      * @custom:oracle No oracle interaction.
      */
-    function applySingleHedgerRotation() external {
-        _validateRole(GOVERNANCE_ROLE);
-        if (pendingSingleHedger == address(0) || singleHedgerPendingAt == 0) revert CommonErrorLibrary.NotActive();
-        if (TIME_PROVIDER.currentTime() < singleHedgerPendingAt) revert CommonErrorLibrary.NotActive();
-
-        address previousHedger = singleHedger;
-        singleHedger = pendingSingleHedger;
-        pendingSingleHedger = address(0);
-        singleHedgerPendingAt = 0;
-        emit SingleHedgerRotationApplied(previousHedger, singleHedger);
+    function applySingleHedgerRotation() external pure {
+        revert CommonErrorLibrary.NotActive();
     }
 
     /**

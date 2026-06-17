@@ -258,12 +258,11 @@ contract RaceConditionTests is Test {
         vm.prank(user1);
         hedgerPool.exitHedgePosition(pos1);
 
-        // Subsequent single-hedger changes are delayed and require explicit apply
+        // Single-hedger redesign: reassignment is synchronous and allowed here because user1's
+        // position was exited above (positionId 1 is inactive). The delayed
+        // applySingleHedgerRotation path is a disabled relic.
         vm.prank(admin);
         hedgerPool.setSingleHedger(user2);
-        vm.warp(block.timestamp + hedgerPool.SINGLE_HEDGER_ROTATION_DELAY() + 1);
-        vm.prank(admin);
-        hedgerPool.applySingleHedgerRotation();
         vm.prank(user2);
         uint256 pos2 = hedgerPool.enterHedgePosition(amount2, 5);
         vm.roll(block.number + 600);

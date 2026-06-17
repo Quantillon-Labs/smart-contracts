@@ -807,6 +807,9 @@ contract QuantillonVault is
         if (targetVaultId == 0) return;
         if (!stakingVaultActiveById[targetVaultId]) revert CommonErrorLibrary.InvalidVault();
         if (address(stakingVaultAdapterById[targetVaultId]) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        // F-2: principal may only be auto-deployed to a vault in the redemption set, so counted
+        // collateral, withdrawal capacity, and deployed principal stay in lockstep.
+        _requireInRedemptionSet(targetVaultId);
     }
 
     /**
@@ -1839,6 +1842,9 @@ contract QuantillonVault is
         if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
         IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
         if (address(adapter) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        // F-2: only deploy principal into a vault that is counted as collateral and reachable by
+        // the withdrawal path (in redemption priority, or the default when priority is empty).
+        _requireInRedemptionSet(vaultId);
 
         unchecked {
             totalUsdcHeld -= usdcAmount;
@@ -2096,20 +2102,25 @@ contract QuantillonVault is
     // =============================================================================
 
     /**
-     * @notice Updates the price cache with the current oracle price
-     * @dev Allows governance to manually refresh the price cache to prevent deviation check failures
-     * @dev Useful when price has moved significantly and cache needs to be updated
-     * @custom:security Only callable by governance role
+     * @notice Refreshes the deviation-baseline price cache to the current valid oracle price
+     * @dev F-3: PERMISSIONLESS. The cache baseline only ever advances to a price the oracle itself
+     *      reports as valid (this reverts on `!isValid`), so anyone (e.g. a keeper) can re-baseline
+     *      during a sharp EUR move to clear the vault's 2% deviation guard and restore mint/redeem
+     *      availability without waiting on a governance multisig. It cannot commit a manipulated or
+     *      stale price — the oracle's own bounds / staleness / circuit-breaker checks gate validity.
+     *      Tradeoff: this removes the governance-in-the-loop pause on the vault's SECONDARY deviation
+     *      circuit; the oracle adapter's validity remains the primary protection layer.
+     * @custom:security Permissionless; only commits an oracle-validated price; nonReentrant.
      * @custom:validation Validates oracle price is valid before updating cache
      * @custom:state-changes Updates lastValidEurUsdPrice, lastPriceUpdateBlock, and lastPriceUpdateTime
      * @custom:events Emits PriceCacheUpdated event
      * @custom:errors Reverts if oracle price is invalid
-     * @custom:reentrancy Not applicable - no external calls after state changes
-     * @custom:access Restricted to GOVERNANCE_ROLE
+     * @custom:reentrancy Protected by nonReentrant
+     * @custom:access Public - callable by anyone
      * @custom:oracle Requires valid oracle price
      */
     // SECURITY: Protected by nonReentrant modifier; external call to trusted Oracle contract
-    function updatePriceCache() external onlyRole(GOVERNANCE_ROLE) nonReentrant {
+    function updatePriceCache() external nonReentrant {
         // Cache old price before external call
         uint256 oldPrice = lastValidEurUsdPrice;
         
@@ -2193,6 +2204,55 @@ contract QuantillonVault is
         for (uint256 i = 0; i < priority.length; ++i) {
             externalCollateral += principalUsdcByVaultId[priority[i]];
         }
+    }
+
+    /**
+     * @notice Returns whether a vault id belongs to the redemption set used for collateral counting.
+     * @dev Mirrors EXACTLY the membership notion of `_getExternalVaultCollateralBalance` and
+     *      `_resolveWithdrawalPriority`: a vault is in the set iff it appears in
+     *      `redemptionPriorityVaultIds`, or (when that list is empty) it is the non-zero
+     *      `defaultStakingVaultId`. Deployment is gated on this so principal can only ever land in
+     *      a vault that is both counted as collateral and reachable by the withdrawal path.
+     * @param vaultId Vault id to test.
+     * @return inSet True when the vault id is counted/withdrawable.
+     * @custom:security Internal read helper.
+     * @custom:validation No input validation.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors None.
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
+    function _isInRedemptionSet(uint256 vaultId) internal view returns (bool inSet) {
+        uint256[] memory priority = redemptionPriorityVaultIds;
+        if (priority.length == 0) {
+            return defaultStakingVaultId != 0 && vaultId == defaultStakingVaultId;
+        }
+        for (uint256 i = 0; i < priority.length; ++i) {
+            if (priority[i] == vaultId) return true;
+        }
+        return false;
+    }
+
+    /**
+     * @notice Reverts unless the vault id is in the redemption set (counted + withdrawable).
+     * @dev Used to gate external-vault deployment so collateral counting, withdrawal capacity, and
+     *      deployed principal stay in lockstep (audit F-2). A vault that is active but absent from
+     *      the redemption priority/default set would otherwise hold principal that is excluded from
+     *      collateral and unreachable by the withdrawal path, stranding funds in liquidation.
+     * @param vaultId Vault id being deployed to.
+     * @custom:security Internal guard.
+     * @custom:validation Reverts with `InvalidVault` when the vault id is outside the redemption set.
+     * @custom:state-changes None.
+     * @custom:events None.
+     * @custom:errors Reverts with `CommonErrorLibrary.InvalidVault`.
+     * @custom:reentrancy Not applicable for view helper.
+     * @custom:access Internal helper.
+     * @custom:oracle No oracle dependencies.
+     */
+    function _requireInRedemptionSet(uint256 vaultId) internal view {
+        if (!_isInRedemptionSet(vaultId)) revert CommonErrorLibrary.InvalidVault();
     }
 
     /**

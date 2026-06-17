@@ -272,10 +272,11 @@ See the dedicated runbook: `docs/External-Vault-Onboarding-Runbook.md`.
 # chainId defaults to 8453 (Base mainnet). GIT_COMMIT tags the pre-versioning baseline.
 RPC_URL="$BASE_RPC_URL" GIT_COMMIT=f1c55ad \
   ./scripts/deployment/backfill-versions.sh 8453
-
-# Then commit the generated manifest so CI/tooling has the deployed-version baseline:
-git add deployments/8453/versions.json && git commit -m "chore: seed deployed-version manifest"
 ```
+
+> `deployments/` is **git-ignored** — `versions.json` is a per-environment artifact kept on the
+> deploy machine alongside `addresses.json` (it is **not** committed). Regenerate it with the
+> backfill (once) and thereafter the `UpgradeBase` scripts keep it current on each upgrade.
 
 After seeding, verify and inspect drift vs source:
 

@@ -21,9 +21,9 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **[Integration Examples](https://smartcontracts.quantillon.money/Integration-Examples.html)** - Comprehensive integration examples and patterns
 - **[Deployment Guide](https://smartcontracts.quantillon.money/Deployment.html)** - Complete deployment instructions and procedures
 - **[Security Guide](https://smartcontracts.quantillon.money/Security.html)** - Security practices and considerations
-- **[stQEUROFactory Technical Upgrade](./docs/stQEUROFactory.md)** - Multi-vault staking refactor details and runbook
-- **[Multi-Vault Staking Runtime Flow](./docs/Multi-Vault-Staking-Flow.md)** - Contract-level mint/redeem/hedger routing behavior after the `vaultId` refactor
-- **[External Vault Onboarding Runbook](./docs/External-Vault-Onboarding-Runbook.md)** - Operator guide for `setup-external-vaults.sh`
+- **[stQEUROFactory Technical Upgrade](https://smartcontracts.quantillon.money/stQEUROFactory.html)** - Multi-vault staking refactor details and runbook
+- **[Multi-Vault Staking Runtime Flow](https://smartcontracts.quantillon.money/Multi-Vault-Staking-Flow.html)** - Contract-level mint/redeem/hedger routing behavior after the `vaultId` refactor
+- **[External Vault Onboarding Runbook](https://smartcontracts.quantillon.money/External-Vault-Onboarding-Runbook.html)** - Operator guide for `setup-external-vaults.sh`
 - **[Documentation Hub](https://smartcontracts.quantillon.money/)** - Comprehensive documentation overview
 
 ### 🎯 Key Features
@@ -31,7 +31,7 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **Euro-Pegged Stablecoin**: QEURO maintains 1:1 peg with Euro through sophisticated mechanisms
 - **Dual-Pool Architecture**: Separates user deposits from hedging operations for optimal risk management
 - **Yield Generation**: Multiple yield sources including protocol fees, interest differentials, and yield farming
-- **Governance Token**: QTI token with vote-escrow mechanics for decentralized governance
+- **Governance Token**: QTI token with vote-escrow mechanics for decentralized governance (not yet activated — token supply not minted, governance dormant until launch)
 - **Advanced Hedging**: EUR/USD hedging positions with margin management and liquidation systems
 - **Yield-Bearing Wrapper**: stQEURO token that automatically accrues yield for holders
 - **External Adapter Integration**: Multi-vault adapter model with post-deploy onboarding
@@ -45,15 +45,15 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 | Contract | Purpose | Key Features |
 |----------|---------|--------------|
 | **QEUROToken** | Euro-pegged stablecoin | Mint/burn controls, rate limiting, compliance features, 18 decimals |
-| **QTIToken** | Governance token | Vote-escrow mechanics, fixed supply (100M), lock periods, 4× voting power |
+| **QTIToken** | Governance token | Vote-escrow mechanics, 100M supply cap, lock periods, 4× voting power. **Governance dormant: no mint path is wired yet, so supply is 0 and lock/vote/propose are inactive until a future activation upgrade mints the cap.** |
 | **QuantillonVault** | Main vault | Overcollateralized minting (≥105%), liquidation at 101%, fee management |
 | **FeeCollector** | Fee distribution | 60/25/15 split to treasury/dev/community, per-token accounting |
-| **UserPool** | User deposits | USDC deposits, QEURO staking, unstaking cooldown, yield distribution |
+| **UserPool** | User deposits | USDC deposits, QEURO staking, unstaking cooldown; user yield accrues via stQEURO (no staking-reward claim) |
 | **HedgerPool** | Hedging operations | EUR/USD short positions, margin management, liquidation at 101% CR |
 | **stQEUROFactory** | Multi-vault staking factory | Deploys one stQEURO proxy per vault, registry by `vaultId` |
 | **stQEUROToken** | Yield-bearing wrapper | Automatic yield accrual via exchange rate, no lock-up |
 | **MockAaveVault** | Mock Aave-style adapter | External adapter model validation, yield fee/harvest controls for staging |
-| **YieldShift** | Yield management | Dynamic distribution between pools, 7-day holding period, TWAP-based allocation |
+| **YieldShift** | Yield management | Dynamic distribution between pools, 7-day holding period; allocation uses holding-period-filtered eligible-pool sizes with gradual adjustment (TWAP helpers exist but inform historical metrics, not the binding shift) |
 | **OracleRouter** | Oracle routing | Routes between Chainlink and Stork oracles, switchable by governance |
 | **ChainlinkOracle** | Chainlink price feeds | EUR/USD and USDC/USD via Chainlink, 1 hr staleness check, circuit breakers |
 | **StorkOracle** | Stork price feeds | EUR/USD and USDC/USD via Stork Network, same validation as Chainlink |

@@ -31,9 +31,6 @@ Detailed technical note for the multi-vault staking refactor (`stQEUROFactory`, 
 ### [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md)
 Contract runtime behavior for mint/stake/redeem/hedger flows after the `vaultId` refactor (default vault, redemption priority, adapter routing).
 
-### [External Vaults Refactor Recap](./External-Vaults-Refactor-Recap.md)
-Decision-complete handoff for UI refactor: ABI/event deltas, new read model, vaultId routing, and localhost QA flow.
-
 ### [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md)
 Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs, parameters, examples, verification).
 
@@ -52,7 +49,6 @@ Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs
 - [**Gas Optimization**](./API-Reference.md#gas-optimization) - Performance tips
 - [**stQEURO Multi-Vault Upgrade**](./stQEUROFactory.md) - Implementation and runbook
 - [**Multi-Vault Runtime Flow**](./Multi-Vault-Staking-Flow.md) - Mint/redeem/hedger runtime routing guide
-- [**External Vaults Recap (UI Handoff)**](./External-Vaults-Refactor-Recap.md) - Contract deltas and UI migration checklist
 - [**External Vault Onboarding Runbook**](./External-Vault-Onboarding-Runbook.md) - Post-core setup for adapters/default/redemption routing
 
 ### For Auditors
@@ -61,7 +57,6 @@ Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs
 - [**Access Control**](./API-Reference.md#access-control-roles) - Role definitions
 - [**stQEUROFactory Upgrade Note**](./stQEUROFactory.md) - Breaking changes and verification map
 - [**Multi-Vault Runtime Flow**](./Multi-Vault-Staking-Flow.md) - Runtime behavior and operations map
-- [**External Vaults Refactor Recap**](./External-Vaults-Refactor-Recap.md) - ABI/event/read-model migration map
 
 ---
 
@@ -241,7 +236,7 @@ This documentation is licensed under the [MIT License](LICENSE).
 - Initial release
 - Core protocol functionality
 - Complete API documentation
-- Security audit completed
+- Continuous security analysis (Slither + Mythril); external audit pending (see [Security](#-security))
 
 ### v1.1.0 (Planned)
 - Enhanced yield management

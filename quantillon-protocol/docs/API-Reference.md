@@ -8,20 +8,56 @@ This document provides detailed technical specifications for all Quantillon Prot
 
 ## Contract Addresses
 
-*Note: These are example addresses for documentation. Use actual deployed addresses in production.*
+Deployed addresses for **Base Mainnet (chain ID `8453`)**. The canonical, machine-readable source is [`deployments/8453/addresses.json`](https://github.com/Quantillon-Labs/smart-contracts/blob/main/quantillon-protocol/deployments/8453/addresses.json); the table below mirrors it. All core contracts are UUPS proxies — the addresses are the stable proxy addresses that integrators should use.
 
-| Contract | Address | Network |
-|----------|---------|---------|
-| QuantillonVault | `0x...` | Base Mainnet |
-| QEUROToken | `0x...` | Base Mainnet |
-| QTIToken | `0x...` | Base Mainnet |
-| UserPool | `0x...` | Base Mainnet |
-| HedgerPool | `0x...` | Base Mainnet |
-| stQEUROFactory | `0x...` | Base Mainnet |
-| stQEUROToken | `0x...` | Base Mainnet |
-| AaveVault | `0x...` | Base Mainnet |
-| YieldShift | `0x...` | Base Mainnet |
-| ChainlinkOracle | `0x...` | Base Mainnet |
+### Core protocol
+
+| Contract | Address |
+|----------|---------|
+| QuantillonVault | `0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07` |
+| QEUROToken | `0x69aD4e6c49d6275D0e11b5515D98a89f029869AA` |
+| QTIToken | `0x246c6F441c0f8Fc6A71Db0F12dB5665D373Df271` |
+| UserPool | `0x712bCc77e7aa53C79870A40d044D440Ad2901bF2` |
+| HedgerPool | `0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A` |
+| FeeCollector | `0x0A33F72683cfC2303639d5cB9A45D77fF16d9FAD` |
+| YieldShift | `0xdcd66568F8623bDa3387287c31F14b43e49665b1` |
+| stQEUROFactory | `0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53` |
+| stQEUROToken | per-vault — deployed by `stQEUROFactory`, resolve via `getStQEUROByVaultId(vaultId)` |
+
+### Oracles
+
+| Contract | Address |
+|----------|---------|
+| OracleRouter | `0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0` |
+| ChainlinkOracle | `0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7` |
+| StorkOracle | `0x41FcE00E33Ca4f0d8E5528c343FAC98BA178EebC` |
+| SlippageStorage | `0x0fde0ff2566be3c24af6d654012dddb4f1da099b` |
+| TimeProvider | `0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7` |
+
+> Protocol contracts depend only on `OracleRouter` (which implements `IOracle`). `OracleRouter` routes to either `ChainlinkOracle` or `StorkOracle`, switchable by governance.
+
+### Governance & infrastructure
+
+| Contract | Address | Notes |
+|----------|---------|-------|
+| Gnosis Safe (governance) | `0x1d7fF432a93d0085Fb69474c7E567f859829e6cd` | 2-of-2; holds all privileged roles |
+| TimelockController | `0x7Ade8f3Bf1FdaF0785efE9Ea5C6339D1aD6B8342` | 12h delay; gates UUPS upgrades |
+
+### External vault adapters (onboarded post-core)
+
+External staking adapters are onboarded after core deployment via `setup-external-vaults.sh` and are tracked per `vaultId`, not in `addresses.json`. Currently live:
+
+| Adapter | Address | `vaultId` |
+|---------|---------|-----------|
+| MetaMorphoStakingVaultAdapter | `0x103aEBD0059AAA3DcCaa9ab0cCb901382Bd48978` | 2 |
+
+### External dependencies
+
+| Token / Feed | Address |
+|--------------|---------|
+| USDC | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+| Chainlink EUR/USD feed | `0xc91D87E81faB8f93699ECf7Ee9B44D11e1D53F0F` |
+| Chainlink USDC/USD feed | `0x7e860098F58bBFC8648a4311b374B1D669a2bc6B` |
 
 ---
 
@@ -643,81 +679,41 @@ This overload is used by `stQEUROFactory` when deploying a dedicated proxy per v
 
 ---
 
-## AaveVault
+## External Vault Adapters
 
-**Contract**: `AaveVault.sol`  
-**Interface**: `IAaveVault.sol`  
-**Inherits**: `SecureUpgradeable`, `PausableUpgradeable`
+> The monolithic `AaveVault` was removed in the multi-vault refactor. External yield is now provided by lightweight, **non-upgradeable** adapters that all implement the same `IExternalStakingVault` interface and are onboarded per `vaultId` via `setup-external-vaults.sh`. Current adapters: `AaveStakingVaultAdapter`, `MorphoStakingVaultAdapter`, `MetaMorphoStakingVaultAdapter` (the deployed mainnet adapter — see [Contract Addresses](#contract-addresses)).
+
+**Interface**: `IExternalStakingVault.sol`
 
 ### Function Signatures
 
-#### `deployToAave(uint256 usdcAmount)`
+#### `depositUnderlying(uint256 usdcAmount) → (uint256)`
 ```solidity
-function deployToAave(uint256 usdcAmount) external
+function depositUnderlying(uint256 usdcAmount) external returns (uint256 sharesReceived)
 ```
 
-**Modifiers**: `onlyRole(YIELD_MANAGER_ROLE)`, `whenNotPaused`, `nonReentrant`  
-**Events**: `USDCDepositedToAave(uint256 amount)`  
-**Requirements**:
-- `usdcAmount > 0`
-- Within exposure limits
-- Sufficient USDC balance
+Deposits USDC into the wrapped third-party vault. Called by `QuantillonVault.deployUsdcToVault(vaultId, usdcAmount)`.
 
-#### `withdrawFromAave(uint256 usdcAmount)`
+#### `withdrawUnderlying(uint256 usdcAmount) → (uint256)`
 ```solidity
-function withdrawFromAave(uint256 usdcAmount) external
+function withdrawUnderlying(uint256 usdcAmount) external returns (uint256 usdcWithdrawn)
 ```
 
-**Modifiers**: `onlyRole(YIELD_MANAGER_ROLE)`, `whenNotPaused`, `nonReentrant`  
-**Events**: `USDCWithdrawnFromAave(uint256 amount)`
+Withdraws USDC from the wrapped vault back to the protocol.
 
-#### `harvestAaveYield() → (uint256)`
+#### `harvestYield() → (uint256)`
 ```solidity
-function harvestAaveYield() external returns (uint256 yieldAmount)
+function harvestYield() external returns (uint256 harvestedYield)
 ```
 
-**Modifiers**: `onlyRole(YIELD_MANAGER_ROLE)`, `whenNotPaused`, `nonReentrant`  
-**Events**: `AaveYieldHarvested(uint256 amount)`
-**Notes**:
-- Reverts if `yieldVaultId == 0`
-- Routes harvested amount through `yieldShift.addYield(yieldVaultId, netYield, bytes32("aave"))`
+Harvests accrued yield. Routed to `YieldShift` via `QuantillonVault.harvestVaultYield(vaultId)`, which calls `yieldShift.addYield(vaultId, netYield, source)`.
 
-#### `setYieldVaultId(uint256 newYieldVaultId)`
+#### `totalUnderlying() → (uint256)`
 ```solidity
-function setYieldVaultId(uint256 newYieldVaultId) external
+function totalUnderlying() external view returns (uint256 underlyingBalance)
 ```
 
-**Modifiers**: `onlyRole(GOVERNANCE_ROLE)`  
-**Requirements**:
-- `newYieldVaultId > 0`
-
-#### `updateYieldShift(address newYieldShift)`
-```solidity
-function updateYieldShift(address newYieldShift) external
-```
-
-**Modifiers**: `onlyRole(GOVERNANCE_ROLE)`
-
-#### `getAaveBalance() → (uint256)`
-```solidity
-function getAaveBalance() external view returns (uint256 balance)
-```
-
-#### `getAaveAPY() → (uint256)`
-```solidity
-function getAaveAPY() external view returns (uint256 apy)
-```
-
-**Returns**: APY in basis points
-
-#### `autoRebalance() → (bool, uint256, uint256)`
-```solidity
-function autoRebalance() external returns (
-    bool rebalanced,
-    uint256 newAllocation,
-    uint256 expectedYield
-)
-```
+Returns the adapter's current USDC-equivalent balance held in the wrapped vault.
 
 ---
 
@@ -912,10 +908,9 @@ function resetCircuitBreaker() external
 - `LIQUIDATION_THRESHOLD`: 105% (1.05)
 - `MAX_POSITIONS_PER_HEDGER`: 50
 
-### AaveVault
-- `MAX_AAVE_EXPOSURE`: 80% of total USDC
-- `MIN_AAVE_EXPOSURE`: 0%
-- `REBALANCE_THRESHOLD`: 5% deviation
+### External Vault Adapters
+- No fixed exposure/rebalance constants — adapters are thin pass-throughs to the wrapped vault.
+- USDC is deployed/withdrawn per `vaultId` under governance control via `QuantillonVault.deployUsdcToVault` / `harvestVaultYield`.
 
 ---
 

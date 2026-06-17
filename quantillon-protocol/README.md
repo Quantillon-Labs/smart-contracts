@@ -21,9 +21,9 @@ Quantillon Protocol is a comprehensive DeFi ecosystem built around QEURO, a Euro
 - **[Integration Examples](https://smartcontracts.quantillon.money/Integration-Examples.html)** - Comprehensive integration examples and patterns
 - **[Deployment Guide](https://smartcontracts.quantillon.money/Deployment.html)** - Complete deployment instructions and procedures
 - **[Security Guide](https://smartcontracts.quantillon.money/Security.html)** - Security practices and considerations
-- **[stQEUROFactory Technical Upgrade](./docs/stQEUROFactory.md)** - Multi-vault staking refactor details and runbook
-- **[Multi-Vault Staking Runtime Flow](./docs/Multi-Vault-Staking-Flow.md)** - Contract-level mint/redeem/hedger routing behavior after the `vaultId` refactor
-- **[External Vault Onboarding Runbook](./docs/External-Vault-Onboarding-Runbook.md)** - Operator guide for `setup-external-vaults.sh`
+- **[stQEUROFactory Technical Upgrade](https://smartcontracts.quantillon.money/stQEUROFactory.html)** - Multi-vault staking refactor details and runbook
+- **[Multi-Vault Staking Runtime Flow](https://smartcontracts.quantillon.money/Multi-Vault-Staking-Flow.html)** - Contract-level mint/redeem/hedger routing behavior after the `vaultId` refactor
+- **[External Vault Onboarding Runbook](https://smartcontracts.quantillon.money/External-Vault-Onboarding-Runbook.html)** - Operator guide for `setup-external-vaults.sh`
 - **[Documentation Hub](https://smartcontracts.quantillon.money/)** - Comprehensive documentation overview
 
 ### 🎯 Key Features

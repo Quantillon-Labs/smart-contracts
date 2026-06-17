@@ -117,6 +117,9 @@ contract YieldShift is
     IERC20 public usdc;
     IUserPool public userPool;
     IHedgerPool public hedgerPool;
+    /// @custom:deprecated Vestigial state: `mockAaveVault` is never read or called by YieldShift
+    /// logic (user yield accrues via creditVaultYield -> stQEURO). Retained only to preserve the
+    /// live proxy's storage layout and ABI; do not wire or rely on it.
     IMockAaveVault public mockAaveVault;
     IStQEUROFactory public stQEUROFactory;
 

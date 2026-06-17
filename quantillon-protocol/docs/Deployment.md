@@ -262,6 +262,30 @@ Core deploy does not set adapter routing/defaults. Onboard vaults with:
 
 See the dedicated runbook: `docs/External-Vault-Onboarding-Runbook.md`.
 
+### 4. Seed the Version Manifest (one-time, per chain)
+
+`deployments/{chainId}/versions.json` is the source of truth for *what version is deployed*. After upgrades it is maintained automatically by the `UpgradeBase` scripts, but it must be **seeded once** for contracts that were deployed before `version()` existed. This step reads each proxy's current implementation from its EIP-1967 slot on-chain.
+
+> **Read-only — no private key required.** It only issues `eth_getStorageAt` reads via `cast`; it sends no transactions and spends no gas. It needs **only a Base RPC URL**.
+
+```bash
+# chainId defaults to 8453 (Base mainnet). GIT_COMMIT tags the pre-versioning baseline.
+RPC_URL="$BASE_RPC_URL" GIT_COMMIT=f1c55ad \
+  ./scripts/deployment/backfill-versions.sh 8453
+
+# Then commit the generated manifest so CI/tooling has the deployed-version baseline:
+git add deployments/8453/versions.json && git commit -m "chore: seed deployed-version manifest"
+```
+
+After seeding, verify and inspect drift vs source:
+
+```bash
+make check-deployed-versions          # lists contracts whose deployed version != source version()
+cast call <proxy> "version()(string)" --rpc-url "$BASE_RPC_URL"   # once a version()-bearing impl is live
+```
+
+Until the pending implementation upgrades are deployed, the manifest will show every contract as `0.0.0-unversioned` (deployed) vs `1.0.0` (source) — i.e. "needs upgrade" — which is correct: no live implementation carries `version()` yet. Each subsequent `UpgradeBase` run overwrites that contract's entry with the real deployed version + commit.
+
 ---
 
 ## Accessing Deployed Addresses

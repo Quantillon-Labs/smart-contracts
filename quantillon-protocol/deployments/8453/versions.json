@@ -1,66 +1,66 @@
 {
   "QEUROToken": {
+    "deployedAt": 1781720415,
+    "gitCommit": "84c4db1",
+    "implementation": "0x32189D8DDF512Dc27317Acb061ebAAcd9A70fa46",
     "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
-    "implementation": "0x97a204b6fcc842f4b368418dbe1e4c520a1d6dfb",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "version": "1.0.0"
   },
   "QuantillonVault": {
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
-    "implementation": "0xcdaaff36b6798f5a1be215acd2331567ca9f7d19",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "implementation": "0xb75c5dea7d52a379da9eae48a15a94c18d775c55",
+    "version": "1.0.0",
+    "gitCommit": "84c4db1",
+    "deployedAt": 1781771857
   },
   "QTIToken": {
+    "deployedAt": 1781721113,
+    "gitCommit": "84c4db1",
+    "implementation": "0xf401C020F0EDa96D499e08CE2140CE010Bdbf0aB",
     "proxy": "0x246c6F441c0f8Fc6A71Db0F12dB5665D373Df271",
-    "implementation": "0x6e1e17e5261f1b98e0fe401a4f2ea08878c4e6c0",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "version": "1.0.0"
   },
   "UserPool": {
     "proxy": "0x712bCc77e7aa53C79870A40d044D440Ad2901bF2",
-    "implementation": "0xcd0ca9de247a22d60c482ad29e67d52cbbce90b4",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "implementation": "0xbc3216351789ed71384324d1d9dfd2ee1cec048b",
+    "version": "1.0.0",
+    "gitCommit": "84c4db1",
+    "deployedAt": 1781771857
   },
   "HedgerPool": {
+    "deployedAt": 1781721151,
+    "gitCommit": "84c4db1",
+    "implementation": "0x7c09faCe43A5295B140481ff618FcbF958771876",
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
-    "implementation": "0x491a56d845a23ceb7aec3c854e802698cca4caf7",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "version": "1.0.0"
   },
   "stQEUROFactory": {
+    "deployedAt": 1781721189,
+    "gitCommit": "84c4db1",
+    "implementation": "0xa1ce6e6aa494235d3F26Ea543590d88aD7E2E3E6",
     "proxy": "0x0382B0b9FB6Ff737209C3B31D727BB9d2E2bcb53",
-    "implementation": "0x20ff2655356d514a6adce3c517a7136bebccff19",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "version": "1.0.0"
   },
   "FeeCollector": {
+    "deployedAt": 1781721479,
+    "gitCommit": "84c4db1",
+    "implementation": "0xc54e4121Cf38766A768f7BBC3d1076cceE341d20",
     "proxy": "0x0A33F72683cfC2303639d5cB9A45D77fF16d9FAD",
-    "implementation": "0x00b7743b5ab2e69e5ab985984049e611c10e504a",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "version": "1.0.0"
   },
   "YieldShift": {
+    "deployedAt": 1781721173,
+    "gitCommit": "84c4db1",
+    "implementation": "0x068AD436AeB54e62e741aC70b9F49F66753d7b0E",
     "proxy": "0xdcd66568F8623bDa3387287c31F14b43e49665b1",
-    "implementation": "0x92ffa870e6c23c13f026b414894f6db6740f9812",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "version": "1.0.0"
   },
   "ChainlinkOracle": {
     "proxy": "0xaEE3c9c298051ef7242882AbCaE2Fd12d29443E7",
-    "implementation": "0x57a171e9d5a343e9992ec3dda2465c178a2bdebd",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "implementation": "0xac890f5cb8f908e8483fe67cd3d93cef6f3be279",
+    "version": "1.0.0",
+    "gitCommit": "84c4db1",
+    "deployedAt": 1781771857
   },
   "StorkOracle": {
     "proxy": "0x41FcE00E33Ca4f0d8E5528c343FAC98BA178EebC",
@@ -70,18 +70,18 @@
     "deployedAt": 1781716808
   },
   "OracleRouter": {
+    "deployedAt": 1781721199,
+    "gitCommit": "84c4db1",
+    "implementation": "0x8c592C6e03eF8D85Ed8289c1904d2701E376E3D1",
     "proxy": "0x7ED6aaEd83Db69509A88CAe5C247ef8fA44056E0",
-    "implementation": "0x77ec31f7755c560ed1f820408edae0fa088149d5",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "version": "1.0.0"
   },
   "SlippageStorage": {
-    "proxy": "0x0fde0ff2566be3c24af6d654012dddb4f1da099b",
-    "implementation": "0xa68ac8451aa8f460bc8ce7f47d5ba526c05fd561",
-    "version": "0.0.0-unversioned",
-    "gitCommit": "f1c55ad",
-    "deployedAt": 1781716808
+    "deployedAt": 1781721489,
+    "gitCommit": "84c4db1",
+    "implementation": "0xD888effF50ef03B777EBE37F36dDbb60211D0f5c",
+    "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
+    "version": "1.0.0"
   },
   "TimeProvider": {
     "proxy": "0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7",

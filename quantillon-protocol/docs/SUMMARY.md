@@ -5,6 +5,7 @@
 - [Quick Start Guide](Quick-Start.md)
 - [Integration Examples](Integration-Examples.md)
 - [Architecture Overview](Architecture.md)
+- [Oracle Architecture](Oracle-Architecture.md)
 - [Security Guide](Security.md)
 - [Deployment Guide](Deployment.md)
 - [stQEUROFactory Technical Upgrade](stQEUROFactory.md)

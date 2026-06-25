@@ -191,20 +191,25 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 **Purpose**: Oracle-agnostic price routing — all protocol contracts interact with OracleRouter via `IOracle`.
 
 **Key Features**:
-- Routes price requests to the active oracle (Chainlink or Stork)
-- Governance can switch between oracles at runtime without changing protocol contracts
-- Both oracles implement the same `IOracle` interface
-- Event emitted on oracle switch (`OracleSwitched`)
+- Holds two EUR/USD oracle slots and routes all `IOracle` reads to the **active** one
+- Slot 0 = `ChainlinkOracle` (fallback); slot 1 = `HyperliquidEurUsdOracle` (**active by default**)
+- Governance switches sources at runtime via `switchOracle` — no protocol-contract changes
+- `updateOracleAddresses` repoints a slot; `OracleSwitched` event on switch
 
-### 9. ChainlinkOracle / StorkOracle
+### 9. EUR/USD Oracles (HyperliquidEurUsdOracle · ChainlinkOracle · StorkOracle)
 
-**Purpose**: EUR/USD and USDC/USD price feeds with circuit breakers.
+**Purpose**: EUR/USD pricing with freshness checks, price bounds, and deviation circuit breakers. All implement `IOracle`, so the router (and thus the protocol) is source-agnostic.
 
 **Key Features**:
-- **ChainlinkOracle**: Uses Chainlink AggregatorV3 feeds; 1-hour staleness check; 5% deviation circuit breaker
-- **StorkOracle**: Uses Stork Network `TemporalNumericValue` feeds; identical staleness/deviation validation
-- Both support EUR/USD and USDC/USD feeds
-- Mock versions available (`MockChainlinkOracle`, `MockStorkOracle`) for local/testnet
+- **HyperliquidEurUsdOracle** (active): mirrors the Hyperliquid `xyz:EUR` perpetual mid — the venue where the protocol's EUR/USD hedge executes — so QEURO mint/redeem aligns with the hedge. Reads the mid from `SlippageStorage` (published on-chain by the off-chain Slippage Monitor) and delegates USDC/USD to the `ChainlinkOracle`. Configurable staleness (default 900s), bounds (0.80–1.40e18), 5% deviation circuit breaker, last-valid fallback.
+- **ChainlinkOracle** (fallback): Chainlink AggregatorV3 EUR/USD + USDC/USD; 1-hour staleness, 5% deviation circuit breaker. Also the protocol's USDC/USD validation source.
+- **StorkOracle**: Stork Network `TemporalNumericValue` feeds (legacy/parked; the slot-1 position is now occupied by `HyperliquidEurUsdOracle`).
+- Mock versions available (`MockChainlinkOracle`, `MockStorkOracle`) for local/testnet.
+- Full design: **[Oracle Architecture](Oracle-Architecture.md)**.
+
+### 9b. SlippageStorage
+
+**Purpose**: On-chain store written by the off-chain Slippage Monitor; holds the published Hyperliquid `xyz:EUR` mid per source, which `HyperliquidEurUsdOracle` reads. `WRITER_ROLE`-gated writes with an on-chain minimum-interval rate limit.
 
 ### 10. TimeProvider
 

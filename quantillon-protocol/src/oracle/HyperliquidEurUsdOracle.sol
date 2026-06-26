@@ -99,7 +99,7 @@ contract HyperliquidEurUsdOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
 
     // =============================================================================
@@ -252,6 +252,7 @@ contract HyperliquidEurUsdOracle is
         CommonValidationLibrary.validateNonZeroAddress(admin, "admin");
         CommonValidationLibrary.validateNonZeroAddress(_slippageStorage, "oracle");
         CommonValidationLibrary.validateNonZeroAddress(_usdcSource, "oracle");
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
 
@@ -883,6 +884,7 @@ contract HyperliquidEurUsdOracle is
      * @custom:oracle No oracle dependency
      */
     function updateTreasury(address _treasury) external override onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         CommonValidationLibrary.validateTreasuryAddress(_treasury);
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;

@@ -309,13 +309,6 @@ contract QuantillonVaultTestSuite is Test {
         // Set HedgerPool totalMargin (needed for collateralization ratio calculation)
         hedgerPoolStub.setTotalMargin(1000 * 1e6); // 1000 USDC margin - sufficient for collateralization
         hedgerPoolStub.setTotalEffectiveCollateral(1000 * 1e6); // Effective collateral = margin (no P&L)
-        
-        // Mock UserPool totalDeposits (needed for collateralization ratio calculation)
-        vm.mockCall(
-            address(0x8), // mock UserPool address
-            abi.encodeWithSelector(IUserPool.totalDeposits.selector),
-            abi.encode(10000 * 1e6) // 10000 USDC deposits - sufficient for collateralization
-        );
     }
 
     function _getEurUsdPriceCompat() internal view returns (uint256 eurUsdPrice) {

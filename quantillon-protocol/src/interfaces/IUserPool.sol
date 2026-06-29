@@ -15,6 +15,7 @@ interface IUserPool {
      * @param _qeuro QEURO token address
      * @param _usdc USDC token address
      * @param _vault Vault contract address
+     * @param _oracle Oracle contract address
      * @param _yieldShift YieldShift contract address
      * @param _timelock Timelock contract address
      * @param _treasury Treasury address
@@ -27,14 +28,14 @@ interface IUserPool {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Not applicable - no oracle dependency
      */
-    function initialize(address admin, address _qeuro, address _usdc, address _vault, address _yieldShift, address _timelock, address _treasury) external;
+    function initialize(address admin, address _qeuro, address _usdc, address _vault, address _oracle, address _yieldShift, address _timelock, address _treasury) external;
 
     /**
      * @notice Deposit USDC to mint QEURO and join the pool
      * @dev Converts USDC to QEURO and adds user to the pool for yield distribution
-     * @param usdcAmount Amount of USDC to deposit
-     * @param minQeuroOut Minimum QEURO expected (slippage protection)
-     * @return qeuroMinted Amount of QEURO minted to user
+     * @param usdcAmounts Amounts of USDC to deposit
+     * @param minQeuroOuts Minimum QEURO expected per deposit (slippage protection)
+     * @return qeuroMintedAmounts Amounts of QEURO minted to user
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -44,14 +45,14 @@ interface IUserPool {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function deposit(uint256 usdcAmount, uint256 minQeuroOut) external returns (uint256 qeuroMinted);
+    function deposit(uint256[] calldata usdcAmounts, uint256[] calldata minQeuroOuts) external returns (uint256[] memory qeuroMintedAmounts);
 
     /**
      * @notice Withdraw USDC by burning QEURO
      * @dev Converts QEURO back to USDC and removes user from the pool
-     * @param qeuroAmount Amount of QEURO to burn
-     * @param minUsdcOut Minimum USDC expected
-     * @return usdcReceived USDC received by user
+     * @param qeuroAmounts Amounts of QEURO to burn
+     * @param minUsdcOuts Minimum USDC expected per withdrawal
+     * @return usdcReceivedAmounts USDC received by user
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -61,12 +62,12 @@ interface IUserPool {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Requires fresh oracle price data
      */
-    function withdraw(uint256 qeuroAmount, uint256 minUsdcOut) external returns (uint256 usdcReceived);
+    function withdraw(uint256[] calldata qeuroAmounts, uint256[] calldata minUsdcOuts) external returns (uint256[] memory usdcReceivedAmounts);
 
     /**
      * @notice Stake QEURO to earn staking rewards
      * @dev Locks QEURO tokens to earn staking rewards with cooldown period
-     * @param qeuroAmount Amount of QEURO to stake
+     * @param qeuroAmounts Amounts of QEURO to stake
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -76,7 +77,7 @@ interface IUserPool {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Not applicable - no oracle dependency
      */
-    function stake(uint256 qeuroAmount) external;
+    function stake(uint256[] calldata qeuroAmounts) external;
 
     /**
      * @notice Request to unstake staked QEURO (starts cooldown)
@@ -107,54 +108,6 @@ interface IUserPool {
      */
     function unstake() external;
 
-
-    /**
-     * @notice Get a user's total deposits (USDC equivalent)
-     * @dev Returns the total USDC equivalent value of user's deposits
-     * @param user Address to query
-     * @return Total deposits in USDC equivalent
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Not protected by a reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Not applicable - no oracle dependency
-     */
-    function getUserDeposits(address user) external view returns (uint256);
-
-    /**
-     * @notice Get a user's total staked QEURO
-     * @dev Returns the total amount of QEURO staked by the user
-     * @param user Address to query
-     * @return Total staked QEURO amount
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Not protected by a reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Not applicable - no oracle dependency
-     */
-    function getUserStakes(address user) external view returns (uint256);
-
-    /**
-     * @notice Get a user's pending staking rewards
-     * @dev Returns the amount of staking rewards available to claim
-     * @param user Address to query
-     * @return Pending staking rewards amount
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Not protected by a reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Not applicable - no oracle dependency
-     */
-    function getUserPendingRewards(address user) external view returns (uint256);
 
     /**
      * @notice Get detailed user info
@@ -240,36 +193,6 @@ interface IUserPool {
     );
 
     /**
-     * @notice Current staking APY (bps)
-     * @dev Returns the current annual percentage yield for staking
-     * @return Current staking APY in basis points
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Not protected by a reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Not applicable - no oracle dependency
-     */
-    function getStakingAPY() external view returns (uint256);
-
-    /**
-     * @notice Current base deposit APY (bps)
-     * @dev Returns the current annual percentage yield for deposits
-     * @return Current deposit APY in basis points
-      * @custom:security Validates input parameters and enforces security checks
-      * @custom:validation Validates input parameters and business logic constraints
-      * @custom:state-changes Updates contract state variables
-      * @custom:events Emits relevant events for state changes
-      * @custom:errors Throws custom errors for invalid conditions
-      * @custom:reentrancy Not protected by a reentrancy guard
-      * @custom:access Restricted to authorized roles
-      * @custom:oracle Not applicable - no oracle dependency
-     */
-    function getDepositAPY() external view returns (uint256);
-
-    /**
      * @notice Calculate projected rewards for a staking duration
      * @dev Calculates expected rewards for a given staking amount and duration
      * @param qeuroAmount QEURO amount
@@ -290,7 +213,6 @@ interface IUserPool {
      * @notice Update staking parameters
      * @dev Allows governance to update staking configuration parameters
      * @param _stakingAPY New staking APY (bps)
-     * @param _depositAPY New base deposit APY (bps)
      * @param _minStakeAmount Minimum stake amount
      * @param _unstakingCooldown Unstaking cooldown in seconds
      * @custom:security Validates input parameters and enforces security checks
@@ -304,7 +226,6 @@ interface IUserPool {
      */
     function updateStakingParameters(
         uint256 _stakingAPY,
-        uint256 _depositAPY,
         uint256 _minStakeAmount,
         uint256 _unstakingCooldown
     ) external;
@@ -329,6 +250,7 @@ interface IUserPool {
      * @notice Emergency unstake for a user by admin
      * @dev Allows admin to emergency unstake for a user bypassing cooldown
      * @param user User address
+     * @param recipient Address receiving the unstaked funds
       * @custom:security Validates input parameters and enforces security checks
       * @custom:validation Validates input parameters and business logic constraints
       * @custom:state-changes Updates contract state variables
@@ -338,7 +260,7 @@ interface IUserPool {
       * @custom:access Restricted to authorized roles
       * @custom:oracle Not applicable - no oracle dependency
      */
-    function emergencyUnstake(address user) external;
+    function emergencyUnstake(address user, address recipient) external;
 
     /**
      * @notice Pause user pool operations
@@ -367,32 +289,6 @@ interface IUserPool {
       * @custom:oracle Not applicable - no oracle dependency
      */
     function unpause() external;
-
-    /**
-     * @notice Pool configuration snapshot
-     * @dev Returns current pool configuration parameters
-     * @dev NOTE: Mint/redemption fees are handled by QuantillonVault, not UserPool
-     * @return _stakingAPY Staking APY (bps)
-     * @return _depositAPY Deposit APY (bps)
-     * @return _minStakeAmount Minimum stake amount
-     * @return _unstakingCooldown Unstaking cooldown seconds
-     * @return _performanceFee Performance fee on staking rewards (bps)
-      * @custom:security No security implications (view function)
-      * @custom:validation No validation required
-      * @custom:state-changes No state changes (view function)
-      * @custom:events No events (view function)
-      * @custom:errors No custom errors
-      * @custom:reentrancy No external calls, safe
-      * @custom:access Public (anyone can call)
-      * @custom:oracle No oracle dependencies
-     */
-    function getPoolConfig() external view returns (
-        uint256 _stakingAPY,
-        uint256 _depositAPY,
-        uint256 _minStakeAmount,
-        uint256 _unstakingCooldown,
-        uint256 _performanceFee
-    );
 
     /**
      * @notice Whether the pool operations are active (not paused)
@@ -508,20 +404,6 @@ interface IUserPool {
     function paused() external view returns (bool);
 
     // UUPS functions
-    /**
-     * @notice Upgrades the contract to a new implementation
-     * @dev Can only be called by accounts with UPGRADER_ROLE
-     * @param newImplementation Address of the new implementation contract
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Not protected by a reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Not applicable - no oracle dependency
-     */
-    function upgradeTo(address newImplementation) external;
     
     /**
      * @notice Upgrades the contract to a new implementation and calls a function
@@ -754,20 +636,6 @@ interface IUserPool {
      */
     function performanceFee() external view returns (uint256);
     
-    /**
-     * @notice Returns the total deposits
-     * @dev Total USDC equivalent value of all deposits
-     * @return Total deposits in USDC equivalent
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Not protected by a reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Not applicable - no oracle dependency
-     */
-    function totalDeposits() external view returns (uint256);
     
     /**
      * @notice Returns the total user deposits

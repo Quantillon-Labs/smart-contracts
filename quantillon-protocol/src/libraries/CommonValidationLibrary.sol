@@ -263,29 +263,6 @@ library CommonValidationLibrary {
     }
 
     /**
-     * @notice Validates that an address is not a contract (for security)
-     * @dev Prevents sending funds to potentially malicious contracts
-     * @param addr The address to validate
-     * @param errorType The type of error to throw if validation fails
-     * @custom:security View; checks extcodesize
-     * @custom:validation Reverts if addr has code
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors InvalidTreasury, InvalidAddress
-     * @custom:reentrancy No external calls
-     * @custom:access Internal library
-     * @custom:oracle None
-     */
-    function validateNotContract(address addr, string memory errorType) internal view {
-        if (addr.code.length > 0) {
-            if (keccak256(bytes(errorType)) == keccak256("treasury")) {
-                revert CommonErrorLibrary.InvalidTreasury();
-            }
-            revert CommonErrorLibrary.InvalidAddress();
-        }
-    }
-
-    /**
      * @notice Validates treasury address is not zero address
      * @dev Reverts with ZeroAddress if treasury is zero address
      * @param treasury The treasury address to validate

@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {QTIToken} from "../src/core/QTIToken.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
-import {GovernanceErrorLibrary} from "../src/libraries/GovernanceErrorLibrary.sol";
+import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @notice Test helper exposing a mint so local QTI balances can be created (QTI is otherwise dormant).
@@ -140,7 +140,7 @@ contract QTIVoteEscrowAndProposalExecutionTest is Test {
 
         // Past voting end (5d) but before the 2-day execution delay has elapsed.
         vm.warp(block.timestamp + 5 days + 1);
-        vm.expectRevert(GovernanceErrorLibrary.ExecutionTimeNotReached.selector);
+        vm.expectRevert(CommonErrorLibrary.ExecutionTimeNotReached.selector);
         qti.executeProposal(proposalId);
 
         assertEq(qti.proposalThreshold(), 100_000 ether, "params unchanged before delay elapses");

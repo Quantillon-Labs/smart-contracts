@@ -224,7 +224,6 @@ contract YieldShift is
         uint256 indexed timestamp
     );
     
-    event UserYieldClaimed(address indexed user, uint256 yieldAmount, uint256 timestamp);
     event HedgerYieldClaimed(address indexed hedger, uint256 yieldAmount, uint256 timestamp);
     /// @dev OPTIMIZED: Indexed source and timestamp for efficient filtering
     event YieldAdded(uint256 yieldAmount, string indexed source, uint256 indexed timestamp);
@@ -591,26 +590,6 @@ contract YieldShift is
         );
     }
     
-    /**
-     * @notice Calculate holding period discount based on recent deposit activity
-     * @dev Returns a percentage (in basis points) representing eligible deposits
-     * @return discountBps Discount in basis points (10000 = 100%)
-     * @custom:security Validates input parameters and enforces security checks
-     * @custom:validation Validates input parameters and business logic constraints
-     * @custom:state-changes Updates contract state variables
-     * @custom:events Emits relevant events for state changes
-     * @custom:errors Throws custom errors for invalid conditions
-     * @custom:reentrancy Not protected by a reentrancy guard
-     * @custom:access Restricted to authorized roles
-     * @custom:oracle Not applicable - no oracle dependency
-     */
-    function _calculateHoldingPeriodDiscount() internal view returns (uint256 discountBps) {
-        return YieldShiftOptimizationLibrary.calculateHoldingPeriodDiscount(
-            TIME_PROVIDER.currentTime(),
-            lastUpdateTime
-        );
-    }
-
     /**
      * @notice Check if a value is within tolerance of a target value
      * @param value The value to check

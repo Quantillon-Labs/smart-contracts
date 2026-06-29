@@ -404,20 +404,6 @@ contract UserPool is
     /// @param timestamp Timestamp of the unstaking action
     /// @dev Indexed parameters allow efficient filtering of events
     event QEUROUnstaked(address indexed user, uint256 qeuroAmount, uint256 timestamp);
-    
-    /// @notice Emitted when staking rewards are claimed by a user
-    /// @param user Address of the user who claimed rewards
-    /// @param rewardAmount Amount of QEURO rewards claimed (18 decimals)
-    /// @param timestamp Timestamp of the reward claim
-    /// @dev Indexed parameters allow efficient filtering of events
-    event StakingRewardsClaimed(address indexed user, uint256 rewardAmount, uint256 timestamp);
-
-    /// @notice Emitted when yield is distributed to stakers
-    /// @param totalYield Total amount of yield distributed (18 decimals)
-    /// @param yieldPerShare Amount of yield per staked QEURO share (18 decimals)
-    /// @param timestamp Timestamp of the yield distribution
-    /// @dev OPTIMIZED: Indexed timestamp for efficient time-based filtering
-    event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 indexed timestamp);
 
     /// @notice Emitted when pool parameters are updated
     /// @param parameter Name of the parameter updated

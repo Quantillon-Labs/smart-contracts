@@ -67,28 +67,6 @@ library VaultMath {
     }
 
     /**
-     * @notice Multiply two numbers and divide by a third, rounding the result up
-     * @dev Ceiling variant of {mulDiv}. If there is any non-zero remainder after division,
-     *      the result is increased by 1 to round towards positive infinity.
-     * @param a First multiplicand
-     * @param b Second multiplicand
-     * @param c Divisor
-     * @return result a * b / c, rounded up when there is a remainder
-     * @custom:security Uses {mulDiv} internally for overflow and division-by-zero protection
-     * @custom:validation Caller must ensure `c` is non-zero; reverts via {mulDiv} otherwise
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Reverts with DivisionByZero or MultiplicationOverflow via {mulDiv} on invalid inputs
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function mulDivUp(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result) {
-        result = mulDiv(a, b, c);
-        if (a != 0 && b != 0 && (a * b) % c > 0) result += 1;
-    }
-
-    /**
      * @notice Calculate percentage of a value
      * @param value Base value
      * @param percentage Percentage in basis points (e.g., 500 = 5%)

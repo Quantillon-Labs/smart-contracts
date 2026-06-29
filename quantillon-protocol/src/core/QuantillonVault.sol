@@ -356,10 +356,6 @@ contract QuantillonVault is
         bool isPremium
     );
     
-    /// @notice LOW-3: Emitted when notifying HedgerPool of a liquidation redemption fails
-    /// @param qeuroAmount Amount of QEURO that was being redeemed
-    event HedgerPoolNotificationFailed(uint256 qeuroAmount);
-
     /// @notice Emitted when hedger deposits USDC to vault for unified liquidity
     /// @param hedgerPool Address of the HedgerPool contract that made the deposit
     /// @param usdcAmount Amount of USDC deposited (6 decimals)
@@ -401,15 +397,6 @@ contract QuantillonVault is
         address indexed caller
     );
     
-    /// @notice Emitted when protocol collateralization status changes
-    /// @param currentRatio Current protocol collateralization ratio (in basis points)
-    /// @param canMint Whether minting is currently allowed based on collateralization
-    /// @param shouldLiquidate Whether liquidation should be triggered based on collateralization
-    event CollateralizationStatusChanged(
-        uint256 indexed currentRatio,
-        bool indexed canMint,
-        bool indexed shouldLiquidate
-    );
     event PriceDeviationDetected(
         uint256 currentPrice,
         uint256 lastValidPrice,
@@ -463,7 +450,6 @@ contract QuantillonVault is
         uint256 userShare,
         uint256 treasuryShare
     );
-    event ExternalVaultDeploymentFailed(uint256 indexed vaultId, uint256 amount, bytes reason);
     /// @notice Deprecated: retained for ABI compatibility with existing off-chain consumers
     /// @dev No longer emitted. Redeem hedger-sync is atomic (failures
     ///      revert rather than being swallowed), so this event can never fire.

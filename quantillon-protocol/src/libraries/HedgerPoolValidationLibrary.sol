@@ -213,24 +213,6 @@ library HedgerPoolValidationLibrary {
         if (newMargin > maxMargin) revert HedgerPoolErrorLibrary.NewMarginExceedsMaximum();
     }
     
-    /**
-     * @notice Validates pending rewards against maximum accumulation limit
-     * @dev Prevents excessive reward accumulation that could cause overflow
-     * @param newRewards The new total pending rewards amount
-     * @param maxRewards Maximum allowed pending rewards
-     * @custom:security Prevents reward overflow that could cause system issues
-     * @custom:validation Ensures pending rewards stay within accumulation limits
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws PendingRewardsExceedMaximum if rewards exceed limit
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validatePendingRewards(uint256 newRewards, uint256 maxRewards) internal pure {
-        if (newRewards > maxRewards) revert HedgerPoolErrorLibrary.PendingRewardsExceedMaximum();
-    }
-    
     // Note: validatePositiveAmount moved to CommonValidationLibrary to avoid duplication.
     // Use CommonValidationLibrary.validatePositiveAmount() instead.
     
@@ -252,20 +234,4 @@ library HedgerPoolValidationLibrary {
         if (fee > maxFee) revert VaultErrorLibrary.FeeTooHigh();
     }
     
-    /**
-     * @notice Validates treasury address is not zero address
-     * @dev Prevents setting treasury to zero address which could cause loss of funds
-     * @param treasury The treasury address to validate
-     * @custom:security Prevents loss of funds by ensuring treasury is properly set
-     * @custom:validation Ensures treasury address is valid for fund operations
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws ZeroAddress if treasury is zero address
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validateTreasuryAddress(address treasury) internal pure {
-        if (treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
-    }
 }

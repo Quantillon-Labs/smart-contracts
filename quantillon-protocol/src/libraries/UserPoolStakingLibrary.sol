@@ -38,7 +38,6 @@ library UserPoolStakingLibrary {
     uint256 public constant MIN_STAKE_DURATION = 1 days; // 1 day minimum stake duration
     uint256 public constant MAX_STAKE_DURATION = 365 days; // 1 year maximum stake duration
     uint256 public constant UNSTAKE_COOLDOWN = 7 days; // 7 days unstake cooldown
-    uint256 public constant REWARD_CLAIM_COOLDOWN = 1 days; // 1 day reward claim cooldown
 
     struct StakeInfo {
         uint256 amount;
@@ -123,34 +122,6 @@ library UserPoolStakingLibrary {
         uint256 currentTime
     ) external pure returns (uint256 rewards) {
         return _calculateStakingRewards(stakeInfo, stakingAPY, currentTime);
-    }
-
-    /**
-     * @notice Calculates total staking rewards for a user
-     * @dev Calculates total rewards across all active stakes for a user
-     * @param userStakes Array of user stakes
-     * @param stakingAPY Staking APY in basis points
-     * @param currentTime Current timestamp
-     * @return totalRewards Total rewards for all stakes
-     * @custom:security No security implications - pure calculation function
-     * @custom:validation Input validation handled by calling contract
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - pure function
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Public function
-     * @custom:oracle No oracle dependencies
-     */
-    function calculateTotalStakingRewards(
-        StakeInfo[] memory userStakes,
-        uint256 stakingAPY,
-        uint256 currentTime
-    ) external pure returns (uint256 totalRewards) {
-        for (uint256 i = 0; i < userStakes.length; i++) {
-            if (userStakes[i].isActive) {
-                totalRewards += _calculateStakingRewards(userStakes[i], stakingAPY, currentTime);
-            }
-        }
     }
 
     /**

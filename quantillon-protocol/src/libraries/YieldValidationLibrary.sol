@@ -75,25 +75,6 @@ library YieldValidationLibrary {
     }
     
     /**
-     * @notice Validates slippage protection for token swaps/trades
-     * @dev Ensures received amount is within acceptable tolerance of expected
-     * @param received The actual amount received
-     * @param expected The expected amount
-     * @param tolerance The slippage tolerance in basis points
-     * @custom:security Prevents excessive slippage attacks in yield operations
-     * @custom:validation Ensures received amount meets minimum expectations
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors Throws ExcessiveSlippage if slippage exceeds tolerance
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Internal library function
-     * @custom:oracle No oracle dependencies
-     */
-    function validateSlippage(uint256 received, uint256 expected, uint256 tolerance) internal pure {
-        if (received < expected * (10000 - tolerance) / 10000) revert CommonErrorLibrary.ExcessiveSlippage();
-    }
-    
-    /**
      * @notice Validates treasury address is not zero address
      * @dev Prevents setting treasury to zero address which could cause loss of funds
      * @param treasury The treasury address to validate

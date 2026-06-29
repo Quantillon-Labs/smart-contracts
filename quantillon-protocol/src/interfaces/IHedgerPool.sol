@@ -722,8 +722,6 @@ interface IHedgerPool {
     event HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
-    event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
     event RewardReserveFunded(address indexed funder, uint256 amount);
-    event SingleHedgerRotationProposed(address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt);
     event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
 }

@@ -169,30 +169,6 @@ library YieldShiftOptimizationLibrary {
     }
     
     /**
-     * @notice Calculate eligible user pool size excluding recent deposits
-     * @dev Only counts deposits older than MIN_HOLDING_PERIOD
-     * @param totalUserPoolSize Current total user pool size
-     * @param currentTime Current timestamp
-     * @param lastUpdateTime Last update timestamp
-     * @return eligibleSize Eligible pool size for yield calculations
-     * @custom:security Prevents flash deposit attacks by excluding recent deposits
-     * @custom:validation Input validation handled by calling contract
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - pure function
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Public function
-     * @custom:oracle No oracle dependencies
-     */
-    function calculateEligibleUserPoolSize(
-        uint256 totalUserPoolSize,
-        uint256 currentTime,
-        uint256 lastUpdateTime
-    ) external pure returns (uint256 eligibleSize) {
-        return _calculateEligibleUserPoolSize(totalUserPoolSize, currentTime, lastUpdateTime);
-    }
-    
-    /**
      * @notice Internal function to calculate eligible user pool size
      * @dev Only counts deposits older than MIN_HOLDING_PERIOD
      * @param totalUserPoolSize Current total user pool size
@@ -228,30 +204,6 @@ library YieldShiftOptimizationLibrary {
     }
     
     /**
-     * @notice Calculate eligible hedger pool size excluding recent deposits
-     * @dev Only counts deposits older than MIN_HOLDING_PERIOD
-     * @param totalHedgerPoolSize Current total hedger pool size
-     * @param currentTime Current timestamp
-     * @param lastUpdateTime Last update timestamp
-     * @return eligibleSize Eligible pool size for yield calculations
-     * @custom:security Prevents flash deposit attacks by excluding recent deposits
-     * @custom:validation Input validation handled by calling contract
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - pure function
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Public function
-     * @custom:oracle No oracle dependencies
-     */
-    function calculateEligibleHedgerPoolSize(
-        uint256 totalHedgerPoolSize,
-        uint256 currentTime,
-        uint256 lastUpdateTime
-    ) external pure returns (uint256 eligibleSize) {
-        return _calculateEligibleHedgerPoolSize(totalHedgerPoolSize, currentTime, lastUpdateTime);
-    }
-    
-    /**
      * @notice Internal function to calculate eligible hedger pool size
      * @dev Only counts deposits older than MIN_HOLDING_PERIOD
      * @param totalHedgerPoolSize Current total hedger pool size
@@ -279,28 +231,6 @@ library YieldShiftOptimizationLibrary {
         if (eligibleSize > totalHedgerPoolSize) {
             eligibleSize = totalHedgerPoolSize;
         }
-    }
-    
-    /**
-     * @notice Calculate holding period discount based on recent deposit activity
-     * @dev Returns a percentage (in basis points) representing eligible deposits
-     * @param currentTime Current timestamp
-     * @param lastUpdateTime Last update timestamp
-     * @return discountBps Discount in basis points (10000 = 100%)
-     * @custom:security No security implications - pure calculation function
-     * @custom:validation Input validation handled by calling contract
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - pure function
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Public function
-     * @custom:oracle No oracle dependencies
-     */
-    function calculateHoldingPeriodDiscount(
-        uint256 currentTime,
-        uint256 lastUpdateTime
-    ) external pure returns (uint256 discountBps) {
-        return _calculateHoldingPeriodDiscount(currentTime, lastUpdateTime);
     }
     
     /**

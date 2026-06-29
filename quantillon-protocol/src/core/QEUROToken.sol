@@ -304,12 +304,6 @@ contract QEUROToken is
     /// @param amount Amount of ETH recovered
     event ETHRecovered(address indexed to, uint256 indexed amount);
 
-    /// @notice Emitted when protocol fee is collected on mint
-    /// @param amount Total amount minted
-    /// @param feeAmount Protocol fee amount collected
-    /// @param feeCollector Address of the fee collector
-    event ProtocolFeeCollected(uint256 indexed amount, uint256 indexed feeAmount, address indexed feeCollector);
-
     /// @notice Emitted when FeeCollector address is updated
     /// @param oldFeeCollector Previous FeeCollector address
     /// @param newFeeCollector New FeeCollector address

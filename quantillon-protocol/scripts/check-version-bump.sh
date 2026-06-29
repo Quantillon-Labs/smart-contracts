@@ -45,7 +45,6 @@ TARGETS=(
   "src/core/TimelockUpgradeable.sol:TimelockUpgradeable"
   "src/libraries/AdminFunctionsLibrary.sol:AdminFunctionsLibrary"
   "src/libraries/HedgerPoolLogicLibrary.sol:HedgerPoolLogicLibrary"
-  "src/libraries/HedgerPoolOptimizationLibrary.sol:HedgerPoolOptimizationLibrary"
   "src/libraries/HedgerPoolRedeemMathLibrary.sol:HedgerPoolRedeemMathLibrary"
   "src/libraries/QTITokenGovernanceLibrary.sol:QTITokenGovernanceLibrary"
   "src/libraries/TreasuryRecoveryLibrary.sol:TreasuryRecoveryLibrary"

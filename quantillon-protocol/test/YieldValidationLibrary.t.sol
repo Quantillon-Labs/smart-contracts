@@ -1,5 +1,5 @@
 // /test/YieldValidationLibrary.t.sol
-// Unit tests for YieldValidationLibrary yield/ratio/slippage helpers.
+// Unit tests for YieldValidationLibrary yield/ratio helpers.
 // This file exists to validate yield-specific validation semantics directly.
 
 // SPDX-License-Identifier: MIT
@@ -21,14 +21,6 @@ contract YieldValidationHarness {
 
     function validateTargetRatio(uint256 ratio, uint256 maxRatio) external pure {
         YieldValidationLibrary.validateTargetRatio(ratio, maxRatio);
-    }
-
-    function validateSlippage(
-        uint256 minAcceptable,
-        uint256 expected,
-        uint16 toleranceBps
-    ) external pure {
-        YieldValidationLibrary.validateSlippage(minAcceptable, expected, toleranceBps);
     }
 
     function validateTreasuryAddress(address treasury) external pure {
@@ -91,33 +83,6 @@ contract YieldValidationLibraryTest is Test {
         h.validateTargetRatio(ratio, maxRatio);
     }
 
-    // ----------------- validateSlippage -----------------
-
-    function test_ValidateSlippage_WithinToleranceOk(
-        uint128 expected,
-        uint16 toleranceBps
-    ) public view {
-        vm.assume(expected > 0);
-        vm.assume(toleranceBps <= 10_000);
-
-        uint256 minAcceptable = (uint256(expected) * (10_000 - toleranceBps)) / 10_000;
-        h.validateSlippage(minAcceptable, expected, toleranceBps);
-    }
-
-    function test_ValidateSlippage_BelowToleranceReverts(
-        uint128 expected,
-        uint16 toleranceBps
-    ) public {
-        vm.assume(expected > 0);
-        vm.assume(toleranceBps <= 10_000);
-
-        uint256 minAcceptable = (uint256(expected) * (10_000 - toleranceBps)) / 10_000;
-        if (minAcceptable == 0) return;
-
-        vm.expectRevert(CommonErrorLibrary.ExcessiveSlippage.selector);
-        h.validateSlippage(minAcceptable - 1, expected, toleranceBps);
-    }
-
     // ----------------- validateTreasuryAddress -----------------
 
     function test_ValidateTreasuryAddress_NonZeroOk(address treasury) public view {
@@ -174,54 +139,6 @@ contract YieldValidationLibraryTest is Test {
         h.validateTargetRatio(1, maxRatio);
     }
 
-    /// @notice Slippage at exact tolerance boundary
-    function test_ValidateSlippage_ExactBoundary(uint128 expected) public view {
-        vm.assume(expected > 0);
-
-        uint16 toleranceBps = 1000; // 10%
-        uint256 minAcceptable = (uint256(expected) * (10_000 - toleranceBps)) / 10_000;
-
-        // Exactly at the boundary should pass
-        h.validateSlippage(minAcceptable, expected, toleranceBps);
-    }
-
-    /// @notice Slippage just below tolerance should revert
-    function test_ValidateSlippage_JustBelowBoundary(uint128 expected) public {
-        vm.assume(expected > 100);
-
-        uint16 toleranceBps = 1000; // 10%
-        uint256 minAcceptable = (uint256(expected) * (10_000 - toleranceBps)) / 10_000;
-
-        if (minAcceptable > 0) {
-            vm.expectRevert(CommonErrorLibrary.ExcessiveSlippage.selector);
-            h.validateSlippage(minAcceptable - 1, expected, toleranceBps);
-        }
-    }
-
-    /// @notice Full tolerance (100%) should accept any value
-    function test_ValidateSlippage_FullTolerance(uint128 expected, uint128 minAcceptable) public view {
-        vm.assume(expected > 0);
-
-        // 100% tolerance means minAcceptable can be 0
-        h.validateSlippage(minAcceptable, expected, 10_000);
-    }
-
-    /// @notice Zero tolerance requires exact match
-    function test_ValidateSlippage_ZeroTolerance(uint128 expected) public view {
-        vm.assume(expected > 0);
-
-        // With 0 tolerance, minAcceptable must equal expected
-        h.validateSlippage(expected, expected, 0);
-    }
-
-    /// @notice Zero tolerance with different values should revert
-    function test_ValidateSlippage_ZeroToleranceMismatch(uint128 expected) public {
-        vm.assume(expected > 1);
-
-        vm.expectRevert(CommonErrorLibrary.ExcessiveSlippage.selector);
-        h.validateSlippage(expected - 1, expected, 0);
-    }
-
     /// @notice Fuzz: Yield shift validation relational property
     function testFuzz_ValidateYieldShift_RelationalProperty(uint256 shift) public {
         if (shift <= 10_000) {
@@ -246,14 +163,4 @@ contract YieldValidationLibraryTest is Test {
             h.validateTargetRatio(ratio, maxRatio);
         }
     }
-
-    /// @notice Large values should not overflow in slippage calculation
-    function test_ValidateSlippage_LargeValues() public view {
-        uint256 expected = type(uint128).max;
-        uint16 toleranceBps = 5000; // 50%
-
-        uint256 minAcceptable = (expected * (10_000 - toleranceBps)) / 10_000;
-        h.validateSlippage(minAcceptable, expected, toleranceBps);
-    }
 }
-

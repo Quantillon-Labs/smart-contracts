@@ -163,9 +163,6 @@ contract HedgerPool is
     /// @notice Maximum allowed value for rewardFeeSplit
     uint256 public constant MAX_REWARD_FEE_SPLIT = 1e18;
 
-    /// @notice Delay before rotating the single hedger after proposal
-    uint256 public constant SINGLE_HEDGER_ROTATION_DELAY = 24 hours;
-
     /// @notice Pending single-hedger address awaiting delayed activation
     address public pendingSingleHedger;
 
@@ -216,11 +213,9 @@ contract HedgerPool is
     event HedgePositionOpened(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event HedgePositionClosed(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
     event MarginUpdated(address indexed hedger, uint256 indexed positionId, bytes32 packedData);
-    event HedgingRewardsClaimed(address indexed hedger, bytes32 packedData);
     event ETHRecovered(address indexed to, uint256 indexed amount);
     /// @notice MED-2: Emitted when USDC is deposited into the reward reserve
     event RewardReserveFunded(address indexed funder, uint256 amount);
-    event SingleHedgerRotationProposed(address indexed currentHedger, address indexed pendingHedger, uint256 activatesAt);
     event SingleHedgerRotationApplied(address indexed previousHedger, address indexed newHedger);
     /// @notice F-6: Emitted when EMERGENCY_ROLE force-closes a position.
     /// @dev When `outstandingQeuro` is non-zero the closure withdraws hedger margin while QEURO is

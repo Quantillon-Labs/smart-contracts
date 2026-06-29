@@ -66,8 +66,6 @@ contract UserPoolTestSuite is Test {
     event UserWithdrawal(address indexed user, uint256 qeuroBurned, uint256 usdcReceived, uint256 timestamp);
     event QEUROStaked(address indexed user, uint256 qeuroAmount, uint256 timestamp);
     event QEUROUnstaked(address indexed user, uint256 qeuroAmount, uint256 timestamp);
-    event StakingRewardsClaimed(address indexed user, uint256 rewardAmount, uint256 timestamp);
-    event YieldDistributed(uint256 totalYield, uint256 yieldPerShare, uint256 timestamp);
     event PoolParameterUpdated(string parameter, uint256 oldValue, uint256 newValue);
 
     // =============================================================================

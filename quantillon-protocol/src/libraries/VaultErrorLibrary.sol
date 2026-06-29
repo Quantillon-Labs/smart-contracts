@@ -4,13 +4,11 @@ pragma solidity 0.8.24;
 /**
  * @title VaultErrorLibrary
  * @notice Vault-specific errors for QuantillonVault and related operations
- * 
+ *
  * @dev Main characteristics:
  *      - Errors specific to vault operations
- *      - Collateralization and emergency mode errors
- *      - Pool health and balance errors
- *      - Yield distribution errors
- * 
+ *      - Fee validation errors
+ *
  * @author Quantillon Labs - Nicolas Bellengé - @chewbaccoin
  * @custom:security-contact team@quantillon.money
  */
@@ -18,21 +16,6 @@ library VaultErrorLibrary {
     /// @notice Library version (semver); see deployments/{chainId}/versions.json for provenance.
     string internal constant VERSION = "1.0.0";
 
-    // Pool Health Errors
-    error PoolNotHealthy();
-    error PoolRatioInvalid();
-    error PoolSizeZero();
-    error PoolImbalance();
-    
-    // Recovery Errors
-    error CannotRecoverUSDC();
-    error CannotRecoverAToken();
-    error CannotRecoverCriticalToken(string tokenName);
-    
-    // External Integration Errors
-    error AavePoolNotHealthy();
-    
     // Additional Vault Errors
-    error WouldBreachMinimum();
     error FeeTooHigh();
 }

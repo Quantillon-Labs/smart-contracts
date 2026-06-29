@@ -22,15 +22,12 @@ import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {TokenErrorLibrary} from "../libraries/TokenErrorLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
-import {TokenLibrary} from "../libraries/TokenLibrary.sol";
 
 import {TreasuryRecoveryLibrary} from "../libraries/TreasuryRecoveryLibrary.sol";
 import {FlashLoanProtectionLibrary} from "../libraries/FlashLoanProtectionLibrary.sol";
 import {TimeProvider} from "../libraries/TimeProviderLibrary.sol";
 import {QTITokenGovernanceLibrary} from "../libraries/QTITokenGovernanceLibrary.sol";
-import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {HedgerPoolErrorLibrary} from "../libraries/HedgerPoolErrorLibrary.sol";
-import {GovernanceErrorLibrary} from "../libraries/GovernanceErrorLibrary.sol";
 
 /**
  * @title QTIToken
@@ -107,7 +104,6 @@ contract QTIToken is
     using Address for address payable;
     using AccessControlLibrary for AccessControlUpgradeable;
     using CommonValidationLibrary for uint256;
-    using TokenLibrary for address;
 
     // =============================================================================
     // CONSTANTS AND ROLES - Protocol roles and limits
@@ -1209,7 +1205,7 @@ contract QTIToken is
         if (proposal.forVotes + proposal.againstVotes < quorumVotes) revert CommonErrorLibrary.QuorumNotMet();
         // Enforce the post-vote execution timelock before any role-gated self-call.
         if (TIME_PROVIDER.currentTime() < proposalExecutionTime[proposalId]) {
-            revert GovernanceErrorLibrary.ExecutionTimeNotReached();
+            revert CommonErrorLibrary.ExecutionTimeNotReached();
         }
 
         proposal.executed = true;

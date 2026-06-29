@@ -281,58 +281,6 @@ library QTITokenGovernanceLibrary {
     // =============================================================================
     
     /**
-     * @notice Process batch locks and calculate totals
-     * @dev Processes batch lock operations and calculates total voting power and amounts
-     * @param amounts Array of QTI amounts to lock
-     * @param lockTimes Array of lock durations
-     * @param currentTimestamp Current timestamp
-     * @param existingUnlockTime Existing unlock time if already locked
-     * @return totalNewVotingPower Total new voting power from all locks
-     * @return totalNewAmount Total new amount locked
-     * @return finalUnlockTime Final unlock time after all locks
-     * @return finalLockTime Final lock time
-     * @return veQTIAmounts Array of calculated voting power amounts
-     * @custom:security Prevents overflow in batch calculations
-     * @custom:validation Input validation handled by calling contract
-     * @custom:state-changes No state changes - pure function
-     * @custom:events No events emitted
-     * @custom:errors No errors thrown - pure function
-     * @custom:reentrancy Not applicable - pure function
-     * @custom:access Public function
-     * @custom:oracle No oracle dependencies
-     */
-    function processBatchLocks(
-        uint256[] calldata amounts,
-        uint256[] calldata lockTimes,
-        uint256 currentTimestamp,
-        uint256 existingUnlockTime
-    ) external pure returns (
-        uint256 totalNewVotingPower,
-        uint256 totalNewAmount,
-        uint256 finalUnlockTime,
-        uint256 finalLockTime,
-        uint256[] memory veQTIAmounts
-    ) {
-        veQTIAmounts = new uint256[](amounts.length);
-        finalUnlockTime = existingUnlockTime;
-        
-        for (uint256 i = 0; i < amounts.length;) {
-            uint256 newUnlockTime = _calculateUnlockTime(currentTimestamp, lockTimes[i], finalUnlockTime);
-            uint256 newVotingPower = _calculateVotingPower(amounts[i], lockTimes[i]);
-            
-            veQTIAmounts[i] = newVotingPower;
-            totalNewVotingPower += newVotingPower;
-            totalNewAmount += amounts[i];
-            
-            // Store final values for last iteration
-            finalUnlockTime = newUnlockTime;
-            finalLockTime = lockTimes[i];
-            
-            unchecked { ++i; }
-        }
-    }
-    
-    /**
      * @notice Update lock info with overflow checks
      * @dev Updates user's lock information with new amounts and times
      * @param totalNewAmount Total new amount to lock

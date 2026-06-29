@@ -184,55 +184,6 @@ contract CommonValidationLibraryTest is Test {
     }
 
     // =============================================================================
-    // DURATION VALIDATION TESTS
-    // =============================================================================
-
-    /**
-     * @notice Test validateDuration passes for valid duration
-     */
-    function test_ValidateDuration_ValidDuration_Passes() public view {
-        harness.validateDuration(7 days, 1 days, 30 days);
-        harness.validateDuration(1 days, 1 days, 30 days); // At min
-        harness.validateDuration(30 days, 1 days, 30 days); // At max
-    }
-
-    /**
-     * @notice Test validateDuration reverts when duration too short
-     */
-    function test_ValidateDuration_TooShort_Reverts() public {
-        vm.expectRevert(CommonErrorLibrary.HoldingPeriodNotMet.selector);
-        harness.validateDuration(12 hours, 1 days, 30 days);
-    }
-
-    /**
-     * @notice Test validateDuration reverts when duration too long
-     */
-    function test_ValidateDuration_TooLong_Reverts() public {
-        vm.expectRevert(CommonErrorLibrary.AboveLimit.selector);
-        harness.validateDuration(60 days, 1 days, 30 days);
-    }
-
-    // =============================================================================
-    // PRICE VALIDATION TESTS
-    // =============================================================================
-
-    /**
-     * @notice Test validatePrice passes for valid price
-     */
-    function test_ValidatePrice_ValidPrice_Passes() public view {
-        harness.validatePrice(1);
-        harness.validatePrice(1e18);
-    }
-
-    /**
-     * @notice Test validatePrice reverts for zero price
-     */
-    function test_ValidatePrice_ZeroPrice_Reverts() public {
-        vm.expectRevert(CommonErrorLibrary.InvalidPrice.selector);
-        harness.validatePrice(0);
-    }
-
-    // =============================================================================
     // CONDITION VALIDATION TESTS
     // =============================================================================
 
@@ -311,49 +262,8 @@ contract CommonValidationLibraryTest is Test {
     }
 
     // =============================================================================
-    // SLIPPAGE VALIDATION TESTS
-    // =============================================================================
-
-    /**
-     * @notice Test validateSlippage passes when within tolerance
-     */
-    function test_ValidateSlippage_WithinTolerance_Passes() public view {
-        // 100 received, 100 expected, 10% tolerance
-        harness.validateSlippage(100, 100, 1000);
-        // 95 received, 100 expected, 10% tolerance (5% slippage ok)
-        harness.validateSlippage(95, 100, 1000);
-        // 90 received, 100 expected, 10% tolerance (exactly at limit)
-        harness.validateSlippage(90, 100, 1000);
-    }
-
-    /**
-     * @notice Test validateSlippage reverts when exceeds tolerance
-     */
-    function test_ValidateSlippage_ExceedsTolerance_Reverts() public {
-        // 85 received, 100 expected, 10% tolerance (15% slippage exceeds)
-        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        harness.validateSlippage(85, 100, 1000);
-    }
-
-    // =============================================================================
     // THRESHOLD VALIDATION TESTS
     // =============================================================================
-
-    /**
-     * @notice Test validateThresholdValue passes when value >= threshold
-     */
-    function test_ValidateThresholdValue_AboveThreshold_Passes() public view {
-        harness.validateThresholdValue(100, 50);
-        harness.validateThresholdValue(100, 100);
-    }
-
-    /**
-     * @notice Test validateThresholdValue reverts when value < threshold
-     */
-    function test_ValidateThresholdValue_BelowThreshold_Reverts() public {
-        vm.expectRevert(CommonErrorLibrary.BelowThreshold.selector);
-        harness.validateThresholdValue(50, 100);
-    }
 
     /**
      * @notice Test validateFee passes when fee <= max
@@ -369,22 +279,6 @@ contract CommonValidationLibraryTest is Test {
     function test_ValidateFee_ExceedsMax_Reverts() public {
         vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
         harness.validateFee(600, 500);
-    }
-
-    /**
-     * @notice Test validateThreshold passes when threshold <= max
-     */
-    function test_ValidateThreshold_ValidThreshold_Passes() public view {
-        harness.validateThreshold(100, 500);
-        harness.validateThreshold(500, 500);
-    }
-
-    /**
-     * @notice Test validateThreshold reverts when threshold > max
-     */
-    function test_ValidateThreshold_ExceedsMax_Reverts() public {
-        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        harness.validateThreshold(600, 500);
     }
 
     // =============================================================================
@@ -423,36 +317,6 @@ contract CommonValidationLibraryTest is Test {
         harness.validatePercentage(percentage, maxPercentage);
     }
 
-    /**
-     * @notice Fuzz test validateDuration
-     */
-    function testFuzz_ValidateDuration_WithinRangePasses(
-        uint256 duration,
-        uint256 minDuration,
-        uint256 maxDuration
-    ) public view {
-        vm.assume(minDuration <= maxDuration);
-        vm.assume(duration >= minDuration);
-        vm.assume(duration <= maxDuration);
-        harness.validateDuration(duration, minDuration, maxDuration);
-    }
-
-    /**
-     * @notice Fuzz test validateSlippage
-     */
-    function testFuzz_ValidateSlippage_WithinTolerancePasses(
-        uint128 received,
-        uint128 expected,
-        uint16 tolerance
-    ) public view {
-        vm.assume(expected > 0);
-        vm.assume(tolerance <= 10000);
-
-        uint256 minReceived = uint256(expected) * (10000 - uint256(tolerance)) / 10000;
-        vm.assume(received >= minReceived);
-
-        harness.validateSlippage(uint256(received), uint256(expected), uint256(tolerance));
-    }
 }
 
 /**
@@ -480,14 +344,6 @@ contract CommonValidationHarness {
         CommonValidationLibrary.validatePercentage(percentage, maxPercentage);
     }
 
-    function validateDuration(uint256 duration, uint256 minDuration, uint256 maxDuration) external pure {
-        CommonValidationLibrary.validateDuration(duration, minDuration, maxDuration);
-    }
-
-    function validatePrice(uint256 price) external pure {
-        CommonValidationLibrary.validatePrice(price);
-    }
-
     function validateCondition(bool condition, string memory errorType) external pure {
         CommonValidationLibrary.validateCondition(condition, errorType);
     }
@@ -504,19 +360,8 @@ contract CommonValidationHarness {
         CommonValidationLibrary.validateTreasuryAddress(treasury);
     }
 
-    function validateSlippage(uint256 received, uint256 expected, uint256 tolerance) external pure {
-        CommonValidationLibrary.validateSlippage(received, expected, tolerance);
-    }
-
-    function validateThresholdValue(uint256 value, uint256 threshold) external pure {
-        CommonValidationLibrary.validateThresholdValue(value, threshold);
-    }
-
     function validateFee(uint256 fee, uint256 maxFee) external pure {
         CommonValidationLibrary.validateFee(fee, maxFee);
     }
 
-    function validateThreshold(uint256 threshold, uint256 maxThreshold) external pure {
-        CommonValidationLibrary.validateThreshold(threshold, maxThreshold);
-    }
 }

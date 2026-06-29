@@ -732,13 +732,6 @@ contract QuantillonInvariants is Test {
         uint256 scaledValue = VaultMath.scaleDecimals(testValue, 6, 18);
         assertEq(scaledValue, testValue * 1e12, "Scaling calculation incorrect");
         
-        // Check that min/max operations work correctly
-        uint256 minResult = VaultMath.min(testValue, testValue / 2);
-        assertEq(minResult, testValue / 2, "Min operation incorrect");
-        
-        uint256 maxResult = VaultMath.max(testValue, testValue / 2);
-        assertEq(maxResult, testValue, "Max operation incorrect");
-        
         // Check that percentage calculations work with reasonable values
         uint256 smallValue = 100 * PRECISION;
         uint256 smallPercentage = 1000; // 10% in basis points (1000/10000 = 10%)

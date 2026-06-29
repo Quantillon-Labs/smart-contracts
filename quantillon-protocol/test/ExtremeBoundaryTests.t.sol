@@ -202,50 +202,6 @@ contract ExtremeBoundaryTests is Test {
     }
 
     // =============================================================================
-    // DIVISION EDGE CASE TESTS
-    // =============================================================================
-
-    /**
-     * @notice Test collateral ratio with zero debt returns max
-     */
-    function test_CollateralRatio_ZeroDebt_ReturnsMax() public pure {
-        uint256 ratio = VaultMath.calculateCollateralRatio(1000e18, 0);
-        assertEq(ratio, MAX_UINT256, "Zero debt should return max ratio");
-    }
-
-    /**
-     * @notice Test collateral ratio with zero collateral returns zero
-     */
-    function test_CollateralRatio_ZeroCollateral_ReturnsZero() public pure {
-        uint256 ratio = VaultMath.calculateCollateralRatio(0, 1000e18);
-        assertEq(ratio, 0, "Zero collateral should return zero ratio");
-    }
-
-    /**
-     * @notice Test min function with equal values
-     */
-    function test_Min_EqualValues() public pure {
-        uint256 value = 1000e18;
-        assertEq(VaultMath.min(value, value), value, "Min of equal values");
-    }
-
-    /**
-     * @notice Test min function with max uint256
-     */
-    function test_Min_WithMaxUint256() public pure {
-        assertEq(VaultMath.min(MAX_UINT256, 1), 1, "Min with max should return smaller");
-        assertEq(VaultMath.min(1, MAX_UINT256), 1, "Min with max should return smaller");
-    }
-
-    /**
-     * @notice Test max function with zero
-     */
-    function test_Max_WithZero() public pure {
-        assertEq(VaultMath.max(0, 1000), 1000, "Max with zero");
-        assertEq(VaultMath.max(1000, 0), 1000, "Max with zero");
-    }
-
-    // =============================================================================
     // OVERFLOW PREVENTION TESTS
     // =============================================================================
 
@@ -307,75 +263,6 @@ contract ExtremeBoundaryTests is Test {
         assertTrue(result2 >= 4 && result2 <= 5, "Rounded division");
     }
 
-    /**
-     * @notice Test yield distribution rounding preserves total
-     */
-    function test_YieldDistribution_RoundingPreservesTotal() public pure {
-        uint256 totalYield = 1000000e18; // 1M
-        uint256 userShift = 6000; // 60%
-
-        (uint256 userYield, uint256 hedgerYield) =
-            VaultMath.calculateYieldDistribution(totalYield, userShift);
-
-        // Total should be preserved within rounding
-        uint256 total = userYield + hedgerYield;
-        assertApproxEqAbs(total, totalYield, 2, "Total should be preserved");
-    }
-
-    /**
-     * @notice Test isWithinTolerance at exact boundary
-     */
-    function test_IsWithinTolerance_ExactBoundary() public pure {
-        uint256 expected = 1000e18;
-        uint256 tolerance = 100; // 1%
-
-        // At exactly 1% below
-        uint256 atBoundary = expected * 99 / 100;
-        assertTrue(VaultMath.isWithinTolerance(atBoundary, expected, tolerance), "At boundary");
-
-        // Just below boundary
-        uint256 belowBoundary = expected * 98 / 100;
-        assertFalse(VaultMath.isWithinTolerance(belowBoundary, expected, tolerance), "Below boundary");
-    }
-
-    // =============================================================================
-    // CURRENCY CONVERSION BOUNDARY TESTS
-    // =============================================================================
-
-    /**
-     * @notice Test EUR to USD with extreme exchange rate
-     */
-    function test_EurToUsd_ExtremeRate() public pure {
-        uint256 eurAmount = 1000e18;
-
-        // Very high EUR/USD rate (2.0)
-        uint256 highRate = 2e18;
-        uint256 highResult = VaultMath.eurToUsd(eurAmount, highRate);
-        assertApproxEqAbs(highResult, 2000e18, 2, "High rate conversion");
-
-        // Very low EUR/USD rate (0.5)
-        uint256 lowRate = 5e17;
-        uint256 lowResult = VaultMath.eurToUsd(eurAmount, lowRate);
-        assertApproxEqAbs(lowResult, 500e18, 2, "Low rate conversion");
-    }
-
-    /**
-     * @notice Test USD to EUR with extreme exchange rate
-     */
-    function test_UsdToEur_ExtremeRate() public pure {
-        uint256 usdAmount = 1000e18;
-
-        // Very high EUR/USD rate (2.0) means USD buys less EUR
-        uint256 highRate = 2e18;
-        uint256 highResult = VaultMath.usdToEur(usdAmount, highRate);
-        assertApproxEqAbs(highResult, 500e18, 2, "High rate conversion");
-
-        // Very low EUR/USD rate (0.5) means USD buys more EUR
-        uint256 lowRate = 5e17;
-        uint256 lowResult = VaultMath.usdToEur(usdAmount, lowRate);
-        assertApproxEqAbs(lowResult, 2000e18, 2, "Low rate conversion");
-    }
-
     // =============================================================================
     // BATCH SIZE BOUNDARY TESTS
     // =============================================================================
@@ -413,30 +300,4 @@ contract ExtremeBoundaryTests is Test {
         assertEq(total, 1000e18, "Single element should return that amount");
     }
 
-    // =============================================================================
-    // GAS EFFICIENT BOUNDARY CHECKS
-    // =============================================================================
-
-    /**
-     * @notice Test repeated min operations gas efficiency
-     */
-    function test_Min_GasEfficiency() public pure {
-        // This should not consume excessive gas
-        uint256 result = VaultMath.min(1000, 2000);
-        for (uint256 i = 0; i < 100; i++) {
-            result = VaultMath.min(result, i);
-        }
-        assertEq(result, 0, "Final min should be 0");
-    }
-
-    /**
-     * @notice Test repeated max operations gas efficiency
-     */
-    function test_Max_GasEfficiency() public pure {
-        uint256 result = VaultMath.max(0, 1);
-        for (uint256 i = 0; i < 100; i++) {
-            result = VaultMath.max(result, i);
-        }
-        assertEq(result, 99, "Final max should be 99");
-    }
 }

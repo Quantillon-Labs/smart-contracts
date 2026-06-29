@@ -139,49 +139,6 @@ library CommonValidationLibrary {
     }
 
     /**
-     * @notice Validates that a duration is within valid range
-     * @dev Reverts with HoldingPeriodNotMet if too short, AboveLimit if too long
-     * @param duration The duration to validate
-     * @param minDuration The minimum allowed duration
-     * @param maxDuration The maximum allowed duration
-     * @custom:security Pure; no state change
-     * @custom:validation Reverts if duration out of [minDuration, maxDuration]
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors HoldingPeriodNotMet, AboveLimit
-     * @custom:reentrancy No external calls
-     * @custom:access Internal library
-     * @custom:oracle None
-     */
-    function validateDuration(uint256 duration, uint256 minDuration, uint256 maxDuration) internal pure {
-        if (duration < minDuration) {
-            revert CommonErrorLibrary.HoldingPeriodNotMet();
-        }
-        if (duration > maxDuration) {
-            revert CommonErrorLibrary.AboveLimit();
-        }
-    }
-
-    /**
-     * @notice Validates that a price is valid (greater than zero)
-     * @dev Reverts with InvalidPrice if price is zero
-     * @param price The price to validate
-     * @custom:security Pure; no state change
-     * @custom:validation Reverts if price is zero
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors InvalidPrice
-     * @custom:reentrancy No external calls
-     * @custom:access Internal library
-     * @custom:oracle None
-     */
-    function validatePrice(uint256 price) internal pure {
-        if (price == 0) {
-            revert CommonErrorLibrary.InvalidPrice();
-        }
-    }
-
-    /**
      * @notice Validates that a boolean condition is true
      * @dev Generic condition validator that throws specific errors based on error type
      * @param condition The condition to validate
@@ -280,43 +237,6 @@ library CommonValidationLibrary {
     }
 
     /**
-     * @notice Validates slippage protection for token swaps/trades
-     * @dev Reverts with InvalidParameter if slippage exceeds tolerance
-     * @param received The actual amount received
-     * @param expected The expected amount
-     * @param tolerance The slippage tolerance in basis points
-     * @custom:security Pure; no state change
-     * @custom:validation Reverts if received below expected minus tolerance
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors InvalidParameter
-     * @custom:reentrancy No external calls
-     * @custom:access Internal library
-     * @custom:oracle None
-     */
-    function validateSlippage(uint256 received, uint256 expected, uint256 tolerance) internal pure {
-        if (received < expected * (10000 - tolerance) / 10000) revert CommonErrorLibrary.InvalidParameter();
-    }
-
-    /**
-     * @notice Validates that a value meets minimum threshold requirements
-     * @dev Reverts with BelowThreshold if value is below minimum
-     * @param value The value to validate
-     * @param threshold The minimum required threshold
-     * @custom:security Pure; no state change
-     * @custom:validation Reverts if value < threshold
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors BelowThreshold
-     * @custom:reentrancy No external calls
-     * @custom:access Internal library
-     * @custom:oracle None
-     */
-    function validateThresholdValue(uint256 value, uint256 threshold) internal pure {
-        if (value < threshold) revert CommonErrorLibrary.BelowThreshold();
-    }
-
-    /**
      * @notice Validates fee amount against maximum allowed fee
      * @dev Reverts with InvalidParameter if fee exceeds maximum
      * @param fee The fee amount to validate
@@ -334,21 +254,4 @@ library CommonValidationLibrary {
         if (fee > maxFee) revert CommonErrorLibrary.InvalidParameter();
     }
 
-    /**
-     * @notice Validates threshold value against maximum limit
-     * @dev Reverts with InvalidParameter if threshold exceeds maximum
-     * @param threshold The threshold value to validate
-     * @param maxThreshold The maximum allowed threshold
-     * @custom:security Pure; no state change
-     * @custom:validation Reverts if threshold > maxThreshold
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors InvalidParameter
-     * @custom:reentrancy No external calls
-     * @custom:access Internal library
-     * @custom:oracle None
-     */
-    function validateThreshold(uint256 threshold, uint256 maxThreshold) internal pure {
-        if (threshold > maxThreshold) revert CommonErrorLibrary.InvalidParameter();
-    }
 }

@@ -40,16 +40,8 @@ contract AccessControlHarness is AccessControlUpgradeable {
         AccessControlLibrary.onlyGovernance(this);
     }
 
-    function checkOnlyVaultManager() external view {
-        AccessControlLibrary.onlyVaultManager(this);
-    }
-
     function checkOnlyEmergencyRole() external view {
         AccessControlLibrary.onlyEmergencyRole(this);
-    }
-
-    function checkOnlyLiquidator() external view {
-        AccessControlLibrary.onlyLiquidatorRole(this);
     }
 
     function checkOnlyYieldManager() external view {
@@ -94,19 +86,6 @@ contract AccessControlLibraryTest is Test {
         harness.checkOnlyGovernance();
     }
 
-    // ----------------- onlyVaultManager -----------------
-
-    function test_OnlyVaultManager_AllowsVaultManager() public {
-        vm.prank(vaultManager);
-        harness.checkOnlyVaultManager();
-    }
-
-    function test_OnlyVaultManager_RevertsForNonManager() public {
-        vm.prank(admin);
-        vm.expectRevert(CommonErrorLibrary.NotVaultManager.selector);
-        harness.checkOnlyVaultManager();
-    }
-
     // ----------------- onlyEmergencyRole -----------------
 
     function test_OnlyEmergency_AllowsEmergency() public {
@@ -118,19 +97,6 @@ contract AccessControlLibraryTest is Test {
         vm.prank(admin);
         vm.expectRevert(CommonErrorLibrary.NotEmergencyRole.selector);
         harness.checkOnlyEmergencyRole();
-    }
-
-    // ----------------- onlyLiquidatorRole -----------------
-
-    function test_OnlyLiquidator_AllowsLiquidator() public {
-        vm.prank(liquidator);
-        harness.checkOnlyLiquidator();
-    }
-
-    function test_OnlyLiquidator_RevertsForNonLiquidator() public {
-        vm.prank(admin);
-        vm.expectRevert(CommonErrorLibrary.NotLiquidatorRole.selector);
-        harness.checkOnlyLiquidator();
     }
 
     // ----------------- onlyYieldManager -----------------

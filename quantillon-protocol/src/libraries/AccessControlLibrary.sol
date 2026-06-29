@@ -41,25 +41,6 @@ library AccessControlLibrary {
     }
     
     /**
-     * @notice Ensures the caller has vault manager role
-     * @dev Reverts with NotVaultManager if caller lacks VAULT_MANAGER_ROLE
-     * @param accessControl The access control contract to check roles against
-     * @custom:security Validates caller has VAULT_MANAGER_ROLE before allowing access
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors Throws NotVaultManager if caller lacks required role
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function onlyVaultManager(AccessControlUpgradeable accessControl) internal view {
-        if (!accessControl.hasRole(keccak256("VAULT_MANAGER_ROLE"), msg.sender)) {
-            revert CommonErrorLibrary.NotVaultManager();
-        }
-    }
-    
-    /**
      * @notice Ensures the caller has emergency role
      * @dev Reverts with NotEmergencyRole if caller lacks EMERGENCY_ROLE
      * @param accessControl The access control contract to check roles against
@@ -75,25 +56,6 @@ library AccessControlLibrary {
     function onlyEmergencyRole(AccessControlUpgradeable accessControl) internal view {
         if (!accessControl.hasRole(keccak256("EMERGENCY_ROLE"), msg.sender)) {
             revert CommonErrorLibrary.NotEmergencyRole();
-        }
-    }
-    
-    /**
-     * @notice Ensures the caller has liquidator role
-     * @dev Reverts with NotLiquidatorRole if caller lacks LIQUIDATOR_ROLE
-     * @param accessControl The access control contract to check roles against
-     * @custom:security Validates caller has LIQUIDATOR_ROLE before allowing access
-     * @custom:validation No input validation required - view function
-     * @custom:state-changes No state changes - view function only
-     * @custom:events No events emitted
-     * @custom:errors Throws NotLiquidatorRole if caller lacks required role
-     * @custom:reentrancy Not applicable - view function
-     * @custom:access Internal function - no access restrictions
-     * @custom:oracle No oracle dependencies
-     */
-    function onlyLiquidatorRole(AccessControlUpgradeable accessControl) internal view {
-        if (!accessControl.hasRole(keccak256("LIQUIDATOR_ROLE"), msg.sender)) {
-            revert CommonErrorLibrary.NotLiquidatorRole();
         }
     }
     

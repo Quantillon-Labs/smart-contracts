@@ -100,10 +100,12 @@ the excess over `principalDeposited`; leaves principal in the strategy.
 raising the share price. Reverts (`NotInitialized`) if the vault has no shares yet. Internally this
 shares its core with `harvestAndDistributeVaultYield` (which supplies already-held USDC).
 
-### Legacy `QuantillonVault.harvestVaultYield(uint256 vaultId)`
-`GOVERNANCE_ROLE`. The original harvest that routes yield to **YieldShift** (`addYield`). Retained for
-the hedger-pool / YieldShift accounting path (`claimHedgerYield`). It does **not** move the stQEURO
-share price — prefer `harvestAndDistributeVaultYield` for staker rewards.
+### `QuantillonVault.harvestConfig(uint256 vaultId)`
+View returning `(fundingRateBps, hedgerRecipient, lastHarvest)` for a vault id — a single read replacing
+the per-field getters (the config vars are `internal`) to keep the contract under the EIP-170 limit.
+
+> The old `harvestVaultYield` (adapter harvest → YieldShift) was **removed** — the new model routes
+> hedger funding via `harvestAndDistributeVaultYield`, so the YieldShift staking-harvest path is gone.
 
 ---
 
@@ -122,16 +124,13 @@ share price — prefer `harvestAndDistributeVaultYield` for staker rewards.
 **Roles**
 - `YIELD_DISTRIBUTOR_ROLE` — `harvestAndDistributeVaultYield`, `creditVaultYield`. Grant to the
   keeper/operator (or the Safe).
-- `GOVERNANCE_ROLE` — parameter setters, `harvestVaultYield`, vault config.
+- `GOVERNANCE_ROLE` — parameter setters, vault config.
 - `VAULT_OPERATOR_ROLE` — `deployUsdcToVault` (move idle held USDC into a strategy).
 - `VAULT_MANAGER_ROLE` (on each adapter) — must be held by `QuantillonVault` so it can
   deposit/withdraw/harvest.
 
 **Events**
-- `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)`
-- `FundingRateUpdated(oldRateBps, newRateBps)`
-- `HedgerYieldRecipientUpdated(oldRecipient, newRecipient)`
-- `ExternalVaultYieldHarvested(vaultId, harvestedYield)` (legacy `harvestVaultYield`)
+- `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)` — the only event for this flow. The setters do not emit (the param-change events were removed to fit EIP-170).
 
 **Common reverts:** `InvalidVault` (zero/inactive id), `ZeroAddress` (unset adapter/recipient),
 `NotInitialized` (crediting a vault with zero stQEURO supply), `AboveLimit` (funding rate > cap).

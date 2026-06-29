@@ -3,6 +3,8 @@ pragma solidity 0.8.24;
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
+import {Vm} from "forge-std/Vm.sol";
+
 import {AaveIntegrationTest} from "./AaveIntegration.t.sol";
 import {stQEUROFactory} from "../src/core/stQEUROFactory.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
@@ -73,6 +75,25 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         vault.harvestAndDistributeVaultYield(VAULT_ID);
     }
 
+    /// @notice Triggers harvest+distribute (as admin) and returns the split decoded from the
+    ///         VaultYieldDistributed event (the function no longer returns the values).
+    function _distribute()
+        internal
+        returns (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare)
+    {
+        vm.recordLogs();
+        vm.prank(admin);
+        vault.harvestAndDistributeVaultYield(VAULT_ID);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 sig = keccak256("VaultYieldDistributed(uint256,uint256,uint256,uint256,uint256)");
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == sig) {
+                return abi.decode(logs[i].data, (uint256, uint256, uint256, uint256));
+            }
+        }
+        revert("VaultYieldDistributed not emitted");
+    }
+
     // -------------------------------------------------------------------------
 
     /// @notice At 0.5% funding the hedger is paid first (exact formula), stakers' share price rises,
@@ -96,9 +117,7 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         uint256 circulating = qeuro.totalSupply();
         uint256 staked = stToken.totalAssets();
 
-        vm.prank(admin);
-        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) =
-            vault.harvestAndDistributeVaultYield(VAULT_ID);
+        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
 
         // Hedger first, exactly 0.5% annualized of the deployed notional over one year.
         uint256 expectedHedger = (notional * FUNDING_RATE_BPS) / 10000;
@@ -137,9 +156,7 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         vm.warp(block.timestamp + 365 days);
         mockAaveVault.setAccruedYield(1_000e6);
 
-        vm.prank(admin);
-        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) =
-            vault.harvestAndDistributeVaultYield(VAULT_ID);
+        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
 
         assertEq(hedgerShare, 0, "no funding carve-out at 0 bps");
         assertEq(usdc.balanceOf(hedgerSink), hedgerBefore, "hedger recipient untouched");

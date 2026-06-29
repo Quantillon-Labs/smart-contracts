@@ -874,22 +874,6 @@ interface IQuantillonVault {
     function updateHedgerRewardFeeSplit(uint256 newSplit) external;
 
     /**
-     * @notice Harvests yield from a configured external vault id.
-     * @dev Governance-triggered adapter harvest operation.
-     * @param vaultId Vault id to harvest.
-     * @return harvestedYield Yield harvested in USDC units.
-     * @custom:security Restricted to governance in implementation.
-     * @custom:validation Reverts when vault id is invalid/inactive or adapter is unset.
-     * @custom:state-changes May update adapter and downstream yield accounting.
-     * @custom:events Emits vault-yield harvested event in implementation.
-     * @custom:errors Reverts on configuration or adapter failures.
-     * @custom:reentrancy Implementation is expected to guard with `nonReentrant`.
-     * @custom:access Governance-only in implementation.
-     * @custom:oracle No direct oracle dependency.
-     */
-    function harvestVaultYield(uint256 vaultId) external returns (uint256 harvestedYield);
-
-    /**
      * @notice Returns exposure snapshot for a vault id.
      * @dev Includes adapter address, active status, tracked principal, and current underlying read.
      * @param vaultId Vault id to query.

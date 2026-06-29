@@ -43,9 +43,6 @@ the deployed notional), then the **staked-user share** credited into stQEURO via
 stQEURO holders. See **[Staking Yield Distribution](./Staking-Yield-Distribution.md)** for the full
 model, parameters (`fundingRateAnnualBps`, `hedgerYieldRecipient`), and operator runbook.
 
-> The legacy `harvestVaultYield` (below) routes yield to YieldShift and does **not** move the stQEURO
-> share price; it serves the hedger-pool / YieldShift accounting path.
-
 ## Redemption Flow
 
 `redeemQEURO(qeuroAmount, minUsdcOut)` (normal mode):
@@ -79,7 +76,6 @@ Liquidation-mode redemption uses the same external-withdraw planning pattern.
 - `harvestAndDistributeVaultYield(vaultId)` (`YIELD_DISTRIBUTOR_ROLE`) — harvest + 3-way split to stakers/hedger/treasury
 - `creditVaultYield(vaultId, usdcAmount)` (`YIELD_DISTRIBUTOR_ROLE`) — credit USDC into stQEURO as QEURO backing
 - `setFundingRateAnnualBps(bps)` / `setHedgerYieldRecipient(addr)` (`GOVERNANCE_ROLE`)
-- `harvestVaultYield(vaultId)` (`GOVERNANCE_ROLE`) — legacy harvest to YieldShift (no share-price effect)
 - `deployUsdcToVault(vaultId, usdcAmount)` (`VAULT_OPERATOR_ROLE`)
 
 Factory binding:
@@ -95,7 +91,7 @@ Operational:
 - Adapter configuration and activation.
 - Default vault and redemption-priority policy.
 - Deploying idle held USDC (`deployUsdcToVault`).
-- Harvesting adapter yield (`harvestVaultYield`).
+- Harvesting + distributing adapter yield (`harvestAndDistributeVaultYield`).
 
 ## Key Events for Indexer and Admin Read Models
 
@@ -105,9 +101,7 @@ Operational:
 - `RedemptionPriorityUpdated`
 - `UsdcDeployedToExternalVault`
 - `UsdcWithdrawnFromExternalVault`
-- `ExternalVaultYieldHarvested`
 - `VaultYieldDistributed` (harvest + 3-way split)
-- `FundingRateUpdated`, `HedgerYieldRecipientUpdated`
 
 ## Practical Ops Notes
 

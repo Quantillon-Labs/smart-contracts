@@ -11,29 +11,30 @@ import {IVersioned} from "../../src/interfaces/IVersioned.sol";
  *         interface. (Audit follow-up: on-chain version provenance.)
  */
 contract VersioningRegression is DeploymentSmokeTest {
-    function _assertVersioned(address proxy, string memory label) private view {
+    function _assertVersioned(address proxy, string memory label, string memory expected) private view {
         string memory v = IVersioned(proxy).version();
         assertGt(bytes(v).length, 0, string.concat(label, ": version() must be non-empty"));
-        assertEq(v, "1.0.0", string.concat(label, ": initial version should be 1.0.0"));
+        assertEq(v, expected, string.concat(label, ": unexpected version"));
     }
 
     /// @notice Every deployed core contract in the harness exposes version() through its proxy.
+    /// @dev QuantillonVault is at 1.1.0 (harvestAndDistributeVaultYield / stQEURO yield distribution).
     function test_AllCoreContractsExposeVersion() public {
         deployFullProtocol();
-        _assertVersioned(address(qeuroToken), "QEUROToken");
-        _assertVersioned(address(qtiToken), "QTIToken");
-        _assertVersioned(address(vault), "QuantillonVault");
-        _assertVersioned(address(userPool), "UserPool");
-        _assertVersioned(address(hedgerPool), "HedgerPool");
-        _assertVersioned(address(stQEURO), "stQEUROToken");
-        _assertVersioned(address(feeCollector), "FeeCollector");
-        _assertVersioned(address(yieldShift), "YieldShift");
-        _assertVersioned(address(timeProvider), "TimeProvider");
+        _assertVersioned(address(qeuroToken), "QEUROToken", "1.0.0");
+        _assertVersioned(address(qtiToken), "QTIToken", "1.0.0");
+        _assertVersioned(address(vault), "QuantillonVault", "1.1.0");
+        _assertVersioned(address(userPool), "UserPool", "1.0.0");
+        _assertVersioned(address(hedgerPool), "HedgerPool", "1.0.0");
+        _assertVersioned(address(stQEURO), "stQEUROToken", "1.0.0");
+        _assertVersioned(address(feeCollector), "FeeCollector", "1.0.0");
+        _assertVersioned(address(yieldShift), "YieldShift", "1.0.0");
+        _assertVersioned(address(timeProvider), "TimeProvider", "1.0.0");
     }
 
     /// @notice version() is a pure getter callable directly (reflects the implementation code).
     function test_VersionIsCallableDirectly() public {
         deployFullProtocol();
-        assertEq(vault.version(), "1.0.0", "direct call returns semver");
+        assertEq(vault.version(), "1.1.0", "direct call returns semver");
     }
 }

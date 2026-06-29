@@ -203,6 +203,31 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
     }
 
     /**
+     * @notice Harvests accrued yield from the Aave vault and transfers it as USDC to the caller (the vault).
+     * @dev Withdraws only the amount above tracked principal, then transfers it to `msg.sender`
+     *      instead of routing to YieldShift, so the caller can apply its own distribution policy.
+     * @return realizedYield USDC yield harvested and transferred to the caller (6 decimals).
+     * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
+     * @custom:validation Returns zero when no yield is available; reverts only on downstream failures.
+     * @custom:state-changes Leaves `principalDeposited` unchanged; transfers realized USDC to the caller.
+     * @custom:events Emits downstream transfer events from dependencies.
+     * @custom:errors Reverts on downstream withdrawal or transfer failures.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Restricted to vault manager role.
+     * @custom:oracle No oracle dependencies.
+     */
+    function harvestYieldToVault() external override onlyRole(VAULT_MANAGER_ROLE) nonReentrant returns (uint256 realizedYield) {
+        uint256 currentUnderlying = aaveVault.totalUnderlyingOf(address(this));
+        if (currentUnderlying <= principalDeposited) return 0;
+
+        uint256 availableYield = currentUnderlying - principalDeposited;
+        realizedYield = aaveVault.withdrawUnderlying(availableYield, address(this));
+        if (realizedYield == 0) return 0;
+
+        USDC.safeTransfer(msg.sender, realizedYield);
+    }
+
+    /**
      * @notice Returns current underlying balance controlled by this adapter.
      * @return underlyingBalance Underlying USDC-equivalent balance in the Aave vault.
      * @dev Reads the underlying amount from the configured `aaveVault`.

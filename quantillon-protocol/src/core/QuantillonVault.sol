@@ -108,7 +108,7 @@ contract QuantillonVault is
      * @dev Pure getter (no storage slot) read through the proxy, so it reflects the deployed
      *      implementation. Bump per semver on any change; enforced by `make check-version-bump`.
      *      See deployments/{chainId}/versions.json for the deployed impl/commit provenance.
-     * @return Semantic version string (e.g. "1.0.0").
+     * @return Semantic version string (e.g. "1.1.0").
      * @custom:security No security implications - returns a compile-time constant.
      * @custom:validation No input validation required.
      * @custom:state-changes None - pure function.
@@ -119,7 +119,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.1.0";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -449,6 +449,30 @@ contract QuantillonVault is
 
     event UsdcDeployedToExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
     event ExternalVaultYieldHarvested(uint256 indexed vaultId, uint256 harvestedYield);
+
+    /// @notice Emitted when harvested external-vault yield is distributed across hedger/user/treasury.
+    /// @param vaultId Vault id whose yield was distributed
+    /// @param realizedYield Total USDC yield realized from the adapter (6 decimals)
+    /// @param hedgerShare USDC routed to the hedger funding recipient (6 decimals)
+    /// @param userShare USDC credited into the stQEURO vault as QEURO backing (6 decimals)
+    /// @param treasuryShare USDC routed to the treasury (6 decimals)
+    event VaultYieldDistributed(
+        uint256 indexed vaultId,
+        uint256 realizedYield,
+        uint256 hedgerShare,
+        uint256 userShare,
+        uint256 treasuryShare
+    );
+
+    /// @notice Emitted when the annualized hedger funding rate is updated by governance.
+    /// @param oldRateBps Previous funding rate (basis points)
+    /// @param newRateBps New funding rate (basis points)
+    event FundingRateUpdated(uint256 oldRateBps, uint256 newRateBps);
+
+    /// @notice Emitted when the hedger yield recipient is updated by governance.
+    /// @param oldRecipient Previous recipient address
+    /// @param newRecipient New recipient address
+    event HedgerYieldRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
     event ExternalVaultDeploymentFailed(uint256 indexed vaultId, uint256 amount, bytes reason);
     /// @notice Deprecated: retained for ABI compatibility with existing off-chain consumers
     /// @dev No longer emitted. Redeem hedger-sync is atomic (failures
@@ -1780,7 +1804,28 @@ contract QuantillonVault is
         returns (uint256 qeuroMinted)
     {
         CommonValidationLibrary.validatePositiveAmount(usdcAmount);
+        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
+        qeuroMinted = _creditVaultYield(vaultId, usdcAmount);
+    }
 
+    /**
+     * @notice Credits already-held USDC into an stQEURO vault as freshly minted QEURO backing.
+     * @dev Shared core used by `creditVaultYield` (after pulling USDC from the caller) and by
+     *      `harvestAndDistributeVaultYield` (after realizing adapter yield into this contract).
+     *      Assumes `usdcAmount` USDC is already held by this contract; performs no transfer-in.
+     * @param vaultId Vault identifier whose stQEURO series receives the compounded yield.
+     * @param usdcAmount Amount of already-held USDC to convert into stQEURO backing.
+     * @return qeuroMinted Net QEURO minted into the stQEURO vault.
+     * @custom:security Caller must enforce access control, pause, and reentrancy guards.
+     * @custom:validation Reverts on invalid vault ids, empty share supply, invalid prices, or unsafe collateralization.
+     * @custom:state-changes Updates price cache, totalUsdcHeld, totalMinted, hedger sync, and mints QEURO to the stQEURO vault.
+     * @custom:events Emits no direct event; downstream token mint/transfer events provide observability.
+     * @custom:errors Reverts on invalid inputs, failed transfers, unsafe mint conditions, or hedger sync failure.
+     * @custom:reentrancy Must be invoked from a `nonReentrant` external entrypoint.
+     * @custom:access Internal.
+     * @custom:oracle Requires fresh validated EUR/USD and USDC/USD oracle reads.
+     */
+    function _creditVaultYield(uint256 vaultId, uint256 usdcAmount) internal returns (uint256 qeuroMinted) {
         address stToken = stQEUROTokenByVaultId[vaultId];
         if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
 
@@ -1809,7 +1854,6 @@ contract QuantillonVault is
 
         _syncMintWithHedgersOrRevert(netUsdcAmount, eurUsdPrice, qeuroMinted);
 
-        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
         if (feeUsdc > 0) {
             usdc.safeTransfer(treasury, feeUsdc);
         }
@@ -1842,6 +1886,135 @@ contract QuantillonVault is
 
         harvestedYield = adapter.harvestYield();
         emit ExternalVaultYieldHarvested(vaultId, harvestedYield);
+    }
+
+    /**
+     * @notice Sets the annualized hedger funding rate used to size the hedger yield carve-out.
+     * @dev Expressed in basis points of the deployed notional, accrued pro-rata to elapsed time.
+     *      Set to 0 for commercial launch (Quantillon-as-sole-hedger bootstrap); a non-zero value
+     *      reserves an absolute funding amount for hedgers ahead of the staker/treasury split.
+     * @param newRateBps New annualized funding rate in basis points (<= MAX_FUNDING_RATE_ANNUAL_BPS).
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Reverts when `newRateBps` exceeds `MAX_FUNDING_RATE_ANNUAL_BPS`.
+     * @custom:state-changes Updates `fundingRateAnnualBps`.
+     * @custom:events Emits `FundingRateUpdated`.
+     * @custom:errors Reverts with `AboveLimit` when the rate is too high.
+     * @custom:reentrancy No reentrancy-sensitive external calls.
+     * @custom:access Governance-only.
+     * @custom:oracle No oracle dependencies.
+     */
+    function setFundingRateAnnualBps(uint256 newRateBps) external onlyRole(GOVERNANCE_ROLE) {
+        if (newRateBps > MAX_FUNDING_RATE_ANNUAL_BPS) revert CommonErrorLibrary.AboveLimit();
+        uint256 oldRateBps = fundingRateAnnualBps;
+        fundingRateAnnualBps = newRateBps;
+        emit FundingRateUpdated(oldRateBps, newRateBps);
+    }
+
+    /**
+     * @notice Sets the recipient of the hedger funding share routed during yield distribution.
+     * @dev When unset (address(0)), the hedger share falls back to the treasury.
+     * @param newRecipient New hedger yield recipient address.
+     * @custom:security Restricted to `GOVERNANCE_ROLE`.
+     * @custom:validation Reverts on the zero address.
+     * @custom:state-changes Updates `hedgerYieldRecipient`.
+     * @custom:events Emits `HedgerYieldRecipientUpdated`.
+     * @custom:errors Reverts with `ZeroAddress` for an invalid recipient.
+     * @custom:reentrancy No reentrancy-sensitive external calls.
+     * @custom:access Governance-only.
+     * @custom:oracle No oracle dependencies.
+     */
+    function setHedgerYieldRecipient(address newRecipient) external onlyRole(GOVERNANCE_ROLE) {
+        if (newRecipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        address oldRecipient = hedgerYieldRecipient;
+        hedgerYieldRecipient = newRecipient;
+        emit HedgerYieldRecipientUpdated(oldRecipient, newRecipient);
+    }
+
+    /**
+     * @notice Harvests external-vault yield and distributes it: hedger funding first, then the
+     *         staked-user share into stQEURO (rising share price), then the remainder to treasury.
+     * @dev Realizes adapter yield into this contract via `harvestYieldToVault`, carves out the hedger
+     *      funding accrual (`fundingRateAnnualBps * notional * dt / (10000 * 365 days)`), credits the
+     *      residual to stQEURO holders pro-rata to staked/circulating QEURO, and sends the rest to
+     *      treasury. The first call for a vault id only anchors the funding clock.
+     *      MINIMAL V1: the hedger carve-out is capped at the realized yield; the "ponction user pool"
+     *      path for `realizedYield < hedgerAccrual` (negative residual, falling share price) is
+     *      intentionally out of scope and does not trigger while funding stays below the vault yield.
+     * @param vaultId Vault id whose adapter yield is harvested and distributed.
+     * @return realizedYield Total USDC yield realized from the adapter (6 decimals).
+     * @return hedgerShare USDC routed to the hedger funding recipient (6 decimals).
+     * @return userShare USDC credited into the stQEURO vault as QEURO backing (6 decimals).
+     * @return treasuryShare USDC routed to the treasury (6 decimals).
+     * @custom:security Restricted to `YIELD_DISTRIBUTOR_ROLE`; protected by `nonReentrant` and pause.
+     * @custom:validation Reverts when vault id is invalid/inactive or adapter is unset.
+     * @custom:state-changes Updates the funding clock, protocol USDC/QEURO accounting, and stQEURO backing; moves USDC to the hedger recipient and treasury.
+     * @custom:events Emits `VaultYieldDistributed`.
+     * @custom:errors Reverts on invalid configuration, adapter failures, or unsafe credit conditions.
+     * @custom:reentrancy Guarded by `nonReentrant`.
+     * @custom:access Restricted to `YIELD_DISTRIBUTOR_ROLE`.
+     * @custom:oracle Credit path requires fresh validated EUR/USD and USDC/USD oracle reads.
+     */
+    function harvestAndDistributeVaultYield(uint256 vaultId)
+        external
+        nonReentrant
+        whenNotPaused
+        onlyRole(YIELD_DISTRIBUTOR_ROLE)
+        returns (uint256 realizedYield, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare)
+    {
+        if (vaultId == 0 || !stakingVaultActiveById[vaultId]) revert CommonErrorLibrary.InvalidVault();
+        IExternalStakingVault adapter = stakingVaultAdapterById[vaultId];
+        if (address(adapter) == address(0)) revert CommonErrorLibrary.ZeroAddress();
+
+        // Realize the adapter's accrued yield as USDC held by this contract.
+        realizedYield = adapter.harvestYieldToVault();
+
+        // Anchor the funding clock; the first call (last == 0) accrues no hedger share.
+        uint256 last = lastYieldHarvestByVaultId[vaultId];
+        lastYieldHarvestByVaultId[vaultId] = block.timestamp;
+
+        if (realizedYield == 0) {
+            emit VaultYieldDistributed(vaultId, 0, 0, 0, 0);
+            return (0, 0, 0, 0);
+        }
+
+        // 1. Hedger funding carve-out: absolute, time-prorated on the deployed notional.
+        if (last != 0 && fundingRateAnnualBps != 0) {
+            uint256 elapsed = block.timestamp - last;
+            uint256 notional = principalUsdcByVaultId[vaultId];
+            hedgerShare = notional.mulDiv(fundingRateAnnualBps * elapsed, 10000 * 365 days);
+            // MINIMAL V1: never ponction the user pool — cap at realized yield (see diagnosis §2a case 3).
+            if (hedgerShare > realizedYield) hedgerShare = realizedYield;
+        }
+
+        uint256 residual = realizedYield - hedgerShare;
+
+        // 2. Residual split: staked users (via stQEURO share price) pro-rata to staked/circulating QEURO,
+        //    remainder to treasury (the share attributable to unstaked QEURO).
+        if (residual > 0) {
+            address stToken = stQEUROTokenByVaultId[vaultId];
+            uint256 staked = 0;
+            if (stToken != address(0) && IstQEURO(stToken).totalSupply() > 0) {
+                staked = IstQEURO(stToken).totalAssets();
+            }
+            uint256 circulating = qeuro.totalSupply();
+            if (staked > circulating) staked = circulating;
+            userShare = (staked == 0 || circulating == 0) ? 0 : residual.mulDiv(staked, circulating);
+            treasuryShare = residual - userShare;
+        }
+
+        // 3. Route the three shares from the realized USDC now held by this contract.
+        if (hedgerShare > 0) {
+            address hedgerSink = hedgerYieldRecipient == address(0) ? treasury : hedgerYieldRecipient;
+            usdc.safeTransfer(hedgerSink, hedgerShare);
+        }
+        if (userShare > 0) {
+            _creditVaultYield(vaultId, userShare);
+        }
+        if (treasuryShare > 0) {
+            usdc.safeTransfer(treasury, treasuryShare);
+        }
+
+        emit VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare);
     }
 
     /**
@@ -2691,6 +2864,23 @@ contract QuantillonVault is
 
     /// @notice Variable to store the timestamp of the last valid price update
     uint256 private lastPriceUpdateTime;
+
+    /// @notice Maximum settable annualized hedger funding rate (basis points).
+    /// @dev Upper bound for `fundingRateAnnualBps` to bound the hedger carve-out.
+    uint256 private constant MAX_FUNDING_RATE_ANNUAL_BPS = 5000; // 50%
+
+    /// @notice Annualized funding rate (basis points) reserved for hedgers from harvested vault yield.
+    /// @dev Hedger-first carve-out: hedgerShare = fundingRateAnnualBps * notional * dt / (10000 * 365 days).
+    ///      Governance-set; 0 at commercial launch. This is an ABSOLUTE funding cost, NOT a share of yield.
+    uint256 public fundingRateAnnualBps;
+
+    /// @notice Timestamp of the last yield harvest+distribution per vault id (funding accrual clock).
+    /// @dev Set lazily on the first `harvestAndDistributeVaultYield` call for a vault id.
+    mapping(uint256 => uint256) public lastYieldHarvestByVaultId;
+
+    /// @notice Recipient of the hedger funding share routed during yield distribution.
+    /// @dev Falls back to `treasury` when unset (address(0)).
+    address public hedgerYieldRecipient;
 
     /**
      * @notice Toggles dev mode to disable price caching requirements

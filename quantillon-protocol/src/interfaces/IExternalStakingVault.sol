@@ -55,6 +55,23 @@ interface IExternalStakingVault {
     function harvestYield() external returns (uint256 harvestedYield);
 
     /**
+     * @notice Harvests accrued yield and transfers it as USDC to the caller (the vault).
+     * @dev Like `harvestYield`, but routes the realized yield back to `msg.sender` instead of YieldShift,
+     *      so the caller can apply the protocol's own distribution policy (hedger/user/treasury split).
+     *      Realizes only the amount above tracked principal; principal is left untouched.
+     * @return realizedYield Yield realized and transferred to the caller in USDC (6 decimals).
+     * @custom:security Implementations should restrict unauthorized callers.
+     * @custom:validation Implementations should validate source state before harvesting.
+     * @custom:state-changes Realizes yield and transfers USDC out to the caller; principal unchanged.
+     * @custom:events Implementations should emit harvest/transfer events.
+     * @custom:errors Reverts on invalid state or downstream integration failure.
+     * @custom:reentrancy Implementations should enforce CEI/nonReentrant where needed.
+     * @custom:access Access control is implementation-defined.
+     * @custom:oracle No mandatory oracle dependency at interface level.
+     */
+    function harvestYieldToVault() external returns (uint256 realizedYield);
+
+    /**
      * @notice Returns total underlying value currently controlled by the adapter.
      * @dev View helper for exposure accounting (principal + accrued yield).
      * @return underlyingBalance Underlying USDC-equivalent balance (6 decimals).

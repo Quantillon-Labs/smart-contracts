@@ -195,6 +195,31 @@ contract MorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalS
     }
 
     /**
+     * @notice Harvests accrued yield from Morpho and transfers it as USDC to the caller (the vault).
+     * @dev Withdraws only the amount above tracked principal, then transfers it to `msg.sender`
+     *      instead of routing to YieldShift, so the caller can apply its own distribution policy.
+     * @return realizedYield USDC yield harvested and transferred to the caller (6 decimals).
+     * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
+     * @custom:validation Returns zero when no yield is available; reverts only on downstream failures.
+     * @custom:state-changes Leaves `principalDeposited` unchanged; transfers realized USDC to the caller.
+     * @custom:events Emits downstream transfer events from dependencies.
+     * @custom:errors Reverts on downstream withdrawal or transfer failures.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Restricted to vault manager role.
+     * @custom:oracle No oracle dependencies.
+     */
+    function harvestYieldToVault() external override onlyRole(VAULT_MANAGER_ROLE) nonReentrant returns (uint256 realizedYield) {
+        uint256 currentUnderlying = morphoVault.totalUnderlyingOf(address(this));
+        if (currentUnderlying <= principalDeposited) return 0;
+
+        uint256 availableYield = currentUnderlying - principalDeposited;
+        realizedYield = morphoVault.withdrawUnderlying(availableYield, address(this));
+        if (realizedYield == 0) return 0;
+
+        USDC.safeTransfer(msg.sender, realizedYield);
+    }
+
+    /**
      * @notice Returns current underlying balance controlled by this adapter.
      * @dev Read helper used by QuantillonVault for exposure accounting.
      * @return underlyingBalance Underlying USDC-equivalent balance in Morpho.

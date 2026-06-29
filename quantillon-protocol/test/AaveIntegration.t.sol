@@ -364,6 +364,17 @@ contract MockAaveVault {
         harvestCalls += 1;
         return harvestAmount;
     }
+
+    // Realizes accrued yield as USDC to the caller (mirrors adapter.harvestYieldToVault()).
+    function harvestYieldToVault() external returns (uint256) {
+        uint256 realized = accruedYield;
+        if (realized == 0) return 0;
+        accruedYield = 0;
+        totalWithdrawn += realized;
+        // forge-lint: disable-next-line(erc20-unchecked-transfer)
+        usdc.transfer(msg.sender, realized);
+        return realized;
+    }
 }
 
 /**

@@ -194,6 +194,46 @@ contract MetaMorphoStakingVaultAdapter is AccessControl, ReentrancyGuard, IExter
     }
 
     /**
+     * @notice Harvests accrued ERC-4626 share yield and transfers it as USDC to the caller (the vault).
+     * @dev Like `harvestYield`, but transfers the realized USDC to `msg.sender` instead of routing to
+     *      YieldShift, so the caller can apply its own distribution policy. Caps to the vault's liquid
+     *      withdrawable amount and leaves tracked principal unchanged.
+     * @return realizedYield USDC yield harvested and transferred to the caller (6 decimals).
+     * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
+     * @custom:validation Returns zero when no yield is available; reverts only on downstream failures.
+     * @custom:state-changes Leaves `principalDeposited` unchanged; transfers realized USDC to the caller.
+     * @custom:events Emits downstream transfer events from dependencies.
+     * @custom:errors Reverts with `InvalidAmount` on withdrawal mismatch or downstream failures.
+     * @custom:reentrancy Protected by `nonReentrant`.
+     * @custom:access Restricted to vault manager role.
+     * @custom:oracle No oracle dependencies.
+     */
+    function harvestYieldToVault()
+        external
+        override
+        onlyRole(VAULT_MANAGER_ROLE)
+        nonReentrant
+        returns (uint256 realizedYield)
+    {
+        uint256 currentUnderlying = _totalUnderlying();
+        if (currentUnderlying <= principalDeposited) return 0;
+
+        uint256 availableYield = currentUnderlying - principalDeposited;
+        uint256 liquidAssets = metaMorphoVault.maxWithdraw(address(this));
+        realizedYield = availableYield < liquidAssets ? availableYield : liquidAssets;
+        if (realizedYield == 0) return 0;
+
+        uint256 balanceBefore = USDC.balanceOf(address(this));
+        uint256 sharesBurned = metaMorphoVault.withdraw(realizedYield, address(this), address(this));
+        if (sharesBurned == 0) revert CommonErrorLibrary.InvalidAmount();
+
+        uint256 received = USDC.balanceOf(address(this)) - balanceBefore;
+        if (received < realizedYield) revert CommonErrorLibrary.InvalidAmount();
+
+        USDC.safeTransfer(msg.sender, realizedYield);
+    }
+
+    /**
      * @notice Returns the USDC value of this adapter's MetaMorpho shares.
      * @dev Read helper used by QuantillonVault for exposure accounting; delegates to `_totalUnderlying`.
      * @return underlyingBalance Underlying USDC-equivalent balance held via ERC-4626 shares.

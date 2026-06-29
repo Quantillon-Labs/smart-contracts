@@ -34,6 +34,18 @@ This note describes the current `vaultId`-based runtime behavior for staking, mi
 - `_mintQEUROCommit` moves net amount from held balance to per-vault principal accounting when `targetVaultId != 0`.
 - `_autoDeployToVault(vaultId, usdcAmount)` deposits through configured adapter and emits `UsdcDeployedToExternalVault`.
 
+## Yield Distribution to Stakers
+
+`harvestAndDistributeVaultYield(vaultId)` (`YIELD_DISTRIBUTOR_ROLE`) realizes the adapter's accrued
+yield into the vault and splits it three ways: **hedger funding first** (absolute, time-prorated on
+the deployed notional), then the **staked-user share** credited into stQEURO via `creditVaultYield`
+(rising share price), then the **remainder to treasury**. This is the path that actually rewards
+stQEURO holders. See **[Staking Yield Distribution](./Staking-Yield-Distribution.md)** for the full
+model, parameters (`fundingRateAnnualBps`, `hedgerYieldRecipient`), and operator runbook.
+
+> The legacy `harvestVaultYield` (below) routes yield to YieldShift and does **not** move the stQEURO
+> share price; it serves the hedger-pool / YieldShift accounting path.
+
 ## Redemption Flow
 
 `redeemQEURO(qeuroAmount, minUsdcOut)` (normal mode):
@@ -64,7 +76,10 @@ Liquidation-mode redemption uses the same external-withdraw planning pattern.
 - `setStakingVault(vaultId, adapter, active)` (`GOVERNANCE_ROLE`)
 - `setDefaultStakingVaultId(vaultId)` (`GOVERNANCE_ROLE`)
 - `setRedemptionPriority(vaultIds[])` (`GOVERNANCE_ROLE`)
-- `harvestVaultYield(vaultId)` (`GOVERNANCE_ROLE`)
+- `harvestAndDistributeVaultYield(vaultId)` (`YIELD_DISTRIBUTOR_ROLE`) — harvest + 3-way split to stakers/hedger/treasury
+- `creditVaultYield(vaultId, usdcAmount)` (`YIELD_DISTRIBUTOR_ROLE`) — credit USDC into stQEURO as QEURO backing
+- `setFundingRateAnnualBps(bps)` / `setHedgerYieldRecipient(addr)` (`GOVERNANCE_ROLE`)
+- `harvestVaultYield(vaultId)` (`GOVERNANCE_ROLE`) — legacy harvest to YieldShift (no share-price effect)
 - `deployUsdcToVault(vaultId, usdcAmount)` (`VAULT_OPERATOR_ROLE`)
 
 Factory binding:
@@ -91,6 +106,8 @@ Operational:
 - `UsdcDeployedToExternalVault`
 - `UsdcWithdrawnFromExternalVault`
 - `ExternalVaultYieldHarvested`
+- `VaultYieldDistributed` (harvest + 3-way split)
+- `FundingRateUpdated`, `HedgerYieldRecipientUpdated`
 
 ## Practical Ops Notes
 

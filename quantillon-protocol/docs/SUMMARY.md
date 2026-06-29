@@ -10,6 +10,7 @@
 - [Deployment Guide](Deployment.md)
 - [stQEUROFactory Technical Upgrade](stQEUROFactory.md)
 - [Multi-Vault Staking Runtime Flow](Multi-Vault-Staking-Flow.md)
+- [Staking Yield Distribution](Staking-Yield-Distribution.md)
 - [External Vault Onboarding Runbook](External-Vault-Onboarding-Runbook.md)
 # src
   - [❱ core](src/core/README.md)

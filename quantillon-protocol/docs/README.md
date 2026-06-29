@@ -31,6 +31,9 @@ Detailed technical note for the multi-vault staking refactor (`stQEUROFactory`, 
 ### [Multi-Vault Staking Runtime Flow](./Multi-Vault-Staking-Flow.md)
 Contract runtime behavior for mint/stake/redeem/hedger flows after the `vaultId` refactor (default vault, redemption priority, adapter routing).
 
+### [Staking Yield Distribution](./Staking-Yield-Distribution.md)
+How yield reaches stQEURO stakers: the share-price accrual model, the hedger-first three-way split (hedger funding / stakers / treasury), `harvestAndDistributeVaultYield`, parameters, roles, events, and the operator runbook.
+
 ### [External Vault Onboarding Runbook](./External-Vault-Onboarding-Runbook.md)
 Operator guide for post-core onboarding with `setup-external-vaults.sh` (prereqs, parameters, examples, verification).
 

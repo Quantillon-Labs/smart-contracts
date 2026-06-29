@@ -65,6 +65,7 @@ library StakingYieldLibrary {
      * @custom:access Internal protocol use (linked library).
      * @custom:oracle No oracle dependency in this library.
      */
+    // slither-disable-next-line timestamp
     function harvestAndSplit(DistributeParams memory p)
         external
         returns (uint256 realizedYield, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare)

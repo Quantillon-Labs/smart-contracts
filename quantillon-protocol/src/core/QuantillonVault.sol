@@ -1815,6 +1815,7 @@ contract QuantillonVault is
      * @custom:access Internal.
      * @custom:oracle Requires fresh validated EUR/USD and USDC/USD oracle reads.
      */
+    // slither-disable-next-line reentrancy-benign
     function _creditVaultYield(uint256 vaultId, uint256 usdcAmount) internal returns (uint256 qeuroMinted) {
         address stToken = stQEUROTokenByVaultId[vaultId];
         if (stToken == address(0)) revert CommonErrorLibrary.InvalidVault();
@@ -1908,6 +1909,7 @@ contract QuantillonVault is
      * @custom:access Restricted to `YIELD_DISTRIBUTOR_ROLE`.
      * @custom:oracle Credit path requires fresh validated EUR/USD and USDC/USD oracle reads.
      */
+    // slither-disable-next-line reentrancy-benign
     function harvestAndDistributeVaultYield(uint256 vaultId)
         external
         nonReentrant

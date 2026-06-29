@@ -42,31 +42,9 @@ contract MockUSDCForAdapter {
 }
 
 /**
- * @title MockYieldShiftForAdapter
- * @notice Minimal YieldShift mock that records addYield calls.
- */
-contract MockYieldShiftForAdapter {
-    uint256 public lastVaultId;
-    uint256 public lastAmount;
-    bytes32 public lastSource;
-    uint256 public totalYieldAdded;
-
-    function addYield(uint256 vaultId, uint256 amount, bytes32 source) external {
-        lastVaultId  = vaultId;
-        lastAmount   = amount;
-        lastSource   = source;
-        totalYieldAdded += amount;
-    }
-
-    function currentYieldShift() external pure returns (uint256) {
-        return 5000;
-    }
-}
-
-/**
  * @title AaveStakingVaultAdapterTest
  * @notice Unit tests for AaveStakingVaultAdapter.
- * @dev Covers deposit, withdraw, harvestYield, totalUnderlying, and governance functions.
+ * @dev Covers deposit, withdraw, harvestYieldToVault, totalUnderlying, and governance functions.
  * @author Quantillon Labs
  * @custom:security-contact team@quantillon.money
  */
@@ -78,7 +56,6 @@ contract AaveStakingVaultAdapterTest is Test {
     AaveStakingVaultAdapter public adapter;
     MockAaveVault public mockVault;
     MockUSDCForAdapter public usdc;
-    MockYieldShiftForAdapter public yieldShift;
 
     address public admin       = address(0x1);
     // admin is granted VAULT_MANAGER_ROLE in constructor; vaultMgr mirrors it for clarity
@@ -86,7 +63,6 @@ contract AaveStakingVaultAdapterTest is Test {
     address public yieldSource = address(0x3);
     address public other       = address(0x9);
 
-    uint256 public constant VAULT_ID      = 1;
     uint256 public constant DEPOSIT_AMT   = 1000e6; // 1000 USDC
     uint256 public constant YIELD_AMT     = 100e6;  //  100 USDC
 
@@ -97,8 +73,7 @@ contract AaveStakingVaultAdapterTest is Test {
     function setUp() public {
         usdc       = new MockUSDCForAdapter();
         mockVault  = new MockAaveVault(address(usdc));
-        yieldShift = new MockYieldShiftForAdapter();
-        adapter    = new AaveStakingVaultAdapter(admin, address(usdc), address(mockVault), address(yieldShift), VAULT_ID);
+        adapter    = new AaveStakingVaultAdapter(admin, address(usdc), address(mockVault));
 
         // Fund vaultMgr
         usdc.mint(vaultMgr,    10_000e6);
@@ -129,23 +104,7 @@ contract AaveStakingVaultAdapterTest is Test {
      */
     function test_Constructor_ZeroAdmin_Reverts() public {
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
-        new AaveStakingVaultAdapter(address(0), address(usdc), address(mockVault), address(yieldShift), VAULT_ID);
-    }
-
-    /**
-     * @notice Constructor reverts on zero vault id.
-     * @custom:security Validates constructor vault id guard
-     * @custom:validation Reverts with InvalidVault
-     * @custom:state-changes No state changes
-     * @custom:events No events
-     * @custom:errors InvalidVault
-     * @custom:reentrancy Not applicable
-     * @custom:access No restrictions
-     * @custom:oracle No dependency
-     */
-    function test_Constructor_ZeroVaultId_Reverts() public {
-        vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
-        new AaveStakingVaultAdapter(admin, address(usdc), address(mockVault), address(yieldShift), 0);
+        new AaveStakingVaultAdapter(address(0), address(usdc), address(mockVault));
     }
 
     // =============================================================================
@@ -257,17 +216,17 @@ contract AaveStakingVaultAdapterTest is Test {
     // =============================================================================
 
     /**
-     * @notice harvestYield routes excess beyond principal to YieldShift.
+     * @notice harvestYieldToVault transfers excess beyond principal to the caller (the vault).
      * @custom:security No security implications - unit test
-     * @custom:validation Verifies yield is routed correctly
-     * @custom:state-changes Principal unchanged; yield sent to YieldShift
-     * @custom:events addYield called on YieldShift
+     * @custom:validation Verifies yield is realized and transferred to the caller
+     * @custom:state-changes Principal unchanged; yield sent to caller
+     * @custom:events Downstream transfer events
      * @custom:errors No errors expected
      * @custom:reentrancy Not applicable
      * @custom:access VAULT_MANAGER_ROLE
      * @custom:oracle No dependency
      */
-    function test_HarvestYield_RoutesToYieldShift() public {
+    function test_HarvestYieldToVault_TransfersToCaller() public {
         vm.prank(vaultMgr);
         adapter.depositUnderlying(DEPOSIT_AMT);
 
@@ -275,17 +234,18 @@ contract AaveStakingVaultAdapterTest is Test {
         vm.prank(yieldSource);
         mockVault.injectYield(YIELD_AMT);
 
+        uint256 balBefore = usdc.balanceOf(vaultMgr);
+
         vm.prank(vaultMgr);
-        uint256 harvested = adapter.harvestYield();
+        uint256 harvested = adapter.harvestYieldToVault();
 
         assertEq(harvested, YIELD_AMT, "Should harvest injected yield");
-        assertEq(yieldShift.totalYieldAdded(), YIELD_AMT, "YieldShift should receive yield");
-        assertEq(yieldShift.lastSource(), bytes32("aave"), "Source should be 'aave'");
-        assertEq(yieldShift.lastVaultId(), VAULT_ID);
+        assertEq(usdc.balanceOf(vaultMgr) - balBefore, YIELD_AMT, "Caller should receive yield");
+        assertEq(adapter.principalDeposited(), DEPOSIT_AMT, "Principal unchanged");
     }
 
     /**
-     * @notice harvestYield returns zero when no yield is available.
+     * @notice harvestYieldToVault returns zero when no yield is available.
      * @custom:security No security implications - unit test
      * @custom:validation Verifies no-yield return value
      * @custom:state-changes No state changes
@@ -295,15 +255,14 @@ contract AaveStakingVaultAdapterTest is Test {
      * @custom:access VAULT_MANAGER_ROLE
      * @custom:oracle No dependency
      */
-    function test_HarvestYield_NoYield_ReturnsZero() public {
+    function test_HarvestYieldToVault_NoYield_ReturnsZero() public {
         vm.prank(vaultMgr);
         adapter.depositUnderlying(DEPOSIT_AMT);
 
         vm.prank(vaultMgr);
-        uint256 harvested = adapter.harvestYield();
+        uint256 harvested = adapter.harvestYieldToVault();
 
         assertEq(harvested, 0);
-        assertEq(yieldShift.totalYieldAdded(), 0);
     }
 
     // =============================================================================
@@ -372,39 +331,5 @@ contract AaveStakingVaultAdapterTest is Test {
         vm.prank(admin);
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
         adapter.setAaveVault(address(0));
-    }
-
-    /**
-     * @notice setYieldVaultId updates vault id.
-     * @custom:security Validates governance role
-     * @custom:validation Updates yieldVaultId
-     * @custom:state-changes Updates yieldVaultId
-     * @custom:events YieldVaultIdUpdated
-     * @custom:errors No errors expected
-     * @custom:reentrancy Not applicable
-     * @custom:access GOVERNANCE_ROLE
-     * @custom:oracle No dependency
-     */
-    function test_SetYieldVaultId_Success() public {
-        vm.prank(admin);
-        adapter.setYieldVaultId(42);
-        assertEq(adapter.yieldVaultId(), 42);
-    }
-
-    /**
-     * @notice setYieldVaultId reverts on zero id.
-     * @custom:security Validates zero-id guard
-     * @custom:validation Reverts with InvalidVault
-     * @custom:state-changes No state changes
-     * @custom:events No events
-     * @custom:errors InvalidVault
-     * @custom:reentrancy Not applicable
-     * @custom:access GOVERNANCE_ROLE
-     * @custom:oracle No dependency
-     */
-    function test_SetYieldVaultId_Zero_Reverts() public {
-        vm.prank(admin);
-        vm.expectRevert(CommonErrorLibrary.InvalidVault.selector);
-        adapter.setYieldVaultId(0);
     }
 }

@@ -40,24 +40,9 @@ interface IExternalStakingVault {
     function withdrawUnderlying(uint256 usdcAmount) external returns (uint256 usdcWithdrawn);
 
     /**
-     * @notice Harvests yield and routes it to YieldShift using adapter-defined source semantics.
-     * @dev Realizes accrued yield without withdrawing tracked principal.
-     * @return harvestedYield Yield harvested in USDC (6 decimals).
-     * @custom:security Implementations should restrict unauthorized callers.
-     * @custom:validation Implementations should validate source state before harvesting.
-     * @custom:state-changes Typically realizes yield and routes it to downstream distribution logic.
-     * @custom:events Implementations should emit harvest/yield-routing events.
-     * @custom:errors Reverts on invalid state or downstream integration failure.
-     * @custom:reentrancy Implementations should enforce CEI/nonReentrant where needed.
-     * @custom:access Access control is implementation-defined.
-     * @custom:oracle No mandatory oracle dependency at interface level.
-     */
-    function harvestYield() external returns (uint256 harvestedYield);
-
-    /**
      * @notice Harvests accrued yield and transfers it as USDC to the caller (the vault).
-     * @dev Like `harvestYield`, but routes the realized yield back to `msg.sender` instead of YieldShift,
-     *      so the caller can apply the protocol's own distribution policy (hedger/user/treasury split).
+     * @dev Routes the realized yield back to `msg.sender` (the vault) so the caller can apply the
+     *      protocol's own distribution policy (hedger/user/treasury split).
      *      Realizes only the amount above tracked principal; principal is left untouched.
      * @return realizedYield Yield realized and transferred to the caller in USDC (6 decimals).
      * @custom:security Implementations should restrict unauthorized callers.

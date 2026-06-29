@@ -32,32 +32,9 @@ contract MockMetaMorphoVault is ERC4626 {
     }
 }
 
-contract MockYieldShiftForMetaMorphoAdapter {
-    using SafeERC20 for IERC20;
-
-    IERC20 public immutable USDC;
-    uint256 public lastVaultId;
-    uint256 public lastAmount;
-    bytes32 public lastSource;
-    uint256 public totalYieldAdded;
-
-    constructor(IERC20 usdc_) {
-        USDC = usdc_;
-    }
-
-    function addYield(uint256 vaultId, uint256 amount, bytes32 source) external {
-        USDC.safeTransferFrom(msg.sender, address(this), amount);
-        lastVaultId = vaultId;
-        lastAmount = amount;
-        lastSource = source;
-        totalYieldAdded += amount;
-    }
-}
-
 contract MetaMorphoStakingVaultAdapterTest is Test {
     MetaMorphoStakingVaultAdapter public adapter;
     MockMetaMorphoVault public metaMorphoVault;
-    MockYieldShiftForMetaMorphoAdapter public yieldShift;
     MockUSDCForMetaMorphoAdapter public usdc;
 
     address public admin = address(0x1);
@@ -65,23 +42,13 @@ contract MetaMorphoStakingVaultAdapterTest is Test {
     address public yieldSource = address(0x3);
     address public other = address(0x9);
 
-    uint256 public constant VAULT_ID = 2;
     uint256 public constant DEPOSIT_AMT = 1_000e6;
     uint256 public constant YIELD_AMT = 100e6;
-    bytes32 public constant YIELD_SOURCE = bytes32("morpho");
 
     function setUp() public {
         usdc = new MockUSDCForMetaMorphoAdapter();
         metaMorphoVault = new MockMetaMorphoVault(IERC20(address(usdc)));
-        yieldShift = new MockYieldShiftForMetaMorphoAdapter(IERC20(address(usdc)));
-        adapter = new MetaMorphoStakingVaultAdapter(
-            admin,
-            address(usdc),
-            address(metaMorphoVault),
-            address(yieldShift),
-            VAULT_ID,
-            YIELD_SOURCE
-        );
+        adapter = new MetaMorphoStakingVaultAdapter(admin, address(usdc), address(metaMorphoVault));
 
         usdc.mint(vaultMgr, 10_000e6);
         usdc.mint(yieldSource, 10_000e6);
@@ -95,27 +62,13 @@ contract MetaMorphoStakingVaultAdapterTest is Test {
 
     function test_Constructor_ZeroAdmin_Reverts() public {
         vm.expectRevert(CommonErrorLibrary.ZeroAddress.selector);
-        new MetaMorphoStakingVaultAdapter(
-            address(0),
-            address(usdc),
-            address(metaMorphoVault),
-            address(yieldShift),
-            VAULT_ID,
-            YIELD_SOURCE
-        );
+        new MetaMorphoStakingVaultAdapter(address(0), address(usdc), address(metaMorphoVault));
     }
 
     function test_Constructor_WrongAsset_Reverts() public {
         MockUSDCForMetaMorphoAdapter otherAsset = new MockUSDCForMetaMorphoAdapter();
         vm.expectRevert(CommonErrorLibrary.InvalidAddress.selector);
-        new MetaMorphoStakingVaultAdapter(
-            admin,
-            address(otherAsset),
-            address(metaMorphoVault),
-            address(yieldShift),
-            VAULT_ID,
-            YIELD_SOURCE
-        );
+        new MetaMorphoStakingVaultAdapter(admin, address(otherAsset), address(metaMorphoVault));
     }
 
     function test_DepositUnderlying_UsesERC4626Deposit() public {
@@ -161,7 +114,7 @@ contract MetaMorphoStakingVaultAdapterTest is Test {
         adapter.withdrawUnderlying(DEPOSIT_AMT);
     }
 
-    function test_HarvestYield_WithdrawsERC4626YieldAndRoutesToYieldShift() public {
+    function test_HarvestYieldToVault_WithdrawsERC4626YieldAndTransfersToCaller() public {
         vm.prank(vaultMgr);
         adapter.depositUnderlying(DEPOSIT_AMT);
 
@@ -172,27 +125,25 @@ contract MetaMorphoStakingVaultAdapterTest is Test {
         uint256 expectedHarvest = underlyingBeforeHarvest - DEPOSIT_AMT;
         assertApproxEqAbs(underlyingBeforeHarvest, DEPOSIT_AMT + YIELD_AMT, 1);
 
+        uint256 balBefore = usdc.balanceOf(vaultMgr);
+
         vm.prank(vaultMgr);
-        uint256 harvested = adapter.harvestYield();
+        uint256 harvested = adapter.harvestYieldToVault();
 
         assertEq(harvested, expectedHarvest);
         assertEq(adapter.principalDeposited(), DEPOSIT_AMT);
         assertApproxEqAbs(adapter.totalUnderlying(), DEPOSIT_AMT, 1);
-        assertEq(yieldShift.totalYieldAdded(), expectedHarvest);
-        assertEq(yieldShift.lastVaultId(), VAULT_ID);
-        assertEq(yieldShift.lastSource(), YIELD_SOURCE);
-        assertEq(usdc.balanceOf(address(yieldShift)), expectedHarvest);
+        assertEq(usdc.balanceOf(vaultMgr) - balBefore, expectedHarvest, "Caller should receive yield");
     }
 
-    function test_HarvestYield_NoYield_ReturnsZero() public {
+    function test_HarvestYieldToVault_NoYield_ReturnsZero() public {
         vm.prank(vaultMgr);
         adapter.depositUnderlying(DEPOSIT_AMT);
 
         vm.prank(vaultMgr);
-        uint256 harvested = adapter.harvestYield();
+        uint256 harvested = adapter.harvestYieldToVault();
 
         assertEq(harvested, 0);
-        assertEq(yieldShift.totalYieldAdded(), 0);
     }
 
     function test_SetMetaMorphoVault_RequiresMatchingAsset() public {
@@ -211,14 +162,5 @@ contract MetaMorphoStakingVaultAdapterTest is Test {
         adapter.setMetaMorphoVault(address(newVault));
 
         assertEq(address(adapter.metaMorphoVault()), address(newVault));
-    }
-
-    function test_SetYieldSource_Success() public {
-        bytes32 newSource = bytes32("morpho1");
-
-        vm.prank(admin);
-        adapter.setYieldSource(newSource);
-
-        assertEq(adapter.yieldSource(), newSource);
     }
 }

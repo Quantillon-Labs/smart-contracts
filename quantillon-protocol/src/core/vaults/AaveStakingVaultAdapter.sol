@@ -7,7 +7,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IExternalStakingVault} from "../../interfaces/IExternalStakingVault.sol";
-import {IYieldShift} from "../../interfaces/IYieldShift.sol";
 import {CommonErrorLibrary} from "../../libraries/CommonErrorLibrary.sol";
 
 interface IMockAaveVault {
@@ -78,37 +77,30 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
 
     IERC20 public immutable USDC;
     IMockAaveVault public aaveVault;
-    IYieldShift public yieldShift;
-    uint256 public yieldVaultId;
     uint256 public principalDeposited;
 
     event AaveVaultUpdated(address indexed oldVault, address indexed newVault);
-    event YieldShiftUpdated(address indexed oldYieldShift, address indexed newYieldShift);
-    event YieldVaultIdUpdated(uint256 indexed oldVaultId, uint256 indexed newVaultId);
 
     /**
      * @notice Initializes Aave adapter dependencies and roles.
      * @param admin Admin address granted governance and manager roles.
      * @param usdc_ USDC token address.
      * @param aaveVault_ Mock Aave vault address.
-     * @param yieldShift_ YieldShift contract address.
-     * @param yieldVaultId_ YieldShift vault id used when routing harvested yield.
      * @dev Grants `DEFAULT_ADMIN_ROLE`, `GOVERNANCE_ROLE`, and `VAULT_MANAGER_ROLE`,
      *      then stores dependency pointers used by the adapter functions.
-     * @custom:security Validates non-zero dependency addresses and vault id.
-     * @custom:validation Reverts on zero address or zero `yieldVaultId_`.
+     * @custom:security Validates non-zero dependency addresses.
+     * @custom:validation Reverts on zero address.
      * @custom:state-changes Initializes role assignments and adapter dependency pointers.
      * @custom:events No events emitted by constructor.
-     * @custom:errors Reverts with `ZeroAddress` or `InvalidVault` on invalid inputs.
+     * @custom:errors Reverts with `ZeroAddress` on invalid inputs.
      * @custom:reentrancy Not applicable - constructor only.
      * @custom:access Public constructor.
      * @custom:oracle No oracle dependencies.
      */
-    constructor(address admin, address usdc_, address aaveVault_, address yieldShift_, uint256 yieldVaultId_) {
-        if (admin == address(0) || usdc_ == address(0) || aaveVault_ == address(0) || yieldShift_ == address(0)) {
+    constructor(address admin, address usdc_, address aaveVault_) {
+        if (admin == address(0) || usdc_ == address(0) || aaveVault_ == address(0)) {
             revert CommonErrorLibrary.ZeroAddress();
         }
-        if (yieldVaultId_ == 0) revert CommonErrorLibrary.InvalidVault();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(GOVERNANCE_ROLE, admin);
@@ -116,8 +108,6 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
 
         USDC = IERC20(usdc_);
         aaveVault = IMockAaveVault(aaveVault_);
-        yieldShift = IYieldShift(yieldShift_);
-        yieldVaultId = yieldVaultId_;
     }
 
     /**
@@ -177,35 +167,9 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
     }
 
     /**
-     * @notice Harvests accrued yield from the Aave vault and routes it to YieldShift.
-     * @return harvestedYield USDC yield harvested and routed (6 decimals).
-     * @dev Computes yield as `totalUnderlyingOf(this) - principalDeposited`, withdraws it,
-     *      and routes it to `yieldShift.addYield`.
-     * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
-     * @custom:validation Reverts only on downstream failures; returns zero when no yield is available.
-     * @custom:state-changes Leaves principal unchanged and routes yield through YieldShift.
-     * @custom:events Emits downstream transfer/yield events from dependencies.
-     * @custom:errors Reverts on downstream withdrawal, approval, or addYield failures.
-     * @custom:reentrancy Protected by `nonReentrant`.
-     * @custom:access Restricted to vault manager role.
-     * @custom:oracle No oracle dependencies.
-     */
-    function harvestYield() external override onlyRole(VAULT_MANAGER_ROLE) nonReentrant returns (uint256 harvestedYield) {
-        uint256 currentUnderlying = aaveVault.totalUnderlyingOf(address(this));
-        if (currentUnderlying <= principalDeposited) return 0;
-
-        uint256 availableYield = currentUnderlying - principalDeposited;
-        harvestedYield = aaveVault.withdrawUnderlying(availableYield, address(this));
-        if (harvestedYield == 0) return 0;
-
-        USDC.safeIncreaseAllowance(address(yieldShift), harvestedYield);
-        yieldShift.addYield(yieldVaultId, harvestedYield, bytes32("aave"));
-    }
-
-    /**
      * @notice Harvests accrued yield from the Aave vault and transfers it as USDC to the caller (the vault).
      * @dev Withdraws only the amount above tracked principal, then transfers it to `msg.sender`
-     *      instead of routing to YieldShift, so the caller can apply its own distribution policy.
+     *      (the vault) so the caller can apply its own distribution policy.
      * @return realizedYield USDC yield harvested and transferred to the caller (6 decimals).
      * @custom:security Restricted to `VAULT_MANAGER_ROLE`; protected by nonReentrant.
      * @custom:validation Returns zero when no yield is available; reverts only on downstream failures.
@@ -262,45 +226,5 @@ contract AaveStakingVaultAdapter is AccessControl, ReentrancyGuard, IExternalSta
         address oldVault = address(aaveVault);
         aaveVault = IMockAaveVault(newAaveVault);
         emit AaveVaultUpdated(oldVault, newAaveVault);
-    }
-
-    /**
-     * @notice Updates YieldShift destination contract.
-     * @param newYieldShift New YieldShift contract address.
-     * @dev Updates the `yieldShift` pointer; future harvested yield is routed to the new contract.
-     * @custom:security Restricted to `GOVERNANCE_ROLE`.
-     * @custom:validation Reverts on zero address input.
-     * @custom:state-changes Updates `yieldShift` dependency pointer.
-     * @custom:events Emits `YieldShiftUpdated`.
-     * @custom:errors Reverts with `ZeroAddress` for invalid input.
-     * @custom:reentrancy No external calls after state change.
-     * @custom:access Restricted to governance role.
-     * @custom:oracle No oracle dependencies.
-     */
-    function setYieldShift(address newYieldShift) external onlyRole(GOVERNANCE_ROLE) {
-        if (newYieldShift == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        address oldYieldShift = address(yieldShift);
-        yieldShift = IYieldShift(newYieldShift);
-        emit YieldShiftUpdated(oldYieldShift, newYieldShift);
-    }
-
-    /**
-     * @notice Updates destination vault id used when routing harvested yield.
-     * @param newYieldVaultId New YieldShift vault id.
-     * @dev Updates the `yieldVaultId` used by `harvestYield` when calling `yieldShift.addYield`.
-     * @custom:security Restricted to `GOVERNANCE_ROLE`.
-     * @custom:validation Reverts when `newYieldVaultId` is zero.
-     * @custom:state-changes Updates `yieldVaultId`.
-     * @custom:events Emits `YieldVaultIdUpdated`.
-     * @custom:errors Reverts with `InvalidVault` for zero id.
-     * @custom:reentrancy No external calls after state change.
-     * @custom:access Restricted to governance role.
-     * @custom:oracle No oracle dependencies.
-     */
-    function setYieldVaultId(uint256 newYieldVaultId) external onlyRole(GOVERNANCE_ROLE) {
-        if (newYieldVaultId == 0) revert CommonErrorLibrary.InvalidVault();
-        uint256 old = yieldVaultId;
-        yieldVaultId = newYieldVaultId;
-        emit YieldVaultIdUpdated(old, newYieldVaultId);
     }
 }

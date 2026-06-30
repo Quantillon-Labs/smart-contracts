@@ -28,11 +28,11 @@
     "deployedAt": 1781771857
   },
   "HedgerPool": {
-    "deployedAt": 1781721151,
-    "gitCommit": "84c4db1",
-    "implementation": "0x7c09faCe43A5295B140481ff618FcbF958771876",
+    "deployedAt": 1782813027,
+    "gitCommit": "5bca505",
+    "implementation": "0x49e0B2e92504166D55e8255ceE3c1C125f623536",
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "stQEUROFactory": {
     "deployedAt": 1781721189,

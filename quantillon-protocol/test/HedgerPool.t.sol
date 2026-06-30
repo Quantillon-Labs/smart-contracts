@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test, console2, stdStorage, StdStorage} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {HedgerPool} from "../src/core/HedgerPool.sol";
 import {TimeProvider} from "../src/libraries/TimeProviderLibrary.sol";
@@ -31,6 +31,8 @@ import {CommonErrorLibrary} from "../src/libraries/CommonErrorLibrary.sol";
  * @custom:security-contact team@quantillon.money
  */
 contract HedgerPoolTestSuite is Test {
+    using stdStorage for StdStorage;
+
     // =============================================================================
     // TEST CONTRACTS AND ADDRESSES
     // =============================================================================
@@ -1023,7 +1025,53 @@ contract HedgerPoolTestSuite is Test {
         // activeHedgers should be 0 after closing the last position
         assertFalse(hedgerPool.hasActiveHedger());
     }
-    
+
+    /**
+     * @notice A position whose tracked size exceeds the global exposure counter (accounting desync)
+     *         must still be closeable — _finalizePosition clamps the decrements instead of underflowing.
+     * @dev Regression for the on-chain Panic 0x11: a live position had positionSize (margin*leverage)
+     *      greater than totalExposure, so exitHedgePosition reverted at `totalExposure -= positionSize`
+     *      and the position became impossible to close. We force the desync, then verify the close
+     *      proceeds and both global totals floor at 0.
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle No oracle dependencies - test function
+     */
+    function test_Position_CloseSurvivesExposureDesync() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        // At open, the single position's size equals the global exposure counter.
+        uint256 positionSize = hedgerPool.totalExposure();
+        assertGt(positionSize, 0, "open should set exposure");
+
+        // Simulate the on-chain desync: force the global exposure counter BELOW this position's size.
+        stdstore.target(address(hedgerPool)).sig("totalExposure()").checked_write(positionSize - 1);
+        assertLt(hedgerPool.totalExposure(), positionSize, "precondition: exposure < positionSize");
+
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            abi.encode(EUR_USD_PRICE_HIGH, true)
+        );
+
+        // Before the clamp fix this reverted with Panic 0x11 (arithmetic underflow).
+        vm.prank(hedger1);
+        hedgerPool.exitHedgePosition(positionId);
+
+        // Position closed and both global totals floored at 0 (clamped, not underflowed).
+        (,,,,,,,,,, bool isActive, , ) = hedgerPool.positions(positionId);
+        assertFalse(isActive, "position should be closed");
+        assertEq(hedgerPool.totalExposure(), 0, "totalExposure floored at 0");
+        assertEq(hedgerPool.totalMargin(), 0, "totalMargin floored at 0");
+    }
+
     /**
      * @notice Test closing non-existent position should revert
      * @dev Verifies that closing invalid positions is prevented
@@ -1715,9 +1763,11 @@ contract HedgerPoolTestSuite is Test {
             assertEq(post.positionSize, 0, "Position size should be zero when margin is zero");
         }
         
-        // totalExposure should NOT be reduced - the loss is already accounted for in redemption payout
-        assertEq(post.totalExposure, pre.totalExposure,
-            "Total exposure should NOT change when realized losses occur during redemption");
+        // totalExposure tracks the recalculated position size (single position): a realized loss
+        // shrinks positionSize and must shrink totalExposure in lockstep. (Previously asserted NOT
+        // to change — that codified the desync bug that later bricked position closes with Panic 0x11.)
+        assertEq(post.totalExposure, uint256(post.positionSize),
+            "Total exposure should stay in sync with the position size after a realized loss");
     }
     
     /**
@@ -1795,9 +1845,11 @@ contract HedgerPoolTestSuite is Test {
         assertEq(uint256(post.positionSize), expectedPositionSize,
             "Position size should maintain leverage ratio after margin increase");
         
-        // totalExposure should NOT be reduced - the profit is already accounted for in redemption payout
-        assertEq(post.totalExposure, pre.totalExposure,
-            "Total exposure should NOT change when realized profits occur during redemption");
+        // totalExposure tracks the recalculated position size (single position): a realized profit
+        // grows positionSize and must grow totalExposure in lockstep. (Previously asserted NOT to
+        // change — that codified the desync bug that later bricked position closes with Panic 0x11.)
+        assertEq(post.totalExposure, uint256(post.positionSize),
+            "Total exposure should stay in sync with the position size after a realized profit");
     }
     
     /**

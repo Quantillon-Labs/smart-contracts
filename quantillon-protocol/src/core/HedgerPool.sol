@@ -1609,8 +1609,14 @@ contract HedgerPool is
         uint256 marginDelta,
         uint256 exposureDelta
     ) internal {
-        totalMargin -= marginDelta;
-        totalExposure -= exposureDelta;
+        // Defensive clamp: a position's tracked margin/size can exceed the global counters if an
+        // accounting desync ever occurs (e.g. realized-PnL margin growth on redeem that grows
+        // positionSize without mirroring into totalExposure). Without flooring at zero, both
+        // exitHedgePosition and emergencyClosePosition revert with Panic 0x11 and the position
+        // becomes impossible to close. Flooring lets the close proceed; closing the last position
+        // then correctly lands both totals at 0.
+        totalMargin -= marginDelta > totalMargin ? totalMargin : marginDelta;
+        totalExposure -= exposureDelta > totalExposure ? totalExposure : exposureDelta;
 
         position.isActive = false;
         
@@ -1917,6 +1923,7 @@ contract HedgerPool is
      */
     function _applyRealizedPnLToMargin(uint256, HedgePosition storage pos, int256 realizedDelta) internal {
         if (realizedDelta == 0) return;
+        uint256 oldPositionSize = uint256(pos.positionSize);
         HedgerPoolRedeemMathLibrary.MarginTransition memory transition = HedgerPoolRedeemMathLibrary.computeMarginTransition(
             totalMargin,
             uint256(pos.margin),
@@ -1930,6 +1937,17 @@ contract HedgerPool is
         // forge-lint: disable-next-line(unsafe-typecast)
         pos.positionSize = uint96(transition.nextPositionSize);
 
+        // ROOT-CAUSE FIX: keep the global exposure counter in sync with the position-size change.
+        // Realizing P&L on redeem recomputes positionSize (= margin*leverage) but this update was
+        // previously missing here, so a realized gain grew positionSize above totalExposure (and a
+        // loss shrank it below) — desyncing the counter and later bricking exitHedgePosition /
+        // emergencyClosePosition with an arithmetic underflow (Panic 0x11) at `totalExposure -= positionSize`.
+        if (transition.nextPositionSize >= oldPositionSize) {
+            totalExposure += transition.nextPositionSize - oldPositionSize;
+        } else {
+            uint256 exposureDrop = oldPositionSize - transition.nextPositionSize;
+            totalExposure -= exposureDrop > totalExposure ? totalExposure : exposureDrop;
+        }
     }
 
     /**

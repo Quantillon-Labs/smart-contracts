@@ -43,11 +43,17 @@ TARGETS=(
   "StorkOracle:src/oracle/StorkOracle.sol"
   "OracleRouter:src/oracle/OracleRouter.sol"
   "SlippageStorage:src/oracle/SlippageStorage.sol"
+  "HyperliquidEurUsdOracle:src/oracle/HyperliquidEurUsdOracle.sol"
   "TimeProvider:src/libraries/TimeProviderLibrary.sol"
   "TimelockUpgradeable:src/core/TimelockUpgradeable.sol"
 )
 
-extract_version() { grep -oE '"[0-9]+\.[0-9]+\.[0-9]+[^"]*"' "$1" 2>/dev/null | head -1 | tr -d '"'; }
+# Anchor on `return "x.y.z"` / `= "x.y.z"`, not the first semver literal in the file —
+# NatSpec examples like `(e.g. "1.0.0")` can precede it.
+extract_version() {
+  grep -oE '(return|=)[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+[^"]*"' "$1" 2>/dev/null \
+    | head -1 | grep -oE '"[^"]*"' | tr -d '"'
+}
 
 outdated=0
 printf '%-22s %-14s %-14s %s\n' "CONTRACT" "DEPLOYED" "SOURCE" "STATUS"

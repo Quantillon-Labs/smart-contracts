@@ -25,7 +25,7 @@ BASELINE_DIR="version-baseline"
 UPDATE=0
 [[ "${1:-}" == "--update" ]] && UPDATE=1
 
-# Deployed contracts (15) + linked libraries (10). Inlined/internal-only libraries have no
+# Deployed contracts (16) + linked libraries (10). Inlined/internal-only libraries have no
 # standalone bytecode; their changes alter the consuming contract's bytecode and are caught there.
 TARGETS=(
   "src/core/QEUROToken.sol:QEUROToken"
@@ -41,12 +41,14 @@ TARGETS=(
   "src/oracle/StorkOracle.sol:StorkOracle"
   "src/oracle/OracleRouter.sol:OracleRouter"
   "src/oracle/SlippageStorage.sol:SlippageStorage"
+  "src/oracle/HyperliquidEurUsdOracle.sol:HyperliquidEurUsdOracle"
   "src/libraries/TimeProviderLibrary.sol:TimeProvider"
   "src/core/TimelockUpgradeable.sol:TimelockUpgradeable"
   "src/libraries/AdminFunctionsLibrary.sol:AdminFunctionsLibrary"
   "src/libraries/HedgerPoolLogicLibrary.sol:HedgerPoolLogicLibrary"
   "src/libraries/HedgerPoolRedeemMathLibrary.sol:HedgerPoolRedeemMathLibrary"
   "src/libraries/QTITokenGovernanceLibrary.sol:QTITokenGovernanceLibrary"
+  "src/libraries/StakingYieldLibrary.sol:StakingYieldLibrary"
   "src/libraries/TreasuryRecoveryLibrary.sol:TreasuryRecoveryLibrary"
   "src/libraries/UserPoolStakingLibrary.sol:UserPoolStakingLibrary"
   "src/libraries/VaultMath.sol:VaultMath"
@@ -56,9 +58,11 @@ TARGETS=(
 
 mkdir -p "$BASELINE_DIR"
 
-# First semver string literal in the file = the version() return / VERSION constant.
+# The version() return / VERSION constant: anchor on `return "x.y.z"` or `= "x.y.z"`, not the
+# first semver literal in the file — NatSpec examples like `(e.g. "1.0.0")` can precede it.
 extract_version() {
-  grep -oE '"[0-9]+\.[0-9]+\.[0-9]+[^"]*"' "$1" 2>/dev/null | head -1 | tr -d '"'
+  grep -oE '(return|=)[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+[^"]*"' "$1" 2>/dev/null \
+    | head -1 | grep -oE '"[^"]*"' | tr -d '"'
 }
 
 fail=0

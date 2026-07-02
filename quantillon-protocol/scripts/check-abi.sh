@@ -34,6 +34,7 @@ CONTRACTS=(
   "src/oracle/StorkOracle.sol:StorkOracle"
   "src/oracle/OracleRouter.sol:OracleRouter"
   "src/oracle/SlippageStorage.sol:SlippageStorage"
+  "src/oracle/HyperliquidEurUsdOracle.sol:HyperliquidEurUsdOracle"
 )
 
 mkdir -p "$BASELINE_DIR"

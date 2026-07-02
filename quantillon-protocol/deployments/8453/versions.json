@@ -8,10 +8,10 @@
   },
   "QuantillonVault": {
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
-    "implementation": "0xb75c5dea7d52a379da9eae48a15a94c18d775c55",
-    "version": "1.0.0",
-    "gitCommit": "84c4db1",
-    "deployedAt": 1781771857
+    "implementation": "0x832037A1909AFaE7BB09bAb64B5662046B476dBf",
+    "version": "1.1.0",
+    "gitCommit": "f161c8b",
+    "deployedAt": 1782756011
   },
   "QTIToken": {
     "deployedAt": 1781721113,
@@ -81,6 +81,13 @@
     "gitCommit": "84c4db1",
     "implementation": "0xD888effF50ef03B777EBE37F36dDbb60211D0f5c",
     "proxy": "0x0fde0ff2566Be3c24AF6D654012dddB4F1Da099b",
+    "version": "1.0.0"
+  },
+  "HyperliquidEurUsdOracle": {
+    "deployedAt": 1782384212,
+    "gitCommit": "7f0f8b0",
+    "implementation": "0xc86e06F293Cc25dFBb4D252b044C7ca0af80B3CC",
+    "proxy": "0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43",
     "version": "1.0.0"
   },
   "TimeProvider": {

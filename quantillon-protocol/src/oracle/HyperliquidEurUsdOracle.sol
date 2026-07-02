@@ -34,6 +34,7 @@ import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 interface ISlippageMidSource {
     /**
      * @notice Returns the latest slippage snapshot for a given source id
+     * @dev Narrow read surface so lightweight test doubles can satisfy the adapter without the full SlippageStorage interface.
      * @param sourceId Source identifier (SOURCE_HYPERLIQUID = 1)
      * @return snapshot Latest snapshot; midPrice (18 decimals) and timestamp are used here
      * @custom:security No security implications - view function
@@ -206,6 +207,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Constructor sets the TimeProvider and disables initializers for the proxy pattern
+     * @dev Stores the immutable TimeProvider and disables initializers on the implementation (UUPS pattern).
      * @param _TIME_PROVIDER Address of the TimeProvider contract
      * @custom:security Validates TimeProvider is non-zero
      * @custom:validation Validates _TIME_PROVIDER != address(0)
@@ -283,6 +285,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Division with rounding to the nearest integer
+     * @dev Half-up integer division used for deviation-bps rounding.
      * @param a Numerator
      * @param b Denominator (must be > 0)
      * @return Rounded result of a / b
@@ -325,6 +328,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Reads the latest Hyperliquid mid and its timestamp from SlippageStorage
+     * @dev try/catch read of the per-source snapshot; returns (0, 0) when SlippageStorage reverts.
      * @return price EUR/USD mid in 18 decimals (0 if unavailable)
      * @return timestamp On-chain write timestamp of the snapshot
      * @custom:security Single external view read of the trusted SlippageStorage
@@ -344,6 +348,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Validates a candidate EUR/USD price against freshness, bounds and deviation
+     * @dev Single validation path combining staleness/zero, min/max bounds, and deviation-vs-baseline checks.
      * @param price Candidate price (18 decimals)
      * @param timestamp Snapshot timestamp
      * @return outPrice The candidate price echoed back (0 if it fails freshness)
@@ -403,6 +408,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Commits an accepted EUR/USD price as the new baseline
+     * @dev One TimeProvider read shared by the stored timestamp and the emitted event.
      * @param eurUsdPrice Accepted EUR/USD price (18 decimals)
      * @custom:security Reached only after validation; advances the deviation baseline
      * @custom:validation Assumes the caller validated the price
@@ -486,6 +492,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Retrieves the USDC/USD price with validation, delegated to the USDC source
+     * @dev Delegates to the configured USDC source; falls back to ($1.00, false) when the source reverts.
      * @return price USDC/USD price in 18 decimals (≈ 1e18)
      * @return isValid True if USDC remains within the source's tolerance
      * @custom:security Delegates to the trusted USDC source; falls back to $1.00 on failure
@@ -507,6 +514,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Returns overall oracle health signals
+     * @dev Aggregates mid freshness, USDC-source validity, circuit breaker and pause state for monitoring.
      * @return isHealthy True if both feeds are fresh, breaker is off and not paused
      * @return eurUsdFresh True if the Hyperliquid mid is fresh and positive
      * @return usdcUsdFresh True if the USDC source reports a valid price
@@ -544,6 +552,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Detailed information about the EUR/USD price
+     * @dev View-only variant of the read path; reuses _validateEurUsd for bounds/deviation.
      * @return currentPrice Current price (may be the fallback)
      * @return lastValidPrice Last validated price stored
      * @return lastUpdate Snapshot timestamp reported by SlippageStorage
@@ -595,6 +604,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Current configuration and circuit breaker state
+     * @dev Returns the configured bounds, staleness window, USDC tolerance and breaker state in one call.
      * @return minPrice Minimum accepted EUR/USD price
      * @return maxPrice Maximum accepted EUR/USD price
      * @return maxStaleness Maximum accepted staleness in seconds
@@ -626,6 +636,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Addresses and decimals of the underlying sources
+     * @dev Reports the SlippageStorage and delegated USDC-source addresses currently wired.
      * @return eurUsdFeedAddress EUR/USD source address (SlippageStorage)
      * @return usdcUsdFeedAddress USDC/USD source address (ChainlinkOracle)
      * @return eurUsdDecimals EUR/USD decimals (18)
@@ -655,6 +666,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Connectivity check for both sources
+     * @dev Best-effort staticcalls to both sources; never reverts.
      * @return eurUsdConnected True if SlippageStorage returns a fresh, positive mid
      * @return usdcUsdConnected True if the USDC source returns a valid price
      * @return eurUsdLatestRound Always 0 (not round-based)
@@ -702,6 +714,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Updates EUR/USD min and max acceptable prices
+     * @dev The bounds gate _validateEurUsd; both must be nonzero with min below max.
      * @param _minPrice Minimum accepted EUR/USD price (18 decimals)
      * @param _maxPrice Maximum accepted EUR/USD price (18 decimals)
      * @custom:security Validates min < max and a sane upper bound
@@ -729,6 +742,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Updates the reported USDC tolerance (validation lives in the USDC source)
+     * @dev Reported via getOracleConfig only — USDC validation itself is delegated to the USDC source.
      * @param newToleranceBps New tolerance in basis points (e.g., 200 = 2%)
      * @custom:security Validates tolerance within 10%
      * @custom:validation Validates newToleranceBps <= 1000
@@ -750,6 +764,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Clears the circuit breaker and attempts to re-seed the baseline
+     * @dev Clears the breaker and attempts to re-seed the deviation baseline from the current mid.
      * @custom:security Re-enables live prices after manual intervention
      * @custom:validation None
      * @custom:state-changes Clears circuitBreakerTriggered and may re-seed the baseline
@@ -767,6 +782,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Manually triggers the circuit breaker (use last valid price)
+     * @dev Forces reads onto the last valid price until reset.
      * @custom:security Forces fallback pricing during incidents
      * @custom:validation None
      * @custom:state-changes Sets circuitBreakerTriggered to true
@@ -787,6 +803,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Updates the maximum accepted staleness of the published mid
+     * @dev Gates _validateTimestamp; capped by MAX_STALENESS_CAP.
      * @param newMaxStaleness New staleness window in seconds (1..HARD_MAX_STALENESS)
      * @custom:security Bounds the staleness window to a safe maximum
      * @custom:validation Validates 0 < newMaxStaleness <= HARD_MAX_STALENESS
@@ -811,6 +828,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Updates the SlippageStorage source contract and source id
+     * @dev Points the adapter at a new SlippageStorage deployment and/or source id.
      * @param _slippageStorage New SlippageStorage contract address
      * @param _sourceId New slippage source id (SOURCE_HYPERLIQUID = 1)
      * @custom:security Validates non-zero source address
@@ -835,6 +853,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Updates the USDC/USD source oracle
+     * @dev Swaps the delegated USDC/USD oracle.
      * @param _usdcSource New USDC/USD source (ChainlinkOracle)
      * @custom:security Validates non-zero source address
      * @custom:validation Validates _usdcSource != address(0)
@@ -857,6 +876,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Updates the treasury address
+     * @dev The treasury receives recovered tokens/ETH from the recovery functions.
      * @param _treasury New treasury address
      * @custom:security Validates non-zero treasury
      * @custom:validation Validates _treasury != address(0)
@@ -879,6 +899,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Pauses all oracle reads
+     * @dev While paused, price reads return the last valid price with isValid=false.
      * @custom:security Emergency halt of price reads
      * @custom:validation None
      * @custom:state-changes Sets paused = true
@@ -894,6 +915,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Unpauses oracle reads
+     * @dev Re-enables live price reads.
      * @custom:security Resumes normal operation
      * @custom:validation None
      * @custom:state-changes Sets paused = false
@@ -909,6 +931,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Recovers ERC20 tokens accidentally sent to the contract, to treasury only
+     * @dev Routed through TreasuryRecoveryLibrary; funds always go to the treasury.
      * @param token Token address to recover
      * @param amount Amount to transfer
      * @custom:security Sends recovered tokens to treasury only
@@ -926,6 +949,7 @@ contract HyperliquidEurUsdOracle is
 
     /**
      * @notice Recovers ETH accidentally sent to the contract, to treasury only
+     * @dev Routed through TreasuryRecoveryLibrary; funds always go to the treasury.
      * @custom:security Sends recovered ETH to treasury only
      * @custom:validation Validates treasury is set and balance is non-zero
      * @custom:state-changes Transfers ETH balance to treasury

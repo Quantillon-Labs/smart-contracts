@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {IVersioned} from "../interfaces/IVersioned.sol";
-
 // =============================================================================
 // IMPORTS - Quantillon interfaces and OpenZeppelin security
 // =============================================================================
 
+import {IVersioned} from "../interfaces/IVersioned.sol";
 import {IOracle} from "../interfaces/IOracle.sol";
 import {IHyperliquidOracle} from "../interfaces/IHyperliquidOracle.sol";
 import {ISlippageStorage} from "../interfaces/ISlippageStorage.sol";
@@ -99,7 +98,7 @@ contract HyperliquidEurUsdOracle is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
 
     // =============================================================================
@@ -253,8 +252,6 @@ contract HyperliquidEurUsdOracle is
         CommonValidationLibrary.validateNonZeroAddress(_slippageStorage, "oracle");
         CommonValidationLibrary.validateNonZeroAddress(_usdcSource, "oracle");
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        CommonValidationLibrary.validateTreasuryAddress(_treasury);
-        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
 
         __AccessControl_init();
         __Pausable_init();
@@ -417,10 +414,11 @@ contract HyperliquidEurUsdOracle is
      * @custom:oracle Reads usdcSource for the emitted event only
      */
     function _commitEurUsdPrice(uint256 eurUsdPrice) internal {
+        uint256 nowTime = TIME_PROVIDER.currentTime();
         lastValidEurUsdPrice = eurUsdPrice;
-        lastPriceUpdateTime = TIME_PROVIDER.currentTime();
+        lastPriceUpdateTime = nowTime;
         lastPriceUpdateBlock = block.number;
-        emit PriceUpdated(eurUsdPrice, _readUsdcForEvent(), TIME_PROVIDER.currentTime());
+        emit PriceUpdated(eurUsdPrice, _readUsdcForEvent(), nowTime);
     }
 
     /**
@@ -476,11 +474,8 @@ contract HyperliquidEurUsdOracle is
             return (lastValidEurUsdPrice, false);
         }
 
+        // _validateEurUsd covers staleness/zero as well as bounds and deviation.
         (uint256 mid, uint256 ts) = _readMid();
-        if (!_validateTimestamp(ts) || mid == 0) {
-            return (lastValidEurUsdPrice, false);
-        }
-
         (price, isValid) = _validateEurUsd(mid, ts);
         if (!isValid) {
             return (lastValidEurUsdPrice, false);
@@ -585,19 +580,8 @@ contract HyperliquidEurUsdOracle is
             if (circuitBreakerTriggered || paused() || isStale) {
                 currentPrice = lastValidEurUsdPrice;
             } else {
-                currentPrice = price;
-                bool isValid = price >= minEurUsdPrice && price <= maxEurUsdPrice;
-                if (isValid && lastValidEurUsdPrice > 0) {
-                    uint256 base = lastValidEurUsdPrice;
-                    uint256 diff = price > base ? price - base : base - price;
-                    uint256 deviationBps = _divRound(diff * BASIS_POINTS, base);
-                    if (deviationBps > MAX_PRICE_DEVIATION) {
-                        isValid = false;
-                    }
-                }
-                if (!isValid) {
-                    currentPrice = lastValidEurUsdPrice;
-                }
+                (, bool isValid) = _validateEurUsd(price, lastUpdate);
+                currentPrice = isValid ? price : lastValidEurUsdPrice;
             }
         } catch {
             lastUpdate = 0;
@@ -885,8 +869,6 @@ contract HyperliquidEurUsdOracle is
      */
     function updateTreasury(address _treasury) external override onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
-        CommonValidationLibrary.validateTreasuryAddress(_treasury);
-        CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

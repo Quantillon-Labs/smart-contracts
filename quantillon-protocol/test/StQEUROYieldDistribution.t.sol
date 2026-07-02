@@ -171,4 +171,86 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         vm.expectRevert();
         vault.harvestAndDistributeVaultYield(VAULT_ID);
     }
+
+    /// @notice When the time-prorated funding accrual exceeds the realized yield, the hedger share is
+    ///         capped at the realized yield and stakers/treasury receive nothing (no principal ponction).
+    function test_harvestAndDistribute_fundingCapBinds() public {
+        _setUpStaking();
+        _seedPositions(20_000e6, 10_000e6);
+        _prime();
+
+        (, , uint256 notional, ) = vault.getVaultExposure(VAULT_ID);
+        uint256 accruedFunding = (notional * FUNDING_RATE_BPS) / 10000; // 1y at 0.5%
+        uint256 yieldUsdc = accruedFunding / 3; // realized yield well below the funding accrual
+        assertGt(yieldUsdc, 0, "fixture sanity: nonzero yield");
+
+        vm.warp(block.timestamp + 365 days);
+        mockAaveVault.setAccruedYield(yieldUsdc);
+
+        uint256 treasuryBefore = usdc.balanceOf(treasury);
+        uint256 shareValueBefore = stToken.convertToAssets(1e18);
+
+        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
+
+        assertEq(realized, yieldUsdc, "realized == accrued yield");
+        assertEq(hedgerShare, realized, "hedger share capped at realized yield");
+        assertEq(userShare, 0, "no staker residual when the cap binds");
+        assertEq(treasuryShare, 0, "no treasury remainder when the cap binds");
+        assertEq(usdc.balanceOf(treasury), treasuryBefore, "treasury untouched");
+        assertEq(stToken.convertToAssets(1e18), shareValueBefore, "share price unchanged");
+    }
+
+    /// @notice With zero realized yield the distribution is a harmless no-op: an all-zero split,
+    ///         no transfers, no share-price movement.
+    function test_harvestAndDistribute_zeroYield_noOp() public {
+        _setUpStaking();
+        _seedPositions(20_000e6, 10_000e6);
+        _prime();
+
+        vm.warp(block.timestamp + 30 days); // funding clock runs, but there is nothing to carve from
+
+        uint256 hedgerBefore = usdc.balanceOf(hedgerSink);
+        uint256 treasuryBefore = usdc.balanceOf(treasury);
+        uint256 shareValueBefore = stToken.convertToAssets(1e18);
+
+        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
+
+        assertEq(realized, 0, "nothing realized");
+        assertEq(hedgerShare + userShare + treasuryShare, 0, "all-zero split");
+        assertEq(usdc.balanceOf(hedgerSink), hedgerBefore, "hedger untouched");
+        assertEq(usdc.balanceOf(treasury), treasuryBefore, "treasury untouched");
+        assertEq(stToken.convertToAssets(1e18), shareValueBefore, "share price unchanged");
+    }
+
+    /// @notice With a per-series yieldFee, the treasury receives treasuryShare + fee while the event
+    ///         reports the PRE-fee userShare; stakers accrue only the net (userShare - fee).
+    function test_harvestAndDistribute_yieldFee_treasuryGetsShareAndFee() public {
+        _setUpStaking();
+        uint256 feeBps = 1000; // 10%
+        vm.prank(admin);
+        stToken.updateYieldParameters(feeBps);
+
+        _seedPositions(20_000e6, 10_000e6);
+        _prime();
+
+        vm.warp(block.timestamp + 365 days);
+        mockAaveVault.setAccruedYield(2_000e6);
+
+        uint256 treasuryBefore = usdc.balanceOf(treasury);
+        uint256 stakedBefore = stToken.totalAssets();
+
+        (uint256 realized, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare) = _distribute();
+        uint256 feeUsdc = (userShare * feeBps) / 10000;
+        assertGt(feeUsdc, 0, "fixture sanity: nonzero fee");
+
+        // Event semantics: userShare is PRE-fee; the fee is carved out inside the credit path.
+        assertEq(hedgerShare + userShare + treasuryShare, realized, "event split conserves realized yield");
+        assertEq(
+            usdc.balanceOf(treasury) - treasuryBefore,
+            treasuryShare + feeUsdc,
+            "treasury receives its share plus the yield fee"
+        );
+        // Stakers accrue the net credit (userShare - fee), valued in QEURO via the oracle price.
+        assertGt(stToken.totalAssets(), stakedBefore, "stakers accrue net of fee");
+    }
 }

@@ -21,7 +21,10 @@ The script performs, for each `--vault` entry:
 2. Register the vault token via `selfRegisterStQEURO(factory, vaultId, vaultName)`.
 3. Configure adapter binding via `setStakingVault(vaultId, adapter, true)`.
 4. Grant `VAULT_MANAGER_ROLE` to `QuantillonVault` **on the adapter** (`adapter.grantRole(VAULT_MANAGER_ROLE, vault)`).
-5. Optional (`--yield-shift`): authorize adapter as yield source + bind source to vault id.
+
+> Adapter yield is distributed via `QuantillonVault.harvestAndDistributeVaultYield` — grant
+> `YIELD_DISTRIBUTOR_ROLE` to the yield keeper separately (the former `--yield-shift` wiring was
+> removed with the YieldShift harvest path, d776e83).
 
 > **Audit N-1 — required, do not skip.** The vault calls `adapter.depositUnderlying` /
 > `withdrawUnderlying` / `harvestYieldToVault`, all gated by `VAULT_MANAGER_ROLE` on the adapter. The
@@ -36,7 +39,6 @@ The script performs, for each `--vault` entry:
 Then it sets:
 - `setDefaultStakingVaultId(...)`
 - `setRedemptionPriority(...)`
-- optional strict source binding enforcement (`--enforce-source-bindings`)
 
 ## Prerequisites
 
@@ -56,8 +58,6 @@ Then it sets:
   - `vaultName`: uppercase/digits token label (factory validation applies)
   - `adapterAddress`: external strategy adapter for that vault id
 - `--default-vault-id <vaultId>`: optional, defaults to first `--vault` item
-- `--yield-shift <address>`: optional `YieldShift` address for source auth/binding
-- `--enforce-source-bindings`: optional, enables strict adapter-to-vault enforcement in `YieldShift`
 
 ## Ready-To-Run Examples
 
@@ -69,11 +69,9 @@ Then it sets:
   --private-key "$PRIVATE_KEY" \
   --quantillon-vault 0xQuantillonVault \
   --factory 0xStQEUROFactory \
-  --yield-shift 0xYieldShift \
   --vault 1:AAVE1:0xMockAaveAdapter \
   --vault 2:MORPHO1:0xMorphoAdapter \
-  --default-vault-id 2 \
-  --enforce-source-bindings
+  --default-vault-id 2
 ```
 
 ### Base Sepolia (`84532`)
@@ -84,7 +82,6 @@ Then it sets:
   --private-key "$PRIVATE_KEY" \
   --quantillon-vault 0xQuantillonVault \
   --factory 0xStQEUROFactory \
-  --yield-shift 0xYieldShift \
   --vault 1:AAVE1:0xAdapterA \
   --vault 2:MORPHO1:0xAdapterB
 ```

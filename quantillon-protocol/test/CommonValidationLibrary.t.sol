@@ -262,26 +262,6 @@ contract CommonValidationLibraryTest is Test {
     }
 
     // =============================================================================
-    // THRESHOLD VALIDATION TESTS
-    // =============================================================================
-
-    /**
-     * @notice Test validateFee passes when fee <= max
-     */
-    function test_ValidateFee_ValidFee_Passes() public view {
-        harness.validateFee(100, 500);
-        harness.validateFee(500, 500);
-    }
-
-    /**
-     * @notice Test validateFee reverts when fee > max
-     */
-    function test_ValidateFee_ExceedsMax_Reverts() public {
-        vm.expectRevert(CommonErrorLibrary.InvalidParameter.selector);
-        harness.validateFee(600, 500);
-    }
-
-    // =============================================================================
     // FUZZ TESTS
     // =============================================================================
 
@@ -358,10 +338,6 @@ contract CommonValidationHarness {
 
     function validateTreasuryAddress(address treasury) external pure {
         CommonValidationLibrary.validateTreasuryAddress(treasury);
-    }
-
-    function validateFee(uint256 fee, uint256 maxFee) external pure {
-        CommonValidationLibrary.validateFee(fee, maxFee);
     }
 
 }

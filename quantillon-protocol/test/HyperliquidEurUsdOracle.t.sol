@@ -370,6 +370,35 @@ contract HyperliquidEurUsdOracleTest is Test {
         assertEq(oracle.maxEurUsdPrice(), 2e18);
     }
 
+    function test_UpdateUsdcSource() public {
+        MockUsdcOracle u2 = new MockUsdcOracle();
+        u2.setUsdc(0.999e18, true);
+        vm.prank(admin);
+        oracle.updateUsdcSource(address(u2));
+        (uint256 price, bool isValid) = oracle.getUsdcUsdPrice();
+        assertTrue(isValid);
+        assertEq(price, 0.999e18);
+    }
+
+    function test_UpdateTreasury() public {
+        address newTreasury = address(0x9);
+        vm.prank(admin);
+        oracle.updateTreasury(newTreasury);
+        assertEq(oracle.treasury(), newTreasury);
+    }
+
+    function test_UpdateTreasury_RevertsOnZero() public {
+        vm.prank(admin);
+        vm.expectRevert();
+        oracle.updateTreasury(address(0));
+    }
+
+    function test_UpdateTreasury_OnlyAdmin() public {
+        vm.prank(stranger);
+        vm.expectRevert();
+        oracle.updateTreasury(address(0x9));
+    }
+
     // ---- Access control ----
 
     function test_AccessControl_OnlyManager() public {

@@ -179,7 +179,7 @@ interface IHedgerPool {
      * @custom:security Enforces that caller is an eligible hedger.
      * @custom:validation Reverts if there is no claimable amount.
      * @custom:state-changes Decreases internal reward pools and updates last‑claim markers.
-     * @custom:events Emits `HedgingRewardsClaimed`.
+     * @custom:events None (the HedgingRewardsClaimed event was removed in v1.0.1).
      * @custom:errors Reverts with protocol‑specific reward errors.
      * @custom:reentrancy Protected by nonReentrant modifier in implementation.
      * @custom:access Public – callable by hedgers.
@@ -331,7 +331,7 @@ interface IHedgerPool {
      * @custom:security Restricted to governance; validates hedger is non‑zero.
      * @custom:validation May enforce that previous rotation has completed.
      * @custom:state-changes Updates single‑hedger configuration state.
-     * @custom:events Emits `SingleHedgerRotationProposed`.
+     * @custom:events Emits `SingleHedgerRotationApplied`.
      * @custom:errors Reverts on invalid hedger address.
      * @custom:reentrancy Not applicable – configuration only.
      * @custom:access Restricted to governance roles.

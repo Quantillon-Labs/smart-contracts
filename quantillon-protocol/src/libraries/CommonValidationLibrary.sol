@@ -236,22 +236,4 @@ library CommonValidationLibrary {
         if (treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
     }
 
-    /**
-     * @notice Validates fee amount against maximum allowed fee
-     * @dev Reverts with InvalidParameter if fee exceeds maximum
-     * @param fee The fee amount to validate
-     * @param maxFee The maximum allowed fee
-     * @custom:security Pure; no state change
-     * @custom:validation Reverts if fee > maxFee
-     * @custom:state-changes None
-     * @custom:events None
-     * @custom:errors InvalidParameter
-     * @custom:reentrancy No external calls
-     * @custom:access Internal library
-     * @custom:oracle None
-     */
-    function validateFee(uint256 fee, uint256 maxFee) internal pure {
-        if (fee > maxFee) revert CommonErrorLibrary.InvalidParameter();
-    }
-
 }

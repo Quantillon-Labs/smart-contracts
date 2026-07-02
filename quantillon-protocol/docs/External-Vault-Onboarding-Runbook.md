@@ -24,7 +24,7 @@ The script performs, for each `--vault` entry:
 5. Optional (`--yield-shift`): authorize adapter as yield source + bind source to vault id.
 
 > **Audit N-1 — required, do not skip.** The vault calls `adapter.depositUnderlying` /
-> `withdrawUnderlying` / `harvestYield`, all gated by `VAULT_MANAGER_ROLE` on the adapter. The
+> `withdrawUnderlying` / `harvestYieldToVault`, all gated by `VAULT_MANAGER_ROLE` on the adapter. The
 > adapter constructor grants that role only to its admin, so without step 4 every external-vault
 > deploy / redeem-sourcing / harvest **reverts**. Step 4's signer must hold the adapter's
 > `DEFAULT_ADMIN_ROLE`.

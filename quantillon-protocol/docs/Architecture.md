@@ -202,7 +202,7 @@ The staking layer now supports a multi-vault model through `stQEUROFactory`: eac
 
 **Key Features**:
 - **HyperliquidEurUsdOracle** (active): mirrors the Hyperliquid `xyz:EUR` perpetual mid — the venue where the protocol's EUR/USD hedge executes — so QEURO mint/redeem aligns with the hedge. Reads the mid from `SlippageStorage` (published on-chain by the off-chain Slippage Monitor) and delegates USDC/USD to the `ChainlinkOracle`. Configurable staleness (default 900s), bounds (0.80–1.40e18), 5% deviation circuit breaker, last-valid fallback.
-- **ChainlinkOracle** (fallback): Chainlink AggregatorV3 EUR/USD + USDC/USD; 1-hour staleness, 5% deviation circuit breaker. Also the protocol's USDC/USD validation source.
+- **ChainlinkOracle** (fallback): Chainlink AggregatorV3 EUR/USD + USDC/USD; 2-hour EUR/USD staleness (25h for USDC/USD, matching its daily heartbeat), 5% deviation circuit breaker. Also the protocol's USDC/USD validation source.
 - **StorkOracle**: Stork Network `TemporalNumericValue` feeds (legacy/parked; the slot-1 position is now occupied by `HyperliquidEurUsdOracle`).
 - Mock versions available (`MockChainlinkOracle`, `MockStorkOracle`) for local/testnet.
 - Full design: **[Oracle Architecture](Oracle-Architecture.md)**.
@@ -412,7 +412,7 @@ Governance Flow:
 **Oracle System (OracleRouter + ChainlinkOracle + StorkOracle)**:
 - OracleRouter implements `IOracle` — all protocol contracts use this interface
 - Active oracle is switchable by governance (Chainlink ↔ Stork) without contract changes
-- ChainlinkOracle: EUR/USD + USDC/USD via Chainlink AggregatorV3; 1 hr staleness check; 5% deviation circuit breaker
+- ChainlinkOracle: EUR/USD + USDC/USD via Chainlink AggregatorV3; 2 hr EUR/USD staleness check (25 hr USDC/USD); 5% deviation circuit breaker
 - StorkOracle: EUR/USD + USDC/USD via Stork Network; same staleness/deviation validation
 - MockChainlinkOracle + MockStorkOracle available for local/testnet development
 

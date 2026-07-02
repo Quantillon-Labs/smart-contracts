@@ -53,10 +53,10 @@ interface IHyperliquidOracle is IOracle {
     /// @notice Updates the reported USDC tolerance in basis points. ORACLE_MANAGER_ROLE.
     function updateUsdcTolerance(uint256 newToleranceBps) external;
 
-    /// @notice Clears the circuit breaker and attempts to re-seed the price. ORACLE_MANAGER_ROLE.
+    /// @notice Clears the circuit breaker and attempts to re-seed the price. EMERGENCY_ROLE.
     function resetCircuitBreaker() external;
 
-    /// @notice Manually triggers the circuit breaker (use last valid price). ORACLE_MANAGER_ROLE.
+    /// @notice Manually triggers the circuit breaker (use last valid price). EMERGENCY_ROLE.
     function triggerCircuitBreaker() external;
 
     // ---- Adapter-specific configuration ----

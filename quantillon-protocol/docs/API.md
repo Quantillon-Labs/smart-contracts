@@ -141,8 +141,11 @@ Mints QEURO and routes collateral to a specific external vault adapter.
 ##### `mintAndStakeQEURO(uint256 usdcAmount, uint256 minQeuroOut, uint256 vaultId, uint256 minStQEUROOut) → (uint256, uint256)`
 One-step flow: mint QEURO and immediately stake into `stQEURO{vaultName}` for the selected `vaultId`.
 
-##### `harvestVaultYield(uint256 vaultId) → (uint256)`
-Triggers yield harvest for a specific external vault adapter.
+##### `harvestAndDistributeVaultYield(uint256 vaultId)`
+Realizes a vault's external yield and splits it between hedger funding, stQEURO stakers, and treasury (`YIELD_DISTRIBUTOR_ROLE`; emits `VaultYieldDistributed`).
+
+##### `creditVaultYield(uint256 vaultId, uint256 usdcAmount) → (uint256)`
+Credits externally realized USDC yield into a vault's stQEURO backing (`YIELD_DISTRIBUTOR_ROLE`).
 
 ##### `deployUsdcToVault(uint256 vaultId, uint256 usdcAmount)`
 Operator function to manually deploy vault-held USDC into a selected external vault adapter.
@@ -157,7 +160,7 @@ event ProtocolFeeRouted(string sourceType, uint256 totalFee, uint256 hedgerReser
 event StakingVaultConfigured(uint256 indexed vaultId, address indexed adapter, bool active);
 event UsdcDeployedToExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
 event UsdcWithdrawnFromExternalVault(uint256 indexed vaultId, uint256 indexed usdcAmount, uint256 principalInVault);
-event ExternalVaultYieldHarvested(uint256 indexed vaultId, uint256 harvestedYield);
+event VaultYieldDistributed(uint256 indexed vaultId, uint256 realizedYield, uint256 hedgerShare, uint256 userShare, uint256 treasuryShare);
 ```
 
 ---

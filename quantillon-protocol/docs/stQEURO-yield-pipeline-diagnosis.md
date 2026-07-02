@@ -1,7 +1,9 @@
 # stQEURO Staking Yield Pipeline — Diagnosis & Required Fix
 
-**Status:** Open — yield never reaches stQEURO stakers.
-**Severity:** High (core staking value proposition is non-functional).
+**Status:** Resolved in QuantillonVault v1.1.0 (2026-06-29) — `harvestAndDistributeVaultYield` +
+`StakingYieldLibrary` implement the pipeline below; a daily yield-keeper operates it. Kept as the
+historical diagnosis that motivated the fix.
+**Severity (at diagnosis):** High (core staking value proposition was non-functional).
 **Scope:** `QuantillonVault`, `MorphoStakingVaultAdapter`, `YieldShift`, role/ops config.
 **Verified against:** Base mainnet (chainId 8453), 2026‑06‑29, block ~47,968,200.
 **Author:** investigation via dApp + `../smart-contracts` + on-chain reads.

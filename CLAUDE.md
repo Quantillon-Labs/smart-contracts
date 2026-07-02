@@ -138,7 +138,7 @@ Hedgers are SHORT EUR (they owe QEURO to users):
 
 ### Oracle Architecture
 
-`OracleRouter` implements `IOracle` and routes to either `ChainlinkOracle` or `StorkOracle`. All protocol contracts depend only on `IOracle` (oracle-agnostic). Both oracle adapters validate EUR/USD and USDC/USD feeds with 1hr staleness checks and circuit breakers.
+`OracleRouter` implements `IOracle` and routes to either `ChainlinkOracle` or `StorkOracle`. All protocol contracts depend only on `IOracle` (oracle-agnostic). Both oracle adapters validate EUR/USD and USDC/USD feeds with staleness checks (ChainlinkOracle: 2h EUR/USD, 25h USDC/USD) and circuit breakers.
 
 - **`getEurUsdPrice()` is non-`view` by design**: on a fresh valid read it commits the price into the deviation-baseline cache (`lastValidEurUsdPrice`/`lastPriceUpdateTime`/`lastPriceUpdateBlock`) and emits `PriceUpdated`. So every price read is a state write, and consumers such as `QuantillonVault.shouldTriggerLiquidationLive()` are non-`view` too. Integrators that only need a cheap read should use the cached getters rather than `getEurUsdPrice()`.
 - **Failover is manual**: `OracleRouter` routes to a single `activeOracle` with no automatic fallback or disagreement handling. If the active oracle returns `isValid=false`, callers revert; switching is a deliberate governance action via `switchOracle` (`ORACLE_MANAGER_ROLE`). Operate a monitor/alert on oracle health.
@@ -183,7 +183,7 @@ contract MyContract is Initializable, SecureUpgradeable {
 
 ## Architecture Patterns
 
-1. **UUPS Upgradeable**: All core contracts use OpenZeppelin UUPS proxy via `SecureUpgradeable` base (a `timelock` pointer gates upgrades; a quorum-gated 24hr emergency-disable path exists in the base). **Live trust model (Base mainnet, since 2026-06-15):** all privileged roles are held by a **2-of-2 Gnosis Safe** (`0x1d7fF432…e6cd`); each core proxy's `timelock` is an **OpenZeppelin `TimelockController`** (`0x7Ade8f3B…8342`, 12h delay, Safe = sole proposer/executor); the deployer EOA is fully de-privileged (retains only SlippageStorage `WRITER`). Upgrades run `Safe → controller.schedule → wait 12h → controller.execute`.
+1. **UUPS Upgradeable**: All core contracts use OpenZeppelin UUPS proxy via `SecureUpgradeable` base (a `timelock` pointer gates upgrades; a quorum-gated 24hr emergency-disable path exists in the base). **Live trust model (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** all privileged roles are held by a **2-of-3 Gnosis Safe** (`0x1d7fF432…e6cd`); each core proxy's `timelock` is an **OpenZeppelin `TimelockController`** (`0x7Ade8f3B…8342`, 12h delay, Safe = sole proposer/executor); the deployer EOA is fully de-privileged (retains only SlippageStorage `WRITER`). Upgrades run `Safe → controller.schedule → wait 12h → controller.execute`.
 2. **Role-Based Access**: `AccessControlUpgradeable` with defined roles (`MINTER_ROLE`, `PAUSER_ROLE`, `UPGRADER_ROLE`, etc.)
 3. **Library Pattern**: Business logic extracted to libraries to stay under EIP-170 bytecode limit — 24 libraries in `src/libraries/`
 4. **Error Libraries**: Custom errors in domain-specific libraries (`CommonErrorLibrary`, `VaultErrorLibrary`, `HedgerPoolErrorLibrary`, `TokenErrorLibrary`, etc.) for gas efficiency
@@ -228,7 +228,7 @@ The public docs site (https://smartcontracts.quantillon.money) is an mdBook buil
 ## Security Notes
 
 - Security contact: team@quantillon.money
-- **Governance (Base mainnet, since 2026-06-15):** 2-of-2 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). **Audit fixes F-3/4/5/6/8/11/14/15/19 deployed 2026-06-17** via the Timelock (finalize tx `0x50d8…b46`); the prior `toggleSecureUpgrades(false)` instant-disable bypass (F-5) is now closed on all 7 SecureUpgradeable proxies. **Accepted risk (F-2, 2026-06-17):** OracleRouter / ChainlinkOracle / StorkOracle / FeeCollector are plain-UUPS, upgradeable by the Safe *directly* (no 12h Timelock) — a deliberate choice to keep oracle/fee upgrades fast in a crisis; the 2-of-2 Safe is the sole gate (the single-key risk that drove F-2 is already eliminated).
+- **Governance (Base mainnet, since 2026-06-15; threshold verified on-chain 2026-07-02):** 2-of-3 Gnosis Safe (`0x1d7fF432…e6cd`) holds all privileged roles; upgrades route through an OZ `TimelockController` (`0x7Ade8f3B…8342`, 12h delay, Safe = proposer/executor); deployer EOA de-privileged (only SlippageStorage `WRITER` retained). **Audit fixes F-3/4/5/6/8/11/14/15/19 deployed 2026-06-17** via the Timelock (finalize tx `0x50d8…b46`); the prior `toggleSecureUpgrades(false)` instant-disable bypass (F-5) is now closed on all 7 SecureUpgradeable proxies. **Accepted risk (F-2, 2026-06-17):** OracleRouter / ChainlinkOracle / StorkOracle / FeeCollector are plain-UUPS, upgradeable by the Safe *directly* (no 12h Timelock) — a deliberate choice to keep oracle/fee upgrades fast in a crisis; the 2-of-3 Safe is the sole gate (the single-key risk that drove F-2 is already eliminated).
 - Slither: 0 Critical, 0 Medium findings
 - Custom errors required (not `require` strings)
 - NatSpec 100% coverage enforced via `make validate-natspec`

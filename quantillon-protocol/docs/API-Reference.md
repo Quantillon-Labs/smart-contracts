@@ -40,7 +40,7 @@ Deployed addresses for **Base Mainnet (chain ID `8453`)**. The canonical, machin
 
 | Contract | Address | Notes |
 |----------|---------|-------|
-| Gnosis Safe (governance) | `0x1d7fF432a93d0085Fb69474c7E567f859829e6cd` | 2-of-2; holds all privileged roles |
+| Gnosis Safe (governance) | `0x1d7fF432a93d0085Fb69474c7E567f859829e6cd` | 2-of-3; holds all privileged roles |
 | TimelockController | `0x7Ade8f3Bf1FdaF0785efE9Ea5C6339D1aD6B8342` | 12h delay; gates UUPS upgrades |
 
 ### External vault adapters (onboarded post-core)
@@ -171,7 +171,7 @@ function getProtocolCollateralizationRatio() public view returns (uint256 ratio)
 **Returns**: Current protocol collateralization ratio in 18-decimal percentage format (`100% = 1e20`)
 
 **Description**: Calculates `CR = (TotalCollateral / BackingRequirement) * 1e20` where:
-- `TotalCollateral` = `totalUsdcHeld + tracked external-vault principal` (unharvested adapter yield is excluded; it accrues to stQEURO holders via `harvestVaultYield`/`creditVaultYield`)
+- `TotalCollateral` = `totalUsdcHeld + tracked external-vault principal` (unharvested adapter yield is excluded; it accrues to stQEURO holders via `harvestAndDistributeVaultYield`/`creditVaultYield`)
 - `BackingRequirement` = `QEUROSupply * cachedEurUsdPrice / 1e30`
 
 **Note**: This function uses cached price and returns `0` when required wiring/cache prerequisites are not met.
@@ -211,8 +211,17 @@ One-step user entrypoint to mint QEURO and stake into the vault-specific stQEURO
 #### `deployUsdcToVault(uint256 vaultId, uint256 usdcAmount)`
 Vault-operator entrypoint for manual collateral deployment to a specific adapter.
 
-#### `harvestVaultYield(uint256 vaultId) → (uint256 harvestedYield)`
-Governance entrypoint that triggers yield harvest for a specific adapter.
+#### `harvestAndDistributeVaultYield(uint256 vaultId)`
+Keeper entrypoint (`YIELD_DISTRIBUTOR_ROLE`) that realizes a vault's external yield and splits it: hedger funding first (time-prorated `fundingRateAnnualBps` on tracked principal, capped at realized yield), residual to stQEURO stakers as QEURO backing, remainder to treasury. Emits `VaultYieldDistributed(vaultId, realizedYield, hedgerShare, userShare, treasuryShare)`. See the Staking Yield Distribution guide.
+
+#### `creditVaultYield(uint256 vaultId, uint256 usdcAmount) → (uint256 qeuroMinted)`
+`YIELD_DISTRIBUTOR_ROLE` entrypoint crediting externally realized USDC yield into a vault's stQEURO backing.
+
+#### `harvestConfig(uint256 vaultId) → (uint256 fundingRateBps, address hedgerRecipient, uint256 lastHarvest)`
+Read-only view of the distribution parameters and the vault's last-harvest timestamp.
+
+#### `setFundingRateAnnualBps(uint256 newRateBps)` / `setHedgerYieldRecipient(address newRecipient)`
+Governance setters for the hedger funding carve-out and its recipient.
 
 ---
 
@@ -701,12 +710,12 @@ function withdrawUnderlying(uint256 usdcAmount) external returns (uint256 usdcWi
 
 Withdraws USDC from the wrapped vault back to the protocol.
 
-#### `harvestYield() → (uint256)`
+#### `harvestYieldToVault() → (uint256)`
 ```solidity
-function harvestYield() external returns (uint256 harvestedYield)
+function harvestYieldToVault() external returns (uint256 realizedYield)
 ```
 
-Harvests accrued yield. Routed to `YieldShift` via `QuantillonVault.harvestVaultYield(vaultId)`, which calls `yieldShift.addYield(vaultId, netYield, source)`.
+Realizes accrued yield and transfers it to the calling vault (`VAULT_MANAGER_ROLE`). Invoked by `QuantillonVault.harvestAndDistributeVaultYield(vaultId)`, which then splits the realized USDC between hedger funding, stQEURO stakers, and treasury.
 
 #### `totalUnderlying() → (uint256)`
 ```solidity
@@ -910,7 +919,7 @@ function resetCircuitBreaker() external
 
 ### External Vault Adapters
 - No fixed exposure/rebalance constants — adapters are thin pass-throughs to the wrapped vault.
-- USDC is deployed/withdrawn per `vaultId` under governance control via `QuantillonVault.deployUsdcToVault` / `harvestVaultYield`.
+- USDC is deployed/withdrawn per `vaultId` under governance control via `QuantillonVault.deployUsdcToVault` / `harvestAndDistributeVaultYield`.
 
 ---
 

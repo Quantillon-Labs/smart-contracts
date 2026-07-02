@@ -15,24 +15,25 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          # Pass event text through env vars; templating it into the script
+          # body lets commit messages inject shell (backticks, quotes).
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          AUTHOR_NAME: ${{ github.event.head_commit.author.name }}
         run: |
           if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
             echo "Telegram secrets not set; skipping notification."
             exit 0
           fi
 
-          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
-          COMMIT_MESSAGE="${{ github.event.head_commit.message }}"
-          BRANCH="${{ github.ref_name }}"
-          REPO_NAME="${{ github.repository }}"
-          
-          MESSAGE="🚀 New commit on \`$REPO_NAME\` (\`$BRANCH\` branch)
-          
+          COMMIT_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+
+          MESSAGE="🚀 New commit on \`$GITHUB_REPOSITORY\` (\`$GITHUB_REF_NAME\` branch)
+
           📝 Commit: $COMMIT_MESSAGE
           🔗 URL: $COMMIT_URL
-          
-          👤 Author: ${{ github.event.head_commit.author.name }}"
-          
+
+          👤 Author: $AUTHOR_NAME"
+
           curl -sS -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
             --data-urlencode "chat_id=$CHANNEL_ID" \
             --data-urlencode "text=$MESSAGE"

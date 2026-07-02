@@ -206,3 +206,7 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # The Pages service intermittently exceeds the 10-minute default
+          # ("Timeout reached, aborting!", e.g. run 28600197233) — allow 20.
+          timeout: 1200000

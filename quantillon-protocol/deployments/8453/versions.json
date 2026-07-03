@@ -84,11 +84,11 @@
     "version": "1.0.0"
   },
   "HyperliquidEurUsdOracle": {
-    "deployedAt": 1782384212,
-    "gitCommit": "7f0f8b0",
-    "implementation": "0xc86e06F293Cc25dFBb4D252b044C7ca0af80B3CC",
+    "deployedAt": 1783062491,
+    "gitCommit": "c256259",
+    "implementation": "0x4A2cd252bC5989D8b50785855B344f7D5B9e0184",
     "proxy": "0x0B58aBB57775E0fCEDfd4460e00dD9D9610C2C43",
-    "version": "1.0.0"
+    "version": "1.0.2"
   },
   "TimeProvider": {
     "proxy": "0x520236487CBD0a6958B4EefC7853cd7C3F5C56E7",

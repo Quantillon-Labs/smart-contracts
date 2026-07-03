@@ -424,4 +424,129 @@ contract HyperliquidEurUsdOracleTest is Test {
         vm.expectRevert();
         oracle.pause();
     }
+
+    // ---- Edge cases ----
+
+    /// @notice A snapshot timestamp in the future must be rejected, not treated as ultra-fresh.
+    function test_FutureTimestamp_ReturnsFallbackInvalid() public {
+        slippage.setMid(uint128(INITIAL_MID), uint48(block.timestamp + 3600));
+        (, bool isValid) = oracle.getEurUsdPrice();
+        assertFalse(isValid, "future-dated snapshot must be invalid");
+    }
+
+    /// @notice Initializing against an empty SlippageStorage (mid == 0) must not seed a baseline;
+    ///         reads stay invalid until the first valid publish, which then seeds it.
+    function test_InitAgainstEmptyStorage_NoSeedThenRecovers() public {
+        MockSlippageStorage emptySlippage = new MockSlippageStorage();
+        HyperliquidEurUsdOracle fresh;
+        {
+            ERC1967Proxy proxy = new ERC1967Proxy(
+                address(new HyperliquidEurUsdOracle(timeProvider)),
+                abi.encodeWithSelector(
+                    HyperliquidEurUsdOracle.initialize.selector,
+                    admin,
+                    address(emptySlippage),
+                    SOURCE_HYPERLIQUID,
+                    address(usdc),
+                    treasury
+                )
+            );
+            fresh = HyperliquidEurUsdOracle(payable(address(proxy)));
+        }
+
+        assertEq(fresh.lastValidEurUsdPrice(), 0, "no baseline from empty storage");
+        (, bool isValid) = fresh.getEurUsdPrice();
+        assertFalse(isValid, "empty storage reads invalid");
+
+        // First publish: no baseline yet, so no deviation gate — price becomes valid and seeds it.
+        emptySlippage.setMid(uint128(INITIAL_MID), uint48(block.timestamp));
+        (uint256 price, bool nowValid) = fresh.getEurUsdPrice();
+        assertTrue(nowValid, "first valid publish accepted");
+        assertEq(price, INITIAL_MID);
+        assertEq(fresh.lastValidEurUsdPrice(), INITIAL_MID, "baseline seeded by first valid read");
+    }
+
+    /// @notice Re-pointing the slippage source keeps the deviation baseline: a wildly different
+    ///         mid from the new source is rejected instead of being trusted blindly.
+    function test_UpdateSlippageSource_KeepsDeviationBaseline() public {
+        // Commit the current baseline.
+        (, bool isValid) = oracle.getEurUsdPrice();
+        assertTrue(isValid);
+
+        MockSlippageStorage newSource = new MockSlippageStorage();
+        newSource.setMid(uint128(1.30e18), uint48(block.timestamp)); // in bounds, +20% vs baseline
+
+        vm.prank(admin);
+        oracle.updateSlippageSource(address(newSource), 7);
+
+        (, bool validAfterSwitch) = oracle.getEurUsdPrice();
+        assertFalse(validAfterSwitch, "20% jump from re-pointed source must trip the deviation gate");
+    }
+
+    /// @notice updateSlippageSource rejects the zero address.
+    function test_UpdateSlippageSource_RevertsOnZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert();
+        oracle.updateSlippageSource(address(0), SOURCE_HYPERLIQUID);
+    }
+
+    // ---- Fuzz ----
+
+    /// @notice Any in-bounds mid within the 5% deviation window of the baseline is accepted
+    ///         and returned verbatim; it then becomes the new baseline.
+    function testFuzz_GetEurUsdPrice_AcceptsWithinDeviation(uint256 mid) public {
+        // 5% window around the 1.08 baseline, clamped inside the [0.80, 1.40] bounds.
+        mid = bound(mid, (INITIAL_MID * 9501) / 10000, (INITIAL_MID * 10499) / 10000);
+        slippage.setMid(uint128(mid), uint48(block.timestamp));
+
+        (uint256 price, bool isValid) = oracle.getEurUsdPrice();
+        assertTrue(isValid, "in-window mid accepted");
+        assertEq(price, mid, "mid returned verbatim");
+        assertEq(oracle.lastValidEurUsdPrice(), mid, "accepted mid becomes the baseline");
+    }
+
+    /// @notice Any mid outside the [minEurUsdPrice, maxEurUsdPrice] bounds is rejected,
+    ///         regardless of freshness.
+    function testFuzz_GetEurUsdPrice_RejectsOutOfBounds(uint256 mid) public {
+        // Split the fuzz domain: below min or above max (uint128 to fit the storage slot).
+        if (mid % 2 == 0) {
+            mid = bound(mid, 1, oracle.minEurUsdPrice() - 1);
+        } else {
+            mid = bound(mid, oracle.maxEurUsdPrice() + 1, type(uint128).max);
+        }
+        slippage.setMid(uint128(mid), uint48(block.timestamp));
+
+        (, bool isValid) = oracle.getEurUsdPrice();
+        assertFalse(isValid, "out-of-bounds mid rejected");
+        assertEq(oracle.lastValidEurUsdPrice(), INITIAL_MID, "baseline untouched by rejected read");
+    }
+
+    /// @notice Any staleness beyond maxPriceStaleness invalidates the read; anything within keeps it valid.
+    function testFuzz_Staleness_Boundary(uint256 age) public {
+        uint256 maxStaleness = oracle.maxPriceStaleness();
+        age = bound(age, 0, 7 days);
+        uint48 publishedAt = uint48(block.timestamp);
+        slippage.setMid(uint128(INITIAL_MID), publishedAt);
+        vm.warp(block.timestamp + age);
+
+        (, bool isValid) = oracle.getEurUsdPrice();
+        if (age <= maxStaleness) {
+            assertTrue(isValid, "within staleness window");
+        } else {
+            assertFalse(isValid, "beyond staleness window");
+        }
+    }
+
+    /// @notice updatePriceBounds accepts any strictly ordered pair under the 10e18 cap and
+    ///         applies it to validation immediately.
+    function testFuzz_UpdatePriceBounds_Applied(uint256 minP, uint256 maxP) public {
+        minP = bound(minP, 1, 5e18);
+        maxP = bound(maxP, minP + 1, 10e18);
+
+        vm.prank(admin);
+        oracle.updatePriceBounds(minP, maxP);
+
+        assertEq(oracle.minEurUsdPrice(), minP);
+        assertEq(oracle.maxEurUsdPrice(), maxP);
+    }
 }

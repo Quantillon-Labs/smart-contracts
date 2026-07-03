@@ -202,11 +202,20 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
         with:
           # The Pages service intermittently exceeds the 10-minute default
           # ("Timeout reached, aborting!", e.g. run 28600197233) — allow 20.
+          timeout: 1200000
+      # The Pages service fails deploys intermittently (observed alternating
+      # success/failure on identical content, 2026-07-02/03). One retry absorbs
+      # the flake; a genuine outage still fails the run here.
+      - id: deployment-retry
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        with:
           timeout: 1200000

@@ -1,17 +1,17 @@
 {
   "QEUROToken": {
     "deployedAt": 1783067181,
-    "gitCommit": "unknown",
+    "gitCommit": "cbccfda",
     "implementation": "0x5E0be969Bf20Ed21D87AAAC7d1C5b43CCf62695B",
     "proxy": "0x69aD4e6c49d6275D0e11b5515D98a89f029869AA",
     "version": "1.0.1"
   },
   "QuantillonVault": {
     "proxy": "0x833E5Ba510a241b21F1C60c987D1c49eB52E4a07",
-    "implementation": "0x832037A1909AFaE7BB09bAb64B5662046B476dBf",
-    "version": "1.1.0",
-    "gitCommit": "f161c8b",
-    "deployedAt": 1782756011
+    "implementation": "0xa9b29Ad1EE6efF392fBC44F91808273aE4B37Bd8",
+    "version": "1.1.1",
+    "gitCommit": "cbccfda",
+    "deployedAt": 1783068964
   },
   "QTIToken": {
     "deployedAt": 1781721113,
@@ -29,7 +29,7 @@
   },
   "HedgerPool": {
     "deployedAt": 1783067133,
-    "gitCommit": "unknown",
+    "gitCommit": "cbccfda",
     "implementation": "0x261B353cdaD72A489432feaDE0aF9Aa75a3dc3fE",
     "proxy": "0xff5D7cE5c7671B2EA805Ee752B4f8eC9Ecf2975A",
     "version": "1.0.2"

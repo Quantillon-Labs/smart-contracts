@@ -65,6 +65,10 @@ for t in "${TARGETS[@]}"; do
     printf '%-22s %-14s %-14s %s\n' "$name" "-" "$src_ver" "no deployment record"
   elif [[ "$dep_ver" == "$src_ver" ]]; then
     printf '%-22s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "up to date"
+  elif [[ "$dep_ver" == "0.0.0-unversioned" ]]; then
+    # Deployed impl predates on-chain versioning (version() reverts). Not an actionable
+    # upgrade by itself — version() ships with the contract's next real upgrade.
+    printf '%-22s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "pre-versioning deploy (upgrade optional)"
   else
     printf '%-22s %-14s %-14s %s\n' "$name" "$dep_ver" "$src_ver" "OUT OF DATE -> needs upgrade"
     outdated=1

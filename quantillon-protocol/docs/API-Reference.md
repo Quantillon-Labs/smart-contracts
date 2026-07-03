@@ -221,7 +221,8 @@ Keeper entrypoint (`YIELD_DISTRIBUTOR_ROLE`) that realizes a vault's external yi
 Read-only view of the distribution parameters and the vault's last-harvest timestamp.
 
 #### `setFundingRateAnnualBps(uint256 newRateBps)` / `setHedgerYieldRecipient(address newRecipient)`
-Governance setters for the hedger funding carve-out and its recipient.
+Governance setters for the hedger funding carve-out and its recipient. Emit `FundingRateUpdated` /
+`HedgerYieldRecipientUpdated` (restored in v1.1.1).
 
 ---
 

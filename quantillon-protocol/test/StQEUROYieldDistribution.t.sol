@@ -6,6 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {Vm} from "forge-std/Vm.sol";
 
 import {AaveIntegrationTest} from "./AaveIntegration.t.sol";
+import {QuantillonVault} from "../src/core/QuantillonVault.sol";
 import {stQEUROFactory} from "../src/core/stQEUROFactory.sol";
 import {stQEUROToken} from "../src/core/stQEUROToken.sol";
 
@@ -162,6 +163,23 @@ contract StQEUROYieldDistributionTest is AaveIntegrationTest {
         assertEq(usdc.balanceOf(hedgerSink), hedgerBefore, "hedger recipient untouched");
         assertEq(userShare + treasuryShare, realized, "entire yield split between users and treasury");
         assertGt(userShare, 0, "stakers accrue");
+    }
+
+    /// @notice The governance setters emit their update events (restored in v1.1.1 after being
+    ///         dropped for EIP-170 headroom in v1.1.0).
+    function test_governanceSetters_emitEvents() public {
+        _setUpStaking();
+
+        vm.expectEmit(false, false, false, true, address(vault));
+        emit QuantillonVault.FundingRateUpdated(FUNDING_RATE_BPS, 75);
+        vm.prank(admin);
+        vault.setFundingRateAnnualBps(75);
+
+        address newRecipient = address(0xD00D);
+        vm.expectEmit(true, true, false, false, address(vault));
+        emit QuantillonVault.HedgerYieldRecipientUpdated(hedgerSink, newRecipient);
+        vm.prank(admin);
+        vault.setHedgerYieldRecipient(newRecipient);
     }
 
     /// @notice Only a YIELD_DISTRIBUTOR_ROLE holder can trigger harvest+distribute.

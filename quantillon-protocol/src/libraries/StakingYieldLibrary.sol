@@ -96,7 +96,7 @@ library StakingYieldLibrary {
         if (p.lastHarvest != 0 && p.fundingRateAnnualBps != 0 && block.timestamp > p.lastHarvest) {
             uint256 elapsed = block.timestamp - p.lastHarvest;
             hedgerShare = p.principalUsdc.mulDiv(p.fundingRateAnnualBps * elapsed, BPS_DENOMINATOR * 365 days);
-            // MINIMAL V1: never ponction the user pool — cap the hedger share at the realized yield.
+            // MINIMAL V1: never draw from the user pool — cap the hedger share at the realized yield.
             if (hedgerShare > realizedYield) hedgerShare = realizedYield;
         }
 

@@ -120,7 +120,7 @@ contract QuantillonVault is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.1.0";
+        return "1.1.1";
     }
     using SafeERC20 for IERC20;
     using VaultMath for uint256;   // Precise math operations
@@ -450,6 +450,16 @@ contract QuantillonVault is
         uint256 userShare,
         uint256 treasuryShare
     );
+    /// @notice Emitted when governance updates the annualized hedger funding rate.
+    /// @param oldRateBps Previous funding rate (basis points)
+    /// @param newRateBps New funding rate (basis points)
+    event FundingRateUpdated(uint256 oldRateBps, uint256 newRateBps);
+
+    /// @notice Emitted when the hedger yield recipient is updated by governance.
+    /// @param oldRecipient Previous recipient address
+    /// @param newRecipient New recipient address
+    event HedgerYieldRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
+
     /// @notice Deprecated: retained for ABI compatibility with existing off-chain consumers
     /// @dev No longer emitted. Redeem hedger-sync is atomic (failures
     ///      revert rather than being swallowed), so this event can never fire.
@@ -1846,7 +1856,7 @@ contract QuantillonVault is
      * @custom:security Restricted to `GOVERNANCE_ROLE`.
      * @custom:validation Reverts when `newRateBps` exceeds `MAX_FUNDING_RATE_ANNUAL_BPS`.
      * @custom:state-changes Updates `fundingRateAnnualBps`.
-     * @custom:events None.
+     * @custom:events Emits `FundingRateUpdated`.
      * @custom:errors Reverts with `AboveLimit` when the rate is too high.
      * @custom:reentrancy No reentrancy-sensitive external calls.
      * @custom:access Governance-only.
@@ -1854,7 +1864,9 @@ contract QuantillonVault is
      */
     function setFundingRateAnnualBps(uint256 newRateBps) external onlyRole(GOVERNANCE_ROLE) {
         if (newRateBps > MAX_FUNDING_RATE_ANNUAL_BPS) revert CommonErrorLibrary.AboveLimit();
+        uint256 oldRateBps = fundingRateAnnualBps;
         fundingRateAnnualBps = newRateBps;
+        emit FundingRateUpdated(oldRateBps, newRateBps);
     }
 
     /**
@@ -1864,7 +1876,7 @@ contract QuantillonVault is
      * @custom:security Restricted to `GOVERNANCE_ROLE`.
      * @custom:validation Reverts on the zero address.
      * @custom:state-changes Updates `hedgerYieldRecipient`.
-     * @custom:events None.
+     * @custom:events Emits `HedgerYieldRecipientUpdated`.
      * @custom:errors Reverts with `ZeroAddress` for an invalid recipient.
      * @custom:reentrancy No reentrancy-sensitive external calls.
      * @custom:access Governance-only.
@@ -1872,7 +1884,9 @@ contract QuantillonVault is
      */
     function setHedgerYieldRecipient(address newRecipient) external onlyRole(GOVERNANCE_ROLE) {
         if (newRecipient == address(0)) revert CommonErrorLibrary.ZeroAddress();
+        address oldRecipient = hedgerYieldRecipient;
         hedgerYieldRecipient = newRecipient;
+        emit HedgerYieldRecipientUpdated(oldRecipient, newRecipient);
     }
 
     /**
@@ -1882,7 +1896,7 @@ contract QuantillonVault is
      *      funding accrual (`fundingRateAnnualBps * notional * dt / (10000 * 365 days)`), credits the
      *      residual to stQEURO holders pro-rata to staked/circulating QEURO, and sends the rest to
      *      treasury. The first call for a vault id only anchors the funding clock.
-     *      MINIMAL V1: the hedger carve-out is capped at the realized yield; the "ponction user pool"
+     *      MINIMAL V1: the hedger carve-out is capped at the realized yield; the "draw from the user pool"
      *      path for `realizedYield < hedgerAccrual` (negative residual, falling share price) is
      *      intentionally out of scope and does not trigger while funding stays below the vault yield.
      * @param vaultId Vault id whose adapter yield is harvested and distributed.

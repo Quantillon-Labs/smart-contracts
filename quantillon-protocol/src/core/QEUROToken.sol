@@ -29,7 +29,6 @@ import {SecureUpgradeable} from "./SecureUpgradeable.sol";
 // Custom libraries for bytecode reduction
 import {CommonErrorLibrary} from "../libraries/CommonErrorLibrary.sol";
 import {TokenErrorLibrary} from "../libraries/TokenErrorLibrary.sol";
-import {TokenValidationLibrary} from "../libraries/TokenValidationLibrary.sol";
 import {AccessControlLibrary} from "../libraries/AccessControlLibrary.sol";
 import {CommonValidationLibrary} from "../libraries/CommonValidationLibrary.sol";
 import {TokenLibrary} from "../libraries/TokenLibrary.sol";
@@ -92,12 +91,11 @@ contract QEUROToken is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.0";
+        return "1.0.1";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
     using AccessControlLibrary for AccessControlUpgradeable;
-    using TokenValidationLibrary for uint256;
     using TokenLibrary for address;
 
     // =============================================================================
@@ -423,8 +421,6 @@ contract QEUROToken is
         whitelistEnabled = false;
         minPricePrecision = 1e8; // 8 decimals minimum for price feeds
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        TokenValidationLibrary.validateTreasuryAddress(_treasury);
-        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
         if (_feeCollector == address(0)) revert CommonErrorLibrary.ZeroAddress();
         feeCollector = _feeCollector;
@@ -1545,8 +1541,6 @@ contract QEUROToken is
      */
     function updateTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         CommonValidationLibrary.validateNonZeroAddress(_treasury, "treasury");
-        TokenValidationLibrary.validateTreasuryAddress(_treasury);
-        if (_treasury == address(0)) revert CommonErrorLibrary.ZeroAddress();
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
     }

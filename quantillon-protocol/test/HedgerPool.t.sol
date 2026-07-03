@@ -1073,6 +1073,51 @@ contract HedgerPoolTestSuite is Test {
     }
 
     /**
+     * @notice Margin withdrawal must survive the same exposure desync as position close —
+     *         _removeMarginCommit clamps the totalExposure decrement instead of underflowing.
+     * @dev Regression for the v1.0.2 clamp: pre-v1.0.1 accounting drift can leave the global
+     *      exposure counter below a position's size delta; without the clamp, removeMargin
+     *      reverted with Panic 0x11 at `totalExposure -= deltaPositionSize`, bricking withdrawal.
+     * @custom:security No security implications - test function
+     * @custom:validation No input validation required - test function
+     * @custom:state-changes No state changes - test function
+     * @custom:events No events emitted - test function
+     * @custom:errors No errors thrown - test function
+     * @custom:reentrancy Not applicable - test function
+     * @custom:access No access restrictions - test function
+     * @custom:oracle No oracle dependencies - test function
+     */
+    function test_Margin_RemoveMarginSurvivesExposureDesync() public {
+        _setSingleHedger(hedger1);
+        vm.prank(hedger1);
+        uint256 positionId = hedgerPool.enterHedgePosition(MARGIN_AMOUNT, 5);
+
+        // Simulate the on-chain desync: force the global exposure counter far below the
+        // position-size delta that removing margin will subtract.
+        stdstore.target(address(hedgerPool)).sig("totalExposure()").checked_write(uint256(1));
+        assertEq(hedgerPool.totalExposure(), 1, "precondition: exposure forced below delta");
+
+        vm.mockCall(
+            mockOracle,
+            abi.encodeWithSelector(IOracle.getEurUsdPrice.selector),
+            abi.encode(EUR_USD_PRICE_HIGH, true)
+        );
+
+        // Before the clamp this reverted with Panic 0x11 (arithmetic underflow).
+        uint256 marginToRemove = 2000 * 1e6;
+        vm.prank(hedger1);
+        hedgerPool.removeMargin(positionId, marginToRemove);
+
+        // Margin actually left the position and the counter floored at 0 instead of underflowing.
+        (,,, uint96 margin, , , , , , , bool isActive, , ) = hedgerPool.positions(positionId);
+        CoreParamsSnapshot memory params = _coreParamsSnapshot();
+        uint256 netMargin = MARGIN_AMOUNT * (10000 - params.entryFee) / 10000;
+        assertEq(margin, netMargin - marginToRemove, "margin reduced");
+        assertTrue(isActive, "position stays open");
+        assertEq(hedgerPool.totalExposure(), 0, "totalExposure floored at 0");
+    }
+
+    /**
      * @notice Test closing non-existent position should revert
      * @dev Verifies that closing invalid positions is prevented
       * @custom:security No security implications - test function

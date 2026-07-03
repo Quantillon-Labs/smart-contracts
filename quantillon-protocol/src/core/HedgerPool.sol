@@ -83,7 +83,7 @@ contract HedgerPool is
      * @custom:oracle No oracle dependencies.
      */
     function version() external pure virtual override returns (string memory) {
-        return "1.0.1";
+        return "1.0.2";
     }
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -901,8 +901,10 @@ contract HedgerPool is
         position.positionSize = uint96(newPositionSize);
 
         totalMargin -= amount;
-        totalExposure -= deltaPositionSize;
-
+        // Clamp like the close/realize paths (v1.0.1 fix): historical pre-v1.0.1 desync could
+        // leave totalExposure below the sum of position sizes, and an unclamped subtraction
+        // here would brick margin withdrawal with an arithmetic underflow (Panic 0x11).
+        totalExposure -= deltaPositionSize > totalExposure ? totalExposure : deltaPositionSize;
     }
 
     /**
@@ -1038,7 +1040,7 @@ contract HedgerPool is
      * @custom:security Validates input parameters and enforces security checks
      * @custom:validation Caller must be configured `singleHedger`
      * @custom:state-changes Updates hedger reward tracking and reward escrow state
-     * @custom:events Emits HedgingRewardsClaimed with reward details
+     * @custom:events None (the HedgingRewardsClaimed event was removed in v1.0.1)
      * @custom:errors Throws custom errors for invalid conditions
      * @custom:reentrancy Protected by nonReentrant modifier
      * @custom:access Restricted to configured single hedger

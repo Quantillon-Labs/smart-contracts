@@ -1202,9 +1202,10 @@ Verified against deployed contracts on Base mainnet (2026-07-04). Values marked 
 - `MAX_FUNDING_RATE_ANNUAL_BPS`: 5000 (50%) cap on the hedger funding rate
 
 ### QEUROToken
-- `maxSupply`: 100,000,000 QEURO (`DEFAULT_MAX_SUPPLY` = 100M, *settable*)
+- Supply model: **no fixed tokenomic supply cap** — supply is economically bounded by hedging capacity (minting requires ≥105% protocol CR)
+- `maxSupply`: administrative safety ceiling, currently 100,000,000 QEURO (`DEFAULT_MAX_SUPPLY`; governance-raisable at any time via `updateMaxSupply`, only constrained to ≥ current supply)
 - Decimals: 18
-- Mint rate limiting: max 10,000,000 QEURO per 300-**block** window (~10 min on Base) (`MAX_RATE_LIMIT` / `RATE_LIMIT_RESET_PERIOD`)
+- Mint/burn rate limiting (safety guardrail, global): max 10,000,000 QEURO per 300-**block** window (~10 min on Base) (`MAX_RATE_LIMIT` / `RATE_LIMIT_RESET_PERIOD`)
 
 ### QTIToken
 - `TOTAL_SUPPLY_CAP`: 100,000,000 QTI — **current supply is 0 (dormant: no mint path is wired)**

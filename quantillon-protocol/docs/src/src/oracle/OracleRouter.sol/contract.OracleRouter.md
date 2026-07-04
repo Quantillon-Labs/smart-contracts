@@ -1,5 +1,5 @@
 # OracleRouter
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/oracle/OracleRouter.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/oracle/OracleRouter.sol)
 
 **Inherits:**
 [IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)
@@ -13,11 +13,13 @@ Quantillon Labs - Nicolas Bellengé - @chewbaccoin
 Router contract that lets governance switch the protocol between two oracle slots
 
 Key features:
-- Holds references to two oracle slots (enum OracleType { CHAINLINK, STORK }); the
-slot-1 "STORK" name is historical — it can host any IOracle implementation
-(currently HyperliquidEurUsdOracle in production)
+- Holds references to two oracle slots (enum OracleType { CHAINLINK, MARKET }); the
+MARKET slot can host any IOracle implementation (StorkOracle pre-2026-06-25,
+HyperliquidEurUsdOracle since)
 - Routes all IOracle calls to the currently active oracle
 - Admin can switch between oracles via switchOracle()
+- v1.1.0: slot 1 renamed STORK -> MARKET / storkOracle -> marketOracle; the
+pre-1.1.0 storkOracle() getter is kept as a deprecated ABI-compatible alias
 - Implements IOracle interface (generic, oracle-agnostic)
 - Protocol contracts use IOracle interface for oracle-agnostic integration
 
@@ -63,12 +65,15 @@ IChainlinkOracle public chainlinkOracle
 ```
 
 
-### storkOracle
-Stork oracle contract reference
+### marketOracle
+Market oracle contract reference (slot 1)
+
+The swappable market-price oracle: StorkOracle pre-2026-06-25, currently
+HyperliquidEurUsdOracle. Named `storkOracle` before v1.1.0 (same slot/encoding).
 
 
 ```solidity
-IStorkOracle public storkOracle
+IOracle public marketOracle
 ```
 
 
@@ -180,14 +185,14 @@ Sets up all core dependencies, roles, and default oracle selection
 
 - access: Public - only callable once during deployment
 
-- oracle: Initializes references to ChainlinkOracle and StorkOracle contracts
+- oracle: Initializes references to the chainlink and market oracle contracts
 
 
 ```solidity
 function initialize(
     address admin,
     address _chainlinkOracle,
-    address _storkOracle,
+    address _marketOracle,
     address _treasury,
     OracleType _defaultOracle
 ) public initializer;
@@ -198,9 +203,9 @@ function initialize(
 |----|----|-----------|
 |`admin`|`address`|Address with administrator privileges|
 |`_chainlinkOracle`|`address`|ChainlinkOracle contract address|
-|`_storkOracle`|`address`|StorkOracle contract address|
+|`_marketOracle`|`address`|Market oracle contract address (slot 1)|
 |`_treasury`|`address`|Treasury address for ETH recovery|
-|`_defaultOracle`|`OracleType`|Default oracle to use (CHAINLINK or STORK)|
+|`_defaultOracle`|`OracleType`|Default oracle to use (CHAINLINK or MARKET)|
 
 
 ### updateTreasury
@@ -269,7 +274,7 @@ function unpause() external onlyRole(EMERGENCY_ROLE);
 
 Gets the currently active oracle contract
 
-Returns chainlinkOracle or storkOracle based on activeOracle enum
+Returns chainlinkOracle or marketOracle based on activeOracle enum
 
 **Notes:**
 - security: View only
@@ -330,14 +335,14 @@ function getActiveOracle() external view returns (OracleType);
 
 |Name|Type|Description|
 |----|----|-----------|
-|`<none>`|`OracleType`|The active oracle type (CHAINLINK or STORK)|
+|`<none>`|`OracleType`|The active oracle type (CHAINLINK or MARKET)|
 
 
 ### getOracleAddresses
 
 Gets the addresses of both oracle contracts
 
-Returns chainlinkOracle and storkOracle addresses
+Returns chainlinkOracle and marketOracle addresses
 
 **Notes:**
 - security: View only
@@ -358,14 +363,50 @@ Returns chainlinkOracle and storkOracle addresses
 
 
 ```solidity
-function getOracleAddresses() external view returns (address chainlinkAddress, address storkAddress);
+function getOracleAddresses() external view returns (address chainlinkAddress, address marketAddress);
 ```
 **Returns**
 
 |Name|Type|Description|
 |----|----|-----------|
 |`chainlinkAddress`|`address`|Address of ChainlinkOracle contract|
-|`storkAddress`|`address`|Address of StorkOracle contract|
+|`marketAddress`|`address`|Address of the market oracle contract (slot 1)|
+
+
+### storkOracle
+
+Deprecated alias for the slot-1 (market) oracle address
+
+Before v1.1.0 the slot-1 state variable was named `storkOracle`; this function
+preserves the auto-generated getter's selector and return type for ABI
+compatibility. New integrations must use `marketOracle()` instead.
+
+**Notes:**
+- security: View only
+
+- validation: None
+
+- state-changes: None
+
+- events: None
+
+- errors: None
+
+- reentrancy: No external calls
+
+- access: Anyone
+
+- oracle: Returns the market oracle reference
+
+
+```solidity
+function storkOracle() external view returns (IStorkOracle);
+```
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`<none>`|`IStorkOracle`|The slot-1 oracle, typed as IStorkOracle for ABI compatibility|
 
 
 ### _authorizeUpgrade
@@ -476,7 +517,7 @@ function pause() external onlyRole(EMERGENCY_ROLE);
 
 ### switchOracle
 
-Switches the active oracle between Chainlink and Stork
+Switches the active oracle between the two slots
 
 Validates newOracle != activeOracle and oracle address not zero; emits OracleSwitched
 
@@ -505,21 +546,21 @@ function switchOracle(OracleType newOracle) external onlyRole(ORACLE_MANAGER_ROL
 
 |Name|Type|Description|
 |----|----|-----------|
-|`newOracle`|`OracleType`|The new oracle type to activate (CHAINLINK or STORK)|
+|`newOracle`|`OracleType`|The new oracle type to activate (CHAINLINK or MARKET)|
 
 
 ### updateOracleAddresses
 
 Updates the oracle contract addresses
 
-Validates both addresses; updates chainlinkOracle and storkOracle; emits OracleAddressesUpdated
+Validates both addresses; updates chainlinkOracle and marketOracle; emits OracleAddressesUpdated
 
 **Notes:**
 - security: ORACLE_MANAGER_ROLE only
 
 - validation: Both addresses not zero
 
-- state-changes: chainlinkOracle, storkOracle
+- state-changes: chainlinkOracle, marketOracle
 
 - events: OracleAddressesUpdated
 
@@ -533,7 +574,7 @@ Validates both addresses; updates chainlinkOracle and storkOracle; emits OracleA
 
 
 ```solidity
-function updateOracleAddresses(address _chainlinkOracle, address _storkOracle)
+function updateOracleAddresses(address _chainlinkOracle, address _marketOracle)
     external
     onlyRole(ORACLE_MANAGER_ROLE);
 ```
@@ -542,7 +583,7 @@ function updateOracleAddresses(address _chainlinkOracle, address _storkOracle)
 |Name|Type|Description|
 |----|----|-----------|
 |`_chainlinkOracle`|`address`|New ChainlinkOracle address|
-|`_storkOracle`|`address`|New StorkOracle address|
+|`_marketOracle`|`address`|New market oracle address (slot 1)|
 
 
 ### getEurUsdPrice
@@ -896,10 +937,10 @@ function updateUsdcTolerance(uint256 newToleranceBps) external onlyRole(ORACLE_M
 
 Updates price feed addresses (Chainlink only)
 
-Reverts for Stork oracle - use oracle-specific methods instead
+Reverts when the MARKET slot is active - use oracle-specific methods instead
 
 **Notes:**
-- security: Only Chainlink path; reverts for Stork
+- security: Only Chainlink path; reverts for the MARKET slot
 
 - validation: Via ChainlinkOracle
 
@@ -907,7 +948,7 @@ Reverts for Stork oracle - use oracle-specific methods instead
 
 - events: Via oracle
 
-- errors: Reverts for Stork
+- errors: Reverts for the MARKET slot
 
 - reentrancy: External call to ChainlinkOracle
 
@@ -999,7 +1040,7 @@ Emitted when oracle addresses are updated
 
 
 ```solidity
-event OracleAddressesUpdated(address newChainlinkOracle, address newStorkOracle);
+event OracleAddressesUpdated(address newChainlinkOracle, address newMarketOracle);
 ```
 
 ### TreasuryUpdated
@@ -1022,11 +1063,14 @@ event ETHRecovered(address indexed to, uint256 amount);
 ### OracleType
 Enum for oracle type selection
 
+Slot 1 was named STORK before v1.1.0; renamed to MARKET (the swappable
+market-price oracle slot). Enum values are unchanged (CHAINLINK=0, MARKET=1).
+
 
 ```solidity
 enum OracleType {
     CHAINLINK,
-    STORK
+    MARKET
 }
 ```
 

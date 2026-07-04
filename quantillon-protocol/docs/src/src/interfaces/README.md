@@ -5,6 +5,7 @@
 - [IExternalStakingVault](IExternalStakingVault.sol/interface.IExternalStakingVault.md)
 - [IHedgerPool](IHedgerPool.sol/interface.IHedgerPool.md)
 - [IHyperliquidOracle](IHyperliquidOracle.sol/interface.IHyperliquidOracle.md)
+- [IMarketOracleAdmin](IMarketOracleAdmin.sol/interface.IMarketOracleAdmin.md)
 - [IMockAaveVault](IMockAaveVault.sol/interface.IMockAaveVault.md)
 - [IOracle](IOracle.sol/interface.IOracle.md)
 - [IQEUROToken](IQEUROToken.sol/interface.IQEUROToken.md)

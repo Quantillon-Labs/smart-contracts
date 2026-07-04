@@ -1,5 +1,5 @@
 # SlippageStorage
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/oracle/SlippageStorage.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/oracle/SlippageStorage.sol)
 
 **Inherits:**
 [ISlippageStorage](/src/interfaces/ISlippageStorage.sol/interface.ISlippageStorage.md), Initializable, AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable, [IVersioned](/src/interfaces/IVersioned.sol/interface.IVersioned.md)

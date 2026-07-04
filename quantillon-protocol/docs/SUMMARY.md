@@ -37,6 +37,7 @@
     - [IExternalStakingVault](src/interfaces/IExternalStakingVault.sol/interface.IExternalStakingVault.md)
     - [IHedgerPool](src/interfaces/IHedgerPool.sol/interface.IHedgerPool.md)
     - [IHyperliquidOracle](src/interfaces/IHyperliquidOracle.sol/interface.IHyperliquidOracle.md)
+    - [IMarketOracleAdmin](src/interfaces/IMarketOracleAdmin.sol/interface.IMarketOracleAdmin.md)
     - [IMockAaveVault](src/interfaces/IMockAaveVault.sol/interface.IMockAaveVault.md)
     - [IOracle](src/interfaces/IOracle.sol/interface.IOracle.md)
     - [IQEUROToken](src/interfaces/IQEUROToken.sol/interface.IQEUROToken.md)

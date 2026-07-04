@@ -1,5 +1,5 @@
 # IChainlinkOracle
-[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/fdf5f8f6194f4b414785cf5d6e2e583cb790646c/src/interfaces/IChainlinkOracle.sol)
+[Git Source](https://github.com/Quantillon-Labs/smart-contracts/quantillon-protocol/blob/973bc7b9b5281df753b9c9569aff01d589239043/src/interfaces/IChainlinkOracle.sol)
 
 **Inherits:**
 [IOracle](/src/interfaces/IOracle.sol/interface.IOracle.md)

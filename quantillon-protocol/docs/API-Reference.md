@@ -1204,7 +1204,7 @@ Verified against deployed contracts on Base mainnet (2026-07-04). Values marked 
 ### QEUROToken
 - `maxSupply`: 100,000,000 QEURO (`DEFAULT_MAX_SUPPLY` = 100M, *settable*)
 - Decimals: 18
-- Mint rate limiting: max 10,000,000 QEURO per 300-second window (`MAX_RATE_LIMIT` / `RATE_LIMIT_RESET_PERIOD`)
+- Mint rate limiting: max 10,000,000 QEURO per 300-**block** window (~10 min on Base) (`MAX_RATE_LIMIT` / `RATE_LIMIT_RESET_PERIOD`)
 
 ### QTIToken
 - `TOTAL_SUPPLY_CAP`: 100,000,000 QTI — **current supply is 0 (dormant: no mint path is wired)**
